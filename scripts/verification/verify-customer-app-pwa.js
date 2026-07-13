@@ -93,6 +93,8 @@ function verifyManifestRoute() {
   const executableRoute = stripJsComments(route);
   assertIncludes(route, 'getStoreManifestStartUrl', 'manifest route');
   assertIncludes(route, 'startUrl,', 'manifest route');
+  assertIncludes(route, "requestHostname = h.get('host') || '';", 'manifest route Host-only tenant selector');
+  assertNotIncludes(route, 'x-forwarded-host', 'manifest route must not accept forwarded-host tenant selection');
   assertIncludes(route, 'secureError(', 'manifest route secure failure logging');
   assertIncludes(route, "'[manifest] generation failed'", 'manifest route secure failure logging');
   assertIncludes(route, "new Error('customer_app_manifest_generation_failed')", 'manifest route normalized failure logging');
@@ -181,6 +183,12 @@ function verifyCustomerServiceWorkerPolicy() {
   const sw = read('public/sw-customer.js');
   const register = read('src/components/ServiceWorkerRegister.tsx');
   const rootLayout = read('src/app/layout.tsx');
+  const offlineHarness = read('scripts/verification/verify-customer-pwa-offline.mjs');
+  const packageJson = JSON.parse(read('package.json'));
+  const customerAppTest = read('__docs__/customer-app/customer-app_test.md');
+  const certificationRunbook = read('__docs__/production-readiness/external-certification-runbook.md');
+  const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
+  const changelog = read('__docs__/changelog.md');
   const executableSw = stripJsComments(sw);
   assertIncludes(sw, 'FROZEN: Offline page only. NEVER cached menu fallback.', 'customer service worker');
   assertIncludes(sw, "const OFFLINE_URL = '/offline';", 'customer service worker');
@@ -211,6 +219,32 @@ function verifyCustomerServiceWorkerPolicy() {
   assertIncludes(rootLayout, 'unregister_failed', 'root development service-worker unregister diagnostics');
   assertIncludes(rootLayout, 'hostLength', 'root development service-worker bounded host metadata');
   assertNotIncludes(rootLayout, '.catch(() => {});', 'root development service-worker silent catch');
+  assert(
+    packageJson.scripts?.['smoke:customer-pwa-offline'] === 'node scripts/verification/verify-customer-pwa-offline.mjs',
+    'root package must expose the customer PWA offline browser smoke',
+  );
+  [
+    "const tenantHostname = process.env.CUSTOMER_PWA_QA_TENANT_HOST || 'habibis.menulist.ai';",
+    "const upstreamUrl = new URL(process.env.CUSTOMER_PWA_QA_UPSTREAM_URL || 'http://127.0.0.1:3000');",
+    'function createLoopbackTenantProxy()',
+    'tenantProxy.setOffline(true);',
+    "await navigator.serviceWorker.register('/sw-customer.js', { scope: '/' });",
+    "caches.open('customer-app-offline-v1')",
+    "const offlineUrl = new URL('/offline', baseUrl).href;",
+    "boundary: 'local_loopback_customer_worker_contract_only'",
+    'productionRegistrationCertified: false',
+    'pwaInstallCertified: false',
+    'realDeviceCertified: false',
+    'menuContentCached: !offlineCacheIsOfflineOnly',
+  ].forEach((token) => assertIncludes(offlineHarness, token, 'customer PWA offline browser harness'));
+  assertNotIncludes(offlineHarness, 'Network.emulateNetworkConditions', 'customer PWA offline harness deprecated CDP network emulation');
+  assertNotIncludes(offlineHarness, 'Network.emulateNetworkConditionsByRule', 'customer PWA offline harness CDP network emulation');
+  assertIncludes(customerAppTest, 'Local Customer-Worker Browser Smoke', 'Customer App local offline smoke test guide');
+  assertIncludes(customerAppTest, 'Keep the installed-device airplane-mode step below open', 'Customer App real-device offline boundary');
+  assertIncludes(certificationRunbook, 'harness-owned loopback tenant proxy', 'Gate 3 customer PWA loopback proxy contract');
+  assertIncludes(certificationRunbook, 'This proves the local loopback customer-worker contract only.', 'Gate 3 customer PWA certification boundary');
+  assertIncludes(productionAudit, 'External Certification Gate 3 Local Customer-Worker Offline Evidence - July 11, 2026', 'Production audit local customer PWA evidence');
+  assertIncludes(changelog, 'Local Customer-Worker Offline Contract Evidence', 'Changelog local customer PWA evidence');
 }
 
 function verifyClientMenuOfflineDocsMatchServiceWorkerPolicy() {
@@ -590,7 +624,7 @@ function verifyCustomerAppAssets() {
 
   assertIncludes(publicStoreLookup, 'export const getPublicStoreById = cache(', 'public store-id lookup');
   assertIncludes(publicStoreLookup, 'data.active === false || data.deleted === true', 'public store-id lookup active/deleted guard');
-  assertIncludes(publicStoreLookup, 'isStoreOrTenantBlocked(data)', 'public store-id lookup platform block guard');
+  assertIncludes(publicStoreLookup, 'return await isStoreOrTenantIneligible(data) ? null : data;', 'public store-id lookup shared lifecycle/block guard');
   assertIncludes(appIconRoute, 'renderCustomerAppIcon', 'customer app icon route');
   assertIncludes(appIconRoute, "import { getPublicStoreById } from '@lib/firestore/clientStoreLookup';", 'customer app icon route public store lookup');
   assertIncludes(appIconRoute, 'const store = await getPublicStoreById(storeId);', 'customer app icon route public store lookup');
@@ -648,6 +682,20 @@ function verifyCustomerAppAssets() {
   assertIncludes(appScreenshotRoute, 'key: `public-dynamic-asset:screenshot:${ipHash}`', 'customer app screenshot route must not store raw IP rate-limit keys');
   assertIncludes(appScreenshotRoute, 'const STORE_ID_PATTERN = /^\\d{1,20}$/;', 'customer app screenshot route store-id shape guard');
   assertIncludes(appScreenshotRoute, 'if (!STORE_ID_PATTERN.test(storeId)) return true;', 'customer app screenshot route invalid store fallback');
+  assertIncludes(appScreenshotRoute, 'function parseFormFactor(raw: string): FormFactor | null', 'customer app screenshot route strict form-factor parser');
+  assertIncludes(appScreenshotRoute, "if (raw === 'narrow' || raw === 'wide') return raw;", 'customer app screenshot route supports only manifest form factors');
+  assertIncludes(appScreenshotRoute, "return new Response('Unsupported screenshot form factor', { status: 404 });", 'customer app screenshot route rejects unsupported form factors');
+  assertOrder(
+    appScreenshotRoute,
+    [
+      'const form = parseFormFactor(params.formFactor);',
+      'if (!form) {',
+      "return new Response('Unsupported screenshot form factor', { status: 404 });",
+      'const storeId = params.storeId;',
+      'if (await shouldUseFallbackAsset(request, storeId)) {',
+    ],
+    'customer app screenshot route rejects unsupported form factors before rate limit or store lookup',
+  );
   assertOrder(
     appScreenshotRoute,
     [
@@ -745,12 +793,22 @@ function verifyAnalyticsCoverage() {
     "updateData['shortcutClicks.whatsapp'] = 1;",
     "updateData['shortcutClicks.reservation'] = 1;",
     "updateData['shortcutClicks.order'] = 1;",
-    'updateData[`installsByPlatform.${data.pwaPlatform}`] = 1;',
-    'updateData[`installsBySource.${data.pwaInstallSource}`] = 1;',
-    'updateData[`appOpensByPlatform.${data.pwaPlatform}`] = 1;',
+    'const installedPlatform = normalizeAnalyticsEnum(data.pwaPlatform, ANALYTICS_PWA_PLATFORMS);',
+    'updateData[`installsByPlatform.${installedPlatform}`] = 1;',
+    'const installSource = normalizeAnalyticsEnum(data.pwaInstallSource, ANALYTICS_PWA_INSTALL_SOURCES);',
+    'updateData[`installsBySource.${installSource}`] = 1;',
+    'const installSurface = normalizeAnalyticsEnum(data.pwaInstallSurface, ANALYTICS_PWA_INSTALL_SURFACES);',
+    'updateData[`installsBySurface.${installSurface}`] = 1;',
+    'const openedPlatform = normalizeAnalyticsEnum(data.pwaPlatform, ANALYTICS_PWA_PLATFORMS);',
+    'updateData[`appOpensByPlatform.${openedPlatform}`] = 1;',
+    'const openedSurface = normalizeAnalyticsEnum(data.pwaInstallSurface, ANALYTICS_PWA_INSTALL_SURFACES);',
+    'updateData[`appOpensBySurface.${openedSurface}`] = 1;',
   ].forEach((needle) => {
     assertIncludes(analytics, needle, `Customer App analytics event field ${needle}`);
   });
+  assertNotIncludes(analytics, 'updateData[`installsByPlatform.${data.pwaPlatform}`] = 1;', 'Customer App raw platform map key');
+  assertNotIncludes(analytics, 'updateData[`installsBySource.${data.pwaInstallSource}`] = 1;', 'Customer App raw source map key');
+  assertNotIncludes(analytics, 'updateData[`appOpensByPlatform.${data.pwaPlatform}`] = 1;', 'Customer App raw app-open platform map key');
 
   assertIncludes(publicAnalyticsRoute, "const RESERVED_PROJECT_IDS = new Set(['obp', 'customerApp']);", 'public analytics reserved customerApp project id');
   assertIncludes(publicAnalyticsRoute, "const rateLimitResponse = await checkPublicRateLimit(req, 'PUBLIC_ANALYTICS');", 'public analytics rate-limit before body parse');
@@ -760,17 +818,14 @@ function verifyAnalyticsCoverage() {
   assertIncludes(publicAnalyticsRoute, "logAnalyticsFailure('public_analytics_track_failed'", 'public analytics bounded failure logging');
   assertNotIncludes(publicAnalyticsRoute, 'req.json()', 'public analytics route must not parse unbounded JSON');
 
-  assertIncludes(clientAnalyticsWrite, "projectId === 'customerApp'", 'client analytics writer Customer App surface routing');
+  assertIncludes(clientAnalyticsWrite, "fetch('/api/public/analytics/track'", 'client analytics validated public-route boundary');
+  assertIncludes(clientAnalyticsWrite, 'body: JSON.stringify({', 'client analytics validated public-route payload');
+  assertIncludes(clientAnalyticsWrite, 'filterAnalyticsUpdateData(updateData)', 'client analytics write policy');
+  assertNotIncludes(clientAnalyticsWrite, 'setDoc(dailyDocRef', 'client analytics direct Firestore write');
   assertIncludes(serverAnalyticsWrite, "analyticsProjectId === 'customerApp'", 'server analytics writer Customer App surface routing');
-
-  for (const [label, content] of [
-    ['client analytics writer', clientAnalyticsWrite],
-    ['server analytics writer', serverAnalyticsWrite],
-  ]) {
-    assertIncludes(content, "? 'customerApp'", `${label} Customer App surface value`);
-    assertIncludes(content, 'filterAnalyticsUpdateData(updateData)', `${label} analytics write policy`);
-    assertIncludes(content, 'assignProcessedAnalyticsField', `${label} dotted field preservation`);
-  }
+  assertIncludes(serverAnalyticsWrite, "? 'customerApp'", 'server analytics writer Customer App surface value');
+  assertIncludes(serverAnalyticsWrite, 'filterAnalyticsUpdateData(updateData)', 'server analytics write policy');
+  assertIncludes(serverAnalyticsWrite, 'assignProcessedAnalyticsField', 'server analytics dotted field preservation');
 
   [
     'totalPromptShown?: number;',
@@ -833,13 +888,16 @@ function verifyAnalyticsCoverage() {
   assertIncludes(decisionBlocksScoring, '`${tId}_${sId}_customerApp_dashboard_summary`', 'nightly scheduler records Customer App dashboard summary doc id');
 
   assertIncludes(dashboardDal, 'export interface CustomerAppDashboardSummary', 'Customer App dashboard DAL type');
-  assertIncludes(dashboardDal, "getDocId.dashboardSummary(tId, sId, 'customerApp')", 'Customer App dashboard DAL doc id');
-  assertIncludes(dashboardDal, 'summary: data.summary || null', 'Customer App dashboard DAL summary field');
-  assertIncludes(dashboardDal, 'daily30d: Array.isArray(data.daily30d) ? data.daily30d : []', 'Customer App dashboard DAL daily rows');
+  assertIncludes(dashboardDal, "getDocId.dashboardSummary(tenantId, storeId, 'customerApp')", 'Customer App dashboard DAL normalized doc id');
+  assertIncludes(dashboardDal, 'normalizeCustomerAppDashboardReadModel(summarySnap.data(), tenantId, storeId)', 'Customer App dashboard DAL runtime DTO');
+  assertIncludes(dashboardDal, 'summary: data.summary,', 'Customer App dashboard DAL normalized summary field');
+  assertIncludes(dashboardDal, 'daily30d: data.daily30d,', 'Customer App dashboard DAL normalized daily rows');
   assertIncludes(dashboardDal, '"getCustomerAppDashboardSummary"', 'Customer App dashboard DAL apiCallComposer label');
   assertIncludes(dashboardHook, 'getCustomerAppDashboardSummary(tId!, sId!)', 'Customer App dashboard hook DAL fetch');
   assertIncludes(dashboardHook, 'getAnalyticsSchedulerCacheKey(new Date()', 'Customer App dashboard hook scheduler cache key');
   assertIncludes(dashboardHook, 'dedupingInterval: 86400000', 'Customer App dashboard hook daily dedupe');
+  assertIncludes(dashboardHook, 'normalizeCustomerAppDashboardReadModel(value, tId, sId)', 'Customer App dashboard local cache DTO');
+  assertIncludes(dashboardHook, 'removeCachedData(cacheKey);', 'Customer App dashboard invalid local cache eviction');
 
   for (const [label, content] of [
     ['desktop Customer App metrics card', desktopMetrics],
@@ -1053,6 +1111,8 @@ function verifyDigitalScreenDiagnostics() {
   const screenDiagnostics = read('src/lib/screen/screenDiagnostics.ts');
   const storesDal = read('src/database/stores/index.tsx');
   const brandPropagation = read('src/database/multiOutlet/brandPropagation.ts');
+  const brandPropagationRoute = read('src/app/api/outlets/brand-propagation/route.ts');
+  const brandPropagationBoundary = read('src/lib/multiOutlet/brandPropagationBoundary.ts');
   const screenSettings = read('src/components/templates/main-app/settings/DigitalScreenSettings/index.tsx');
   const screenLink = read('src/components/templates/main-app/settings/DigitalScreenSettings/ScreenLink.tsx');
   const ownerUploads = read('src/components/templates/main-app/settings/DigitalScreenSettings/OwnerUploads.tsx');
@@ -1108,15 +1168,16 @@ function verifyDigitalScreenDiagnostics() {
   assertIncludes(campaignDal, 'export function assertDigitalScreenMutationSucceeded', 'campaign screen DAL mutation acknowledgement guard');
   assertIncludes(campaignDal, 'digital_screen_mutation_rejected', 'campaign screen DAL default mutation rejection code');
   assertIncludes(campaignDal, 'digital_screen_slide_upload_update_rejected', 'campaign screen upload slide acknowledgement rejection code');
-  assertIncludes(campaignDal, 'digital_screen_client_token_resolver_failed', 'campaign screen token failure logging');
-  assertIncludes(campaignDal, 'digital_screen_client_menu_items_failed', 'campaign screen menu failure logging');
-  assertIncludes(campaignDal, 'tokenLength: token.length', 'campaign screen bounded token context');
-  assertIncludes(campaignDal, 'storeIdLength: storeId.length', 'campaign screen bounded store context');
+  assertNotIncludes(campaignDal, 'export const getScreenDataByToken', 'campaign DAL does not expose the removed client public-token resolver');
+  assertNotIncludes(campaignDal, 'export const getMenuItemsForScreen', 'campaign DAL does not expose the removed client public-menu resolver');
   assertIncludes(campaignDal, 'projectIdLength: String(projectId || "").length', 'campaign history bounded project context');
+  assertIncludes(screenPage, 'getScreenDataByTokenServer', 'public screen route uses the server token resolver');
+  assertIncludes(screenPage, 'getMenuItemsForScreenServer', 'public screen route uses the server menu resolver');
   assertIncludes(serverScreenDal, 'logServerScreenFailure', 'server screen secure logging');
   assertIncludes(serverScreenDal, 'digital_screen_server_token_resolver_failed', 'server screen token failure logging');
   assertIncludes(serverScreenDal, 'digital_screen_server_menu_items_failed', 'server screen menu failure logging');
   assertIncludes(serverScreenDal, 'tokenLength: token.length', 'server screen bounded token context');
+  assertIncludes(serverScreenDal, 'storeIdLength: storeId.length', 'server screen bounded store context');
   assertIncludes(serverScreenDal, 'baseProjectIdLength: String(baseProjectId || "").length', 'server screen bounded project context');
   assertIncludes(screenInvalidation, 'logScreenInvalidationFailure', 'screen invalidation secure logging');
   assertIncludes(screenInvalidation, 'digital_screen_projection_build_failed', 'screen invalidation projection failure logging');
@@ -1124,8 +1185,9 @@ function verifyDigitalScreenDiagnostics() {
   assertIncludes(screenInvalidation, 'projectIdLength: projectId.length', 'screen invalidation bounded project context');
   assertIncludes(storesDal, 'DIGITAL_SCREEN_STORE_OUTPUT_FIELDS', 'store output screen refresh field guard');
   assertIncludes(storesDal, 'await touchDigitalScreenContentVersion(data.storeId, "updateStore");', 'store output screen refresh');
-  assertIncludes(brandPropagation, 'hasDigitalScreenPropagatedOutputChanges(propagatedChanges)', 'multi-outlet screen refresh field guard');
-  assertIncludes(brandPropagation, 'await touchDigitalScreenContentVersion(outlet.storeId, "propagateMasterStoreChangesToOutlets");', 'multi-outlet screen refresh');
+  assertIncludes(brandPropagationBoundary, 'hasDigitalScreenBrandPropagationFields', 'multi-outlet screen refresh field guard');
+  assertIncludes(brandPropagationRoute, 'for (const outletId of propagationResult.targetOutletIds)', 'multi-outlet screen refresh uses committed target outlets');
+  assertIncludes(brandPropagationRoute, "await touchDigitalScreenContentVersionForStoreServer(outletId, 'brandPropagation');", 'multi-outlet screen refresh');
   assertIncludes(screenDiagnostics, 'logScreenSettingsFailure', 'screen settings secure logging');
   assertIncludes(screenDiagnostics, 'logScreenDisplayFailure', 'screen display secure logging');
   assertIncludes(screenDiagnostics, 'getBoundedScreenStringContext', 'screen settings bounded string context');

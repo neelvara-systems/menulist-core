@@ -82,13 +82,17 @@ function extractRouteMapTargets(block) {
 
 function verifyMobileShellRouteMap() {
   const mobileShell = read('src/components/mobile/MobileShell.tsx');
+  const mobileNavigation = read('src/components/mobile/MobileNavigation.tsx');
   const mobileMoreScreen = read('src/components/mobile/screens/MobileMoreScreen.tsx');
+  const mobileOwnerMenuVerifier = read('scripts/verification/verify-mobile-owner-menu.mjs');
   const packageJson = JSON.parse(read('package.json'));
   const mobileSupportDoc = read('__docs__/mobile-operational-support/mobile-operational-support_mobile-support.md');
   const mobileScreensDoc = read('__docs__/mobile-operational-support/03-mobile-screens-spec.md');
   const mobileArchitectureDoc = read('__docs__/mobile-operational-support/04-mobile-architecture.md');
   const mobileNavigationDoc = read('__docs__/mobile-operational-support/05-mobile-navigation-spec.md');
   const auditDoc = read('__docs__/audits/menulist-production-readiness-audit.md');
+  const changelogDoc = read('__docs__/changelog.md');
+  const externalCertificationRunbook = read('__docs__/production-readiness/external-certification-runbook.md');
 
   const moreSubScreens = extractMoreSubScreens(mobileMoreScreen);
   const routeMapBlocks = [
@@ -149,6 +153,30 @@ function verifyMobileShellRouteMap() {
   assertIncludes(mobileShell, "return HELP_CENTER_TAB_TO_MORE_SCREEN[tab] || 'answerlatticeHelp';", 'MobileShell help-center tab fallback');
   assertIncludes(mobileShell, "buildMobileRouteHash(tab: MobileTab, todayScreen: 'main' | 'dashboard' | 'history', moreScreen: MoreSubScreen)", 'MobileShell hash builder must preserve Today dashboard/history and More sub-screen state');
   assertIncludes(mobileShell, "data-mobile-shell-scroll=\"true\"", 'MobileShell must expose the scroll container for owner-mobile QA harnesses');
+  assertIncludes(mobileNavigation, 'aria-label="Primary mobile navigation"', 'Mobile navigation landmark label');
+  assertIncludes(mobileNavigation, 'role="navigation"', 'Mobile navigation landmark role');
+  assertIncludes(mobileNavigation, 'aria-label={tab.title}', 'Mobile navigation accessible tab label');
+  assertIncludes(mobileNavigation, 'aria-pressed={isActive}', 'Mobile navigation active tab state');
+
+  [
+    'const MOBILE_REQUIRED_NAV_TABS = [',
+    "{ key: 'today', label: 'Today' }",
+    "{ key: 'menu', label: 'Menu' }",
+    "{ key: 'share', label: 'Share' }",
+    "{ key: 'more', label: 'More' }",
+    'exerciseMobileNavigationTab(',
+    'hasPrimaryNavigationLandmark',
+    'hasPageOverflow: documentWidth > innerWidth + 1',
+    'clippedInteractiveLabels',
+    'navTouchTargetsMeetMinimum',
+    'target.width >= 44 && target.height >= 44',
+  ].forEach((token) => {
+    assertIncludes(mobileOwnerMenuVerifier, token, 'Authenticated mobile owner-shell harness coverage');
+  });
+
+  assertIncludes(externalCertificationRunbook, 'traverses Today, Menu, Share, and More', 'External certification mobile harness coverage');
+  assertIncludes(auditDoc, 'Authenticated mobile owner-shell harness coverage checkpoint', 'Production audit mobile harness coverage');
+  assertIncludes(changelogDoc, 'Authenticated Mobile Owner-Shell Harness Coverage', 'Changelog mobile harness coverage');
 
   assert(
     packageJson.scripts?.['verify:mobile-shell-route-map'] === 'node scripts/verification/verify-mobile-shell-route-map.js',

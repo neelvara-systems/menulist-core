@@ -1,20 +1,14 @@
-import { Timestamp } from 'firebase/firestore';
+import type { Timestamp } from 'firebase/firestore';
 import type { SourceContext } from './multiProduct';
 
 export interface Feedback {
-    id?: string;
-    pId?: string; // Answerlattice ownership is injected by answerlatticeRequestBodyComposer in DAL
-    sourceContext?: SourceContext | Record<string, any> | null;
-    sId: string | number; // store/workspace ID comes from requestBodyComposer in DAL
-    tId: string | number; // tenant ID comes from requestBodyComposer in DAL
-    uId: string; // user ID comes from requestBodyComposer in DAL
-    userName?: string | null;
-    userEmail?: string | null;
-    userPhone?: string | null;
-    customerName?: string | null;
-    customerEmail?: string | null;
-    customerPhone?: string | null;
-    type: 'general' | 'feature_usage' | 'feature_requests' | 'feature_request';
+    id: string;
+    pId: 'AL';
+    sourceContext: SourceContext | null;
+    sId: string | number;
+    tId: string | number;
+    uId: string | number;
+    type: 'general' | 'feature_usage' | 'feature_requests';
     rating?: number;
     comment?: string;
     featureComment?: string;
@@ -26,5 +20,11 @@ export interface Feedback {
     surfaceLabel?: string | null;
     surfaceAssignedBy?: string | null;
     surfaceAssignedAt?: Timestamp | null;
-    createdOn: Timestamp; //comes from requestBodyComposer in DAL
+    traceId?: string;
+    requestId?: string;
+    role?: string;
+    modifiedBy?: string;
+    modifiedOn?: Timestamp;
+    createdBy?: string;
+    createdOn: Timestamp;
 }

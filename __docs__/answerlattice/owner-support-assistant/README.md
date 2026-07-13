@@ -1,26 +1,43 @@
 # Owner Support Assistant - Feature Documentation
 
-> **Status:** DOCS FROZEN - strategy validated against Answerlattice doctrine and current repo truth
+> **Status:** READ-ONLY RUNTIME LIVE - action, AI, feedback, and owner-analytics expansion deferred
 > **Created:** 2026-06-07
 > **Audience:** Product, Engineering, Firebase/Ops, Support
-> **Feature Flag:** `ENABLE_ANSWERLATTICE_OWNER_SUPPORT_ASSISTANT` (planned, default `false`)
+> **Feature Flag:** `ENABLE_ANSWERLATTICE_OWNER_SUPPORT_ASSISTANT` (`true` in `src/config/features.ts`)
 > **Doctrine fit:** Helps owners decide what needs review without becoming a chatbot, helpdesk agent, or automatic publishing surface.
 
 ---
 
 ## What Is This
 
-Owner Support Assistant is a private Answerlattice owner/staff command surface that answers operational support questions from existing governed read models and bounded detail fetches.
+Owner Support Assistant is a private Answerlattice owner/staff review surface that answers a fixed set of operational support questions from five existing compact summaries.
 
-It helps an owner ask:
+## Answerlattice Owner Support Assistant Read-Only Runtime
+
+The live runtime is intentionally smaller than the frozen target architecture:
+
+- `/answerlattice/support-assistant` is visible only when the app flag is enabled and the current management user has `MANAGE_SUPPORT`.
+- The Support Control navigation presents the route as `Daily Brief` and lists it first because the live runtime opens with today's read-only plan before follow-up questions.
+- `GET /api/answerlattice/support-assistant/brief` reads five compact `platformSummary` documents through one bounded `getAll()` call, with a 60-second, 300-entry in-process cache.
+- `POST /api/answerlattice/support-assistant/query` accepts one 3-500 character question, rate-limits before the Firestore-backed permission check, and classifies only attention, answer-risk, friction, readiness, intake, release, install, reply, cost, or unsupported intents.
+- The brief response can include `dailyBrief`, a read-only Daily Founder Brief that ranks the smallest useful actions for today from the same five compact summaries.
+- Responses are deterministic, private/no-store, source-linked, and summary-only. There is no Gemini/provider call, transcript, assistant collection, write, listener, scheduler, or raw conversation/ticket read.
+- The live UI can open governed review routes. It cannot preview or execute mutations, submit assistant feedback, create drafts/cards/notes, or answer owner period-analytics questions.
+
+The action, AI-assisted wording, feedback aggregate, owner analytics summary, bounded-detail, and nightly-summary documents remain deferred design contracts. Their routes and runtime files do not exist and must not be described as live.
+
+The live runtime helps an owner ask:
 
 - What needs review today?
+- What should I fix first?
+- What should I check before a release?
+- Is widget setup safe?
+- How do I keep AI costs bounded?
 - Which answers are at risk?
 - Why are users still asking this?
-- What action should I take next?
-- Can you prepare the ticket reply or status change for my review?
+- What governed review screen should I open next?
 
-The answer must return evidence, priority, and a safe next action. It can support owner-confirmed actions only through typed adapters over existing governed workflows. It must not silently publish, approve, close, reply, change widget settings, or mutate canonical support truth.
+The answer returns evidence and a safe route to the relevant governed workflow. It does not preview or execute owner actions, publish, approve, close, reply, change widget settings, or mutate canonical support truth.
 
 ---
 
@@ -30,8 +47,8 @@ The long-term strategy is **review assistant over chat bot**.
 
 | Decision | Contract |
 | --- | --- |
-| Product name | Use Owner Support Assistant / Support Assistant. Do not ship old product naming or a generic bot identity. |
-| Route | Planned owner route: `/answerlattice/support-assistant`. |
+| Product name | Navigation may say Daily Brief. Implementation/docs may say Owner Support Assistant / Support Assistant. Do not ship old product naming or a generic bot identity. |
+| Route | Live owner route: `/answerlattice/support-assistant`. |
 | Data model | Use compact `platformSummary` read models, existing daily aggregates, and existing governed records. Do not create assistant transcript, session, message, plan, feedback, attribution, analytics, or event collections. |
 | AI posture | Deterministic context packets first. LLM formatting is assistive, rate-limited, logged, credit-aware, and never authoritative. |
 | Action model | Typed action adapters may preview and execute owner-confirmed actions through existing write paths. No generic action queue or assistant action collection. |
@@ -44,16 +61,16 @@ The long-term strategy is **review assistant over chat bot**.
 
 | Area | Contract |
 | --- | --- |
-| Owner surface | Dedicated `/answerlattice/support-assistant` route plus contextual entry points from Dashboard, Support Board, Governance, and Weekly Digest, all behind the same flag and permissions. |
+| Owner surface | Dedicated `/answerlattice/support-assistant` route behind the app flag and `MANAGE_SUPPORT`. |
 | Access | Authenticated Answerlattice owner/admin/manager/staff access through the existing Answerlattice session scope and permission model. |
-| Read model | Starts from compact summaries: activation, context content, coverage, trust metrics, support board summary, friction summaries, and weekly digest summaries where available. |
-| Owner analytics | Standard period questions and dashboard cards use `platformSummary/ownerSupportAnalyticsSummary_{tId}_{sId}` plus existing daily aggregate sources. |
-| Detail fetches | Only run after an explicit owner query or action. Detail lists are capped and tenant/store scoped. |
-| Answer shape | Verdict, status, evidence, priority, suggested next action, and source links. |
-| Status values | `healthy`, `needs_review`, `at_risk`, `insufficient_data`, `partial`, `unsupported`. |
-| Safe actions | Open review screen, create Support Board card/note, prepare draft, update ticket status, or send ticket reply only through typed adapters and explicit confirmation. |
+| Read model | Exactly five compact summaries: coverage, trust metrics, Support Board, friction snapshot, and Knowledge Intake summary. |
+| Owner analytics | No dedicated owner-analytics summary is used by the live runtime. |
+| Detail fetches | None. Questions remain summary-only. |
+| Answer shape | Verdict, status, evidence, priority, suggested next action, source links, and optional Daily Founder Brief actions. |
+| Status values | `healthy`, `needs_review`, `at_risk`, `insufficient_data`, `unsupported`. |
+| Safe actions | Live: open governed review routes only. Deferred: typed preview/execute adapters for explicitly confirmed mutations. |
 | Blocked actions | Direct approval, direct publishing, silent ticket closure/reply, widget setting changes, billing/account changes, secret display, cross-product mutations without a product adapter, and unsupported source claims. |
-| Persistence | No assistant transcript. Persist only explicit owner-created governed artifacts, aggregate assistant summary counters, or server-side AI operation logs. |
+| Persistence | None. No transcript, answer record, assistant summary, feedback, or AI operation is written. |
 
 ---
 

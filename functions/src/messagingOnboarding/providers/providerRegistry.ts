@@ -32,8 +32,7 @@ export function getProviderFromWebhookPath(
   const match = path.match(/\/(\w+)$/);
   if (!match) return null;
   const candidate = match[1];
-  if (candidate in providerRegistry && providerRegistry[candidate as MessagingProvider]) {
-    return candidate as MessagingProvider;
-  }
+  if (candidate === "whatsapp" && providerRegistry.whatsapp) return candidate;
+  if (candidate === "telegram" && providerRegistry.telegram) return candidate;
   return null;
 }

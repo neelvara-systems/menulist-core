@@ -1,9 +1,11 @@
+import { randomUUID } from 'crypto';
 import { Timestamp } from 'firebase-admin/firestore';
 import * as logger from 'firebase-functions/logger';
 import { DB_COLLECTIONS } from '../constants/database';
 import { FUNCTION_FLAGS } from '../constants/features';
 import { firestoreAdmin as db } from '../firebaseAdmin';
 import { runAnswerlatticeAiProviderHealthCheck } from './aiProviderHealth';
+import { runAnswerlatticeEmbeddingV2Migration } from './embeddingV2Migration';
 import { discoverActiveTenants, runAnswerlatticeNightly } from './answerlatticeNightly';
 import {
     ANSWERLATTICE_DEFAULT_BUSINESS_DAY_END_TIME,
@@ -13,6 +15,7 @@ import {
     normalizeAnswerlatticeBusinessDayEndTime,
 } from './schedulerTime';
 import { AnswerlatticeTenantStore, getAnswerlatticeTenantSummaryKey } from './tenantSummary';
+import { resolveAnswerlatticeTenantSettlementCompletionStatus } from './masterSchedulerState';
 
 const MINUTE_MS = 60 * 1000;
 const SCHEDULER_NAME = 'answerlatticeMasterScheduler';
@@ -327,21 +330,31 @@ async function runGovernanceNightlyTask(context: {
         };
     }
 
-    const nightlyResult = await runAnswerlatticeNightly({
-        trigger: context.trigger === 'manual' ? 'manual' : 'scheduled',
-        triggeredBy: context.triggeredBy,
-        tenantScope: leases,
-        tenantDiscoverySource: context.trigger === 'manual' ? 'manual_scope' : 'scheduler_filter',
-    });
+    let nightlyResult: Awaited<ReturnType<typeof runAnswerlatticeNightly>>;
+    try {
+        nightlyResult = await runAnswerlatticeNightly({
+            trigger: context.trigger === 'manual' ? 'manual' : 'scheduled',
+            triggeredBy: context.triggeredBy,
+            tenantScope: leases,
+            tenantDiscoverySource: context.trigger === 'manual' ? 'manual_scope' : 'scheduler_filter',
+        });
+    } catch (error) {
+        await Promise.allSettled(leases.map(lease => completeTenantSettlementLease(lease, 'failed', {
+            nightlyStatus: 'failed',
+            tenantStatus: 'missing',
+            failureCode: ANSWERLATTICE_MASTER_SCHEDULER_TASK_FAILED,
+        })));
+        throw error;
+    }
 
     const tenantRunsByKey = new Map(
         nightlyResult.tenantRuns.map(run => [getAnswerlatticeTenantSummaryKey(run.tId, run.sId), run]),
     );
-    for (const lease of leases) {
+    const completionResults = await Promise.allSettled(leases.map(async lease => {
         const tenantRun = tenantRunsByKey.get(getAnswerlatticeTenantSummaryKey(lease.tId, lease.sId));
         await completeTenantSettlementLease(
             lease,
-            tenantRun?.status === 'failed' ? 'failed' : 'completed',
+            resolveAnswerlatticeTenantSettlementCompletionStatus(tenantRun?.status),
             {
                 nightlyRunLogId: nightlyResult.runLogId,
                 nightlyStatus: nightlyResult.status,
@@ -350,6 +363,10 @@ async function runGovernanceNightlyTask(context: {
                 errorCount: tenantRun?.errors.length || 0,
             },
         );
+    }));
+    const completionFailures = completionResults.filter(result => result.status === 'rejected').length;
+    if (completionFailures > 0) {
+        throw new Error(`Failed to finalize ${completionFailures} Answerlattice tenant settlement lease(s)`);
     }
 
     return {
@@ -375,6 +392,11 @@ const TASKS: AnswerlatticeSchedulerTask[] = [
         run: (context) => runAnswerlatticeAiProviderHealthCheck({
             force: context.trigger === 'manual' && context.forceAllTenants === true,
         }),
+    },
+    {
+        name: 'embedding_v2_migration',
+        lockTtlMs: TASK_LEASE_MS,
+        run: (context) => runAnswerlatticeEmbeddingV2Migration({ runId: context.runId }),
     },
     {
         name: 'governance_nightly',
@@ -488,7 +510,7 @@ export async function runAnswerlatticeMasterScheduler(options: {
     const trigger = options.trigger || 'scheduled';
     const triggeredBy = options.triggeredBy || (trigger === 'scheduled' ? 'system' : 'manual');
     const startedAt = new Date();
-    const runId = `answerlattice_scheduler_${trigger}_${startedAt.getTime()}`;
+    const runId = `answerlattice_scheduler_${trigger}_${startedAt.getTime()}_${randomUUID().slice(0, 8)}`;
     const tasks: AnswerlatticeSchedulerTaskSummary[] = [];
 
     for (const task of TASKS) {

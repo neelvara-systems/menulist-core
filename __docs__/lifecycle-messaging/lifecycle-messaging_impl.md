@@ -7,6 +7,14 @@
 
 ---
 
+## July 10, 2026 Transactional Delivery Boundary
+
+External lifecycle delivery now normalizes exact positive numeric tenant/store IDs and a bounded, control-free reference before either runtime proceeds. The migrated owner-notification core transactionally creates its deterministic event and claims a bounded `processingAttempt` before recipient resolution or provider calls. MenuList recipient reads verify canonical or legacy store ownership; Answerlattice workspace events verify their workspace tenant; normal automated delivery cannot use caller hints as the recipient when authoritative scope is missing.
+
+If the migrated queue path is unavailable, the Next.js and Functions legacy SMTP paths create the same deterministic SHA-256 `messageLogs` document in a Firestore transaction before sending and finalize that document after the provider result. Concurrent calls for the same store/event/reference therefore cannot both send. This is an at-most-once claim boundary around an external SMTP operation; a process crash after provider acceptance and before final logging remains an observable `sending` outcome and is not automatically resent because doing so could duplicate owner communication.
+
+The app/Functions pure delivery contract is copied byte-for-byte and covered by `npm run test:owner-notification-delivery-boundaries`. Source wiring is covered by `npm run verify:owner-notifications-boundary` and `npm run verify:menulist-api-tenant-safety`. These gates do not replace SMTP/WhatsApp provider smoke, authenticated recovery-monitor QA, Firebase deployment, Vercel deployment, or production-host smoke.
+
 ## 1. Architecture — Two-Channel Messaging
 
 MenuList has **two messaging channels** — both use the same SMTP infrastructure:
@@ -150,6 +158,8 @@ App-side notification fail-closed follow-up (July 5, 2026): `src/lib/messaging/i
 Staleness lifecycle delivery diagnostics follow-up (July 5, 2026): `functions/src/analytics/stalenessCheck.ts` still writes the staleness detection row before attempting `MENU_STALE` lifecycle delivery. If that delivery call throws, the cooldown row remains in place and the nightly scan continues, but the catch now logs `STALENESS_LIFECYCLE_DELIVERY_FAILED` with bounded store, tenant, and reference presence-length metadata plus the fixed `keep_detection_cooldown_and_continue` fallback policy. Raw store IDs, tenant IDs, reference IDs, owner recipients, provider responses, and exception text are not logged.
 
 Template output boundary follow-up (July 5, 2026): the Next and Functions lifecycle template mirrors (`src/lib/messaging/templates.ts` and `functions/src/messaging/templates.ts`) now strip control characters from subject/text values, escape all metadata before HTML output, validate email links as `http:`/`https:` before rendering, and include the missing `MENU_PUBLISH_FAILED` app-side template. Publish verification failure codes are mapped to fixed owner copy, so arbitrary `failureReason` strings cannot print into owner emails. Valid event routing, SMTP delivery, idempotency, rate limits, message logs, and owner-notification migration fallback are unchanged.
+
+Publish-verification delivery completion follow-up (July 13, 2026): `verifyMenuPublish` still treats lifecycle messaging as best-effort for the owner-facing verification result, but it now awaits both the `STORE_PUBLISHED` and `MENU_PUBLISH_FAILED` delivery promises inside bounded catches. The callable no longer returns while a durable claim/provider attempt is still running, so Cloud Functions cannot terminate the invocation before that side effect settles. No extra delivery, Firestore operation, provider call, or owner-facing wait is added beyond awaiting the already-started work.
 
 ### Frontend (types + entry point)
 

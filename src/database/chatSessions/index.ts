@@ -1,30 +1,46 @@
 import { DB_COLLECTIONS } from '@constant/database';
+import { PRODUCT_IDS } from '@constant/product';
 import { deleteFileByUrl } from '@database/storage/deleteFromStorage';
 import uploadBase64ToStorage from '@database/storage/uploadBase64ToStorage';
 import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentComposer';
 import {
+    ANSWERLATTICE_CHAT_SESSION_BATCH_UPDATE_LIMIT,
+    ANSWERLATTICE_CHAT_SESSION_MESSAGE_LIMIT,
+    normalizeAnswerlatticeChatFeedback,
+    normalizeAnswerlatticeChatMessageForStorage,
+    normalizeAnswerlatticeChatMessagesForStorage,
+    normalizeAnswerlatticeChatSessionId,
+    normalizeAnswerlatticeInternalNote,
+    parseAnswerlatticeChatMetadataMutation,
+    parseAnswerlatticeChatSessionDocument,
+} from '@lib/answerlattice/chatSessionContracts';
+import {
+    ANSWERLATTICE_CHAT_IMAGE_MAX_BASE64_LENGTH,
     ANSWERLATTICE_CHAT_IMAGE_MAX_BYTES,
     isAllowedAnswerlatticeChatImageMimeType,
     normalizeAnswerlatticeChatImageMimeType,
+    stripDataUrlPrefix,
 } from '@lib/answerlattice/chatImagePolicy';
 import { apiCallComposer } from '@lib/apiHelper/apiCallComposer';
 import { apiCallComposerClientWithoutLoader } from '@lib/apiHelper/apiCallComposerClientWithoutLoader';
+import getActiveSession from '@lib/auth/getActiveSession';
 import { answerlatticeFirebaseClient, answerlatticeStorage } from '@lib/firebase/answerlatticeFirebaseClient';
-import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
+import { normalizeAnswerlatticeSearchHistoryId } from '@lib/answerlattice/searchHistoryIdBoundary';
+import { normalizeAnswerlatticeScopeDocumentId, resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { createRandomIdSegment } from '@lib/runtime/randomId';
 import { STORAGE_CACHE_CONTROL } from '@lib/storage/cacheControl';
 import { generateStoragePath } from '@lib/storage/pathGenerator';
 import { ChatSession } from '@type/chatSession';
 import { UserUploadedFileType } from '@type/common';
-import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, limit, orderBy, query, setDoc, startAfter, Timestamp, where } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, limit, orderBy, query, runTransaction, startAfter, Timestamp, where, writeBatch } from 'firebase/firestore';
 
 const COLLECTION = DB_COLLECTIONS.CHAT_SESSIONS;
+const SEARCH_HISTORY_COLLECTION = DB_COLLECTIONS.AI_SEARCH_HISTORY;
 const USER_CHAT_SESSION_LIMIT = 50;
 const ADMIN_CHAT_SESSION_PAGE_SIZE_LIMIT = 100;
 const ADMIN_CHAT_SESSION_SCAN_LIMIT = 500;
 const CHAT_VOLUME_SESSION_LIMIT = 1000;
 const MAX_CHAT_VOLUME_DAYS = 90;
-const CHAT_SESSION_SCOPE_DOCUMENT_ID_PATTERN = /^[1-9]\d*$/;
 
 export type ChatSessionUpdateResult = {
     sessionId: string;
@@ -35,6 +51,7 @@ export type ChatSessionUpdateResult = {
 export type ChatMessageFeedbackUpdateResult = {
     sessionId: string;
     messageId: string;
+    searchHistoryId: string;
     success: true;
 };
 
@@ -80,6 +97,7 @@ const isChatMessageFeedbackUpdateResult = (value: unknown): value is ChatMessage
     && value.success === true
     && typeof value.sessionId === 'string'
     && typeof value.messageId === 'string'
+    && typeof value.searchHistoryId === 'string'
 );
 
 const isStringArray = (value: unknown): value is string[] => (
@@ -206,13 +224,9 @@ const collectChatImageUrls = (session?: ChatSession | null): string[] => {
     return Array.from(urls);
 };
 
-const getDocRef = async (docId: string) => {
-    return doc(answerlatticeFirebaseClient, `${COLLECTION}`, docId);
-};
+const getDocRef = (docId: string) => doc(answerlatticeFirebaseClient, `${COLLECTION}`, docId);
 
-const getCollectionRef = async () => {
-    return collection(answerlatticeFirebaseClient, `${COLLECTION}`);
-};
+const getCollectionRef = () => collection(answerlatticeFirebaseClient, `${COLLECTION}`);
 
 const normalizePositiveInteger = (value: unknown, fallback: number, max: number) => {
     const parsed = Number(value);
@@ -227,29 +241,41 @@ type AnswerlatticeChatSessionScope = {
     sId: number;
 };
 
-const normalizeChatSessionScopeDocumentId = (value: unknown): number | undefined => {
-    const raw = typeof value === 'string' || typeof value === 'number' ? String(value) : '';
-    const documentId = raw.trim();
-    if (
-        documentId !== raw
-        || !CHAT_SESSION_SCOPE_DOCUMENT_ID_PATTERN.test(documentId)
-        || !isValidFirestoreDocumentId(documentId)
-    ) {
-        return undefined;
-    }
-
-    const parsed = Number(documentId);
-    return Number.isSafeInteger(parsed) && parsed > 0 && String(parsed) === documentId
-        ? parsed
-        : undefined;
+const getChatSessionScope = (session: any): AnswerlatticeChatSessionScope | undefined => {
+    const scope = resolveAnswerlatticeSessionScope(session);
+    return scope ? { tId: scope.tenantId, sId: scope.storeId } : undefined;
 };
 
-const getChatSessionScope = (session: any): AnswerlatticeChatSessionScope | undefined => {
-    const tId = normalizeChatSessionScopeDocumentId(session?.tId ?? session?.user?.tenantId);
-    const sId = normalizeChatSessionScopeDocumentId(session?.sId ?? session?.user?.storeId);
+const getRequiredChatMutationContext = async () => {
+    const session = await getActiveSession();
+    const scope = getChatSessionScope(session);
+    if (!scope) throw new Error('answerlattice_chat_scope_missing');
+    const userId = String(session?.user?.id || session?.uId || '').trim();
+    const userName = String(session?.user?.name || session?.user?.email || '').trim();
+    if (!userId || userId.length > 180 || !userName || userName.length > 200) {
+        throw new Error('answerlattice_chat_actor_invalid');
+    }
+    return { scope, session, userId, userName };
+};
 
-    if (tId === undefined || sId === undefined) return undefined;
-    return { tId, sId };
+const getRequiredChatReadContext = async () => {
+    const session = await getActiveSession();
+    const scope = getChatSessionScope(session);
+    const userId = String(session?.user?.id || session?.uId || '').trim();
+    if (!scope || !userId || userId.length > 180) {
+        throw new Error('answerlattice_chat_read_scope_missing');
+    }
+    return { scope, session, userId };
+};
+
+const requirePersistedChatSession = (
+    id: string,
+    value: unknown,
+    scope: AnswerlatticeChatSessionScope,
+): ChatSession => {
+    const session = parseAnswerlatticeChatSessionDocument({ id, value, scope });
+    if (!session) throw new Error('answerlattice_chat_scope_or_schema_invalid');
+    return session;
 };
 
 /**
@@ -268,20 +294,17 @@ const getChatSessionScope = (session: any): AnswerlatticeChatSessionScope | unde
  */
 export const uploadChatImage = async (
     image: UserUploadedFileType,
-    session: any
+    _session: any
 ): Promise<UserUploadedFileType> => {
     return await apiCallComposer(
         async () => {
             // Check if image contains base64 data
             if (image.url?.includes('base64') || image.source?.includes('base64')) {
-                const sessionScope = getChatSessionScope(session);
-                if (!sessionScope) {
-                    throw new Error('Missing Answerlattice workspace context for chat image upload');
-                }
+                const context = await getRequiredChatReadContext();
                 const scopedSession = {
-                    ...session,
-                    tId: sessionScope.tId,
-                    sId: sessionScope.sId,
+                    ...context.session,
+                    tId: context.scope.tId,
+                    sId: context.scope.sId,
                 };
 
                 const imageType = normalizeAnswerlatticeChatImageMimeType(image.type);
@@ -289,13 +312,26 @@ export const uploadChatImage = async (
                     throw new Error('Unsupported chat image type');
                 }
 
-                if (Number(image.size || 0) <= 0 || Number(image.size || 0) > ANSWERLATTICE_CHAT_IMAGE_MAX_BYTES) {
-                    throw new Error('Chat image size exceeds the supported limit');
-                }
-
                 const randomId = createRandomIdSegment(16);
                 const imageId = `${Date.now()}-${randomId}`;
                 const base64String = image.url || image.source;
+                if (!base64String || base64String.length > ANSWERLATTICE_CHAT_IMAGE_MAX_BASE64_LENGTH) {
+                    throw new Error('Chat image size exceeds the supported limit');
+                }
+                const dataUrlMatch = /^data:([^;,]+);base64,/i.exec(base64String);
+                const declaredMimeType = normalizeAnswerlatticeChatImageMimeType(dataUrlMatch?.[1]);
+                if (!dataUrlMatch || declaredMimeType !== imageType) {
+                    throw new Error('Chat image data does not match its declared type');
+                }
+                const rawBase64 = stripDataUrlPrefix(base64String);
+                if (!rawBase64 || !/^[A-Za-z0-9+/]*={0,2}$/.test(rawBase64)) {
+                    throw new Error('Chat image data is malformed');
+                }
+                const paddingBytes = rawBase64.endsWith('==') ? 2 : rawBase64.endsWith('=') ? 1 : 0;
+                const decodedBytes = Math.floor((rawBase64.length * 3) / 4) - paddingBytes;
+                if (decodedBytes <= 0 || decodedBytes > ANSWERLATTICE_CHAT_IMAGE_MAX_BYTES) {
+                    throw new Error('Chat image size exceeds the supported limit');
+                }
 
                 // Generate tenant/store-scoped path for multi-tenancy isolation
                 const path = generateStoragePath({
@@ -303,7 +339,6 @@ export const uploadChatImage = async (
                     fileType: 'chatimages',
                     session: scopedSession,
                     fileId: imageId,
-                    useDefaults: false
                 });
 
                 // Upload to Firebase Storage
@@ -326,7 +361,9 @@ export const uploadChatImage = async (
                 return {
                     ...image,
                     url: uploadedUrl,
-                    source: uploadedUrl // Update source as well for preview
+                    source: uploadedUrl, // Update source as well for preview
+                    type: imageType,
+                    size: decodedBytes,
                 };
             }
 
@@ -344,9 +381,54 @@ export const uploadChatImage = async (
 export const saveChatSession = async (data: Omit<ChatSession, 'id'>) => {
     return await apiCallComposerClientWithoutLoader(
         async () => {
-            const submitData = await answerlatticeRequestBodyComposer(data);
-            const docRef = await addDoc(await getCollectionRef(), submitData);
-            return { ...submitData, id: docRef.id };
+            const context = await getRequiredChatMutationContext();
+            const title = String(data.title || '').trim();
+            if (!title || title.length > 160 || (data.mode !== 'qna' && data.mode !== 'assistant')) {
+                throw new Error('answerlattice_chat_session_create_invalid');
+            }
+            const messages = normalizeAnswerlatticeChatMessagesForStorage(data.messages);
+            if (messages.length === 0) throw new Error('answerlattice_chat_session_empty');
+            const submitData = await answerlatticeRequestBodyComposer({
+                ...data,
+                pId: PRODUCT_IDS.ANSWERLATTICE,
+                tId: context.scope.tId,
+                sId: context.scope.sId,
+                uId: context.userId,
+                title,
+                messages,
+            }, { isNew: true });
+            const sessionId = normalizeAnswerlatticeChatSessionId(messages[0]?.id);
+            if (!sessionId) throw new Error('answerlattice_chat_session_request_id_invalid');
+            let created: ChatSession | null = null;
+            try {
+                await runTransaction(answerlatticeFirebaseClient, async (transaction) => {
+                    const sessionRef = getDocRef(sessionId);
+                    const existing = await transaction.get(sessionRef);
+                    if (existing.exists()) {
+                        const persisted = requirePersistedChatSession(sessionId, existing.data(), context.scope);
+                        if (
+                            persisted.uId !== context.userId
+                            || persisted.messages[0]?.id !== messages[0]?.id
+                        ) throw new Error('answerlattice_chat_session_request_id_conflict');
+                        created = persisted;
+                        return;
+                    }
+                    transaction.set(sessionRef, submitData);
+                    created = parseAnswerlatticeChatSessionDocument({
+                        id: sessionId,
+                        value: submitData,
+                        scope: context.scope,
+                    });
+                });
+            } catch (createError) {
+                await Promise.allSettled(
+                    collectChatImageUrls({ ...data, messages } as ChatSession)
+                        .map((url) => deleteFileByUrl(url, answerlatticeStorage)),
+                );
+                throw createError;
+            }
+            if (!created) throw new Error('answerlattice_chat_session_create_response_invalid');
+            return created;
         },
         data,
         'saveChatSession'
@@ -371,19 +453,39 @@ export const batchUpdateSessionMetadata = async (
                     updatedFields: [],
                 } satisfies ChatSessionBatchMetadataUpdateResult;
             }
-            const { writeBatch } = await import('firebase/firestore');
-            const batch = writeBatch(answerlatticeFirebaseClient);
-            const composedData = await answerlatticeRequestBodyComposer(metadata);
-            for (const id of sessionIds) {
-                const ref = await getDocRef(id);
-                batch.update(ref, composedData);
+            const context = await getRequiredChatMutationContext();
+            const normalizedSessionIds = Array.from(new Set(sessionIds.map(normalizeAnswerlatticeChatSessionId)));
+            if (
+                normalizedSessionIds.some((id) => !id)
+                || normalizedSessionIds.length !== sessionIds.length
+                || normalizedSessionIds.length > ANSWERLATTICE_CHAT_SESSION_BATCH_UPDATE_LIMIT
+            ) throw new Error('answerlattice_chat_batch_session_ids_invalid');
+            const parsedMetadata = parseAnswerlatticeChatMetadataMutation(metadata);
+            if (parsedMetadata.title !== undefined || parsedMetadata.mode !== undefined) {
+                throw new Error('answerlattice_chat_batch_metadata_invalid');
             }
+            const refs = normalizedSessionIds.map((id) => getDocRef(id!));
+            const snapshots = await Promise.all(refs.map((ref) => getDoc(ref)));
+            snapshots.forEach((snapshot, index) => {
+                if (!snapshot.exists()) throw new Error('answerlattice_chat_session_not_found');
+                requirePersistedChatSession(normalizedSessionIds[index]!, snapshot.data(), context.scope);
+            });
+            const batch = writeBatch(answerlatticeFirebaseClient);
+            const updateData = {
+                ...parsedMetadata,
+                pId: PRODUCT_IDS.ANSWERLATTICE,
+                tId: context.scope.tId,
+                sId: context.scope.sId,
+                modifiedBy: context.userName,
+                modifiedOn: Timestamp.now(),
+            };
+            refs.forEach((ref) => batch.update(ref, updateData));
             await batch.commit();
             return {
-                sessionIds,
+                sessionIds: normalizedSessionIds as string[],
                 success: true,
-                updatedCount: sessionIds.length,
-                updatedFields: Object.keys(composedData),
+                updatedCount: normalizedSessionIds.length,
+                updatedFields: Object.keys(parsedMetadata),
             } satisfies ChatSessionBatchMetadataUpdateResult;
         },
         { sessionIds, metadata },
@@ -397,16 +499,173 @@ export const batchUpdateSessionMetadata = async (
 export const updateChatSession = async (sessionId: string, updates: Partial<ChatSession>) => {
     return await apiCallComposerClientWithoutLoader(
         async () => {
-            const composedData = await answerlatticeRequestBodyComposer(updates);
-            await setDoc(await getDocRef(sessionId), composedData, { merge: true });
+            const normalizedSessionId = normalizeAnswerlatticeChatSessionId(sessionId);
+            if (!normalizedSessionId) throw new Error('answerlattice_chat_session_id_invalid');
+            if (Object.prototype.hasOwnProperty.call(updates, 'messages')) {
+                throw new Error('answerlattice_chat_messages_require_explicit_operation');
+            }
+            const context = await getRequiredChatMutationContext();
+            const metadata = parseAnswerlatticeChatMetadataMutation(updates);
+            const updatedFields = Object.keys(metadata);
+            await runTransaction(answerlatticeFirebaseClient, async (transaction) => {
+                const sessionRef = getDocRef(normalizedSessionId);
+                const sessionSnapshot = await transaction.get(sessionRef);
+                if (!sessionSnapshot.exists()) throw new Error('answerlattice_chat_session_not_found');
+                const current = requirePersistedChatSession(normalizedSessionId, sessionSnapshot.data(), context.scope);
+                if (metadata.mode === 'qna' && current.mode === 'assistant' && current.messages.length > 0) {
+                    throw new Error('answerlattice_chat_mode_transition_invalid');
+                }
+                const changed = updatedFields.some((field) => (
+                    JSON.stringify((current as any)[field]) !== JSON.stringify((metadata as any)[field])
+                ));
+                if (!changed) return;
+                transaction.update(sessionRef, {
+                    ...metadata,
+                    pId: PRODUCT_IDS.ANSWERLATTICE,
+                    tId: context.scope.tId,
+                    sId: context.scope.sId,
+                    modifiedBy: context.userName,
+                    modifiedOn: Timestamp.now(),
+                });
+            });
             return {
-                sessionId,
+                sessionId: normalizedSessionId,
                 success: true,
-                updatedFields: Object.keys(composedData),
+                updatedFields,
             } satisfies ChatSessionUpdateResult;
         },
         updates,
         'updateChatSession'
+    );
+};
+
+export const appendChatSessionMessages = async (
+    sessionId: string,
+    messages: ChatSession['messages'],
+    options?: { mode?: ChatSession['mode'] },
+) => {
+    return await apiCallComposerClientWithoutLoader(
+        async () => {
+            const normalizedSessionId = normalizeAnswerlatticeChatSessionId(sessionId);
+            if (!normalizedSessionId) throw new Error('answerlattice_chat_session_id_invalid');
+            if (!Array.isArray(messages) || messages.length < 1 || messages.length > 4) {
+                throw new Error('answerlattice_chat_message_append_invalid');
+            }
+            const incomingMessages = messages.map(normalizeAnswerlatticeChatMessageForStorage);
+            const context = await getRequiredChatMutationContext();
+            let wrote = false;
+            let removedImageUrls: string[] = [];
+            await runTransaction(answerlatticeFirebaseClient, async (transaction) => {
+                const sessionRef = getDocRef(normalizedSessionId);
+                const sessionSnapshot = await transaction.get(sessionRef);
+                if (!sessionSnapshot.exists()) throw new Error('answerlattice_chat_session_not_found');
+                const current = requirePersistedChatSession(normalizedSessionId, sessionSnapshot.data(), context.scope);
+                const messagesById = new Map(current.messages.map((message) => [message.id, message]));
+                const additions = incomingMessages.filter((message) => {
+                    const existing = messagesById.get(message.id);
+                    if (!existing) return true;
+                    if (JSON.stringify(existing) !== JSON.stringify(message)) {
+                        throw new Error('answerlattice_chat_message_id_conflict');
+                    }
+                    return false;
+                });
+                const nextMode = options?.mode || current.mode;
+                if (nextMode !== 'qna' && nextMode !== 'assistant') {
+                    throw new Error('answerlattice_chat_mode_invalid');
+                }
+                if (current.mode === 'assistant' && nextMode === 'qna') {
+                    throw new Error('answerlattice_chat_mode_transition_invalid');
+                }
+                if (additions.length === 0 && nextMode === current.mode) return;
+                const candidateMessages = [
+                    ...current.messages,
+                    ...additions,
+                ];
+                const nextMessages = normalizeAnswerlatticeChatMessagesForStorage(candidateMessages);
+                const retainedIds = new Set(nextMessages.map((message) => message.id));
+                removedImageUrls = collectChatImageUrls({
+                    messages: candidateMessages.filter((message) => !retainedIds.has(message.id)),
+                } as ChatSession);
+                transaction.update(sessionRef, {
+                    messages: nextMessages,
+                    mode: nextMode,
+                    pId: PRODUCT_IDS.ANSWERLATTICE,
+                    tId: context.scope.tId,
+                    sId: context.scope.sId,
+                    modifiedBy: context.userName,
+                    modifiedOn: Timestamp.now(),
+                });
+                wrote = true;
+            });
+            if (wrote && removedImageUrls.length > 0) {
+                await Promise.allSettled(
+                    removedImageUrls.map((url) => deleteFileByUrl(url, answerlatticeStorage)),
+                );
+            }
+            return {
+                sessionId: normalizedSessionId,
+                success: true,
+                updatedFields: wrote ? ['messages', ...(options?.mode ? ['mode'] : [])] : [],
+            } satisfies ChatSessionUpdateResult;
+        },
+        { sessionId, messageCount: messages.length, mode: options?.mode },
+        'appendChatSessionMessages',
+    );
+};
+
+export const replaceChatSessionMessageBranch = async (
+    sessionId: string,
+    replacedMessageId: string,
+    replacementMessage: ChatSession['messages'][number],
+) => {
+    return await apiCallComposerClientWithoutLoader(
+        async () => {
+            const normalizedSessionId = normalizeAnswerlatticeChatSessionId(sessionId);
+            const normalizedReplacedMessageId = normalizeAnswerlatticeChatSessionId(replacedMessageId);
+            if (!normalizedSessionId || !normalizedReplacedMessageId) {
+                throw new Error('answerlattice_chat_session_or_message_id_invalid');
+            }
+            const replacement = normalizeAnswerlatticeChatMessageForStorage(replacementMessage);
+            const context = await getRequiredChatMutationContext();
+            let removedImageUrls: string[] = [];
+            await runTransaction(answerlatticeFirebaseClient, async (transaction) => {
+                const sessionRef = getDocRef(normalizedSessionId);
+                const sessionSnapshot = await transaction.get(sessionRef);
+                if (!sessionSnapshot.exists()) throw new Error('answerlattice_chat_session_not_found');
+                const current = requirePersistedChatSession(normalizedSessionId, sessionSnapshot.data(), context.scope);
+                const replacedIndex = current.messages.findIndex((message) => message.id === normalizedReplacedMessageId);
+                if (replacedIndex < 0) throw new Error('answerlattice_chat_replaced_message_not_found');
+                removedImageUrls = collectChatImageUrls({
+                    messages: current.messages.slice(replacedIndex),
+                } as ChatSession).filter((url) => (
+                    url !== replacement.image?.url && url !== replacement.image?.source
+                ));
+                const nextMessages = normalizeAnswerlatticeChatMessagesForStorage([
+                    ...current.messages.slice(0, replacedIndex),
+                    replacement,
+                ]);
+                transaction.update(sessionRef, {
+                    messages: nextMessages,
+                    pId: PRODUCT_IDS.ANSWERLATTICE,
+                    tId: context.scope.tId,
+                    sId: context.scope.sId,
+                    modifiedBy: context.userName,
+                    modifiedOn: Timestamp.now(),
+                });
+            });
+            if (removedImageUrls.length > 0) {
+                await Promise.allSettled(
+                    removedImageUrls.map((url) => deleteFileByUrl(url, answerlatticeStorage)),
+                );
+            }
+            return {
+                sessionId: normalizedSessionId,
+                success: true,
+                updatedFields: ['messages'],
+            } satisfies ChatSessionUpdateResult;
+        },
+        { sessionId, replacedMessageId, replacementMessageId: replacementMessage.id },
+        'replaceChatSessionMessageBranch',
     );
 };
 
@@ -417,21 +676,26 @@ export const updateChatSession = async (sessionId: string, updates: Partial<Chat
 export const deleteChatSession = async (sessionId: string) => {
     return await apiCallComposer(
         async () => {
-            const sessionRef = await getDocRef(sessionId);
-            const sessionDoc = await getDoc(sessionRef);
-            const imageUrls = sessionDoc.exists()
-                ? collectChatImageUrls(sessionDoc.data() as ChatSession)
-                : [];
-
-            await Promise.allSettled(
-                imageUrls.map((url) => deleteFileByUrl(url, answerlatticeStorage))
+            const normalizedSessionId = normalizeAnswerlatticeChatSessionId(sessionId);
+            if (!normalizedSessionId) throw new Error('answerlattice_chat_session_id_invalid');
+            const context = await getRequiredChatMutationContext();
+            let imageUrls: string[] = [];
+            await runTransaction(answerlatticeFirebaseClient, async (transaction) => {
+                const sessionRef = getDocRef(normalizedSessionId);
+                const sessionDoc = await transaction.get(sessionRef);
+                if (!sessionDoc.exists()) throw new Error('answerlattice_chat_session_not_found');
+                const current = requirePersistedChatSession(normalizedSessionId, sessionDoc.data(), context.scope);
+                imageUrls = collectChatImageUrls(current);
+                transaction.delete(sessionRef);
+            });
+            const cleanupResults = await Promise.allSettled(
+                imageUrls.map((url) => deleteFileByUrl(url, answerlatticeStorage)),
             );
-            await deleteDoc(sessionRef);
             return {
-                sessionId,
+                sessionId: normalizedSessionId,
                 success: true,
                 deleted: true,
-                storageFilesDeleted: imageUrls.length,
+                storageFilesDeleted: cleanupResults.filter((result) => result.status === 'fulfilled').length,
             } satisfies ChatSessionDeleteResult;
         },
         { sessionId },
@@ -446,22 +710,25 @@ export const deleteChatSession = async (sessionId: string) => {
 export const getUserChatSessions = async (session: any) => {
     return await apiCallComposerClientWithoutLoader(
         async () => {
-            const sessionScope = getChatSessionScope(session);
-            if (!sessionScope || !session?.uId) return [];
+            const context = await getRequiredChatReadContext();
             const q = query(
-                await getCollectionRef(),
-                where('tId', '==', sessionScope.tId),
-                where('sId', '==', sessionScope.sId),
-                where('uId', '==', session.uId),
+                getCollectionRef(),
+                where('pId', '==', PRODUCT_IDS.ANSWERLATTICE),
+                where('tId', '==', context.scope.tId),
+                where('sId', '==', context.scope.sId),
+                where('uId', '==', context.userId),
                 orderBy('modifiedOn', 'desc'),
                 limit(USER_CHAT_SESSION_LIMIT)
             );
             const querySnapshot = await getDocs(q);
-            const list: ChatSession[] = [];
-            querySnapshot.forEach((doc) => {
-                list.push({ ...doc.data(), id: doc.id } as ChatSession);
+            return querySnapshot.docs.flatMap((sessionDoc) => {
+                const parsed = parseAnswerlatticeChatSessionDocument({
+                    id: sessionDoc.id,
+                    value: sessionDoc.data(),
+                    scope: context.scope,
+                });
+                return parsed && parsed.uId === context.userId ? [parsed] : [];
             });
-            return list;
         },
         session,
         'getUserChatSessions'
@@ -478,14 +745,17 @@ export const getUserChatSessions = async (session: any) => {
 export const getChatSessionById = async (sessionId: string) => {
     return await apiCallComposer(
         async () => {
-            const sessionRef = await getDocRef(sessionId);
+            const normalizedSessionId = normalizeAnswerlatticeChatSessionId(sessionId);
+            if (!normalizedSessionId) throw new Error('answerlattice_chat_session_id_invalid');
+            const context = await getRequiredChatMutationContext();
+            const sessionRef = getDocRef(normalizedSessionId);
             const sessionDoc = await getDoc(sessionRef);
 
             if (!sessionDoc.exists()) {
-                throw new Error('Chat session not found');
+                throw new Error('answerlattice_chat_session_not_found');
             }
 
-            return { ...sessionDoc.data(), id: sessionDoc.id } as ChatSession;
+            return requirePersistedChatSession(normalizedSessionId, sessionDoc.data(), context.scope);
         },
         { sessionId },
         'getChatSessionById'
@@ -499,6 +769,7 @@ export const getChatSessionById = async (sessionId: string) => {
 export const updateMessageFeedback = async (
     sessionId: string,
     messageId: string,
+    searchHistoryId: string,
     feedback: {
         isGood: boolean;
         reasonsToImprove?: Array<{ value: string; label: string; }>;
@@ -508,35 +779,115 @@ export const updateMessageFeedback = async (
 ) => {
     return await apiCallComposerClientWithoutLoader(
         async () => {
-            // Get the session
-            const sessionRef = await getDocRef(sessionId);
-            const sessionDoc = await getDoc(sessionRef);
-
-            if (!sessionDoc.exists()) {
-                throw new Error('Session not found');
+            const normalizedSessionId = normalizeAnswerlatticeChatSessionId(sessionId);
+            const normalizedMessageId = normalizeAnswerlatticeChatSessionId(messageId);
+            const normalizedSearchHistoryId = normalizeAnswerlatticeSearchHistoryId(searchHistoryId);
+            if (
+                !normalizedSessionId
+                || !normalizedMessageId
+                || !normalizedSearchHistoryId
+                || normalizedSearchHistoryId !== searchHistoryId
+            ) {
+                throw new Error('answerlattice_chat_feedback_ids_invalid');
             }
-
-            const sessionData = sessionDoc.data() as ChatSession;
-
-            // Feedback is stored on the bounded session message array so the
-            // original message shape and reopening behavior stay in one doc.
-            const updatedMessages = sessionData.messages.map(msg => {
-                if (msg.id === messageId) {
-                    return { ...msg, feedback };
+            const context = await getRequiredChatMutationContext();
+            const normalizedFeedback = normalizeAnswerlatticeChatFeedback(feedback, Timestamp.now());
+            await runTransaction(answerlatticeFirebaseClient, async (transaction) => {
+                const sessionRef = getDocRef(normalizedSessionId);
+                const searchHistoryRef = doc(
+                    answerlatticeFirebaseClient,
+                    SEARCH_HISTORY_COLLECTION,
+                    normalizedSearchHistoryId,
+                );
+                const [sessionDoc, searchHistoryDoc] = await Promise.all([
+                    transaction.get(sessionRef),
+                    transaction.get(searchHistoryRef),
+                ]);
+                if (!sessionDoc.exists() || !searchHistoryDoc.exists()) {
+                    throw new Error('answerlattice_chat_feedback_source_not_found');
                 }
-                return msg;
+                const current = requirePersistedChatSession(normalizedSessionId, sessionDoc.data(), context.scope);
+                const searchHistory = searchHistoryDoc.data();
+                if (
+                    searchHistory.pId !== PRODUCT_IDS.ANSWERLATTICE
+                    || normalizeAnswerlatticeScopeDocumentId(searchHistory.tId) !== context.scope.tId
+                    || normalizeAnswerlatticeScopeDocumentId(searchHistory.sId) !== context.scope.sId
+                ) throw new Error('answerlattice_chat_feedback_search_scope_invalid');
+                const messageIndex = current.messages.findIndex((message) => (
+                    message.id === normalizedMessageId
+                    && message.searchHistoryId === normalizedSearchHistoryId
+                ));
+                if (messageIndex < 0) throw new Error('answerlattice_chat_feedback_message_not_found');
+                const existingFeedback = current.messages[messageIndex].feedback;
+                const nextComparable = {
+                    isGood: normalizedFeedback.isGood,
+                    reasonsToImprove: normalizedFeedback.reasonsToImprove || [],
+                    comments: normalizedFeedback.comments || '',
+                };
+                const searchHistoryHasFeedback = typeof searchHistory.isGood === 'boolean';
+                if (searchHistoryHasFeedback) {
+                    const searchComparable = {
+                        isGood: searchHistory.isGood,
+                        reasonsToImprove: Array.isArray(searchHistory.reasonsToImprove)
+                            ? searchHistory.reasonsToImprove
+                            : [],
+                        comments: String(searchHistory.comments || ''),
+                    };
+                    if (JSON.stringify(searchComparable) !== JSON.stringify(nextComparable)) {
+                        throw new Error('answerlattice_search_feedback_already_submitted');
+                    }
+                }
+                if (existingFeedback) {
+                    const existingComparable = {
+                        isGood: existingFeedback.isGood,
+                        reasonsToImprove: existingFeedback.reasonsToImprove || [],
+                        comments: existingFeedback.comments || '',
+                    };
+                    if (JSON.stringify(existingComparable) !== JSON.stringify(nextComparable)) {
+                        throw new Error('answerlattice_chat_feedback_already_submitted');
+                    }
+                    if (searchHistoryHasFeedback) return;
+                    transaction.update(searchHistoryRef, {
+                        ...normalizedFeedback,
+                        pId: PRODUCT_IDS.ANSWERLATTICE,
+                        tId: context.scope.tId,
+                        sId: context.scope.sId,
+                        modifiedBy: context.userName,
+                        modifiedOn: Timestamp.now(),
+                    });
+                    return;
+                }
+                const updatedMessages = current.messages.map((message, index) => (
+                    index === messageIndex ? { ...message, feedback: normalizedFeedback } : message
+                ));
+                transaction.update(sessionRef, {
+                    messages: updatedMessages,
+                    pId: PRODUCT_IDS.ANSWERLATTICE,
+                    tId: context.scope.tId,
+                    sId: context.scope.sId,
+                    modifiedBy: context.userName,
+                    modifiedOn: Timestamp.now(),
+                });
+                if (!searchHistoryHasFeedback) {
+                    transaction.update(searchHistoryRef, {
+                        ...normalizedFeedback,
+                        pId: PRODUCT_IDS.ANSWERLATTICE,
+                        tId: context.scope.tId,
+                        sId: context.scope.sId,
+                        modifiedBy: context.userName,
+                        modifiedOn: Timestamp.now(),
+                    });
+                }
             });
 
-            const composedData = await answerlatticeRequestBodyComposer({ messages: updatedMessages });
-            await setDoc(sessionRef, composedData, { merge: true });
-
             return {
-                sessionId,
-                messageId,
+                sessionId: normalizedSessionId,
+                messageId: normalizedMessageId,
+                searchHistoryId: normalizedSearchHistoryId,
                 success: true,
             } satisfies ChatMessageFeedbackUpdateResult;
         },
-        { sessionId, messageId, feedback },
+        { sessionId, messageId, searchHistoryId, feedback },
         'updateMessageFeedback'
     );
 };
@@ -554,34 +905,44 @@ export const updateMessageFeedback = async (
 export const updateSessionInternalNote = async (
     sessionId: string,
     noteJson: any,
-    session?: any
+    _session?: any
 ) => {
     return await apiCallComposer(
         async () => {
-            const sessionRef = await getDocRef(sessionId);
-
-            // Create note object with metadata
-            const noteObject = {
-                id: 'note-0', // Hardcoded for now - always index 0
-                content: noteJson,
-                createdBy: session?.uId || session?.user?.id || 'unknown',
-                createdByName: session?.user?.name || session?.userName || 'Unknown User',
-                createdOn: Timestamp.now(),
-                modifiedBy: session?.uId || session?.user?.id || 'unknown',
-                modifiedByName: session?.user?.name || session?.userName || 'Unknown User',
-                modifiedOn: Timestamp.now()
-            };
-
-            // Always save as array with single element at index 0
-            const updateData: any = {
-                internalNotes: [noteObject]
-            };
-
-            const composedData = await answerlatticeRequestBodyComposer(updateData);
-            await setDoc(sessionRef, composedData, { merge: true });
+            const normalizedSessionId = normalizeAnswerlatticeChatSessionId(sessionId);
+            if (!normalizedSessionId) throw new Error('answerlattice_chat_session_id_invalid');
+            const content = normalizeAnswerlatticeInternalNote(noteJson);
+            const context = await getRequiredChatMutationContext();
+            let noteObject: Record<string, unknown> = {};
+            await runTransaction(answerlatticeFirebaseClient, async (transaction) => {
+                const sessionRef = getDocRef(normalizedSessionId);
+                const sessionDoc = await transaction.get(sessionRef);
+                if (!sessionDoc.exists()) throw new Error('answerlattice_chat_session_not_found');
+                const current = requirePersistedChatSession(normalizedSessionId, sessionDoc.data(), context.scope);
+                const existingNote = current.internalNotes?.[0];
+                const now = Timestamp.now();
+                noteObject = {
+                    id: 'note-0',
+                    content,
+                    createdBy: existingNote?.createdBy || context.userId,
+                    createdByName: existingNote?.createdByName || context.userName,
+                    createdOn: existingNote?.createdOn || now,
+                    modifiedBy: context.userId,
+                    modifiedByName: context.userName,
+                    modifiedOn: now,
+                };
+                transaction.update(sessionRef, {
+                    internalNotes: [noteObject],
+                    pId: PRODUCT_IDS.ANSWERLATTICE,
+                    tId: context.scope.tId,
+                    sId: context.scope.sId,
+                    modifiedBy: context.userName,
+                    modifiedOn: now,
+                });
+            });
 
             return {
-                sessionId,
+                sessionId: normalizedSessionId,
                 success: true,
                 note: noteObject,
             } satisfies ChatSessionInternalNoteUpdateResult;
@@ -630,10 +991,7 @@ export const getAllChatSessionsForAdmin = async (
 ) => {
     return await apiCallComposer(
         async () => {
-            const sessionScope = getChatSessionScope(session);
-            if (!sessionScope) {
-                return { sessions: [], hasNextPage: false, total: 0 };
-            }
+            const { scope: sessionScope } = await getRequiredChatReadContext();
 
             const pageSize = normalizePositiveInteger(filters?.pageSize, 20, ADMIN_CHAT_SESSION_PAGE_SIZE_LIMIT);
             const sortBy = filters?.sortBy || 'modifiedOn';
@@ -642,6 +1000,7 @@ export const getAllChatSessionsForAdmin = async (
             // Base query: all sessions for this Answerlattice store.
             let q = query(
                 await getCollectionRef(),
+                where('pId', '==', PRODUCT_IDS.ANSWERLATTICE),
                 where('tId', '==', sessionScope.tId),
                 where('sId', '==', sessionScope.sId),
                 orderBy(sortBy, sortOrder),
@@ -662,9 +1021,12 @@ export const getAllChatSessionsForAdmin = async (
 
             // Pagination: start after last document
             if (filters?.lastDocId) {
-                const lastDocRef = await getDocRef(filters.lastDocId);
+                const normalizedLastDocId = normalizeAnswerlatticeChatSessionId(filters.lastDocId);
+                if (!normalizedLastDocId) throw new Error('answerlattice_chat_cursor_id_invalid');
+                const lastDocRef = getDocRef(normalizedLastDocId);
                 const lastDocSnap = await getDoc(lastDocRef);
                 if (lastDocSnap.exists()) {
+                    requirePersistedChatSession(normalizedLastDocId, lastDocSnap.data(), sessionScope);
                     q = query(q, startAfter(lastDocSnap));
                 }
             }
@@ -672,8 +1034,8 @@ export const getAllChatSessionsForAdmin = async (
             const querySnapshot = await getDocs(q);
             let sessions: ChatSession[] = [];
 
-            querySnapshot.forEach((doc) => {
-                sessions.push({ ...doc.data(), id: doc.id } as ChatSession);
+            querySnapshot.forEach((sessionDoc) => {
+                sessions.push(requirePersistedChatSession(sessionDoc.id, sessionDoc.data(), sessionScope));
             });
 
             // Check if there's a next page
@@ -733,26 +1095,12 @@ export const getChatStatistics = async (
 ) => {
     return await apiCallComposer(
         async () => {
-            const sessionScope = getChatSessionScope(session);
-            if (!sessionScope) {
-                return {
-                    totalChats: 0,
-                    todayChats: 0,
-                    satisfactionRate: 0,
-                    positiveFeedback: 0,
-                    negativeFeedback: 0,
-                    totalFeedback: 0,
-                    avgMessagesPerChat: 0,
-                    qnaChats: 0,
-                    assistantChats: 0,
-                    regenerationRate: 0,
-                    totalRegenerations: 0
-                };
-            }
+            const { scope: sessionScope } = await getRequiredChatReadContext();
 
             // Query sessions for this tenant (capped at 500 to prevent unbounded Firestore reads)
             let q = query(
                 await getCollectionRef(),
+                where('pId', '==', PRODUCT_IDS.ANSWERLATTICE),
                 where('tId', '==', sessionScope.tId),
                 where('sId', '==', sessionScope.sId),
                 orderBy('createdOn', 'desc'),
@@ -769,8 +1117,8 @@ export const getChatStatistics = async (
             const querySnapshot = await getDocs(q);
             const sessions: ChatSession[] = [];
 
-            querySnapshot.forEach((doc) => {
-                sessions.push({ ...doc.data(), id: doc.id } as ChatSession);
+            querySnapshot.forEach((sessionDoc) => {
+                sessions.push(requirePersistedChatSession(sessionDoc.id, sessionDoc.data(), sessionScope));
             });
 
             // Calculate statistics
@@ -854,14 +1202,12 @@ export const getChatStatistics = async (
 export const getTopQuestions = async (session: any, limitCount: number = 10) => {
     return await apiCallComposer(
         async () => {
-            const sessionScope = getChatSessionScope(session);
-            if (!sessionScope) {
-                return [];
-            }
+            const { scope: sessionScope } = await getRequiredChatReadContext();
 
             // Get recent sessions (capped at 500 to prevent unbounded Firestore reads)
             const q = query(
                 await getCollectionRef(),
+                where('pId', '==', PRODUCT_IDS.ANSWERLATTICE),
                 where('tId', '==', sessionScope.tId),
                 where('sId', '==', sessionScope.sId),
                 orderBy('createdOn', 'desc'),
@@ -869,24 +1215,25 @@ export const getTopQuestions = async (session: any, limitCount: number = 10) => 
             );
 
             const querySnapshot = await getDocs(q);
-            const questionCounts: Record<string, number> = {};
+            const questionCounts = new Map<string, number>();
 
-            querySnapshot.forEach((doc) => {
-                const sessionData = doc.data() as ChatSession;
+            querySnapshot.forEach((sessionDoc) => {
+                const sessionData = requirePersistedChatSession(sessionDoc.id, sessionDoc.data(), sessionScope);
                 sessionData.messages.forEach((msg) => {
                     if (msg.role === 'user' && msg.content) {
                         // Normalize question (lowercase, trim)
                         const question = msg.content.trim().toLowerCase();
-                        questionCounts[question] = (questionCounts[question] || 0) + 1;
+                        questionCounts.set(question, (questionCounts.get(question) || 0) + 1);
                     }
                 });
             });
 
             // Convert to array and sort by count
-            const topQuestions = Object.entries(questionCounts)
+            const safeLimit = normalizePositiveInteger(limitCount, 10, 100);
+            const topQuestions = Array.from(questionCounts.entries())
                 .map(([question, count]) => ({ question, count }))
                 .sort((a, b) => b.count - a.count)
-                .slice(0, limitCount);
+                .slice(0, safeLimit);
 
             return topQuestions;
         },
@@ -905,14 +1252,12 @@ export const getTopQuestions = async (session: any, limitCount: number = 10) => 
 export const getKnowledgeGaps = async (session: any) => {
     return await apiCallComposer(
         async () => {
-            const sessionScope = getChatSessionScope(session);
-            if (!sessionScope) {
-                return [];
-            }
+            const { scope: sessionScope } = await getRequiredChatReadContext();
 
             // Get recent sessions (capped at 500 to prevent unbounded Firestore reads)
             const q = query(
                 await getCollectionRef(),
+                where('pId', '==', PRODUCT_IDS.ANSWERLATTICE),
                 where('tId', '==', sessionScope.tId),
                 where('sId', '==', sessionScope.sId),
                 orderBy('createdOn', 'desc'),
@@ -920,10 +1265,10 @@ export const getKnowledgeGaps = async (session: any) => {
             );
 
             const querySnapshot = await getDocs(q);
-            const negativeQuestions: Record<string, { question: string; count: number; examples: string[] }> = {};
+            const negativeQuestions = new Map<string, { question: string; count: number; examples: string[] }>();
 
-            querySnapshot.forEach((doc) => {
-                const sessionData = doc.data() as ChatSession;
+            querySnapshot.forEach((sessionDoc) => {
+                const sessionData = requirePersistedChatSession(sessionDoc.id, sessionDoc.data(), sessionScope);
 
                 for (let i = 0; i < sessionData.messages.length; i++) {
                     const userMsg = sessionData.messages[i];
@@ -939,26 +1284,27 @@ export const getKnowledgeGaps = async (session: any) => {
                         const question = userMsg.content || 'Untitled';
                         const normalizedQuestion = question.trim().toLowerCase();
 
-                        if (!negativeQuestions[normalizedQuestion]) {
-                            negativeQuestions[normalizedQuestion] = {
+                        if (!negativeQuestions.has(normalizedQuestion)) {
+                            negativeQuestions.set(normalizedQuestion, {
                                 question: question,
                                 count: 0,
                                 examples: []
-                            };
+                            });
                         }
 
-                        negativeQuestions[normalizedQuestion].count++;
+                        const entry = negativeQuestions.get(normalizedQuestion)!;
+                        entry.count++;
 
                         // Store feedback comments as examples
-                        if (aiMsg.feedback.comments && negativeQuestions[normalizedQuestion].examples.length < 3) {
-                            negativeQuestions[normalizedQuestion].examples.push(aiMsg.feedback.comments);
+                        if (aiMsg.feedback.comments && entry.examples.length < 3) {
+                            entry.examples.push(aiMsg.feedback.comments);
                         }
                     }
                 }
             });
 
             // Convert to array and sort by count
-            const knowledgeGaps = Object.values(negativeQuestions)
+            const knowledgeGaps = Array.from(negativeQuestions.values())
                 .sort((a, b) => b.count - a.count)
                 .slice(0, 20); // Top 20 problem areas
 
@@ -980,10 +1326,7 @@ export const getKnowledgeGaps = async (session: any) => {
 export const getChatVolumeOverTime = async (session: any, days: number = 7) => {
     return await apiCallComposer(
         async () => {
-            const sessionScope = getChatSessionScope(session);
-            if (!sessionScope) {
-                return [];
-            }
+            const { scope: sessionScope } = await getRequiredChatReadContext();
 
             const safeDays = normalizePositiveInteger(days, 7, MAX_CHAT_VOLUME_DAYS);
             const endDate = new Date();
@@ -993,6 +1336,7 @@ export const getChatVolumeOverTime = async (session: any, days: number = 7) => {
 
             const q = query(
                 await getCollectionRef(),
+                where('pId', '==', PRODUCT_IDS.ANSWERLATTICE),
                 where('tId', '==', sessionScope.tId),
                 where('sId', '==', sessionScope.sId),
                 where('createdOn', '>=', Timestamp.fromDate(startDate)),
@@ -1013,8 +1357,8 @@ export const getChatVolumeOverTime = async (session: any, days: number = 7) => {
             }
 
             // Count sessions per day
-            querySnapshot.forEach((doc) => {
-                const sessionData = doc.data() as ChatSession;
+            querySnapshot.forEach((sessionDoc) => {
+                const sessionData = requirePersistedChatSession(sessionDoc.id, sessionDoc.data(), sessionScope);
                 if (sessionData.createdOn) {
                     const date = sessionData.createdOn.toDate();
                     const dateKey = date.toISOString().split('T')[0];

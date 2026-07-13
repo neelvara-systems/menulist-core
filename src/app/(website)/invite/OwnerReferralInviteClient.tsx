@@ -1,14 +1,27 @@
 'use client';
 
 import { getPublicBaseUrl } from '@constant/urls';
+import {
+    OWNER_REFERRAL_REFERRED_CREDITS,
+    OWNER_REFERRAL_REFERRER_CREDITS,
+} from '@data/shared/ownerReferralPolicy';
+import { getContentCreditOutcomeExamples } from '@data/shared/contentCreditPolicy';
+import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
-import { LuArrowRight, LuCheck, LuGift, LuShieldCheck } from 'react-icons/lu';
+import { LuArrowRight, LuCheck, LuGift, LuShieldCheck, LuSparkles } from 'react-icons/lu';
 
 type InviteState = 'loading' | 'ready' | 'capturing' | 'invalid' | 'error';
+const OWNER_REFERRAL_CAPTURE_RESPONSE_MAX_BYTES = 4 * 1024;
+
+const isSuccessfulCaptureResponse = (value: unknown): boolean => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+    const record = value as Record<string, unknown>;
+    return record.success === true && record.continueTo === '/create-menu';
+};
 
 export default function OwnerReferralInviteClient({ enabled }: { enabled: boolean }) {
     const router = useRouter();
@@ -16,6 +29,7 @@ export default function OwnerReferralInviteClient({ enabled }: { enabled: boolea
     const [state, setState] = useState<InviteState>('loading');
     const [token, setToken] = useState('');
     const canonicalInviteUrl = useMemo(() => `${getPublicBaseUrl().replace(/\/$/, '')}/invite`, []);
+    const referredExamples = getContentCreditOutcomeExamples(OWNER_REFERRAL_REFERRED_CREDITS);
 
     useEffect(() => {
         if (!enabled) {
@@ -51,8 +65,11 @@ export default function OwnerReferralInviteClient({ enabled }: { enabled: boolea
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ token }),
             });
-            const body = await response.json().catch(() => null);
-            if (!response.ok || body?.success !== true || body?.continueTo !== '/create-menu') {
+            const body = await readJsonResponseWithLimit<unknown>(
+                response,
+                OWNER_REFERRAL_CAPTURE_RESPONSE_MAX_BYTES,
+            ).catch(() => null);
+            if (!response.ok || !isSuccessfulCaptureResponse(body)) {
                 setState(response.status === 400 || response.status === 404 ? 'invalid' : 'error');
                 return;
             }
@@ -97,11 +114,25 @@ export default function OwnerReferralInviteClient({ enabled }: { enabled: boolea
                         <div style={{ display: 'grid', gap: 10, margin: '20px 0' }}>
                             <p style={{ display: 'flex', gap: 10, alignItems: 'center', margin: 0 }}>
                                 <LuGift size={20} style={{ flex: '0 0 auto' }} />
-                                <span style={{ minWidth: 0 }}>{t.rich('referredReward', { strong: (chunks) => <strong>{chunks}</strong> })}</span>
+                                <span style={{ minWidth: 0 }}>{t.rich('referredReward', {
+                                    credits: OWNER_REFERRAL_REFERRED_CREDITS,
+                                    strong: (chunks) => <strong>{chunks}</strong>,
+                                })}</span>
                             </p>
                             <p style={{ display: 'flex', gap: 10, alignItems: 'center', margin: 0 }}>
                                 <LuGift size={20} style={{ flex: '0 0 auto' }} />
-                                <span style={{ minWidth: 0 }}>{t.rich('referrerReward', { strong: (chunks) => <strong>{chunks}</strong> })}</span>
+                                <span style={{ minWidth: 0 }}>{t.rich('referrerReward', {
+                                    credits: OWNER_REFERRAL_REFERRER_CREDITS,
+                                    strong: (chunks) => <strong>{chunks}</strong>,
+                                })}</span>
+                            </p>
+                            <p style={{ display: 'flex', gap: 10, alignItems: 'flex-start', margin: 0, color: 'var(--ws-text-secondary)' }}>
+                                <LuSparkles size={20} style={{ flex: '0 0 auto' }} />
+                                <span style={{ minWidth: 0 }}>{t('creditExample', {
+                                    credits: OWNER_REFERRAL_REFERRED_CREDITS,
+                                    descriptions: referredExamples.descriptionRewrites,
+                                    images: referredExamples.generatedMenuImages,
+                                })}</span>
                             </p>
                             <p style={{ display: 'flex', gap: 10, alignItems: 'center', margin: 0, color: 'var(--ws-text-secondary)' }}><LuCheck size={20} /> {t('rewardRule')}</p>
                         </div>

@@ -70,8 +70,14 @@ function calculateChange(
   previous: number,
   higherIsPositive: boolean
 ): ComparisonResult {
-  const change = current - previous;
-  const changePercent = previous > 0 ? (change / previous) * 100 : 0;
+  const safeCurrent = Number.isFinite(current) && current >= 0 ? current : 0;
+  const safePrevious = Number.isFinite(previous) && previous >= 0 ? previous : 0;
+  const change = safeCurrent - safePrevious;
+  const changePercent = safePrevious > 0
+    ? (change / safePrevious) * 100
+    : safeCurrent > 0
+      ? 100
+      : 0;
   
   let trend: 'up' | 'down' | 'stable' = 'stable';
   if (Math.abs(changePercent) < 2) {
@@ -87,8 +93,8 @@ function calculateChange(
     : change <= 0;
 
   return {
-    current,
-    previous,
+    current: safeCurrent,
+    previous: safePrevious,
     change,
     changePercent,
     trend,
@@ -108,32 +114,65 @@ export function getComparisonDateRange(
   currentStart: Date,
   currentEnd: Date
 ): { start: Date; end: Date } {
-  const duration = currentEnd.getTime() - currentStart.getTime();
+  const startUtc = new Date(Date.UTC(
+    currentStart.getUTCFullYear(),
+    currentStart.getUTCMonth(),
+    currentStart.getUTCDate(),
+  ));
+  const endUtc = new Date(Date.UTC(
+    currentEnd.getUTCFullYear(),
+    currentEnd.getUTCMonth(),
+    currentEnd.getUTCDate(),
+  ));
+  if (!Number.isFinite(startUtc.getTime()) || !Number.isFinite(endUtc.getTime()) || startUtc > endUtc) {
+    throw new RangeError('analytics_comparison_date_range_invalid');
+  }
+
+  const shiftDays = (value: Date, days: number) => {
+    const shifted = new Date(value);
+    shifted.setUTCDate(shifted.getUTCDate() + days);
+    return shifted;
+  };
+
+  const shiftMonths = (value: Date, months: number) => {
+    const targetYear = value.getUTCFullYear();
+    const targetMonth = value.getUTCMonth() + months;
+    const targetDay = value.getUTCDate();
+    const target = new Date(Date.UTC(targetYear, targetMonth, 1));
+    const lastDay = new Date(Date.UTC(
+      target.getUTCFullYear(),
+      target.getUTCMonth() + 1,
+      0,
+    )).getUTCDate();
+    target.setUTCDate(Math.min(targetDay, lastDay));
+    return target;
+  };
 
   switch (period) {
     case 'wow': {
       // Previous week (7 days back)
-      const start = new Date(currentStart.getTime() - 7 * 24 * 60 * 60 * 1000);
-      const end = new Date(currentEnd.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const start = shiftDays(startUtc, -7);
+      const end = shiftDays(endUtc, -7);
       return { start, end };
     }
 
     case 'mom': {
-      // Previous month (30 days back)
-      const start = new Date(currentStart.getTime() - 30 * 24 * 60 * 60 * 1000);
-      const end = new Date(currentEnd.getTime() - 30 * 24 * 60 * 60 * 1000);
+      // Previous calendar month, with month-end clamping.
+      const start = shiftMonths(startUtc, -1);
+      const end = shiftMonths(endUtc, -1);
       return { start, end };
     }
 
     case 'custom': {
-      // Previous period of same duration
-      const start = new Date(currentStart.getTime() - duration);
-      const end = new Date(currentEnd.getTime() - duration);
+      // Previous non-overlapping period with the same inclusive day count.
+      const durationDays = Math.floor((endUtc.getTime() - startUtc.getTime()) / (24 * 60 * 60 * 1000));
+      const end = shiftDays(startUtc, -1);
+      const start = shiftDays(end, -durationDays);
       return { start, end };
     }
 
     default:
-      return { start: currentStart, end: currentEnd };
+      throw new RangeError('analytics_comparison_period_invalid');
   }
 }
 
@@ -201,8 +240,16 @@ export function calculateFirstResponseTime(
 ): number {
   if (messagesData.length < 2) return 0;
 
-  const userMessage = messagesData.find(m => m.role === 'user');
-  const assistantMessage = messagesData.find(m => m.role === 'assistant');
+  const messages = messagesData
+    .filter((message) => message.timestamp instanceof Date && Number.isFinite(message.timestamp.getTime()))
+    .sort((left, right) => left.timestamp.getTime() - right.timestamp.getTime());
+  const userMessage = messages.find(message => message.role === 'user');
+  const assistantMessage = userMessage
+    ? messages.find(message => (
+      message.role === 'assistant'
+      && message.timestamp.getTime() >= userMessage.timestamp.getTime()
+    ))
+    : undefined;
 
   if (!userMessage || !assistantMessage) return 0;
 
@@ -217,8 +264,11 @@ export function calculateResolutionRate(
   resolvedCount: number,
   totalCount: number
 ): number {
-  if (totalCount === 0) return 0;
-  return (resolvedCount / totalCount) * 100;
+  if (!Number.isFinite(totalCount) || totalCount <= 0) return 0;
+  const safeResolved = Number.isFinite(resolvedCount)
+    ? Math.min(Math.max(resolvedCount, 0), totalCount)
+    : 0;
+  return (safeResolved / totalCount) * 100;
 }
 
 /**
@@ -227,10 +277,11 @@ export function calculateResolutionRate(
 export function calculatePeakHours(
   timestamps: Date[]
 ): Array<{ hour: number; count: number; intensity: number }> {
-  const hourCounts = new Array(24).fill(0);
+  const hourCounts: number[] = new Array(24).fill(0);
 
   timestamps.forEach(timestamp => {
-    const hour = timestamp.getHours();
+    if (!(timestamp instanceof Date) || !Number.isFinite(timestamp.getTime())) return;
+    const hour = timestamp.getUTCHours();
     hourCounts[hour]++;
   });
 
@@ -249,14 +300,18 @@ export function calculatePeakHours(
 export function calculateCategoryDistribution(
   categories: Array<{ name: string; count: number }>
 ): Array<{ name: string; count: number; percentage: number }> {
-  const total = categories.reduce((sum, cat) => sum + cat.count, 0);
+  const normalized = categories.map(category => ({
+    name: category.name,
+    count: Number.isFinite(category.count) && category.count > 0 ? category.count : 0,
+  }));
+  const total = normalized.reduce((sum, category) => sum + category.count, 0);
 
-  return categories
+  return normalized
     .map(cat => ({
       ...cat,
       percentage: total > 0 ? (cat.count / total) * 100 : 0,
     }))
-    .sort((a, b) => b.count - a.count);
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'en-US'));
 }
 
 // ================================================================

@@ -23,7 +23,11 @@ Public positioning should stay close to:
 - Treats the editor as optional last-mile work through Design Cue and CueLayers, not as the main product.
 - Keeps direct posting and spend out of the day-one product.
 - Remembers owner-reported results through quick options or short notes.
+- Turns approval, due reminders, result capture, and safe current-fact reuse into one clear Campaign Rhythm.
+- Shows pack readiness without pretending to predict reach, engagement, or ROI.
 
 ## Sales Boundary
 
 Do not claim automatic social posting, connected scheduling, ad creation, or provider metrics. The active product prepares and downloads source-backed campaign packs.
+
+Do not call Campaign Rhythm an autopilot or Pack readiness a performance score.

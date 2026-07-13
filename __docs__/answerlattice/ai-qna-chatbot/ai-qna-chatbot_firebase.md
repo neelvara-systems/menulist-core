@@ -201,7 +201,7 @@
 | `chatAnalytics` | `tId ASC, sId ASC, date ASC` | Aggregated stats |
 | `chatAnalytics` | `tId ASC, sId ASC, modifiedOn DESC` | Last update check |
 | `aiSearchHistory` | `cacheKey ASC, tId ASC, sId ASC, createdOn DESC` | Cache lookup |
-| `kb_articles` | `status ASC` + Vector(`embedding`, 768, COSINE) | Vector search |
+| `kb_articles` | `pId+tId+sId+status+active` + Vector(`embeddingV2`, 768, COSINE) | Active v2 vector search |
 
 ---
 

@@ -15,12 +15,15 @@
  */
 
 import { DB_COLLECTIONS } from "@constant/database";
-import { addDoc, collection, doc, getDoc, getDocs, limit, orderBy, query, runTransaction, setDoc, Timestamp, where } from "@firebase/firestore";
+import { addDoc, collection, doc, getDoc, getDocs, limit, orderBy, query, where } from "@firebase/firestore";
 import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentComposer';
-import { normalizeAnswerlatticeMutationProposalId, normalizeAnswerlatticeResolvedEntityId } from '@lib/answerlattice/governanceIdBoundary';
+import { runAnswerlatticeGovernanceAction } from '@lib/answerlattice/governanceClient';
+import { AnswerlatticeStoredMutationProposalSchema } from '@lib/answerlattice/governanceContracts';
+import { normalizeAnswerlatticeMutationProposalId } from '@lib/answerlattice/governanceIdBoundary';
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import { answerlatticeFirebaseClient } from "@lib/firebase/answerlatticeFirebaseClient";
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import { createRuntimeId } from '@lib/runtime/randomId';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { AnswerlatticeMutationProposal } from "@type/answerlattice";
 
@@ -32,9 +35,41 @@ const ANSWERLATTICE_DRAFT_REGENERATION_REQUEST_POLICY: RequestInit = {
     redirect: 'manual',
 };
 const COLLECTION = DB_COLLECTIONS.ANSWERLATTICE_MUTATION_PROPOSALS;
+const MAX_PENDING_DRAFT_RETRY_KEYS = 50;
+const pendingDraftRequestIds = new Map<string, string>();
+
+const getDraftRetryRequestId = (proposalId: string): string => {
+    const existing = pendingDraftRequestIds.get(proposalId);
+    if (existing) return existing;
+    if (pendingDraftRequestIds.size >= MAX_PENDING_DRAFT_RETRY_KEYS) {
+        const oldest = pendingDraftRequestIds.keys().next().value;
+        if (oldest) pendingDraftRequestIds.delete(oldest);
+    }
+    const requestId = createRuntimeId('al_draft');
+    pendingDraftRequestIds.set(proposalId, requestId);
+    return requestId;
+};
 
 const getCollectionRef = () => collection(answerlatticeFirebaseClient, COLLECTION);
-const getDocRef = (docId: string) => doc(answerlatticeFirebaseClient, COLLECTION, docId);
+const getDocRef = (docId: string) => {
+    const normalizedDocId = normalizeAnswerlatticeMutationProposalId(docId);
+    if (!normalizedDocId) throw new Error('Invalid mutation proposal id');
+    return doc(answerlatticeFirebaseClient, COLLECTION, normalizedDocId);
+};
+
+const parseStoredProposal = (documentId: string, value: unknown): AnswerlatticeMutationProposal | null => {
+    const parsed = AnswerlatticeStoredMutationProposalSchema.safeParse({
+        ...(value && typeof value === 'object' && !Array.isArray(value) ? value : {}),
+        id: documentId,
+    });
+    if (parsed.success) return parsed.data as AnswerlatticeMutationProposal;
+
+    logRuntimeFailure('answerlattice_mutation_proposal_document_invalid', undefined, {
+        surface: 'answerlattice_mutation_proposals',
+        ...getBoundedRuntimeStringContext('proposalId', documentId),
+    });
+    return null;
+};
 
 type DraftRegenerationResponse = {
     ok?: boolean;
@@ -101,7 +136,8 @@ export const getMutationProposals = async (tId: number, sId: number) => {
             const snapshot = await getDocs(q);
             const list: AnswerlatticeMutationProposal[] = [];
             snapshot.forEach((d) => {
-                list.push({ ...d.data(), id: d.id } as AnswerlatticeMutationProposal);
+                const proposal = parseStoredProposal(d.id, d.data());
+                if (proposal) list.push(proposal);
             });
             return list;
         },
@@ -126,7 +162,8 @@ export const getPendingMutationProposals = async (tId: number, sId: number) => {
             const snapshot = await getDocs(q);
             const list: AnswerlatticeMutationProposal[] = [];
             snapshot.forEach((d) => {
-                list.push({ ...d.data(), id: d.id } as AnswerlatticeMutationProposal);
+                const proposal = parseStoredProposal(d.id, d.data());
+                if (proposal) list.push(proposal);
             });
             return list;
         },
@@ -144,7 +181,7 @@ export const getMutationProposalById = async (proposalId: string) => {
             if (!normalizedProposalId) return null;
             const docSnap = await getDoc(getDocRef(normalizedProposalId));
             if (docSnap.exists()) {
-                return { ...docSnap.data(), id: docSnap.id } as AnswerlatticeMutationProposal;
+                return parseStoredProposal(docSnap.id, docSnap.data());
             }
             return null;
         },
@@ -152,23 +189,26 @@ export const getMutationProposalById = async (proposalId: string) => {
     );
 };
 
-export const regenerateMutationProposalDraft = async (proposalId: string, regeneratedBy?: string) => {
+export const regenerateMutationProposalDraft = async (proposalId: string) => {
     return apiCallComposer(
         async () => {
             const normalizedProposalId = normalizeAnswerlatticeMutationProposalId(proposalId);
             if (!normalizedProposalId) {
                 throw new Error(ANSWERLATTICE_DRAFT_REGENERATION_FAILED);
             }
+            const requestId = getDraftRetryRequestId(normalizedProposalId);
             const response = await fetch('/api/answerlattice/mutation-proposals/regenerate-draft', {
                 ...ANSWERLATTICE_DRAFT_REGENERATION_REQUEST_POLICY,
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ proposalId: normalizedProposalId, regeneratedBy }),
+                body: JSON.stringify({ proposalId: normalizedProposalId, requestId }),
             });
 
-            return readDraftRegenerationResponse(response, normalizedProposalId);
+            const result = await readDraftRegenerationResponse(response, normalizedProposalId);
+            pendingDraftRequestIds.delete(normalizedProposalId);
+            return result;
         },
         { proposalId },
         'regenerateMutationProposalDraft',
@@ -184,9 +224,16 @@ export const addMutationProposal = async (data: Omit<AnswerlatticeMutationPropos
             const submitData = await answerlatticeRequestBodyComposer({
                 ...data,
                 status: 'pending_review',
+            }, { isNew: true });
+            const validation = AnswerlatticeStoredMutationProposalSchema.safeParse({
+                ...submitData,
+                id: 'proposal_validation',
             });
+            if (!validation.success) throw new Error('Invalid mutation proposal data');
             const docRef = await addDoc(getCollectionRef(), submitData);
-            return { ...submitData, id: docRef.id } as AnswerlatticeMutationProposal;
+            const stored = parseStoredProposal(docRef.id, submitData);
+            if (!stored) throw new Error('Invalid stored mutation proposal data');
+            return stored;
         },
         data,
         "addMutationProposal"
@@ -200,22 +247,14 @@ export const addMutationProposal = async (data: Omit<AnswerlatticeMutationPropos
 export const approveMutationProposal = async (proposalId: string) => {
     const normalizedProposalId = normalizeAnswerlatticeMutationProposalId(proposalId);
     return await apiCallComposer(
-        async () => {
+        () => {
             if (!normalizedProposalId) {
                 throw new Error('Invalid proposal ID');
             }
-            const composedData = await answerlatticeRequestBodyComposer({ status: 'approved' });
-            await runTransaction(answerlatticeFirebaseClient, async (transaction) => {
-                const proposalRef = getDocRef(normalizedProposalId);
-                const docSnap = await transaction.get(proposalRef);
-                if (!docSnap.exists()) throw new Error(`Proposal ${normalizedProposalId} not found`);
-                const current = docSnap.data() as AnswerlatticeMutationProposal;
-                if (current.status !== 'pending_review') {
-                    throw new Error(`Cannot approve proposal in '${current.status}' state — must be 'pending_review'`);
-                }
-                transaction.set(proposalRef, composedData, { merge: true });
+            return runAnswerlatticeGovernanceAction({
+                action: 'approve_proposal',
+                proposalId: normalizedProposalId,
             });
-            return composedData;
         },
         { proposalId: normalizedProposalId },
         "approveMutationProposal"
@@ -229,22 +268,14 @@ export const approveMutationProposal = async (proposalId: string) => {
 export const rejectMutationProposal = async (proposalId: string) => {
     const normalizedProposalId = normalizeAnswerlatticeMutationProposalId(proposalId);
     return await apiCallComposer(
-        async () => {
+        () => {
             if (!normalizedProposalId) {
                 throw new Error('Invalid proposal ID');
             }
-            const composedData = await answerlatticeRequestBodyComposer({ status: 'rejected' });
-            await runTransaction(answerlatticeFirebaseClient, async (transaction) => {
-                const proposalRef = getDocRef(normalizedProposalId);
-                const docSnap = await transaction.get(proposalRef);
-                if (!docSnap.exists()) throw new Error(`Proposal ${normalizedProposalId} not found`);
-                const current = docSnap.data() as AnswerlatticeMutationProposal;
-                if (current.status !== 'pending_review') {
-                    throw new Error(`Cannot reject proposal in '${current.status}' state — must be 'pending_review'`);
-                }
-                transaction.set(proposalRef, composedData, { merge: true });
+            return runAnswerlatticeGovernanceAction({
+                action: 'reject_proposal',
+                proposalId: normalizedProposalId,
             });
-            return composedData;
         },
         { proposalId: normalizedProposalId },
         "rejectMutationProposal"
@@ -258,22 +289,14 @@ export const rejectMutationProposal = async (proposalId: string) => {
 export const markMutationImplemented = async (proposalId: string) => {
     const normalizedProposalId = normalizeAnswerlatticeMutationProposalId(proposalId);
     return await apiCallComposer(
-        async () => {
+        () => {
             if (!normalizedProposalId) {
                 throw new Error('Invalid proposal ID');
             }
-            const composedData = await answerlatticeRequestBodyComposer({ status: 'implemented' });
-            await runTransaction(answerlatticeFirebaseClient, async (transaction) => {
-                const proposalRef = getDocRef(normalizedProposalId);
-                const docSnap = await transaction.get(proposalRef);
-                if (!docSnap.exists()) throw new Error(`Proposal ${normalizedProposalId} not found`);
-                const current = docSnap.data() as AnswerlatticeMutationProposal;
-                if (current.status !== 'approved') {
-                    throw new Error(`Cannot implement proposal in '${current.status}' state — must be 'approved'`);
-                }
-                transaction.set(proposalRef, composedData, { merge: true });
+            return runAnswerlatticeGovernanceAction({
+                action: 'mark_implemented',
+                proposalId: normalizedProposalId,
             });
-            return composedData;
         },
         { proposalId: normalizedProposalId },
         "markMutationImplemented"
@@ -312,170 +335,23 @@ export const approveDraftAsCanonicalAnswer = async (
         edgeCases?: string;
         constraints?: string;
     } | null,
-    tId: number,
-    sId: number,
-    approvedBy: string
+    _tId: number,
+    _sId: number,
+    _approvedBy: string
 ) => {
     return await apiCallComposer(
-        async () => {
+        () => {
             const normalizedProposalId = normalizeAnswerlatticeMutationProposalId(proposalId);
             if (!normalizedProposalId) {
                 throw new Error('Invalid proposal ID');
             }
-
-            // 1. Fetch and validate proposal
-            const proposalSnap = await getDoc(getDocRef(normalizedProposalId));
-            if (!proposalSnap.exists()) {
-                throw new Error(`Proposal ${normalizedProposalId} not found`);
-            }
-            const proposal = { ...proposalSnap.data(), id: proposalSnap.id } as AnswerlatticeMutationProposal;
-
-            if (Number(proposal.tId) !== Number(tId) || Number(proposal.sId) !== Number(sId)) {
-                throw new Error('Proposal is outside the current Answerlattice workspace');
-            }
-            if (proposal.status !== 'pending_review') {
-                throw new Error(`Cannot approve draft in '${proposal.status}' state — must be 'pending_review'`);
-            }
-
-            const draft = proposal.suggestedChange;
-            if (!draft?.draftStatus || draft.draftStatus !== 'generated') {
-                throw new Error('Proposal does not have a generated draft to approve');
-            }
-
-            if (!draft.draftTitle) {
-                throw new Error('Draft has no title — cannot create canonical answer');
-            }
-
-            // 2. Resolve entity for binding
-            const entityId = normalizeAnswerlatticeResolvedEntityId(proposal.relatedEntityIds?.[0]);
-            if (!entityId) {
-                throw new Error('Proposal has no related entity ID');
-            }
-
-            // Check entity is not deprecated
-            const { getEntityById } = await import('@database/answerlattice/entities');
-            const entity = await getEntityById(entityId);
-            if (!entity) {
-                throw new Error(`Entity ${entityId} not found`);
-            }
-            if (Number(entity.tId) !== Number(tId) || Number(entity.sId) !== Number(sId)) {
-                throw new Error(`Entity ${entityId} is outside the current Answerlattice workspace`);
-            }
-            if (entity.status === 'deprecated') {
-                throw new Error(`Cannot create answer for deprecated entity "${entity.name}"`);
-            }
-
-            // 3. Get current version for product binding
-            const { getLatestRelease } = await import('@database/answerlattice/releases');
-            const latestRelease = await getLatestRelease(tId, sId);
-            const currentVersion = latestRelease?.versionNormalized || 1000000; // Default v1.0.0
-
-            // 4. Create canonical answer from draft (with optional edits overriding)
-            const title = editedContent?.title || draft.draftTitle;
-            const slug = title
-                .toLowerCase()
-                .replace(/[^a-z0-9\s-]/g, '')
-                .replace(/\s+/g, '-')
-                .replace(/-+/g, '-')
-                .trim();
-
-            const { addCanonicalAnswer } = await import('@database/answerlattice/canonicalAnswers');
-            const canonicalAnswer = await addCanonicalAnswer({
-                tId,
-                sId,
-                title,
-                slug,
-                status: 'active',
-                answerType: draft.procedure ? 'procedure' : 'explanation',
-                scope: {
-                    entityIds: [entityId],
-                },
-                productBinding: {
-                    introducedInVersion: currentVersion,
-                    lastValidatedInVersion: currentVersion,
-                    applicableVersions: { from: currentVersion, to: null },
-                },
-                content: {
-                    structuredSummary: editedContent?.structuredSummary || draft.structuredSummary || '',
-                    detailedExplanation: editedContent?.detailedExplanation || draft.detailedExplanation || '',
-                    edgeCases: editedContent?.edgeCases || draft.edgeCases,
-                    constraints: editedContent?.constraints || draft.constraints,
-                    procedure: draft.procedure,
-                },
-                validation: {
-                    confidenceScore: proposal.confidenceScore,
-                    validationSource: 'signal_cluster',
-                    lastValidatedOn: Timestamp.now(),
-                    validatedBy: approvedBy,
-                },
-                signalMetrics: {
-                    linkedTicketCount: proposal.signalSummary?.ticketCount || 0,
-                    linkedChatCount: proposal.signalSummary?.chatCount || 0,
-                    negativeFeedbackCount: 0,
-                },
-                governance: {
-                    driftFlag: false,
-                    reviewRequired: false,
-                },
-            });
-
-            if (!canonicalAnswer?.id) {
-                throw new Error('Failed to create canonical answer from draft');
-            }
-
-            // 5. Create search index entry for the new answer's entities
-            const { upsertEntitySearchIndex } = await import('@database/answerlattice/entities');
-            const { buildSearchIndexEntry } = await import('@lib/answerlattice/entityExtraction');
-            const indexData = buildSearchIndexEntry({
-                name: entity.name,
-                slug: entity.slug,
-                description: entity.description,
-                aliases: entity.aliases,
-            });
-
-            await upsertEntitySearchIndex({
-                tId,
-                sId,
-                entityId: entity.id,
-                ...indexData,
-            });
-
-            // 6. Mark proposal as implemented
-            const implementData = await answerlatticeRequestBodyComposer({ status: 'implemented' });
-            await setDoc(getDocRef(normalizedProposalId), implementData, { merge: true });
-
-            // 7. Audit log
-            const { addAuditLog } = await import('@database/answerlattice/auditLogs');
-            await addAuditLog({
-                tId,
-                sId,
-                action: 'draft_approved_as_canonical_answer',
-                entityType: 'canonicalAnswer',
-                entityId: canonicalAnswer.id,
-                previousState: {
-                    proposalId: normalizedProposalId,
-                    draftTitle: draft.draftTitle,
-                    draftSource: draft.draftSource,
-                },
-                newState: {
-                    answerId: canonicalAnswer.id,
-                    title,
-                    entityIds: [entityId],
-                    approvedBy,
-                    wasEdited: !!editedContent,
-                },
-                performedBy: approvedBy,
-                timestamp: Timestamp.now(),
-            });
-
-            return {
-                canonicalAnswer,
+            return runAnswerlatticeGovernanceAction({
+                action: 'approve_proposal',
                 proposalId: normalizedProposalId,
-                entityId,
-                approved: true,
-            };
+                ...(editedContent ? { editedContent } : {}),
+            });
         },
-        { proposalId, tId, sId, approvedBy },
+        { proposalId },
         "approveDraftAsCanonicalAnswer"
     );
 };

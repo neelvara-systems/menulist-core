@@ -4,7 +4,7 @@
 
 **Created:** February 19, 2026  
 **Pillar:** 4 of 6 — Customer-Facing Infrastructure  
-**Status:** ✅ IMPLEMENTED (flags OFF — awaiting real traffic)  
+**Status:** Dormant implementation skeleton; all flags OFF and no scheduler/UI consumer wired
 **Parent:** [`__docs__/customer-facing-infrastructure/`](../customer-facing-infrastructure/README.md)
 
 ---
@@ -31,7 +31,14 @@ A single calm signal that tells business owners whether customer trust is holdin
 
 Every business owner constantly wonders: "Do customers still trust us?" They rely on gut feeling, daily sales, and random comments — none reliable. MenuList can give a calm, behavior-based trust signal derived from aggregate visitor patterns on public pages.
 
-## Architecture Overview
+## Current Runtime Truth — July 13, 2026
+
+- `ENABLE_TRUST_HEALTH_SIGNAL`, `ENABLE_LOYALTY_HEALTH_SIGNAL`, and `ENABLE_RISK_DECLINE_DETECTION` exist and are `false`.
+- `functions/src/analytics/healthSignalsComputation.ts` is retained and regression-tested as dormant logic, but no exported Cloud Function or consolidated scheduler task calls it.
+- `HealthSignalCards.tsx` exists but is not mounted by the owner dashboard, and there is no mobile health-signal consumer.
+- Current runtime performs zero health-signal reads/writes. Activation requires exact unique/direct aggregate counters, a bounded scheduler task with lease/cost evidence, desktop/mobile wiring, emulator coverage, and an explicit flag decision.
+
+## Target Architecture (Not Active Runtime)
 
 ```
 Aggregate Visitor Data (existing analytics infrastructure)
@@ -54,7 +61,7 @@ Owner Dashboard (single word only)
 ## Feature Flag
 
 ```typescript
-ENABLE_TRUST_HEALTH_SIGNAL: false; // To be added to features.ts
+ENABLE_TRUST_HEALTH_SIGNAL: false; // Present and intentionally dormant
 ```
 
 ## Key Design Principle
@@ -75,4 +82,4 @@ ENABLE_TRUST_HEALTH_SIGNAL: false; // To be added to features.ts
 
 ---
 
-**Last Updated:** February 19, 2026
+**Last Updated:** July 13, 2026

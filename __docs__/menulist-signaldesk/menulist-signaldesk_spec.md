@@ -2,7 +2,7 @@
 
 **Status:** Implemented internal runtime contract with owner-gated external execution
 **Created:** June 23, 2026
-**Last Updated:** July 10, 2026
+**Last Updated:** July 11, 2026
 **Audience:** Founder, growth team, future implementers
 **Scope:** Private internal growth control room for MenuList marketing and acquisition.
 
@@ -188,6 +188,34 @@ Do not use these as north-star metrics:
 7. An elapsed seven-day watch reads as stalled and enters the founder decision brief without a scheduler or MenuList truth query.
 8. Research/recommendation may propose a market pod but cannot activate it; the founder records approve/hold/reject before any envelope may use it.
 
+### Flow 7 - AI Shadow Review And Learning
+
+1. Every provider-backed AI assist run stores its task, provider, model route, model-eval ID, target, confidence, prompt version, rejected-fact state, and cost.
+2. The run remains `unreviewed` until a founder-admin records `accepted`, `edited`, `rejected`, or `held` plus bounded review notes and attention minutes.
+3. A changed review transactionally removes the previous decision contribution before adding the new one, so aggregate rates and attention totals cannot drift.
+4. `signaldeskModelEvals` stores cumulative run counts, confidence/rejected-fact counts, founder review counts, decision rates, and shadow-review attention.
+5. Shadow review updates the existing revenue founder-attention summary only when that summary already exists; it does not create or change an opportunity, offer, envelope, message, outcome, or MenuList truth.
+6. The action is founder-only, desktop-only, audited, timeline-recorded, and never enables provider send or a higher autonomy mode.
+
+### Flow 8 - AI Volume Mode
+
+1. A founder selects up to five existing targets, up to three supported tasks, an instruction, and a maximum estimated AI cost.
+2. A founder-scoped idempotency key prevents a retried request from buying the same model work twice.
+3. Each target/task pair passes the existing target, source-policy, model-route, provider, budget, and AI-worker pause gates.
+4. The fast Gemini route generates typed JSON and a separate critic route returns `pass`, `revise`, or `hold`.
+5. Risky or low-confidence pairs may escalate only to the task route's approved Gemini model; unavailable provider families remain review-required.
+6. Successful child runs remain individually reviewable while one parent run summarizes completed/failed pairs, model calls, estimated cost, child IDs, stable failure codes, audit, and timeline.
+7. Volume Mode prepares internal recommendations only. It cannot send, publish, infer consent, approve commercial terms, move pipeline, or write MenuList truth.
+
+### Flow 9 - Prepared Action And Manual Contact Confirmation
+
+1. Export or assisted handoff prepares an approved message but does not claim the business was contacted.
+2. After completing a policy-approved external action, a desktop operator records the target, source-policy snapshot, allowed route, timestamp, bounded result, and optional internal note.
+3. The server rechecks current source rights, suppression, target eligibility, route eligibility, relevant kill switches, and a fresh, unconsumed prepared email export where the route is `email-export`.
+4. One idempotent confirmation updates the existing target and conversation summaries, appends an audit event, and creates a target run-timeline record.
+5. `wrong-contact` immediately creates suppression; no result triggers send, follow-up, provider work, or MenuList truth writes.
+6. Approval rejection requires a bounded rejection reason. `other` also requires a note, and the reason projects to evidence review, identity enrichment, hold, or rejection without creating CRM tasks.
+
 ## Requirements
 
 | ID | Requirement | Priority |
@@ -211,6 +239,36 @@ Do not use these as north-star metrics:
 | SD-R017 | Revenue pipeline values must carry one explicit offer-derived currency; mixed-currency minor units cannot be aggregated. | P0 |
 | SD-R018 | Founder-approved operating envelopes require an explicitly founder-approved active market pod, transactionally current referenced controls, and a new version for scope/term changes. | P0 |
 | SD-R019 | Two-surface activation must close the linked opportunity and remove it from open forecast exactly once. | P0 |
+| SD-R020 | Provider-backed AI runs must support founder-only `accepted`, `edited`, `rejected`, or `held` shadow review with bounded reason and attention minutes. | P0 |
+| SD-R021 | Model-eval pass, rejected-fact, acceptance, edit, rejection, and hold rates must be derived from cumulative counters rather than overwritten by the latest sample. | P0 |
+| SD-R022 | Re-reviewing one AI run must transactionally reverse its previous aggregate decision and attention contribution before applying the replacement. | P0 |
+| SD-R023 | AI shadow review must remain desktop-only, internal, audited, summary-backed, and unable to send, publish, spend, change commercial truth, or write MenuList truth. | P0 |
+| SD-R024 | AI Volume Mode must be feature-flagged, founder-only, desktop-only, and limited to five targets and three tasks per request. | P0 |
+| SD-R025 | Every volume child must run typed generation plus an independent typed critic before it becomes reviewable. | P0 |
+| SD-R026 | Stronger-model escalation must be critic/risk triggered and limited to an active executable same-provider route. | P0 |
+| SD-R027 | Volume batches must fail before provider work when their worst-case estimated cost exceeds the founder maximum. | P0 |
+| SD-R028 | Paid volume requests must be idempotent across transport retries. | P0 |
+| SD-R029 | Partial failure must preserve successful child runs and store stable failure codes without raw provider errors. | P0 |
+| SD-R030 | AI Volume Mode cannot grant source, consent, suppression, send, publish, commercial, spend, autonomy, or MenuList truth authority. | P0 |
+| SD-R031 | AI Volume Mode must use batch rate limiting, aggregate provider-budget preflight, and one expiring global lock so overlapping paid batches cannot consume the same budget snapshot. | P0 |
+| SD-R032 | Expired running AI volume parents must reconcile bounded child evidence into completed, partial, or blocked terminal state without another provider call or releasing a newer batch lock. | P0 |
+| SD-R033 | Desktop must preserve and reuse the bounded AI volume retry payload until terminal state so recovery remains reachable after a request failure or page reload. | P0 |
+| SD-R034 | Persisted allowed routes must be revalidated against current source rights and target suppression before display or action. | P0 |
+| SD-R035 | Draft, approval, export, handoff, send, and follow-up paths must recheck every source use they depend on; contact permission alone is insufficient when evidence or personalization rights have expired or been revoked. | P0 |
+| SD-R036 | Duplicate identities inside one import request must resolve to one target before the batch commits. | P0 |
+| SD-R037 | Customer-proof assets must bind the exact granted proof scopes, and those scopes must be rechecked before every derived draft. | P0 |
+| SD-R038 | An outcome idempotency key must bind one normalized request fingerprint; reuse with different outcome facts must fail without side effects. | P0 |
+| SD-R039 | Owner-qualified intent and verified activation must be projected durably onto the target so bounded history reads cannot erase activation or downgrade a converted target. | P0 |
+| SD-R040 | The seven-day activation clock must start at owner-qualified intent, not at discovery or an arbitrary later outcome. | P0 |
+| SD-R041 | Provider webhook event reservation and side effects must commit atomically under a provider-scoped, path-safe identifier, and any supplied target ID must resolve to an existing SignalDesk target. | P0 |
+| SD-R042 | The primary desktop shell must expose only Today, Opportunities, Conversations, Activations, and Controls; advanced protected tools remain reachable from Controls. | P0 |
+| SD-R043 | Mobile must be able to activate an emergency pause with confirmation and audit, but cannot clear a pause or perform approval, export, send, provider, configuration, PII, schedule, spend, or policy mutations. | P0 |
+| SD-R044 | A normal SignalDesk member may read only their own membership document from the client; cross-member membership reads and lists are platform-admin only. | P0 |
+| SD-R045 | The SignalDesk app shell must use a product-light NextAuth session provider and must not import the MenuList store/tenant session bootstrap into its client bundle. | P0 |
+| SD-R046 | Fresh internal users must authenticate through a noindex SignalDesk-local credentials gateway that validates callback paths, then pass the normal active-member/platform-admin access check; it must not perform MenuList store onboarding or Firebase-claims bootstrap. | P0 |
+| SD-R047 | Export preparation and completed manual contact must remain separate states; only provider success or an idempotent, policy-gated manual confirmation may mark a target contacted. | P0 |
+| SD-R048 | Approval rejection must store a bounded reason and project a deterministic recovery or terminal action; `other` requires a bounded note. | P0 |
+| SD-R049 | Limited contactability does not authorize a form, phone, social, or messaging action. Manual completion is restricted to a fresh prepared email export or a permissioned-referral partner introduction. | P0 |
 
 ## Policy Decisions
 
@@ -234,6 +292,38 @@ target -> evidence -> draft -> approve -> send/export -> reply -> MenuList outco
 
 It should not attempt the full 38-spec machine.
 
+## Activation Opportunity Contract
+
+SignalDesk treats an `ActivationOpportunity` as the operating object. A business can be useful for research without being contactable.
+
+Hard gates run before any action is shown:
+
+1. canonical target and source provenance exist;
+2. the source-rights record is complete, current, and permits the requested field/use;
+3. suppression is clear;
+4. an allowed route exists;
+5. evidence is sufficient for the proposed action;
+6. there is a plausible owner-reviewed path to two distinct customer surfaces.
+
+The UI keeps evidence, truth-gap, reachability, activation feasibility, surface leverage, and learning value separate. It does not use a composite score as action authority.
+
+## Outcome Integrity Contract
+
+A `two_surface_activation` is valid only when it has:
+
+- an owner-qualified timestamp;
+- an owner-review timestamp;
+- two distinct surface identifiers;
+- an evidence reference;
+- an idempotency key;
+- `owner-reviewed-manual` or `menulist-signed` integrity.
+
+Legacy or incomplete summaries remain visible but cannot activate a watch, close an opportunity, or count as verified activation.
+
+The idempotency key is bound to the normalized target, outcome, timestamps, surfaces, evidence, and integrity fingerprint. Reusing the key with different facts is a conflict, not a duplicate success.
+
+Customer proof requires a separate, revocable proof-permission record. Every asset stores the exact public scopes it uses, and draft generation rechecks that the grant is still active and still contains every scope. Activation does not imply public proof permission.
+
 ## Open Questions
 
 | Question | Needed before |
@@ -255,4 +345,8 @@ It should not attempt the full 38-spec machine.
 - Every reply can be linked to a target/conversation.
 - Every real outcome can be attributed to source/channel/template.
 - Dashboards remain summary-based.
-- Mobile cannot send, approve, reveal raw PII, or configure providers.
+- Mobile can activate an audited emergency pause but cannot clear it, send, approve, export, reveal raw PII, configure/run providers, schedule, spend, or mutate policy.
+- Normal members cannot list or read another SignalDesk member's membership record from Firestore clients.
+- Later outcomes cannot erase a prior verified activation or downgrade a converted target.
+- SignalDesk hydration cannot depend on MenuList store, tenant, subscription, or Firebase-claims bootstrap state.
+- An authenticated account without active SignalDesk membership remains unauthorized even when credentials are valid.

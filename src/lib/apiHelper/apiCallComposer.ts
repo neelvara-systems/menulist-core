@@ -4,7 +4,9 @@ import { windowRef } from "@util/window";
 import { apiCallComposerClient } from "./apiCallComposerClient";
 import { apiCallComposerServer } from "./apiCallComposerServer";
 
-export const apiCallComposer = async (fn, ...args) => {
+type DalOperation<T> = () => Promise<T> | T;
+
+export const apiCallComposer = async <T>(fn: DalOperation<T>, ...args: unknown[]): Promise<T> => {
 
     if (windowRef()) {
         //this logic is writed due to dependancy or redux store in case of client

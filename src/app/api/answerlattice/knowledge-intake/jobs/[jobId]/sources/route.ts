@@ -16,22 +16,23 @@ import {
 } from '@lib/answerlattice/knowledgeIntakeApi';
 import { readOptionalBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { secureLog } from '@lib/security/secureLogger';
+import { ANSWERLATTICE_KNOWLEDGE_SOURCE_TYPE } from '@type/answerlattice';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { withAuth } from '@/middleware/auth';
 
 const SourceSchema = z.object({
-    type: z.string().trim().max(80).optional(),
+    type: z.enum(Object.values(ANSWERLATTICE_KNOWLEDGE_SOURCE_TYPE) as [string, ...string[]]).optional(),
     title: z.string().trim().max(180).optional(),
-    originUrl: z.string().trim().max(500).optional(),
+    originUrl: z.string().trim().max(500).url().refine(value => ['http:', 'https:'].includes(new URL(value).protocol)).optional(),
     fileName: z.string().trim().max(180).optional(),
     mimeType: z.string().trim().max(120).optional(),
     contentText: z.string().max(50_000).optional(),
     tags: z.array(z.string().trim().max(80)).max(20).optional(),
     contextKeys: z.array(z.string().trim().max(100)).max(20).optional(),
     entityIds: z.array(z.string().trim().max(160)).max(25).optional(),
-    metadata: z.record(z.any()).optional(),
-});
+    metadata: z.record(z.unknown()).refine(value => Object.keys(value).length <= 24).optional(),
+}).strict();
 const KNOWLEDGE_INTAKE_SOURCE_MAX_BODY_BYTES = 128 * 1024;
 
 export const POST = withAuth(async (request: NextRequest, session, params: { jobId: string }) => {
@@ -68,7 +69,7 @@ export const POST = withAuth(async (request: NextRequest, session, params: { job
             sourceId: source.id,
             sourceType: source.type,
         }));
-        return NextResponse.json({ source: serializeIntakeValue(source) });
+        return NextResponse.json({ source: serializeIntakeValue(source) }, { headers: { 'Cache-Control': 'private, no-store' } });
     } catch (error) {
         if (error instanceof z.ZodError) {
             return NextResponse.json({ error: 'Invalid source details.' }, { status: 400 });

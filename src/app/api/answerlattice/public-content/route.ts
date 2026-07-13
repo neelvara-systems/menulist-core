@@ -7,7 +7,10 @@ import {
     getCachedOlderChangelogPage,
     getCachedPublishedFaqs,
 } from '@lib/answerlattice/publicContentCache';
-import { normalizeAnswerlatticeKbArticleId } from '@lib/answerlattice/kbArticleIdBoundary';
+import {
+    ANSWERLATTICE_KB_ARTICLE_ID_MAX_LENGTH,
+    normalizeAnswerlatticeKbArticleId,
+} from '@lib/answerlattice/kbArticleIdBoundary';
 import { resolveAnswerlatticePublicContentScope } from '@lib/answerlattice/publicContentScope';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { NextRequest, NextResponse } from 'next/server';
@@ -16,10 +19,12 @@ import { withAuth } from '../../../../middleware/auth';
 
 const publicContentQuerySchema = z.object({
     type: z.enum(['faqs', 'categories', 'article', 'changelog']),
-    articleId: z.string().trim().max(160).refine((value) => normalizeAnswerlatticeKbArticleId(value) === value).optional(),
+    articleId: z.string().trim().max(ANSWERLATTICE_KB_ARTICLE_ID_MAX_LENGTH)
+        .refine((value) => normalizeAnswerlatticeKbArticleId(value) === value)
+        .optional(),
     beforePageNumber: z.coerce.number().int().positive().optional(),
     maxResults: z.coerce.number().int().positive().max(80).optional(),
-});
+}).strict();
 
 export const GET = withAuth(async (request: NextRequest, session) => {
     const parsed = publicContentQuerySchema.safeParse(Object.fromEntries(request.nextUrl.searchParams.entries()));

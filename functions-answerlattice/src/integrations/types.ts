@@ -50,12 +50,12 @@ export type EventStatus = typeof EVENT_STATUS[keyof typeof EVENT_STATUS];
 
 export interface IntegrationEvent {
     eventId?: string;
-    pId?: 'AL';
+    pId: 'AL';
     eventType: IntegrationEventType;
     tId: number;
     sId: number;
     severity: EventSeverity;
-    payload: Record<string, any>;
+    payload: Record<string, unknown>;
     status: EventStatus;
     createdAt: Timestamp;
     expiresAt?: Timestamp;
@@ -76,6 +76,7 @@ export type AdapterType = typeof ADAPTER_TYPES[keyof typeof ADAPTER_TYPES];
 
 export interface DeliveryResult {
     success: boolean;
+    retryable?: boolean;
     statusCode?: number;
     error?: string;
     durationMs: number;
@@ -83,7 +84,7 @@ export interface DeliveryResult {
 
 export interface DeliveryLogEntry {
     eventId: string;
-    pId?: 'AL';
+    pId: 'AL';
     tId: number;
     sId: number;
     adapter: AdapterType;
@@ -123,7 +124,7 @@ export interface IIntegrationAdapter {
         config: AdapterConfig,
     ): Promise<DeliveryResult>;
 
-    formatPayload(event: IntegrationEvent): any;
+    formatPayload(event: IntegrationEvent): Record<string, unknown>;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -163,9 +164,13 @@ export type AdapterConfig = SlackConfig | EmailConfig | LinearConfig | GithubCon
 export interface CircuitBreakerState {
     consecutiveFailures: number;
     disabledAt: Timestamp | null;
+    probeStartedAt: Timestamp | null;
 }
 
 export interface IntegrationConfig {
+    pId: 'AL';
+    tId: number;
+    sId: number;
     slack: SlackConfig;
     email: EmailConfig;
     linear: LinearConfig;
@@ -185,6 +190,7 @@ export const INTEGRATION_LIMITS = {
     MAX_EVENTS_PER_DAY_PER_ADAPTER: 50,
     CIRCUIT_BREAKER_THRESHOLD: 10,
     CIRCUIT_BREAKER_COOLDOWN_MS: 24 * 60 * 60 * 1000, // 24 hours
+    CIRCUIT_BREAKER_PROBE_LEASE_MS: 2 * 60 * 1000, // 2 minutes
     EVENT_TTL_DAYS: 90,
     DELIVERY_LOG_TTL_DAYS: 90,
     MAX_EMAIL_RECIPIENTS: 5,

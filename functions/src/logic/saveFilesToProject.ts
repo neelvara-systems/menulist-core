@@ -16,6 +16,7 @@ import { DB_COLLECTIONS } from '../constants/database';
 import { firestoreAdmin } from "../firebaseAdmin";
 import type { ExtractedBusinessProfile } from '../sharedData/extractedBusinessProfile';
 import { getSuggestionValue } from '../sharedData/extractedBusinessProfile';
+import { selectNewMenuExtractionProjectFiles } from '../sharedData/menuExtractionIntegrity';
 import { MENU_EXTRACTION_PROJECT_DOCUMENT_SIZE_LIMITS } from '../sharedData/menuExtractionProjectSize';
 import { ExtractedData, ExtractedDataItem, autoMergeItems } from "./redistributeUtils";
 
@@ -88,6 +89,9 @@ function getSaveFilesErrorContext(error: unknown): Record<string, string | numbe
  * Also handles default project format: {tId}-default-{sId}
  */
 function parseProjectId(projectId: string): { tId: string; sId: string } {
+    if (!/^[A-Za-z0-9_-]{3,160}$/.test(projectId)) {
+        throw new Error('Invalid projectId format.');
+    }
     const parts = projectId.split('-');
 
     if (parts.length < 3) {
@@ -97,6 +101,9 @@ function parseProjectId(projectId: string): { tId: string; sId: string } {
     // First part is tId, last part is sId
     const tId = parts[0];
     const sId = parts[parts.length - 1];
+    if (!tId || !sId) {
+        throw new Error('Invalid projectId scope.');
+    }
 
     return { tId, sId };
 }
@@ -300,9 +307,17 @@ export async function saveFilesToProject(
             if (!existingProject) {
                 throw new Error('Project not found.');
             }
-            const existingFiles: ProjectFileEntry[] = existingProject?.files || [];
-            const existingLanguages: string[] = existingProject?.languages || [];
+            if (existingProject.files !== undefined && !Array.isArray(existingProject.files)) {
+                throw new Error('Invalid project files data.');
+            }
+            if (existingProject.languages !== undefined && !Array.isArray(existingProject.languages)) {
+                throw new Error('Invalid project languages data.');
+            }
+            const existingFiles: ProjectFileEntry[] = existingProject.files || [];
+            const existingLanguages: string[] = existingProject.languages || [];
             const existingDefaultLanguage: string | undefined = existingProject?.defaultLanguage;
+            const jobFilesToAppend = selectNewMenuExtractionProjectFiles(existingFiles, jobFiles);
+            const jobFileUidsToAppend = new Set(jobFilesToAppend.map((file) => file.uid));
 
             logger.info('[saveFilesToProject] Existing project state', {
                 exists: !!existingProject,
@@ -326,7 +341,8 @@ export async function saveFilesToProject(
 
                 // Get all new items
                 const allNewItems: ExtractedDataItem[] = [];
-                redistributedData.forEach((data) => {
+                redistributedData.forEach((data, fileUid) => {
+                    if (!jobFileUidsToAppend.has(fileUid)) return;
                     if (data?.data?.items) {
                         allNewItems.push(...(data.data.items as ExtractedDataItem[]));
                     }
@@ -356,15 +372,15 @@ export async function saveFilesToProject(
             const extractedAtTimestamp = Timestamp.now();
 
             const startIndex = existingFiles.length;
-            const newFiles: ProjectFileEntry[] = jobFiles.map((file, idx) => {
+            const newFiles: ProjectFileEntry[] = jobFilesToAppend.map((file, idx) => {
                 const extractedData = redistributedData.get(file.uid) || null;
-
-                // Stamp each item with _extractedAt for 10.2 Learning Loop
-                if (extractedData?.data?.items) {
-                    for (const item of extractedData.data.items as any[]) {
-                        item._extractedAt = extractedAtTimestamp;
-                    }
-                }
+                const stampedData = extractedData?.data ? {
+                    ...extractedData.data,
+                    items: (extractedData.data.items || []).map((item) => ({
+                        ...item,
+                        _extractedAt: extractedAtTimestamp,
+                    })),
+                } : extractedData?.data;
 
                 return {
                     uid: file.uid,
@@ -381,7 +397,7 @@ export async function saveFilesToProject(
                         ...(extractedData.processingMessages?.length ? {
                             processingMessages: extractedData.processingMessages
                         } : {}),
-                        data: extractedData.data,
+                        data: stampedData,
                     } : null,
                     qualityScore: extractedData?.qualityScore,
                 };
@@ -436,6 +452,7 @@ export async function saveFilesToProject(
                 ...getBoundedSaveFilesStringContext('projectId', projectId),
                 totalFiles: updateData.files.length,
                 newFilesAdded: newFiles.length,
+                replayedFilesSkipped: jobFiles.length - newFiles.length,
                 existingFilesCount: existingFiles.length,
                 totalLanguages: mergedLanguages.length,
                 newLanguagesAdded: newLanguageCodes.length,

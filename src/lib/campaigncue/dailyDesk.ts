@@ -10,7 +10,18 @@ import {
     CAMPAIGNCUE_DAILY_DESK_RECIPES,
 } from "@constant/campaigncue/dailyDesk";
 import { buildCampaignCueDecisions, campaignCueRecipeById } from "@lib/campaigncue/decisionEngine";
+import {
+    buildCampaignCueCampaignRhythm,
+    buildCampaignCueExperimentSuggestion,
+    buildCampaignCuePresencePassport,
+    evaluateCampaignCueCommercialGate,
+    evaluateCampaignCuePackFreshness,
+    isCampaignCueDecisionSourceInput,
+    normalizeCampaignCueLanguagePolicy,
+    normalizeCampaignCueOperatingPulse,
+} from "@lib/campaigncue/operatingLoop";
 import type {
+    CampaignCueAIAssistancePlan,
     CampaignCueAnalyticsSummary,
     CampaignCueAsset,
     CampaignCueBusinessBrain,
@@ -28,6 +39,8 @@ import type {
     CampaignCueOutputPackCopyChannel,
     CampaignCueOutputPackFile,
     CampaignCueOutputPackStatus,
+    CampaignCuePackFreshness,
+    CampaignCuePackReadiness,
     CampaignCueSchedule,
     CampaignCueSourceFact,
     CampaignCueSourceInput,
@@ -111,7 +124,9 @@ function dailyDeskTargetForMissingFact(message: string): CampaignCueDailyDeskTas
 function dailyDeskTargetForDecisionInput(type: CampaignCueDailyDeskTask["inputType"]): CampaignCueDailyDeskTask["targetTab"] {
     if (!type) return "sources";
     if (type === "business_cta" || type === "booking_link" || type === "destination_url") return "details";
-    if (type === "location_detail" || type === "branch_location" || type === "local_visibility") return "visibility";
+    if (type === "location_detail" || type === "branch_location" || type === "local_visibility" || type === "review_destination") return "visibility";
+    if (type === "commercial_policy" || type === "capacity_or_stock") return "details";
+    if (type === "target_language") return "settings";
     if (type === "approved_asset" || type === "asset_rights" || type === "photo" || type === "logo") return "assets";
     if (type === "result_note") return "analytics";
     return "sources";
@@ -121,6 +136,9 @@ function dailyDeskKindForDecisionInput(type: CampaignCueDailyDeskTask["inputType
     if (type === "approved_asset" || type === "asset_rights" || type === "photo" || type === "logo") return "asset_rights";
     if (type === "location_detail" || type === "branch_location") return "location_variant";
     if (type === "local_visibility") return "local_visibility";
+    if (type === "commercial_policy") return "commercial_safety";
+    if (type === "capacity_or_stock") return "operating_pulse";
+    if (type === "review_destination") return "local_visibility";
     if (type === "business_cta" || type === "booking_link" || type === "destination_url") return "business_detail";
     if (type === "result_note") return "result_memory";
     return "source_input";
@@ -226,7 +244,10 @@ function buildLocalVisibilityCues(params: {
     const confirmedAssets = params.assets.filter((asset) => asset.status === "ready" && asset.rights.status === "confirmed");
     const activeLocations = params.locations.filter((location) => location.status === "active");
     const hasGoogleOutput = params.campaigns.some((campaign) => campaign.outputs.some((output) => output.channel === "google_local"));
-    const hasCurrentInput = params.sourceInputs.some((input) => input.status === "active");
+    const hasCurrentInput = params.sourceInputs.some((input) => isCampaignCueDecisionSourceInput(input));
+    const presencePassport = buildCampaignCuePresencePassport(params.businessBrain);
+    const readyPresenceCount = presencePassport.filter((profile) => profile.status === "ready").length;
+    const reviewDestination = presencePassport.find((profile) => profile.id === "presence_google_review");
     const expiredInputs = params.sourceInputs.filter((input) => {
         const value = input.expiresAt;
         if (!value) return false;
@@ -293,6 +314,28 @@ function buildLocalVisibilityCues(params: {
             targetTab: "assets",
             sourceReferences: confirmedAssets.slice(0, 3).map((asset) => asset.id),
         },
+        {
+            id: "visibility_presence_passport",
+            label: "Local presence passport",
+            detail: readyPresenceCount
+                ? `${readyPresenceCount} owner-managed destination${readyPresenceCount === 1 ? " is" : "s are"} saved for manual handoff.`
+                : "Add the owner-managed profiles customers use to find, contact, or review the business.",
+            actionLabel: "Review destinations",
+            status: readyPresenceCount ? "ready" : "missing",
+            targetTab: "visibility",
+            sourceReferences: presencePassport.filter((profile) => profile.destination).map((profile) => profile.id),
+        },
+        {
+            id: "visibility_review_destination",
+            label: "Review destination verified",
+            detail: reviewDestination?.destination
+                ? "A saved review destination can be used in the reputation pack after owner review."
+                : "Add the exact customer review destination before preparing a review request.",
+            actionLabel: reviewDestination?.destination ? "Review link" : "Add review link",
+            status: reviewDestination?.destination ? "ready" : "missing",
+            targetTab: "visibility",
+            sourceReferences: reviewDestination?.destination ? [reviewDestination.id] : [],
+        },
     ];
 }
 
@@ -302,6 +345,7 @@ function buildTrustSummary(params: {
     missingInputs: CampaignCueDailyDeskTask[];
     sourceFacts: CampaignCueSourceFact[];
     localVisibilityCues: CampaignCueLocalVisibilityCue[];
+    now?: Date;
 }): CampaignCueCampaignPackReview["trustSummary"] {
     const blockerCount = params.missingInputs.filter((task) => task.severity === "needs_fix").length;
     const warningCount = params.missingInputs.filter((task) => task.severity === "warning").length;
@@ -309,6 +353,11 @@ function buildTrustSummary(params: {
     const reviewFacts = params.sourceFacts.filter((fact) => fact.risk === "needs_review");
     const missingVisibility = params.localVisibilityCues.filter((cue) => cue.status === "missing");
     const hasBrandPlaybook = hasBrandPlaybookSignal(params.businessBrain);
+    const freshness = evaluateCampaignCuePackFreshness({
+        freshness: params.campaign.pack?.freshness,
+        now: params.now,
+    });
+    const commercialGate = params.campaign.pack?.commercialGate || { status: "ready" as const, findings: [] };
     return [
         {
             id: "pack_gate",
@@ -321,6 +370,26 @@ function buildTrustSummary(params: {
                 : params.campaign.trustGate === "warning"
                     ? "needs_review"
                     : "ready",
+        },
+        {
+            id: "pack_freshness",
+            label: "Current business truth",
+            detail: freshness.status === "current"
+                ? "Pack is inside its saved truth window. Facts are rechecked again before public-use actions."
+                : freshness.status === "expired"
+                    ? "The pack has expired. Confirm current facts and create a fresh pack."
+                    : freshness.status === "stale"
+                        ? "Business facts changed after this pack was created. Create a fresh pack before use."
+                        : "This older pack has no freshness receipt. Review current facts before use.",
+            status: freshness.status === "expired" || freshness.status === "stale" ? "blocked" : freshness.status === "current" ? "ready" : "needs_review",
+        },
+        {
+            id: "commercial_safety",
+            label: "Commercial safety",
+            detail: commercialGate.findings.length
+                ? commercialGate.findings[0]
+                : "Promotion, discount, stock, and capacity rules are clear for this pack.",
+            status: commercialGate.status === "blocked" ? "blocked" : commercialGate.status === "needs_review" ? "needs_review" : "ready",
         },
         {
             id: "protected_facts",
@@ -378,7 +447,8 @@ const slugifyPackPart = (value: string, fallback = "campaign") => (
 const displaySnakeValue = (value: string) => value.replace(/_/g, " ");
 
 const buildLanguageHandoffNote = (businessBrain: CampaignCueBusinessBrain, sourceFacts: CampaignCueSourceFact[]) => {
-    const preferredLocale = compactString(businessBrain.locale, "workspace default");
+    const languagePolicy = normalizeCampaignCueLanguagePolicy(businessBrain.languagePolicy, businessBrain.locale);
+    const preferredLocale = compactString(languagePolicy.sourceLocale, "workspace default");
     const protectedFacts = uniqueCompactStrings(
         sourceFacts
             .filter((fact) => fact.sourceType === "contact" || fact.sourceType === "offer" || fact.sourceType === "event" || fact.sourceType === "business_profile" || fact.sourceType === "menu_or_service")
@@ -387,6 +457,7 @@ const buildLanguageHandoffNote = (businessBrain: CampaignCueBusinessBrain, sourc
     );
     return [
         `Preferred language or locale: ${preferredLocale}`,
+        `Requested local-language variants: ${languagePolicy.targetLocales.length ? languagePolicy.targetLocales.join(", ") : "None saved"}`,
         "",
         "Local-language variants are a handoff item in this export/download runtime. CampaignCue does not auto-translate this pack yet.",
         "If the owner, staff, or agency translates the copy manually, keep protected facts unchanged: business name, prices, dates, phone, WhatsApp number, address, links, service or item names, offer terms, and CTA destination.",
@@ -435,12 +506,140 @@ const outputPackStatusFromTrust = (
     return status;
 };
 
-const outputPackStatusFromCampaign = (campaign: CampaignCueCampaign, missingInputs: CampaignCueDailyDeskTask[]): CampaignCueOutputPackStatus => {
+const outputPackStatusFromCampaign = (
+    campaign: CampaignCueCampaign,
+    missingInputs: CampaignCueDailyDeskTask[],
+    freshnessStatus?: CampaignCuePackFreshness["status"],
+): CampaignCueOutputPackStatus => {
     if (campaign.trustGate === "blocked" || campaign.trustGate === "needs_fix") return "blocked";
+    const effectiveFreshnessStatus = freshnessStatus || campaign.pack?.freshness?.status;
+    if (effectiveFreshnessStatus === "stale" || effectiveFreshnessStatus === "expired") return "blocked";
     if (missingInputs.some((input) => input.severity === "needs_fix")) return "needs_input";
     if (campaign.trustGate === "warning" || missingInputs.some((input) => input.severity === "warning")) return "needs_review";
     return "ready";
 };
+
+const readinessPoints = (status: CampaignCueOutputPackStatus): 0 | 10 | 20 => (
+    status === "ready" ? 20 : status === "needs_review" ? 10 : 0
+);
+
+export function buildCampaignCuePackReadiness(params: {
+    campaign: CampaignCueCampaign;
+    deliveryCards: CampaignCueManualDeliveryCard[];
+    missingInputs: CampaignCueDailyDeskTask[];
+    trustSummary: CampaignCueCampaignPackReview["trustSummary"];
+    workspace: CampaignCueWorkspace;
+    now?: Date;
+}): CampaignCuePackReadiness {
+    const requiredInputs = params.missingInputs.filter((input) => input.severity === "needs_fix");
+    const reviewInputs = params.missingInputs.filter((input) => input.severity === "warning");
+    const blockedTrust = params.trustSummary.filter((item) => item.status === "blocked");
+    const reviewTrust = params.trustSummary.filter((item) => item.status === "needs_review");
+    const freshness = evaluateCampaignCuePackFreshness({
+        freshness: params.campaign.pack?.freshness,
+        now: params.now,
+    });
+    const approvalRequired = params.workspace.agencyMode
+        || params.campaign.ownerApprovalState !== "not_requested";
+    const factsStatus: CampaignCueOutputPackStatus = requiredInputs.length
+        ? "needs_input"
+        : reviewInputs.length ? "needs_review" : "ready";
+    const trustStatus: CampaignCueOutputPackStatus = blockedTrust.length
+        ? "blocked"
+        : reviewTrust.length ? "needs_review" : "ready";
+    const freshnessStatus: CampaignCueOutputPackStatus = freshness.status === "stale" || freshness.status === "expired"
+        ? "blocked"
+        : freshness.status === "unknown" ? "needs_review" : "ready";
+    const approvalStatus: CampaignCueOutputPackStatus = !approvalRequired
+        ? "ready"
+        : params.campaign.ownerApprovalState === "approved" ? "ready" : "blocked";
+    const deliveryStatus: CampaignCueOutputPackStatus = !params.deliveryCards.length
+        ? "needs_input"
+        : params.deliveryCards.some((card) => card.status === "blocked")
+            ? "blocked"
+            : params.deliveryCards.some((card) => card.status === "needs_review")
+                ? "needs_review"
+                : "ready";
+    const checks: CampaignCuePackReadiness["checks"] = [
+        {
+            id: "facts",
+            label: "Required facts",
+            detail: requiredInputs.length
+                ? `${requiredInputs.length} required detail${requiredInputs.length === 1 ? " is" : "s are"} missing.`
+                : reviewInputs.length
+                    ? `${reviewInputs.length} detail${reviewInputs.length === 1 ? " needs" : "s need"} review.`
+                    : "Required campaign details are present.",
+            status: factsStatus,
+            points: readinessPoints(factsStatus),
+        },
+        {
+            id: "trust",
+            label: "Trust checks",
+            detail: blockedTrust[0]?.detail || reviewTrust[0]?.detail || "No blocked trust finding is present.",
+            status: trustStatus,
+            points: readinessPoints(trustStatus),
+        },
+        {
+            id: "freshness",
+            label: "Current business truth",
+            detail: freshness.status === "current"
+                ? "The pack is inside its saved truth window."
+                : freshness.status === "unknown"
+                    ? "This pack needs a current-truth review."
+                    : `The pack is ${freshness.status}; rebuild it before use.`,
+            status: freshnessStatus,
+            points: readinessPoints(freshnessStatus),
+        },
+        {
+            id: "approval",
+            label: "Owner approval",
+            detail: !approvalRequired
+                ? "No approval gate is active for this pack."
+                : params.campaign.ownerApprovalState === "approved"
+                    ? "The pack is approved."
+                    : params.campaign.ownerApprovalState === "rejected"
+                        ? "The pack was rejected and cannot be used."
+                        : params.campaign.ownerApprovalState === "requested"
+                            ? "Approval is waiting."
+                            : "Approval is required before use.",
+            status: approvalStatus,
+            points: readinessPoints(approvalStatus),
+        },
+        {
+            id: "delivery",
+            label: "Manual handoff",
+            detail: !params.deliveryCards.length
+                ? "Create channel handoff fields before use."
+                : deliveryStatus === "ready"
+                    ? "Required manual handoff fields are ready."
+                    : "One or more handoff fields need review.",
+            status: deliveryStatus,
+            points: readinessPoints(deliveryStatus),
+        },
+    ];
+    const status: CampaignCueOutputPackStatus = checks.some((check) => check.status === "blocked")
+        ? "blocked"
+        : checks.some((check) => check.status === "needs_input")
+            ? "needs_input"
+            : checks.some((check) => check.status === "needs_review")
+                ? "needs_review"
+                : "ready";
+    const score = checks.reduce((total, check) => total + check.points, 0);
+    return {
+        label: "Pack readiness",
+        score,
+        status,
+        summary: status === "ready"
+            ? "Facts, trust, freshness, approval, and manual handoff are ready."
+            : status === "blocked"
+                ? "Resolve the blocked check before manual use."
+                : status === "needs_input"
+                    ? "Add the required detail before manual use."
+                    : "Review the flagged checks before manual use.",
+        checks,
+        predictionBoundary: "readiness_only_no_engagement_prediction",
+    };
+}
 
 const outputPackChannelFolder = (channel: CampaignCueOutputPackCopyChannel) => {
     if (channel === "google_local") return "google-business-profile";
@@ -496,22 +695,211 @@ const outputPackBlocksForCard = (card: CampaignCueManualDeliveryCard): CampaignC
     }))
 );
 
+function aiAssistanceStatusFromTask(task?: CampaignCueDailyDeskTask): CampaignCueOutputPackStatus {
+    if (!task) return "ready";
+    if (task.severity === "needs_fix") return "needs_input";
+    if (task.severity === "warning") return "needs_review";
+    if (task.severity === "ready") return "ready";
+    return "needs_review";
+}
+
+function buildCampaignCueAIAssistancePlan(params: {
+    assets: CampaignCueAsset[];
+    businessBrain: CampaignCueBusinessBrain;
+    campaign?: CampaignCueCampaign;
+    decision?: CampaignCueCampaignPackReview["decision"];
+    missingInputs: CampaignCueDailyDeskTask[];
+    recipe: CampaignCueDailyDesk["recipe"];
+    readyPack?: CampaignCueDailyDesk["readyPack"];
+    sourceFacts: CampaignCueSourceFact[];
+    sourceInputs: CampaignCueSourceInput[];
+    trustSummary?: CampaignCueCampaignPackReview["trustSummary"];
+}): CampaignCueAIAssistancePlan {
+    const activeInputs = params.sourceInputs.filter((input) => isCampaignCueDecisionSourceInput(input));
+    const reviewInputs = params.sourceInputs.filter((input) => input.status === "needs_review");
+    const confirmedAssets = params.assets.filter((asset) => asset.status === "ready" && asset.rights.status === "confirmed");
+    const reviewAssets = params.assets.filter((asset) => asset.rights.status === "needs_review");
+    const primaryMissingInput = params.missingInputs.find((task) => task.severity === "needs_fix")
+        || params.missingInputs.find((task) => task.severity === "warning")
+        || params.missingInputs[0];
+    const trustItems = params.trustSummary || [];
+    const blockedTrust = trustItems.filter((item) => item.status === "blocked");
+    const reviewTrust = trustItems.filter((item) => item.status === "needs_review");
+    const sourceReferences = uniqueCompactStrings([
+        params.businessBrain.sourceSnapshotId || "current",
+        ...activeInputs.slice(0, 4).map((input) => input.id),
+        ...params.sourceFacts.slice(0, 4).map((fact) => fact.id),
+    ], 8);
+    const providerDisabledGuardrail = "No provider call runs in this runtime; AI candidates stay review-only until the provider flag is explicitly enabled.";
+    const protectedFactGuardrail = "Prices, dates, contacts, locations, claims, and destinations come only from confirmed business facts.";
+    const approvalGuardrail = "Owner approval is required before a generated suggestion changes a campaign, editor document, or export pack.";
+    const items: CampaignCueAIAssistancePlan["items"] = [
+        {
+            id: "ai_source_intake",
+            stage: "source_intake",
+            label: "Turn rough inputs into usable facts",
+            ownerValue: "Owner notes, old posters, website text, and uploaded details become a short checklist of confirmed facts and missing details.",
+            currentInput: activeInputs.length
+                ? `${activeInputs.length} current input${activeInputs.length === 1 ? "" : "s"} available.`
+                : reviewInputs.length
+                    ? `${reviewInputs.length} input${reviewInputs.length === 1 ? "" : "s"} need review.`
+                    : "No current campaign input is available.",
+            suggestedAction: activeInputs.length ? "Use the current inputs for the next safe pack." : "Add one current offer, event, item, slot, or owner note.",
+            targetTab: "sources",
+            status: activeInputs.length ? "ready" : reviewInputs.length ? "needs_review" : "needs_input",
+            authority: "deterministic",
+            providerCallAllowed: false,
+            costTier: "none",
+            sourceReferences,
+            guardrails: [providerDisabledGuardrail, protectedFactGuardrail],
+        },
+        {
+            id: "ai_missing_input",
+            stage: "missing_input",
+            label: "Ask only the next missing detail",
+            ownerValue: "Instead of asking for a prompt, CampaignCue asks the smallest fact needed to unlock the campaign pack.",
+            currentInput: primaryMissingInput?.detail || "No required input is waiting.",
+            suggestedAction: primaryMissingInput?.actionLabel || "Continue with the current pack.",
+            targetTab: primaryMissingInput?.targetTab || "campaigns",
+            status: aiAssistanceStatusFromTask(primaryMissingInput),
+            authority: "deterministic",
+            providerCallAllowed: false,
+            costTier: "none",
+            sourceReferences: primaryMissingInput?.sourceReferences || sourceReferences,
+            guardrails: [protectedFactGuardrail, "The missing-input gate blocks final pack creation when required facts are absent."],
+        },
+        {
+            id: "ai_pack_drafting",
+            stage: "pack_drafting",
+            label: "Draft the pack from approved facts",
+            ownerValue: "AI can later help phrase WhatsApp, Google, Instagram, staff, and print handoff copy from the same checked facts.",
+            currentInput: params.campaign
+                ? `${params.campaign.outputs.length} output${params.campaign.outputs.length === 1 ? "" : "s"} are in the latest pack.`
+                : "No generated pack is available yet.",
+            suggestedAction: params.campaign ? "Review the generated pack and export manually." : "Create the recommended pack after required inputs are ready.",
+            targetTab: params.campaign ? "campaigns" : "cues",
+            status: params.campaign ? (params.readyPack ? "ready" : "needs_review") : "needs_input",
+            authority: "model_candidate_only",
+            providerCallAllowed: false,
+            costTier: "none",
+            sourceReferences: params.campaign ? [params.campaign.id] : sourceReferences,
+            guardrails: [providerDisabledGuardrail, approvalGuardrail, "The decision engine, not the model, chooses the campaign recipe."],
+        },
+        {
+            id: "ai_trust_explainer",
+            stage: "trust_explainer",
+            label: "Explain what is safe, risky, or blocked",
+            ownerValue: "Trust findings become plain owner language so the business knows whether it can use the pack today.",
+            currentInput: blockedTrust.length
+                ? `${blockedTrust.length} blocked check${blockedTrust.length === 1 ? "" : "s"} found.`
+                : reviewTrust.length
+                    ? `${reviewTrust.length} check${reviewTrust.length === 1 ? "" : "s"} need review.`
+                    : "No blocked trust check is present.",
+            suggestedAction: blockedTrust[0]?.detail || reviewTrust[0]?.detail || "Keep the checked facts with the pack.",
+            targetTab: "trust",
+            status: blockedTrust.length ? "blocked" : reviewTrust.length ? "needs_review" : "ready",
+            authority: "deterministic",
+            providerCallAllowed: false,
+            costTier: "none",
+            sourceReferences: trustItems.slice(0, 6).map((item) => item.id),
+            guardrails: [protectedFactGuardrail, "Trust findings are computed from CampaignCue checks and are not model verdicts."],
+        },
+        {
+            id: "ai_result_interpreter",
+            stage: "result_interpreter",
+            label: "Learn from what happened",
+            ownerValue: "A short owner result can later improve recommendations without connecting social accounts or reading customer conversations.",
+            currentInput: params.recipe.resultQuestion,
+            suggestedAction: params.campaign ? "Record the result after using this pack." : "Create and use a pack before recording a result.",
+            targetTab: "analytics",
+            status: params.campaign ? "ready" : "needs_input",
+            authority: "deterministic",
+            providerCallAllowed: false,
+            costTier: "none",
+            sourceReferences: params.campaign ? [params.campaign.id] : [],
+            guardrails: [providerDisabledGuardrail, "Do not paste customer contact lists, private chats, or unsupported evidence."],
+        },
+        {
+            id: "ai_photo_coach",
+            stage: "photo_coach",
+            label: "Guide the next useful photo",
+            ownerValue: "CampaignCue points the owner toward real photos and old assets before generic visuals.",
+            currentInput: confirmedAssets.length
+                ? `${confirmedAssets.length} approved asset${confirmedAssets.length === 1 ? "" : "s"} can be reused.`
+                : reviewAssets.length
+                    ? `${reviewAssets.length} asset${reviewAssets.length === 1 ? "" : "s"} need rights review.`
+                    : "No approved campaign photo is available.",
+            suggestedAction: confirmedAssets.length ? "Reuse the approved photo in the pack." : (params.recipe.photoTasks[0] || "Add one clear business photo and confirm rights."),
+            targetTab: "assets",
+            status: confirmedAssets.length ? "ready" : reviewAssets.length ? "needs_review" : "needs_input",
+            authority: "deterministic",
+            providerCallAllowed: false,
+            costTier: "none",
+            sourceReferences: [...confirmedAssets, ...reviewAssets].slice(0, 4).map((asset) => asset.id),
+            guardrails: ["Real business photos and confirmed rights come before generic image generation.", providerDisabledGuardrail],
+        },
+    ];
+    const planStatus: CampaignCueOutputPackStatus = items.some((item) => item.status === "blocked")
+        ? "blocked"
+        : items.some((item) => item.status === "needs_input")
+            ? "needs_input"
+            : items.some((item) => item.status === "needs_review")
+                ? "needs_review"
+                : "ready";
+    const nextItem = items.find((item) => item.status === "blocked")
+        || items.find((item) => item.status === "needs_input")
+        || items.find((item) => item.status === "needs_review")
+        || items[0];
+    return {
+        status: planStatus,
+        items,
+        nextBestAction: {
+            label: nextItem.label,
+            targetTab: nextItem.targetTab,
+            detail: nextItem.suggestedAction,
+        },
+        costPolicy: {
+            firestoreReads: 0,
+            firestoreWrites: 0,
+            firestoreDeletes: 0,
+            storageWrites: 0,
+            providerCalls: 0,
+            summary: "Built from the already-loaded CampaignCue overview, Daily Desk, output pack, trust summary, and asset metadata. It adds no Firebase read, write, delete, Storage artifact, or provider call.",
+        },
+        providerPolicy: {
+            modelDecidesCampaign: false,
+            modelMutatesFacts: false,
+            ownerApprovalRequired: true,
+            summary: "AI is treated as a candidate helper for wording, interpretation, and coaching only. Facts, campaign decisions, safety gates, patches, exports, and result memory remain deterministic and owner-approved.",
+        },
+    };
+}
+
 function buildCampaignCueOutputPack(params: {
     assets: CampaignCueAsset[];
     businessBrain: CampaignCueBusinessBrain;
     campaign: CampaignCueCampaign;
+    campaigns: CampaignCueCampaign[];
     deliveryCards: CampaignCueManualDeliveryCard[];
     decision?: CampaignCueCampaignPackReview["decision"];
     localVisibilityCues: CampaignCueLocalVisibilityCue[];
     missingInputs: CampaignCueDailyDeskTask[];
     readyPack?: CampaignCueDailyDesk["readyPack"];
     recipe: CampaignCueDailyDesk["recipe"];
+    rhythm: CampaignCueDailyDesk["rhythm"];
     sourceFacts: CampaignCueSourceFact[];
+    sourceInputs: CampaignCueSourceInput[];
     trustSummary: CampaignCueCampaignPackReview["trustSummary"];
+    workspace: CampaignCueWorkspace;
+    now?: Date;
 }): CampaignCueOutputPack {
     const slug = slugifyPackPart(params.campaign.title);
     const decision = params.decision;
-    const packStatus = outputPackStatusFromCampaign(params.campaign, params.missingInputs);
+    const freshness = evaluateCampaignCuePackFreshness({
+        freshness: params.campaign.pack?.freshness,
+        now: params.now,
+    });
+    const packStatus = outputPackStatusFromCampaign(params.campaign, params.missingInputs, freshness.status);
     const allBlocks = params.deliveryCards.flatMap((card) => outputPackBlocksForCard(card));
     const blocksFor = (channel: CampaignCueOutputPackCopyChannel) => allBlocks.filter((block) => block.channel === channel);
     const destination = params.businessBrain.contacts.bookingUrl
@@ -525,6 +913,33 @@ function buildCampaignCueOutputPack(params: {
     const trustReady = params.trustSummary.filter((item) => item.status === "ready").map((item) => `${item.label}: ${item.detail}`);
     const trustWarnings = params.trustSummary.filter((item) => item.status === "needs_review").map((item) => `${item.label}: ${item.detail}`);
     const trustBlocked = params.trustSummary.filter((item) => item.status === "blocked").map((item) => `${item.label}: ${item.detail}`);
+    const readiness = buildCampaignCuePackReadiness({
+        campaign: params.campaign,
+        deliveryCards: params.deliveryCards,
+        missingInputs: params.missingInputs,
+        trustSummary: params.trustSummary,
+        workspace: params.workspace,
+        now: params.now,
+    });
+    const commercialEvaluation = evaluateCampaignCueCommercialGate({
+        businessBrain: params.businessBrain,
+        recipe: params.recipe,
+        sourceInputs: params.sourceInputs,
+    });
+    const commercialSafety = {
+        status: commercialEvaluation.status,
+        findings: commercialEvaluation.findings,
+    };
+    const languagePolicy = normalizeCampaignCueLanguagePolicy(params.businessBrain.languagePolicy, params.businessBrain.locale);
+    const presenceProfiles = buildCampaignCuePresencePassport(params.businessBrain);
+    const readyPresenceCount = presenceProfiles.filter((profile) => profile.status === "ready").length;
+    const operatingPulse = normalizeCampaignCueOperatingPulse(params.businessBrain.operatingPulse);
+    const learning = params.campaign.pack?.experiment || buildCampaignCueExperimentSuggestion({
+        assets: params.assets,
+        businessBrain: params.businessBrain,
+        campaigns: params.campaigns,
+        recipe: params.recipe,
+    });
     const missingInputs = params.missingInputs.map((input) => {
         const matchingDecisionInput = decision?.missingInputs.find((item) => item.type === input.inputType);
         return {
@@ -728,6 +1143,43 @@ function buildCampaignCueOutputPack(params: {
         "",
         ...proofDeckSections.map((block) => `## ${block.label}\n${block.value}`),
     ].join("\n\n");
+    const aiAssistance = buildCampaignCueAIAssistancePlan({
+        assets: params.assets,
+        businessBrain: params.businessBrain,
+        campaign: params.campaign,
+        decision,
+        missingInputs: params.missingInputs,
+        readyPack: params.readyPack,
+        recipe: params.recipe,
+        sourceFacts: params.sourceFacts,
+        sourceInputs: params.sourceInputs,
+        trustSummary: params.trustSummary,
+    });
+    const aiAssistanceContent = [
+        "# CampaignCue assistant work plan",
+        "",
+        "This plan shows where AI can reduce owner work without becoming the campaign authority.",
+        "",
+        `Overall status: ${aiAssistance.status}`,
+        `Next action: ${aiAssistance.nextBestAction.label} - ${aiAssistance.nextBestAction.detail}`,
+        "",
+        "## Cost and provider policy",
+        aiAssistance.costPolicy.summary,
+        aiAssistance.providerPolicy.summary,
+        "",
+        "## Work items",
+        ...aiAssistance.items.map((item) => [
+            `### ${item.label}`,
+            `Stage: ${item.stage}`,
+            `Status: ${item.status}`,
+            `Current input: ${item.currentInput}`,
+            `Suggested action: ${item.suggestedAction}`,
+            `Authority: ${item.authority}`,
+            `Provider call allowed: ${item.providerCallAllowed ? "yes" : "no"}`,
+            `Cost tier: ${item.costTier}`,
+            `Guardrails: ${item.guardrails.join(" | ")}`,
+        ].join("\n")),
+    ].join("\n\n");
     const copy = {
         whatsapp: blocksFor("whatsapp"),
         googleBusinessProfile: blocksFor("google_local"),
@@ -787,6 +1239,41 @@ function buildCampaignCueOutputPack(params: {
             path: "missing-inputs/missing-input-checklist.txt",
             status: missingInputs.some((input) => input.required) ? "needs_input" : "ready",
         }),
+        outputPackFile({
+            content: [
+                `Business state: ${operatingPulse.businessState}`,
+                `Capacity: ${operatingPulse.capacityStatus}`,
+                `Stock: ${operatingPulse.stockStatus}`,
+                operatingPulse.localMoment ? `Local moment: ${operatingPulse.localMoment}` : "Local moment: Not set",
+                operatingPulse.note ? `Owner note: ${operatingPulse.note}` : "Owner note: Not set",
+                `Commercial status: ${commercialSafety.status}`,
+                ...(commercialSafety.findings.length ? commercialSafety.findings.map((finding) => `- ${finding}`) : ["- No commercial blocker recorded."]),
+            ].join("\n"),
+            label: "Operating and commercial check",
+            path: "trust/operating-and-commercial-check.txt",
+            status: commercialSafety.status === "blocked" ? "blocked" : commercialSafety.status === "needs_review" ? "needs_review" : "ready",
+        }),
+        outputPackFile({
+            content: [
+                "# Local presence passport",
+                "",
+                ...presenceProfiles.map((profile) => `- ${profile.label}: ${profile.destination || "Needs owner input"}. ${profile.manualAction}.`),
+            ].join("\n"),
+            fileType: "markdown",
+            label: "Local presence passport",
+            path: "instructions/local-presence-passport.md",
+            status: readyPresenceCount ? "needs_review" : "needs_input",
+        }),
+        outputPackFile({
+            content: [
+                `Change one variable: ${learning.variable}`,
+                learning.instruction,
+                `Reason: ${learning.reason}`,
+            ].join("\n"),
+            label: "Next campaign test",
+            path: "result/next-one-variable-test.txt",
+            status: "ready",
+        }),
         ...channelFiles,
         outputPackFile({
             content: printContent,
@@ -822,6 +1309,23 @@ function buildCampaignCueOutputPack(params: {
         }),
         outputPackFile({
             content: [
+                "# Pack readiness",
+                "",
+                `Score: ${readiness.score}/100`,
+                `Status: ${readiness.status}`,
+                readiness.summary,
+                "",
+                ...readiness.checks.map((check) => `- ${check.label}: ${check.points}/20, ${check.status}. ${check.detail}`),
+                "",
+                "This score measures facts, trust, freshness, approval, and manual handoff completeness. It does not predict engagement, reach, or performance.",
+            ].join("\n"),
+            fileType: "markdown",
+            label: "Pack readiness",
+            path: "trust/pack-readiness.md",
+            status: readiness.status,
+        }),
+        outputPackFile({
+            content: [
                 "# Use this campaign",
                 "",
                 ...instructionBlocks.map((block) => `## ${block.label}\n${block.value}`),
@@ -833,6 +1337,34 @@ function buildCampaignCueOutputPack(params: {
             label: "Use this campaign",
             path: "instructions/use-this-campaign.md",
             status: "ready",
+        }),
+        outputPackFile({
+            content: aiAssistanceContent,
+            fileType: "markdown",
+            label: "Assistant work plan",
+            path: "instructions/assistant-work-plan.md",
+            status: aiAssistance.status,
+        }),
+        outputPackFile({
+            content: [
+                "# Campaign rhythm",
+                "",
+                `Next action: ${params.rhythm.title}`,
+                params.rhythm.detail,
+                `Manual use: ${params.rhythm.suggestedUse}`,
+                `Follow-up: ${params.rhythm.followUp}`,
+                `Due tasks: ${params.rhythm.dueTaskCount}`,
+                `Scheduled tasks: ${params.rhythm.scheduledTaskCount}`,
+                params.rhythm.reuseCandidate
+                    ? `Safe reuse candidate: ${params.rhythm.reuseCandidate.title}. Rebuild from current truth.`
+                    : "Safe reuse candidate: None.",
+                "",
+                "CampaignCue does not post automatically or predict a perfect posting time.",
+            ].join("\n"),
+            fileType: "markdown",
+            label: "Campaign rhythm",
+            path: "instructions/campaign-rhythm.md",
+            status: params.rhythm.status === "approval_due" ? "blocked" : params.rhythm.status === "result_due" || params.rhythm.status === "task_due" ? "needs_review" : "ready",
         }),
         outputPackFile({
             content: [
@@ -872,6 +1404,9 @@ function buildCampaignCueOutputPack(params: {
         status: "ready",
     });
     const filesWithManifest = [...files, bundleManifest];
+    const staffSteps = params.readyPack?.manualSteps.length
+        ? params.readyPack.manualSteps
+        : params.recipe.manualDeliveryTasks;
     return {
         packId: `${params.campaign.id}_output_pack`,
         campaignId: params.campaign.id,
@@ -883,7 +1418,7 @@ function buildCampaignCueOutputPack(params: {
             whyThis: decision?.explanation.whyThis.length ? decision.explanation.whyThis : [params.recipe.plainAction],
             whyNow: decision?.explanation.whyNow.length ? decision.explanation.whyNow : [params.recipe.whenToUse],
             confidence: decision?.confidence === "high" ? "ready" : decision?.confidence === "medium" ? "needs_review" : "blocked",
-            riskState: packStatus,
+            riskState: readiness.status,
         },
         facts: {
             usedFactRefs: uniqueCompactStrings([
@@ -909,12 +1444,32 @@ function buildCampaignCueOutputPack(params: {
             manualSteps: card.instructions,
             status: outputPackStatusFromTrust(card.status),
         })),
+        readiness,
         trustReport: {
             status: trustBlocked.length ? "blocked" : trustWarnings.length ? "needs_review" : "ready",
             checked: trustReady,
             warnings: trustWarnings,
             blockedReasons: trustBlocked,
         },
+        freshness,
+        commercialSafety,
+        language: {
+            ...languagePolicy,
+            manualNote: languagePolicy.targetLocales.length
+                ? "Review names, prices, dates, links, and offer terms in every translated version before use."
+                : "The source-language copy remains the checked version. Add target languages only when a person can review protected facts before use.",
+        },
+        presencePassport: {
+            status: readyPresenceCount > 0
+                ? readyPresenceCount === presenceProfiles.length ? "ready" : "needs_review"
+                : "needs_input",
+            profiles: presenceProfiles,
+        },
+        staffExecution: {
+            steps: staffSteps,
+            completionPrompt: params.recipe.resultQuestion,
+        },
+        learning,
         reuse: {
             assetLibraryRefs: confirmedAssetRefs,
             cueLayersSourcePackageRefs: [],
@@ -922,6 +1477,9 @@ function buildCampaignCueOutputPack(params: {
             notes: [
                 "Reuse this pack later by opening the saved campaign output in the shared editor.",
                 "Use CueLayers for uploaded flat posters only when safe editable approximation is needed.",
+                params.campaign.pack?.reusedFromCampaignId
+                    ? `This pack was rebuilt from ${params.campaign.pack.reusedFromCampaignId} using current checked truth; old output, approval, and result memory were not copied.`
+                    : "Use Reuse safely only after a useful owner-reported result; CampaignCue rebuilds current truth instead of copying old output.",
             ],
         },
         miniPage: {
@@ -940,14 +1498,16 @@ function buildCampaignCueOutputPack(params: {
             manualNote: "This runtime prepares a proof deck brief only. Review it with the owner or client before exporting final visuals, scripts, or handoff files.",
         },
         calendar: {
-            suggestedUse: "Use at the next useful business moment from the recipe.",
-            followUp: "Check the result after the owner posts, sends, prints, or shares manually.",
+            suggestedUse: params.rhythm.suggestedUse,
+            followUp: params.rhythm.followUp,
             resultReminder: params.recipe.resultQuestion,
         },
+        rhythm: params.rhythm,
         resultMemory: {
             question: params.recipe.resultQuestion,
             options: params.recipe.resultOptions.slice(0, CAMPAIGNCUE_DAILY_DESK_MAX_RESULT_OPTIONS),
         },
+        aiAssistance,
         nextActions: params.missingInputs.slice(0, 4),
         downloadBundle: {
             rootFolder: `${slug}-campaign-pack`,
@@ -967,6 +1527,7 @@ export function buildCampaignCueDailyDesk(params: {
     sourceFacts?: CampaignCueSourceFact[];
     sourceInputs: CampaignCueSourceInput[];
     workspace: CampaignCueWorkspace;
+    now?: Date;
 }): CampaignCueDailyDesk {
     const sourceFacts = params.sourceFacts || [];
     const candidateDecisions = buildCampaignCueDecisions({
@@ -983,12 +1544,19 @@ export function buildCampaignCueDailyDesk(params: {
     });
     const decision = candidateDecisions[0];
     const recipe = decision ? campaignCueRecipeById(decision.recipeId) : dailyDeskRecipeForBusiness(params.businessBrain.businessType);
+    const latestCampaign = params.campaigns[0];
+    const packRecipe = latestCampaign?.pack?.recipeId
+        ? campaignCueRecipeById(latestCampaign.pack.recipeId)
+        : recipe;
+    const packDecision = latestCampaign?.pack?.decision
+        || (decision?.recipeId === packRecipe.id ? decision : undefined);
+    const taskRecipe = latestCampaign ? packRecipe : recipe;
     const primaryOpportunity = params.opportunities.find((opportunity) => opportunity.id === decision?.opportunityId) || params.opportunities[0];
     const sourceRefs = [
         params.businessBrain.sourceSnapshotId || "current",
         ...params.sourceInputs.slice(0, 4).map((input) => input.id),
     ];
-    const activeInputs = params.sourceInputs.filter((input) => input.status === "active");
+    const activeInputs = params.sourceInputs.filter((input) => isCampaignCueDecisionSourceInput(input));
     const needsReviewInputs = params.sourceInputs.filter((input) => input.status === "needs_review");
     const hasPriceDateOrAvailability = activeInputs.some((input) => {
         const text = `${input.label} ${input.value}`.toLowerCase();
@@ -1000,7 +1568,6 @@ export function buildCampaignCueDailyDesk(params: {
     const confirmedAssets = params.assets.filter((asset) => asset.status === "ready" && asset.rights.status === "confirmed");
     const reviewAssets = params.assets.filter((asset) => asset.rights.status === "needs_review");
     const restrictedAssets = params.assets.filter((asset) => asset.status === "blocked" || asset.rights.status === "restricted");
-    const latestCampaign = params.campaigns[0];
     const missingInputs: CampaignCueDailyDeskTask[] = [];
 
     buildMissingDailyDeskFacts(params.businessBrain).forEach((message, index) => {
@@ -1079,27 +1646,45 @@ export function buildCampaignCueDailyDesk(params: {
         }));
     }
 
-    decision?.missingInputs.forEach((input, index) => {
-        if (missingInputs.some((task) => task.inputType === input.type)) return;
-        const targetTab = dailyDeskTargetForDecisionInput(input.type);
-        missingInputs.push(buildDailyDeskTask({
-            id: `decision_missing_${index}_${input.type}`,
-            kind: dailyDeskKindForDecisionInput(input.type),
-            label: input.required ? "Confirm required detail" : "Review optional detail",
-            detail: input.ownerQuestion,
-            actionLabel: input.required ? "Confirm detail" : "Review detail",
-            targetTab,
-            severity: input.required ? "needs_fix" : "warning",
-            inputType: input.type,
-            ownerGoal: recipe.ownerGoal,
-            sourceReferences: [
-                ...decision.factsUsed.businessFactRefs,
-                ...decision.factsUsed.contactFactRefs,
-                ...decision.factsUsed.offerFactRefs,
-                ...decision.factsUsed.assetRefs,
-            ].slice(0, 8),
-        }));
+    const commonMissingInputs = [...missingInputs];
+    const tasksForDecision = (selectedDecision?: CampaignCueDailyDesk["decision"]) => {
+        if (!selectedDecision) return [];
+        return selectedDecision.missingInputs.map((input, index) => {
+            const targetTab = dailyDeskTargetForDecisionInput(input.type);
+            return buildDailyDeskTask({
+                id: `decision_missing_${selectedDecision.recipeId}_${index}_${input.type}`,
+                kind: dailyDeskKindForDecisionInput(input.type),
+                label: input.required ? "Confirm required detail" : "Review optional detail",
+                detail: input.ownerQuestion,
+                actionLabel: input.required ? "Confirm detail" : "Review detail",
+                targetTab,
+                severity: input.required ? "needs_fix" : "warning",
+                inputType: input.type,
+                ownerGoal: selectedDecision.ownerGoal,
+                sourceReferences: [
+                    ...selectedDecision.factsUsed.businessFactRefs,
+                    ...selectedDecision.factsUsed.contactFactRefs,
+                    ...selectedDecision.factsUsed.offerFactRefs,
+                    ...selectedDecision.factsUsed.assetRefs,
+                ].slice(0, 8),
+            });
+        });
+    };
+    tasksForDecision(decision).forEach((task) => {
+        if (!missingInputs.some((existing) => existing.inputType === task.inputType)) {
+            missingInputs.push(task);
+        }
     });
+    const packMissingInputs = packDecision && packDecision.recipeId !== decision?.recipeId
+        ? [
+            ...commonMissingInputs,
+            ...tasksForDecision(packDecision).filter((task) => (
+                !commonMissingInputs.some((existing) => existing.inputType === task.inputType)
+            )),
+        ]
+        : packRecipe.id === recipe.id
+            ? missingInputs
+            : commonMissingInputs;
 
     const readyPack: CampaignCueDailyDesk["readyPack"] = latestCampaign ? {
         campaignId: latestCampaign.id,
@@ -1109,29 +1694,29 @@ export function buildCampaignCueDailyDesk(params: {
         outputsReady: latestCampaign.outputs.length,
         outputFormats: uniqueCompactStrings([
             ...latestCampaign.outputs.flatMap((output) => output.fields.outputFormats || []),
-            ...recipe.outputFormats,
+            ...packRecipe.outputFormats,
         ], CAMPAIGNCUE_DAILY_DESK_MAX_OUTPUT_FORMATS),
         printFormats: uniqueCompactStrings([
             ...latestCampaign.outputs.flatMap((output) => output.fields.printFormats || []),
-            ...recipe.printFormats,
+            ...packRecipe.printFormats,
         ], CAMPAIGNCUE_DAILY_DESK_MAX_PRINT_FORMATS),
         photoTasks: uniqueCompactStrings([
             ...latestCampaign.outputs.flatMap((output) => output.fields.photoTasks || []),
-            ...recipe.photoTasks,
+            ...packRecipe.photoTasks,
         ], CAMPAIGNCUE_DAILY_DESK_MAX_PHOTO_TASKS),
         manualSteps: uniqueCompactStrings(latestCampaign.outputs.flatMap((output) => output.fields.manualSteps), 6),
         manualDeliveryTasks: uniqueCompactStrings([
-            ...recipe.manualDeliveryTasks,
+            ...packRecipe.manualDeliveryTasks,
             ...latestCampaign.outputs.flatMap((output) => output.fields.manualSteps).slice(0, 3),
         ], CAMPAIGNCUE_DAILY_DESK_MAX_MANUAL_DELIVERY_TASKS),
-        ownerGoal: recipe.ownerGoal,
-        plainAction: recipe.plainAction,
-        resultQuestion: recipe.resultQuestion,
-        resultOptions: recipe.resultOptions.slice(0, CAMPAIGNCUE_DAILY_DESK_MAX_RESULT_OPTIONS),
+        ownerGoal: packRecipe.ownerGoal,
+        plainAction: packRecipe.plainAction,
+        resultQuestion: packRecipe.resultQuestion,
+        resultOptions: packRecipe.resultOptions.slice(0, CAMPAIGNCUE_DAILY_DESK_MAX_RESULT_OPTIONS),
         primaryOutputId: latestCampaign.outputs[0]?.id,
     } : undefined;
 
-    const manualDeliveryTasks = recipe.manualDeliveryTasks
+    const manualDeliveryTasks = taskRecipe.manualDeliveryTasks
         .slice(0, CAMPAIGNCUE_DAILY_DESK_MAX_MANUAL_DELIVERY_TASKS)
         .map((task, index) => buildDailyDeskTask({
             id: `manual_delivery_${index}`,
@@ -1141,8 +1726,8 @@ export function buildCampaignCueDailyDesk(params: {
             actionLabel: readyPack ? "Open exports" : "Create pack",
             targetTab: readyPack ? "delivery" : "cues",
             severity: readyPack ? "ready" : "info",
-            ownerGoal: recipe.ownerGoal,
-            sourceReferences: readyPack ? [readyPack.campaignId] : recipe.recommendedChannels,
+            ownerGoal: taskRecipe.ownerGoal,
+            sourceReferences: readyPack ? [readyPack.campaignId] : taskRecipe.recommendedChannels,
         }));
 
     const assetReuseTasks = [
@@ -1156,7 +1741,7 @@ export function buildCampaignCueDailyDesk(params: {
                 targetTab: "assets",
                 severity: confirmedAssets.length ? "ready" : "warning",
                 inputType: confirmedAssets.length ? undefined : "asset_rights",
-                ownerGoal: recipe.ownerGoal,
+                ownerGoal: taskRecipe.ownerGoal,
                 sourceReferences: [...confirmedAssets, ...reviewAssets].slice(0, 3).map((asset) => asset.id),
             })
             : undefined,
@@ -1169,13 +1754,13 @@ export function buildCampaignCueDailyDesk(params: {
                 actionLabel: "Open editor",
                 targetTab: "editor",
                 severity: "info",
-                ownerGoal: recipe.ownerGoal,
+                ownerGoal: taskRecipe.ownerGoal,
                 sourceReferences: [readyPack.campaignId],
             })
             : undefined,
     ].filter(Boolean).slice(0, CAMPAIGNCUE_DAILY_DESK_MAX_ASSET_REUSE_TASKS) as CampaignCueDailyDeskTask[];
 
-    const photoTasks = recipe.photoTasks.slice(0, CAMPAIGNCUE_DAILY_DESK_MAX_PHOTO_TASKS).map((task, index) => buildDailyDeskTask({
+    const photoTasks = taskRecipe.photoTasks.slice(0, CAMPAIGNCUE_DAILY_DESK_MAX_PHOTO_TASKS).map((task, index) => buildDailyDeskTask({
         id: `photo_task_${index}`,
         kind: "photo_task",
         label: index === 0 ? "Take one useful photo" : "Photo check",
@@ -1186,7 +1771,7 @@ export function buildCampaignCueDailyDesk(params: {
         sourceReferences: confirmedAssets.slice(0, 3).map((asset) => asset.id),
     }));
 
-    const printTasks = recipe.printFormats.slice(0, CAMPAIGNCUE_DAILY_DESK_MAX_PRINT_FORMATS).map((format, index) => buildDailyDeskTask({
+    const printTasks = taskRecipe.printFormats.slice(0, CAMPAIGNCUE_DAILY_DESK_MAX_PRINT_FORMATS).map((format, index) => buildDailyDeskTask({
         id: `print_task_${index}`,
         kind: "print_export",
         label: format,
@@ -1194,7 +1779,7 @@ export function buildCampaignCueDailyDesk(params: {
         actionLabel: readyPack ? "Open pack" : "Create pack",
         targetTab: readyPack ? "campaigns" : "cues",
         severity: readyPack ? "ready" : "info",
-        sourceReferences: readyPack ? [readyPack.campaignId] : recipe.recommendedChannels,
+        sourceReferences: readyPack ? [readyPack.campaignId] : taskRecipe.recommendedChannels,
     }));
 
     const resultPrompt = (params.analytics.usedCount || 0) > (params.analytics.ownerReportedOutcomeCount || 0)
@@ -1207,8 +1792,8 @@ export function buildCampaignCueDailyDesk(params: {
             targetTab: "analytics",
             severity: "warning",
             inputType: "result_note",
-            ownerGoal: recipe.ownerGoal,
-            resultOptions: recipe.resultOptions.slice(0, CAMPAIGNCUE_DAILY_DESK_MAX_RESULT_OPTIONS),
+            ownerGoal: packRecipe.ownerGoal,
+            resultOptions: packRecipe.resultOptions.slice(0, CAMPAIGNCUE_DAILY_DESK_MAX_RESULT_OPTIONS),
             sourceReferences: latestCampaign ? [latestCampaign.id] : [],
         })
         : undefined;
@@ -1223,7 +1808,7 @@ export function buildCampaignCueDailyDesk(params: {
             targetTab: "agency",
             severity: latestCampaign.ownerApprovalState === "requested" ? "warning" : "info",
             inputType: "approval",
-            ownerGoal: recipe.ownerGoal,
+            ownerGoal: packRecipe.ownerGoal,
             sourceReferences: [latestCampaign.id],
         })
         : undefined;
@@ -1246,6 +1831,14 @@ export function buildCampaignCueDailyDesk(params: {
         })
         : undefined;
 
+    const rhythm = buildCampaignCueCampaignRhythm({
+        campaigns: params.campaigns,
+        recipe: packRecipe,
+        schedules: params.schedules,
+        workspace: params.workspace,
+        now: params.now,
+    });
+
     const localVisibilityCues = buildLocalVisibilityCues({
         assets: params.assets,
         businessBrain: params.businessBrain,
@@ -1260,39 +1853,59 @@ export function buildCampaignCueDailyDesk(params: {
         businessBrain: params.businessBrain,
         campaign: latestCampaign,
         localVisibilityCues,
-        missingInputs,
+        missingInputs: packMissingInputs,
+        now: params.now,
         sourceFacts,
     }) : [];
     const outputPack = latestCampaign ? buildCampaignCueOutputPack({
         assets: params.assets,
         businessBrain: params.businessBrain,
         campaign: latestCampaign,
+        campaigns: params.campaigns,
         deliveryCards,
-        decision: latestCampaign.pack?.decision || decision,
+        decision: packDecision,
         localVisibilityCues,
-        missingInputs: missingInputs.slice(0, CAMPAIGNCUE_DAILY_DESK_MAX_MISSING_INPUTS),
+        missingInputs: packMissingInputs.slice(0, CAMPAIGNCUE_DAILY_DESK_MAX_MISSING_INPUTS),
         readyPack,
-        recipe,
+        recipe: packRecipe,
+        rhythm,
         sourceFacts: sourceFacts.slice(0, 16),
+        sourceInputs: params.sourceInputs,
         trustSummary,
+        workspace: params.workspace,
+        now: params.now,
     }) : undefined;
     const packReview: CampaignCueCampaignPackReview | undefined = latestCampaign ? {
         campaignId: latestCampaign.id,
         title: latestCampaign.title,
-        ownerGoal: recipe.ownerGoal,
-        decision: latestCampaign.pack?.decision || decision,
+        ownerGoal: packRecipe.ownerGoal,
+        decision: packDecision,
         reason: params.opportunities.find((opportunity) => opportunity.id === latestCampaign.opportunityId)?.reason
             || latestCampaign.brief
-            || recipe.ownerOutcome,
+            || packRecipe.ownerOutcome,
         sourceFacts: sourceFacts.slice(0, 16),
-        missingInputs: missingInputs.slice(0, CAMPAIGNCUE_DAILY_DESK_MAX_MISSING_INPUTS),
+        missingInputs: packMissingInputs.slice(0, CAMPAIGNCUE_DAILY_DESK_MAX_MISSING_INPUTS),
         trustSummary,
         deliveryCards,
-        resultQuestion: recipe.resultQuestion,
-        resultOptions: recipe.resultOptions.slice(0, CAMPAIGNCUE_DAILY_DESK_MAX_RESULT_OPTIONS),
+        resultQuestion: packRecipe.resultQuestion,
+        resultOptions: packRecipe.resultOptions.slice(0, CAMPAIGNCUE_DAILY_DESK_MAX_RESULT_OPTIONS),
         localVisibilityCues,
-        outputPack: outputPack as CampaignCueOutputPack,
+        outputPack,
     } : undefined;
+    const aiAssistance = outputPack?.aiAssistance || buildCampaignCueAIAssistancePlan({
+        assets: params.assets,
+        businessBrain: params.businessBrain,
+        campaign: latestCampaign,
+        decision: packDecision,
+        missingInputs: latestCampaign
+            ? packMissingInputs.slice(0, CAMPAIGNCUE_DAILY_DESK_MAX_MISSING_INPUTS)
+            : missingInputs.slice(0, CAMPAIGNCUE_DAILY_DESK_MAX_MISSING_INPUTS),
+        readyPack,
+        recipe: latestCampaign ? packRecipe : recipe,
+        sourceFacts: sourceFacts.slice(0, 16),
+        sourceInputs: params.sourceInputs,
+        trustSummary,
+    });
 
     const blockerCount = missingInputs.filter((task) => task.severity === "needs_fix").length;
     const warningCount = missingInputs.filter((task) => task.severity === "warning").length
@@ -1301,6 +1914,11 @@ export function buildCampaignCueDailyDesk(params: {
         + (locationPrompt?.severity === "warning" ? 1 : 0);
     const readyOutputCount = readyPack?.outputsReady || 0;
     const blockingTask = missingInputs.find((task) => task.severity === "needs_fix");
+    const rhythmNeedsAction = rhythm.status === "approval_due"
+        || rhythm.status === "task_due"
+        || rhythm.status === "result_due"
+        || rhythm.status === "scheduled"
+        || rhythm.status === "reuse_ready";
 
     const summary = blockingTask ? {
         title: "Confirm the missing campaign detail",
@@ -1308,6 +1926,12 @@ export function buildCampaignCueDailyDesk(params: {
         actionLabel: blockingTask.actionLabel,
         targetTab: blockingTask.targetTab,
         actionKind: blockingTask.kind,
+    } : rhythmNeedsAction ? {
+        title: rhythm.title,
+        detail: rhythm.detail,
+        actionLabel: rhythm.primaryAction.label,
+        targetTab: rhythm.primaryAction.targetTab,
+        actionKind: rhythm.primaryAction.kind,
     } : !readyPack ? {
         title: decision?.recommendationTitle || recipe.title,
         detail: decision?.explanation.whyThis[0] || primaryOpportunity?.ownerBenefit || recipe.plainAction || recipe.ownerOutcome,
@@ -1349,6 +1973,8 @@ export function buildCampaignCueDailyDesk(params: {
         packReview,
         outputPack,
         readyPack,
+        aiAssistance,
+        rhythm,
         resultPrompt,
         approvalPrompt,
         locationPrompt,

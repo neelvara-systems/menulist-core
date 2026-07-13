@@ -12,6 +12,7 @@ import {
 } from '@lib/ownerReferral/ownerReferralFeature';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
+import { normalizeRequestAuthority } from '@lib/routing/hostAuthority';
 import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { logSecurityFailure } from '@lib/security/securityDiagnostics';
 import { NextRequest, NextResponse } from 'next/server';
@@ -28,14 +29,30 @@ const unavailable = (status = 400) => NextResponse.json(
     { status, headers: { 'Cache-Control': 'private, no-store' } },
 );
 
+const normalizeHttpProtocol = (value: string | null): 'http' | 'https' | null => {
+    if (value === 'http' || value === 'https') return value;
+    return null;
+};
+
+const getRequestHostOrigin = (request: NextRequest): string | null => {
+    const requestAuthority = normalizeRequestAuthority(request.headers.get('host'));
+    if (!requestAuthority) return null;
+
+    const forwardedProtocol = normalizeHttpProtocol(request.headers.get('x-forwarded-proto'));
+    const requestProtocol = normalizeHttpProtocol(request.nextUrl.protocol.replace(/:$/, ''));
+    const protocol = forwardedProtocol || requestProtocol;
+    if (!protocol) return null;
+
+    return `${protocol}://${requestAuthority.authority}`;
+};
+
 const isSameOriginBrowserRequest = (request: NextRequest): boolean => {
     const origin = request.headers.get('origin');
     if (!origin) return true;
     try {
         const originUrl = new URL(origin);
-        const forwardedHost = request.headers.get('x-forwarded-host') || request.headers.get('host');
-        const forwardedProto = request.headers.get('x-forwarded-proto') || request.nextUrl.protocol.replace(/:$/, '');
-        return Boolean(forwardedHost && originUrl.origin === `${forwardedProto}://${forwardedHost}`);
+        const requestHostOrigin = getRequestHostOrigin(request);
+        return Boolean(requestHostOrigin && originUrl.origin === requestHostOrigin);
     } catch {
         return false;
     }

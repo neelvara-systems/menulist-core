@@ -47,6 +47,9 @@ type IntakeMonitorLedgerRow = {
     byteSize: number;
     unitsReserved: number;
     unitsCharged: number;
+    refundedMonthlyCredits: number;
+    refundedTopUpCredits: number;
+    expiredMonthlyCredits: number;
     createdOn: string | null;
     settledOn: string | null;
     refundedOn: string | null;
@@ -234,6 +237,9 @@ const isIntakeMonitorLedgerRow = (value: unknown): value is IntakeMonitorLedgerR
     && isFiniteNumber(value.byteSize)
     && isFiniteNumber(value.unitsReserved)
     && isFiniteNumber(value.unitsCharged)
+    && isFiniteNumber(value.refundedMonthlyCredits)
+    && isFiniteNumber(value.refundedTopUpCredits)
+    && isFiniteNumber(value.expiredMonthlyCredits)
     && isNullableString(value.createdOn)
     && isNullableString(value.settledOn)
     && isNullableString(value.refundedOn)
@@ -675,8 +681,13 @@ export default function AnswerlatticeIntakeMonitor() {
         {
             title: 'Credits',
             key: 'credits',
-            width: 120,
-            render: (_, row) => `${row.unitsCharged}/${row.unitsReserved}`,
+            width: 170,
+            render: (_, row) => {
+                const refunded = row.refundedMonthlyCredits + row.refundedTopUpCredits;
+                return row.status === 'refunded' || row.status === 'failed_refunded'
+                    ? `${refunded} refunded${row.expiredMonthlyCredits ? `; ${row.expiredMonthlyCredits} expired` : ''}`
+                    : `${row.unitsCharged}/${row.unitsReserved}`;
+            },
         },
         {
             title: 'File',

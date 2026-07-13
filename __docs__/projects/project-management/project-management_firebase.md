@@ -2,7 +2,7 @@
 
 **Feature:** Project CRUD and Menu Builder Lifecycle
 **Status:** Production implementation exists; audited June 11, 2026
-**Last Updated:** July 1, 2026
+**Last Updated:** July 13, 2026
 
 ## Summary
 
@@ -19,25 +19,30 @@
 | List projects for editor/onboarding | `platformSummary/projects_{sId}` | 1 | `getProjectsList*()` auto-creates a default project if empty. |
 | List projects for read-only surfaces | `platformSummary/projects_{sId}` | 1 | `getExistingProjectsListWithoutLoader()` never writes. Used by dashboard selector, Use MenuList, OBP link card, Past Activity, GrowthOS, print/export surfaces. |
 | Load one project | `projects/{tId}/{sId}/{projectId}` | 1 | Full menu/editor data. |
+| Legacy project fallback | `projects/{projectId}` | +1 only after scoped miss | Returned only when runtime project/tenant/store identity matches the exact requested scope. No new legacy writes are allowed. |
 | Load project with summary | summary doc + project doc | 2 | Used when both metadata and full content are required. |
 | Delete guard for linked outlets | project doc plus conditional linked-outlet checks | 1+ | Only when multi-outlet is enabled and caller cannot skip the guard from tenant context. |
 | Restore project | project doc + summary doc | 2 | Prevents duplicate default projects and rebuilds summary from tombstone. |
+| Create project | deleted-project reservation query + summary transaction read | 2 minimum | A supplied deterministic ID adds one project read so retry recovery cannot overwrite existing menu data. No extra read is used for generated auto-ID collision checks. |
+| Update metadata without name/slug | summary transaction read | 1 | Serializes concurrent metadata writers and avoids lost summary fields. |
+| Rename/change slug | preflight summary + conditional deleted-project query + summary transaction | 2-3 minimum | Re-checks current/redirect ownership in the transaction. |
+| Duplicate | deleted-project reservation query + source project + summary transaction reads | 3 minimum | Source validation and summary collision resolution are transactionally consistent. |
 | Time-slot preset cascade | all current store project docs | N | Only when a preset is edited/deleted; writes only projects with matching category slots. |
 
 ## Writes
 
 | Operation | Writes | Public cache impact | Notes |
 | --- | ---: | --- | --- |
-| Create project | 1 project doc + 1 summary write | Yes | Summary sync triggers public cache revalidation. If the new project becomes default, previous-default handoff is folded into the same summary write. |
+| Create project | 1 project doc + 1 summary write | Yes | One transaction; deterministic-ID recovery writes only the missing/updated summary and never rewrites the existing project. Default handoff is folded into the summary mutation. |
 | Auto-create default project from editor/mobile provider | 1 project doc + 1 summary write | Yes | Intentional only in menu-management entry points. Requires `projects_list_default_project_create_rejected` acknowledgement before returning the default project in memory. |
 | Read-only project list | 0 | None | Must use `getExistingProjectsListWithoutLoader()`. |
-| Update metadata | 1 summary write | Yes | Name/description/default/image/slug summary changes affect public routing and links. Default removal or promotion can include replacement/previous-default handoff in the same summary write. |
+| Update metadata | 1 summary write | Yes | Transactional merge prevents concurrent metadata/image/language updates from replacing each other. Default handoff remains in the same write. |
 | Save project data | 1 project doc write | Yes | May add optional MOL/MCE/master-update writes when feature flags are enabled. |
 | Publish project | 1 project doc write | Yes | Also increments `menuVersion`; optional snapshot/event writes are flag-gated. |
-| Soft delete | 1 batched project write + 1 summary write | Yes | Project doc stores `deletedSummary` before summary removal for lossless restore. |
-| Restore | 1 project write + 1 summary write | Yes | Does not restore `isDefault` if another active default already exists. |
-| Duplicate | 1 project doc + 1 summary write | Yes | New slug, no default by default. |
-| Active/inactive toggle | 1 project doc + 1 summary field write | Yes | Multi-outlet deactivation may read master policy first. |
+| Soft delete | 1 project write + 1 summary write | Yes | One transaction reads current project/summary, stores `deletedSummary`, removes the entry, and promotes a fallback from current truth. |
+| Restore | 1 project write + 1 summary write | Yes | One transaction; does not restore `isDefault` if another active default already exists. |
+| Duplicate | 1 project doc + 1 summary write | Yes | One transaction; unique slug, no default, and no copied special-menu/deletion metadata. |
+| Active/inactive toggle | 1 project doc + 1 summary field write | Yes | One transaction with one project read; inherited deactivation may add one master-store policy read. |
 | Time-slot preset edit/delete cascade | 0-N project writes | Yes per changed project | Keeps public category visibility aligned without extra public store reads. |
 
 ## Cost Findings From June 11, 2026 Audit
@@ -62,8 +67,11 @@
 - Desktop menu editor acknowledgement hardening is cost-neutral. Editor sync, shared editor persistence, and project-detail translation repair still use the existing `updateProject()` and `updateProjectMetadata()` writes, but the editor now requires `assertProjectUpdateSucceeded()` before local editor state, dirty-state, POS sync handoff, last-saved timestamps, or success copy changes; this adds no reads, writes, deletes, Storage operations, routes, rules, indexes, schema fields, Cloud Functions, owner settings, Firebase deployment, or Vercel deployment.
 - Desktop editor helper acknowledgement hardening is cost-neutral. Item image deletion, description generation, and batch image result upload direct-save fallbacks still use existing `updateProject()` writes, but now require `assertProjectUpdateSucceeded()` before active-project state, generated-description persistence, selected-image project state, or success copy changes; this adds no reads, writes, deletes, Storage operations beyond existing image cleanup/upload behavior, routes, rules, indexes, schema fields, Cloud Functions, owner settings, Firebase deployment, or Vercel deployment. The description-generation returned-error diagnostic also adds no Firebase operations because it only replaces a raw local logger warning with bounded menu-editor metadata.
 - Design publish acknowledgement hardening is cost-neutral. Desktop B2C and Mobile Design publish still use existing `publishProject()` writes, but now require `assertProjectUpdateSucceeded()` before local published/cached state, success copy, or post-publish verification setup changes; this adds no reads, writes, deletes, Storage operations beyond existing background image upload behavior, routes, rules, indexes, schema fields, Cloud Functions, owner settings, Firebase deployment, or Vercel deployment.
-- Generated project-image acknowledgement hardening is cost-neutral. Auto-generated project image persistence still uses the existing `syncProjectToSummary()` or `updateProjectMetadata()` write after the existing Storage upload, but now requires the returned project acknowledgement before returning an image URL to callers; this adds no reads, writes, deletes, Storage operations beyond the existing generated image upload, routes, rules, indexes, schema fields, Cloud Functions, owner settings, Firebase deployment, or Vercel deployment.
+- Generated project-image persistence writes only `{ projectImage }` through transactional `updateProjectMetadata()` after Storage upload. It cannot replace stale name/default/language/slug state or recreate a deleted summary. Failed persistence attempts delete the newly uploaded primary object before returning failure; this adds no collection, document, route, rule, index, Cloud Function, provider call, or owner setting.
 - Default handoff is atomic inside the project DAL. Desktop and mobile create/edit flows pass previous-default or replacement-default ids through the `addProject()` / `updateProjectMetadata()` default-handoff option, and the DAL folds those `isDefault` field changes into the same `platformSummary/projects_{sId}` summary write as the target project metadata. This removes the older caller-side follow-up metadata writes, adds no collections, documents, routes, rules, indexes, schema fields, Cloud Functions, owner settings, Firebase deployment, or Vercel deployment, and preserves public cache invalidation through the affected project/store cache path.
+- Project lifecycle atomicity hardening adds no collection or durable document. Create, restore, and duplicate now couple full-project and summary mutations in one transaction; metadata mutations serialize on the existing summary document. The only added read cost is the transaction/current-summary evidence needed to prevent overwrites, lost updates, duplicate slugs, and split lifecycle state.
+- Legacy project scope hardening adds no Firebase operation. The fallback read already existed; the DAL now rejects its result unless the document belongs to the exact requested tenant/store/project tuple. Current scoped reads apply the same runtime identity check.
+- Active/delete lifecycle hardening adds no collection or durable record. Active toggle adds one project transaction read to reject missing/deleted/stale identities instead of creating phantom state. Delete already read summary and, under multi-outlet checks, project state; its final transaction now rechecks current truth and atomically promotes the fallback. Revalidating the fallback may add browser-local/cache endpoint work but no Firestore document read.
 
 ## Remaining Cost Risk
 

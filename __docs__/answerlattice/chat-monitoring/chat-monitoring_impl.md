@@ -14,7 +14,7 @@ The Chat Monitoring dashboard is a **hybrid feature**:
 - **Cloud Functions:** Nightly aggregation, AI intelligence (feedback analysis, KB quality, weekly narrative)
 - **Read-only from insights:** Weekly digest reads from `insights/{tId}/stores/{sId}/ai/weekly` (written by Cloud Functions)
 
-**Product-boundary note:** although this documentation folder is under the Answerlattice support family, the current Cloud Function runtime is MenuList-hosted. The AI intelligence jobs run from `functions/src/`, use MenuList `DB_COLLECTIONS`, scan MenuList tenant/store chat and KB collections, and are wired through `functions/src/decisionBlocksScoring.ts` plus the manual scheduler. They are not exported from `functions-answerlattice/` and should not be treated as completed Answerlattice separate-runtime migrations.
+**Product boundary:** chat analytics and derived insight jobs now run only through `functions-answerlattice/` and the dedicated Answerlattice Firestore project. Root MenuList scheduler task names remain visible as migrated/skipped run-log entries, while legacy manual callable names fail closed without datastore or provider work.
 
 ---
 
@@ -89,12 +89,11 @@ Weekly digest manual regeneration response handling is also acknowledged before 
 
 | File | Schedule | Purpose | Output |
 |------|----------|---------|--------|
-| `functions/src/aggregateDailyChatStats.ts` | Daily 1 AM UTC | Aggregate chat sessions into daily analytics docs | `chatAnalytics/{tId}_{sId}_{YYYY-MM-DD}` |
-| `functions/src/analytics/feedbackIntelligence.ts` | Daily 2:01 AM UTC | AI analyzes negative feedback themes | `insights/{tId}/stores/{sId}/ai/feedback` |
-| `functions/src/analytics/kbQuality.ts` | Daily 2:05 AM UTC | AI scores KB article quality | `insights/{tId}/stores/{sId}/ai/kbQuality` |
-| `functions/src/analytics/weeklyNarrative.ts` | Sundays 2:10 AM UTC | AI generates weekly performance narrative | `insights/{tId}/stores/{sId}/ai/weekly` |
+| `functions-answerlattice/src/answerlattice/chatAnalyticsAggregation.ts` | Existing Answerlattice nightly tenant run | Rebuild changed UTC dates from scoped sessions with continuation state | `chatAnalytics/{tId}_{sId}_{YYYY-MM-DD}` plus one compact state doc |
+| `functions-answerlattice/src/answerlattice/chatIntelligence.ts` | After changed summaries; weekly projection on Sunday UTC | Build deterministic, source-hash-idempotent feedback and weekly summaries | `insights/{tId}/stores/{sId}/ai/{feedback,weekly}` |
+| `src/app/api/analytics/weekly-narrative/generate-local/route.ts` | Explicit operator action only | Read two exact non-overlapping completed UTC weeks and optionally refresh wording with the Answerlattice provider client | `insights/{tId}/stores/{sId}/ai/weekly` |
 
-KB Quality uses one bounded store-level Gemini request for the top 10 signal-bearing articles and writes one `ai/kbQuality` document per store. It does not write `ai/kbQuality/{articleId}` documents.
+The old root `functions/src/analytics/{feedbackIntelligence,weeklyNarrative,kbQuality,healthSignalsComputation}` workers are not active scheduler entry points. They must not be reconnected to MenuList Firestore.
 
 ### 2.4 Types
 

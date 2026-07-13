@@ -1,6 +1,7 @@
 'use client';
 
 import { useOwnerReferral } from '@hook/useOwnerReferral';
+import { getContentCreditOutcomeExamples } from '@data/shared/contentCreditPolicy';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useEffect } from 'react';
@@ -14,6 +15,8 @@ export default function MobileOwnerReferralSheet({ onClose, visible }: {
     const { token } = theme.useToken();
     const t = useTranslations('OwnerReferral');
     const referral = useOwnerReferral();
+    const referrerExamples = getContentCreditOutcomeExamples(referral.data?.policy.referrerCredits || 0);
+    const referredExamples = getContentCreditOutcomeExamples(referral.data?.policy.referredCredits || 0);
 
     useEffect(() => {
         if (visible) void referral.load();
@@ -63,13 +66,29 @@ export default function MobileOwnerReferralSheet({ onClose, visible }: {
                     ) : (
                         <>
                             <Flex gap={10} vertical>
-                                <Flex align="center" gap={9}>
-                                    <LuGift size={19} />
-                                    <Text><strong>{t('yourBusiness')}:</strong> {referral.data.policy.referrerCredits} {t('credits')}</Text>
+                                <Flex gap={3} vertical>
+                                    <Flex align="center" gap={9}>
+                                        <LuGift size={19} />
+                                        <Text><strong>{t('yourBusiness')}:</strong> {referral.data.policy.referrerCredits} {t('credits')}</Text>
+                                    </Flex>
+                                    <Text style={{ color: token.colorTextSecondary }}>
+                                        {t('creditExample', {
+                                            descriptions: referrerExamples.descriptionRewrites,
+                                            images: referrerExamples.generatedMenuImages,
+                                        })}
+                                    </Text>
                                 </Flex>
-                                <Flex align="center" gap={9}>
-                                    <LuGift size={19} />
-                                    <Text><strong>{t('invitedBusiness')}:</strong> {referral.data.policy.referredCredits} {t('credits')}</Text>
+                                <Flex gap={3} vertical>
+                                    <Flex align="center" gap={9}>
+                                        <LuGift size={19} />
+                                        <Text><strong>{t('invitedBusiness')}:</strong> {referral.data.policy.referredCredits} {t('credits')}</Text>
+                                    </Flex>
+                                    <Text style={{ color: token.colorTextSecondary }}>
+                                        {t('creditExample', {
+                                            descriptions: referredExamples.descriptionRewrites,
+                                            images: referredExamples.generatedMenuImages,
+                                        })}
+                                    </Text>
                                 </Flex>
                                 <Text style={{ color: token.colorTextSecondary }}>
                                     {t('rewardRule')}
@@ -96,9 +115,7 @@ export default function MobileOwnerReferralSheet({ onClose, visible }: {
                             ) : referral.data.recent.map((item) => {
                                 const status = item.status === 'issued'
                                     ? { color: 'success', label: t('status.issued') }
-                                    : item.status === 'waiting_for_both_payments'
-                                        ? { color: 'processing', label: t('status.waitingForBothPayments') }
-                                        : { color: 'default', label: t('status.waitingForPayment') };
+                                    : { color: 'default', label: t('status.waitingForPayment') };
                                 return (
                                     <Flex
                                         align="center"

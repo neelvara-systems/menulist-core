@@ -357,7 +357,7 @@ export default function MobileShareScreen({
             hasPublishedMenu,
             installAppLink,
             menuLink,
-            menuModifiedOn: defaultProject.modifiedOn || null,
+            menuModifiedOn: storeDetails.lastPublishedAt || null,
             obpLink,
             posSyncStatus: hasPosSync ? (posSync?.status || 'disabled') : null,
             projectId: defaultProject.projectId || null,

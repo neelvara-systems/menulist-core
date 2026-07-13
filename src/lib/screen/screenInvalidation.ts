@@ -1,18 +1,30 @@
 import { DB_COLLECTIONS } from "@constant/database";
-import { doc, getDoc, increment, Timestamp, updateDoc } from "@firebase/firestore";
+import { doc, getDoc, runTransaction, Timestamp } from "@firebase/firestore";
 import { FEATURE_FLAGS } from "@config/features";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
-import { parseSummaryProjects } from "@lib/firestore/parseSummaryProjects";
+import {
+    isActiveRegularSummaryProject,
+    isDefaultSummaryProject,
+    parseSummaryProjects,
+    withAuthoritativeSummaryProjectId,
+} from "@lib/firestore/parseSummaryProjects";
 import { extractScreenMenuItemsFromProject } from "@lib/screen/screenContent";
-import { syncPublicScreenState } from "@lib/screen/publicScreenState";
+import { getPublicScreenStateDocRef, toPublicScreenState } from "@lib/screen/publicScreenState";
 import { secureError } from "@lib/security/secureLogger";
 import type { ScreenMenuProjection } from "@type/campaigns";
-
-const pendingScreenTouches = new Map<string, Promise<void>>();
 
 type ScreenContentTouchOptions = {
     projectId?: string | number | null;
 };
+
+type PendingScreenContentTouch = {
+    context: string;
+    options: ScreenContentTouchOptions;
+    promise: Promise<void>;
+    rerunRequested: boolean;
+};
+
+const pendingScreenTouches = new Map<string, PendingScreenContentTouch>();
 
 const getLogErrorName = (error: unknown): string => (
     error instanceof Error ? error.name : typeof error
@@ -73,13 +85,9 @@ const buildScreenMenuProjection = async (
 
     const projectMap = parseSummaryProjects(summarySnap.data() || {});
     const activeProjects = Object.entries(projectMap)
-        .map(([summaryProjectId, projectData]) => ({ projectId: summaryProjectId, ...(projectData || {}) }))
-        .filter((project: any) => (
-            project?.active !== false
-            && project?.deleted !== true
-            && project?.isSpecialMenu !== true
-        ));
-    const baseProject = activeProjects.find((project: any) => project?.isDefault === true) || activeProjects[0];
+        .map(([summaryProjectId, projectData]) => withAuthoritativeSummaryProjectId(summaryProjectId, projectData))
+        .filter(isActiveRegularSummaryProject);
+    const baseProject = activeProjects.find(isDefaultSummaryProject) || activeProjects[0];
     const baseProjectId = baseProject?.projectId;
     if (!baseProjectId) return null;
     const baseProjectSlug = typeof baseProject?.slug === "string" && baseProject.slug.trim()
@@ -118,25 +126,17 @@ const buildScreenMenuProjection = async (
     };
 };
 
-export const touchDigitalScreenContentVersion = async (
-    storeId?: string | number | null,
-    context = "screenInvalidation",
+const executeDigitalScreenContentVersionTouch = async (
+    normalizedStoreId: string,
+    context: string,
     options: ScreenContentTouchOptions = {},
 ): Promise<void> => {
-    const normalizedStoreId = String(storeId ?? "").trim();
-    if (!FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED || !normalizedStoreId || typeof window === "undefined") {
-        return;
-    }
+    try {
+        const screenRef = doc(firebaseClient, DB_COLLECTIONS.PLATFORM_SUMMARY, `campaigns_${normalizedStoreId}`);
+        const publicScreenRef = getPublicScreenStateDocRef(normalizedStoreId);
 
-    const pending = pendingScreenTouches.get(normalizedStoreId);
-    if (pending) {
-        return pending;
-    }
-
-    const touch = (async () => {
-        try {
-            const screenRef = doc(firebaseClient, DB_COLLECTIONS.PLATFORM_SUMMARY, `campaigns_${normalizedStoreId}`);
-            const screenSnap = await getDoc(screenRef);
+        await runTransaction(firebaseClient, async (transaction) => {
+            const screenSnap = await transaction.get(screenRef);
             const screen = screenSnap.exists() ? screenSnap.data()?.screen : null;
 
             if (!screen?.screenToken) {
@@ -145,6 +145,16 @@ export const touchDigitalScreenContentVersion = async (
 
             const nextContentVersion = Number(screen.contentVersion || 0) + 1;
             const now = Timestamp.now();
+            const nextScreen = {
+                ...screen,
+                contentVersion: nextContentVersion,
+                lastContentChangeAt: now,
+            };
+            const publicState = toPublicScreenState(normalizedStoreId, nextScreen);
+            if (!publicState) {
+                throw new Error("digital_screen_public_state_invalid");
+            }
+
             const menuProjection = await buildScreenMenuProjection(
                 options.projectId,
                 nextContentVersion,
@@ -160,29 +170,68 @@ export const touchDigitalScreenContentVersion = async (
                 return null;
             });
 
-            await updateDoc(screenRef, {
-                "screen.contentVersion": increment(1),
+            transaction.update(screenRef, {
+                "screen.contentVersion": nextContentVersion,
                 "screen.lastContentChangeAt": now,
                 ...(menuProjection ? { "screen.menuProjection": menuProjection } : {}),
             });
-            await syncPublicScreenState(normalizedStoreId, {
-                ...screen,
-                contentVersion: nextContentVersion,
-                lastContentChangeAt: now,
-            });
-        } catch (error) {
-            logScreenInvalidationFailure(
-                "digital_screen_content_version_touch_failed",
-                error,
-                context,
-                normalizedStoreId,
-                options,
-            );
+            transaction.set(publicScreenRef, publicState, { merge: false });
+        });
+    } catch (error) {
+        logScreenInvalidationFailure(
+            "digital_screen_content_version_touch_failed",
+            error,
+            context,
+            normalizedStoreId,
+            options,
+        );
+    }
+};
+
+export const touchDigitalScreenContentVersion = async (
+    storeId?: string | number | null,
+    context = "screenInvalidation",
+    options: ScreenContentTouchOptions = {},
+): Promise<void> => {
+    const normalizedStoreId = String(storeId ?? "").trim();
+    if (!FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED || !normalizedStoreId || typeof window === "undefined") {
+        return;
+    }
+
+    const pending = pendingScreenTouches.get(normalizedStoreId);
+    if (pending) {
+        pending.rerunRequested = true;
+        pending.context = context;
+        pending.options = options;
+        return pending.promise;
+    }
+
+    const entry: PendingScreenContentTouch = {
+        context,
+        options,
+        promise: Promise.resolve(),
+        rerunRequested: false,
+    };
+
+    entry.promise = (async () => {
+        try {
+            do {
+                const iterationContext = entry.context;
+                const iterationOptions = entry.options;
+                entry.rerunRequested = false;
+                await executeDigitalScreenContentVersionTouch(
+                    normalizedStoreId,
+                    iterationContext,
+                    iterationOptions,
+                );
+            } while (entry.rerunRequested);
         } finally {
-            pendingScreenTouches.delete(normalizedStoreId);
+            if (pendingScreenTouches.get(normalizedStoreId) === entry) {
+                pendingScreenTouches.delete(normalizedStoreId);
+            }
         }
     })();
 
-    pendingScreenTouches.set(normalizedStoreId, touch);
-    return touch;
+    pendingScreenTouches.set(normalizedStoreId, entry);
+    return entry.promise;
 };

@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { DB_COLLECTIONS } from "@constant/database";
-import { canManageBillingMutation } from "@lib/billing/billingAccess";
+import { canManageAnswerlatticeBillingMutation, canManageBillingMutation } from "@lib/billing/billingAccess";
 import {
     getActiveProductSubscriptionForStore,
     getBillingFirestoreAdminForProduct,
@@ -102,22 +102,9 @@ export const POST = withAuth(async (request, session) => {
         const storeId = storeScope.numericId;
         logTenantId = tenantId;
         logStoreId = storeId;
-        // 🔒 CRITICAL: Verify user owns this tenant/store
-        if (!isAnswerlatticeBillingProduct(productId) && !verifyTenantAccess(session, tenantId, storeId, request)) {
-            return NextResponse.json(
-                { error: 'Forbidden - Access denied' },
-                { status: 403 }
-            );
-        }
 
-        if (!isAnswerlatticeBillingProduct(productId) && !(await canManageBillingMutation(session, request, '/api/razorpay/create-topup-order'))) {
-            return NextResponse.json(
-                { error: 'Forbidden - Access denied' },
-                { status: 403 }
-            );
-        }
-
-        // 🔒 RATE LIMITING: Prevent topup spam (centralized config)
+        // Rate-limit before current-role/store authorization reads so denied
+        // callers cannot turn the permission boundary into an unbounded read path.
         const rateLimitConfig = getRateLimitForFeature('PAYMENT_TOPUP');
         const userRateLimitHash = hashPublicRateLimitValue(userId);
         const tenantRateLimitHash = hashPublicRateLimitValue(tenantId);
@@ -139,6 +126,27 @@ export const POST = withAuth(async (request, session) => {
                 error: 'Too many topup attempts. Please try again later.',
                 resetAt: rateLimitResult.resetAt
             }, { status: 429 });
+        }
+
+        if (isAnswerlatticeBillingProduct(productId) && !(await canManageAnswerlatticeBillingMutation(session, request))) {
+            return NextResponse.json(
+                { error: 'Forbidden - Access denied' },
+                { status: 403 }
+            );
+        }
+        // 🔒 CRITICAL: Verify user owns this tenant/store
+        if (!isAnswerlatticeBillingProduct(productId) && !verifyTenantAccess(session, tenantId, storeId, request)) {
+            return NextResponse.json(
+                { error: 'Forbidden - Access denied' },
+                { status: 403 }
+            );
+        }
+
+        if (!isAnswerlatticeBillingProduct(productId) && !(await canManageBillingMutation(session, request, '/api/razorpay/create-topup-order'))) {
+            return NextResponse.json(
+                { error: 'Forbidden - Access denied' },
+                { status: 403 }
+            );
         }
 
         const activeSubscription = await getActiveProductSubscriptionForStore(

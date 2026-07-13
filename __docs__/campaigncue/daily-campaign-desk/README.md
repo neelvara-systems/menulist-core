@@ -7,8 +7,10 @@ Daily Campaign Desk is the first CampaignCue owner screen. It turns the existing
 1. Confirm the smallest missing detail.
 2. Create or open the campaign pack.
 3. Download/export and post manually.
-4. Use the same pack for channel, manual delivery, print, photo, and asset-reuse tasks.
-5. Record what happened with one tap or a short note.
+4. Follow Campaign Rhythm for approval, manual reminders, result capture, or safe current-fact reuse.
+5. Use the same pack for channel, manual delivery, print, photo, and image-reuse tasks.
+6. Review the AI assistance plan for source intake, missing inputs, pack drafting, trust explanation, result interpretation, and photo coaching.
+7. Record what happened with one tap or a short note.
 
 This feature is not a generic design-tool dashboard, social scheduler, or posting integration. It is an owner operating surface over the existing export/download-first CampaignCue runtime.
 
@@ -37,7 +39,7 @@ The owner-facing product loop is:
 | Product constants | `src/constants/campaigncue/dailyDesk.ts`, `src/constants/campaigncue/index.ts`, `src/constants/campaigncue/navigations.ts` |
 | Types | `src/types/campaigncue.ts` |
 | Validation | `src/lib/validation/campaigncueSchemas.ts` |
-| Shared deterministic builder | `src/lib/campaigncue/dailyDesk.ts` |
+| Shared deterministic builders | `src/lib/campaigncue/dailyDesk.ts`, `src/lib/campaigncue/operatingLoop.ts` |
 | Server overview and output fields | `src/lib/campaigncue/server.ts` |
 | Owner UI | `src/components/templates/campaigncue/CampaignCueWorkspaceApp.tsx` |
-| Verification | `scripts/verification/verify-campaigncue-runtime.js` |
+| Verification | `scripts/verification/verify-campaigncue-runtime.js`, `scripts/verification/verify-campaigncue-operating-loop.ts` |

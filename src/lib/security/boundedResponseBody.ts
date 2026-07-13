@@ -16,7 +16,14 @@ export function isResponseBodyTooLargeError(error: unknown): error is ResponseBo
         || Boolean(error && typeof error === 'object' && (error as { code?: unknown }).code === 'RESPONSE_BODY_TOO_LARGE');
 }
 
+function assertValidResponseBodyLimit(maxBytes: number): void {
+    if (!Number.isSafeInteger(maxBytes) || maxBytes <= 0) {
+        throw new RangeError('Response body limit must be a positive safe integer.');
+    }
+}
+
 export async function readResponseUint8ArrayWithLimit(response: Response, maxBytes: number): Promise<Uint8Array> {
+    assertValidResponseBodyLimit(maxBytes);
     const contentLength = Number(response.headers.get('content-length') || 0);
     if (Number.isFinite(contentLength) && contentLength > maxBytes) {
         throw new ResponseBodyTooLargeError(maxBytes, contentLength);
@@ -64,5 +71,5 @@ export async function readResponseUint8ArrayWithLimit(response: Response, maxByt
 export async function readJsonResponseWithLimit<T = unknown>(response: Response, maxBytes: number): Promise<T | null> {
     const bytes = await readResponseUint8ArrayWithLimit(response, maxBytes);
     if (!bytes.byteLength) return null;
-    return JSON.parse(new TextDecoder('utf-8').decode(bytes)) as T;
+    return JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes)) as T;
 }

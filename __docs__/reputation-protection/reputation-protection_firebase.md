@@ -3,13 +3,15 @@
 **Date:** July 1, 2026
 **Pillar:** 3 of 6
 
+**Status:** PLANNED COST MODEL ONLY — no ingestion/classifier writer, review storage flow, or reply-posting integration is active.
+
 ---
 
 ## Cost Summary
 
 Detailed cost analysis in `__docs__/reviews-reputation/reviews-reputation_firebase.md`.
 
-### Additional Cost for AI Reply Assist
+### Planned Additional Cost for AI Reply Assist
 
 | Operation | Per Review | Per 100 Stores/Month |
 |-----------|-----------|---------------------|
@@ -17,7 +19,7 @@ Detailed cost analysis in `__docs__/reviews-reputation/reviews-reputation_fireba
 | Reply posting to GBP | 0 Firebase ops (external API) | ₹0 |
 | Review storage | 1 write per review | Included in ingestion cost |
 
-### Estimated Total Monthly Cost (100 stores)
+### Planned Estimated Total Monthly Cost (100 stores)
 
 | Component | Cost/Month |
 |-----------|-----------|
@@ -35,8 +37,10 @@ Detailed cost analysis in `__docs__/reviews-reputation/reviews-reputation_fireba
 
 July 1, 2026 review-reply RBAC hardening adds the existing store permission read before AI capacity/provider work and requires `canManageFeedback`. Because this route is feature-flag disabled and unmounted in the current runtime, normal production cost stays unchanged; if enabled, rejected users can incur the one standard permission store read but no AI capacity transaction, Gemini call, or accounting write.
 
+July 11, 2026 provider-failure hardening is cost-neutral. A failed provider/generation attempt logs bounded `review_reply_generation_failed` metadata before returning the existing static, uncharged fallback; it does not write an AI operation or consume owner units because no successful provider result exists.
+
 June 30, 2026 review-state request/response hardening is also cost-neutral. `ReputationGuard` calls `/api/reviews/states` with no-store cache policy, same-origin credentials, and manual redirect handling, caps response JSON at 16KB, and requires the boolean-only state acknowledgement before updating passive warning UI. This adds no Firestore reads/writes/deletes beyond existing valid state checks, Storage operations, provider calls, rules, indexes, Cloud Function logic, owner-facing settings, Firebase deploy requirement, or Vercel deploy action.
 
 ---
 
-**Last Updated:** July 1, 2026
+**Last Updated:** July 11, 2026

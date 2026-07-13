@@ -1,11 +1,35 @@
 import { createHash } from 'crypto';
-import { Timestamp } from 'firebase-admin/firestore';
+import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import * as logger from 'firebase-functions/logger';
 import { DB_COLLECTIONS } from '../constants/database';
 import { firestoreAdmin as db } from '../firebaseAdmin';
 
 const MAX_JOBS_TO_SUMMARIZE = 20;
+const ANSWERLATTICE_PRODUCT_ID = 'AL';
+const JOB_STATUSES = new Set([
+    'draft',
+    'collecting',
+    'reviewing',
+    'publishing',
+    'published',
+    'failed',
+    'cancelled',
+]);
 const ACTIVE_JOB_STATUSES = new Set(['draft', 'collecting', 'reviewing', 'publishing']);
+
+type NormalizedIntakeJob = {
+    id: string;
+    title: string | null;
+    status: string;
+    sourceCount: number;
+    readySourceCount: number;
+    reviewItemCount: number;
+    acceptedItemCount: number;
+    publishedItemCount: number;
+    rejectedItemCount: number;
+    usageUnitsConsumed: number;
+    publishedOnMs: number | null;
+};
 
 type IntakeSummaryResult = {
     jobsScanned: number;
@@ -14,7 +38,7 @@ type IntakeSummaryResult = {
     reviewItems: number;
     readySources: number;
     usageUnitsConsumed: number;
-    latestJobStatus: string | null;
+    lastJobStatus: string | null;
     unchanged?: boolean;
 };
 
@@ -40,6 +64,78 @@ function toMillis(value: any): number | null {
     return null;
 }
 
+function readNonNegativeInteger(value: unknown, field: string, documentId: string): number {
+    const normalized = value === undefined || value === null ? 0 : Number(value);
+    if (!Number.isSafeInteger(normalized) || normalized < 0) {
+        throw new Error(`Knowledge intake job ${documentId} has invalid ${field}.`);
+    }
+    return normalized;
+}
+
+function readNonNegativeNumber(value: unknown, field: string, documentId: string): number {
+    const normalized = value === undefined || value === null ? 0 : Number(value);
+    if (!Number.isFinite(normalized) || normalized < 0) {
+        throw new Error(`Knowledge intake job ${documentId} has invalid ${field}.`);
+    }
+    return normalized;
+}
+
+function normalizeScopeId(value: unknown): number | null {
+    if (typeof value !== 'string' && typeof value !== 'number') return null;
+    const raw = String(value);
+    if (!/^[1-9]\d*$/.test(raw)) return null;
+    const normalized = Number(raw);
+    return Number.isSafeInteger(normalized) && normalized > 0 && String(normalized) === raw
+        ? normalized
+        : null;
+}
+
+export function normalizeKnowledgeIntakeSummaryJob(
+    documentId: string,
+    data: FirebaseFirestore.DocumentData,
+    scope: { tId: number; sId: number },
+): NormalizedIntakeJob {
+    const productId = data.pId;
+    const tenantId = normalizeScopeId(data.tId);
+    const storeId = normalizeScopeId(data.sId);
+    const status = typeof data.status === 'string' ? data.status.trim() : '';
+
+    if (
+        productId !== ANSWERLATTICE_PRODUCT_ID
+        || !Number.isSafeInteger(tenantId)
+        || !Number.isSafeInteger(storeId)
+        || tenantId !== scope.tId
+        || storeId !== scope.sId
+        || !JOB_STATUSES.has(status)
+    ) {
+        throw new Error(`Knowledge intake job ${documentId} has invalid identity or status.`);
+    }
+
+    const sourceCount = readNonNegativeInteger(data.sourceCount, 'sourceCount', documentId);
+    const readySourceCount = readNonNegativeInteger(
+        data.readySourceCount ?? data.sourceReadyCount ?? data.sourceCount,
+        'readySourceCount',
+        documentId,
+    );
+    if (readySourceCount > sourceCount) {
+        throw new Error(`Knowledge intake job ${documentId} has inconsistent source counters.`);
+    }
+
+    return {
+        id: documentId,
+        title: typeof data.title === 'string' ? data.title.trim().slice(0, 120) || null : null,
+        status,
+        sourceCount,
+        readySourceCount,
+        reviewItemCount: readNonNegativeInteger(data.reviewItemCount, 'reviewItemCount', documentId),
+        acceptedItemCount: readNonNegativeInteger(data.acceptedItemCount, 'acceptedItemCount', documentId),
+        publishedItemCount: readNonNegativeInteger(data.publishedItemCount, 'publishedItemCount', documentId),
+        rejectedItemCount: readNonNegativeInteger(data.rejectedItemCount, 'rejectedItemCount', documentId),
+        usageUnitsConsumed: readNonNegativeNumber(data.usageUnitsConsumed, 'usageUnitsConsumed', documentId),
+        publishedOnMs: toMillis(data.publishedOn),
+    };
+}
+
 export async function syncKnowledgeIntakeSummary(tId: number, sId: number): Promise<IntakeSummaryResult> {
     const result: IntakeSummaryResult = {
         jobsScanned: 0,
@@ -48,7 +144,7 @@ export async function syncKnowledgeIntakeSummary(tId: number, sId: number): Prom
         reviewItems: 0,
         readySources: 0,
         usageUnitsConsumed: 0,
-        latestJobStatus: null,
+        lastJobStatus: null,
     };
 
     const jobsSnap = await db.collection(DB_COLLECTIONS.ANSWERLATTICE_KNOWLEDGE_INTAKE_JOBS)
@@ -59,11 +155,13 @@ export async function syncKnowledgeIntakeSummary(tId: number, sId: number): Prom
         .get();
 
     result.jobsScanned = jobsSnap.size;
-    if (jobsSnap.empty) return result;
-
-    const jobs = jobsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Array<Record<string, any>>;
-    const latestJob = jobs[0];
-    result.latestJobStatus = typeof latestJob.status === 'string' ? latestJob.status : null;
+    const jobs = jobsSnap.docs.map(doc => normalizeKnowledgeIntakeSummaryJob(
+        doc.id,
+        doc.data(),
+        { tId, sId },
+    ));
+    const latestJob = jobs[0] || null;
+    result.lastJobStatus = latestJob?.status || null;
 
     let acceptedItems = 0;
     let publishedItems = 0;
@@ -72,19 +170,18 @@ export async function syncKnowledgeIntakeSummary(tId: number, sId: number): Prom
     let lastPublishedAtMs = 0;
 
     for (const job of jobs) {
-        const status = String(job.status || '');
-        if (ACTIVE_JOB_STATUSES.has(status)) result.activeJobs++;
-        sourceCount += Number(job.sourceCount || 0);
-        result.readySources += Number(job.readySourceCount ?? job.sourceReadyCount ?? job.sourceCount ?? 0);
-        result.reviewItems += Number(job.reviewItemCount || 0);
-        acceptedItems += Number(job.acceptedItemCount || 0);
-        publishedItems += Number(job.publishedItemCount || 0);
-        rejectedItems += Number(job.rejectedItemCount || 0);
-        result.usageUnitsConsumed += Number(job.usageUnitsConsumed || 0);
-        lastPublishedAtMs = Math.max(lastPublishedAtMs, toMillis(job.publishedOn) || 0);
+        if (ACTIVE_JOB_STATUSES.has(job.status)) result.activeJobs++;
+        sourceCount += job.sourceCount;
+        result.readySources += job.readySourceCount;
+        result.reviewItems += job.reviewItemCount;
+        acceptedItems += job.acceptedItemCount;
+        publishedItems += job.publishedItemCount;
+        rejectedItems += job.rejectedItemCount;
+        result.usageUnitsConsumed += job.usageUnitsConsumed;
+        lastPublishedAtMs = Math.max(lastPublishedAtMs, job.publishedOnMs || 0);
     }
 
-    const activeJob = jobs.find(job => ACTIVE_JOB_STATUSES.has(String(job.status || ''))) || latestJob;
+    const activeJob = jobs.find(job => ACTIVE_JOB_STATUSES.has(job.status)) || null;
     const summaryPayload = {
         schemaVersion: 1,
         pId: 'AL',
@@ -101,7 +198,7 @@ export async function syncKnowledgeIntakeSummary(tId: number, sId: number): Prom
         publishedItems,
         rejectedItems,
         usageUnitsConsumed: result.usageUnitsConsumed,
-        latestJobStatus: result.latestJobStatus,
+        lastJobStatus: result.lastJobStatus,
         lastPublishedAt: lastPublishedAtMs > 0 ? Timestamp.fromMillis(lastPublishedAtMs) : null,
     };
     const summaryHash = hashSummary(summaryPayload);
@@ -114,6 +211,7 @@ export async function syncKnowledgeIntakeSummary(tId: number, sId: number): Prom
 
     await summaryRef.set({
         ...summaryPayload,
+        latestJobStatus: FieldValue.delete(),
         summaryHash,
         lastUpdated: Timestamp.now(),
         summarySource: 'answerlattice_nightly',

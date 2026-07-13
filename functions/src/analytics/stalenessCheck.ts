@@ -3,20 +3,19 @@
  * ═══════════════════════════════════════════════════════════════
  *
  * Identifies stores whose menu hasn't been updated in 90+ days and
- * logs them for lifecycle messaging. The actual email sending is
- * handled by the existing lifecycle messaging engine.
+ * claims a tenant/store-scoped cooldown checkpoint, then delegates delivery
+ * to the existing lifecycle messaging engine.
  *
- * This function ONLY detects stale stores and writes staleness events
- * to messageLogs for idempotency checking. It does NOT send emails
- * directly — that responsibility belongs to the messaging engine.
+ * This function never sends provider email directly. The messaging engine
+ * owns recipient resolution, delivery idempotency, rate limits, and SMTP.
  *
  * Called from: decisionBlocksScoring.ts (nightly scheduler)
  * Feature flag: ENABLE_STALENESS_CHECK
  *
- * Firebase cost: ~$0.0005/month at 100 stores
+ * Firebase cost boundary:
  * - 1 read  (platformSummary/storeTruthConfidence)
- * - N reads (messageLogs idempotency check per stale store)
- * - N writes (messageLogs entries for new stale detections)
+ * - Up to 500 checkpoint reads per run (rotated across stale stores)
+ * - Up to 50 new-detection writes (legacy checkpoint migration can write more once)
  *
  * @see __docs__/infrastructure-compounding/periodic-staleness-check_spec.md
  */
@@ -25,6 +24,7 @@ import * as admin from 'firebase-admin';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { DB_COLLECTIONS } from '../constants/database';
 import { FUNCTION_RETENTION_CONFIG } from '../constants/features';
+import { normalizeOwnerNotificationNumericScopeDocumentId } from '../sharedData/ownerNotificationDeliveryBoundary';
 import { analyticsLogger, getAnalyticsErrorContext, getAnalyticsIdContext } from './analyticsDiagnostics';
 
 // ================================================================
@@ -47,6 +47,8 @@ export interface StalenessCheckResult {
 
 const STALENESS_COOLDOWN_DAYS = 90;
 const MAX_DETECTIONS_PER_NIGHT = 50;
+const MAX_STALE_STORES_CHECKED_PER_NIGHT = 500;
+const MAX_LEGACY_LOGS_PER_SCOPE = 100;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const STALENESS_LIFECYCLE_DELIVERY_FAILED = 'STALENESS_LIFECYCLE_DELIVERY_FAILED';
 const STALENESS_LOG_RETENTION_DAYS = Math.max(
@@ -54,15 +56,123 @@ const STALENESS_LOG_RETENTION_DAYS = Math.max(
     FUNCTION_RETENTION_CONFIG.OWNER_NOTIFICATION_RETENTION_DAYS,
 );
 
+interface StalenessDetectionClaimResult {
+    checkpointWritten: boolean;
+    newDetection: boolean;
+    readsCount: number;
+}
+
+function getTimestampMillis(value: unknown): number | null {
+    if (!value || typeof value !== 'object') return null;
+    try {
+        const toMillis = (value as { toMillis?: unknown }).toMillis;
+        if (typeof toMillis === 'function') {
+            const millis = Number(toMillis.call(value));
+            return Number.isFinite(millis) ? millis : null;
+        }
+        const seconds = Number((value as { seconds?: unknown }).seconds);
+        return Number.isFinite(seconds) ? seconds * 1000 : null;
+    } catch {
+        return null;
+    }
+}
+
+function normalizeOptionalMetric(value: unknown): number | null {
+    return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
+}
+
+function getStalenessCheckpointId(tId: string, sId: string): string {
+    return `staleness_check_${tId}_${sId}`;
+}
+
+async function claimStalenessDetection(
+    db: FirebaseFirestore.Firestore,
+    params: {
+        daysSincePublish: number | null;
+        now: Timestamp;
+        score: number | null;
+        sId: string;
+        tId: string;
+    },
+): Promise<StalenessDetectionClaimResult> {
+    const tenantScope = normalizeOwnerNotificationNumericScopeDocumentId(params.tId);
+    const storeScope = normalizeOwnerNotificationNumericScopeDocumentId(params.sId);
+    if (
+        !tenantScope
+        || !storeScope
+        || tenantScope.documentId !== params.tId
+        || storeScope.documentId !== params.sId
+    ) {
+        throw new Error('STALENESS_SCOPE_INVALID');
+    }
+    const cooldownMillis = params.now.toMillis() - STALENESS_COOLDOWN_DAYS * DAY_MS;
+    const checkpointRef = db.collection(DB_COLLECTIONS.MESSAGE_LOGS)
+        .doc(getStalenessCheckpointId(params.tId, params.sId));
+    const legacyQuery = db.collection(DB_COLLECTIONS.MESSAGE_LOGS)
+        .where('type', '==', 'staleness_check')
+        .where('recipientStoreId', '==', params.sId)
+        .where('sentAt', '>=', Timestamp.fromMillis(cooldownMillis))
+        .limit(MAX_LEGACY_LOGS_PER_SCOPE);
+
+    return db.runTransaction(async (transaction) => {
+        const checkpoint = await transaction.get(checkpointRef);
+        const checkpointMillis = getTimestampMillis(checkpoint.data()?.sentAt);
+        if (checkpointMillis !== null && checkpointMillis >= cooldownMillis) {
+            return { checkpointWritten: false, newDetection: false, readsCount: 1 };
+        }
+
+        let recentLegacyMillis: number | null = null;
+        let readsCount = 1;
+        if (!checkpoint.exists) {
+            const legacySnapshot = await transaction.get(legacyQuery);
+            readsCount += Math.max(1, legacySnapshot.size);
+            for (const legacyDoc of legacySnapshot.docs) {
+                const legacyData = legacyDoc.data();
+                if (String(legacyData.tId ?? '') !== params.tId) continue;
+                const legacyMillis = getTimestampMillis(legacyData.sentAt);
+                if (
+                    legacyMillis !== null
+                    && legacyMillis >= cooldownMillis
+                    && (recentLegacyMillis === null || legacyMillis > recentLegacyMillis)
+                ) {
+                    recentLegacyMillis = legacyMillis;
+                }
+            }
+        }
+
+        const detectedAt = recentLegacyMillis === null
+            ? params.now
+            : Timestamp.fromMillis(recentLegacyMillis);
+        transaction.set(checkpointRef, {
+            type: 'staleness_check',
+            recipientStoreId: params.sId,
+            tId: params.tId,
+            sentAt: detectedAt,
+            expiresAt: Timestamp.fromMillis(detectedAt.toMillis() + STALENESS_LOG_RETENTION_DAYS * DAY_MS),
+            status: 'pending',
+            metadata: {
+                daysSincePublish: params.daysSincePublish,
+                truthScore: params.score,
+                detectedAt: recentLegacyMillis === null ? FieldValue.serverTimestamp() : detectedAt,
+            },
+        });
+
+        return {
+            checkpointWritten: true,
+            newDetection: recentLegacyMillis === null,
+            readsCount,
+        };
+    });
+}
+
 // ================================================================
 // MAIN FUNCTION
 // ================================================================
 
 /**
- * Check all stores for staleness and log detections
+ * Check stores for staleness, claim cooldowns, and delegate delivery
  *
- * Does NOT send emails — only detects and logs.
- * The lifecycle messaging engine handles delivery.
+ * The lifecycle messaging engine handles recipient resolution and delivery.
  */
 export async function checkStalenessForAllStores(): Promise<StalenessCheckResult> {
     const db = admin.firestore();
@@ -89,65 +199,79 @@ export async function checkStalenessForAllStores(): Promise<StalenessCheckResult
             return result;
         }
 
-        const stores = truthDoc.data()?.stores || {};
-        const cooldownDate = new Date();
-        cooldownDate.setDate(cooldownDate.getDate() - STALENESS_COOLDOWN_DAYS);
-        const cooldownTimestamp = Timestamp.fromDate(cooldownDate);
+        const rawStores = truthDoc.data()?.stores;
+        const stores = rawStores && typeof rawStores === 'object' && !Array.isArray(rawStores)
+            ? rawStores as Record<string, unknown>
+            : {};
+        const allEntries = Object.entries(stores);
+        const staleEntries = allEntries
+            .filter(([, value]) => Boolean(
+                value && typeof value === 'object' && !Array.isArray(value)
+                    && (value as Record<string, unknown>).staleFlag === true,
+            ))
+            .sort(([left], [right]) => left.localeCompare(right));
+        result.checked = allEntries.length;
+        result.staleFound = staleEntries.length;
 
-        for (const [sId, storeData] of Object.entries(stores) as [string, any][]) {
-            result.checked++;
+        const staleCheckCount = Math.min(staleEntries.length, MAX_STALE_STORES_CHECKED_PER_NIGHT);
+        const utcDayNumber = Math.floor(Date.now() / DAY_MS);
+        const startIndex = staleEntries.length > 0
+            ? (utcDayNumber * MAX_STALE_STORES_CHECKED_PER_NIGHT) % staleEntries.length
+            : 0;
 
-            // Only process stale stores
-            if (!storeData.staleFlag) continue;
-            result.staleFound++;
+        if (staleEntries.length > MAX_STALE_STORES_CHECKED_PER_NIGHT) {
+            analyticsLogger.warn('[StalenessCheck] Stale-store scan bounded for this run', {
+                staleStores: staleEntries.length,
+                maxChecked: MAX_STALE_STORES_CHECKED_PER_NIGHT,
+                rotationStartIndex: startIndex,
+            });
+        }
+
+        for (let offset = 0; offset < staleCheckCount; offset += 1) {
+            const entry = staleEntries[(startIndex + offset) % staleEntries.length];
+            if (!entry) break;
+            const [rawSId, rawStoreData] = entry;
+            const storeData = rawStoreData as Record<string, unknown>;
 
             // Throttle: max detections per night
             if (result.newStalenessDetected >= MAX_DETECTIONS_PER_NIGHT) break;
 
             try {
-                // Idempotency: check if we already logged a staleness event recently
-                const recentLog = await db.collection(DB_COLLECTIONS.MESSAGE_LOGS)
-                    .where('type', '==', 'staleness_check')
-                    .where('recipientStoreId', '==', sId)
-                    .where('sentAt', '>=', cooldownTimestamp)
-                    .limit(1)
-                    .get();
-                result.readsCount++;
+                const storeScope = normalizeOwnerNotificationNumericScopeDocumentId(rawSId);
+                const tenantScope = normalizeOwnerNotificationNumericScopeDocumentId(storeData.tId);
+                if (!storeScope || !tenantScope) {
+                    throw new Error('STALENESS_SCOPE_INVALID');
+                }
+                const sId = storeScope.documentId;
+                const tId = tenantScope.documentId;
+                const now = Timestamp.now();
+                const claim = await claimStalenessDetection(db, {
+                    daysSincePublish: normalizeOptionalMetric(storeData.daysSincePublish),
+                    now,
+                    score: normalizeOptionalMetric(storeData.score),
+                    sId,
+                    tId,
+                });
+                result.readsCount += claim.readsCount;
+                if (claim.checkpointWritten) result.writesCount++;
 
-                if (!recentLog.empty) {
+                if (!claim.newDetection) {
                     result.skippedRecent++;
                     continue;
                 }
 
-                // Log staleness detection to messageLogs
-                // The lifecycle messaging engine will pick this up and send email
-                const now = Timestamp.now();
-                await db.collection(DB_COLLECTIONS.MESSAGE_LOGS).add({
-                    type: 'staleness_check',
-                    recipientStoreId: sId,
-                    tId: storeData.tId,
-                    sentAt: now,
-                    expiresAt: Timestamp.fromMillis(now.toMillis() + STALENESS_LOG_RETENTION_DAYS * DAY_MS),
-                    status: 'pending', // Lifecycle engine will update to 'sent'
-                    metadata: {
-                        daysSincePublish: storeData.daysSincePublish,
-                        truthScore: storeData.score,
-                        detectedAt: FieldValue.serverTimestamp(),
-                    },
-                });
-
-                const staleReferenceId = `menu-stale-${sId}-${new Date().toISOString().slice(0, 10)}`;
+                const staleReferenceId = `menu-stale-${sId}-${now.toDate().toISOString().slice(0, 10)}`;
                 try {
                     const { sendLifecycleMessage } = await import('../messaging/messagingEngine');
                     await sendLifecycleMessage({
-                        storeId: String(sId),
-                        tenantId: String(storeData.tId),
+                        storeId: sId,
+                        tenantId: tId,
                         eventType: 'MENU_STALE',
                         referenceId: staleReferenceId,
                         metadata: {
                             reason: 'Menu information may be older than expected.',
-                            daysSincePublish: storeData.daysSincePublish,
-                            truthScore: storeData.score,
+                            daysSincePublish: normalizeOptionalMetric(storeData.daysSincePublish),
+                            truthScore: normalizeOptionalMetric(storeData.score),
                         },
                     });
                 } catch (deliveryError) {
@@ -155,7 +279,7 @@ export async function checkStalenessForAllStores(): Promise<StalenessCheckResult
                         failureCode: STALENESS_LIFECYCLE_DELIVERY_FAILED,
                         eventType: 'MENU_STALE',
                         storeId: getAnalyticsIdContext(sId),
-                        tenantId: getAnalyticsIdContext(storeData.tId),
+                        tenantId: getAnalyticsIdContext(tId),
                         referenceId: getAnalyticsIdContext(staleReferenceId),
                         messageLogWritten: true,
                         fallbackPolicy: 'keep_detection_cooldown_and_continue',
@@ -163,13 +287,12 @@ export async function checkStalenessForAllStores(): Promise<StalenessCheckResult
                     });
                 }
 
-                result.writesCount++;
                 result.newStalenessDetected++;
 
-            } catch (storeError: any) {
+            } catch (storeError) {
                 result.errors++;
                 analyticsLogger.warn('[StalenessCheck] Error processing store', {
-                    storeId: getAnalyticsIdContext(sId),
+                    storeId: getAnalyticsIdContext(rawSId),
                     error: getAnalyticsErrorContext(storeError),
                 });
             }
@@ -189,10 +312,23 @@ export async function checkStalenessForAllStores(): Promise<StalenessCheckResult
         }
 
         return result;
-    } catch (error: any) {
+    } catch (error) {
         analyticsLogger.error('[StalenessCheck] Fatal error', {
             error: getAnalyticsErrorContext(error),
         });
         throw error;
     }
+}
+
+export async function claimStalenessDetectionForTest(
+    db: FirebaseFirestore.Firestore,
+    params: {
+        daysSincePublish: number | null;
+        now: Timestamp;
+        score: number | null;
+        sId: string;
+        tId: string;
+    },
+): Promise<StalenessDetectionClaimResult> {
+    return claimStalenessDetection(db, params);
 }

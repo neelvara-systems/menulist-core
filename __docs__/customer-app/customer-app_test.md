@@ -175,6 +175,7 @@ These checks were executed in the current workspace on **May 2, 2026**.
 | Type safety | `npx tsc --noEmit` | ✅ PASS | No type errors |
 | ESLint | `npm run lint` | ✅ PASS | No warnings or errors |
 | Customer App PWA static preflight | `npm run verify:customer-app-pwa` | ✅ PASS | Manifest identity, manifest link, SW no-cache policy, next-pwa scoping, analytics source-chain contract, dashboard KPI rendering contract, and freshness hook guard |
+| Local customer-worker offline smoke | `npm run smoke:customer-pwa-offline` | ✅ PASS (July 11, 2026) | Temporary Chrome profile plus loopback tenant proxy; online/offline cache inspection found only `/offline`, `menuContentCached: false`, and the 390x844 fallback screenshot rendered the maintained reconnect screen |
 | Manifest identity guard | `npx ts-node --compiler-options '{"module":"CommonJS"}' -r tsconfig-paths/register src/__tests__/manifestStoreIdentity.ts` | ✅ PASS | Same store identity across OBP, `/menu`, project, and outlet/project paths |
 | Production build | `npm run build` | ⬜ Not run in this pass | Run before deployment signoff |
 
@@ -204,6 +205,21 @@ This script verifies:
 - Customer App analytics events are present and routed under `projectId='customerApp'`
 - Customer App analytics source-chain contract is guarded from event fields through public analytics preference checks, daily writes, summary aggregation, dashboard-summary generation, scheduler inclusion, dashboard DAL reads, and desktop/mobile KPI cards
 - menu freshness uses `router.refresh()` and not polling/listeners
+
+### Local Customer-Worker Browser Smoke
+
+With Chrome and the local development server available, run:
+
+```bash
+CUSTOMER_PWA_QA_TENANT_HOST=habibis.menulist.ai \
+CUSTOMER_PWA_QA_UPSTREAM_URL=http://127.0.0.1:3000 \
+CUSTOMER_PWA_QA_OUTPUT_DIR=/tmp/menulist-customer-pwa-qa \
+npm run smoke:customer-pwa-offline
+```
+
+This external-only harness uses a temporary Chrome profile and harness-owned loopback tenant proxy. It manually registers the customer worker after development cleanup, verifies Cache Storage contains exactly `/offline`, severs the proxy upstream, and checks that a fresh navigation renders the maintained offline reconnect screen without stale menu content. The July 11 run passed at 390x844 and wrote `/tmp/menulist-customer-pwa-qa/customer-pwa-offline-fallback.png`.
+
+This is local worker-contract evidence only. It does not certify production worker registration, PWA installability, a deployed worker scope, physical-device behavior, or production-host offline behavior. Keep the installed-device airplane-mode step below open until it is run on the release target.
 
 ### Real-Device Execution Order
 

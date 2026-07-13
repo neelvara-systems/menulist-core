@@ -8,6 +8,8 @@
 
 For the current full-system certification gates that require external access, provider credentials, browser/device QA, or explicit deploy approval, use [External Certification Runbook](./external-certification-runbook.md) and record results in `__docs__/audits/menulist-production-readiness-audit.md`.
 
+If an outage, security event, wrong public output, billing/provider failure, or rollback decision occurs during setup or launch, stop the checklist and use the [MenuList Incident Response Runbook](./incident-response-runbook.md).
+
 ---
 
 ## Step 1: Create Telegram Bot (5 minutes)

@@ -7,6 +7,10 @@
 
 ---
 
+## July 11, 2026 concurrency amendment
+
+Claim-account token consumption alone was insufficient because Mode 2/3 mutated Firebase Auth before the final transaction. All three modes now reserve the token document before provider side effects. Finalization revalidates canonical tenant/store truth and couples the token, target user, owner records and a bounded subscription set. Email/password claims use the same deterministic global-email user identity as OAuth; phone/passcode claims retain the canonical phone identity. Losing or stale claims cannot overwrite the winning password, rebind a scoped Google user, orphan a request-created Auth identity, or return a false retry after only subscription/custom-claim post-work failed.
+
 ## 1. Audit Scope
 
 Full end-to-end audit of user authentication and registration flows covering:
@@ -64,6 +68,8 @@ Full end-to-end audit of user authentication and registration flows covering:
 ---
 
 ### Decision A4 + B4: Claim Token — Remove Expiry, Add Email/Password Setup
+
+> **Historical decision, superseded July 11, 2026:** active messaging onboarding writes a seven-day `claimTokenExpiresAt`, and both preview and account-claim admission now require a valid future expiry. Missing or malformed legacy expiry fails closed; see `README.md` and `auth_firebase.md`.
 
 **Field:** `UserDataType.claimToken: string`, `claimTokenExpiresAt: Timestamp`
 

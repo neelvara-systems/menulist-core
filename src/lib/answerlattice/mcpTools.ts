@@ -8,6 +8,8 @@ import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebase
 import { createHash } from 'crypto';
 import { FieldValue } from 'firebase-admin/firestore';
 
+export type AnswerlatticeMcpToolScope = 'context:read' | 'signals:write';
+
 export const ANSWERLATTICE_MCP_TOOLS = [
     {
         name: 'get_product_context',
@@ -71,6 +73,12 @@ export const ANSWERLATTICE_MCP_TOOLS = [
         },
     },
 ] as const;
+
+export const getAnswerlatticeMcpToolRequiredScope = (toolName: string): AnswerlatticeMcpToolScope | null => {
+    const toolExists = ANSWERLATTICE_MCP_TOOLS.some(tool => tool.name === toolName);
+    if (!toolExists) return null;
+    return toolName === 'report_missing_context' ? 'signals:write' : 'context:read';
+};
 
 const sanitizeSegment = (value: unknown): string => String(value || '')
     .trim()

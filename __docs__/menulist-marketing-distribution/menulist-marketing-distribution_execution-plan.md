@@ -12,6 +12,46 @@ Every execution step must move MenuList closer to:
 
 > current list uploaded -> preview prepared -> owner approval -> public link published -> two customer surfaces activated.
 
+## Proof-Led Distribution Sequence
+
+Current workflow research is maintained in `menulist-marketing-distribution_distribution-workflow-research-2026-07-11.md`.
+
+Every distribution run should use this order:
+
+```txt
+bounded market pod
+-> permissioned owner result
+-> two-surface activation
+-> approved canonical proof packet
+-> channel-native derivatives
+-> one tracked next action
+-> qualified response or activation
+-> outcome and founder-attention review
+-> continue, narrow, change, or pause
+```
+
+Channel assignments:
+
+| Channel | Job in the current plan |
+| --- | --- |
+| Google/Profile | Current-link activation and high-intent discovery |
+| Instagram | Visual transformation, owner story, and local creator/partner trust |
+| YouTube | Durable case walkthrough; Shorts are derivatives, not the source |
+| X | Founder learning, ecosystem conversation, and partner discovery |
+| Reddit | Listening, objection learning, and selective disclosed help |
+| WhatsApp/founder email | Permissioned owner response and intake, not public menu gating |
+| Physical trust partner | Owner introduction and second-surface completion |
+| Product Hunt | Later public proof and feedback event |
+| Paid media | Evidence-gated amplification of a proven asset |
+
+Do not begin a generic posting calendar before the first permissioned proof packet exists. The current external dependency remains one permissioned business or partner introduction plus the exact founder/manual sender identity.
+
+Execution contracts:
+
+- run the first eligible proof through `menulist-marketing-distribution_first-proof-distribution-run-operating-pack.md`;
+- use `menulist-marketing-distribution_weekly-distribution-watch.md` for the read-only weekly platform and workflow change review;
+- keep the recurring watch unscheduled until the supported Codex scheduler is available; do not introduce raw cron, launchd, GitHub Actions, or another automation surface for this research task.
+
 ## Phase 0 - Foundation and Operating Setup
 
 **Goal:** Make marketing execution trackable inside the repo.
@@ -291,6 +331,34 @@ Weekly market-pod workflow:
 
 Do not create `/global`, `/in`, `/ae`, `/us`, `/br`, `/mx`, `/line`, or `/kakao` routes until the relevant pod has proof assets, localized copy, intake path, and owner/compliance decisions.
 
+## Phase 10 - AI Revenue Workflow Proof
+
+**Goal:** Prove AI leverage inside the existing SignalDesk controls before adding another agent, connector, collection, or autonomy level.
+
+Use the current research and rollout gates in `../menulist-signaldesk/menulist-signaldesk_ai-sales-marketing-distribution-research-2026-07-11.md`.
+
+Current mode:
+
+```txt
+approved evidence
+-> AI research and recommendation
+-> founder accept, edit, reject, or hold
+-> permissioned manual action
+-> opportunity and activation outcome
+-> AI quality, cost, and founder-attention review
+```
+
+Evidence gate before batch or exception-only automation:
+
+- 12 evidence packets;
+- five private previews;
+- three two-surface activations;
+- one permissioned proof asset;
+- measured recommendation acceptance, edits, rejected facts, exceptions, cost, and founder attention;
+- no material source-rights, suppression, claim, complaint, sender-health, or budget incident.
+
+Do not add calendar, transcript, proposal, payment, creator-scoring, paid-optimization, auto-publishing, or autonomous-send scope until a repeated real-run gap proves the existing SignalDesk records cannot represent the workflow.
+
 ## Current Next Step
 
 Founder decision recorded:
@@ -299,7 +367,7 @@ Founder decision recorded:
 
 Recommended next action:
 
-The docs-first launch-support pack is complete, and the WhatsApp-first moat plan has become the priority track:
+The docs-first launch and AI-revenue operating packs are complete. The immediate constraint is one permissioned owner or partner path, not more market research or runtime scope:
 
 - market clutter scan;
 - demo universe and fictional source lists;
@@ -319,13 +387,13 @@ The docs-first launch-support pack is complete, and the WhatsApp-first moat plan
 
 Next:
 
-1. replace the test number with the official WhatsApp destination and confirm response ownership;
-2. prepare fictional or permissioned public demo pages, screenshots, and videos from the demo universe;
-3. add tracking and consent copy for the direct prefilled WhatsApp CTA;
-4. choose the first market-pod city, vertical, contact path, and outreach sender identity;
-5. keep Tuesday, August 11, 2026 as a Product Hunt target only if readiness gates pass;
-6. run a small permissioned pilot;
-7. resume Product Hunt/gallery scheduling work only after WhatsApp proof assets and follow-up coverage exist.
+1. founder supplies one real permissioned Bengaluru business or approved menu-photographer/restaurant-consultant introduction;
+2. founder confirms the exact sender/manual identity and response owner;
+3. SignalDesk prepares one evidence-backed recommendation in shadow mode;
+4. MenuList prepares one private preview and completes Google/Profile plus one additional customer surface;
+5. record AI usefulness, edits, rejected facts, founder attention, objections, and activation outcome;
+6. obtain item-level owner permission before creating or distributing proof;
+7. keep WhatsApp production destination, tracking/consent, public demo assets, and Product Hunt scheduling as separate readiness gates.
 
 Now completed from the prior pending list:
 

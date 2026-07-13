@@ -75,6 +75,7 @@ function isReportLeadRow(value: unknown): value is ReportLeadRow {
 
 function isReportLeadOpsCost(value: unknown): value is ReportLeadOpsCost {
   return isRecord(value)
+    && value.authReads === 1
     && isFiniteNumber(value.enquiryReads)
     && value.writes === 0
     && isFiniteNumber(value.scanLimit)

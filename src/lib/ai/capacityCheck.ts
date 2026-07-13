@@ -3,9 +3,11 @@ import { getUnitCost, isFreeTierAction, OVERDRAFT_BUFFER_PERCENT } from "@consta
 import { DB_COLLECTIONS } from "@constant/database";
 import { getActiveSubscriptionForStore } from "@database/subscriptions/server";
 import { normalizeBillingSubscriptionDocumentId } from "@lib/billing/subscriptionDocumentIdBoundary";
+import { getBillingPeriodKey } from "@lib/billing/billingPeriod";
 import { admin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
 import { FirestoreSubscriptionDoc } from "@type/razorpay";
+import { normalizeAiOperationDocumentId } from "./operationLog";
 
 /**
  * AI Capacity Check & Consumption Module
@@ -30,11 +32,13 @@ async function refreshMonthlyCreditsIfNeeded(
     subscription: FirestoreSubscriptionDoc,
 ): Promise<FirestoreSubscriptionDoc> {
     const normalizedSubscriptionId = normalizeBillingSubscriptionDocumentId(subscription.id);
-    if (!normalizedSubscriptionId || subscription.monthlyCreditsAllowance <= 0) {
+    const initialAllowance = Number(subscription.monthlyCreditsAllowance);
+    if (!normalizedSubscriptionId || !Number.isFinite(initialAllowance) || initialAllowance <= 0) {
         return subscription;
     }
 
     const currentBillingPeriod = getBillingPeriodKey(subscription.cycleStartDate);
+    if (currentBillingPeriod === null) return subscription;
     if (subscription.creditsLastResetMonth === currentBillingPeriod) {
         return subscription;
     }
@@ -52,20 +56,21 @@ async function refreshMonthlyCreditsIfNeeded(
             id: subscriptionSnap.id,
         };
         const billingPeriod = getBillingPeriodKey(current.cycleStartDate);
+        const allowance = Number(current.monthlyCreditsAllowance);
 
-        if (current.creditsLastResetMonth === billingPeriod || current.monthlyCreditsAllowance <= 0) {
+        if (billingPeriod === null || current.creditsLastResetMonth === billingPeriod || !Number.isFinite(allowance) || allowance <= 0) {
             return current;
         }
 
         tx.set(subscriptionRef, {
-            monthlyCredits: current.monthlyCreditsAllowance,
+            monthlyCredits: allowance,
             creditsLastResetMonth: billingPeriod,
             modifiedOn: admin.firestore.FieldValue.serverTimestamp(),
         }, { merge: true });
 
         return {
             ...current,
-            monthlyCredits: current.monthlyCreditsAllowance,
+            monthlyCredits: allowance,
             creditsLastResetMonth: billingPeriod,
         };
     });
@@ -117,7 +122,10 @@ export async function checkAICapacity(
         };
     }
 
-    const unitsRequired = getUnitCost(actionType) * quantity;
+    const normalizedQuantity = Number(quantity);
+    const unitsRequired = getUnitCost(actionType) * (
+        Number.isSafeInteger(normalizedQuantity) && normalizedQuantity > 0 ? normalizedQuantity : 1
+    );
     let subscription = preloadedSubscription === undefined
         ? await getActiveSubscriptionForStore(tenantId, storeId)
         : preloadedSubscription;
@@ -132,8 +140,17 @@ export async function checkAICapacity(
     // E.g. sub starts Feb 15 → anchor=15 → billing months are 15th-to-15th.
     subscription = await refreshMonthlyCreditsIfNeeded(subscription);
 
-    const remaining =
-        (subscription.monthlyCredits || 0) + (subscription.topUpCredits || 0);
+    const monthlyCredits = Number(subscription.monthlyCredits ?? 0);
+    const topUpCredits = Number(subscription.topUpCredits ?? 0);
+    if (
+        !Number.isFinite(monthlyCredits)
+        || !Number.isFinite(topUpCredits)
+        || monthlyCredits < 0
+        || topUpCredits < 0
+    ) {
+        return { allowed: false, unitsRequired, remaining: 0, reason: 'exhausted', subscription };
+    }
+    const remaining = monthlyCredits + topUpCredits;
 
     // Soft enforcement: allow overdraft up to OVERDRAFT_BUFFER_PERCENT
     const overdraftAllowance = remaining * (OVERDRAFT_BUFFER_PERCENT / 100);
@@ -154,6 +171,549 @@ export interface RemainingBalance {
     topUpCredits: number;
 }
 
+export type AiCapacityReservationRecoveryMode = "automatic_refund" | "durable_retry";
+
+export interface AiCapacityReservation {
+    action: string;
+    id: string;
+    recoveryMode: AiCapacityReservationRecoveryMode;
+    remainingBalance: RemainingBalance;
+    sId: string;
+    state: "reserved" | "consumed";
+    subscriptionId: string;
+    tId: string;
+    unitsReserved: number;
+}
+
+type ReserveAiCapacityParams = {
+    action: string;
+    idempotencyKey?: string;
+    pId?: string | number;
+    recoveryMode?: AiCapacityReservationRecoveryMode;
+    sId: string | number;
+    source?: string;
+    subscription: FirestoreSubscriptionDoc;
+    tId: string | number;
+    uId?: string | number;
+    unitsToReserve: number;
+};
+
+const AI_CAPACITY_RESERVATION_TTL_MS = 30 * 60 * 1000;
+const AI_CAPACITY_REFUND_RETENTION_MS = 14 * 24 * 60 * 60 * 1000;
+
+function normalizeAccountingScope(value: unknown): string | null {
+    const normalized = typeof value === "string" || typeof value === "number" ? String(value) : "";
+    const numeric = Number(normalized);
+    return normalized.length > 0
+        && Number.isSafeInteger(numeric)
+        && numeric > 0
+        && String(numeric) === normalized
+        ? normalized
+        : null;
+}
+
+function getReservationOperationRef(tId: string, sId: string, id: string) {
+    return firestoreAdmin
+        .collection(DB_COLLECTIONS.MENULIST_AI_OPERATIONS)
+        .doc(tId)
+        .collection(sId)
+        .doc(id);
+}
+
+function assertReservationContract(
+    data: Record<string, any>,
+    expected: Pick<AiCapacityReservation, "action" | "id" | "sId" | "subscriptionId" | "tId" | "unitsReserved">,
+): void {
+    if (
+        data.accountingIdempotencyKey !== expected.id
+        || data.action !== expected.action
+        || Number(data.accountingUnits) !== expected.unitsReserved
+        || normalizeAccountingScope(data.tId ?? data.tenantId) !== expected.tId
+        || normalizeAccountingScope(data.sId ?? data.storeId) !== expected.sId
+        || data.accountingSubscriptionId !== expected.subscriptionId
+    ) {
+        throw new Error("AI capacity reservation idempotency conflict.");
+    }
+}
+
+function readPersistedReservation(
+    data: Record<string, any>,
+    expected: Pick<AiCapacityReservation, "action" | "id" | "sId" | "subscriptionId" | "tId" | "unitsReserved">,
+): AiCapacityReservation {
+    assertReservationContract(data, expected);
+    if (data.accountingStatus !== "reserved" && data.accountingStatus !== "consumed") {
+        throw new Error("AI capacity reservation is not available.");
+    }
+    const monthlyCredits = Number(data.remainingMonthlyCredits);
+    const topUpCredits = Number(data.remainingTopUpCredits);
+    if (!Number.isFinite(monthlyCredits) || monthlyCredits < 0 || !Number.isFinite(topUpCredits) || topUpCredits < 0) {
+        throw new Error("AI capacity reservation balance is invalid.");
+    }
+    return {
+        ...expected,
+        recoveryMode: data.accountingRecoveryMode === "durable_retry" ? "durable_retry" : "automatic_refund",
+        remainingBalance: { monthlyCredits, topUpCredits },
+        state: data.accountingStatus,
+    };
+}
+
+async function sendCreditsExhaustedLifecycleMessage(
+    subscription: FirestoreSubscriptionDoc,
+    unitsToConsume: number,
+    balance: RemainingBalance,
+) {
+    if (balance.monthlyCredits !== 0 || balance.topUpCredits !== 0) return;
+    try {
+        const { sendLifecycleMessage } = await import('@lib/messaging');
+        sendLifecycleMessage({
+            storeId: String(subscription.storeId),
+            tenantId: String(subscription.tenantId),
+            eventType: 'CREDITS_EXHAUSTED',
+            referenceId: `credits-exhausted-${subscription.storeId}-${new Date().toISOString().split('T')[0]}`,
+            recipientEmail: subscription.email || '',
+            storeName: subscription.name || '',
+            metadata: {},
+        }).catch((notificationError) => {
+            logRuntimeFailure('ai_capacity_credits_exhausted_lifecycle_message_failed', notificationError, {
+                eventType: 'CREDITS_EXHAUSTED',
+                unitsToConsume,
+                monthlyCredits: balance.monthlyCredits,
+                topUpCredits: balance.topUpCredits,
+                ...getBoundedRuntimeStringContext('subscriptionId', subscription.id),
+                ...getBoundedRuntimeStringContext('tenantId', subscription.tenantId),
+                ...getBoundedRuntimeStringContext('storeId', subscription.storeId),
+            });
+        });
+    } catch (notificationImportError) {
+        logRuntimeFailure('ai_capacity_credits_exhausted_lifecycle_message_import_failed', notificationImportError, {
+            eventType: 'CREDITS_EXHAUSTED',
+            unitsToConsume,
+            monthlyCredits: balance.monthlyCredits,
+            topUpCredits: balance.topUpCredits,
+            ...getBoundedRuntimeStringContext('subscriptionId', subscription.id),
+            ...getBoundedRuntimeStringContext('tenantId', subscription.tenantId),
+            ...getBoundedRuntimeStringContext('storeId', subscription.storeId),
+        });
+    }
+}
+
+function calculateConsumedBalance(
+    current: FirestoreSubscriptionDoc,
+    unitsToConsume: number,
+): {
+    balance: RemainingBalance;
+    beforeBalance: RemainingBalance;
+    billingPeriod: number | null;
+    chargedBalance: RemainingBalance;
+} {
+    const billingPeriod = getBillingPeriodKey(current.cycleStartDate);
+    const monthlyAllowance = Number(current.monthlyCreditsAllowance ?? 0);
+    const monthlyRemaining = billingPeriod !== null
+        && current.creditsLastResetMonth !== billingPeriod
+        && Number.isFinite(monthlyAllowance)
+        && monthlyAllowance > 0
+        ? monthlyAllowance
+        : Number(current.monthlyCredits ?? 0);
+    const topUpRemaining = Number(current.topUpCredits ?? 0);
+    const totalRemaining = monthlyRemaining + topUpRemaining;
+    const effectiveCapacity = totalRemaining * (1 + (OVERDRAFT_BUFFER_PERCENT / 100));
+    if (
+        !Number.isFinite(monthlyRemaining)
+        || !Number.isFinite(topUpRemaining)
+        || monthlyRemaining < 0
+        || topUpRemaining < 0
+        || totalRemaining < 0
+        || unitsToConsume > effectiveCapacity
+    ) {
+        throw new Error('Not enough billing credits for this operation.');
+    }
+
+    if (monthlyRemaining >= unitsToConsume) {
+        return {
+            balance: { monthlyCredits: monthlyRemaining - unitsToConsume, topUpCredits: topUpRemaining },
+            beforeBalance: { monthlyCredits: monthlyRemaining, topUpCredits: topUpRemaining },
+            billingPeriod,
+            chargedBalance: { monthlyCredits: unitsToConsume, topUpCredits: 0 },
+        };
+    }
+    const chargedTopUpCredits = Math.min(topUpRemaining, Math.max(0, unitsToConsume - monthlyRemaining));
+    return {
+        balance: {
+            monthlyCredits: 0,
+            topUpCredits: topUpRemaining - chargedTopUpCredits,
+        },
+        beforeBalance: { monthlyCredits: monthlyRemaining, topUpCredits: topUpRemaining },
+        billingPeriod,
+        chargedBalance: { monthlyCredits: monthlyRemaining, topUpCredits: chargedTopUpCredits },
+    };
+}
+
+/**
+ * Atomically reserves paid MenuList credits before provider work begins.
+ * The reservation shell intentionally has no `createdOn`, so it is excluded
+ * from the existing owner/platform transaction-history query until settlement.
+ */
+export async function reserveAiCapacity({
+    action,
+    idempotencyKey,
+    pId,
+    recoveryMode = "automatic_refund",
+    sId,
+    source,
+    subscription,
+    tId,
+    uId,
+    unitsToReserve,
+}: ReserveAiCapacityParams): Promise<AiCapacityReservation> {
+    if (!Number.isSafeInteger(unitsToReserve) || unitsToReserve <= 0) {
+        throw new Error("AI capacity reservation units must be a positive safe integer.");
+    }
+    const expectedTenantId = normalizeAccountingScope(tId);
+    const expectedStoreId = normalizeAccountingScope(sId);
+    const subscriptionTenantId = normalizeAccountingScope(subscription.tenantId ?? subscription.tId);
+    const subscriptionStoreId = normalizeAccountingScope(subscription.storeId ?? subscription.sId);
+    if (
+        !expectedTenantId
+        || !expectedStoreId
+        || subscriptionTenantId !== expectedTenantId
+        || subscriptionStoreId !== expectedStoreId
+    ) {
+        throw new Error("AI capacity reservation subscription scope mismatch.");
+    }
+    const subscriptionId = normalizeBillingSubscriptionDocumentId(subscription.id);
+    if (!subscriptionId) throw new Error("Billing subscription is not available.");
+
+    const operationCollection = firestoreAdmin
+        .collection(DB_COLLECTIONS.MENULIST_AI_OPERATIONS)
+        .doc(expectedTenantId)
+        .collection(expectedStoreId);
+    const generatedId = operationCollection.doc().id;
+    const operationId = normalizeAiOperationDocumentId(idempotencyKey ?? generatedId);
+    if (!operationId) throw new Error("Invalid AI capacity reservation idempotency key.");
+    const operationRef = operationCollection.doc(operationId);
+    const subscriptionRef = firestoreAdmin.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId);
+    const expected = {
+        action,
+        id: operationId,
+        sId: expectedStoreId,
+        subscriptionId,
+        tId: expectedTenantId,
+        unitsReserved: unitsToReserve,
+    };
+
+    return firestoreAdmin.runTransaction(async (transaction) => {
+        const [operationSnap, subscriptionSnap] = await Promise.all([
+            transaction.get(operationRef),
+            transaction.get(subscriptionRef),
+        ]);
+        const existing = operationSnap.data() || {};
+        if (operationSnap.exists && existing.accountingStatus !== "refunded") {
+            return readPersistedReservation(existing, expected);
+        }
+        if (operationSnap.exists) assertReservationContract(existing, expected);
+        if (!subscriptionSnap.exists) throw new Error("Billing subscription is not available.");
+
+        const current = { ...(subscriptionSnap.data() as FirestoreSubscriptionDoc), id: subscriptionSnap.id };
+        if (
+            normalizeAccountingScope(current.tenantId ?? current.tId) !== expectedTenantId
+            || normalizeAccountingScope(current.storeId ?? current.sId) !== expectedStoreId
+        ) {
+            throw new Error("AI capacity reservation persisted subscription scope mismatch.");
+        }
+        const { balance, beforeBalance, billingPeriod, chargedBalance } = calculateConsumedBalance(current, unitsToReserve);
+        const now = admin.firestore.Timestamp.now();
+        const recoveryAt = admin.firestore.Timestamp.fromMillis(now.toMillis() + AI_CAPACITY_RESERVATION_TTL_MS);
+        const reservationAttempt = Number.isSafeInteger(Number(existing.accountingReservationAttempt))
+            ? Number(existing.accountingReservationAttempt) + 1
+            : 1;
+
+        transaction.set(subscriptionRef, {
+            monthlyCredits: balance.monthlyCredits,
+            topUpCredits: balance.topUpCredits,
+            ...(billingPeriod !== null ? { creditsLastResetMonth: billingPeriod } : {}),
+            modifiedOn: admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true });
+        transaction.set(operationRef, {
+            accountingChargedMonthlyCredits: chargedBalance.monthlyCredits,
+            accountingChargedTopUpCredits: chargedBalance.topUpCredits,
+            accountingIdempotencyKey: operationId,
+            accountingMonthlyCreditCeiling: Math.max(
+                beforeBalance.monthlyCredits,
+                Number(current.monthlyCreditsAllowance ?? 0),
+            ),
+            accountingRecoveryMode: recoveryMode,
+            accountingReservationAttempt: reservationAttempt,
+            accountingReservationBillingPeriod: billingPeriod,
+            accountingStatus: "reserved",
+            accountingSubscriptionId: subscriptionId,
+            accountingUnits: unitsToReserve,
+            action,
+            billingMode: "billable",
+            ...(pId !== undefined ? { pId: String(pId).toUpperCase() } : {}),
+            ...(source ? { source } : {}),
+            ...(uId !== undefined ? { uId: String(uId) } : {}),
+            remainingMonthlyCredits: balance.monthlyCredits,
+            remainingTopUpCredits: balance.topUpCredits,
+            reservedOn: now,
+            ...(recoveryMode === "automatic_refund" ? { reservationRecoveryAt: recoveryAt } : {}),
+            sId: Number(expectedStoreId),
+            tId: Number(expectedTenantId),
+            modifiedOn: admin.firestore.FieldValue.serverTimestamp(),
+            refundedOn: admin.firestore.FieldValue.delete(),
+            refundReason: admin.firestore.FieldValue.delete(),
+        }, { merge: true });
+
+        return {
+            ...expected,
+            recoveryMode,
+            remainingBalance: balance,
+            state: "reserved" as const,
+        };
+    });
+}
+
+export async function finalizeAiCapacityReservation({
+    operationData,
+    reservation,
+}: {
+    operationData: Record<string, unknown>;
+    reservation: AiCapacityReservation;
+}): Promise<{ alreadyConsumed: boolean; remainingBalance: RemainingBalance }> {
+    const operationRef = getReservationOperationRef(reservation.tId, reservation.sId, reservation.id);
+    const subscriptionRef = firestoreAdmin.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(reservation.subscriptionId);
+    const result = await firestoreAdmin.runTransaction(async (transaction) => {
+        const [operationSnap, subscriptionSnap] = await Promise.all([
+            transaction.get(operationRef),
+            transaction.get(subscriptionRef),
+        ]);
+        if (!operationSnap.exists) throw new Error("AI capacity reservation is not available.");
+        const existing = operationSnap.data() || {};
+        assertReservationContract(existing, reservation);
+        const persisted = readPersistedReservation(existing, reservation);
+        if (existing.accountingStatus === "consumed") {
+            return {
+                alreadyConsumed: true,
+                balance: persisted.remainingBalance,
+                subscription: subscriptionSnap.exists
+                    ? { ...(subscriptionSnap.data() as FirestoreSubscriptionDoc), id: subscriptionSnap.id }
+                    : null,
+            };
+        }
+        if (!subscriptionSnap.exists) throw new Error("Billing subscription is not available.");
+        const current = { ...(subscriptionSnap.data() as FirestoreSubscriptionDoc), id: subscriptionSnap.id };
+        if (
+            normalizeAccountingScope(current.tenantId ?? current.tId) !== reservation.tId
+            || normalizeAccountingScope(current.storeId ?? current.sId) !== reservation.sId
+        ) {
+            throw new Error("AI capacity reservation persisted subscription scope mismatch.");
+        }
+        if (
+            operationData.action !== reservation.action
+            || Number(operationData.unitsConsumed) !== reservation.unitsReserved
+            || normalizeAccountingScope(operationData.tId ?? operationData.tenantId) !== reservation.tId
+            || normalizeAccountingScope(operationData.sId ?? operationData.storeId) !== reservation.sId
+        ) {
+            throw new Error("AI capacity reservation settlement conflict.");
+        }
+
+        transaction.set(operationRef, {
+            ...operationData,
+            accountingChargedMonthlyCredits: existing.accountingChargedMonthlyCredits,
+            accountingChargedTopUpCredits: existing.accountingChargedTopUpCredits,
+            accountingIdempotencyKey: reservation.id,
+            accountingMonthlyCreditCeiling: existing.accountingMonthlyCreditCeiling,
+            accountingRecoveryMode: existing.accountingRecoveryMode,
+            accountingReservationAttempt: existing.accountingReservationAttempt,
+            accountingReservationBillingPeriod: existing.accountingReservationBillingPeriod,
+            accountingStatus: "consumed",
+            accountingSubscriptionId: reservation.subscriptionId,
+            accountingUnits: reservation.unitsReserved,
+            remainingMonthlyCredits: persisted.remainingBalance.monthlyCredits,
+            remainingTopUpCredits: persisted.remainingBalance.topUpCredits,
+            reservedOn: existing.reservedOn,
+            settledOn: admin.firestore.FieldValue.serverTimestamp(),
+            modifiedOn: admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: false });
+        return { alreadyConsumed: false, balance: persisted.remainingBalance, subscription: current };
+    });
+
+    if (!result.alreadyConsumed && result.subscription) {
+        await sendCreditsExhaustedLifecycleMessage(result.subscription, reservation.unitsReserved, result.balance);
+    }
+    return { alreadyConsumed: result.alreadyConsumed, remainingBalance: result.balance };
+}
+
+export async function refundAiCapacityReservation(
+    reservation: AiCapacityReservation,
+    reason: string,
+): Promise<{ alreadyTerminal: boolean; remainingBalance: RemainingBalance | null }> {
+    const operationRef = getReservationOperationRef(reservation.tId, reservation.sId, reservation.id);
+    const subscriptionRef = firestoreAdmin.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(reservation.subscriptionId);
+    return firestoreAdmin.runTransaction(async (transaction) => {
+        const [operationSnap, subscriptionSnap] = await Promise.all([
+            transaction.get(operationRef),
+            transaction.get(subscriptionRef),
+        ]);
+        if (!operationSnap.exists) return { alreadyTerminal: true, remainingBalance: null };
+        const existing = operationSnap.data() || {};
+        assertReservationContract(existing, reservation);
+        if (existing.accountingStatus === "consumed" || existing.accountingStatus === "refunded") {
+            const monthlyCredits = Number(existing.refundRemainingMonthlyCredits ?? existing.remainingMonthlyCredits);
+            const topUpCredits = Number(existing.refundRemainingTopUpCredits ?? existing.remainingTopUpCredits);
+            return {
+                alreadyTerminal: true,
+                remainingBalance: Number.isFinite(monthlyCredits) && Number.isFinite(topUpCredits)
+                    ? { monthlyCredits, topUpCredits }
+                    : null,
+            };
+        }
+        if (existing.accountingStatus !== "reserved" || !subscriptionSnap.exists) {
+            throw new Error("AI capacity reservation refund evidence is not available.");
+        }
+        const current = { ...(subscriptionSnap.data() as FirestoreSubscriptionDoc), id: subscriptionSnap.id };
+        if (
+            normalizeAccountingScope(current.tenantId ?? current.tId) !== reservation.tId
+            || normalizeAccountingScope(current.storeId ?? current.sId) !== reservation.sId
+        ) {
+            throw new Error("AI capacity reservation persisted subscription scope mismatch.");
+        }
+        const currentMonthlyCredits = Number(current.monthlyCredits ?? 0);
+        const currentTopUpCredits = Number(current.topUpCredits ?? 0);
+        const chargedMonthlyCredits = Number(existing.accountingChargedMonthlyCredits ?? 0);
+        const chargedTopUpCredits = Number(existing.accountingChargedTopUpCredits ?? 0);
+        const monthlyCreditCeiling = Number(existing.accountingMonthlyCreditCeiling ?? current.monthlyCreditsAllowance ?? 0);
+        if (
+            !Number.isFinite(currentMonthlyCredits) || currentMonthlyCredits < 0
+            || !Number.isFinite(currentTopUpCredits) || currentTopUpCredits < 0
+            || !Number.isFinite(chargedMonthlyCredits) || chargedMonthlyCredits < 0
+            || !Number.isFinite(chargedTopUpCredits) || chargedTopUpCredits < 0
+            || !Number.isFinite(monthlyCreditCeiling) || monthlyCreditCeiling < 0
+        ) {
+            throw new Error("AI capacity reservation refund credit evidence is invalid.");
+        }
+        const currentBillingPeriod = getBillingPeriodKey(current.cycleStartDate);
+        const reservedBillingPeriod = Number(existing.accountingReservationBillingPeriod);
+        const sameBillingPeriod = currentBillingPeriod === null
+            ? existing.accountingReservationBillingPeriod === null
+            : currentBillingPeriod === reservedBillingPeriod;
+        const refundedMonthlyCredits = sameBillingPeriod
+            ? Math.min(chargedMonthlyCredits, Math.max(0, monthlyCreditCeiling - currentMonthlyCredits))
+            : 0;
+        const nextBalance = {
+            monthlyCredits: currentMonthlyCredits + refundedMonthlyCredits,
+            topUpCredits: currentTopUpCredits + chargedTopUpCredits,
+        };
+        const now = admin.firestore.Timestamp.now();
+        transaction.set(subscriptionRef, {
+            monthlyCredits: nextBalance.monthlyCredits,
+            topUpCredits: nextBalance.topUpCredits,
+            modifiedOn: admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true });
+        transaction.set(operationRef, {
+            accountingExpiredMonthlyCredits: chargedMonthlyCredits - refundedMonthlyCredits,
+            accountingStatus: "refunded",
+            refundReason: String(reason || "provider_work_failed")
+                .replace(/[\u0000-\u001f\u007f]/g, " ")
+                .replace(/\s+/g, " ")
+                .trim()
+                .slice(0, 240),
+            refundRemainingMonthlyCredits: nextBalance.monthlyCredits,
+            refundRemainingTopUpCredits: nextBalance.topUpCredits,
+            refundedMonthlyCredits,
+            refundedOn: now,
+            refundedTopUpCredits: chargedTopUpCredits,
+            reservationRecoveryAt: admin.firestore.Timestamp.fromMillis(now.toMillis() + AI_CAPACITY_REFUND_RETENTION_MS),
+            modifiedOn: admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true });
+        return { alreadyTerminal: false, remainingBalance: nextBalance };
+    });
+}
+
+export async function refundAiCapacityReservationSafely(
+    reservation: AiCapacityReservation | null | undefined,
+    reason: string,
+    context: Record<string, unknown> = {},
+): Promise<void> {
+    if (!reservation) return;
+    try {
+        await refundAiCapacityReservation(reservation, reason);
+    } catch (error) {
+        logRuntimeFailure("ai_capacity_reservation_refund_failed", error, {
+            ...getBoundedRuntimeStringContext("action", reservation.action),
+            ...getBoundedRuntimeStringContext("operationId", reservation.id),
+            ...getBoundedRuntimeStringContext("storeId", reservation.sId),
+            ...getBoundedRuntimeStringContext("tenantId", reservation.tId),
+            ...context,
+            unitsReserved: reservation.unitsReserved,
+        });
+    }
+}
+
+export async function refundDurableAiCapacityReservationByIdSafely({
+    action,
+    context = {},
+    operationId,
+    reason,
+    sId,
+    tId,
+}: {
+    action: string;
+    context?: Record<string, string | number | boolean>;
+    operationId: string;
+    reason: string;
+    sId: string | number;
+    tId: string | number;
+}): Promise<void> {
+    const tenantId = normalizeAccountingScope(tId);
+    const storeId = normalizeAccountingScope(sId);
+    const normalizedOperationId = normalizeAiOperationDocumentId(operationId);
+    if (!tenantId || !storeId || !normalizedOperationId) {
+        logRuntimeFailure("ai_capacity_durable_reservation_refund_scope_invalid", undefined, {
+            ...getBoundedRuntimeStringContext("operationId", operationId),
+            ...getBoundedRuntimeStringContext("storeId", sId),
+            ...getBoundedRuntimeStringContext("tenantId", tId),
+            ...context,
+        });
+        return;
+    }
+
+    try {
+        const operationSnap = await getReservationOperationRef(tenantId, storeId, normalizedOperationId).get();
+        if (!operationSnap.exists) return;
+        const operation = operationSnap.data() || {};
+        if (operation.accountingStatus === "consumed" || operation.accountingStatus === "refunded") return;
+        const subscriptionId = normalizeBillingSubscriptionDocumentId(operation.accountingSubscriptionId);
+        const unitsReserved = Number(operation.accountingUnits);
+        if (
+            operation.accountingStatus !== "reserved"
+            || operation.accountingRecoveryMode !== "durable_retry"
+            || operation.action !== action
+            || !subscriptionId
+            || !Number.isSafeInteger(unitsReserved)
+            || unitsReserved <= 0
+        ) {
+            throw new Error("Durable AI capacity reservation evidence is invalid.");
+        }
+        const reservation = readPersistedReservation(operation, {
+            action,
+            id: normalizedOperationId,
+            sId: storeId,
+            subscriptionId,
+            tId: tenantId,
+            unitsReserved,
+        });
+        await refundAiCapacityReservation(reservation, reason);
+    } catch (error) {
+        logRuntimeFailure("ai_capacity_durable_reservation_refund_failed", error, {
+            ...getBoundedRuntimeStringContext("action", action),
+            ...getBoundedRuntimeStringContext("operationId", normalizedOperationId),
+            ...getBoundedRuntimeStringContext("storeId", storeId),
+            ...getBoundedRuntimeStringContext("tenantId", tenantId),
+            ...context,
+        });
+    }
+}
+
 /**
  * Consume AI capacity from a store's subscription.
  * Decrements monthlyCredits first, then topUpCredits.
@@ -161,8 +721,8 @@ export interface RemainingBalance {
  * Returns the new balance so the API route can include it in the response,
  * allowing the frontend to update state without an extra Firebase read.
  *
- * IMPORTANT: Called AFTER successful Gemini API call, not before.
- * The pre-check is done by checkAICapacity() before the call.
+ * Legacy compatibility helper for historical idempotent accounting replay.
+ * New paid provider paths must use reserveAiCapacity() before provider work.
  *
  * @param subscription - The subscription document (from checkAICapacity result)
  * @param unitsToConsume - Number of internal units to consume
@@ -172,7 +732,10 @@ export async function consumeAICapacity(
     subscription: FirestoreSubscriptionDoc,
     unitsToConsume: number,
 ): Promise<RemainingBalance | null> {
-    if (unitsToConsume <= 0) return null;
+    if (unitsToConsume === 0) return null;
+    if (!Number.isSafeInteger(unitsToConsume) || unitsToConsume < 0) {
+        throw new Error('AI accounting units must be a positive safe integer.');
+    }
 
     const normalizedSubscriptionId = normalizeBillingSubscriptionDocumentId(subscription?.id);
     if (!normalizedSubscriptionId) {
@@ -188,73 +751,25 @@ export async function consumeAICapacity(
         if (!subscriptionSnap.exists) return null;
 
         const current = subscriptionSnap.data() as FirestoreSubscriptionDoc;
-        const monthlyRemaining = Number(current.monthlyCredits ?? 0);
-        const topUpRemaining = Number(current.topUpCredits ?? 0);
-
-        let newMonthly = monthlyRemaining;
-        let newTopUp = topUpRemaining;
-
-        if (monthlyRemaining >= unitsToConsume) {
-            // Fully covered by monthly credits
-            newMonthly = monthlyRemaining - unitsToConsume;
-        } else {
-            // Use all remaining monthly, rest from topUp
-            const remainder = unitsToConsume - monthlyRemaining;
-            newMonthly = 0;
-            newTopUp = Math.max(0, topUpRemaining - remainder);
-        }
+        const { balance, billingPeriod } = calculateConsumedBalance(current, unitsToConsume);
 
         tx.set(subscriptionRef, {
-            monthlyCredits: newMonthly,
-            topUpCredits: newTopUp,
+            monthlyCredits: balance.monthlyCredits,
+            topUpCredits: balance.topUpCredits,
+            ...(billingPeriod !== null ? { creditsLastResetMonth: billingPeriod } : {}),
             modifiedOn: admin.firestore.FieldValue.serverTimestamp(),
         }, { merge: true });
 
         return {
-            monthlyCredits: newMonthly,
-            topUpCredits: newTopUp,
+            monthlyCredits: balance.monthlyCredits,
+            topUpCredits: balance.topUpCredits,
             subscription: current,
         };
     });
 
     if (!updatedBalance) return null;
 
-    // 📧 LIFECYCLE MESSAGE: Credits exhausted notification (fire-and-forget)
-    // Fires when BOTH monthly + topUp credits hit zero after consumption
-    if (updatedBalance.monthlyCredits === 0 && updatedBalance.topUpCredits === 0) {
-        try {
-            const { sendLifecycleMessage } = await import('@lib/messaging');
-            sendLifecycleMessage({
-                storeId: String(updatedBalance.subscription.storeId),
-                tenantId: String(updatedBalance.subscription.tenantId),
-                eventType: 'CREDITS_EXHAUSTED',
-                referenceId: `credits-exhausted-${updatedBalance.subscription.storeId}-${new Date().toISOString().split('T')[0]}`,
-                recipientEmail: updatedBalance.subscription.email || '',
-                storeName: updatedBalance.subscription.name || '',
-                metadata: {},
-            }).catch((notificationError) => {
-                logRuntimeFailure('ai_capacity_credits_exhausted_lifecycle_message_failed', notificationError, {
-                    eventType: 'CREDITS_EXHAUSTED',
-                    unitsToConsume,
-                    monthlyCredits: updatedBalance.monthlyCredits,
-                    topUpCredits: updatedBalance.topUpCredits,
-                    ...getBoundedRuntimeStringContext('subscriptionId', updatedBalance.subscription.id),
-                    ...getBoundedRuntimeStringContext('tenantId', updatedBalance.subscription.tenantId),
-                    ...getBoundedRuntimeStringContext('storeId', updatedBalance.subscription.storeId),
-                });
-            });
-        } catch (notificationImportError) {
-            logRuntimeFailure('ai_capacity_credits_exhausted_lifecycle_message_import_failed', notificationImportError, {
-                eventType: 'CREDITS_EXHAUSTED',
-                unitsToConsume,
-                monthlyCredits: updatedBalance.monthlyCredits,
-                topUpCredits: updatedBalance.topUpCredits,
-                ...getBoundedRuntimeStringContext('subscriptionId', updatedBalance.subscription.id),
-                ...getBoundedRuntimeStringContext('tenantId', updatedBalance.subscription.tenantId),
-                ...getBoundedRuntimeStringContext('storeId', updatedBalance.subscription.storeId),
-            });
-        }
-    }
+    await sendCreditsExhaustedLifecycleMessage(updatedBalance.subscription, unitsToConsume, updatedBalance);
 
     return {
         monthlyCredits: updatedBalance.monthlyCredits,
@@ -262,45 +777,96 @@ export async function consumeAICapacity(
     };
 }
 
-/**
- * Compute a billing-period-aware YYYYMM key using the subscription's anchor day.
- *
- * Razorpay billing cycles run from anchor day to anchor day (e.g., 15th to 15th).
- * If current day < anchor day → still in previous billing period.
- * If current day >= anchor day → in current billing period.
- *
- * Example: Sub starts Feb 15 (anchor=15)
- *   Mar 1  (day 1 < 15)  → 202602 (still Feb period — no premature reset)
- *   Mar 15 (day 15 >= 15) → 202603 (new period — reset triggers correctly)
- *
- * Month-end edge case: anchor=31 in Feb (28 days) → capped to 28.
- * Without this, credits would never reset in shorter months for yearly plans.
- *
- * @param cycleStartDate - Firestore Timestamp from subscription.cycleStartDate
- */
-function getBillingPeriodKey(cycleStartDate: any): number {
-    const now = new Date();
-
-    // Fallback for subscriptions without cycleStartDate (pending status)
-    if (!cycleStartDate?.seconds) {
-        return now.getFullYear() * 100 + (now.getMonth() + 1);
+export async function consumeAICapacityIdempotently({
+    idempotencyKey,
+    operationData,
+    operationRef,
+    subscription,
+    unitsToConsume,
+}: {
+    idempotencyKey: string;
+    operationData: Record<string, unknown>;
+    operationRef: FirebaseFirestore.DocumentReference;
+    subscription: FirestoreSubscriptionDoc;
+    unitsToConsume: number;
+}): Promise<{ alreadyConsumed: boolean; remainingBalance: RemainingBalance }> {
+    if (!Number.isSafeInteger(unitsToConsume) || unitsToConsume <= 0) {
+        throw new Error('AI accounting units must be a positive safe integer.');
     }
-
-    const start = new Date(cycleStartDate.seconds * 1000);
-    const rawAnchorDay = start.getDate();
-
-    let year = now.getFullYear();
-    let month = now.getMonth() + 1; // 1-indexed
-
-    // Cap anchor to days in current month (e.g., anchor=31 in Feb→28)
-    const daysInCurrentMonth = new Date(year, now.getMonth() + 1, 0).getDate();
-    const anchorDay = Math.min(rawAnchorDay, daysInCurrentMonth);
-
-    // If we haven't reached the anchor day yet, we're still in previous billing period
-    if (now.getDate() < anchorDay) {
-        month -= 1;
-        if (month === 0) { month = 12; year -= 1; }
+    const expectedTenantId = normalizeAccountingScope(operationData.tId ?? operationData.tenantId);
+    const expectedStoreId = normalizeAccountingScope(operationData.sId ?? operationData.storeId);
+    const subscriptionTenantId = normalizeAccountingScope(subscription.tenantId ?? subscription.tId);
+    const subscriptionStoreId = normalizeAccountingScope(subscription.storeId ?? subscription.sId);
+    if (
+        !expectedTenantId
+        || !expectedStoreId
+        || subscriptionTenantId !== expectedTenantId
+        || subscriptionStoreId !== expectedStoreId
+    ) {
+        throw new Error('AI accounting subscription scope mismatch.');
     }
+    const normalizedSubscriptionId = normalizeBillingSubscriptionDocumentId(subscription?.id);
+    if (!normalizedSubscriptionId) throw new Error('Billing subscription is not available.');
+    const subscriptionRef = firestoreAdmin.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(normalizedSubscriptionId);
 
-    return year * 100 + month;
+    const result = await firestoreAdmin.runTransaction(async (transaction) => {
+        const operationSnap = await transaction.get(operationRef);
+        const subscriptionSnap = await transaction.get(subscriptionRef);
+        if (operationSnap.exists) {
+            const existing = operationSnap.data() || {};
+            if (
+                existing.accountingIdempotencyKey !== idempotencyKey
+                || Number(existing.accountingUnits) !== unitsToConsume
+                || normalizeAccountingScope(existing.tId ?? existing.tenantId) !== expectedTenantId
+                || normalizeAccountingScope(existing.sId ?? existing.storeId) !== expectedStoreId
+                || existing.action !== operationData.action
+            ) {
+                throw new Error('AI accounting idempotency conflict.');
+            }
+            if (existing.accountingStatus === 'consumed') {
+                const monthlyCredits = Number(existing.remainingMonthlyCredits);
+                const topUpCredits = Number(existing.remainingTopUpCredits);
+                if (!Number.isFinite(monthlyCredits) || !Number.isFinite(topUpCredits)) {
+                    throw new Error('AI accounting replay state is invalid.');
+                }
+                return {
+                    alreadyConsumed: true,
+                    balance: { monthlyCredits, topUpCredits },
+                    subscription: subscriptionSnap.exists
+                        ? { ...(subscriptionSnap.data() as FirestoreSubscriptionDoc), id: subscriptionSnap.id }
+                        : subscription,
+                };
+            }
+        }
+        if (!subscriptionSnap.exists) throw new Error('Billing subscription is not available.');
+        const current = { ...(subscriptionSnap.data() as FirestoreSubscriptionDoc), id: subscriptionSnap.id };
+        if (
+            normalizeAccountingScope(current.tenantId ?? current.tId) !== expectedTenantId
+            || normalizeAccountingScope(current.storeId ?? current.sId) !== expectedStoreId
+        ) {
+            throw new Error('AI accounting persisted subscription scope mismatch.');
+        }
+        const { balance, billingPeriod } = calculateConsumedBalance(current, unitsToConsume);
+        transaction.set(subscriptionRef, {
+            monthlyCredits: balance.monthlyCredits,
+            topUpCredits: balance.topUpCredits,
+            ...(billingPeriod !== null ? { creditsLastResetMonth: billingPeriod } : {}),
+            modifiedOn: admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true });
+        transaction.set(operationRef, {
+            ...operationData,
+            accountingIdempotencyKey: idempotencyKey,
+            accountingStatus: 'consumed',
+            accountingUnits: unitsToConsume,
+            remainingMonthlyCredits: balance.monthlyCredits,
+            remainingTopUpCredits: balance.topUpCredits,
+            modifiedOn: admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: false });
+        return { alreadyConsumed: false, balance, subscription: current };
+    });
+
+    if (!result.alreadyConsumed) {
+        await sendCreditsExhaustedLifecycleMessage(result.subscription, unitsToConsume, result.balance);
+    }
+    return { alreadyConsumed: result.alreadyConsumed, remainingBalance: result.balance };
 }

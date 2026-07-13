@@ -90,6 +90,9 @@ function verifyPublicPullApiResponseCacheBoundary() {
   const businessRoute = read('src/app/api/public/v1/business/route.ts');
   const menuRoute = read('src/app/api/public/v1/menu/route.ts');
   const publicApiAuth = read('src/lib/publicApi/auth.ts');
+  const publicApiTargetEligibility = read('src/lib/publicApi/targetEligibility.ts');
+  const publicEntityEligibility = read('src/lib/publicTruth/entityEligibility.ts');
+  const publicApiMenuListScope = read('src/lib/publicApi/menuListScope.ts');
 
   [
     [businessRoute, 'business'],
@@ -100,8 +103,8 @@ function verifyPublicPullApiResponseCacheBoundary() {
     assert(route.includes('isMenuListPublicApiTargetAllowed'), `public pull ${label} route must import MenuList target eligibility guard`);
     assert(route.includes('normalizeMenuListPublicApiNumericId'), `public pull ${label} route must validate MenuList numeric public IDs before response building`);
     assert(route.includes('const storeNumericId = normalizeMenuListPublicApiNumericId'), `public pull ${label} route must normalize the validated store document ID before emitting storeId`);
-    assert(route.includes('if (!(await isMenuListPublicApiTargetAllowed(storeData)))'), `public pull ${label} route must reject inactive/deleted/platform-blocked/tenant-blocked stores`);
-    assert(route.indexOf('if (!(await isMenuListPublicApiTargetAllowed(storeData)))') < route.indexOf('logApiRequest(request,'), `public pull ${label} route must check target eligibility before abuse logging and response building`);
+    assert(route.includes('if (!(await isMenuListPublicApiTargetAllowed(storeData, storeDocumentId)))'), `public pull ${label} route must reject out-of-product, incoherent, inactive/deleted/platform-blocked/tenant-blocked stores`);
+    assert(route.indexOf('if (!(await isMenuListPublicApiTargetAllowed(storeData, storeDocumentId)))') < route.indexOf('logApiRequest(request,'), `public pull ${label} route must check target eligibility before abuse logging and response building`);
     assert(route.includes('buildPullApiResponseHeaders(etag)'), `public pull ${label} route must use shared private cache headers`);
     assert(route.includes('const responseHeaders = buildPullApiResponseHeaders(etag);'), `public pull ${label} route must reuse identical 200/304 headers`);
     assert(!route.includes("'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300'"), `public pull ${label} route must not use shared public cache headers`);
@@ -112,11 +115,24 @@ function verifyPublicPullApiResponseCacheBoundary() {
   assert(publicApiAuth.includes('export function normalizePublicApiDocumentId(value: unknown): string | null'), 'public pull API must expose a shared Firestore document-ID normalizer');
   assert(publicApiAuth.includes('export function normalizeMenuListPublicApiNumericId(value: unknown): number | null'), 'public pull API must expose a MenuList numeric ID normalizer');
   assert(publicApiAuth.includes('Number.isSafeInteger(numericId) && numericId > 0 && String(numericId) === documentId'), 'public pull API numeric IDs must be exact positive integers');
-  assert(publicApiAuth.includes('storeData.active === false || storeData.deleted === true || isPlatformEntityBlocked(storeData)'), 'public pull API must reject inactive/deleted/platform-blocked stores');
-  assert(publicApiAuth.includes('const tenantNumericId = normalizeMenuListPublicApiNumericId(tenantId);'), 'public pull API must validate tenant ID before tenant document lookup');
-  assert(publicApiAuth.includes('const tenantDocumentId = String(tenantNumericId);'), 'public pull API must build tenant refs from validated numeric IDs');
+  assert(publicApiAuth.includes('!isMenuListPublicApiEntityEligible(storeData)'), 'public pull API must use the shared lifecycle/block eligibility guard for stores');
+  assert(publicApiAuth.includes('!isMenuListPublicApiProductEntity(storeData)'), 'public pull API must reject explicit non-MenuList store products');
+  assert(publicApiAuth.includes('!isMenuListPublicApiStoreIdentityConsistent(storeData, storeDocumentId)'), 'public pull API must compare stored store aliases to the credential document ID');
+  assert(publicApiAuth.includes('const tenantDocumentId = resolveMenuListPublicApiTenantDocumentId(storeData);'), 'public pull API must reject malformed or conflicting tenant aliases before lookup');
   assert(publicApiAuth.includes('.collection(DB_COLLECTIONS.TENANTS)'), 'public pull API must read tenant eligibility before returning MenuList public data');
-  assert(publicApiAuth.includes('return tenantSnap.exists && !isPlatformEntityBlocked(tenantSnap.data());'), 'public pull API must reject missing or platform-blocked tenants');
+  assert(publicApiAuth.includes('isMenuListPublicApiProductEntity(tenantData)'), 'public pull API must reject explicit non-MenuList tenant products');
+  assert(publicApiAuth.includes('isMenuListPublicApiTenantIdentityConsistent(tenantData, tenantDocumentId)'), 'public pull API must compare tenant aliases to the tenant document ID');
+  assert(publicApiTargetEligibility.includes('return isMenuListPublicEntityEligible(value);'), 'public pull API eligibility alias must use shared public-truth lifecycle admission');
+  ['entity.active !== false', 'entity.deleted !== true', '!isPlatformEntityBlocked(entity)'].forEach((token) => {
+    assert(publicEntityEligibility.includes(token), `public pull API entity eligibility must include ${token}`);
+  });
+  [
+    'explicitProductIds.every((productId) => productId === PRODUCT_IDS.MENULIST)',
+    "resolveConsistentIdentityAliases(entity, ['tenantId', 'tId'])",
+    "resolveConsistentIdentityAliases(entity, ['storeId', 'sId'])",
+  ].forEach((token) => {
+    assert(publicApiMenuListScope.includes(token), `public pull API MenuList scope boundary must include ${token}`);
+  });
   assert(publicApiAuth.includes('PULL_API_RESPONSE_CACHE_CONTROL = "private, max-age=60, stale-while-revalidate=300"'), 'public pull API must keep responses out of shared caches');
   assert(publicApiAuth.includes('PULL_API_RESPONSE_VARY = "X-API-Key"'), 'public pull API must vary responses by API key');
   assert(publicApiAuth.includes("'Vary': PULL_API_RESPONSE_VARY"), 'public pull API response helper must emit Vary');
@@ -335,6 +351,11 @@ function verifyMenuListMutatingApiAdmissionGuards() {
 
     const hasBoundedBodyGate = /read(?:Optional)?Bounded(?:Json|Text|FormData)Body|rejectInvalidOrOversizedDeclaredBody/.test(content);
     const hasProtectedAdmission = /\bwith(?:Platform)?Auth\b|\bwithPublicApiAuth\b/.test(content);
+    const hasProtectedRouteDelegation = route === 'src/app/api/analytics/weekly-narrative/regenerate/route.ts'
+      && content.includes("import { POST as generateWeeklyNarrativePost } from '../generate-local/route';")
+      && content.includes('return await generateWeeklyNarrativePost(request);')
+      && read('src/app/api/analytics/weekly-narrative/generate-local/route.ts')
+        .includes('export const POST = withAuth(generateWeeklyNarrativeLocally);');
     const hasPublicAdmission = /\bcheckPublicRateLimit\b|\bvalidatePublicApiKey\b|\bwithCORS\b/.test(content);
     const hasSecretOrSignatureAdmission = /REVALIDATION_SECRET|WORKER_SECRET|BATCH_IMAGE_GENERATION_WORKER_SECRET|x-[a-z0-9-]*signature|timingSafeEqual|validate[A-Za-z]*WebhookSignature/i.test(content);
     const hasAnonymousTokenAdmission = hasBoundedBodyGate
@@ -344,6 +365,7 @@ function verifyMenuListMutatingApiAdmissionGuards() {
 
     assert(
       hasProtectedAdmission
+      || hasProtectedRouteDelegation
       || hasPublicAdmission
       || hasSecretOrSignatureAdmission
       || hasAnonymousTokenAdmission
@@ -426,6 +448,12 @@ function verifyCoreAuthHelpers() {
       'getCurrentUserSnapshot(session)',
       'getEntityData(DB_COLLECTIONS.TENANTS',
       'getEntityData(DB_COLLECTIONS.STORES',
+      'isPlatformAccessSession(session, userData)',
+      'return invalidAccess(request, session, "TENANT_NOT_FOUND"',
+      'return invalidAccess(request, session, "STORE_NOT_FOUND"',
+      'if (!platformAccessSession && store.data && !tenant.documentId)',
+      'return invalidAccess(request, session, "STORE_TENANT_MISMATCH"',
+      'isStoreOwnedByTenant(store.data, tenant.documentId)',
       'return invalidAccess(request, session, "SESSION_REVOKED"',
     ],
     'session access-status read limiter and access boundary',
@@ -446,6 +474,19 @@ function verifyCoreAuthHelpers() {
   assert(!accessStatusRoute.includes('storeId: userData.storeId'), 'access-status route must not log raw store IDs');
   assert(!accessStatusRoute.includes('buildSecurityContext'), 'access-status route must not spread raw session security context into security logs');
   assert(accessStatusRoute.includes('documentId === rawDocumentId && isValidFirestoreDocumentId(documentId)'), 'access-status route must reject whitespace-mutated user/tenant/store document IDs before Firestore reads');
+  assert(accessStatusRoute.includes('const isStoreOwnedByTenant'), 'access-status route must define a store-to-tenant ownership check');
+  assert(accessStatusRoute.includes('storeTenantDocumentId === tenantDocumentId'), 'access-status route must compare normalized store tenant ownership to the checked tenant');
+  assert(accessStatusRoute.includes('if (!platformAccessSession && store.data && !tenant.documentId)'), 'access-status route must fail non-platform store-scoped sessions that omit tenant context');
+  assertOrder(
+    'src/app/api/auth/access-status/route.ts',
+    [
+      'return invalidAccess(request, session, "TENANT_NOT_FOUND"',
+      'return invalidAccess(request, session, "STORE_NOT_FOUND"',
+      'return invalidAccess(request, session, "STORE_TENANT_MISMATCH"',
+      'return invalidAccess(request, session, "SESSION_REVOKED"',
+    ],
+    'access-status route must prove referenced tenant/store existence and ownership before revocation success',
+  );
 
   assertIncludes(
       'src/lib/permissions/server.ts',
@@ -465,7 +506,7 @@ function verifyCoreAuthHelpers() {
       'storeData?.deleted === true',
       'isPlatformEntityBlocked(storeData)',
       'Number(storeData?.tenantId) !== tenantScope.numericId || isStorePermissionTargetBlocked(storeData)',
-      'Number(store?.storeId) === storeScope.numericId',
+      'normalizeStorePermissionScopeDocumentId(store?.storeId)?.numericId === storeScope.numericId',
       'if (isPlatformSession(session)) return null;',
       'requireAnyStorePermissionForStoreData',
       'Authorization Failed - Permission Required',
@@ -782,13 +823,13 @@ function verifyCallerSuppliedTenantStoreRoutes() {
         'requireAnyStorePermission',
         'requireAnyStorePermissionForStoreData',
         'readBoundedJsonBody',
-        'validateAPIInput(schema, body)',
+        'validateAPIInput(schema, bodyResult.data)',
         'const { storeId, tenantId',
         'const tenantScope = normalizePosSyncNumericDocumentId(tenantId);',
         'const storeScope = normalizePosSyncNumericDocumentId(storeId);',
         'verifyTenantAccess(session, tenantId, storeId, request)',
         'checkRateLimit',
-        'const storeRateLimitHash = hashPublicRateLimitValue(storeDocumentId);',
+        'const storeRateLimitHash = hashPublicRateLimitValue(`${tenantDocumentId}:${storeDocumentId}`);',
         'const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(storeDocumentId);',
         'const storeDoc = await storeRef.get();',
         'const targetPermissionError = requireAnyStorePermissionForStoreData(',
@@ -963,16 +1004,27 @@ function verifyCallerSuppliedTenantStoreRoutes() {
       'readBoundedJsonBody(request, MENU_LINK_IMPORT_MAX_BODY_BYTES)',
       'RequestSchema.safeParse(bodyResult.data)',
       'MENU_LINK_IMPORT_STORAGE_CLEANUP_FAILED',
-      'MENU_LINK_IMPORT_ARTIFACT_CLEANUP_FAILED',
+      'createOrReuseActiveMenuExtractionJob',
+      'additionalCreates: [{ data: artifactData, ref: artifactRef }]',
       'deleteMenuLinkImportStoragePath',
-      'deleteMenuLinkImportArtifactDoc',
     ],
     'menu link import hashed limiter and bounded body guard',
+  );
+  assertIncludes(
+    'src/lib/menu-extraction/activeJobClaim.ts',
+    [
+      'additionalCreates?: ReadonlyArray',
+      'return params.db.runTransaction(async (transaction) => {',
+      'transaction.create(jobRef, params.jobData);',
+      'transaction.create(additionalCreate.ref, additionalCreate.data);',
+    ],
+    'menu link import atomically creates artifact metadata with the extraction job',
   );
   const menuLinkImportRoute = read('src/app/api/menu-link-imports/route.ts');
   assert(!menuLinkImportRoute.includes('key: `menu-link-import:${ids.uId}:${ids.tId}:${ids.sId}`'), 'menu link import must not store raw user/tenant/store IDs in rate-limit keys');
   assert(!menuLinkImportRoute.includes('Promise.allSettled(createdStoragePaths.map((path) => storageAdmin.bucket().file(path).delete'), 'menu link import must not silently swallow storage cleanup failures');
-  assert(!menuLinkImportRoute.includes('artifactRefForCleanup.delete().catch(() => undefined)'), 'menu link import must not silently swallow artifact cleanup failures');
+  assert(!menuLinkImportRoute.includes('artifactRef.set('), 'menu link import must not create artifact metadata outside the active-job transaction');
+  assert(!menuLinkImportRoute.includes('await artifactRef.create('), 'menu link import must not create artifact metadata outside the active-job transaction');
   assertIncludes(
     'src/lib/menu-link-import/client.ts',
     [
@@ -1266,9 +1318,8 @@ function verifyPosSyncWebhookNetworkGuard() {
       'const webhookValidation = validatePosSyncWebhookUrl(String(posSync.webhookUrl));',
       'const networkValidation = await validatePosSyncWebhookNetworkTarget(webhookValidation.normalizedUrl);',
       'const projectData = await getScopedProjectData(db, tenantDocumentId, storeDocumentId, projectId);',
-      'const newVersion = await db.runTransaction(async (transaction) => {',
-      'const response = await fetch(webhookValidation.normalizedUrl,',
-      "redirect: 'manual',",
+      'const deliveryClaim = await db.runTransaction(async (transaction) => {',
+      'const response = await postPosSyncWebhook({',
     ],
     'POS delivery DNS target guard before project read, version increment, outbound fetch, and redirect boundary',
   );
@@ -1278,9 +1329,9 @@ function verifyPosSyncWebhookNetworkGuard() {
     [
       'const webhookValidation = validatePosSyncWebhookUrl(String(posSync.webhookUrl));',
       'const networkValidation = await validatePosSyncWebhookNetworkTarget(webhookValidation.normalizedUrl);',
-      'const testPayload = buildTestPayload(storeId, tenantId, store?.currencyCode || store?.currency || \'INR\');',
-      'const response = await fetch(webhookValidation.normalizedUrl,',
-      "redirect: 'manual',",
+      'const freshStoreDoc = await storeRef.get();',
+      'const testPayload = buildTestPayload(storeId, tenantId, freshStore?.currencyCode || freshStore?.currency || \'INR\');',
+      'const response = await postPosSyncWebhook({',
     ],
     'POS test DNS target guard before test payload, outbound fetch, and redirect boundary',
   );
@@ -1324,14 +1375,24 @@ function verifyMultiOutletPublicTruthWriteRoutes() {
       'isValidFirestoreDocumentId',
       '.refine(isValidFirestoreDocumentId, "Invalid project ID")',
       '.refine(isValidFirestoreDocumentId, "Invalid override ID")',
+      'active: z.boolean().optional()',
+      'outletStatus: z.enum(["active", "inactive"]).optional()',
       'outletProjectRef.tId !== masterProjectRef.tId',
       'Number(callerStoreSnap.data()?.tenantId) !== tenantId',
       'Number(outletStore?.tenantId) !== tenantId || outletStore?.active === false',
       'Number(masterStore?.tenantId) !== tenantId || masterStore?.active === false',
       'Outlet store not in tenant',
       'Only the outlet or master store can save this menu',
-      'collectLocalIds(project.files)',
-      'getOutletPolicyViolation(project, existingProject, outletPolicy)',
+      'collectLocalIds(standardProject.files)',
+      'getOutletPolicyViolation(standardProject, existingProject, outletPolicy)',
+      'buildSummaryProjectFieldPayload(standardProject.projectId, "active", standardProject.active)',
+      'const expectedBucket = storageAdmin.bucket().name',
+      'normalizeImageBatchProjectSelections(',
+      'transaction.get(persistedOutletProjectRef)',
+      'transaction.get(masterProjectDocumentRef)',
+      'outletPolicy.imageOverride !== true',
+      'const writeBatch = db.batch();',
+      'await writeBatch.commit();',
     ],
     'linked outlet save target and policy guards',
   );
@@ -1429,12 +1490,34 @@ function verifyMultiOutletPublicTruthWriteRoutes() {
       'Number(outlet.tenantId) !== Number(tenantId)',
       'outlet.isMaster',
       'outlet.active === false',
-      "where('tenantId', '==', tenantId)",
-      "where('previousOutletSlugs', 'array-contains', proposed)",
+      'const [tenantDoc, freshOutletSnap] = await Promise.all([',
+      'Number(freshOutlet.tenantId) !== Number(tenantId)',
+      'readOutletSlugReservationInTransaction({',
+      'writeCurrentOutletSlugClaim(tx, newReservation, now);',
+      'writeRedirectOutletSlugClaim(tx, oldReservation, now)',
       'tx.update(outletRef, updatePayload)',
       'tx.update(tenantRef, { storesList: updatedStoresList })',
     ],
-    'outlet rename tenant and slug-chain guard',
+    'outlet rename tenant and transactional slug-chain guard',
+  );
+  assertIncludes(
+    'src/lib/routing/outletSlugClaim.ts',
+    [
+      "const OUTLET_SLUG_CLAIM_DOCUMENT_PREFIX = 'outletSlugClaim_'",
+      'export function getOutletSlugClaimDocumentId(tenantId: string, outletSlug: string): string',
+      'export async function readOutletSlugReservationInTransaction(params:',
+      ".where('tenantId', '==', Number(tenantId))",
+      ".where('outletSlug', '==', outletSlug)",
+      ".where('previousOutletSlugs', 'array-contains', outletSlug)",
+      'historySnap.size >= OUTLET_HISTORY_QUERY_LIMIT',
+    ],
+    'tenant-scoped outlet slug claim boundary',
+  );
+  const outletRenameRoute = read('src/app/api/outlets/rename/route.ts');
+  assert(
+    !outletRenameRoute.includes('const directCollisionSnap = await db')
+      && !outletRenameRoute.includes('const chainCollisionSnap = await db'),
+    'outlet rename must not use non-transactional slug collision authority',
   );
 }
 
@@ -1546,6 +1629,7 @@ function verifySessionScopedPublicTruthRoutes() {
       'if (!tenantData || isPlatformEntityBlocked(tenantData))',
       'const targetStoreSnap = await db.collection(DB_COLLECTIONS.STORES).doc(targetStoreScope.documentId).get();',
       'Number(targetStoreData.tenantId) !== tenantScope.numericId',
+      'normalizeStorePermissionScopeDocumentId(store.storeId)?.numericId === targetStoreScope.numericId',
       'targetStoreData.active === false',
       'targetStoreData.deleted === true',
       'isPlatformEntityBlocked(targetStoreData)',
@@ -1557,6 +1641,14 @@ function verifySessionScopedPublicTruthRoutes() {
   assert(!read('src/app/api/auth/switch-store/route.ts').includes('db.doc(`${DB_COLLECTIONS.STORES}/${currentStoreId}`).get()'), 'switch-store must not read caller store through raw session store IDs');
   assert(!read('src/app/api/auth/switch-store/route.ts').includes('db.doc(`${DB_COLLECTIONS.TENANTS}/${tenantId}`).get()'), 'switch-store must not read tenant through raw session tenant IDs');
   assert(!read('src/app/api/auth/switch-store/route.ts').includes('db.doc(`${DB_COLLECTIONS.STORES}/${targetStoreId}`).get()'), 'switch-store must not read target store through raw request target IDs');
+  assert(!read('src/app/api/auth/switch-store/route.ts').includes('Number(s.storeId) === targetStoreScope.numericId'), 'switch-store must not coerce tenant-list store IDs');
+  const storeSwitchAccess = read('src/lib/multiOutlet/storeSwitchAccess.ts');
+  assert(storeSwitchAccess.includes('normalizeStoreSwitchStoreId'), 'shared store-switch access must expose exact store ID normalization');
+  assert(storeSwitchAccess.includes("if (!/^[1-9]\\d*$/.test(raw)) return null;"), 'shared store-switch access must require canonical positive decimal IDs');
+  assert(!storeSwitchAccess.includes('const numeric = Number(value);'), 'shared store-switch access must not coerce arbitrary mapped store IDs');
+  const storePermissionServer = read('src/lib/permissions/server.ts');
+  assert(storePermissionServer.includes('normalizeStorePermissionScopeDocumentId(store?.storeId)?.numericId === storeScope.numericId'), 'store permission role lookup must use exact mapped-store IDs');
+  assert(!storePermissionServer.includes('Number(store?.storeId) === storeScope.numericId'), 'store permission role lookup must not coerce mapped-store IDs');
   assert(read('__docs__/multi-outlet-consistency/multi-outlet-consistency_firebase.md').includes('Switch-store scope document ID boundary'), 'multi-outlet Firebase docs must document switch-store scope document ID boundary');
   assert(read('__docs__/audits/menulist-production-readiness-audit.md').includes('Switch-store scope document ID boundary checkpoint'), 'production audit must document switch-store scope document ID boundary');
   assert(read('__docs__/changelog.md').includes('Switch-Store Scope Document ID Boundary'), 'changelog must document switch-store scope document ID boundary');
@@ -1572,14 +1664,21 @@ function verifySessionScopedPublicTruthRoutes() {
       'readBoundedFormDataBody(req, MAX_CREATE_MENU_BODY_SIZE',
       'key: `public-menu-entry-status:${userRateLimitHash}:${draftRateLimitHash}`',
       'PUBLIC_MENU_ENTRY_STORAGE_CLEANUP_FAILED',
-      'PUBLIC_MENU_ENTRY_DRAFT_CLEANUP_FAILED',
+      'PUBLIC_MENU_ENTRY_COLLISION_LOOKUP_FAILED',
       'deletePublicMenuEntryStoragePath',
-      'deletePublicMenuEntryDraft',
+      'buildIdempotentPublicDraftToken',
+      'batch.create(jobRef',
+      'batch.create(draftRef',
+      'getReusableDraftByIdForUser',
+      'getPublicMenuDraftTimestampMillis',
+      'expiresAtMillis === null',
     ],
     'public create-menu entry hashed limiter and bounded body guard',
   );
   const publicCreateMenuRoute = read('src/app/api/public/create-menu/route.ts');
   assert(!publicCreateMenuRoute.includes('key: `public-menu-entry:${userId}`'), 'public create-menu entry must not store raw user IDs in rate-limit keys');
+  assert(!publicCreateMenuRoute.includes('.doc(draftToken).set({'), 'public create-menu entry must create draft and job atomically');
+  assert(!publicCreateMenuRoute.includes('extractionJobId: null'), 'public create-menu entry must not expose an orphanable draft state');
   assert(!publicCreateMenuRoute.includes('bucket.file(storagePath).delete({ ignoreNotFound: true }).catch(() => undefined)'), 'public create-menu entry must not silently swallow storage cleanup failures');
   assert(!publicCreateMenuRoute.includes('firestoreAdmin.collection(COLLECTION).doc(draftToken).delete().catch(() => undefined)'), 'public create-menu entry must not silently swallow draft cleanup failures');
   assert(!publicCreateMenuRoute.includes('Promise.allSettled(createdStoragePaths.map((path) => storageAdmin.bucket().file(path).delete'), 'public create-menu link import must not silently swallow storage cleanup failures');
@@ -1598,6 +1697,15 @@ function verifySessionScopedPublicTruthRoutes() {
       'Number.isSafeInteger(numericId) && numericId > 0 && String(numericId) === documentId',
       'const tenantScope = normalizePublicMenuClaimNumericDocumentId(session.user.tenantId);',
       'const storeScope = normalizePublicMenuClaimNumericDocumentId(session.user.storeId);',
+      'normalizePublicMenuDraftExtractedData(draft.extractedData)',
+      'getPublicMenuDraftTimestampMillis(draft.expiresAt)',
+      'normalizePublicDraftSourceForProject(draft, draftId',
+      'allowedBucket: storageAdmin.bucket().name',
+      'normalizeCompletedClaimResult(draft, userId)',
+      'convertedTenantId: tenantId',
+      'convertedProjectSlug: projectSlug',
+      'convertedSubdomain: subdomain',
+      'Promise.allSettled(cacheEffects.map((effect) => effect.run()))',
       'const tenantRef = db.collection(DB_COLLECTIONS.TENANTS).doc(tenantDocumentId);',
       'const existingProjectsSummaryRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(`projects_${storeDocumentId}`);',
       'const tenantDoc = await transaction.get(tenantRef);',
@@ -1769,20 +1877,38 @@ function verifySessionScopedPublicTruthRoutes() {
     'src/app/api/domain/route.ts',
     [
       'withAuth',
-      'import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";',
+      'normalizeStorePermissionScopeDocumentId',
       'function normalizeDomainSessionDocumentId(value: unknown): string | null',
       'function getDomainSessionScope(session: any): { tenantId: string; storeId: string } | null',
       'const scope = getDomainSessionScope(session);',
       'const { tenantId, storeId } = scope;',
-      'requireAnyStorePermission(request, session, [PERMISSIONS.MANAGE_PUBLIC_PRESENCE]',
+      'requireAnyStorePermissionForStoreData(',
+      '!isMenuListPublicEntityEligible(tenantData)',
+      '!isMenuListPublicEntityEligible(storeData)',
+      'storedStoreScope?.documentId !== params.scope.storeId',
+      'storedTenantScope?.documentId !== params.scope.tenantId',
+      'const storeIdentityAliasesMatch = normalizeMenuListPublicEntityIdentityAliases([',
+      'const storeTenantAliasesMatch = normalizeMenuListPublicEntityIdentityAliases([',
+      'const tenantIdentityAliasesMatch = tenantIdentityValues.length === 0',
       'checkDomainManagementRateLimit(session, storeId)',
       'const userRateLimitHash = hashPublicRateLimitValue(userId || session.user?.id || \'unknown\');',
       'const storeRateLimitHash = hashPublicRateLimitValue(storeId);',
       'key: `domain-management:${userRateLimitHash}:${storeRateLimitHash}`',
       'readBoundedJsonBody(request, DOMAIN_ACTION_MAX_BODY_BYTES',
       'const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(storeId);',
-      'await db.collection(DB_COLLECTIONS.STORES).doc(storeId).update',
-      'String(existingStoreId) !== String(storeId)',
+      'readCustomDomainReservationInTransaction({',
+      'writeReservedCustomDomainClaim(',
+      'writeCurrentCustomDomainClaim(',
+      'writeReleasingCustomDomainClaim(',
+      'writeReleasedCustomDomainClaim(',
+      'const reservationId = randomUUID();',
+      'getVercelProjectDomain(normalizedDomain)',
+      'providerConflictHasMenuListProvenance',
+      'compensatePendingDomainReservation({',
+      'releaseReleasingDomainClaim(',
+      'CustomDomainLegacyConflictError',
+      'isVercelDomainExplicitlyMisconfigured(configResult.data)',
+      'transaction.update(storeRef,',
       'normalizeDomainRouteFailure',
       'buildDomainRouteLogContext',
       "getBoundedDomainRouteStringContext('domain', domain)",
@@ -1834,16 +1960,22 @@ function verifySessionScopedPublicTruthRoutes() {
     [
       'const scope = getDomainSessionScope(session);',
       'const { tenantId, storeId } = scope;',
-      'const permissionError = await requireAnyStorePermission(',
       'const rateLimitResponse = await checkDomainManagementRateLimit(session, storeId);',
       'const bodyResult = await readBoundedJsonBody(request, DOMAIN_ACTION_MAX_BODY_BYTES',
       'const validation = AddDomainSchema.safeParse(body);',
-      'const existingStore = await db',
+      'const reservationResult = await db.runTransaction(async (transaction) => {',
+      'readAuthorizedDomainStateInTransaction({',
+      'writeReservedCustomDomainClaim(',
       'const result = await addDomainToVercelProject(normalizedDomain);',
+      'getVercelProjectDomain(normalizedDomain)',
       'const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(storeId);',
+      'const finalizeResult = await db.runTransaction(async (transaction) => {',
+      'transaction.update(storeRef,',
+      'removeDomainFromProviderBestEffort(',
+      'releaseReleasingDomainClaim(',
       'await revalidateMenuCache(storeId, { tId: tenantId });',
     ],
-    'custom domain normalized scope, permission, limiter, bounded body, provider, store, and cache ordering',
+    'custom domain normalized scope, limiter, bounded body, current permission, provider, transactional store, and cache ordering',
   );
   assertIncludes(
     '__docs__/audits/menulist-production-readiness-audit.md',
@@ -1889,10 +2021,30 @@ function verifySessionScopedPublicTruthRoutes() {
       'key: `${SUBDOMAIN_CHECK_RATE_LIMIT_KEY}:${userRateLimitHash}:${tenantRateLimitHash}:${storeRateLimitHash}`',
       '"X-RateLimit-Limit": String(rateLimitConfig.limit)',
       'requireAnyStorePermission(request, session, [PERMISSIONS.MANAGE_PUBLIC_PRESENCE], "Subdomain")',
-      '.collection(DB_COLLECTIONS.STORES)',
-      ".where('subdomain', '==', subdomain)",
+      'const scope = getOutletSessionScope(session);',
+      'await db.runTransaction(async (transaction) => {',
+      'readSubdomainOwnerStoreInTransaction({',
+      'readSubdomainReservationInTransaction({',
+      'storeId: scope.storeDocumentId,',
+      'tenantId: scope.tenantDocumentId,',
     ],
     'subdomain availability read guard',
+  );
+  assertIncludes(
+    'src/lib/routing/subdomainClaim.ts',
+    [
+      "const SUBDOMAIN_CLAIM_DOCUMENT_PREFIX = 'subdomainClaim_';",
+      "const directQuery = db.collection(DB_COLLECTIONS.STORES)",
+      ".where('subdomain', '==', subdomain)",
+      ".where('previousSubdomainSlugs', 'array-contains', subdomain)",
+      'transaction.get(claimRef)',
+      'transaction.get(directQuery)',
+      'transaction.get(previousQuery)',
+      'snapshot.id !== storeId',
+      'previousSnap.size >= PREVIOUS_SUBDOMAIN_QUERY_LIMIT',
+      'throw new SubdomainUnavailableError();',
+    ],
+    'transactional subdomain claim and compatibility collision boundary',
   );
   assert(!read('src/app/api/subdomain/check/route.ts').includes('key: `${SUBDOMAIN_CHECK_RATE_LIMIT_KEY}:${userId}:${tenantId}:${storeId}`'), 'subdomain availability must not store raw user/tenant/store IDs in rate-limit keys');
   assertOrder(
@@ -1901,10 +2053,25 @@ function verifySessionScopedPublicTruthRoutes() {
       'checkSubdomainReadRateLimit(session)',
       'requireAnyStorePermission(request, session, [PERMISSIONS.MANAGE_PUBLIC_PRESENCE], "Subdomain")',
       "const rawSubdomain = searchParams.get('subdomain')",
-      '.collection(DB_COLLECTIONS.STORES)',
-      ".where('subdomain', '==', subdomain)",
+      'const scope = getOutletSessionScope(session);',
+      'await db.runTransaction(async (transaction) => {',
+      'readSubdomainOwnerStoreInTransaction({',
+      'readSubdomainReservationInTransaction({',
     ],
-    'subdomain availability read limiter before permission and Firestore reads',
+    'subdomain availability read limiter before permission, owner scope, and transactional reservation reads',
+  );
+  assertIncludes(
+    'src/lib/routing/subdomainOwnerScope.ts',
+    [
+      "const BRAND_SUBDOMAIN_TENANT_FIELDS = ['tenantId', 'tId'] as const;",
+      "export type SubdomainOwnerScopeErrorReason = 'INVALID_SCOPE' | 'MASTER_REQUIRED';",
+      'export async function readSubdomainOwnerStoreInTransaction(',
+      'if (storeData.isMaster === true) return { storeData, storeRef };',
+      "if (storeData.isMaster === false) throw new SubdomainOwnerScopeError('MASTER_REQUIRED');",
+      ".where(field, '==', value).limit(2)",
+      'canonicalStoreIds.size !== 1 || !canonicalStoreIds.has(storeId)',
+    ],
+    'subdomain owner-store master authority boundary',
   );
 
   assertIncludes(
@@ -2032,13 +2199,21 @@ function verifySessionScopedPublicTruthRoutes() {
       'const { tId: rawTenantId, sId: rawStoreId } = session',
       'const tenantId = normalizeSessionDocumentId(rawTenantId);',
       'const storeId = normalizeSessionDocumentId(rawStoreId);',
-      'requireAnyStorePermission(',
+      'requireAnyStorePermissionForStoreData(',
       '[PERMISSIONS.MANAGE_INTEGRATIONS]',
       'const storeRateLimitHash = hashPublicRateLimitValue(storeId);',
       'key: `api-key-mgmt:${storeRateLimitHash}`',
       'readBoundedJsonBody(request, PUBLIC_API_KEY_ACTION_MAX_BODY_BYTES',
       'RequestSchema.safeParse(body)',
       'const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(storeId);',
+      'const tenantRef = db.collection(DB_COLLECTIONS.TENANTS).doc(tenantId);',
+      'const transactionResult = await db.runTransaction(async (transaction) => {',
+      'transaction.get(tenantRef)',
+      'transaction.get(storeRef)',
+      '!isMenuListPublicApiEntityEligible(tenantData)',
+      '!isMenuListPublicApiEntityEligible(storeData)',
+      'resolveMenuListPublicApiTenantDocumentId(storeData) !== tenantId',
+      'transaction.update(storeRef,',
       'hashApiKey(apiKey)',
       'publicApi: {',
       'publicApi: admin.firestore.FieldValue.delete()',
@@ -2048,9 +2223,14 @@ function verifySessionScopedPublicTruthRoutes() {
     ],
     'public pull API key management permission guard',
   );
-  assert(!read('src/app/api/store/public-api-key/route.ts').includes('key: `api-key-mgmt:${storeId}`'), 'public API key management must not store raw store IDs in rate-limit keys');
-  assert(!read('src/app/api/store/public-api-key/route.ts').includes("secureLog('[Public API] Key generated'"), 'public API key generation must not log raw store IDs');
-  assert(!read('src/app/api/store/public-api-key/route.ts').includes("secureLog('[Public API] Key revoked'"), 'public API key revocation must not log raw store IDs');
+  const publicApiKeyRoute = read('src/app/api/store/public-api-key/route.ts');
+  assert(publicApiKeyRoute.indexOf('const rlResult = await checkRateLimit') < publicApiKeyRoute.indexOf('requireAnyStorePermissionForStoreData('), 'public API key management must rate-limit before current permission Firestore work');
+  assert(publicApiKeyRoute.indexOf('RequestSchema.safeParse(body)') < publicApiKeyRoute.indexOf('requireAnyStorePermissionForStoreData('), 'public API key management must validate the bounded body before current permission Firestore work');
+  assert(publicApiKeyRoute.indexOf('requireAnyStorePermissionForStoreData(') < publicApiKeyRoute.indexOf('transaction.update(storeRef,'), 'public API key management must authorize from the transaction snapshot before writing');
+  assert(!publicApiKeyRoute.includes('key: `api-key-mgmt:${storeId}`'), 'public API key management must not store raw store IDs in rate-limit keys');
+  assert(!publicApiKeyRoute.includes('await storeRef.update('), 'public API key management must not write outside its current-scope transaction');
+  assert(!publicApiKeyRoute.includes("secureLog('[Public API] Key generated'"), 'public API key generation must not log raw store IDs');
+  assert(!publicApiKeyRoute.includes("secureLog('[Public API] Key revoked'"), 'public API key revocation must not log raw store IDs');
 }
 
 function verifyPlatformAdminMutationBoundedBodies() {
@@ -2080,9 +2260,12 @@ function verifyPlatformAdminMutationBoundedBodies() {
       'const tenantId = tenantScope.numericId;',
       'const storeIdStr = storeScope.documentId;',
       'db.collection(DB_COLLECTIONS.STORES).doc(storeIdStr)',
-      'String(store?.tenantId) !== tenantScope.documentId && String(store?.tId) !== tenantScope.documentId',
-      "where('subdomain', '==', proposed)",
-      "where('previousSubdomainSlugs', 'array-contains', proposed)",
+      'normalizeStoreSummaryNumericDocumentId(store?.tenantId ?? store?.tId) !== tenantScope.documentId',
+      'const renameResult = await db.runTransaction(async (tx) => {',
+      'const freshStoreSnap = await tx.get(storeRef);',
+      'readSubdomainReservationInTransaction({',
+      'writeCurrentSubdomainClaim(tx, reservation, now);',
+      'writeRedirectSubdomainClaim({',
       'previousSubdomains: nextHistory',
       'previousSubdomainSlugs: nextHistorySlugs',
       "revalidateTag(`menu-store-${storeIdStr}`)",
@@ -2094,8 +2277,8 @@ function verifyPlatformAdminMutationBoundedBodies() {
       "logSecurityFailure('admin_subdomain_rename_failed'",
       "logger.security(\n                'Admin subdomain rename'",
       'auditIdPresent: auditRef.id.length > 0',
-      'previousSubdomainLength: currentSubdomain.length',
-      'historyEntryCount: nextHistory.length',
+      'previousSubdomainLength: renameResult.previousSubdomain.length',
+      'historyEntryCount: renameResult.historyEntryCount',
       "getBoundedSecurityStringContext('storeId', storeIdStr)",
     ],
     'admin subdomain rename platform, public-cache, and bounded-diagnostics guard',
@@ -2155,17 +2338,19 @@ function verifyPlatformAdminMutationBoundedBodies() {
       'const tenantScope = normalizeAdminSubdomainRenameScopeDocumentId(rawTenantId);',
       'const storeScope = normalizeAdminSubdomainRenameScopeDocumentId(storeId);',
       'const storeSnap = await storeRef.get();',
-      'const directCollision = await db',
-      'const chainCollision = await db',
-      'await db.runTransaction(async (tx) => {',
+      'const renameResult = await db.runTransaction(async (tx) => {',
+      'const freshStoreSnap = await tx.get(storeRef);',
+      'readSubdomainReservationInTransaction({',
     ],
-    'admin subdomain rename limiter, bounded body, and ID normalization before store/collision reads',
+    'admin subdomain rename limiter, bounded body, and ID normalization before transactional claim reads',
   );
   assert(!adminSubdomainRenameRoute.includes('key: `admin-subdomain-rename:${getAdminSubdomainRenameOperatorId(session)}`'), 'admin subdomain rename must not build rate-limit keys from raw operator IDs');
   assert(!adminSubdomainRenameRoute.includes('key: `admin-subdomain-rename:${session'), 'admin subdomain rename must not build rate-limit keys from raw session material');
   assert(!adminSubdomainRenameRoute.includes('const storeIdStr = String(storeId);'), 'admin subdomain rename must not coerce raw store IDs into doc refs');
   assert(!adminSubdomainRenameRoute.includes('db.doc(`${DB_COLLECTIONS.STORES}/${storeIdStr}`)'), 'admin subdomain rename must not build store refs with raw doc path strings');
   assert(!adminSubdomainRenameRoute.includes('Number(store?.tenantId) !== Number(tenantId)'), 'admin subdomain rename must not compare raw tenant numbers after validation');
+  assert(!adminSubdomainRenameRoute.includes('const directCollision = await db'), 'admin subdomain rename must centralize direct collision reads in the transactional claim boundary');
+  assert(!adminSubdomainRenameRoute.includes('const chainCollision = await db'), 'admin subdomain rename must centralize rename-history reads in the transactional claim boundary');
   assert(!adminSubdomainRenameRoute.includes('request.json()'), 'admin subdomain rename must not parse unbounded JSON');
 
   assertIncludes(
@@ -2191,22 +2376,47 @@ function verifyPlatformAdminMutationBoundedBodies() {
       'const entityScope = normalizePlatformEntityBlockTargetDocumentId(entityType, entityId);',
       'getEntityDocRef(db, entityType, entityScope.documentId)',
       'buildPlatformBlockDetails',
-      'const tenantScope = normalizePlatformEntityBlockTargetDocumentId(\'tenant\', existingEntity.tenantId) || entityScope;',
-      'affectedStoreIds = await syncTenantStoreBlockState(db, tenantScope, true);',
-      'affectedStoreIds = await syncTenantStoreBlockState(db, tenantScope, false);',
-      'getDirectTenantStoreIds(db, tenantScope)',
-      'normalizePlatformEntityBlockTargetDocumentId(\'store\', doc.id)',
-      'normalizePlatformEntityBlockTargetDocumentId(\'store\', storeId)',
-      'batch.update(db.collection(DB_COLLECTIONS.STORES).doc(storeScope.documentId), {',
-      'tenantBlockedSyncedAt: admin.firestore.FieldValue.serverTimestamp()',
+      'const tenantScope = entityScope;',
+      'const MAX_TENANT_BLOCK_STORES = 200;',
+      'async function updateTenantBlockStateAtomically({',
+      'return db.runTransaction(async (transaction) => {',
+      'transaction.get(docRef)',
+      'transaction.get(summaryRef)',
+      '...storeQueries.map((query) => transaction.get(query))',
+      'hasExactStoredEntityIdentity(tenant, \'tenantId\', tenantScope)',
+      'hasExactTenantOwnership(storeData, tenantScope)',
+      'normalizePlatformEntityBlockTargetDocumentId(\'store\', store.id)',
+      'transaction.update(docRef, { blocked, blockDetails });',
+      'transaction.update(store.ref, {',
+      'tenantBlockedSyncedAt: now',
+      'transaction.set(summaryRef, {',
+      'const result = await updateTenantBlockStateAtomically({',
       'revalidateStorePublicCache(storeId, tenantScope.documentId)',
-      'const storeScope = normalizePlatformEntityBlockTargetDocumentId(\'store\', existingEntity.storeId) || entityScope;',
-      'await revalidateStorePublicCache(storeScope.documentId, tenantScope?.documentId);',
+      'const storeScope = entityScope;',
+      'const freshStoreSnap = await transaction.get(docRef);',
+      'hasExactStoredEntityIdentity(freshStore, \'storeId\', storeScope)',
+      'await revalidateStorePublicCache(storeScope.documentId, result.tenantDocumentId);',
       'storesSummary',
       'authAdmin.updateUser',
       'authAdmin.revokeRefreshTokens',
+      'const USER_AUTH_RECONCILIATION_MAX_ATTEMPTS = 5;',
+      'const USER_AUTH_SYNC_LEASE_MS = 2 * 60 * 1000;',
+      'const operationId = randomUUID();',
+      'const started = await db.runTransaction(async (transaction) => {',
+      'const freshUserSnap = await transaction.get(docRef);',
+      'hasExactStoredUserIdentity(freshUser, entityScope)',
+      'hasActiveUserAuthSyncLease(freshUser, now.toMillis())',
+      'authSyncPending: {',
+      'leaseExpiresAt: admin.firestore.Timestamp.fromMillis(now.toMillis() + USER_AUTH_SYNC_LEASE_MS)',
+      'authSyncRevision: operationId',
+      'transaction.update(docRef, updateData);',
+      'async function reconcileUserBlockAuthState({',
+      'freshUser.authSyncRevision !== revision',
+      'authSyncPending: admin.firestore.FieldValue.delete()',
+      'const reconciled = await reconcileUserBlockAuthState({',
+      'if (reconciled.superseded) {',
+      'await markUserAuthSyncFailed(db, docRef, operationId);',
       'logFirebaseAdminDiagnostic("platform_entity_block_auth_user_missing"',
-      'getBoundedFirebaseAdminStringContext("reason", reason)',
       'getBoundedFirebaseAdminStringContext("userId", entity?.id)',
     ],
     'platform entity blocks body, auth, cache, and auth-state guard',
@@ -2229,6 +2439,10 @@ function verifyPlatformAdminMutationBoundedBodies() {
   assert(!read('src/app/api/platform/entity-blocks/route.ts').includes("z.string().trim().min(1).max(160).refine(isValidFirestoreDocumentId, 'Invalid entity ID')"), 'platform entity blocks must not trim entity IDs before validation');
   assert(!read('src/app/api/platform/entity-blocks/route.ts').includes('getEntityDocRef(db, entityType, entityId)'), 'platform entity blocks must not build refs from raw entity IDs');
   assert(!read('src/app/api/platform/entity-blocks/route.ts').includes('batch.update(db.collection(DB_COLLECTIONS.STORES).doc(String(storeId)), {'), 'platform entity blocks must not mirror tenant blocks through raw store IDs');
+  assert(!read('src/app/api/platform/entity-blocks/route.ts').includes('db.batch()'), 'platform entity blocks must not split tenant/store/summary block state across non-atomic batches');
+  assert(!read('src/app/api/platform/entity-blocks/route.ts').includes('await docRef.update(updateData)'), 'platform entity blocks must not change Firebase Auth before a durable user block revision');
+  assert(!read('src/app/api/platform/entity-blocks/route.ts').includes("normalizePlatformEntityBlockTargetDocumentId('tenant', existingEntity.tenantId) || entityScope"), 'platform entity blocks must not redirect tenant propagation through a drifted persisted ID field');
+  assert(!read('src/app/api/platform/entity-blocks/route.ts').includes("normalizePlatformEntityBlockTargetDocumentId('store', existingEntity.storeId) || entityScope"), 'platform entity blocks must not redirect store summary/cache effects through a drifted persisted ID field');
   assert(!read('src/app/api/platform/entity-blocks/route.ts').includes('key: `platform-entity-block:${getPlatformEntityBlockOperatorId(session)}`'), 'platform entity blocks must not build rate-limit keys from raw operator IDs');
   assert(!read('src/app/api/platform/entity-blocks/route.ts').includes('key: `platform-entity-block:${session'), 'platform entity blocks must not build rate-limit keys from raw session material');
   assert(!read('src/app/api/platform/entity-blocks/route.ts').includes('request.json()'), 'platform entity blocks must not parse unbounded JSON');
@@ -2291,6 +2505,8 @@ function verifyOpsMutationBoundedBodies() {
       'const OPS_MUTE_ALERTS_MAX_BODY_BYTES = 1024;',
       'checkRateLimit({',
       'const operatorRateLimitHash = hashPublicRateLimitValue(operatorId);',
+      'failClosedOnProviderError: true',
+      'getCurrentPlatformUser(session)',
       'getBoundedSecurityRouteContext(session, request)',
       'readBoundedJsonBody(request, OPS_MUTE_ALERTS_MAX_BODY_BYTES',
       'MuteAlertsRequestSchema.safeParse(bodyResult.data)',
@@ -2304,6 +2520,7 @@ function verifyOpsMutationBoundedBodies() {
       'const operatorRateLimitHash = hashPublicRateLimitValue(operatorId);',
       'const rateLimit = await checkRateLimit({',
       'key: `ops-mute-alerts:${operatorRateLimitHash}`',
+      'const currentPlatformUser = await getCurrentPlatformUser(session);',
       'readBoundedJsonBody(request, OPS_MUTE_ALERTS_MAX_BODY_BYTES',
       'MuteAlertsRequestSchema.safeParse(bodyResult.data)',
       'const db = getFirestore();',
@@ -2319,10 +2536,13 @@ function verifyOpsMutationBoundedBodies() {
       'const OPS_SAFE_MODE_MAX_BODY_BYTES = 2 * 1024;',
       'checkRateLimit({',
       'const operatorRateLimitHash = hashPublicRateLimitValue(operatorId);',
+      'failClosedOnProviderError: true',
+      'getCurrentPlatformUser(session)',
       'getBoundedSecurityRouteContext(session, request)',
       'readBoundedJsonBody(request, OPS_SAFE_MODE_MAX_BODY_BYTES',
       'validateAPIInput(SafeModeRequestSchema, bodyResult.data)',
       "getBoundedOpsStringContext('reason', reason || 'Manual activation')",
+      'firestoreAdmin.runTransaction(async (transaction) =>',
       'createAlert({',
     ],
     'ops safe-mode platform, rate, body, and alert guard',
@@ -2333,10 +2553,11 @@ function verifyOpsMutationBoundedBodies() {
       'const operatorRateLimitHash = hashPublicRateLimitValue(operatorId);',
       'const rateLimit = await checkRateLimit({',
       'key: `ops-safe-mode:${operatorRateLimitHash}`',
+      'const currentPlatformUser = await getCurrentPlatformUser(session);',
       'readBoundedJsonBody(request, OPS_SAFE_MODE_MAX_BODY_BYTES',
       'validateAPIInput(SafeModeRequestSchema, bodyResult.data)',
-      'const db = getFirestore();',
-      'await opsRef.set({',
+      "firestoreAdmin.collection(DB_COLLECTIONS.OPS_CONFIG).doc('system')",
+      'const changed = await firestoreAdmin.runTransaction(async (transaction) =>',
     ],
     'ops safe-mode limiter and bounded body before toggle write',
   );
@@ -2356,7 +2577,7 @@ function verifyOpsMutationBoundedBodies() {
       route: 'src/app/api/ops/platform-notifications/route.ts',
       cap: 'PLATFORM_NOTIFICATION_OPS_ACTION_MAX_BODY_BYTES',
       label: 'platform notification ops action',
-      hashDeclaration: 'const operatorRateLimitHash = hashPublicRateLimitValue(operatorId);',
+      hashDeclaration: 'const operatorRateLimitHash = hashPublicRateLimitValue(sessionOperatorId);',
       key: 'platform-notification-ops:${operatorRateLimitHash}',
       rawKey: 'key: `platform-notification-ops:${operatorId}`',
       validation: 'validateAPIInput(PostActionSchema, body)',
@@ -2370,6 +2591,8 @@ function verifyOpsMutationBoundedBodies() {
         `const ${cap} = 8 * 1024;`,
         'checkRateLimit({',
         hashDeclaration,
+        'failClosedOnProviderError: true',
+        'getCurrentPlatformUser(session)',
         `readBoundedJsonBody(request, ${cap}`,
         validation,
       ],
@@ -2542,12 +2765,17 @@ function verifyAuthClaimAndCacheBoundaries() {
       'set_claims_store_switch_outside_user_stores_rejected',
       'set_claims_invalid_workspace_scope_rejected',
       'hasDefaultPlatformAccess',
-      'const claimStoreScope = effectiveTargetStoreId && (hasDefaultPlatformAccess || canAccessStore(dbUser, effectiveTargetStoreId))',
-      'const claimTenantScope = normalizeStorePermissionScopeDocumentId(dbUser.tenantId ?? dbUser.tId);',
+      'const claimStoreScope = resolvedTargetStoreId && (hasDefaultPlatformAccess || canAccessTargetStore)',
+      '? normalizeStorePermissionScopeDocumentId(resolvedTargetStoreId)',
+      'resolveSetClaimsWorkspaceFromStore',
+      '.doc(claimStoreScope.documentId)',
+      'const claimTenantScope = canonicalWorkspace.tenantScope;',
       'tenantId: claimTenantScope.documentId',
       'storeId: claimStoreScope.documentId',
-      'storeIds: getStoreIdsClaim(dbUser)',
-      'normalizeEmail(firebaseUser.email) !== normalizeEmail(session.user.email)',
+      '? getAnswerlatticeStaffClaimStoreIds(answerlatticeClaimState)',
+      ': getStoreIdsClaim(dbUser))',
+      'claimStoreScope.documentId',
+      'normalizeEmail(validatedDefaultFirebaseUser.email) !== normalizeEmail(session.user.email)',
       'set_claims_uid_email_mismatch_rejected',
       'getSetClaimsLogContext',
       'logAuthDiagnostic',
@@ -2579,8 +2807,10 @@ function verifyAuthClaimAndCacheBoundaries() {
   assert(!setClaimsRoute.includes('key: `auth-set-claims:${session.user.email'), 'set-claims route must not store raw emails in rate-limit keys');
   assert(!setClaimsRoute.includes('key: `${SET_CLAIMS_RATE_LIMIT_KEY}:${session'), 'set-claims route must build limiter keys from hashed identity material');
   assert(setClaimsAuthFirebaseDoc.includes('Set-claims rate-limit boundary'), 'Auth Firebase docs must record the set-claims rate-limit boundary');
+  assert(setClaimsAuthFirebaseDoc.includes('one canonical target-store read for each valid sync attempt'), 'Auth Firebase docs must record canonical set-claims store verification');
   assert(setClaimsFirebaseAuthSyncDoc.includes('Set-claims rate-limit boundary'), 'Firebase Auth sync docs must record the set-claims rate-limit boundary');
   assert(setClaimsProductionAudit.includes('Set-claims rate-limit boundary checkpoint'), 'Production audit must record the set-claims rate-limit boundary');
+  assert(setClaimsProductionAudit.includes('Set-claims canonical product workspace checkpoint'), 'Production audit must record canonical product workspace claim verification');
   assert(setClaimsChangelog.includes('Set-claims Rate-Limit Boundary'), 'Changelog must record the set-claims rate-limit boundary');
   assert(setClaimsLowercaseChangelog.includes('Set-claims Rate-Limit Boundary'), 'Lowercase changelog must record the set-claims rate-limit boundary');
 
@@ -2688,6 +2918,7 @@ function verifyPublicTruthMutationBoundedBodies() {
     'src/app/api/outlets/rename/route.ts',
     'src/app/api/outlets/deactivate/route.ts',
     'src/app/api/outlets/policy/route.ts',
+    'src/app/api/tenants/name/route.ts',
     'src/app/api/projects/outlet-save/route.ts',
   ];
 
@@ -2704,15 +2935,47 @@ function verifyPublicTruthMutationBoundedBodies() {
     );
   });
 
+  assertIncludes(
+    'src/app/api/tenants/name/route.ts',
+    [
+      'export const POST = withAuth(async (request, session) => {',
+      'key: `tenant-name:${limiterHash}`',
+      'readBoundedJsonBody(request, TENANT_NAME_MAX_BODY_BYTES',
+      'validateAPIInput(schema, bodyResult.data)',
+      'sessionScope.tenantDocumentId !== tenantDocumentId',
+      'requireAnyStorePermissionForStoreData(',
+      '.limit(MAX_TENANT_NAME_STORES + 1)',
+      'const result = await db.runTransaction(async (transaction) => {',
+      'transaction.get(tenantRef)',
+      'transaction.get(storeQuery)',
+      'transaction.update(tenantRef, {',
+      ".doc('storesSummary')",
+      'committed = true;',
+    ],
+    'tenant name atomic tenant/store/summary route boundary',
+  );
+  assertOrder(
+    'src/app/api/tenants/name/route.ts',
+    [
+      'checkRateLimit({',
+      'readBoundedJsonBody(request, TENANT_NAME_MAX_BODY_BYTES',
+      'validateAPIInput(schema, bodyResult.data)',
+      'const result = await db.runTransaction(async (transaction) => {',
+    ],
+    'tenant name limiter, bounded body and transaction ordering',
+  );
+
   assertOrder(
     'src/app/api/domain/route.ts',
     [
       'const rateLimitResponse = await checkDomainManagementRateLimit(session, storeId);',
       'const bodyResult = await readBoundedJsonBody(request, DOMAIN_ACTION_MAX_BODY_BYTES',
       'const validation = AddDomainSchema.safeParse(body);',
-      'const existingStore = await db',
+      'const reservationResult = await db.runTransaction(async (transaction) => {',
+      'readAuthorizedDomainStateInTransaction({',
+      'const result = await addDomainToVercelProject(normalizedDomain);',
     ],
-    'custom domain bounded body before provider/store work',
+    'custom domain limiter and bounded body before authorization, claim, provider, or store work',
   );
 
   assertOrder(
@@ -2760,7 +3023,9 @@ function verifyPublicTruthMutationBoundedBodies() {
       'const tenantId = normalizeSessionDocumentId(rawTenantId);',
       'const storeId = normalizeSessionDocumentId(rawStoreId);',
       'const storeRateLimitHash = hashPublicRateLimitValue(storeId);',
-      'const rlResult = await checkRateLimit({ key: `api-key-mgmt:${storeRateLimitHash}`, limit: 5, window: 60 });',
+      'const rlResult = await checkRateLimit({',
+      'key: `api-key-mgmt:${storeRateLimitHash}`',
+      'failClosedOnProviderError: true',
       'const bodyResult = await readBoundedJsonBody(request, PUBLIC_API_KEY_ACTION_MAX_BODY_BYTES',
       'const validation = RequestSchema.safeParse(body);',
       'const db = admin.firestore();',
@@ -2951,7 +3216,8 @@ function verifyPublicTruthMutationBoundedBodies() {
       'const userRateLimitHash = hashPublicRateLimitValue(session.uId || session.user?.id || "unknown");',
       'const projectRateLimitHash = hashPublicRateLimitValue(project.projectId);',
       'const rateLimit = await checkRateLimit({',
-      'const [callerStoreSnap, outletStoreSnap, masterStoreSnap, tenantSnap, existingProjectSnap] = await Promise.all([',
+      'const [commonSnapshots, existingProjectSnap] = await Promise.all([',
+      'const [callerStoreSnap, outletStoreSnap, masterStoreSnap, tenantSnap] = commonSnapshots;',
     ],
     'linked outlet save bounded body before tenant/store reads',
   );
@@ -2972,7 +3238,7 @@ function verifyPublicTruthMutationBoundedBodies() {
       route,
       [
         'const bodyResult = await readBoundedJsonBody(request, POS_SYNC_ACTION_MAX_BODY_BYTES',
-        'const validation = validateAPIInput(schema, body);',
+        'const validation = validateAPIInput(schema, bodyResult.data);',
         'const tenantScope = normalizePosSyncNumericDocumentId(tenantId);',
         'const storeScope = normalizePosSyncNumericDocumentId(storeId);',
         'verifyTenantAccess(session, tenantId, storeId, request)',
@@ -3196,7 +3462,10 @@ function verifyPublicCustomerSignalBoundedBodies() {
       'const storeSnap = await firestoreAdmin.collection(DB_COLLECTIONS.STORES).doc(storeId).get();',
       'if (store.active === false || store.deleted === true || isPlatformEntityBlocked(store)) return null;',
       'const tenantSnap = await firestoreAdmin.collection(DB_COLLECTIONS.TENANTS).doc(tenantId).get();',
-      'if (!tenantSnap.exists || isPlatformEntityBlocked(tenantSnap.data())) return null;',
+      'const tenant = tenantSnap.data();',
+      'tenant?.active === false',
+      'tenant?.deleted === true',
+      'isPlatformEntityBlocked(tenant)',
       'const target: ValidatedAnalyticsTarget = {',
     ],
     'public analytics target eligibility before preferences',
@@ -3227,7 +3496,10 @@ function verifyPublicCustomerSignalBoundedBodies() {
       "projectId: z.string().regex(/^[A-Za-z0-9_-]{1,120}$/).refine(isValidFirestoreDocumentId, 'Invalid project ID'),",
       "logAnalyticsFailure('public_analytics_track_failed'",
       '.collection(DB_COLLECTIONS.TENANTS)',
-      'if (!tenantSnap.exists || isPlatformEntityBlocked(tenantSnap.data())) return null;',
+      'const tenant = tenantSnap.data();',
+      'tenant?.active === false',
+      'tenant?.deleted === true',
+      'isPlatformEntityBlocked(tenant)',
       "getBoundedAnalyticsStringContext('tenantId', tenantId)",
       "getBoundedAnalyticsStringContext('storeId', storeId)",
       "getBoundedAnalyticsStringContext('projectId', data.projectId)",
@@ -3262,6 +3534,7 @@ function verifyPublicCustomerSignalBoundedBodies() {
       'tId: tenantDocumentId',
       'sId: storeDocumentId',
       'projectId: analyticsProjectId',
+      'date: analyticsDateKey',
       'localDate: analyticsDateKey',
     ],
     'public analytics shared write helper boundary',
@@ -3309,7 +3582,10 @@ function verifyPublicCustomerSignalBoundedBodies() {
       '.doc(projectId)',
       'projectRef.get()',
       'tenantRef.get()',
-      'if (!tenantDoc.exists || isPlatformEntityBlocked(tenantDoc.data()))',
+      'const tenantData = tenantDoc.data();',
+      'tenantData?.active === false',
+      'tenantData?.deleted === true',
+      'isPlatformEntityBlocked(tenantData)',
       'submitGuestFeedbackAdmin({',
     ],
     'public feedback bounded body before captcha/store reads/write',
@@ -3329,7 +3605,10 @@ function verifyPublicCustomerSignalBoundedBodies() {
       '.collection(DB_COLLECTIONS.TENANTS)',
       '.doc(projectId)',
       'const [projectDoc, storeDoc, tenantDoc] = await Promise.all([',
-      'if (!tenantDoc.exists || isPlatformEntityBlocked(tenantDoc.data()))',
+      'const tenantData = tenantDoc.data();',
+      'tenantData?.active === false',
+      'tenantData?.deleted === true',
+      'isPlatformEntityBlocked(tenantData)',
       "getBoundedGuestFeedbackStringContext('tenantId', tenantDocumentId)",
       "getBoundedGuestFeedbackStringContext('storeId', storeDocumentId)",
       "getBoundedGuestFeedbackStringContext('projectId', projectId)",
@@ -3637,32 +3916,31 @@ function verifyAnalyticsErrorBoundary() {
     'src/app/api/analytics/weekly-narrative/generate-local/route.ts',
     [
       "import { withAuth } from '@/middleware/auth';",
-      "import { PERMISSIONS } from '@constant/permissions';",
-      "import { requireAnyStorePermission } from '@lib/permissions/server';",
-      'export async function generateWeeklyNarrativeLocally(request: NextRequest, session: any)',
+      "import { ANSWERLATTICE_PERMISSION_KEYS } from '@constant/answerlattice/permissions';",
+      "import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';",
+      "import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';",
+      "import { answerlatticeGenAIClient } from '@lib/answerlattice/genAiClient';",
+      'async function generateWeeklyNarrativeLocally(request: NextRequest, session: any)',
       'export const POST = withAuth(generateWeeklyNarrativeLocally);',
-      'const userRateLimitHash = hashPublicRateLimitValue(session.uId);',
-      'const tenantRateLimitHash = hashPublicRateLimitValue(tId);',
-      'const storeRateLimitHash = hashPublicRateLimitValue(sId);',
-      'key: `weekly-narrative:${userRateLimitHash}:${tenantRateLimitHash}:${storeRateLimitHash}`',
-      'const permissionError = await requireAnyStorePermission(',
-      '[PERMISSIONS.VIEW_ANALYTICS]',
-      'if (permissionError) return permissionError;',
+      'const scope = resolveAnswerlatticeSessionScope(session);',
+      "key: buildAnswerlatticeRateLimitKey(",
+      'const permission = await requireAnswerlatticePermission(',
+      'ANSWERLATTICE_PERMISSION_KEYS.VIEW_READINESS',
+      'if (permission.response) return permission.response;',
       'const WEEKLY_NARRATIVE_CATEGORY_MAX_LENGTH = 80;',
       'const WEEKLY_NARRATIVE_OUTPUT_TEXT_MAX_LENGTH = 500;',
       'const WEEKLY_NARRATIVE_OUTPUT_LIST_ITEM_MAX_LENGTH = 220;',
       'const WEEKLY_NARRATIVE_OUTPUT_LIST_MAX_ITEMS = 5;',
-      'const WEEKLY_NARRATIVE_TOP_QUESTIONS_SCAN_LIMIT = 25;',
       'const cleanWeeklyNarrativeOutputText = (',
       /replace\(\s*\/\[\\u0000-\\u001f\\u007f\]\/g,\s*' '\s*\)/,
       ".replace(/[{}<>`$\\\\]/g, '')",
       'normalizeWeeklyNarrativeOutputText(parsed?.narrative, fallback.narrative)',
       'normalizeWeeklyNarrativeOutputList(parsed?.highlights, fallback.highlights)',
       'normalizeWeeklyNarrativeOutputList(parsed?.recommendations, fallback.recommendations)',
-      'normalizeWeeklyNarrativeMetric(data.totalChats)',
-      'normalizeWeeklyNarrativeCategory(q?.category)',
-      'const categories: Record<string, number> = Object.create(null);',
-      "recordAiOperationForSession(session,",
+      'parseAnswerlatticeChatAnalyticsDay({',
+      "where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)",
+      'getAnswerlatticeCompletedWeeklyWindows(new Date(), WEEKLY_NARRATIVE_DAYS)',
+      'recordAnswerlatticeAiOperation({ tId, sId },',
       "logRuntimeFailure('weekly_narrative_local_generation_failed'",
     ],
     'weekly narrative local route shared auth guard',
@@ -3672,11 +3950,11 @@ function verifyAnalyticsErrorBoundary() {
     [
       'const rateLimit = await checkRateLimit({',
       'if (!rateLimit.allowed) {',
-      'const permissionError = await requireAnyStorePermission(',
-      'if (permissionError) return permissionError;',
+      'const permission = await requireAnswerlatticePermission(',
+      'if (permission.response) return permission.response;',
       "logger.info('[Weekly Narrative Local] Generating weekly narrative'",
-      "const { genAIClient } = await import('@lib/google/genAi');",
-      "const { firestoreAdmin } = await import('@lib/firebase/firebaseAdmin');",
+      'answerlatticeFirestoreAdmin',
+      'answerlatticeGenAIClient.models.generateContent({',
     ],
     'weekly narrative route must rate-limit and permission-check before provider/firestore work',
   );
@@ -3694,17 +3972,20 @@ function verifyAnalyticsErrorBoundary() {
   assertIncludes(
     'src/app/api/analytics/weekly-narrative/regenerate/route.ts',
     [
-      "import { withAuth } from '@/middleware/auth';",
-      "import { generateWeeklyNarrativeLocally } from '../generate-local/route';",
-      'export const POST = withAuth(async (request: NextRequest, session) => {',
-      'return await generateWeeklyNarrativeLocally(request, session);',
+      "import { POST as generateWeeklyNarrativePost } from '../generate-local/route';",
+      'export async function POST(request: NextRequest) {',
+      'return await generateWeeklyNarrativePost(request);',
     ],
     'weekly narrative regenerate shared auth guard',
   );
   assertIncludes(
     'src/app/api/ai-operations/route.ts',
     [
-      "import {\n    AI_OPERATION_DATE_FILTER_MAX_LENGTH,\n    isValidAiOperationCursorId,\n    normalizeAiOperationHistoryDateRange,\n} from '@lib/ai/operationHistoryQuery';",
+      "from '@lib/ai/operationHistoryQuery';",
+      'AI_OPERATION_DATE_FILTER_MAX_LENGTH,',
+      'isAiOperationHistoryCursorAdmissible,',
+      'isValidAiOperationCursorId,',
+      'normalizeAiOperationHistoryDateRange,',
       '.refine((value) => !value || isValidAiOperationCursorId(value), \'Invalid cursor ID\')',
       'endDate: z.string().trim().max(AI_OPERATION_DATE_FILTER_MAX_LENGTH).optional(),',
       'startDate: z.string().trim().max(AI_OPERATION_DATE_FILTER_MAX_LENGTH).optional(),',
@@ -3719,6 +4000,12 @@ function verifyAnalyticsErrorBoundary() {
       'if (!dateRange) {',
       "query = query.where('createdOn', '>=', dateRange.start);",
       "query = query.where('createdOn', '<=', dateRange.end);",
+      'const cursorDoc = await getCursorDoc(tenantId, storeId, cursorId);',
+      'isAiOperationHistoryCursorAdmissible({',
+      'cursorCreatedOn: cursorDoc?.get(\'createdOn\')',
+      'cursorExists: Boolean(cursorDoc)',
+      'cursorRequested: Boolean(cursorId)',
+      "return NextResponse.json({ error: 'Invalid cursor' }, { status: 400 });",
       'const userRateLimitHash = hashPublicRateLimitValue(userId);',
       'const tenantRateLimitHash = hashPublicRateLimitValue(tenantId);',
       'const storeRateLimitHash = hashPublicRateLimitValue(storeId);',
@@ -3736,6 +4023,19 @@ function verifyAnalyticsErrorBoundary() {
   assert(aiOperationHistoryQuery.includes('AI_OPERATION_DATE_PATTERN'), 'AI operation history query helper must parse strict date-only filters');
   assert(aiOperationHistoryQuery.includes('if (start.getTime() > end.getTime()) return null;'), 'AI operation history query helper must reject reversed date filters');
   assert(aiOperationHistoryQuery.includes('if (rangeDays > AI_OPERATION_HISTORY_MAX_DATE_RANGE_DAYS) return null;'), 'AI operation history query helper must reject wider-than-cap date filters');
+  assert(aiOperationHistoryQuery.includes('export function isAiOperationHistoryCursorAdmissible'), 'AI operation history query helper must expose persisted cursor admission');
+  assert(aiOperationHistoryQuery.includes('if (!cursorExists) return false;'), 'AI operation history query helper must reject requested missing cursors');
+  assert(aiOperationHistoryQuery.includes('if (dateRange.start && cursorTime < dateRange.start.getTime()) return false;'), 'AI operation history query helper must reject cursors before the active date range');
+  assert(aiOperationHistoryQuery.includes('if (dateRange.end && cursorTime > dateRange.end.getTime()) return false;'), 'AI operation history query helper must reject cursors after the active date range');
+  assertOrder(
+    'src/app/api/ai-operations/route.ts',
+    [
+      'const cursorDoc = await getCursorDoc(tenantId, storeId, cursorId);',
+      'if (!isAiOperationHistoryCursorAdmissible({',
+      'const result = action',
+    ],
+    'AI operations persisted cursor admission before continuation queries',
+  );
   assert(!aiOperationHistoryQuery.includes('Date.parse('), 'AI operation history query helper must not use permissive Date.parse');
   assert(!aiOperationsRoute.includes('function getDateParam'), 'AI operations route must not keep route-local permissive date parsing');
   assert(!aiOperationsRoute.includes('new Date(value)'), 'AI operations route must not use permissive new Date(value) parsing');
@@ -4287,7 +4587,7 @@ function verifyAnalyticsErrorBoundary() {
       'analytics_persisted_queue_invalid',
       'analytics_missing_required_identity',
       'analytics_enqueue_failed',
-      'analytics_summary_update_failed',
+      "if (typeof window === 'undefined') return false;",
       "fetch('/api/public/analytics/track', {",
       "cache: 'no-store'",
       "credentials: 'same-origin'",
@@ -4295,6 +4595,8 @@ function verifyAnalyticsErrorBoundary() {
     ],
     'analytics write queue bounded diagnostics',
   );
+  assert(!analyticsDatabase.includes('writeAnalyticsEventNow'), 'analytics browser queue must not retain a direct Firestore writer');
+  assert(!analyticsDatabase.includes('updateAnalyticsSummary'), 'analytics browser DAL must not retain the dead client summary writer');
   assert(!/\bconsole\.(?:error|warn|log)\s*\(/.test(analyticsDatabase), 'analytics database helper must not direct-console queue/write failures');
   assert(!/\blogger\.(?:error|warn|log)\s*\(/.test(analyticsDatabase), 'analytics database helper must not raw-log queue/write failures');
   assert(!analyticsDatabase.includes('} catch {\n    // Analytics must never break the public menu.'), 'analytics queue persistence must not silently swallow localStorage failures');
@@ -4539,7 +4841,7 @@ function verifyAnalyticsErrorBoundary() {
   assert(!chatInsights.includes('value: 88'), 'Chat Insights must not render hard-coded feedback response rate');
   assert(!chatInsights.includes('value: -10'), 'Chat Insights must not render hard-coded Knowledge Gaps trend');
   assert(!chatInsights.includes('description={analyticsMetadata?.lastError'), 'Chat Insights must not render stored analytics job errors directly');
-  assert(chatInsights.includes('Retry the update. If it keeps failing, check the analytics job logs.'), 'Chat Insights analytics failure copy must stay owner-safe');
+  assert(chatInsights.includes('Refresh this view. If the failure remains, check the analytics job logs.'), 'Chat Insights analytics failure copy must stay operator-safe');
   assert(analyticsDashboard.includes('description="Try again later."'), 'Analytics dashboard must use fixed error description');
   assert(customerAppMetrics.includes('description="Try again later."'), 'Customer App metrics must use fixed error description');
   assert(!analyticsDashboard.includes('description={error.message}'), 'Analytics dashboard must not render raw exception text');
@@ -4778,6 +5080,72 @@ function verifyOwnerUtilitySecureLogging() {
   const functionsMasterScheduler = read('functions/src/schedulers/masterScheduler.ts');
   const functionsDecisionBlocks = read('functions/src/decisionBlocksScoring.ts');
   assertIncludes(
+    'src/data/shared/ownerNotificationDeliveryBoundary.ts',
+    [
+      'normalizeOwnerNotificationNumericScopeDocumentId',
+      'normalizeOwnerNotificationReferenceId',
+      'getNextOwnerNotificationProcessingAttempt',
+      "status !== 'pending' && status !== 'failed'",
+    ],
+    'owner notification delivery identity and processing boundary',
+  );
+  assertIncludes(
+    'src/lib/owner-notifications/recipientResolver.ts',
+    [
+      'event.workspaceId ?? event.storeId',
+      'workspaceData?.tenantId ?? workspaceData?.tId',
+      'storedTenantDocumentId === tenantDocumentId',
+      'storeData?.tenantId ?? storeData?.tId',
+      'storedTenantScope?.numericId === tenantScope.numericId',
+    ],
+    'owner notification recipient tenant boundary',
+  );
+  assertIncludes(
+    'src/lib/owner-notifications/index.ts',
+    [
+      'const existing = await transaction.get(ref);',
+      'if (existing.exists) {',
+      'transaction.create(ref, doc);',
+      'options.processExisting === false',
+      'getNextOwnerNotificationProcessingAttempt(',
+      "error: 'scope_not_found_or_mismatch'",
+      'tenantId: event.tenantId',
+    ],
+    'owner notification app transactional delivery boundary',
+  );
+  assertIncludes(
+    'src/lib/messaging/index.ts',
+    [
+      'normalizeOwnerNotificationNumericScopeDocumentId(payload.storeId)',
+      'normalizeOwnerNotificationNumericScopeDocumentId(payload.tenantId)',
+      'resolveAuthoritativeLifecycleRecipient',
+      'claimLifecycleDelivery',
+      'transaction.create(ref, {',
+      'db.collection(MESSAGE_LOGS).doc(documentId).set({',
+    ],
+    'legacy app lifecycle tenant and idempotency boundary',
+  );
+  assertIncludes(
+    'functions/src/ownerNotifications/processor.ts',
+    [
+      'normalizeOwnerNotificationNumericScopeDocumentId(payload.tenantId)',
+      'normalizeOwnerNotificationNumericScopeDocumentId(payload.storeId)',
+      'const existing = await tx.get(eventRef);',
+      'if (!existing.exists) tx.create(eventRef, eventDoc);',
+      'const event = await claimOwnerNotificationEvent(eventRef);',
+      'normalizeOwnerNotificationNumericScopeDocumentId(data.tenantId ?? data.tId)',
+    ],
+    'Functions owner notification transactional tenant boundary',
+  );
+  assert(
+    !read('src/lib/owner-notifications/recipientResolver.ts').includes('cleanEmail(data.email)\n        || cleanEmail(hints.email)'),
+    'Owner notification automated email resolution must not fall back to caller hints',
+  );
+  assert(
+    !read('functions/src/ownerNotifications/processor.ts').includes('|| event.recipientHints?.email'),
+    'Functions owner notification email resolution must not fall back to stored caller hints',
+  );
+  assertIncludes(
     'src/lib/posSync/testResponse.ts',
     [
       'export const POS_SYNC_TEST_REQUEST_POLICY',
@@ -4881,7 +5249,7 @@ function verifyOwnerUtilitySecureLogging() {
   assert(storesDal.includes("await assertActiveSessionStore(storeId, 'starter_activation_signal_store_scope_mismatch');"), 'Starter activation signal writes must verify active session store before writing');
   assert(storesDal.includes('await revalidatePublicClientCache(storeId, "updateTimeSlotPresets");'), 'Time slot preset store writes must refresh public cache');
   assert(tenantsDal.includes('export function assertTenantUpdateSucceeded'), 'Tenant DAL must expose an explicit update acknowledgement guard');
-  assert(tenantsDal.includes('export function assertTenantsStoresListUpdateSucceeded'), 'Tenant DAL must expose an explicit stores-list acknowledgement guard');
+  assert(!tenantsDal.includes('updateTenantsStoreslist'), 'Tenant DAL must not expose stale whole-list replacement');
   assert(mobileBasicSettings.includes('assertStoreUpdateSucceeded('), 'Mobile Basic Settings must require explicit store-write acknowledgement before local success state');
   assert(mobileBasicSettings.includes('mobile_basic_settings_store_update_rejected'), 'Mobile Basic Settings must include bounded store rejected acknowledgement code');
   assert(mobileBasicSettings.includes('assertTenantUpdateSucceeded('), 'Mobile Basic Settings must require explicit tenant-write acknowledgement before local tenant state');
@@ -4897,7 +5265,9 @@ function verifyOwnerUtilitySecureLogging() {
   assert(desktopDomainSettings.includes('desktop_domain_settings_subdomain_save_failed'), 'Desktop Domain Settings subdomain save must log bounded save failures');
   assert(desktopDomainSettings.includes('await Promise.resolve(onStoreUpdate?.({ subdomain: nextSubdomain }));'), 'Desktop Domain Settings must wait for parent subdomain persistence');
   assert(desktopBusinessSettings.includes('assertTenantUpdateSucceeded('), 'Desktop Business Settings must require explicit tenant-write acknowledgement before local tenant state');
-  assert(desktopBusinessSettings.includes('assertTenantsStoresListUpdateSucceeded('), 'Desktop Business Settings must require explicit tenant stores-list acknowledgement before local state');
+  assert(!desktopBusinessSettings.includes('updateTenantsStoreslist('), 'Desktop Business Settings must rely on the atomic store/summary/tenant-list DAL transaction');
+  assert(storesDal.includes('storesList: upsertTenantStoreListEntry(tenantSnapshot.data()?.storesList, nextStore)'), 'Store rename transaction must derive tenant storesList from current state');
+  assert(storesDal.includes('transaction.set(summaryRef, {'), 'Store create/update must write storesSummary inside its persistence transaction');
   assert(mobileBasicSettings.includes('hasLogoUpdate: Boolean(updates.imageToUpdate)'), 'Mobile Basic Settings must include bounded logo-update context');
   assert(mobileBasicSettings.includes('tenantNameChanged: formData.tenantName.trim() !== tenantDetails?.name'), 'Mobile Basic Settings must include bounded tenant-name context');
   assert(mobileBusinessAttributes.includes('mobile_business_attributes_save_failed'), 'Mobile Business Attributes must log bounded save failures');
@@ -5046,6 +5416,7 @@ function verifyOwnerUtilitySecureLogging() {
 	      'isOpsControlRoomForceRepublishResponse',
 	      'logInvalidOpsControlRoomForceRepublishResponse',
 	      "typeof value.success === 'boolean'",
+	      'Number.isSafeInteger(value.projectCount)',
 	      "typeof value.projectId === 'string'",
 	      "typeof value.verification === 'string'",
 	      'ops_control_room_force_republish_response_invalid',
@@ -5402,7 +5773,9 @@ function verifyOwnerUtilitySecureLogging() {
       'auth: { user: smtpConfig.user, pass: smtpConfig.pass }',
       "error: 'smtp_not_configured'",
       "error: 'smtp_send_failed'",
-      'notification_duplicate_check_failed',
+      'claimNotificationDelivery',
+      'finalizeNotificationDelivery',
+      'notification_log_claim_lost',
       'notification_rate_limit_check_failed',
       'notification_log_write_failed',
       'notification_log_target_unavailable',
@@ -5413,7 +5786,11 @@ function verifyOwnerUtilitySecureLogging() {
       'key: `notification-send:${userRateLimitHash}`',
       'readBoundedJsonBody(request, NOTIFICATION_SEND_MAX_BODY_BYTES',
       'NotificationRequestSchema.safeParse(bodyResult.data)',
-      'productId !== PRODUCT_IDS.ANSWERLATTICE',
+      'ANSWERLATTICE_PERMISSION_KEYS.MANAGE_SUPPORT',
+      'failClosedOnProviderError: true',
+      '.collection(DB_COLLECTIONS.SUPPORT_TICKETS)',
+      'parseAnswerlatticeSupportTicketDocument({',
+      'projectTicketNotification({',
       'logNotificationFailure(\'notification_send_route_failed\'',
     ]],
     ['src/lib/notifications/client.ts', [
@@ -5555,32 +5932,29 @@ function verifyOwnerUtilitySecureLogging() {
 	      'if (response.ok) return;',
 	      "logOpsFailure('ops_alert_telegram_delivery_failed', { status: response.status }",
 	    ]],
-    ['functions/src/triggers/operations.ts', [
-      "const appUrl = String(process.env.NEXT_PUBLIC_APP_URL || '').trim();",
-      'if (!appUrl) return null;',
-      "if (parsed.protocol !== 'https:') return null;",
-      'OPERATIONS_VERIFY_MENU_PUBLISH_FAILED',
+	    ['functions/src/triggers/operations.ts', [
+	      'OPERATIONS_VERIFY_MENU_PUBLISH_FAILED',
       'OPERATIONS_VERIFY_MENU_PUBLISH_SUCCESS_MESSAGE_FAILED',
-      'OPERATIONS_VERIFY_MENU_PUBLISH_SUCCESS_MESSAGE_SETUP_FAILED',
       'OPERATIONS_VERIFY_MENU_PUBLISH_FAILURE_MESSAGE_FAILED',
-      'OPERATIONS_VERIFY_MENU_PUBLISH_FAILURE_MESSAGE_SETUP_FAILED',
       'OPERATIONS_BUDGET_ALERT_WEBHOOK_FAILED',
-      'OPERATIONS_FORCE_REPUBLISH_FAILED',
-      'OPERATIONS_FORCE_REPUBLISH_PUBLIC_URL_UNAVAILABLE',
+	      'OPERATIONS_FORCE_REPUBLISH_FAILED',
+	      'OPERATIONS_FORCE_REPUBLISH_PROJECT_LIMIT_EXCEEDED',
+	      'OPERATIONS_FORCE_REPUBLISH_PUBLIC_URL_UNAVAILABLE',
       'OPERATIONS_BACKFILL_STORES_SUMMARY_FAILED',
       'getBoundedOperationsStringContext',
       'getOperationsErrorContext',
       "throw new HttpsError('internal', VERIFY_MENU_PUBLISH_FAILED_MESSAGE)",
-      "throw new HttpsError('failed-precondition', FORCE_REPUBLISH_PUBLIC_URL_UNAVAILABLE_MESSAGE)",
+	      "throw new HttpsError('failed-precondition', FORCE_REPUBLISH_PUBLIC_URL_UNAVAILABLE_MESSAGE)",
+	      "throw new HttpsError('resource-exhausted', 'The store has too many projects for this recovery action.')",
       "throw new HttpsError('internal', FORCE_REPUBLISH_FAILED_MESSAGE)",
       "throw new HttpsError('internal', BACKFILL_STORES_SUMMARY_FAILED_MESSAGE)",
     ]],
     ['functions/src/schedulers/masterScheduler.ts', [
-      'MANUAL_SCHEDULER_LOCK_ACQUIRE_FAILED',
-      'MANUAL_SCHEDULER_LOCK_RELEASE_FAILED',
-      'getAnalyticsErrorContext(error)',
-      "analyticsLogger.error('[ManualTrigger] Lock acquire failed'",
-      "analyticsLogger.error('[ManualTrigger] Lock release failed'",
+      'LEGACY_HELP_CENTER_ANALYTICS_MOVED_TO_ANSWERLATTICE',
+      'Help-center analytics now run in the Answerlattice workspace.',
+      "throw new HttpsError('failed-precondition'",
+      "throwRetired(request.auth?.uid, 'triggerSchedulerManually')",
+      "throwRetired(request.auth?.uid, 'triggerWeeklyNarrativeManually')",
     ]],
     ['functions/src/decisionBlocksScoring.ts', [
       'SCHEDULER_NO_STORES_RUN_LOG_PERSIST_FAILED',
@@ -5646,11 +6020,20 @@ function verifyOwnerUtilitySecureLogging() {
 	    ]],
 	    ['functions/src/messagingOnboarding/inboundQueue.ts', [
 	      'const INBOUND_PROCESSING_FAILED_CODE = "INBOUND_PROCESSING_FAILED";',
+	      'const INBOUND_STALE_PROCESSING_RESET_CODE = "INBOUND_STALE_PROCESSING_RESET";',
 	      'function getInboundQueueIdContext',
 	      'getInboundQueueIdContext("messageId", messageId)',
 	      'lastError: INBOUND_PROCESSING_FAILED_CODE',
 	      'code: INBOUND_PROCESSING_FAILED_CODE',
 	      'getInboundQueueErrorContext(error)',
+	      'lastError: INBOUND_STALE_PROCESSING_RESET_CODE',
+	      'failureCode: INBOUND_STALE_PROCESSING_RESET_CODE',
+	      'export async function enqueueInboundMessages',
+	      'const closePromise = writer.close()',
+	      'handlerCompletedAt',
+	      'snapshot.get("processingToken") !== claim.processingToken',
+	      'resetCount,',
+	      'staleWindowMs: STALE_PROCESSING_MS',
 	      '(error.name || "Error").slice(0, 80)',
 	      'String(code).slice(0, 64)',
 	    ]],
@@ -5668,24 +6051,26 @@ function verifyOwnerUtilitySecureLogging() {
       'function getWebhookInboundLogContext',
       'getWebhookBoundedStringContext("ip", req.ip)',
       'failureCode: WEBHOOK_QUEUE_FAILED_CODE',
-      'getInboundMessageId(normalizedMsg)',
+      'enqueueInboundMessages(normalizedMessages)',
+      'getInboundMessageId(firstMessage)',
     ]],
     ['functions/src/messagingOnboarding/extractionWatcher.ts', [
 	      'const EXTRACTION_FAILED_CODE = "EXTRACTION_FAILED";',
-	      'const EXTRACTION_PREVIEW_SEND_FAILED_CODE = "EXTRACTION_PREVIEW_SEND_FAILED";',
-	      'const EXTRACTION_CLEARER_PHOTOS_SEND_FAILED_CODE = "EXTRACTION_CLEARER_PHOTOS_SEND_FAILED";',
+		      'const EXTRACTION_PREVIEW_SEND_FAILED_CODE = "EXTRACTION_PREVIEW_SEND_FAILED";',
+		      'const EXTRACTION_CLEARER_PHOTOS_SEND_FAILED_CODE = "EXTRACTION_CLEARER_PHOTOS_SEND_FAILED";',
+		      'const EXTRACTION_PREVIEW_LEASE_RELEASE_FAILED_CODE = "EXTRACTION_PREVIEW_LEASE_RELEASE_FAILED";',
 	      'function logClearerPhotosMessageSendFailed',
 	      'logger.warn("[ExtractionWatcher] Failed to send clearer photos message"',
 	      'failureCode: EXTRACTION_CLEARER_PHOTOS_SEND_FAILED_CODE',
 	      'code: jobData.error?.code || EXTRACTION_FAILED_CODE',
 	      'EXTRACTION_FAILED_CODE,',
-	      'failureCode: EXTRACTION_PREVIEW_SEND_FAILED_CODE',
-	      'code: "SEND_FAILED"',
-	      'getExtractionWatcherErrorContext(err)',
-	      'logger.warn("[ExtractionWatcher] Temp project cleanup failed"',
-	      'cleanupTarget: "messaging_onboarding_temp_project"',
-	      'getExtractionWatcherErrorContext(error)',
-	    ]],
+		      'failureCode: EXTRACTION_PREVIEW_SEND_FAILED_CODE',
+		      'failureCode: EXTRACTION_PREVIEW_LEASE_RELEASE_FAILED_CODE',
+		      'code: "SEND_FAILED"',
+		      'getExtractionWatcherErrorContext(err)',
+		      'session.extractionJobId !== jobId',
+		      'finalizeMessagingExtractionSuccess',
+		    ]],
     ['functions/src/messagingOnboarding/healthMonitor.ts', [
       'MESSAGING_HEALTH_SNAPSHOT_WRITE_FAILED',
       'function getMessagingHealthErrorName',
@@ -5695,32 +6080,32 @@ function verifyOwnerUtilitySecureLogging() {
       'errorCode: getMessagingHealthErrorCode(error)',
       'getMessagingHealthErrorContext(error)',
     ]],
-	    ['functions/src/messagingOnboarding/intakeProcessor.ts', [
-	      'const INTAKE_PROVIDER_MESSAGE_SEND_FAILED_CODE = "INTAKE_PROVIDER_MESSAGE_SEND_FAILED";',
-	      'const INTAKE_RATE_LIMIT_COUNTER_UPDATE_FAILED_CODE = "INTAKE_RATE_LIMIT_COUNTER_UPDATE_FAILED";',
+		    ['functions/src/messagingOnboarding/intakeProcessor.ts', [
+		      'const INTAKE_PROVIDER_MESSAGE_SEND_FAILED_CODE = "INTAKE_PROVIDER_MESSAGE_SEND_FAILED";',
+		      'const INTAKE_MESSAGE_LEASE_RELEASE_FAILED_CODE = "INTAKE_MESSAGE_LEASE_RELEASE_FAILED";',
 	      'function getIntakeProcessorErrorContext',
 	      'function getIntakeProcessorIdLogContext',
-	      'function logProviderMessageSendFailed',
-	      'function logProcessingRunCounterUpdateFailed',
+		      'function logProviderMessageSendFailed',
+		      'async function releasePendingMessageLease',
 	      'getIntakeProcessorIdLogContext("sessionId", doc.id)',
 	      'getIntakeProcessorIdLogContext("sessionId", session.sessionId)',
 	      '(error.name || "Error").slice(0, 80)',
 	      'String(code).slice(0, 64)',
 	      'code: "GEMINI_API_ERROR"',
-	      'logger.warn("[IntakeProcessor] Non-blocking provider message send failed"',
-	      'failureCode: INTAKE_PROVIDER_MESSAGE_SEND_FAILED_CODE',
-	      'logger.warn("[IntakeProcessor] Processing run counter update failed"',
-	      'failureCode: INTAKE_RATE_LIMIT_COUNTER_UPDATE_FAILED_CODE',
-	      '"session_processing_cap_reached"',
-	      '"weekly_processing_cap_reached"',
+		      'logger.warn("[IntakeProcessor] Non-blocking provider message send failed"',
+		      'failureCode: INTAKE_PROVIDER_MESSAGE_SEND_FAILED_CODE',
+		      'logger.warn("[IntakeProcessor] Pending message lease release failed"',
+		      'failureCode: INTAKE_MESSAGE_LEASE_RELEASE_FAILED_CODE',
+		      'claimMessagingIntakeSession',
+		      'commitMessagingAssetValidation',
+		      'enqueueMessagingExtractionJob',
 	      '"asset_validation_retry_failed"',
 	      '"no_valid_menu_files"',
 	      '"all_files_non_menu"',
 	      '"partial_menu_more_uploads"',
 	      '"extraction_progress"',
-	      'logProcessingRunCounterUpdateFailed(session, err);',
-	      'getIntakeProcessorErrorContext(err)',
-	    ]],
+		      'getIntakeProcessorErrorContext(err)',
+		    ]],
 	    ['functions/src/messagingOnboarding/sessionEngine.ts', [
 	      'function getSessionEngineIdLogContext',
 	      'function getSessionEngineErrorName',
@@ -5731,9 +6116,17 @@ function verifyOwnerUtilitySecureLogging() {
 		      'errorName: getSessionEngineErrorName(error)',
 		      'errorCode: getSessionEngineErrorCode(error)',
 		      'getSessionEngineErrorContext(err)',
-		      'logger.warn("[SessionEngine] Duplicate upload cleanup failed"',
+			      'async function appendStoredUploadOrCleanup',
+			      'await deleteStoredUpload(upload, session.sessionId, result.status)',
+			      'const reopenedFromFailure = session.state === "FAILED"',
+			      'reason: "Valid upload received after failure"',
+			      'extractionCompletedJobId: null',
+			      'extractionJobId: null',
+			      'invalidAttempt.cooldownApplied ? MESSAGES.RATE_LIMITED : MESSAGES.NON_MENU_FILE',
+			      'reason: "Maximum invalid upload attempts reached"',
+			      'state: "COOLDOWN"',
+	      'const result = await db.runTransaction(async (transaction) =>',
 		      'getSessionEngineIdLogContext("uploadId", upload.id)',
-		      'getSessionEngineIdLogContext("storagePath", upload.storagePath)',
 		      'getSessionEngineErrorContext(error)',
 		    ]],
 	    ['functions/src/utils/boundedResponseBody.ts', [
@@ -5748,43 +6141,64 @@ function verifyOwnerUtilitySecureLogging() {
 	    ]],
 		    ['functions/src/messagingOnboarding/assetIntelligence.ts', [
 		      'ASSET_VALIDATION_UPLOAD_FETCH_FAILED',
-		      'ASSET_VALIDATION_UPLOAD_TOO_LARGE',
-		      'ASSET_VALIDATION_UPLOAD_URL_REJECTED',
+		      'ASSET_VALIDATION_UPLOAD_INTEGRITY_REJECTED',
+		      'ASSET_VALIDATION_UPLOAD_RECORD_REJECTED',
 		      'ASSET_VALIDATION_RESPONSE_PARSE_FAILED',
-		      'function getStoragePathFromDownloadUrl',
-		      'function isAllowedMessagingUploadUrl',
-		      'storagePath !== upload.storagePath',
-		      'fileName.startsWith(`${upload.id}.`)',
-		      'if (!isAllowedMessagingUploadUrl(upload))',
-				      'validateNetworkTargetUrl(upload.storageUrl)',
-				      'fetch(targetValidation.normalizedUrl)',
-				      'readResponseUint8ArrayWithLimit(response, UPLOAD_LIMITS.MAX_FILE_SIZE_BYTES)',
-				      'isResponseBodyTooLargeError(error)',
-				      'responseByteLength: error.receivedBytes',
-				      'maxSize: error.maxBytes',
+		      'async function readMessagingStorageObject',
+		      'function getProjectStorageBucketFallback()',
+		      'process.env.FIREBASE_STORAGE_BUCKET',
+		      'process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET',
+		      'process.env.GCLOUD_PROJECT',
+		      'process.env.GCP_PROJECT',
+		      'process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID',
+		      'storageAdmin.bucket(getAllowedStorageBucket() || undefined).file(storagePath).createReadStream({',
+		      'validation: "crc32c"',
+		      'byteLength > UPLOAD_LIMITS.MAX_FILE_SIZE_BYTES',
+		      'validateMessagingStoredUploadRecord(upload, sessionId)',
+		      'validateMessagingStoredUploadBytes(upload, responseBytes)',
+		      'shouldInlineAssetValidationFiles(prompt, readableFiles.map((file) => file.bytes.length))',
+		      'uploadAssetValidationFiles(readableFiles, operationAbortSignal)',
+		      'uploadedProviderFiles = providerUpload.files',
+		      'uploadedProviderFileNames = providerUpload.providerNames',
+		      'if (providerUpload.firstError) throw providerUpload.firstError',
+		      'cleanupAssetValidationProviderFiles(uploadedProviderFileNames)',
+		      'names.map((name) => genAIClient.files.delete({',
+		      'name,',
+				      'ASSET_VALIDATION_DOWNLOAD_CONCURRENCY',
+				      'ASSET_VALIDATION_PROVIDER_UPLOAD_CONCURRENCY',
+				      'httpOptions: { timeout: ASSET_VALIDATION_MODEL_TIMEOUT_MS }',
 				      'function getAssetIntelligenceErrorName',
 		      'function getAssetIntelligenceErrorCode',
 		      'function getAssetIntelligenceStatusCode',
 		      'function getAssetIntelligenceErrorContext',
-		      'function getTargetValidationDiagnosticContext',
-		      'sourceErrorName: getAssetIntelligenceErrorName(error)',
+				      'sourceErrorName: getAssetIntelligenceErrorName(error)',
 		      'sourceErrorCode: getAssetIntelligenceErrorCode(error)',
 		      'sourceStatusCode: getAssetIntelligenceStatusCode(error)',
 		      'responseTextLength: responseText.length',
-	      'uploadIdLength: upload.id.length',
-	    ]],
+		      'uploadIdLength: upload.id.length',
+		    ]],
+		    ['functions/src/messagingOnboarding/assetStorageBoundary.ts', [
+		      'validateMessagingStoredUploadRecord',
+		      'validateMessagingStoredUploadBytes',
+		      'url.hostname !== "firebasestorage.googleapis.com"',
+		      'url.searchParams.get("alt") !== "media"',
+		      'upload.storagePath.endsWith(expectedSuffix)',
+		      'bytes.length !== upload.fileSize',
+		      'validateMessagingUploadContent(bytes, upload.mimeType)',
+		      'actualSha256 !== upload.sha256',
+		    ]],
+		    ['functions/src/messagingOnboarding/assetModelInputBoundary.ts', [
+		      'INLINE_ASSET_VALIDATION_REQUEST_MAX_BYTES = 18 * 1024 * 1024',
+		      'Math.ceil(byteLength / 3) * 4',
+		      'estimateInlineAssetValidationRequestBytes',
+		      'shouldInlineAssetValidationFiles',
+		      'Number.POSITIVE_INFINITY',
+		    ]],
 	    ['functions/src/messagingOnboarding/publishPipeline.ts', [
-	      'PUBLISH_CONFIRMATION_SEND_FAILED',
-	      'function getPublishPipelineIdLogContext',
-	      'function getPublishPipelineLogContext',
-	      'function getPublishPipelineErrorName',
-	      'function getPublishPipelineErrorCode',
-	      'function getPublishPipelineErrorContext',
-	      'getPublishPipelineLogContext({ sessionId })',
-	      'failureCode: PUBLISH_CONFIRMATION_SEND_FAILED_CODE',
-	      'errorName: getPublishPipelineErrorName(error)',
-	      'errorCode: getPublishPipelineErrorCode(error)',
-	      'getPublishPipelineErrorContext(err)',
+	      'Messaging onboarding Cloud Functions publisher guard',
+	      'Active publishing is owned exclusively by:',
+	      'src/lib/messaging-onboarding/publish.ts',
+	      'MESSAGING_FUNCTIONS_PUBLISH_PIPELINE_DISABLED',
 	    ]],
     ['functions/src/messagingOnboarding/providers/whatsapp/WhatsAppAdapter.ts', [
       'WHATSAPP_SEND_TEXT_FAILED',
@@ -5817,7 +6231,7 @@ function verifyOwnerUtilitySecureLogging() {
 	      'providerResponseBodySkipped: true',
 	      'errorName: getWhatsAppErrorName(error)',
 	      'errorCode: getWhatsAppErrorCode(error)',
-	      'getWhatsAppErrorContext(err)',
+	      'getWhatsAppErrorContext(error)',
 	      'throw createWhatsAppProviderError(WHATSAPP_SEND_TEXT_FAILED_CODE, response.status)',
 	    ]],
     ['functions/src/schedulers/messagingSessionCleanup.ts', [
@@ -5879,7 +6293,8 @@ function verifyOwnerUtilitySecureLogging() {
       'sourceErrorName: getExtractionWatcherErrorName(error)',
       'sourceErrorCode: getExtractionWatcherErrorCode(error)',
       'getExtractionWatcherIdContext("sessionId", sessionId)',
-      'getExtractionWatcherIdContext("tempProjectId", tempProjectId)',
+      'getBoundMessagingSessionId',
+      'MESSAGING_EXTRACTION_JOB_FILE_BINDING_MISMATCH',
     ]],
     ['functions/src/schedulers/aiProviderHealth.ts', [
       'AI_PROVIDER_HEALTH_CHECK_FAILED',
@@ -5905,21 +6320,32 @@ function verifyOwnerUtilitySecureLogging() {
       'SCHEDULER_ALERT_CREATE_FAILED_CODE',
       'SCHEDULER_LEASE_RELEASE_FAILED_CODE',
       'PUBLIC_MENU_DRAFT_IMAGE_DELETE_FAILED_CODE',
+      'PUBLIC_MENU_DRAFT_IMAGE_PATH_INVALID_CODE',
+      'imagePath.startsWith(`publicMenuDrafts/${doc.id}/`)',
+      'Preserve the draft as the durable retry record',
+      'if (deletedDrafts > 0)',
+      'deletedDrafts,',
       'RESELLER_LICENSE_EXPIRE_FAILED_CODE',
-      'RESELLER_PROFILE_COUNT_DECREMENT_FAILED_CODE',
       'sampleJobCount: stuckResult.sampleJobCount',
       'sampleJobIdLengthTotal: stuckResult.sampleJobIdLengthTotal',
       'async function runResellerLicenseExpiry',
       "isFunctionFeatureEnabled('ENABLE_RESELLER_DASHBOARD')",
       ".where('billingMode', '==', 'manual')",
       ".where('status', '==', 'active')",
-      ".where('validUntil', '<=', Timestamp.fromDate(graceDate))",
-      '.limit(100)',
-      'currentActiveOfflineStores: FieldValue.increment(-1)',
-      "revalidatePublicClientCacheForStore(storeId, 'resellerLicenseExpiry'",
-      'touchDigitalScreen: true',
-      'invalidateOwnerBusinessAssistantContextPackets({',
-      'activePlanType: FieldValue.delete()',
+      ".where('validUntil', '<=', graceCutoff)",
+      '.limit(pageSize)',
+      'const currentSnapshot = await transaction.get(subDoc.ref);',
+      'normalizeSubscriptionDocumentId(currentSnapshot.id)',
+      'normalizeScopeDocumentId(current.tenantId ?? current.tId)',
+      'normalizeScopeDocumentId(current.storeId ?? current.sId)',
+      'Math.max(0, Math.floor(activeOfflineStores) - 1)',
+      "where('billingEntitlementSyncPending', '==', true)",
+      "'menulistMaintenanceScheduler:resellerLicenseExpiryRetry'",
+      'billingEntitlementSyncPending: true',
+      'billingEntitlementSyncPending: FieldValue.delete()',
+      'await syncStorePlanEntitlement(',
+      "'menulistMaintenanceScheduler:resellerLicenseExpiry'",
+      "name: 'subscription_reconciliation'",
       "name: 'reseller_license_expiry'",
       "getSchedulerStringContext('runId', runId)",
       "getSchedulerStringContext('draftId', doc.id)",
@@ -5942,6 +6368,89 @@ function verifyOwnerUtilitySecureLogging() {
   ].forEach(([relPath, tokens]) => {
     assertIncludes(relPath, tokens, `${relPath} bounded ops diagnostics`);
   });
+
+  {
+    const operations = read('functions/src/triggers/operations.ts');
+    const publishVerification = read('functions/src/monitoring/publishVerification.ts');
+    const deliveryCalls = operations.split('sendLifecycleMessage({').length - 1;
+    const awaitedDeliveryCalls = operations.split('await sendLifecycleMessage({').length - 1;
+    assert(deliveryCalls >= 2, 'verifyMenuPublish must retain both lifecycle delivery branches');
+    assert(
+      deliveryCalls === awaitedDeliveryCalls,
+      'verifyMenuPublish must await every lifecycle delivery before returning from the callable',
+    );
+    assert(
+      !operations.includes('Lifecycle message: Store Published (fire-and-forget)'),
+      'verifyMenuPublish must not document server delivery as fire-and-forget',
+    );
+    assertOrder(
+      'functions/src/triggers/operations.ts',
+      [
+        "if (!request.auth) {",
+        'normalizeOwnerNotificationDocumentId(authToken.uId)',
+        'normalizeOwnerNotificationNumericScopeDocumentId(input.storeId)',
+        'if (!hasTenantStoreAccess(request, tenantId, storeId))',
+        'if (!await isPublishVerificationScopeAuthorized(storeId, tenantId, userId, { publicMenuUrl }))',
+        'const result = await verifyPublish(publicMenuUrl);',
+        'await updateStoreHealth(storeId, tenantId, userId, result, { publicMenuUrl });',
+      ],
+      'verifyMenuPublish cheap-fail and canonical scope before network/write',
+    );
+    [
+      'isActiveCanonicalPublishScope(',
+      'db.runTransaction(async (transaction) => {',
+      'const tenantDoc = await transaction.get(tenantRef);',
+      'const storeDoc = await transaction.get(storeRef);',
+      'const userDoc = await transaction.get(userRef);',
+      'isPublicMenuUrlInStoreScope(storeData, options.publicMenuUrl)',
+      'getPublishVerificationPublicBaseDomain()',
+      "const appUrl = String(process.env.NEXT_PUBLIC_APP_URL || '').trim();",
+      'if (!appUrl) return null;',
+      "if (parsed.protocol !== 'https:') return null;",
+      'hostname === `${subdomain}.${baseDomain}`',
+      "if (currentPlatformRole === 'PLATFORM') return true;",
+      'normalizeOwnerNotificationNumericScopeDocumentId(candidate)?.documentId === storeId',
+      'readStoredConsecutiveFailures(currentHealth.consecutiveFailures)',
+      'transaction.set(storeRef, {',
+    ].forEach((token) => assert(
+      publishVerification.includes(token),
+      `publish verification scope boundary must include ${token}`,
+    ));
+    assert(
+      !publishVerification.includes('storeDoc.data()?.health as StoreHealth'),
+      'publish verification must not trust persisted health fields through a cast',
+    );
+
+    const forceRepublishSource = operations.slice(operations.indexOf('export const forceRepublish'));
+    const forceRepublishOrder = [
+      "assertPlatformOwner(request, 'force republish stores')",
+      'normalizeOwnerNotificationDocumentId(request.auth?.token?.uId)',
+      'forceRepublishActiveProjects(storeId, tenantId, userId)',
+      'const result = await verifyPublish(publicMenuUrl);',
+      'updateStoreHealth(storeId, tenantId, userId, result, {',
+      'requirePlatformAuthority: true,',
+    ];
+    let forceRepublishCursor = -1;
+    forceRepublishOrder.forEach((token) => {
+      const nextIndex = forceRepublishSource.indexOf(token, forceRepublishCursor + 1);
+      assert(nextIndex >= 0, `forceRepublish canonical authorization/write order missing ${token}`);
+      forceRepublishCursor = nextIndex;
+    });
+    [
+      '.limit(MAX_FORCE_REPUBLISH_PROJECTS + 1)',
+      'const projectsSnapshot = await transaction.get(projectsQuery);',
+      'projectsSnapshot.size > MAX_FORCE_REPUBLISH_PROJECTS',
+      'projectData.deleted === true || projectData.active === false',
+      'normalizeOwnerNotificationNumericScopeDocumentId(embeddedTenant)?.documentId',
+      'normalizeOwnerNotificationNumericScopeDocumentId(embeddedStore)?.documentId',
+      'activeProjects.forEach((projectDoc) => {',
+      'transaction.update(projectDoc.ref, {',
+      'projectIds: activeProjects.map((projectDoc) => projectDoc.id).sort()',
+    ].forEach((token) => assert(
+      publishVerification.includes(token),
+      `forceRepublish transactional project boundary must include ${token}`,
+    ));
+  }
 
   {
     const messagingTrigger = read('functions/src/triggers/messaging.ts');
@@ -6237,6 +6746,8 @@ function verifyOwnerUtilitySecureLogging() {
     'src/lib/ownerBusinessAssistant/server/apiGuards.ts',
     [
       'resolveOwnerAssistantSelectedStoreScope',
+      'normalizeStoreSwitchStoreId',
+      'if (hasRequestedStoreId && !selectedStoreId)',
       'canUserAccessStore({ sessionUser, storeId: selectedStoreId })',
       'Tenant Access Violation - Owner Business Assistant Store Scope',
       'getBoundedSecurityRouteContext',
@@ -6259,6 +6770,8 @@ function verifyOwnerUtilitySecureLogging() {
   assert(!ownerBusinessAssistantApiGuards.includes('sessionStoreId: sId'), 'Owner Business Assistant API guards must not raw-log selected-store violation session store IDs');
   assert(!ownerBusinessAssistantApiGuards.includes('storeId: sId,\n    tenantId: tId,\n    userId,'), 'Owner Business Assistant API guards must not raw-log rate-limit scope IDs');
   assert(!ownerBusinessAssistantApiGuards.includes('buildSecurityContext'), 'Owner Business Assistant API guards must not spread raw security context into guard security logs');
+  assert(ownerBusinessAssistantSchemas.includes('normalizeStoreSwitchStoreId(value) !== null'), 'Owner Business Assistant store schema must require exact canonical store IDs');
+  assert(!ownerBusinessAssistantSchemas.includes("z.string().min(1).max(80).regex(/^\\d+$/).optional()"), 'Owner Business Assistant store schema must not admit leading-zero or unsafe numeric strings');
   [
     'OWNER_BUSINESS_ASSISTANT_READ_MODEL_RESPONSE_JSON_MAX_BYTES = 256 * 1024',
     'OWNER_BUSINESS_ASSISTANT_REQUEST_POLICY',
@@ -6450,7 +6963,9 @@ function verifyOwnerUtilitySecureLogging() {
 		    ['functions/src/messagingOnboarding/assetIntelligence.ts', 'responseText.slice'],
 		    ['functions/src/messagingOnboarding/assetIntelligence.ts', 'responseText:'],
 				    ['functions/src/messagingOnboarding/assetIntelligence.ts', 'uploadId: upload.id'],
-				    ['functions/src/messagingOnboarding/assetIntelligence.ts', 'fetch(upload.storageUrl)'],
+					    ['functions/src/messagingOnboarding/assetIntelligence.ts', 'fetch(upload.storageUrl)'],
+					    ['functions/src/messagingOnboarding/assetIntelligence.ts', 'validateNetworkTargetUrl'],
+					    ['functions/src/messagingOnboarding/assetIntelligence.ts', 'readResponseUint8ArrayWithLimit'],
 				    ['functions/src/messagingOnboarding/assetIntelligence.ts', 'Buffer.from(await response.arrayBuffer())'],
 				    ['functions/src/messagingOnboarding/assetIntelligence.ts', 'const arrayBuffer = await response.arrayBuffer()'],
 			    ['functions/src/messagingOnboarding/publishPipeline.ts', 'error: (err as Error).message'],
@@ -6472,7 +6987,7 @@ function verifyOwnerUtilitySecureLogging() {
     ['functions/src/schedulers/messagingSessionCleanup.ts', 'error: (sendErr as Error).message'],
 	    ['functions/src/schedulers/messagingSessionCleanup.ts', '(err as Error).message'],
 	    ['functions/src/schedulers/messagingSessionCleanup.ts', '(sendErr as Error).message'],
-	    ['functions/src/schedulers/messagingSessionCleanup.ts', 'sessionId: doc.id'],
+	    ['functions/src/schedulers/messagingSessionCleanup.ts', 'sessionId: doc.id,'],
 	    ['functions/src/schedulers/messagingSessionCleanup.ts', 'File may already be deleted'],
 	    ['functions/src/schedulers/messagingSessionCleanup.ts', 'uploadId: upload.id'],
 	    ['functions/src/schedulers/messagingSessionCleanup.ts', 'storagePath: upload.storagePath'],
@@ -6638,12 +7153,12 @@ function verifyOwnerUtilitySecureLogging() {
   assertOrder(
     'src/lib/notifications/index.ts',
     [
-      'notification_duplicate_check_failed',
-      'return true;',
       'notification_rate_limit_check_failed',
       'return true;',
+      'const claim = await claimNotificationDelivery({',
+      'if (!claim.claimed) return false;',
     ],
-    'Notification duplicate/rate-limit failures fail closed',
+    'Notification claim/rate-limit failures fail closed',
   );
 
   assertIncludes(
@@ -7213,6 +7728,18 @@ function verifyPaymentMutationBoundedJson() {
       "functions.logger.warn(\n            '[Reconciliation] Unknown subscription state transition'",
       "functions.logger.warn(\n            '[Reconciliation] Invalid subscription state transition'",
       'failureCode: BILLING_SUBSCRIPTION_RECONCILIATION_SUBSCRIPTION_FAILED',
+      'export function normalizeSubscriptionDocumentId',
+      'export function normalizeScopeDocumentId',
+      'export async function syncStorePlanEntitlement',
+      '): Promise<boolean> {',
+      'transaction.get(activeSubscriptionsQuery)',
+      ".orderBy('cycleEndDate', 'desc')",
+      '.orderBy(FieldPath.documentId())',
+      'const sub = { ...docSnap.data(), id: docSnap.id }',
+      'const currentSnapshot = await transaction.get(docSnap.ref);',
+      'transaction.update(docSnap.ref, updates);',
+      'updates.statuses = [',
+      'updates.creditsLastResetMonth = billingPeriod;',
     ],
     'Functions subscription reconciliation bounded diagnostics',
   );
@@ -7225,6 +7752,9 @@ function verifyPaymentMutationBoundedJson() {
   assert(!functionsReconciliation.includes('sourceErrorStatus: (error as any).status || (error as any).statusCode'), 'Functions subscription reconciliation must normalize source error status');
   assert(!functionsReconciliation.includes('[Reconciliation] Unknown state:'), 'Functions subscription reconciliation must not warn with raw current status text');
   assert(!functionsReconciliation.includes('[Reconciliation] Invalid transition:'), 'Functions subscription reconciliation must not warn with raw transition text');
+  assert(!functionsReconciliation.includes('const sub = { id: docSnap.id, ...docSnap.data() }'), 'Functions subscription reconciliation must not allow embedded IDs to override Firestore authority');
+  assert(!functionsReconciliation.includes("String(sub.providerSubscriptionId || '').trim()"), 'Functions subscription reconciliation must reject whitespace-mutated provider IDs');
+  assert(!functionsReconciliation.includes('.doc(sub.id).update(updates)'), 'Functions subscription reconciliation must not update from an embedded subscription ID');
 
   const functionsCircuitBreaker = read('functions/src/lib/circuitBreaker.ts');
   assertIncludes(
@@ -7884,9 +8414,19 @@ function verifyPaymentMutationBoundedJson() {
       'src/app/api/reseller/onboard/route.ts',
       [
         'import { requireOnboardingUserId } from "@lib/onboarding/onboardingUserId";',
-        '.doc(requireOnboardingUserId(authAccount.uid))',
+        'const userId = requireOnboardingUserId(existingOwnerDoc?.id || authAccount.uid);',
+        'readResellerOwnerClaimInTransaction({',
       ],
       'reseller onboarding generated auth UID user document boundary',
+    );
+    assertIncludes(
+      'src/lib/reseller/resellerOwnerClaim.ts',
+      [
+        'const normalizedUserId = normalizeOnboardingUserId(userId);',
+        'const ref = db.collection(DB_COLLECTIONS.USERS).doc(normalizedUserId);',
+        'const snapshot = await transaction.get(ref);',
+      ],
+      'reseller onboarding transaction owner document boundary',
     );
     const onboardingCreateTenantStore = read('src/lib/onboarding/createTenantStore.ts');
     const failedOnboardingCompensation = read('src/lib/onboarding/compensateFailedOnboarding.ts');
@@ -8225,6 +8765,10 @@ function verifyPaymentMutationBoundedJson() {
 	    assert(!onboardRoute.includes("data: { resellerId, businessName"), 'reseller onboard local start log must not persist raw business identifiers');
 	    assert(!onboardRoute.includes("data: { resellerId, tenantId: result.tenantId"), 'reseller onboard local completion log must not persist raw tenant/store identifiers');
 	    assert(!onboardRoute.includes('authAdmin.deleteUser(authAccount.uid).catch(() => undefined)'), 'reseller onboard auth cleanup failures must not be silently swallowed');
+	    assert(onboardRoute.includes("where('email', '==', params.email).limit(2).get()"), 'reseller onboard must detect duplicate owner email documents');
+	    assert(onboardRoute.includes("where('username', '==', params.username).limit(2).get()"), 'reseller onboard must detect duplicate owner login usernames');
+	    assert(onboardRoute.includes('emailSnapshot.docs.some((emailDoc) => emailDoc.id !== params.existingOwnerDocId)'), 'reseller onboard must reject any competing email owner document');
+	    assert(onboardRoute.includes('usernameSnapshot.docs.some((usernameDoc) => usernameDoc.id !== params.existingOwnerDocId)'), 'reseller onboard must reject any competing username owner document');
 	  }
 	  {
 	    const manageRoute = read('src/app/api/reseller/manage/route.ts');
@@ -8704,6 +9248,7 @@ function verifyMessagingPreviewCheapFail() {
   const previewRouteBoundary = read('src/lib/messaging-onboarding/previewRouteBoundary.ts');
   const messagingPublish = read('src/lib/messaging-onboarding/publish.ts');
   const previewPage = read('src/app/(global-pages)/msg-preview/[sessionId]/page.tsx');
+  const previewGetRoute = read('src/app/api/msg-preview/[sessionId]/route.ts');
 
   assert(previewRouteBoundary.includes('MESSAGING_PREVIEW_SESSION_ID_PATTERN = /^[A-Za-z0-9]{20}$/'), 'messaging preview route boundary must accept only Firestore auto-ID session ids');
   assert(previewRouteBoundary.includes('normalizeMessagingPreviewSessionId'), 'messaging preview route boundary must expose a shared normalizer');
@@ -8720,15 +9265,30 @@ function verifyMessagingPreviewCheapFail() {
   assert(previewClientResponse.includes('readJsonResponseWithLimit<unknown>'), 'messaging preview client responses must use the bounded response reader');
   assert(previewClientResponse.includes('messaging_preview_response_parse_failed'), 'messaging preview client responses must log malformed or oversized responses');
   assert(previewClientResponse.includes('messaging_preview_response_invalid'), 'messaging preview client responses must log invalid successful envelopes');
-  assert(previewClientResponse.includes('isPreviewData'), 'messaging preview client responses must validate preview GET envelopes');
-  assert(previewClientResponse.includes('isApproveResponse'), 'messaging preview client responses must validate approve envelopes');
-  assert(previewClientResponse.includes('isFixResponse'), 'messaging preview client responses must validate fix envelopes');
-  assert(previewClientResponse.includes('typeof value.sessionId === \'string\''), 'messaging preview GET responses must include session id');
-  assert(previewClientResponse.includes('typeof value.publicUrl === \'string\''), 'messaging preview approve responses must include a public URL');
+  assert(previewClientResponse.includes('normalizePreviewData'), 'messaging preview client responses must normalize preview GET envelopes');
+  assert(previewClientResponse.includes('normalizeApproveResponse'), 'messaging preview client responses must normalize approve envelopes');
+  assert(previewClientResponse.includes('normalizeFixResponse'), 'messaging preview client responses must normalize fix envelopes');
+  assert(previewClientResponse.includes('normalizeMessagingPreviewMenuData(payload.menuData)'), 'messaging preview client responses must project menu data before page state');
+  assert(previewClientResponse.includes('normalizeMessagingPreviewPublishedResult(payload.publishedResult)'), 'messaging preview client responses must project publish handoff data before page state');
+  assert(previewClientResponse.includes('normalizeMessagingPreviewCounter(payload.correctionCount)'), 'messaging preview client responses must require exact counters');
+  assert(!previewClientResponse.includes('Number(payload.retryAfter)'), 'messaging preview client retry metadata must not coerce runtime values');
   assert(previewClientResponse.includes('payload.maxReached === true'), 'messaging preview fix rejections must preserve max-reached status only');
-  assert(previewClientResponse.includes("new Error('Messaging preview request failed')"), 'messaging preview client errors must use fixed local error text');
+  assert(previewClientResponse.includes("super('Messaging preview request failed')"), 'messaging preview client errors must use fixed local error text');
   assert(!previewClientResponse.includes('response.json()'), 'messaging preview client parser must not use direct unbounded response parsing');
   assert(!previewClientResponse.includes('.json().catch'), 'messaging preview client parser must not silently swallow malformed response JSON');
+
+  const previewResponseBoundary = read('src/lib/messaging-onboarding/previewResponseBoundary.ts');
+  const publicMenuDraftData = read('src/data/shared/publicMenuDraftData.ts');
+  assert(previewResponseBoundary.includes('normalizeMessagingPreviewMenuData'), 'messaging preview response boundary must expose the menu projector');
+  assert(previewResponseBoundary.includes('normalizeMessagingPreviewPublishedResult'), 'messaging preview response boundary must expose the published-result projector');
+  assert(previewResponseBoundary.includes("url.protocol !== 'https:'"), 'messaging preview published URLs must require HTTPS');
+  assert(previewResponseBoundary.includes('normalizePublicMenuDraftExtractedData(value)'), 'messaging preview output must delegate to the public draft projector');
+  assert(publicMenuDraftData.includes('MAX_CATEGORIES: 100'), 'messaging preview category output must inherit the bounded public draft category cap');
+  assert(publicMenuDraftData.includes('MAX_ITEMS: 500'), 'messaging preview item output must inherit the bounded public draft item cap');
+
+  assert(previewGetRoute.includes('normalizeMessagingPreviewMenuData(session.menuData)'), 'messaging preview GET must project persisted menu data before response');
+  assert(previewGetRoute.includes('normalizeMessagingPreviewPublishedResult(session.publishedResult)'), 'messaging preview GET must project persisted published result before response');
+  assert(previewGetRoute.includes('messaging_preview_persisted_output_invalid'), 'messaging preview GET must fail closed on malformed persisted output');
 
   assert(previewPage.includes('readMessagingPreviewDataResponse(res)'), 'messaging preview page must use the shared bounded parser for preview loads');
   assert(previewPage.includes('readMessagingPreviewApproveResponse(res)'), 'messaging preview page must use the shared bounded parser for approve responses');
@@ -8774,7 +9334,9 @@ function verifyMessagingPreviewCheapFail() {
       'const declaredBodyResponse = rejectInvalidOrOversizedDeclaredBody(',
       'const sessionId = normalizeMessagingPreviewSessionId(params?.sessionId);',
       'const ipHash = hashPublicRateLimitValue(ip);',
-      "const publishLimit = await checkRateLimit({ key: `publish:${ipHash}`, ...publishLimitConfig });",
+      'const sessionHash = hashPublicRateLimitValue(sessionId);',
+      'const publishLimit = await checkRateLimit({',
+      'key: `msg-preview-publish:${sessionHash}:${ipHash}`',
       'const bodyResult = await readBoundedJsonBody(request, MSG_PREVIEW_ACTION_MAX_BODY_BYTES);',
       'const validation = ApproveSchema.safeParse(bodyResult.data);',
       '.doc(sessionId);',
@@ -8818,20 +9380,33 @@ function verifyMessagingPreviewCheapFail() {
       'key: `msg-preview-fix:${sessionHash}:${ipHash}`',
       'const bodyResult = await readBoundedJsonBody(request, MSG_PREVIEW_ACTION_MAX_BODY_BYTES);',
       'const validation = FixRequestSchema.safeParse(bodyResult.data);',
-      '.doc(sessionId);',
-      'const sessionDoc = await sessionRef.get();',
+      'const mutation = await applyMessagingOnboardingFixRequest({',
     ],
     'message preview fix bounded body and mutation ordering',
+  );
+
+  assertOrder(
+    'src/lib/messaging-onboarding/fixRequestTransaction.ts',
+    [
+      'const sessionId = normalizeMessagingPreviewSessionId(params.sessionId);',
+      '.doc(sessionId);',
+	      'const result = await db.runTransaction(async (transaction) => {',
+	      'const sessionDoc = await transaction.get(sessionRef);',
+	      'transaction.update(sessionRef, {',
+	      'await cleanupPendingUploads(sessionId);',
+	      'return result;',
+	    ],
+	    'message preview fix helper validates and mutates atomically before post-commit cleanup',
   );
 	  assertIncludes(
 	    'src/app/api/msg-preview/[sessionId]/fix/route.ts',
 	    [
 	      'sanitizeMessagingOnboardingEventMetadata({',
 	      'messaging_preview_event_write_failed',
-	      'eventType: "PREVIEW_FIX_REQUESTED"',
-	      'issueCount: issues.length',
-	      'correctionNumber: currentCorrections + 1',
-	      'hasNote: !!note',
+		      'eventType: "PREVIEW_FIX_REQUESTED"',
+		      'issueCount: issues.length',
+		      'correctionNumber,',
+		      'hasNote: !!note',
     ],
     'message preview fix bounded event metadata',
   );
@@ -8888,8 +9463,6 @@ function verifyStaffTenantBoundary() {
       'userId === value && userId.length > 0 && userId.length <= 160 && isValidFirestoreDocumentId(userId)',
       'isValidFirestoreDocumentId(userId)',
       'const StaffUserIdSchema = z.string()\n    .min(1)\n    .max(160)\n    .refine((value) => normalizeStaffUserId(value) === value, "Invalid user ID");',
-      'function normalizeStaffStoreScopeDocumentId(value: unknown): StaffStoreScopeDocumentId | null',
-      'Number.isSafeInteger(numericId) && numericId > 0 && String(numericId) === documentId',
       'const storeScope = normalizeStaffStoreScopeDocumentId(storeId);',
       'const storeScope = normalizeStaffStoreScopeDocumentId(store?.storeId);',
       'const storeScope = normalizeStaffStoreScopeDocumentId(input.storeId);',
@@ -8904,35 +9477,83 @@ function verifyStaffTenantBoundary() {
       'targetIsOwnStoreOnly',
       'getUsersForStore',
       '.where("storeIds", "array-contains", storeIdValue)',
-      'Number(doc.data()?.tenantId) === tenantId',
+      'normalizeStaffScopeNumericId(doc.data()?.tenantId) === tenantId',
       'visibleStoreIds: authority?.isMaster ? undefined : [authority?.sessionStoreId].filter(isPositiveId)',
       'const targetStore = await fetchStoreById(storeId);',
       'if (!isEligibleStaffTargetStore(targetStore, tenantId))',
-      'Number(existingData.tenantId) !== input.tenantId',
+      'normalizeStaffScopeNumericId(existingData.tenantId) !== input.tenantId',
       'validateStoreMappings(input.stores, input.tenantId)',
       'if (!isEligibleStaffTargetStore(store, tenantId))',
       'const targetUserId = normalizeStaffUserId(input.userId);',
       '.doc(targetUserId)',
       'sanitizeStaffUserForAuthority(targetUserId',
-      'ensureAnotherActiveOwner(input.tenantId, input.storeId',
+      'runStaffUserMutationTransaction({',
     ],
     'staff tenant/store authority boundary',
   );
 
   const staffHelper = read('src/lib/staffManagement/server.ts');
+  const staffScopeBoundary = read('src/lib/staffManagement/scopeBoundary.ts');
+  const staffConcurrencyBoundary = read('src/lib/staffManagement/concurrencyBoundary.ts');
+  assert(staffScopeBoundary.includes('function normalizeStaffStoreScopeDocumentId(value: unknown): StaffStoreScopeDocumentId | null'), 'staff scope boundary must define the exact document-ID normalizer');
+  assert(staffScopeBoundary.includes('Number.isSafeInteger(numericId) && numericId > 0 && String(numericId) === documentId'), 'staff scope boundary must reject non-canonical numeric IDs');
   assert((staffHelper.match(/userId: StaffUserIdSchema/g) || []).length >= 3, 'staff update/remove/reset schemas must use the staff user ID boundary');
   assert((staffHelper.match(/const targetUserId = normalizeStaffUserId\(input\.userId\);/g) || []).length >= 4, 'staff update/remove/reset/signout paths must normalize target user IDs');
-  assert((staffHelper.match(/\.doc\(targetUserId\)/g) || []).length >= 5, 'staff mutation user document refs must use normalized target user IDs');
+  assert((staffHelper.match(/\.doc\(targetUserId\)/g) || []).length >= 3, 'staff route-side mutation user document refs must use normalized target user IDs');
+  assert(staffConcurrencyBoundary.includes('.doc(params.userId)'), 'staff transaction boundary must use the normalized target user ID');
   assert(!staffHelper.includes('const StaffUserIdSchema = z.string()\n    .trim()'), 'staff user ID schema must not trim IDs before boundary validation');
   assert(!staffHelper.includes('.doc(input.userId)'), 'staff mutation user document refs must not use raw input user IDs');
   assert(!staffHelper.includes('sanitizeStaffUserForAuthority(input.userId'), 'staff mutation acknowledgements must not use raw input user IDs');
   assert(!staffHelper.includes('userId: input.userId'), 'staff mutation logs/responses must not use raw input user IDs after normalization');
   assert((staffHelper.match(/normalizeStaffStoreScopeDocumentId/g) || []).length >= 5, 'staff store read/write paths must normalize store scope before refs');
-  assert((staffHelper.match(/\.doc\(storeScope\.documentId\)/g) || []).length >= 4, 'staff store document refs must use normalized store scope document IDs');
+  assert((staffHelper.match(/\.doc\(storeScope\.documentId\)/g) || []).length >= 2, 'staff route-side store document refs must use normalized store scope document IDs');
+  assert(staffConcurrencyBoundary.includes('.doc(scope.documentId)'), 'staff transaction boundary must use normalized store scope document IDs');
   assert(!staffHelper.includes('.doc(String(storeId))'), 'staff store reads must not use raw store IDs');
   assert(!staffHelper.includes('.doc(String(store.storeId))'), 'staff default-role repair writes must not use raw store IDs');
+  assert(staffHelper.includes('const StaffScopeIdSchema = z.number().int().positive().safe();'), 'staff request schemas must reject unsafe numeric tenant/store IDs');
+  assert(staffHelper.includes('normalizePersistedStaffStoreMappings'), 'staff persisted store mappings must re-enter exact runtime normalization');
+  assert(!staffHelper.includes('Number(doc.data()?.tenantId) === tenantId'), 'staff list tenant filtering must not coerce persisted tenant IDs');
+  assert(!staffHelper.includes('Number(existingData.tenantId) !== input.tenantId'), 'staff mutation tenant checks must not coerce persisted tenant IDs');
+  assert(!staffHelper.includes('Number(store?.storeId) === sessionStoreId'), 'staff authority role lookup must not coerce mapped store IDs');
+  [
+    'STAFF_PASSCODE_RESET_LEASE_MS',
+    'passcodeResetPending: {',
+    'StaffPasscodeResetInProgressError',
+    'pending.operationId !== passcodeResetOperationId',
+    'PASSCODE_RESET_IN_PROGRESS',
+    'staff_passcode_reset_audit_finalize_failed',
+    'staff_passcode_reset_pending_cleanup_failed',
+    'createdFirebaseAuthUser = true',
+    'await authAdmin.deleteUser(firebaseUid)',
+    'staff_create_auth_compensation_failed',
+    '"staff_store_mapping_added"',
+    '"staff_store_mapping_changed"',
+    '"staff_store_mapping_removed"',
+  ].forEach((token) => assert(staffHelper.includes(token), `staff helper must include ${token}`));
+  assertOrder(
+    'src/lib/staffManagement/server.ts',
+    [
+      'const passcodeResetOperationId = randomUUID();',
+      'await firestoreAdmin.runTransaction(async (transaction) => {',
+      'await authAdmin.updateUser(firebaseUser.uid, {',
+      'await firestoreAdmin.runTransaction(async (transaction) => {',
+    ],
+    'staff passcode reset reservation, provider mutation, and finalization order',
+  );
+  assertOrder(
+    'src/lib/staffManagement/server.ts',
+    [
+      'createdFirebaseAuthUser = true;',
+      'persistedNewUserDoc = await createStaffUserDocumentTransaction({',
+      'await authAdmin.deleteUser(firebaseUid);',
+    ],
+    'staff create Auth compensation order',
+  );
   assert(!staffHelper.includes('.doc(String(input.storeId))'), 'staff role mutation writes must not use raw store IDs');
-  assert((staffHelper.match(/if \(!isEligibleStaffTargetStore\(store, input\.tenantId\)\)/g) || []).length >= 2, 'staff role save/delete must reject inactive/deleted/platform-blocked target stores');
+  ['store.active === false', 'store.deleted === true', 'isPlatformEntityBlocked(store)']
+    .forEach((token) => assert(staffConcurrencyBoundary.includes(token), `staff role transaction must reject unsafe stores through ${token}`));
+  assert(staffConcurrencyBoundary.includes("throw new StaffConcurrencyError('LAST_OWNER')"), 'staff transaction boundary must preserve one active owner');
+  assert(staffConcurrencyBoundary.includes("throw new StaffConcurrencyError('ROLE_IN_USE')"), 'staff transaction boundary must reject deactivating assigned roles');
 
   assertIncludes(
     '__docs__/roles-permissions/roles-permissions_impl.md',
@@ -9228,6 +9849,8 @@ function verifyAuthAccountClientResponseDiagnostics() {
     });
     assert(source.includes('AUTH_BROWSER_REQUEST_POLICY'), `${label} must use the shared auth browser request policy`);
   });
+  assert(firebaseAuthSyncHelper.includes('firebaseClaimsMatchTargetStore(refreshedToken?.claims, targetStoreId)'), 'Firebase auth claim refresh must verify target-store acknowledgement before active browser context changes');
+  assert(firebaseAuthSyncHelper.includes('firebase_auth_claims_refresh_mismatch'), 'Firebase auth claim refresh must code target-store acknowledgement failures');
   assert(authAccountResponses.includes('readJsonResponseWithLimit<unknown>'), 'auth account client responses must parse through the bounded response reader');
   assert(authAccountResponses.includes('auth_account_response_parse_failed'), 'auth account client responses must log malformed or oversized response parsing failures');
   assert(authAccountResponses.includes('auth_account_response_invalid'), 'auth account client responses must log invalid successful response envelopes');

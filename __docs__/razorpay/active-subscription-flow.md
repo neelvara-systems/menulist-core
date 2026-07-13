@@ -475,7 +475,7 @@ User triggers AI operation (e.g., image generation)
 | File                                                | Role                                                                                                              |
 | --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
 | `src/database/subscriptions/index.ts`               | `getActiveSubscriptionForStore()`, `createInitialSubscription()`, `updateSubscription()`, `getSubscriptionById()` |
-| `src/database/subscriptions/paymentTransactions.ts` | `createPaymentTransaction()`, `getBillingHistoryForStore()`                                                       |
+| `src/database/subscriptions/paymentTransactions.ts` | Read-only `getBillingHistoryForStore()`; server writes use `writeProductPaymentTransactionAudit()`              |
 
 ### Types
 
@@ -510,7 +510,7 @@ User triggers AI operation (e.g., image generation)
 | File                                              | Role                                                            |
 | ------------------------------------------------- | --------------------------------------------------------------- |
 | `functions/src/billing/reconcileSubscriptions.ts` | Nightly reconciliation — syncs Firestore ↔ Razorpay (Admin SDK) |
-| `functions/src/decisionBlocksScoring.ts`          | Nightly scheduler — calls reconciliation after other jobs       |
+| `functions/src/schedulers/menulistMaintenanceScheduler.ts` | Leased daily maintenance task — calls reconciliation at 2:20 AM UTC |
 | `functions/src/constants/features.ts`             | `ENABLE_SUBSCRIPTION_RECONCILIATION` feature flag               |
 
 ### Main App UI Components (Ant Design)
@@ -589,7 +589,7 @@ User triggers AI operation (e.g., image generation)
 ### 12.6 Webhook Idempotency
 
 - **`billingHistory`:** Dedup check — won't append if payment ID already exists
-- **`statuses`:** Append-only (duplicates acceptable as audit trail)
+- **`statuses`:** Append-only through the event-keyed subscription transaction; partial-failure retries do not append duplicates and concurrent lifecycle events cannot overwrite history.
 - **Credit operations:** Naturally idempotent — `monthlyCredits = monthlyCreditsAllowance` is same regardless of how many times called
 
 ### 12.8 Payment Method Null Safety
@@ -684,7 +684,7 @@ completed → (terminal)
 ### 14.3 Nightly Reconciliation Job (Firebase Cloud Function)
 
 **File:** `functions/src/billing/reconcileSubscriptions.ts`
-**Called from:** `functions/src/decisionBlocksScoring.ts` nightly scheduler (2:30 AM UTC)
+**Called from:** `functions/src/schedulers/menulistMaintenanceScheduler.ts` leased daily task (2:20 AM UTC)
 **Feature flag:** `FUNCTION_FLAGS.ENABLE_SUBSCRIPTION_RECONCILIATION` in `functions/src/constants/features.ts`
 
 > **Migration note (Feb 2026):** Moved from Vercel API route (`/api/internal/reconcile-subscriptions`) + Vercel Cron to Firebase Cloud Functions. Reasons: longer timeout (540s vs 10s), no extra cron needed (runs alongside existing nightly jobs), same infrastructure.
@@ -771,7 +771,7 @@ Run these tests with real money before freezing the billing architecture.
 | #   | Test Case               | How to Test                                              | Expected Result                                           | Status |
 | --- | ----------------------- | -------------------------------------------------------- | --------------------------------------------------------- | ------ |
 | 1   | Webhook delayed         | Verify-subscription fires before webhook                 | User sees active immediately (optimistic update)          | ☐      |
-| 2   | Webhook duplicate       | Replay same webhook event                                | Idempotent — billingHistory dedup, no double credits      | ☐      |
+| 2   | Webhook duplicate       | Replay same webhook event                                | Idempotent payment/event transaction, no duplicate credit or status effect | ☐      |
 | 3   | Webhook missing         | Block webhook, run reconciliation                        | Reconciliation syncs status from Razorpay                 | ☐      |
 | 4   | Grace period expiry     | Set pastDueSinceAt to 8 days ago → Load app              | Auto-expires to expired, loses access                     | ☐      |
 | 5   | Paused + cycle ended    | Legacy/provider-side paused sub → Wait for cycleEndDate  | Sub visible on billing page with support recovery, no dashboard/projects access | ☐      |

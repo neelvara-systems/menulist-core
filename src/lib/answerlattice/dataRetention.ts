@@ -1,19 +1,11 @@
 import { Timestamp } from 'firebase-admin/firestore';
+import {
+    ANSWERLATTICE_RETENTION_DAYS,
+    type AnswerlatticeRetentionKey,
+    getAnswerlatticeRetentionExpiryMillis,
+} from '@data/shared/answerlatticeRetention';
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-export const ANSWERLATTICE_RETENTION_DAYS = {
-    schedulerRunLogs: 90,
-    notificationLogs: 90,
-    ownerNotificationEvents: 90,
-    ownerNotificationDeliveries: 90,
-    ownerNotificationRateLimits: 2,
-    contactEnquiries: 365,
-    queryEmbeddings: 30,
-    aiSearchHistory: 90,
-} as const;
-
-export type AnswerlatticeRetentionKey = keyof typeof ANSWERLATTICE_RETENTION_DAYS;
+export { ANSWERLATTICE_RETENTION_DAYS, type AnswerlatticeRetentionKey };
 
 const toMillis = (value?: Timestamp | Date | number | null): number => {
     if (!value) return Date.now();
@@ -31,7 +23,7 @@ export function getAnswerlatticeRetentionExpiry(
     from?: Timestamp | Date | number | null,
 ): Timestamp {
     const baseMs = toMillis(from);
-    return Timestamp.fromMillis(baseMs + getAnswerlatticeRetentionDays(key) * DAY_MS);
+    return Timestamp.fromMillis(getAnswerlatticeRetentionExpiryMillis(key, baseMs));
 }
 
 export function getAnswerlatticeRetentionFields(

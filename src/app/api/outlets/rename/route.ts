@@ -38,6 +38,13 @@ import { checkRateLimit } from '@lib/rateLimit';
 import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { validateAPIInput } from '@lib/security/inputValidation';
 import { touchDigitalScreenContentVersionForStoreServer } from '@lib/screen/serverScreenInvalidation';
+import {
+    isOutletSlugUnavailableError,
+    isValidOutletSlugClaimCandidate,
+    readOutletSlugReservationInTransaction,
+    writeCurrentOutletSlugClaim,
+    writeRedirectOutletSlugClaim,
+} from '@lib/routing/outletSlugClaim';
 import { slugify } from '@lib/utils/slugify';
 import { revalidateTag } from 'next/cache';
 import { NextResponse } from 'next/server';
@@ -56,6 +63,28 @@ const schema = z.object({
     { message: 'Either newOutletName or newOutletSlug is required.' },
 );
 const OUTLET_ACTION_MAX_BODY_BYTES = 8 * 1024;
+const OUTLET_RENAME_CONFLICT_CODE = 'OUTLET_RENAME_CONFLICT';
+
+class OutletRenameConflictError extends Error {
+    readonly code = OUTLET_RENAME_CONFLICT_CODE;
+    readonly reason: 'NOOP' | 'SCOPE_CHANGED';
+
+    constructor(reason: 'NOOP' | 'SCOPE_CHANGED') {
+        super(OUTLET_RENAME_CONFLICT_CODE);
+        Object.setPrototypeOf(this, new.target.prototype);
+        this.name = 'OutletRenameConflictError';
+        this.reason = reason;
+    }
+}
+
+const isOutletRenameConflictError = (error: unknown): error is OutletRenameConflictError => (
+    error instanceof OutletRenameConflictError
+    || (
+        Boolean(error)
+        && typeof error === 'object'
+        && (error as { code?: unknown }).code === OUTLET_RENAME_CONFLICT_CODE
+    )
+);
 
 export const POST = withAuth(async (request, session) => {
     if (!FEATURE_FLAGS.ENABLE_MULTI_OUTLET) {
@@ -143,74 +172,70 @@ export const POST = withAuth(async (request, session) => {
         // undesirable (e.g., renaming "Pune Central" but keeping slug "pune").
         const derived = newOutletSlug || (newOutletName ? slugify(newOutletName) : '');
         const proposed = slugify(derived);
-        if (!proposed) {
+        if (!proposed || !isValidOutletSlugClaimCandidate(proposed)) {
             return NextResponse.json({ error: 'Unable to derive a valid slug' }, { status: 400 });
         }
         if (isReservedOutletSlug(proposed)) {
             return NextResponse.json({ error: 'That outlet slug is reserved' }, { status: 400 });
         }
 
-        const currentSlug = (outlet.outletSlug || '').toLowerCase();
+        const currentSlug = typeof outlet.outletSlug === 'string' ? outlet.outletSlug.toLowerCase() : '';
         if (proposed === currentSlug) {
             return NextResponse.json({ error: 'New slug matches current slug', currentSlug }, { status: 400 });
         }
-
-        // Uniqueness: no other outlet in the tenant may use the proposed slug
-        // as its current outletSlug. We allow reclaiming a slug only if it
-        // lives in THIS outlet's own previousOutletSlugs[] (undoing a rename).
-        const directCollisionSnap = await db
-            .collection(DB_COLLECTIONS.STORES)
-            .where('tenantId', '==', tenantId)
-            .where('outletSlug', '==', proposed)
-            .where('active', '==', true)
-            .limit(1)
-            .get();
-        if (!directCollisionSnap.empty) {
-            return NextResponse.json({ error: 'Another outlet is already using that slug' }, { status: 409 });
-        }
-
-        // Uniqueness: no other outlet may have the proposed slug in its
-        // previousOutletSlugs[] — stealing another outlet's chain would
-        // break that other outlet's physical QRs.
-        const chainCollisionSnap = await db
-            .collection(DB_COLLECTIONS.STORES)
-            .where('tenantId', '==', tenantId)
-            .where('previousOutletSlugs', 'array-contains', proposed)
-            .limit(5)
-            .get();
-        const foreignChain = chainCollisionSnap.docs.find((d) => d.id !== outletStoreIdStr);
-        if (foreignChain) {
-            return NextResponse.json(
-                { error: 'That slug is reserved by another outlet\'s rename history' },
-                { status: 409 },
-            );
-        }
-
-        const previousSlugs: string[] = Array.isArray(outlet.previousOutletSlugs)
-            ? outlet.previousOutletSlugs.map((s: any) => String(s).toLowerCase())
-            : [];
-
-        // Append current slug to the chain (capped). If the chain already
-        // contains the proposed slug (owner reclaiming old name), remove that
-        // entry — the proposed slug is becoming the new current.
-        const nextChain = [...previousSlugs.filter((s) => s !== proposed)];
-        if (currentSlug) nextChain.push(currentSlug);
-        const cappedChain = nextChain.slice(-MAX_PREVIOUS_OUTLET_SLUGS);
-
         const now = admin.firestore.Timestamp.now();
-        const updatePayload: Record<string, any> = {
-            outletSlug: proposed,
-            previousOutletSlugs: cappedChain,
-            modifiedOn: now,
-        };
-        if (newOutletName) {
-            updatePayload.name = newOutletName;
-        }
-
         const tenantRef = db.doc(`${DB_COLLECTIONS.TENANTS}/${tenantDocumentId}`);
-        await db.runTransaction(async (tx) => {
-            const tenantDoc = await tx.get(tenantRef);
-            const storesList = tenantDoc.data()?.storesList || [];
+        const renameResult = await db.runTransaction(async (tx) => {
+            const [tenantDoc, freshOutletSnap] = await Promise.all([
+                tx.get(tenantRef),
+                tx.get(outletRef),
+            ]);
+            const freshOutlet = freshOutletSnap.exists ? freshOutletSnap.data() || {} : {};
+            if (
+                !tenantDoc.exists
+                || !freshOutletSnap.exists
+                || Number(freshOutlet.tenantId) !== Number(tenantId)
+                || freshOutlet.isMaster === true
+                || freshOutlet.active === false
+            ) {
+                throw new OutletRenameConflictError('SCOPE_CHANGED');
+            }
+            const freshCurrentSlug = typeof freshOutlet.outletSlug === 'string'
+                ? freshOutlet.outletSlug.toLowerCase()
+                : '';
+            if (freshCurrentSlug === proposed) throw new OutletRenameConflictError('NOOP');
+
+            const newReservation = await readOutletSlugReservationInTransaction({
+                db,
+                outletSlug: proposed,
+                storeId: outletStoreIdStr,
+                tenantId: tenantDocumentId,
+                transaction: tx,
+            });
+            const oldReservation = freshCurrentSlug && isValidOutletSlugClaimCandidate(freshCurrentSlug)
+                ? await readOutletSlugReservationInTransaction({
+                    db,
+                    outletSlug: freshCurrentSlug,
+                    storeId: outletStoreIdStr,
+                    tenantId: tenantDocumentId,
+                    transaction: tx,
+                })
+                : null;
+            const previousSlugs = Array.isArray(freshOutlet.previousOutletSlugs)
+                ? freshOutlet.previousOutletSlugs
+                    .filter((value): value is string => typeof value === 'string')
+                    .map((value) => value.toLowerCase())
+                : [];
+            const nextChain = previousSlugs.filter((slug) => slug !== proposed);
+            if (freshCurrentSlug) nextChain.push(freshCurrentSlug);
+            const cappedChain = Array.from(new Set(nextChain)).slice(-MAX_PREVIOUS_OUTLET_SLUGS);
+            const updatePayload: Record<string, unknown> = {
+                outletSlug: proposed,
+                previousOutletSlugs: cappedChain,
+                modifiedOn: now,
+                ...(newOutletName ? { name: newOutletName } : {}),
+            };
+            const storesList = Array.isArray(tenantDoc.data()?.storesList) ? tenantDoc.data()?.storesList : [];
             const updatedStoresList = storesList.map((store: any) => (
                 Number(store.storeId) === Number(outletStoreId)
                     ? {
@@ -222,22 +247,25 @@ export const POST = withAuth(async (request, session) => {
                     : store
             ));
             tx.update(outletRef, updatePayload);
+            writeCurrentOutletSlugClaim(tx, newReservation, now);
+            if (oldReservation) writeRedirectOutletSlugClaim(tx, oldReservation, now);
             const summaryRef = db.doc(`${DB_COLLECTIONS.PLATFORM_SUMMARY}/storesSummary`);
-            const summaryStorePatch: Record<string, any> = {
+            const summaryStorePatch: Record<string, unknown> = {
                 outletSlug: proposed,
                 modifiedOn: now,
             };
             if (newOutletName) {
                 summaryStorePatch.name = newOutletName;
             }
-            const summaryPayload: Record<string, any> = {
+            const summaryPayload: Record<string, unknown> = {
                 lastUpdated: now,
                 stores: {
                     [outletStoreIdStr]: summaryStorePatch,
                 },
-            }
+            };
             tx.set(summaryRef, summaryPayload, { merge: true });
             tx.update(tenantRef, { storesList: updatedStoresList });
+            return { cappedChain, previousSlug: freshCurrentSlug };
         });
         revalidateTag(`menu-store-${outletStoreIdStr}`);
         revalidateTag(`store-${outletStoreIdStr}`);
@@ -253,9 +281,18 @@ export const POST = withAuth(async (request, session) => {
             success: true,
             outletStoreId: outletStoreIdStr,
             outletSlug: proposed,
-            previousOutletSlugs: cappedChain,
+            previousOutletSlugs: renameResult.cappedChain,
         });
     } catch (error) {
+        if (isOutletSlugUnavailableError(error)) {
+            return NextResponse.json({ error: 'Another outlet is already using that slug' }, { status: 409 });
+        }
+        if (isOutletRenameConflictError(error)) {
+            return NextResponse.json(
+                { error: error.reason === 'NOOP' ? 'New slug matches current slug' : 'Outlet scope changed during rename' },
+                { status: 409 },
+            );
+        }
         logMultiOutletFailure('outlet_rename_route_failed', error, failureContext);
         return NextResponse.json({ error: 'Outlet rename failed' }, { status: 500 });
     }

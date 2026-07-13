@@ -1,7 +1,8 @@
 # SignalDesk Outcome Bridge - Firebase Plan
 
-**Status:** Initial Firebase design
+**Status:** Implemented persistence contract; local emulator verified
 **Created:** June 23, 2026
+**Runtime reconciled:** July 13, 2026
 
 ## Collections
 
@@ -11,33 +12,33 @@
 | `signaldeskOutcomeEvents` | Append-only events from routes, MenuList hooks, or operators. | Event stream by target/action. |
 | `signaldeskAttributionTouches` | Normalized first/last/assisted touch records. | Reporting and detail view. |
 | `signaldeskOutcomeSummaries` | Derived target/campaign/source/channel outcome totals. | Dashboard reads. |
-| `signaldeskBridgeAuditEvents` | Rejected tokens, manual edits, dedupe decisions. | Audit/debug only. |
+| `signaldeskIdempotencyKeys` | Request fingerprint and accepted outcome link. | Server transaction point read only. |
+| `signaldeskAuditEvents` | Token creation/revocation and accepted outcome audit. | Platform-admin audit view. |
 
 ## Required Fields
 
 | Object | Required fields |
 | --- | --- |
-| Route token | `tokenId`, `tokenHash`, `targetId`, `actionId`, `channel`, `scope`, `expiresAt`, `revokedAt`, `createdAt` |
-| Outcome event | `eventId`, `targetId`, `eventType`, `source`, `menuListRef`, `routeTokenId`, `occurredAt`, `createdAt` |
+| Route token | `routeTokenId`, `tokenHash`, `targetId`, `sourceActionId`, `channel`, `scope`, `status`, `expiresAt`, `revokedAt`, `createdAt` |
+| Outcome event | `outcomeEventId`, `targetId`, `outcomeType`, `source`, `evidenceRef`, `routeTokenId`, `integrityStatus`, `createdAt` |
 | Attribution touch | `touchId`, `targetId`, `eventId`, `actionId`, `touchType`, `weight`, `method`, `createdAt` |
-| Summary | `summaryId`, `scope`, `metricKey`, `counts`, `lastEventAt`, `updatedAt` |
+| Summary | `outcomeSummaryId`, `targetId`, `outcomeType`, `source`, `channel`, `count`, `day`, `updatedAt` |
 
 ## Indexes
 
 | Query | Index |
 | --- | --- |
-| Token lookup | `tokenHash` |
-| Target outcomes | `targetId`, `occurredAt desc` |
-| Action attribution | `actionId`, `occurredAt desc` |
-| Summary scope | `scope`, `metricKey`, `updatedAt desc` |
-| Bridge audit | `eventType`, `createdAt desc` |
+| Token lookup | Deterministic document ID derived from token hash; no query index. |
+| Latest target outcomes | `targetId`, `updatedAt desc` on `signaldeskOutcomeSummaries`. |
+| Earliest target outcomes | `targetId`, `updatedAt asc` on `signaldeskOutcomeSummaries`. |
 
 ## Cost Rules
 
 - Dashboards read `signaldeskOutcomeSummaries`, not raw events.
 - Token lookup reads one hashed token record.
-- Outcome event writes are append-only and idempotent.
-- Attribution recalculation should be bounded to the target/action affected.
+- Outcome event, idempotency key, summary, target projection, direct attribution touch, route-use projection, audit, control summary, and cost estimate commit atomically.
+- One accepted signed target outcome adds one attribution-touch write and one route-use write. Exact retries add no outcome-side writes.
+- Token revocation uses one route write, one audit write, and one cost-summary write.
 - Manual reporting exports should use summaries unless raw evidence is explicitly needed.
 
 ## Retention

@@ -1,8 +1,8 @@
 # Instant Response Infrastructure — Implementation Blueprint
 
-> **Version:** 1.0.1
+> **Version:** 1.1.0
 > **Created:** 2026-03-09
-> **Last Updated:** 2026-07-05
+> **Last Updated:** 2026-07-11
 > **Audience:** Developers
 > **Feature Flag:** `ENABLE_ANSWERLATTICE_INSTANT_CACHE`
 > **Dependencies:** Upstash Redis (already installed: `@upstash/redis`)
@@ -23,9 +23,11 @@ coreSearch() — src/lib/search/searchCore.ts
   Stage 3: Firestore cache lookup (aiSearchHistory — unchanged)
   Stage 4: Canonical retrieval (deterministic entity matching)
     → On canonical HIT: WRITE TO INSTANT CACHE (NEW)
-  Stage 5: RAG fallback (embedding + vector search + Gemini)
-  Stage 6: Entity-enriched RAG context
-  Stage 7: Search history logging
+    → On governed canonical block: fixed safe response; STOP
+  Stage 5: Approved FAQ fallback
+  Stage 6: RAG fallback (embedding + vector search + Gemini)
+  Stage 7: Entity-enriched RAG context
+  Stage 8: Search history logging
 ```
 
 ### 1.2 — Data Flow
@@ -62,14 +64,14 @@ coreSearch() receives query + tId + sId + context
 
 | File                           | Change                                                       | Impact          |
 | ------------------------------ | ------------------------------------------------------------ | --------------- |
-| `src/lib/search/searchCore.ts` | Add Stage 2.5 cache lookup + cache write after canonical hit | ~30 lines added |
+| `src/lib/search/searchCore.ts` | Instant lookup/write, source-versioned Firestore result cache, and governed-fallback stop | Runtime pipeline |
 | `src/config/features.ts`       | Add `ENABLE_ANSWERLATTICE_INSTANT_CACHE` flag                     | ~15 lines       |
 
 ### 2.3 — Unchanged Files (for clarity)
 
 | File                                     | Why Unchanged                                                |
 | ---------------------------------------- | ------------------------------------------------------------ |
-| `src/lib/answerlattice/canonicalRetrieval.ts` | Retrieval logic untouched. Cache wraps around it.            |
+| `src/lib/answerlattice/canonicalRetrieval.ts` | Owns canonical eligibility and governed fallback reasons; cache must yield to this authority. |
 | `src/lib/answerlattice/tokenizer.ts`          | Tokenization unchanged. Used indirectly for entity matching. |
 | `src/database/aiSearchHistory/index.ts`  | Analytics cache unchanged. Serves different purpose.         |
 | `src/database/queryEmbeddings/index.ts`  | Embedding cache unchanged. Only for RAG path.                |
@@ -85,25 +87,26 @@ Answerlattice cache freshness ID boundary: `src/lib/answerlattice/cacheFreshness
 ### 3.1 — Cache Key Format
 
 ```
-canon:{tId}:{sId}:e:{topEntityId}:v{answerVersion}:p:{planId|_}:r:{roleId|_}
+canon:v2:{tId}:{sId}:e:{topEntityId}:v{answerVersion}:p:{planId|_}:r:{roleId|_}:s:{stateId|_}
 ```
 
 **Examples:**
 
 ```
-canon:14:15:e:auth_reset_password:v3:p:pro:r:admin
-canon:14:15:e:billing_invoice:v1:p:_:r:_
-canon:14:15:e:team_invite:v2:p:enterprise:r:_
+canon:v2:14:15:e:auth_reset_password:v3:p:pro:r:admin:s:active
+canon:v2:14:15:e:billing_invoice:v1:p:_:r:_:s:_
+canon:v2:14:15:e:team_invite:v2:p:enterprise:r:_:s:trial
 ```
 
 **Key components:**
 
-- `canon:` — Namespace prefix (avoids collision with rate limit keys)
+- `canon:v2:` — Versioned namespace; bypasses legacy entries that did not partition by product state
 - `{tId}:{sId}` — Tenant + store isolation (MANDATORY)
 - `e:{topEntityId}` — Primary matched entity from canonical retrieval
 - `v{answerVersion}` — From `answer.productBinding.lastValidatedInVersion`
 - `p:{planId|_}` — Plan context (underscore if none)
 - `r:{roleId|_}` — Role context (underscore if none)
+- `s:{stateId|_}` — Product-state context (underscore if none)
 
 ### 3.2 — Cached Payload (Redis Value)
 
@@ -211,10 +214,12 @@ export function buildCacheKey(
   answerVersion: number,
   planId?: string,
   roleId?: string,
+  stateId?: string,
 ): string {
   const plan = planId || "_";
   const role = roleId || "_";
-  return `canon:${tId}:${sId}:e:${topEntityId}:v${answerVersion}:p:${plan}:r:${role}`;
+  const state = stateId || "_";
+  return `canon:v2:${tId}:${sId}:e:${topEntityId}:v${answerVersion}:p:${plan}:r:${role}:s:${state}`;
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -529,9 +534,9 @@ Normal behavior. Entity match succeeds but Redis has no entry. Falls through to 
 
 Cache key includes `answerVersion`, and cache reads validate the canonical source-version manifest before returning. If the answer was edited, archived, marked drifted/review-required, deleted, or no longer belongs to the same tenant/store, the manifest changes and the cache entry is bypassed. Legacy cache entries without `sourceVersions` fall back to direct canonical-answer validation.
 
-### 6.3 — Plan/Role Change Mid-Session
+### 6.3 — Plan/Role/State Change Mid-Session
 
-Cache key includes plan and role. Different plan/role → different key → potentially different answer. Correct behavior.
+Cache key includes plan, role, and product state. A change in any governed scope dimension resolves to a different key and must still pass live canonical eligibility checks.
 
 ### 6.4 — Redis Down
 
@@ -543,7 +548,9 @@ With plan × role × entity × version combinations, key count could grow. At 10
 
 ### 6.6 — Context-Aware Queries
 
-Context (page, feature, workflow) affects entity matching scores but NOT the cache key. The cache key uses the final resolved `topEntityId`, which already incorporates context boosts. This means context-aware queries naturally benefit from caching as long as they resolve to the same entity.
+Page, feature, workflow, and trusted surface hints affect deterministic entity matching but do not need their own cache-key fields because the key uses the final resolved entity. Plan, role, and state do affect canonical eligibility and therefore are explicit key dimensions.
+
+The Firestore result-cache namespace is `rag-v4` and includes the canonical source-version token. A previously cached FAQ or RAG response therefore cannot bypass newly approved or newly restricted canonical truth. Non-canonical cache rows also yield whenever the canonical manifest changes.
 
 ---
 
@@ -599,10 +606,10 @@ Monitor via existing Upstash dashboard (same account as rate limiting):
 **Decision:** Only cache canonical answer hits in Redis.
 **Rationale:** Canonical answers are deterministic (same input → same output). RAG responses are non-deterministic (LLM may generate different text). Caching non-deterministic output risks serving stale/inconsistent answers. RAG results already cached in `aiSearchHistory` (Firestore) for analytics purposes.
 
-### ADR-3: No Active Invalidation
+### ADR-3: Source-Version Invalidation Without Key Enumeration
 
-**Decision:** Rely on version-in-key + TTL for invalidation. No active purge mechanism.
-**Rationale:** Active invalidation requires knowing which cache keys exist for an answer, maintaining entity→key mappings, and coordinating purge across serverless instances. Version-in-key makes old entries automatically irrelevant. TTL ensures eventual cleanup. Max staleness (24h) is acceptable for support content.
+**Decision:** Increment the compact canonical source version and rely on source-version checks, versioned keys, best-effort stale-entry deletion, and TTL rather than enumerating every Redis key.
+**Rationale:** Key enumeration would require answer-to-key mappings and cross-instance purge coordination. The source manifest makes an old entry ineligible immediately; versioned keys prevent reuse and TTL handles storage cleanup.
 
 ### ADR-4: Shared Upstash Instance
 
@@ -613,3 +620,13 @@ Monitor via existing Upstash dashboard (same account as rate limiting):
 
 **Decision:** No background workers to pre-populate cache.
 **Rationale:** Pre-cache workers require new Cloud Functions, new scheduling, and tenant enumeration. At current scale (<10 tenants, <1K queries/day), the cache warms naturally within hours. The marginal benefit of pre-caching doesn't justify the infrastructure complexity. Revisit when tenant count exceeds 100.
+
+---
+
+## Version History
+
+| Date | Version | Change |
+| --- | --- | --- |
+| 2026-07-11 | 1.1.0 | Versioned canonical keys as `v2`, added state partitioning, aligned non-canonical cache freshness to the canonical source manifest, and documented governed fallback stops plus the `rag-v4` result-cache namespace. |
+| 2026-07-05 | 1.0.1 | Added canonical source-manifest freshness and bounded cache diagnostics. |
+| 2026-03-09 | 1.0.0 | Initial implementation blueprint. |

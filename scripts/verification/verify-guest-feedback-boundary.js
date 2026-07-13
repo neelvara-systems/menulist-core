@@ -44,6 +44,10 @@ function verifyPackageScript() {
     packageJson.scripts['verify:guest-feedback-boundary'] === 'node scripts/verification/verify-guest-feedback-boundary.js',
     'package.json must expose verify:guest-feedback-boundary',
   );
+  assert(
+    packageJson.scripts['test:guest-feedback:rules']?.includes('scripts/verification/test-guest-feedback-rules.ts'),
+    'package.json must expose test:guest-feedback:rules',
+  );
 }
 
 function verifySafeReviewUrlRuntime() {
@@ -108,6 +112,12 @@ function verifyPublicSubmitRoute() {
   assertIncludes(route, 'FEATURE_FLAGS.ENABLE_GUEST_FEEDBACK', 'Guest Feedback submit route feature flag');
   assertIncludes(route, "checkPublicRateLimit(req, 'FEEDBACK_SUBMISSION')", 'Guest Feedback submit route public rate limit');
   assertIncludes(route, 'PUBLIC_FEEDBACK_SUBMIT_MAX_BODY_BYTES = 16 * 1024', 'Guest Feedback submit route body cap');
+  assertIncludes(route, 'function resolveFeedbackDefaults(raw: unknown)', 'Guest Feedback defaults runtime input boundary');
+  assertIncludes(route, 'const storeTenantScope = normalizeGuestFeedbackNumericDocumentId(storeData?.tenantId ?? storeData?.tId);', 'Guest Feedback exact stored tenant scope');
+  assertIncludes(route, 'tenantData?.active === false', 'Guest Feedback inactive tenant rejection');
+  assertIncludes(route, 'tenantData?.deleted === true', 'Guest Feedback deleted tenant rejection');
+  assertIncludes(route, "await logFeedbackMOLEventAdmin('FEEDBACK_SUBMITTED'", 'Guest Feedback event completion before response');
+  assertNotIncludes(route, "void logFeedbackMOLEventAdmin('FEEDBACK_SUBMITTED'", 'Guest Feedback unawaited server event');
   assertIncludes(route, 'readBoundedJsonBody(req, PUBLIC_FEEDBACK_SUBMIT_MAX_BODY_BYTES', 'Guest Feedback submit route bounded JSON parser');
   assertIncludes(route, 'guestFeedbackSubmitSchema.safeParse(bodyResult.data)', 'Guest Feedback submit route schema validation');
   assertIncludes(route, "import { normalizeGuestFeedbackNumericDocumentId, normalizeGuestFeedbackProjectId } from '@lib/feedback/guestFeedbackProjectIdBoundary';", 'Guest Feedback submit route project/target ID normalizer import');
@@ -124,9 +134,9 @@ function verifyPublicSubmitRoute() {
   assertIncludes(route, '.doc(projectId)', 'Guest Feedback submit route uses normalized project document ID');
   assertIncludes(route, '.collection(DB_COLLECTIONS.STORES)', 'Guest Feedback submit route store lookup');
   assertIncludes(route, '.collection(DB_COLLECTIONS.TENANTS)', 'Guest Feedback submit route tenant lookup');
-  assertIncludes(route, 'storeTenantId !== tenantId', 'Guest Feedback submit route store/tenant match');
+  assertIncludes(route, 'storeTenantScope.numericId !== tenantId', 'Guest Feedback submit route store/tenant match');
   assertIncludes(route, 'isPlatformEntityBlocked(storeData)', 'Guest Feedback submit route store block gate');
-  assertIncludes(route, 'isPlatformEntityBlocked(tenantDoc.data())', 'Guest Feedback submit route tenant block gate');
+  assertIncludes(route, 'isPlatformEntityBlocked(tenantData)', 'Guest Feedback submit route tenant block gate');
   assertIncludes(route, 'projectData?.menuSettings?.feedback === false', 'Guest Feedback submit route project feedback toggle');
   assertIncludes(route, 'storeData?.feedbackEnabled === false', 'Guest Feedback submit route store feedback toggle');
   assertIncludes(route, 'const effectiveMessage = defaults.collectComment ? sanitizedMessage : undefined;', 'Guest Feedback submit route drops hidden comment');
@@ -137,7 +147,7 @@ function verifyPublicSubmitRoute() {
   assertIncludes(route, "normalizeGuestFeedbackReviewUrl(storeData?.publicPresence?.googleReviewUrl, 'public_presence_google_review_url')", 'Guest Feedback submit route public-presence review URL guard');
   assertIncludes(route, 'submitGuestFeedbackAdmin({', 'Guest Feedback submit route Admin SDK write path');
   assertIncludes(route, 'projectId,', 'Guest Feedback submit route writes normalized project ID');
-  assertIncludes(route, "void logFeedbackMOLEventAdmin('FEEDBACK_SUBMITTED', tenantId, storeId, projectId, data.rating);", 'Guest Feedback submit route non-blocking MOL event uses normalized IDs');
+  assertIncludes(route, "await logFeedbackMOLEventAdmin('FEEDBACK_SUBMITTED', tenantId, storeId, projectId, data.rating);", 'Guest Feedback submit route completed MOL event uses normalized IDs');
   assertIncludes(route, 'logGuestFeedbackFailure', 'Guest Feedback submit route bounded diagnostics');
   assertIncludes(route, 'export const POST = withCORS(postGuestFeedback);', 'Guest Feedback submit route CORS wrapper');
   assertNotIncludes(route, 'req.json()', 'Guest Feedback submit route unbounded parser');
@@ -186,6 +196,7 @@ function verifyPublicSubmitRoute() {
 function verifyPublicPageAndForm() {
   const page = read('src/app/feedback/[projectId]/page.tsx');
   const form = read('src/components/atoms/GuestFeedbackForm/index.tsx');
+  const identityHeader = read('src/app/client/[[...slug]]/MenuBreadcrumb.tsx');
   const responseGuard = read('src/lib/feedback/guestFeedbackSubmitResponse.ts');
   const diagnostics = read('src/lib/feedback/publicFeedbackDiagnostics.ts');
 
@@ -212,6 +223,9 @@ function verifyPublicPageAndForm() {
   assertIncludes(page, 'feedbackEnabled: storeData.feedbackEnabled !== false', 'Guest Feedback public page store feedback toggle');
   assertIncludes(page, 'TempStatusBanner', 'Guest Feedback public page temporary status parity');
   assertIncludes(page, 'MenuBreadcrumb', 'Guest Feedback public page identity header');
+  assertIncludes(identityHeader, 'const [failedLogoUrl, setFailedLogoUrl] = useState<string | null>(null);', 'Guest Feedback identity logo failure fallback state');
+  assertIncludes(identityHeader, 'image?.complete && image.naturalWidth === 0', 'Guest Feedback identity cold-load logo failure detection');
+  assertIncludes(identityHeader, 'onError={() => setFailedLogoUrl(normalizedLogoUrl)}', 'Guest Feedback identity runtime logo failure detection');
   assertIncludes(page, 'GuestFeedbackForm', 'Guest Feedback public page form renderer');
   assertIncludes(page, "robots: 'noindex, nofollow'", 'Guest Feedback public page noindex');
   assertIncludes(page, 'logPublicFeedbackPageFailure', 'Guest Feedback public page bounded diagnostics');
@@ -228,6 +242,18 @@ function verifyPublicPageAndForm() {
   assertIncludes(form, "normalizeGuestFeedbackReviewUrl(data.reviewUrl, 'submit_response_review_url')", 'Guest Feedback form review URL guard');
   assertIncludes(form, 'GUEST_FEEDBACK_SUBMIT_FAILED_MESSAGE', 'Guest Feedback form fixed failure copy');
   assertIncludes(form, 'logPublicFeedbackFormFailure', 'Guest Feedback form bounded diagnostics');
+  assertIncludes(form, 'htmlFor="guest-feedback-message"', 'Guest Feedback note visible label association');
+  assertIncludes(form, 'id="guest-feedback-message"', 'Guest Feedback note stable control ID');
+  assertIncludes(form, 'name="message"', 'Guest Feedback note form name');
+  assertIncludes(form, 'const GUEST_FEEDBACK_MESSAGE_MAX_LENGTH = 300;', 'Guest Feedback note client length boundary');
+  assertIncludes(form, 'event.target.value.slice(0, GUEST_FEEDBACK_MESSAGE_MAX_LENGTH)', 'Guest Feedback note controlled-state length enforcement');
+  assertIncludes(form, 'maxLength={GUEST_FEEDBACK_MESSAGE_MAX_LENGTH}', 'Guest Feedback note native length enforcement');
+  assertIncludes(form, "'guest-feedback-message-prompt'", 'Guest Feedback note prompt description');
+  assertIncludes(form, "'guest-feedback-message-meta'", 'Guest Feedback note privacy and character-count description');
+  assertIncludes(form, 'aria-invalid={Boolean(touchedFields.message && formErrors.message)}', 'Guest Feedback note validation semantics');
+  assertIncludes(form, 'aria-label={label}', 'Guest Feedback optional contact-field accessible names');
+  assertIncludes(form, 'name={name}', 'Guest Feedback optional contact-field stable names');
+  assertIncludes(form, 'aria-describedby={error ? `guest-feedback-${name}-error` : undefined}', 'Guest Feedback optional contact-field error association');
   assertNotIncludes(form, 'response.json()', 'Guest Feedback form unbounded response parser');
   assertNotIncludes(form, 'validationMessage || data.error', 'Guest Feedback form raw API response text');
   assertNotIncludes(form, 'data.reviewUrl.trim()', 'Guest Feedback form raw review URL presence check');
@@ -255,12 +281,18 @@ function verifyFirestoreDalAndRetention() {
   assertIncludes(rules, 'allow create: if false;', 'Guest Feedback Firestore API-only create');
   assertIncludes(rules, 'belongsToTenantById(resource.data.tId)', 'Guest Feedback Firestore tenant read gate');
   assertIncludes(rules, 'belongsToStoreById(resource.data.sId)', 'Guest Feedback Firestore store read gate');
-  assertIncludes(rules, 'isTenantAdmin(resource.data.tId, resource.data.sId)', 'Guest Feedback Firestore status-update gate');
+  assertNotIncludes(rules, 'request.auth.token.storeIds == null\n                        || belongsToStoreById(resource.data.sId)', 'Guest Feedback missing store-list read bypass');
+  assertIncludes(rules, 'hasTenantWriteRole()', 'Guest Feedback Firestore status-update role gate');
+  assertIncludes(rules, '&& belongsToTenantById(resource.data.tId)', 'Guest Feedback Firestore status-update tenant gate');
+  assertIncludes(rules, '&& belongsToStoreById(resource.data.sId)', 'Guest Feedback Firestore status-update store gate');
+  assertIncludes(rules, 'request.resource.data.modifiedBy == request.auth.uid', 'Guest Feedback modifier identity gate');
+  assertIncludes(rules, "request.resource.data.status in ['new', 'resolved']", 'Guest Feedback status enum rule');
+  assertIncludes(rules, "request.resource.data.needsAttention == (resource.data.rating <= 3 && request.resource.data.status == 'new')", 'Guest Feedback attention invariant rule');
+  assertIncludes(rules, 'request.resource.data.ownerNote.size() <= 300', 'Guest Feedback owner note rule cap');
   assertIncludes(rules, "affectedKeys().hasOnly([\n                      'status',\n                      'needsAttention',\n                      'modifiedOn',\n                      'modifiedBy',\n                      'ownerNote'\n                    ])", 'Guest Feedback Firestore status-only update fields');
   assertIncludes(rules, 'allow delete: if false;', 'Guest Feedback Firestore client delete denied');
   assertIncludes(rules, 'match /feedbackEvents/{eventId}', 'Guest Feedback event rules block');
-  assertIncludes(rules, "request.resource.data.type == 'feedback_event'", 'Guest Feedback event append-only type');
-  assertIncludes(rules, 'allow read, update, delete: if false;', 'Guest Feedback events are private write-only');
+  assertIncludes(rules, 'match /feedbackEvents/{eventId} {\n      allow read, write: if false;', 'Guest Feedback events are server-only');
 
   assertIncludes(indexes, '"collectionGroup": "guestFeedback"', 'Guest Feedback indexes collection group');
   assertIncludes(indexes, '"fieldPath": "needsAttention"', 'Guest Feedback needs-attention index');
@@ -271,16 +303,28 @@ function verifyFirestoreDalAndRetention() {
   assertIncludes(clientDal, 'assertFeedbackCountLoadSucceeded', 'Guest Feedback count acknowledgement helper');
   assertIncludes(clientDal, 'assertFeedbackStatusUpdateSucceeded', 'Guest Feedback status acknowledgement helper');
   assertIncludes(clientDal, 'const session = await getActiveSession();', 'Guest Feedback client DAL session boundary');
-  assertIncludes(clientDal, "where('tId', '==', session.tId)", 'Guest Feedback client DAL tenant query');
-  assertIncludes(clientDal, "where('sId', '==', session.sId)", 'Guest Feedback client DAL store query');
-  assertIncludes(clientDal, 'if (!isGuestFeedbackRecord(existing, feedbackId))', 'Guest Feedback client DAL write-before-read shape guard');
-  assertIncludes(clientDal, 'await updateDoc(getDocRef(feedbackId), updateData);', 'Guest Feedback client DAL status-only update');
+  assertIncludes(clientDal, 'export const normalizeGuestFeedbackRecord = (value: unknown, id: string): GuestFeedback | null => {', 'Guest Feedback persisted DTO normalizer');
+  assertIncludes(clientDal, 'const scope = resolveSessionScope(session);', 'Guest Feedback exact active-store scope');
+  assertIncludes(clientDal, "where('tId', '==', scope.tenantId)", 'Guest Feedback client DAL tenant query');
+  assertIncludes(clientDal, "where('sId', '==', scope.storeId)", 'Guest Feedback client DAL store query');
+  assertIncludes(clientDal, 'const constraints: QueryConstraint[] = [', 'Guest Feedback typed query constraints');
+  assertIncludes(clientDal, "throw new Error('Guest feedback cursor is outside the active store');", 'Guest Feedback cursor scope guard');
+  assertIncludes(clientDal, "throw new Error('Guest feedback contains an invalid persisted record');", 'Guest Feedback malformed persisted page fails visibly');
+  assertIncludes(clientDal, 'const items = normalizedPage.slice(0, pageSize);', 'Guest Feedback pagination applies after complete DTO validation');
+  assertNotIncludes(clientDal, 'if (feedback) {\n                        items.push(feedback);', 'Guest Feedback list must not silently skip malformed persisted rows');
+  assertIncludes(clientDal, 'return runTransaction(firebaseClient, async (transaction) => {', 'Guest Feedback atomic status update');
+  assertIncludes(clientDal, 'const snapshot = await getCountFromServer(q);', 'Guest Feedback count aggregation');
+  assertNotIncludes(clientDal, 'export const submitGuestFeedback = async', 'Guest Feedback dead client create helper');
+  assertNotIncludes(clientDal, 'export const logFeedbackMOLEvent = async', 'Guest Feedback dead client event helper');
+  assertNotIncludes(clientDal, 'const constraints: any[]', 'Guest Feedback broad query constraint casts');
 
   assertIncludes(serverDal, '.collection(DB_COLLECTIONS.GUEST_FEEDBACK)', 'Guest Feedback server DAL collection');
   assertIncludes(serverDal, 'needsAttention: data.rating <= 3', 'Guest Feedback server DAL attention computation');
   assertIncludes(serverDal, "createdBy: 'guest'", 'Guest Feedback server DAL guest creator');
   assertIncludes(serverDal, 'expiresOn,', 'Guest Feedback server DAL expiry');
-  assertIncludes(serverDal, 'stripUndefined', 'Guest Feedback server DAL undefined stripping');
+  assertIncludes(serverDal, "type SubmitGuestFeedbackAdminInput = Pick<", 'Guest Feedback explicit Admin submit input');
+  assertIncludes(serverDal, "'customerEmail' | 'customerName' | 'customerPhone' | 'message' | 'projectId' | 'rating' | 'sId' | 'source' | 'tId'", 'Guest Feedback Admin submit allowlist');
+  assertNotIncludes(serverDal, 'as unknown as Record<string, unknown>', 'Guest Feedback Admin submit masking cast');
   assertIncludes(serverDal, 'logFeedbackMOLEventAdmin', 'Guest Feedback server DAL MOL event helper');
   assertIncludes(serverDal, 'guest_feedback_admin_mol_event_log_failed', 'Guest Feedback server DAL event failure diagnostic');
 
@@ -358,6 +402,7 @@ function verifyDocsParity() {
   const mobile = read('__docs__/projects/internal-feedback-system/internal-feedback-system_mobile-support.md');
   const helpdoc = read('__docs__/projects/internal-feedback-system/internal-feedback-system_helpdoc.md');
   const website = read('__docs__/projects/internal-feedback-system/internal-feedback-system_website.md');
+  const verification = read('__docs__/projects/internal-feedback-system/internal-feedback-system_verification.md');
   const audit = read('__docs__/audits/menulist-production-readiness-audit.md');
   const changelog = read('__docs__/changelog.md');
 
@@ -385,6 +430,10 @@ function verifyDocsParity() {
   assertIncludes(impl, 'excludes `.doc(data.projectId)`', 'Guest Feedback implementation raw project document ref exclusion');
   assertIncludes(impl, 'Safe review URL boundary', 'Guest Feedback implementation safe URL boundary');
   assertIncludes(impl, 'guest_feedback_review_url_parse_failed', 'Guest Feedback implementation review URL parse diagnostic');
+  assertIncludes(impl, 'Guest feedback form accessibility and client-length hardening', 'Guest Feedback implementation accessibility and client-length boundary');
+  assertIncludes(impl, 'shared identity header falls back to the business initial', 'Guest Feedback implementation public identity logo fallback');
+  assertIncludes(verification, 'Native and controlled-state note input share the 300-character cap', 'Guest Feedback verification client-length boundary');
+  assertIncludes(verification, 'Visible note label is associated with the textarea', 'Guest Feedback verification visible label boundary');
   assertIncludes(firebase, 'Guest feedback writes do not invalidate public menu/OBP cache', 'Guest Feedback Firebase cache boundary');
   assertIncludes(firebase, 'Guest Feedback project ID admission', 'Guest Feedback Firebase project ID admission boundary');
   assertIncludes(firebase, 'whitespace-mutated', 'Guest Feedback Firebase strict project ID admission boundary');
@@ -414,6 +463,9 @@ function verifyDocsParity() {
   assertIncludes(audit, 'excluding `.doc(data.projectId)`', 'Production readiness audit Guest Feedback raw project document ref exclusion');
   assertIncludes(audit, 'Guest Feedback boundary source-gate checkpoint', 'Production readiness audit Guest Feedback checkpoint');
   assertIncludes(audit, 'Guest Feedback review URL parse diagnostics checkpoint', 'Production readiness audit Guest Feedback review URL parse diagnostics checkpoint');
+  assertIncludes(audit, 'Guest Feedback form accessibility and local browser checkpoint', 'Production readiness audit Guest Feedback accessibility and browser checkpoint');
+  assertIncludes(audit, 'Guest Feedback strict store/PII and server-event checkpoint', 'Production readiness audit Guest Feedback store/PII checkpoint');
+  assertIncludes(audit, 'Public identity and item-image load fallback checkpoint', 'Production readiness audit public identity logo fallback checkpoint');
   assertIncludes(audit, '`npm run verify:guest-feedback-boundary`', 'Production readiness audit Guest Feedback verifier command');
   assertIncludes(changelog, 'Guest Feedback Strict Project ID Boundary', 'Changelog Guest Feedback strict project ID boundary');
   assertIncludes(changelog, 'Whitespace-mutated feedback project IDs fail closed', 'Changelog Guest Feedback whitespace-mutated project ID boundary');
@@ -424,6 +476,11 @@ function verifyDocsParity() {
   assertIncludes(changelog, 'or `.doc(data.projectId)`', 'Changelog Guest Feedback raw project document ref exclusion');
   assertIncludes(changelog, 'Guest Feedback Review URL Parse Diagnostics', 'Changelog Guest Feedback review URL parse diagnostics');
   assertIncludes(changelog, 'guest_feedback_review_url_parse_failed', 'Changelog Guest Feedback review URL parse diagnostic code');
+  assertIncludes(changelog, 'Public Feedback Accessibility And Browser Evidence', 'Changelog Guest Feedback accessibility and browser evidence');
+  assertIncludes(changelog, 'Guest Feedback Store and Event Isolation', 'Changelog Guest Feedback store/event isolation');
+  assertIncludes(changelog, 'Feedback PII requires explicit store membership', 'Changelog Guest Feedback store-membership boundary');
+  assertIncludes(changelog, 'Public Media Load Fallbacks', 'Changelog Guest Feedback identity logo fallback evidence');
+  assertIncludes(changelog, 'synthetic 320-character fill clamped to `300/300`', 'Changelog Guest Feedback controlled-state browser evidence');
 }
 
 const checks = [

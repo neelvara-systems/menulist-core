@@ -8,6 +8,7 @@
  * 
  * Original: functions/src/logic/redistributeUtils.ts
  */
+import { findInvalidMenuExtractionSourceIndexes } from '@data/shared/menuExtractionIntegrity';
 
 import { logMenuProcessingFailure } from '@lib/firebase/menuProcessingDiagnostics';
 import { createRandomIdSegment } from '@lib/runtime/randomId';
@@ -135,19 +136,16 @@ function stripHtml(text: string): string {
 
 function sanitizeMultilingualObject(
     obj: Record<string, string> | string | undefined | null,
-    allowBasicTags: boolean = false
 ): Record<string, string> {
     if (!obj) return {};
     // Defensive: AI may return a plain string instead of multilingual object
-    if (typeof obj === 'string') return { en: allowBasicTags ? obj : stripHtml(obj) };
+    if (typeof obj === 'string') return { en: stripHtml(obj).replace(/\s+/g, ' ').trim().slice(0, 2000) };
     if (typeof obj !== 'object') return {};
-    const sanitized: Record<string, string> = {};
-    for (const [lang, text] of Object.entries(obj)) {
-        if (typeof text === 'string') {
-            sanitized[lang] = allowBasicTags ? text : stripHtml(text);
-        }
-    }
-    return sanitized;
+    return Object.fromEntries(
+        Object.entries(obj)
+            .filter(([lang, text]) => /^[a-z]{2,3}(?:-[a-z]{2,4})?$/i.test(lang) && typeof text === 'string')
+            .map(([lang, text]) => [lang, stripHtml(text).replace(/\s+/g, ' ').trim().slice(0, 2000)]),
+    );
 }
 
 function normalizeTags(tags: string[] | Record<string, string> | undefined): string[] | undefined {
@@ -303,7 +301,7 @@ export function redistributeExtractedData(
                     id: String(rest.id),
                     category: String(resolvedCategory || ''),
                     name: sanitizeMultilingualObject(rest.name),
-                    description: rest.description ? sanitizeMultilingualObject(rest.description, true) : undefined,
+                    description: rest.description ? sanitizeMultilingualObject(rest.description) : undefined,
                     price: normalizedPrice,
                     tags: Array.isArray(normalizedTags) && normalizedTags.length > 0 ? normalizedTags : undefined,
                     ...(dietaryTags ? { dietaryTags } : {}),
@@ -348,7 +346,7 @@ export function transformIdsForFile(
 ): ExtractedData {
     if (!extractedData?.data) return extractedData;
 
-    const categoryIdMap: Record<string | number, string> = {};
+    const categoryIdMap = new Map<string, string>();
     const primaryLang = Object.keys(extractedData.data.categories?.[0]?.name || {})[0] || 'en';
     const existingCategoryIds = new Set<string>();
 
@@ -359,25 +357,31 @@ export function transformIdsForFile(
 
         if (existingCategories?.has(categoryName)) {
             const existingId = existingCategories.get(categoryName)!;
-            categoryIdMap[oldId] = existingId;
+            categoryIdMap.set(String(oldId), existingId);
             existingCategoryIds.add(String(oldId));
         } else {
-            categoryIdMap[oldId] = `${fileUid}c${newCategoryCounter++}`;
+            categoryIdMap.set(String(oldId), `${fileUid}c${newCategoryCounter++}`);
         }
     });
 
     const transformedCategories = extractedData.data.categories?.filter((cat) => {
         return !existingCategoryIds.has(String(cat.id));
-    }).map((cat) => ({
-        ...cat,
-        id: categoryIdMap[cat.id],
-        active: true
-    })) || [];
+    }).map((cat) => {
+        const transformedId = categoryIdMap.get(String(cat.id));
+        if (!transformedId) {
+            throw new Error('MENU_EXTRACTION_CATEGORY_ID_MAPPING_MISSING');
+        }
+        return {
+            ...cat,
+            id: transformedId,
+            active: true,
+        };
+    }) || [];
 
     const transformedItems = extractedData.data.items?.map((item) => {
         const newItemId = `${fileUid}i${item.id}`;
         const newCategoryId = item.category !== undefined
-            ? categoryIdMap[item.category] || item.category
+            ? categoryIdMap.get(String(item.category)) || item.category
             : item.category;
 
         const { attributes: rawAttributes, tags: rawTags, price: rawPrice, ...restItem } = item;
@@ -423,6 +427,14 @@ export function processParallelResponse(
     files: Array<{ uid: string;[key: string]: any }>,
     existingCategories?: Map<string, string>
 ): Map<string, ExtractedData> {
+    const categories = combinedResponse?.data?.categories || [];
+    const items = combinedResponse?.data?.items || [];
+    if (
+        findInvalidMenuExtractionSourceIndexes(categories, files.length).length > 0
+        || findInvalidMenuExtractionSourceIndexes(items, files.length).length > 0
+    ) {
+        throw new Error('MENU_EXTRACTION_SOURCE_INDEX_INVALID');
+    }
     const fileMappings: FileMapping[] = files.map((file, index) => ({
         uid: file.uid,
         index

@@ -462,7 +462,11 @@ export default function MobileAiMenuManagerScreen({
         let projectWasUpdated = false;
         try {
             const alreadyApplied = groupOperations.every((operation) => (
-                operation.patch && projectContainsAiMenuManagerPatch(selectedProject, operation.patch)
+                operation.patch && projectContainsAiMenuManagerPatch(
+                    selectedProject,
+                    operation.patch,
+                    operation.projectId,
+                )
             ));
             if (!alreadyApplied) {
                 const batch = buildAiMenuManagerClientBatchExecution({
@@ -596,7 +600,11 @@ export default function MobileAiMenuManagerScreen({
                 return;
             }
 
-            if (operation.patch && projectContainsAiMenuManagerPatch(selectedProject, operation.patch)) {
+            if (operation.patch && projectContainsAiMenuManagerPatch(
+                selectedProject,
+                operation.patch,
+                operation.projectId,
+            )) {
                 try {
                     const result = await completeAiMenuManagerClientOperation({
                         operation,
@@ -638,7 +646,11 @@ export default function MobileAiMenuManagerScreen({
             if (!directive) {
                 throw new Error('Approved card did not return an execution directive');
             }
-            if (isServerBackedCard && projectContainsAiMenuManagerPatch(selectedProject, directive.patch)) {
+            if (isServerBackedCard && projectContainsAiMenuManagerPatch(
+                selectedProject,
+                directive.patch,
+                operation.projectId,
+            )) {
                 try {
                     const result = await completeAiMenuManagerClientProposal({
                         proposalId: operation.operationId,

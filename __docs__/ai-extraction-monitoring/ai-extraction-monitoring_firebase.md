@@ -1,15 +1,17 @@
 # AI Extraction Internal Monitoring Dashboard — Firebase Cost Tracking
 
 **Feature:** Internal monitoring dashboard for the menu extraction pipeline  
-**Status:** ✅ IMPLEMENTED — dashboard reads are consolidated and bounded
-**Last Updated:** July 5, 2026
+**Status:** Enabled source/cost evidence — not current launch or deploy certification
+**Last Updated:** July 10, 2026
+
+> **Launch boundary:** Not current launch certification or deploy approval. This document records source-gated AI Extraction Monitoring evidence only. Current source sets `ENABLE_EXTRACTION_MONITORING_DASHBOARD=true` and exposes platform-only desktop routes at `/ops/extraction` and `/platform/extraction-monitor` plus `MobileExtractionMonitorScreen` inside `MobileShell`. Cross-tenant job reads and `MENULIST_AI_OPERATIONS` reads are Firestore-rule-gated to platform admins; ordinary authenticated users retain own-job reads only. Current release approval still requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:ai-accounting`, `npm run verify:menu-extraction-pipeline`, `npm run verify:agent-readiness`, `npm run verify:mobile-shell-route-map`, `npm run verify:auth-security-failure-matrix`, authenticated platform desktop/mobile browser QA, bounded read/cost and desktop retry smoke, current extraction/provider smoke, applicable target Firebase rules/index/Functions and Vercel deploy evidence, and production-host smoke.
 
 ---
 
 ## Summary
 
 - **Collections Read:** `menuImageProcessingJobs`, `MENULIST_AI_OPERATIONS` (no separate `aiUsageLog` collection is read)
-- **Collections Written:** None (read-only dashboard)
+- **Collections Written:** No direct monitor writes. A platform admin can use the desktop retry action, which creates one new extraction job through the existing queue path.
 - **New Collections:** None
 - **Estimated Monthly Cost:** ~₹4/month at 10 internal visits/day (read-only queries from existing collections; assumes Firestore read pricing at $0.06/100K reads and ₹83/USD)
 - **Browser-local copy diagnostics:** Job Inspector copy hardening adds no Firestore, Storage, Cloud Function, provider, or cache operations. Failed clipboard handoffs use the existing ops diagnostics boundary with bounded metadata only, including clipboard/fallback support booleans and copied-text length rather than raw extraction payloads.
@@ -32,7 +34,7 @@
 
 | Operation | Collection | Trigger | Frequency | Notes                                                                                     |
 | --------- | ---------- | ------- | --------- | ----------------------------------------------------------------------------------------- |
-| None      | —          | —       | —         | Dashboard is read-only. Retry creates a new job via existing `createMenuProcessingJob()`. |
+| Retry action | `menuImageProcessingJobs` | Platform admin retries an eligible failed job from desktop Job Inspector | 1 new job through the existing queue path | Mobile summary has no retry action. |
 
 ### Deletes
 
@@ -53,7 +55,7 @@
 | Firestore Reads (job inspection) | 300 (1 doc × 10 inspections × 30 days)  | $0.06/100K (~₹4.98/100K)    | <₹0.01       |
 | **Total**                        | ~75,300 bounded reads/month             |                             | **~₹3.75**   |
 
-> **Note:** This dashboard is extremely cheap because it only reads existing data. No new writes, no new collections, no Cloud Functions.
+> **Note:** Monitor loads read existing collections and create no new collection. The desktop retry action is a separate operator mutation through the existing extraction queue; scheduler-based extraction alerts run through existing Functions infrastructure.
 
 ---
 
@@ -141,13 +143,13 @@ May already exist — verify before adding:
 
 No new security rules needed. Dashboard uses existing collections:
 
-- `menuImageProcessingJobs`: Already has read rules for authenticated users
-- `MENULIST_AI_OPERATIONS`: Already readable by platform admins
+- `menuImageProcessingJobs`: ordinary authenticated users can read only their own jobs; platform admins can read all jobs for the monitor
+- `MENULIST_AI_OPERATIONS`: readable only by platform admins
 
-Dashboard access is enforced at the application level (platformRole check), not Firestore rules.
+Desktop and mobile components suppress monitor reads unless `platformRole === 'PLATFORM'`, and Firestore rules independently enforce the cross-tenant job and cost-ledger boundary.
 
 ---
 
-_Document Status: ✅ IMPLEMENTED — dashboard snapshot + compatibility DAL helpers working_
+_Document Status: Enabled source/cost evidence; not current launch or deploy certification._
 
 July 1 QP-1 hardening adds a five-minute SWR dedupe window in `src/components/templates/main-app/platform/extractionMonitor/index.tsx`. The first platform dashboard load, a filter-key change, or explicit Refresh still performs the bounded snapshot reads above. Duplicate mounts or revalidations inside the dedupe window reuse the cached snapshot, and no automatic refresh interval is enabled. If this dashboard is ever broadened beyond platform-only use or given automatic refresh, server-side pre-aggregation is required before launch.

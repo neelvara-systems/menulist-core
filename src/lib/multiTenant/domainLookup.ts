@@ -8,6 +8,11 @@
 import { DB_COLLECTIONS } from '@constant/database';
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
+import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
+import {
+    isMenuListPublicEntityEligible,
+    normalizeMenuListPublicEntityIdentityAliases,
+} from '@lib/publicTruth/entityEligibility';
 import { secureError } from '@lib/security/secureLogger';
 
 export interface TenantInfo {
@@ -34,6 +39,52 @@ const buildLookupLogContext = (lookupType: 'subdomain' | 'customDomain', lookupV
     lookupValueLength: lookupValue.length,
 });
 
+const normalizeTenantLookupNumericId = (value: unknown): { documentId: string; numericId: number } | null => {
+    const raw = typeof value === 'string' || typeof value === 'number' ? String(value) : '';
+    const documentId = raw.trim();
+    if (documentId !== raw || !isValidFirestoreDocumentId(documentId)) return null;
+    const numericId = Number(documentId);
+    return Number.isSafeInteger(numericId) && numericId > 0 && String(numericId) === documentId
+        ? { documentId, numericId }
+        : null;
+};
+
+async function buildTenantInfo(storeDoc: FirebaseFirestore.QueryDocumentSnapshot): Promise<TenantInfo | null> {
+    const storeData = storeDoc.data();
+    if (!isMenuListPublicEntityEligible(storeData)) return null;
+    const documentStoreScope = normalizeTenantLookupNumericId(storeDoc.id);
+    const storedStoreScope = normalizeMenuListPublicEntityIdentityAliases([storeData.storeId, storeData.sId]);
+    const tenantScope = normalizeMenuListPublicEntityIdentityAliases([storeData.tenantId, storeData.tId]);
+    if (
+        !documentStoreScope
+        || !storedStoreScope
+        || !tenantScope
+        || documentStoreScope.documentId !== storedStoreScope.documentId
+    ) {
+        return null;
+    }
+    const tenantSnapshot = await firestoreAdmin.collection(DB_COLLECTIONS.TENANTS)
+        .doc(tenantScope.documentId)
+        .get();
+    const tenantData = tenantSnapshot.data();
+    if (!tenantSnapshot.exists || !isMenuListPublicEntityEligible(tenantData)) return null;
+    const tenantIdentityValues = [tenantData?.tenantId, tenantData?.tId]
+        .filter((value) => value !== undefined && value !== null);
+    if (tenantIdentityValues.length > 0
+        && normalizeMenuListPublicEntityIdentityAliases(tenantIdentityValues)?.documentId !== tenantScope.documentId) {
+        return null;
+    }
+    return {
+        storeId: documentStoreScope.numericId,
+        storeKey: storeData.storeKey,
+        tenantId: tenantScope.numericId,
+        projectId: storeData.primaryProjectId,
+        storeName: getStoreContextName(storeData, storeData.name || 'Store'),
+        subdomain: storeData.subdomain,
+        customDomain: storeData.customDomain,
+    };
+}
+
 /**
  * Lookup tenant by subdomain
  * e.g., "joespizza" from joespizza.menulist.ai
@@ -44,25 +95,13 @@ export async function lookupBySubdomain(subdomain: string): Promise<TenantInfo |
             .collection(DB_COLLECTIONS.STORES)
             .where('subdomain', '==', subdomain.toLowerCase())
             .where('active', '==', true)
-            .limit(1)
+            .limit(2)
             .get();
 
-        if (snapshot.empty) {
+        if (snapshot.size !== 1) {
             return null;
         }
-
-        const storeDoc = snapshot.docs[0];
-        const storeData = storeDoc.data();
-
-        return {
-            storeId: storeData.storeId,
-            storeKey: storeData.storeKey,
-            tenantId: storeData.tenantId,
-            projectId: storeData.primaryProjectId,
-            storeName: getStoreContextName(storeData, storeData.name || 'Store'),
-            subdomain: storeData.subdomain,
-            customDomain: storeData.customDomain,
-        };
+        return await buildTenantInfo(snapshot.docs[0]);
     } catch (error) {
         secureError(
             '[Tenant Domain Lookup] Subdomain lookup failed',
@@ -84,25 +123,13 @@ export async function lookupByCustomDomain(domain: string): Promise<TenantInfo |
             .where('customDomain', '==', domain.toLowerCase())
             .where('domainVerified', '==', true)
             .where('active', '==', true)
-            .limit(1)
+            .limit(2)
             .get();
 
-        if (snapshot.empty) {
+        if (snapshot.size !== 1) {
             return null;
         }
-
-        const storeDoc = snapshot.docs[0];
-        const storeData = storeDoc.data();
-
-        return {
-            storeId: storeData.storeId,
-            storeKey: storeData.storeKey,
-            tenantId: storeData.tenantId,
-            projectId: storeData.primaryProjectId,
-            storeName: getStoreContextName(storeData, storeData.name || 'Store'),
-            subdomain: storeData.subdomain,
-            customDomain: storeData.customDomain,
-        };
+        return await buildTenantInfo(snapshot.docs[0]);
     } catch (error) {
         secureError(
             '[Tenant Domain Lookup] Custom domain lookup failed',

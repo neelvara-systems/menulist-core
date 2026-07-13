@@ -12,7 +12,7 @@ export const HELP_CENTER_SEARCH_REQUEST_POLICY = {
 export type HelpCenterSearchResponseSurface = 'help_chat' | 'ai_search_modal';
 
 export type HelpCenterSearchResponse = {
-    id: string;
+    id?: string;
     craftedAnswer: string;
     references: KnowledgeBaseArticleType[];
     relatedContent?: unknown;
@@ -36,21 +36,42 @@ const isRecord = (value: unknown): value is Record<string, unknown> => (
     Boolean(value) && typeof value === 'object' && !Array.isArray(value)
 );
 
+const SENSITIVE_RESPONSE_KEYS = new Set(['apiKey', 'embedding', 'embeddingV2', 'pId', 'sId', 'secret', 'tId', 'token', 'uId']);
+
+const hasSensitiveResponseKey = (value: Record<string, unknown>): boolean => (
+    Object.keys(value).some(key => SENSITIVE_RESPONSE_KEYS.has(key))
+);
+
 const isReferenceArticle = (value: unknown): value is KnowledgeBaseArticleType => (
     isRecord(value)
+    && !hasSensitiveResponseKey(value)
     && typeof value.id === 'string'
+    && value.id.length > 0
+    && value.id.length <= 180
     && typeof value.categoryId === 'string'
+    && value.categoryId.length <= 180
+    && (value.sectionId === undefined || (typeof value.sectionId === 'string' && value.sectionId.length <= 180))
+    && (value.title === undefined || (typeof value.title === 'string' && value.title.length <= 240))
+    && (value.url === undefined || (typeof value.url === 'string' && value.url.length <= 500))
 );
 
 export const isHelpCenterSearchResponse = (value: unknown): value is HelpCenterSearchResponse => (
     isRecord(value)
-    && typeof value.id === 'string'
+    && !hasSensitiveResponseKey(value)
+    && (value.id === undefined || (typeof value.id === 'string' && value.id.length > 0 && value.id.length <= 180))
     && typeof value.craftedAnswer === 'string'
+    && value.craftedAnswer.length > 0
+    && value.craftedAnswer.length <= 12_000
     && Array.isArray(value.references)
+    && value.references.length <= 8
     && value.references.every(isReferenceArticle)
     && (
         value.suggestedQuestions === undefined
-        || (Array.isArray(value.suggestedQuestions) && value.suggestedQuestions.every(question => typeof question === 'string'))
+        || (
+            Array.isArray(value.suggestedQuestions)
+            && value.suggestedQuestions.length <= 3
+            && value.suggestedQuestions.every(question => typeof question === 'string' && question.length > 0 && question.length <= 240)
+        )
     )
     && (value.imageProcessed === undefined || typeof value.imageProcessed === 'boolean')
     && (value.answerSource === undefined || typeof value.answerSource === 'string')

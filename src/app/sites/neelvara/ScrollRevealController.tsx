@@ -4,13 +4,10 @@ import { usePathname } from 'next/navigation';
 import { useEffect } from 'react';
 
 const REVEAL_SELECTOR = '.nv-reveal';
-const REVEAL_DELAY_STEP = 0.045;
-const REVEAL_MAX_DELAY = 0.24;
-const REVEAL_DISTANCE = '28px';
-const REVEAL_DURATION = '780ms';
-const FALLBACK_VP_CHECK_DELAY_MS = 140;
-const ROOT_MARGIN = '0px 0px -2% 0px';
-const INTERSECTION_THRESHOLD = 0.01;
+const REVEAL_DELAY_STEP = 0.035;
+const REVEAL_MAX_DELAY = 0.14;
+const ROOT_MARGIN = '0px 0px -8% 0px';
+const INTERSECTION_THRESHOLD = 0.08;
 
 function markVisible(element: HTMLElement) {
     element.classList.remove('nv-reveal--pending');
@@ -20,13 +17,12 @@ function markVisible(element: HTMLElement) {
 function isInViewport(element: HTMLElement) {
     const bounds = element.getBoundingClientRect();
     const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
-    return bounds.top < viewportHeight + 24 && bounds.bottom > -24;
+    return bounds.top < viewportHeight && bounds.bottom > 0;
 }
 
 function getSiblingRevealIndex(element: HTMLElement, targets: HTMLElement[]) {
     const siblings = targets.filter((target) => target.parentElement === element.parentElement);
-    const index = siblings.indexOf(element);
-    return Math.max(index, 0);
+    return Math.max(siblings.indexOf(element), 0);
 }
 
 export default function ScrollRevealController() {
@@ -35,22 +31,15 @@ export default function ScrollRevealController() {
     useEffect(() => {
         const root = document.querySelector<HTMLElement>('.neelvara-site');
 
-        if (!root) {
-            return undefined;
-        }
+        if (!root) return undefined;
 
         const targets = Array.from(new Set(root.querySelectorAll<HTMLElement>(REVEAL_SELECTOR)));
-
-        if (!targets.length) {
-            return undefined;
-        }
+        if (!targets.length) return undefined;
 
         targets.forEach((target) => {
             target.classList.remove('nv-reveal--visible', 'is-visible');
             const siblingIndex = getSiblingRevealIndex(target, targets);
             target.style.setProperty('--nv-reveal-delay', `${Math.min(siblingIndex * REVEAL_DELAY_STEP, REVEAL_MAX_DELAY)}s`);
-            target.style.setProperty('--nv-reveal-distance', REVEAL_DISTANCE);
-            target.style.setProperty('--nv-reveal-duration', REVEAL_DURATION);
         });
 
         const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -59,28 +48,12 @@ export default function ScrollRevealController() {
             return undefined;
         }
 
-        const initiallyVisibleTargets = targets.filter(isInViewport);
-
-        targets.forEach((target) => {
-            target.classList.add('nv-reveal--pending');
-        });
-
-        root.getBoundingClientRect();
-
-        let initialRevealFrame = 0;
-        const initialRevealPrepareFrame = window.requestAnimationFrame(() => {
-            initialRevealFrame = window.requestAnimationFrame(() => {
-                initiallyVisibleTargets.forEach(markVisible);
-            });
-        });
+        targets.forEach((target) => target.classList.add('nv-reveal--pending'));
 
         const observer = new IntersectionObserver(
             (entries) => {
                 entries.forEach((entry) => {
-                    if (!entry.isIntersecting) {
-                        return;
-                    }
-
+                    if (!entry.isIntersecting) return;
                     markVisible(entry.target as HTMLElement);
                     observer.unobserve(entry.target);
                 });
@@ -88,27 +61,19 @@ export default function ScrollRevealController() {
             { threshold: INTERSECTION_THRESHOLD, rootMargin: ROOT_MARGIN },
         );
 
-        const visibleTargets = new Set(initiallyVisibleTargets);
-        targets.forEach((target) => {
-            if (!visibleTargets.has(target)) {
-                observer.observe(target);
-            }
-        });
-
-        const fallbackTimer = window.setTimeout(() => {
+        const frame = window.requestAnimationFrame(() => {
             targets.forEach((target) => {
-                if (!target.classList.contains('nv-reveal--visible') && isInViewport(target)) {
+                if (isInViewport(target)) {
                     markVisible(target);
-                    observer.unobserve(target);
+                } else {
+                    observer.observe(target);
                 }
             });
-        }, FALLBACK_VP_CHECK_DELAY_MS);
+        });
 
         return () => {
             observer.disconnect();
-            cancelAnimationFrame(initialRevealPrepareFrame);
-            cancelAnimationFrame(initialRevealFrame);
-            clearTimeout(fallbackTimer);
+            window.cancelAnimationFrame(frame);
         };
     }, [pathname]);
 

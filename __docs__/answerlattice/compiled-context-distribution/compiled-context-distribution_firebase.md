@@ -40,9 +40,11 @@ Private reads and all client writes are denied by Storage rules. Server/admin co
 - Bundle rebuild reads are bounded and source-change driven.
 - Runtime reads never trigger rebuilds.
 - MCP session auth avoids API-key Firestore lookup per tool call, and manifest-read failures log `answerlattice_mcp_session_bundle_manifest_load_failed` before returning the existing missing-bundle session metadata.
-- MCP tool calls are rate-limited per tenant/store session before a 16KB bounded JSON-RPC body parse and bundle reads. MCP session and JSON-RPC failures log fixed runtime codes with bounded metadata only.
+- MCP tool calls are rate-limited per tenant/store session before a 16KB bounded JSON-RPC body parse and bundle reads. The final tool dispatcher requires `context:read` for bundle tools and `signals:write` for the aggregate signal tool; unauthorized calls perform no Storage read or Firestore write. MCP session and JSON-RPC failures log fixed runtime codes with bounded metadata only.
 - MCP read tools use cached manifests/objects. Cold private bundle reads check Storage metadata before download, repeat the byte check after download, and treat oversized objects as unavailable. `report_missing_context` can write its aggregate bucket without loading a bundle first.
 - Best-effort Storage `manifest.json` copy failures add bounded diagnostics only. They do not add Firestore operations, do not change object paths, and do not change the Firestore manifest write that selects the active bundle version.
+- Manifest version fields must resolve to canonical nonnegative safe integers before a build lock, Storage upload, or retention delete. Invalid/exhausted existing versions fail closed; retention deletes zero objects when it cannot construct a valid active/last-ready keep set.
+- `sourceVersions_*` ownership and counters are runtime-validated before source equality or bundle work. Wrong product/workspace or ambiguous/unsafe counters cannot suppress a rebuild or be serialized into bundle manifests.
 
 ## Cache-Control
 

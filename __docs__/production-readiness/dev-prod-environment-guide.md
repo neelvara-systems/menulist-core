@@ -1,7 +1,7 @@
 # Dev vs Prod Environment Guide — MenuList Production Readiness
 
 **Created:** March 22, 2026  
-**Last Updated:** June 21, 2026
+**Last Updated:** July 11, 2026
 **Source:** ChatGPT strategic session → Cascade full codebase audit + validation  
 **Status:** ACTIONABLE — Implementation guide for environment separation  
 **ChatGPT Accuracy:** ~55% (strategic framing strong, ~45% already exists or wrong assumptions)
@@ -44,16 +44,16 @@ MenuList can embed Answerlattice as an external client on owner routes only when
 | 10  | Feature flags for instant disable                | **ALREADY EXISTS** | 80+ flags in `src/config/features.ts` covering every feature                                                                   |
 | 11  | Cost discipline / rate limiting                  | **ALREADY EXISTS** | Upstash rate limiting, SAFE_MODE circuit breaker, AI enhancement pack credits                                                  |
 | 12  | Write governance layer / mutation pipeline       | **ALREADY EXISTS** | All writes go through DAL (`src/database/`) with `apiCallComposer` + `requestBodyComposer`. No direct Firestore writes from UI |
-| 13  | Global kill switch                               | **ALREADY EXISTS** | SAFE_MODE in `src/lib/ops/safeMode.ts` — reads `ops_config/system` doc, blocks AI routes on activation                         |
+| 13  | Expensive-work circuit breaker                   | **ALREADY EXISTS** | SAFE_MODE reads `ops_config/system` and blocks only routes/workers with an explicit check; the app helper fails open on config-read failure and public menus remain available |
 | 14  | Create `/core/mutations/` folder                 | **DISAGREE**       | Existing DAL pattern (`src/database/`) already serves this purpose. Adding another layer is over-engineering                   |
 | 15  | Idempotency control with `requestId`             | **PARTIAL**        | Lifecycle messaging has idempotency. Not all operations need it — publish uses `menuVersion` increment                         |
-| 16  | Runtime environment guards                       | **PARTIAL**        | `removeConsole` in prod build, dev-only components exist, but no hard startup assertion                                        |
+| 16  | Runtime environment guards                       | **ALREADY EXISTS** | `src/lib/env/validateEnv.ts` is wired through `src/instrumentation.ts`; `npm run verify:env-targets` source-gates the environment matrix. Target values still require external evidence. |
 | 17  | Sanitization layer                               | **ALREADY EXISTS** | `sanitizeForClient()` in `src/lib/mce/utils.ts` strips `_mce`. `sanitizeForFirestore()` prevents undefined writes              |
-| 18  | Deployment safety checks                         | **PARTIAL**        | `tsc --noEmit` enforced, Vercel build checks, but no pre-deploy invariant checker                                              |
+| 18  | Deployment safety checks                         | **ALREADY EXISTS** | `npm run verify:production-readiness-local`, `npm run verify:functions-deploy-preflight`, and `npm run verify:env-targets` provide source/preflight gates. They do not authorize deployment. |
 | 19  | Tenant isolation                                 | **ALREADY EXISTS** | `withAuth()` + `verifyTenantAccess()` on all protected routes. tId/sId on all queries                                          |
 | 20  | Over-engineering staging env                     | **UPDATED**        | Staging/QA exists as the Vercel Preview environment: `menulist.online` + `answerlattice.menulist.online`. It uses QA Firebase targets and must not be treated as production. |
 | 21  | Cost visibility per store/feature                | **PARTIAL**        | Firebase cost docs per feature exist (`_firebase.md`), but no runtime cost tracking dashboard                                  |
-| 22  | Failure playbook                                 | **MISSING**        | No documented runbook for production incidents. Need to create                                                                 |
+| 22  | Failure playbook                                 | **RESOLVED**       | [MenuList Incident Response Runbook](./incident-response-runbook.md) defines severity, containment, SAFE_MODE limits, scoped rollback, recovery, communication, and durable evidence requirements; live drill evidence remains pending |
 | 23  | Trust verification loop                          | **PARTIAL**        | Nightly scheduler runs integrity checks, but no daily menu sampling system                                                     |
 | 24  | Separate Firestore security rules per env        | **WRONG**          | Same rules deploy to both. Dev rules should NOT be relaxed — same strictness prevents bugs                                     |
 
@@ -67,9 +67,9 @@ MenuList can embed Answerlattice as an external client on owner routes only when
 ### What ChatGPT Got Right (Implement These)
 
 1. Separate Firebase targets per environment/product
-2. Runtime environment guards at app startup
-3. Failure/incident response playbook
-4. Pre-deploy checklist automation
+2. Runtime environment guards at app startup - implemented through `src/lib/env/validateEnv.ts` and `src/instrumentation.ts`; target values still require certification evidence
+3. Failure/incident response playbook - implemented in [MenuList Incident Response Runbook](./incident-response-runbook.md); QA tabletop/live drill evidence remains pending
+4. Pre-deploy checklist automation - implemented through the aggregate, Functions preflight, dependency-freeze, and environment-target gates; deployment remains explicitly approved and target-scoped
 
 ### What ChatGPT Got Wrong (Ignore These)
 
@@ -92,7 +92,7 @@ MenuList can embed Answerlattice as an external client on owner routes only when
 | **Input Validation** | Zod schemas on all API routes                        | ✅ COMPLETE            |
 | **Auth & Isolation** | `withAuth()` + tId/sId enforcement                   | ✅ COMPLETE            |
 | **Rate Limiting**    | Upstash Redis (`src/lib/rateLimit.ts`)               | ✅ COMPLETE            |
-| **Kill Switch**      | SAFE_MODE (`src/lib/ops/safeMode.ts`)                | ✅ COMPLETE (flag OFF) |
+| **Expensive-work circuit breaker** | SAFE_MODE (`src/lib/ops/safeMode.ts`) | ✅ SOURCE-COMPLETE (live target verification pending) |
 | **Feature Flags**    | 80+ flags in `src/config/features.ts`                | ✅ COMPLETE            |
 | **Menu Validation**  | MCE 17-rule engine                                   | ✅ COMPLETE            |
 | **Event Logging**    | MOL append-only ledger                               | ✅ COMPLETE            |
@@ -103,16 +103,16 @@ MenuList can embed Answerlattice as an external client on owner routes only when
 | **Security Headers** | X-Frame-Options, nosniff, referrer-policy            | ✅ COMPLETE            |
 | **PWA**              | Disabled in dev, enabled in prod builds              | ✅ COMPLETE            |
 | **Dependency Freeze Gate** | `npm run verify:dependency-freeze` pins root and Functions package declarations to lockfile-resolved versions and blocks accidental semver drift | ✅ COMPLETE |
+| **Runtime Environment Validation** | `src/lib/env/validateEnv.ts` through `src/instrumentation.ts`; matrix guarded by `npm run verify:env-targets` | ✅ SOURCE-COMPLETE |
+| **Pre-deploy Source Gate** | `npm run verify:production-readiness-local` plus `npm run verify:functions-deploy-preflight` | ✅ SOURCE-COMPLETE |
+| **Incident Response** | [MenuList Incident Response Runbook](./incident-response-runbook.md) | ✅ SOURCE-COMPLETE (QA tabletop/live drill pending) |
 
-### What's Missing (Action Required)
+### Remaining Action Required
 
 | Gap                                            | Priority  | Effort    |
 | ---------------------------------------------- | --------- | --------- |
 | **Vercel env values for production Firebase targets** | 🔴 HIGH   | Console setup |
-| **Environment variable validation at startup** | 🔴 HIGH   | 30 min    |
 | **Target-environment feature flag evidence** | 🟡 MEDIUM | Review + certification evidence |
-| **Incident response playbook**                 | 🟡 MEDIUM | 1 hour    |
-| **Pre-deploy checklist script**                | 🟢 LOW    | 30 min    |
 
 ---
 
@@ -804,5 +804,6 @@ Use `__docs__/deployment/three-product-environment-setup.md` as the detailed set
 
 | Version | Date           | Changes                                                                 |
 | ------- | -------------- | ----------------------------------------------------------------------- |
+| 1.2     | July 11, 2026  | Added the incident response runbook; corrected SAFE_MODE scope and the already-implemented startup environment/pre-deploy source gates |
 | 1.0     | March 22, 2026 | Initial guide — ChatGPT validation + codebase audit                     |
 | 1.1     | March 22, 2026 | Added complete third-party account creation guide + cross-check summary |

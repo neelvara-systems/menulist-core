@@ -17,8 +17,14 @@ import {
     INTEGRATION_LIMITS,
     INTEGRATION_EVENT_TYPES,
 } from '../types';
-import { safeText } from '../safety';
+import {
+    safePayloadCount,
+    safePayloadRatio,
+    safePayloadStringArray,
+    safeText,
+} from '../safety';
 import { validateNetworkTargetUrl } from '../../utils/networkTarget';
+import { INTEGRATION_PROVIDER_FETCH_POLICY } from './providerJson';
 
 const SEVERITY_EMOJI: Record<string, string> = {
     critical: '🚨',
@@ -72,7 +78,7 @@ async function resolveSlackWebhookTarget(webhookUrl: string): Promise<{ normaliz
 
 function formatEventDetails(event: IntegrationEvent): string {
     const p = event.payload;
-    if (p.test) {
+    if (p.test === true) {
         return '*Test notification:* Answerlattice workflow notifications are connected.';
     }
 
@@ -81,30 +87,31 @@ function formatEventDetails(event: IntegrationEvent): string {
             return `*Answer:* ${safeText(p.answerTitle || 'Unknown')}\n*Drift Class:* ${safeText(p.driftClass)}\n*Reason:* ${safeText(p.driftReason, 220)}\n*Entity:* ${safeText(p.entityName)} (${safeText(p.entityType, 60)})`;
 
         case INTEGRATION_EVENT_TYPES.MUTATION_PROPOSED:
-            return `*Type:* ${safeText(p.mutationType)}\n*Entities:* ${(p.entityNames || []).map((name: unknown) => safeText(name, 80)).join(', ')}\n*Signals:* ${p.signalCount}\n*Confidence:* ${Math.round((p.confidenceScore || 0) * 100)}%`;
+            return `*Type:* ${safeText(p.mutationType)}\n*Entities:* ${safePayloadStringArray(p.entityNames, 5, 80).join(', ')}\n*Signals:* ${safePayloadCount(p.signalCount)}\n*Confidence:* ${Math.round(safePayloadRatio(p.confidenceScore) * 100)}%`;
 
         case INTEGRATION_EVENT_TYPES.KNOWLEDGE_GAP_DETECTED:
-            return `*Entity:* ${safeText(p.entityName)} (${safeText(p.entityType, 60)})\n*Fallbacks:* ${p.fallbackCount} in ${p.windowDays} days\n*Sample queries:* ${(p.sampleQueries || []).slice(0, 2).map((query: unknown) => safeText(query, 120)).join(', ')}`;
+            return `*Entity:* ${safeText(p.entityName)} (${safeText(p.entityType, 60)})\n*Fallbacks:* ${safePayloadCount(p.fallbackCount)} in ${safePayloadCount(p.windowDays, 3650)} days\n*Sample queries:* ${safePayloadStringArray(p.sampleQueries, 2, 120).join(', ')}`;
 
         case INTEGRATION_EVENT_TYPES.COVERAGE_DROP:
-            return `*Current:* ${Math.round((p.currentRate || 0) * 100)}%\n*Previous:* ${Math.round((p.previousRate || 0) * 100)}%\n*Threshold:* ${Math.round((p.threshold || 0) * 100)}%\n*Queries:* ${p.totalQueries} total, ${p.canonicalHits} canonical`;
+            return `*Current:* ${Math.round(safePayloadRatio(p.currentRate) * 100)}%\n*Previous:* ${Math.round(safePayloadRatio(p.previousRate) * 100)}%\n*Threshold:* ${Math.round(safePayloadRatio(p.threshold) * 100)}%\n*Queries:* ${safePayloadCount(p.totalQueries)} total, ${safePayloadCount(p.canonicalHits)} canonical`;
 
         case INTEGRATION_EVENT_TYPES.ARTICLE_APPROVED:
-            return `*Answer:* ${safeText(p.answerTitle)}\n*Type:* ${safeText(p.mutationType)}\n*Approved by:* ${safeText(p.approvedBy, 80)}\n*Entities:* ${(p.entityNames || []).map((name: unknown) => safeText(name, 80)).join(', ')}`;
+            return `*Answer:* ${safeText(p.answerTitle)}\n*Type:* ${safeText(p.mutationType)}\n*Approved by:* ${safeText(p.approvedBy, 80)}\n*Entities:* ${safePayloadStringArray(p.entityNames, 5, 80).join(', ')}`;
 
         case INTEGRATION_EVENT_TYPES.AI_FAILURE_RECURRING:
-            return `*Entity:* ${safeText(p.entityName)} (${safeText(p.entityType, 60)})\n*Failures:* ${p.failureCount} in ${p.windowDays} days\n*Common queries:* ${(p.commonQueries || []).slice(0, 2).map((query: unknown) => safeText(query, 120)).join(', ')}`;
+            return `*Entity:* ${safeText(p.entityName)} (${safeText(p.entityType, 60)})\n*Failures:* ${safePayloadCount(p.failureCount)} in ${safePayloadCount(p.windowDays, 3650)} days\n*Common queries:* ${safePayloadStringArray(p.commonQueries, 2, 120).join(', ')}`;
 
         case INTEGRATION_EVENT_TYPES.NIGHTLY_SUMMARY: {
             const lines = [
-                `*Tenants processed:* ${p.tenantsProcessed}`,
-                `*Drift:* ${p.driftDetected} detected, ${p.driftCleared} cleared`,
-                `*Proposals:* ${p.proposalsCreated} created`,
-                `*Coverage:* ${Math.round((p.coverageRate || 0) * 100)}%`,
-                `*Signals archived:* ${p.signalsArchived}`,
+                `*Tenants processed:* ${safePayloadCount(p.tenantsProcessed)}`,
+                `*Drift:* ${safePayloadCount(p.driftDetected)} detected, ${safePayloadCount(p.driftCleared)} cleared`,
+                `*Proposals:* ${safePayloadCount(p.proposalsCreated)} created`,
+                `*Coverage:* ${Math.round(safePayloadRatio(p.coverageRate) * 100)}%`,
+                `*Signals archived:* ${safePayloadCount(p.signalsArchived)}`,
             ];
-            if (p.errors && p.errors.length > 0) {
-                lines.push(`*Errors:* ${p.errors.length}`);
+            const errors = safePayloadStringArray(p.errors);
+            if (errors.length > 0) {
+                lines.push(`*Errors:* ${errors.length}`);
             }
             return lines.join('\n');
         }
@@ -117,7 +124,7 @@ function formatEventDetails(event: IntegrationEvent): string {
 export class SlackAdapter implements IIntegrationAdapter {
     readonly adapterType = ADAPTER_TYPES.SLACK;
 
-    formatPayload(event: IntegrationEvent): Record<string, any> {
+    formatPayload(event: IntegrationEvent): Record<string, unknown> {
         const emoji = EVENT_EMOJI[event.eventType] || SEVERITY_EMOJI[event.severity] || 'ℹ️';
         const title = EVENT_TITLES[event.eventType] || event.eventType;
         const details = formatEventDetails(event);
@@ -178,17 +185,21 @@ export class SlackAdapter implements IIntegrationAdapter {
                 };
             }
 
-            const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), INTEGRATION_LIMITS.ADAPTER_TIMEOUT_MS);
-
-            const response = await fetch(webhookTarget.normalizedUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
-                signal: controller.signal,
-            });
-
-            clearTimeout(timeout);
+            const response = await (async () => {
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), INTEGRATION_LIMITS.ADAPTER_TIMEOUT_MS);
+                try {
+                    return await fetch(webhookTarget.normalizedUrl, {
+                        ...INTEGRATION_PROVIDER_FETCH_POLICY,
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload),
+                        signal: controller.signal,
+                    });
+                } finally {
+                    clearTimeout(timeout);
+                }
+            })();
 
             const durationMs = Date.now() - startMs;
 
@@ -198,6 +209,7 @@ export class SlackAdapter implements IIntegrationAdapter {
 
             return {
                 success: false,
+                retryable: response.status === 429 || response.status >= 500,
                 statusCode: response.status,
                 error: 'Slack delivery returned bad status',
                 durationMs,
@@ -205,6 +217,7 @@ export class SlackAdapter implements IIntegrationAdapter {
         } catch {
             return {
                 success: false,
+                retryable: false,
                 error: 'Slack delivery failed',
                 durationMs: Date.now() - startMs,
             };

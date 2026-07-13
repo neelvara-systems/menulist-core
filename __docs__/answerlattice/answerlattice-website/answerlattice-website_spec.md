@@ -1,7 +1,7 @@
 # AnswerLattice Website — Spec
 
-> **Version:** 1.2.95
-> **Last Updated:** 2026-06-29
+> **Version:** 1.3.0
+> **Last Updated:** 2026-07-11
 > **Audience:** CEO / PM / Marketing
 
 ---
@@ -318,14 +318,15 @@ Rules:
 - Product simulation data only
 - No Firebase reads
 - No AI calls
-- Show approved answer, fallback answer, and support gap states
-- Show in-app context behavior by switching product surfaces
+- Show one complete governance event: source conflict, pending proposal, approval, release change, drift, safe fallback, corrected approval, and audit trace
+- Keep source evidence, product-version binding, human decision, affected support surfaces, and current authority visible
+- Keep the simulation deterministic, keyboard-operable, responsive, and explicit that it uses sample data
 
 ### 8. Pricing (`/pricing`)
 **Goal:** Transparent founder-friendly pricing.
 
 **Sections:**
-- Starter, Growth, and Studio INR packaging
+- Starter, Growth, and Studio monthly INR and USD packaging
 - Predictable limits, no public per-resolution pricing
 - Plain-language support-credit definition:
   - Support credits are plan capacity for reviewed answers, chat assistance, and support review work
@@ -334,7 +335,8 @@ Rules:
   - Starter: solo founder launching one SaaS product
   - Growth: active SaaS product with recurring support questions
   - Studio: studios/agencies running multiple small SaaS products
-- Public setup starts with beta workspace creation
+- Each plan CTA carries the selected plan into Get Started; the form shows the exact selected monthly price and lets the buyer choose INR or USD before submission
+- Public setup creates a paid pending workspace and never presents an unpaid beta plan
 - Paid plan changes, transactions, invoices, and support-credit top-ups are handled through AnswerLattice Billing with product-scoped Razorpay requests
 
 ### 9. Security (`/security`)
@@ -355,6 +357,18 @@ Rules:
 - Cost and abuse controls through rate-limited widget endpoints, cache freshness checks, and summary-backed dashboards
 - Separate AnswerLattice product infrastructure with client products treated as integrations, not hardcoded dependencies
 - Responsible disclosure contact and safe reporting guidance
+
+### 9A. Trust and Data Handling (`/trust`)
+**Goal:** Answer current buyer and technical-review questions without borrowing compliance badges or turning operational facts into contractual promises.
+
+**Sections:**
+- Last-reviewed date and source-state/certification boundary
+- Current provider categories and their product/data boundary: Vercel, Google Firebase/Cloud, Google Gemini, Razorpay, configured SMTP, Upstash when configured, and consent-gated Plausible/Google Analytics
+- Implemented retention windows for query embeddings, raw search history, operational logs, notification counters, contact enquiries, signal events, friction stats, and raw Knowledge Intake media
+- Explicit current status for SOC/ISO claims, public DPA, contractual subprocessor schedule, residency commitment, and full-workspace deletion
+- Security-review contact plus links to the full Security page, one-pager, and Privacy Policy
+
+**Claim rule:** The page may describe current runtime and implemented retention facts. It must not claim certification, legal agreement, geographic commitment, or one-click deletion unless a separately approved contractual/technical source exists.
 
 ### 10. FAQ (`/faq`)
 **Goal:** Answer common founder/buyer objections and support SEO with structured FAQ content.
@@ -407,7 +421,8 @@ Rules:
 **Sections:**
 - Best-fit criteria for live, beta, and near-launch SaaS or digital products
 - Google sign-in and product details form
-- Product URL, support email, billing model, and main product pages
+- Product URL, support email, billing model, Starter/Growth/Studio monthly plan, INR/USD checkout currency, exact price, and main product pages
+- Resumable provisioning status, safe payment-pending recovery, and one-time widget-key recovery copy
 - What-you-need-before-signup copy
 - 7-step first-session checklist
 
@@ -545,9 +560,9 @@ AnswerLattice website CSS must remain root-loadable and product-scoped. Clean-ca
 | `/page-aware-support-widget` | In-App Support Widget \| AnswerLattice | An in-app support widget for AI-built SaaS that uses safe product context, optional screenshot attachments, approved answers, and owner answers before fallback. |
 | `/hosted-help-center-for-saas` | Hosted Help Center for SaaS \| AnswerLattice | Hosted SaaS help center for AI-built SaaS with docs, owner FAQ, changelog content, and the same knowledge powering the app widget. |
 | `/support-widget-for-solo-founders` | Support Widget for Solo Founders \| AnswerLattice | A support widget for solo founders shipping with AI who need in-app help, optional screenshot context, hosted docs, owner answers, ticket fallback, and approved answers. |
-| `/demo` | Demo \| AnswerLattice | Try a static in-app support demo with approved answers, fallback, and support gap states. |
+| `/demo` | Demo \| AnswerLattice | Follow a deterministic governance event from source conflict through approval, release drift, safe fallback, correction, and audit evidence. |
 | `/install` | Install AnswerLattice with your AI coding agent \| AnswerLattice | Copy the AnswerLattice agent packet, install the v1 widget once, pass safe page context, block sensitive routes, and verify the integration. |
-| `/pricing` | Pricing \| AnswerLattice | Founder-friendly INR pricing, beta setup, support credits, and paid AnswerLattice plans for SaaS and digital-product teams. |
+| `/pricing` | Pricing \| AnswerLattice | Clear INR and USD pricing, paid setup, support credits, and AnswerLattice plans for SaaS and digital-product teams. |
 | `/resources` | Resources \| AnswerLattice | AnswerLattice resources for founders launching support for SaaS apps and digital products: demo, fit, team access, feedback review, Support Board, install, screenshot boundaries, pricing, safety, and setup. |
 | `/resources/launch-support-checklist` | Launch Support Checklist \| AnswerLattice Resources | Launch in-app support with product pages, starter sources, approved answers, widget checks, fallback, and reviewable support gaps. |
 | `/resources/pre-onboarding-source-package` | Pre-Onboarding Source Package \| AnswerLattice Resources | Prepare repo, website, docs, owner notes, policies, screenshots, and product exclusions before AnswerLattice intake. |
@@ -567,6 +582,7 @@ AnswerLattice website CSS must remain root-loadable and product-scoped. Clean-ca
 | `/comparisons/answerlattice-vs-helpdesks` | AnswerLattice vs Helpdesks \| AnswerLattice | Compare support knowledge review with ticket-queue ownership while preserving helpdesk boundaries. |
 | `/comparisons/answerlattice-vs-knowledge-bases` | AnswerLattice vs Knowledge Bases \| AnswerLattice | Compare in-app runtime answers with static article libraries and manual article discovery. |
 | `/updates` | Updates \| AnswerLattice | Product updates for AnswerLattice website, launch setup, team access, feedback review, Support Board, widget management, and support review. |
+| `/trust` | Trust and Data Handling \| AnswerLattice | Current infrastructure, provider, retention, security-review, and compliance-claim facts for buyers and technical reviewers. |
 | `/security` | Security \| AnswerLattice | How AnswerLattice protects support knowledge, widget context, screenshot boundaries, ticket debugging context, role-scoped team access, hosted help domains, and customer workspaces. |
 | `/security-one-pager` | Security and Ops One-Pager \| AnswerLattice | Shareable AnswerLattice security and operations summary for allowed origins, blocked routes, safe context, team roles, manual screenshots, hashed keys, owner approval, and rate limits. |
 | `/faq` | FAQ \| AnswerLattice | Answers to common questions founders ask about AnswerLattice setup, team access, digital products, in-app support, feedback review, Support Board, owner answers, screenshots, pricing, tickets, and data handling. |
@@ -602,6 +618,7 @@ Get Started → signs in → creates workspace → lands in Activation Command C
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-07-11 | 1.3.0 | Required full governance-event demo proof, INR/USD plan-accurate onboarding, and factual trust/provider/retention disclosures with explicit non-claim boundaries |
 | 2026-07-05 | 1.2.96 | Required Answerlattice website analytics URL minimization for GA4 page-location, click-link, resource target, referrer, and entry-page fields while preserving consent-gated client-only analytics |
 | 2026-06-29 | 1.2.95 | Required a compact homepage support-suite switch cue that compares AnswerLattice by official answer source while keeping full category comparison detail on `/comparisons` and avoiding unsupported competitor claims |
 | 2026-06-27 | 1.2.94 | Required Prism-glass card hover glows to track the desktop pointer with a centered fallback while preserving existing AnswerLattice theme tokens, layouts, and product claims |

@@ -1,6 +1,13 @@
-import type { ChangelogPage } from '@type/changelog';
-import type { AnswerlatticeFaq } from '@type/answerlattice';
-import type { KnowledgeBaseArticleType, KnowledgeBaseCategoriesType } from '@type/knowledgeBase';
+import type { AnswerlatticePublicFaq } from '@type/answerlattice';
+import type { KnowledgeBaseCategoriesType } from '@type/knowledgeBase';
+import { normalizeAnswerlatticePublicFaqList } from '@lib/answerlattice/faqContent';
+import {
+    normalizeAnswerlatticePublicArticle,
+    normalizeAnswerlatticePublicCategories,
+    normalizeAnswerlatticePublicChangelogPage,
+    type AnswerlatticePublicArticle,
+    type AnswerlatticePublicChangelogPage,
+} from '@lib/answerlattice/publicContentBoundary';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 
@@ -86,20 +93,44 @@ async function fetchPublicContent<T>(
     return payload.data as T;
 }
 
-export const fetchAnswerlatticePublicFaqs = (maxResults?: number) => (
-    fetchPublicContent<AnswerlatticeFaq[]>('faqs', { maxResults })
-);
+export const fetchAnswerlatticePublicFaqs = async (maxResults?: number): Promise<AnswerlatticePublicFaq[]> => {
+    const data = await fetchPublicContent<unknown>('faqs', { maxResults });
+    const faqs = normalizeAnswerlatticePublicFaqList(data);
+    if (!faqs) {
+        logRuntimeFailure('answerlattice_public_faq_client_payload_invalid', undefined, {
+            itemCount: Array.isArray(data) ? data.length : null,
+        });
+        throw new Error(ANSWERLATTICE_PUBLIC_CONTENT_REQUEST_FAILED);
+    }
+    return faqs;
+};
 
-export const fetchAnswerlatticePublicCategories = () => (
-    fetchPublicContent<KnowledgeBaseCategoriesType | null>('categories')
-);
+const rejectInvalidPublicPayload = (type: PublicContentType, data: unknown): never => {
+    logRuntimeFailure('answerlattice_public_content_client_payload_invalid', undefined, {
+        ...getBoundedRuntimeStringContext('contentType', type),
+        itemCount: Array.isArray(data) ? data.length : null,
+    });
+    throw new Error(ANSWERLATTICE_PUBLIC_CONTENT_REQUEST_FAILED);
+};
 
-export const fetchAnswerlatticePublicArticle = (articleId: string) => (
-    fetchPublicContent<KnowledgeBaseArticleType | null>('article', { articleId })
-);
+export const fetchAnswerlatticePublicCategories = async (): Promise<KnowledgeBaseCategoriesType | null> => {
+    const data = await fetchPublicContent<unknown>('categories');
+    if (data === null) return null;
+    return normalizeAnswerlatticePublicCategories(data) || rejectInvalidPublicPayload('categories', data);
+};
 
-export const fetchAnswerlatticePublicChangelogPage = (options?: { beforePageNumber?: number }) => (
-    fetchPublicContent<ChangelogPage | null>('changelog', {
+export const fetchAnswerlatticePublicArticle = async (articleId: string): Promise<AnswerlatticePublicArticle | null> => {
+    const data = await fetchPublicContent<unknown>('article', { articleId });
+    if (data === null) return null;
+    return normalizeAnswerlatticePublicArticle(data) || rejectInvalidPublicPayload('article', data);
+};
+
+export const fetchAnswerlatticePublicChangelogPage = async (
+    options?: { beforePageNumber?: number },
+): Promise<AnswerlatticePublicChangelogPage | null> => {
+    const data = await fetchPublicContent<unknown>('changelog', {
         beforePageNumber: options?.beforePageNumber,
-    })
-);
+    });
+    if (data === null) return null;
+    return normalizeAnswerlatticePublicChangelogPage(data) || rejectInvalidPublicPayload('changelog', data);
+};

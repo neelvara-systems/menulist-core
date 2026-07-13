@@ -27,6 +27,8 @@ for (const storeDoc of storesSnapshot.docs) {
 
 ## Solution: Summary Document
 
+> **Runtime admission:** A summary is a denormalized optimization, not trusted identity. Browser and Functions readers route `storesSummary` through the shared `storeSummaryBoundary` parser before using map keys or tenant scope. Canonical `stores/{storeId}` remains public and authorization authority. There is no standalone browser summary writer: every active mutation owns its canonical and summary writes in the same Firestore transaction.
+
 Maintain a single document with minimal data for all entities:
 
 ```typescript
@@ -93,35 +95,25 @@ for (const [storeId, storeInfo] of Object.entries(stores)) {
 }
 ```
 
-### 2. Sync on Entity Changes
+### 2. Project Within the Canonical Transaction
 
-**CRITICAL:** Update summary when entity is created/updated/deleted.
+**CRITICAL:** Update summary when an entity is created or changed, but never as a follow-up write. The canonical entity and its summary projection must share one transaction. Stores are soft-deactivated and retain their summary identity row with `active: false`; do not delete the row.
 
 ```typescript
-// In addStore()
-await addStore(data);
-await syncStoreToSummary(data.storeId, {
-  tId: data.tenantId,
-  businessType: data.businessType,
-  active: true,
-  name: data.name,
+await runTransaction(firebaseClient, async (transaction) => {
+  const currentStore = await transaction.get(storeRef);
+  validateCurrentStoreAndTenantScope(currentStore);
+  transaction.set(storeRef, canonicalStoreUpdate, { merge: true });
+  transaction.set(storesSummaryRef, {
+    lastUpdated: serverTimestamp(),
+    stores: { [storeId]: buildStoreSummaryEntry(nextStore) },
+  }, { merge: true });
 });
-
-// In updateStore()
-await updateStore(data);
-await syncStoreToSummary(data.storeId, {
-  tId: data.tenantId,
-  businessType: data.businessType,
-  active: data.active ?? true,
-  name: data.name,
-});
-
-// In deleteStore()
-await deleteStore(storeId);
-await removeStoreFromSummary(storeId);
 ```
 
-### 3. DAL Functions
+Standalone `syncStoreToSummary()` and `mergeStoreSummaryFields()` exports are intentionally absent. Store create/update, presence confirmation, tenant naming, outlet policy/lifecycle, brand propagation, entitlement, and block-state routes each own the relevant transaction and post-commit cache effects.
+
+### 3. DAL Reader and Projection Builder
 
 ```typescript
 // Get summary (1 read)
@@ -130,33 +122,25 @@ export const getStoresSummary = async () => {
   return doc.exists() ? doc.data().stores : {};
 };
 
-// Sync single store (1 write)
-export const syncStoreToSummary = async (
-  storeId: string,
-  data: StoreSummaryData
-) => {
-  await setDoc(
-    storesSummaryDocRef(),
-    {
-      lastUpdated: serverTimestamp(),
-      stores: {
-        [storeId]: data,
-      },
-    },
-    { merge: true }
-  );
-};
-
-// Remove store (1 write)
-export const removeStoreFromSummary = async (storeId: string) => {
-  await updateDoc(storesSummaryDocRef(), {
-    lastUpdated: serverTimestamp(),
-    [`stores.${storeId}`]: deleteField(),
-  });
-};
+// Pure projection builder used inside the owning transaction
+export const buildStoreSummaryEntry = (data: StoreSummaryData) => ({
+  tId: data.tId,
+  businessType: data.businessType,
+  businessCategory: data.businessCategory,
+  active: data.active,
+  name: data.name,
+});
 ```
 
-`platformSummary/storesSummary` feeds public store lookup surfaces such as OBP, menus, PWA shortcuts, compliance pages, outlet routing, and platform-wide scheduler snapshots. Keep each row compact: store identity/status fields, scheduling fields, publish counters/timestamps, plan entitlement, and bounded distribution-presence hints are acceptable; full store documents, settings blobs, menu content, analytics rows, and owner-private payloads are not. Any path that changes public-facing store summary truth must invalidate the same public cache tags as store saves through `src/lib/cache/publicClientCache.ts` or the server `revalidateMenuCache()` path. One-off browser-console summary backfills are not part of production runtime and must not be reintroduced.
+`platformSummary/storesSummary` is a denormalized internal optimization for scheduled Functions, platform/owner read models, and bounded operational aggregation. It is not an authorization, tenant-membership, public-routing, or public store-identity source. Public sitemap outlet discovery, Brand OBP outlet selection, and OBP multi-store detection query canonical `stores` documents with an explicit `tenantId` predicate and use the Firestore document ID as store authority. Keep each summary row compact: scheduling fields, status hints, publish counters/timestamps, plan entitlement, and bounded distribution-presence hints are acceptable; full store documents, settings blobs, menu content, analytics rows, and owner-private payloads are not. Client-authorized writes may change only the authenticated store slot and Firestore rules require its `tId` and optional `storeId` to match authenticated claims. Deactivation preserves those identity fields and writes `active: false`; deleting the slot would erase the invariant and is denied. Any store mutation that affects public truth must still invalidate the same public cache tags through `src/lib/cache/publicClientCache.ts` or the server `revalidateMenuCache()` path. One-off browser-console summary backfills are not part of production runtime and must not be reintroduced.
+
+Cross-store mutations cannot use the current-store summary writer. Master brand propagation uses the authenticated Admin route so current master/outlet eligibility reads, canonical writes, and every affected summary row share one transaction; derived cache/screen/context work starts only after that acknowledgement.
+
+Full store-summary projection must preserve inherited tenant block state as well as direct store block state. `buildSummaryDataFromStore()` carries `tenantBlocked` from the canonical store and `buildStoreSummaryEntry()` emits it whenever present, including explicit `false`. This prevents newly created or rebuilt rows from appearing eligible to summary-backed schedulers while their tenant is blocked. The dedicated platform tenant-block route remains the authority that synchronizes a tenant decision across existing stores and summary rows.
+
+Runtime readers must admit this denormalized document through the byte-identical `src/data/shared/storeSummaryBoundary.ts` and `functions/src/sharedData/storeSummaryBoundary.ts` contract. The boundary supports nested and historical flat shapes, rejects magic path segments, non-record rows, non-canonical numeric tenant/store IDs, and conflicting embedded `storeId`, and normalizes valid scope IDs before any Firestore path/query is composed. Invalid rows are skipped without aborting the other stores. Persisted summary timestamps must use the same boundary date normalizer so invalid dates do not become `NaN` analytics state.
+
+The platform backfill is a repair merge, never a destructive rebuild. `backfillStoresSummary` reads at most 1,501 canonical rows to enforce a 1,500-store ceiling, rejects any invalid canonical identity before writing, caps the serialized row payload at 850,000 bytes, and uses nested `{ merge: true }` so omitted scheduler enrichment, distribution hints, billing state, routing fields and future bounded fields survive. The external parity verifier applies the same exact-ID and safe-map rules, caps default store reads at 1,500 and canonical project reads at 500 per store, and must describe `storesSummary` as internal rather than public membership authority.
 
 ---
 
@@ -180,8 +164,11 @@ export const removeStoreFromSummary = async (storeId: string) => {
 
 | Summary                         | Location                        | Used By                                      |
 | ------------------------------- | ------------------------------- | -------------------------------------------- |
-| `platformSummary/default`       | `src/database/platformSummary/` | Platform stats (tenant/store counts)         |
-| `platformSummary/storesSummary` | `src/database/platformSummary/` | Cloud Functions (analytics, decision blocks) |
+| `platformSummary/summary`       | `src/database/platformSummary/`, onboarding and outlet transactions | Canonical global tenant/store ID counters |
+| `platformSummary/default`       | Legacy compatibility read only  | Counter floor reconciliation; never written by active allocation |
+| `platformSummary/storesSummary` | `src/database/platformSummary/` | Internal Cloud Functions, platform and owner read models; never public identity/tenant authority |
+
+Global tenant/store IDs are security identities, not display counters. Every active allocator must serialize on `platformSummary/summary`, reconcile the legacy `default` and strict `storesSummary` floors, and prove the candidate `tenants/{id}` or `stores/{id}` document is absent before committing. UI code must not allocate with `count + 1`; a failed manual entity write may leave a safe reserved gap, but an ID may never be reused.
 
 ---
 
@@ -246,6 +233,8 @@ export const backfillStoresSummary = onCall(async () => {
 - [ ] Update all create/update/delete operations to sync
 - [ ] Create one-time backfill for existing data
 - [ ] Update Cloud Functions to use summary
+- [ ] Keep authorization, public routing, and public tenant/store identity on canonical documents
+- [ ] Constrain client-writable summary identity fields in Firestore rules and emulator tests
 - [ ] Add to this documentation
 
 ---

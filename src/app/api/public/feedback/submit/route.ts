@@ -43,16 +43,19 @@ type EffectiveFeedbackDefaults = {
     collectEmailRequired: boolean;
 };
 
-function resolveFeedbackDefaults(raw: any): EffectiveFeedbackDefaults {
+function resolveFeedbackDefaults(raw: unknown): EffectiveFeedbackDefaults {
+    const value = raw && typeof raw === 'object' && !Array.isArray(raw)
+        ? raw as Record<string, unknown>
+        : {};
     return {
-        collectComment: raw?.collectComment !== false,
-        collectCommentRequired: raw?.collectCommentRequired === true,
-        collectName: raw?.collectName === true,
-        collectNameRequired: raw?.collectNameRequired === true,
-        collectPhone: raw?.collectPhone !== false,
-        collectPhoneRequired: raw?.collectPhoneRequired === true,
-        collectEmail: raw?.collectEmail !== false,
-        collectEmailRequired: raw?.collectEmailRequired === true,
+        collectComment: value.collectComment !== false,
+        collectCommentRequired: value.collectCommentRequired === true,
+        collectName: value.collectName === true,
+        collectNameRequired: value.collectNameRequired === true,
+        collectPhone: value.collectPhone !== false,
+        collectPhoneRequired: value.collectPhoneRequired === true,
+        collectEmail: value.collectEmail !== false,
+        collectEmailRequired: value.collectEmailRequired === true,
     };
 }
 
@@ -202,8 +205,8 @@ async function postGuestFeedback(req: NextRequest) {
         }
 
         const storeData = storeDoc.data();
-        const storeTenantId = Number(storeData?.tenantId ?? storeData?.tId ?? 0);
-        if (storeTenantId !== tenantId) {
+        const storeTenantScope = normalizeGuestFeedbackNumericDocumentId(storeData?.tenantId ?? storeData?.tId);
+        if (!storeTenantScope || storeTenantScope.numericId !== tenantId) {
             return NextResponse.json(
                 { success: false, error: 'Invalid store.' },
                 { status: 400 }
@@ -217,7 +220,13 @@ async function postGuestFeedback(req: NextRequest) {
             );
         }
 
-        if (!tenantDoc.exists || isPlatformEntityBlocked(tenantDoc.data())) {
+        const tenantData = tenantDoc.data();
+        if (
+            !tenantDoc.exists
+            || tenantData?.active === false
+            || tenantData?.deleted === true
+            || isPlatformEntityBlocked(tenantData)
+        ) {
             return NextResponse.json(
                 { success: false, error: 'Invalid store.' },
                 { status: 400 }
@@ -281,7 +290,7 @@ async function postGuestFeedback(req: NextRequest) {
             customerPhone: effectivePhone,
             customerEmail: effectiveEmail,
         });
-        void logFeedbackMOLEventAdmin('FEEDBACK_SUBMITTED', tenantId, storeId, projectId, data.rating);
+        await logFeedbackMOLEventAdmin('FEEDBACK_SUBMITTED', tenantId, storeId, projectId, data.rating);
 
         return NextResponse.json(
             {

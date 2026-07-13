@@ -5,6 +5,20 @@
 
 ---
 
+## July 10, 2026 Transaction And Tenant Cost Boundary
+
+The migrated owner-notification path now creates `ownerNotificationEvents/{eventId}` through a transaction (one direct read and one conditional create) and claims `processingAttempt` through a transaction (one direct read and one status write) before recipient or provider work. This does not add a collection or composite index. MenuList store rate-limit keys now include tenant identity; Answerlattice workspace and MenuList store reads fail closed when their stored tenant does not match the event.
+
+Retry and digest queries no longer read arbitrary bounded status snapshots and filter them in memory. Retry uses the `ownerNotificationEvents(status ASC, updatedAt ASC)` index for a bounded 24-hour window. Digest uses `ownerNotificationDeliveries(status ASC, createdAt ASC)` aggregate counts, so totals remain correct above 200 deliveries. Deterministic delivery rows preserve first creation time and record the current attempt and last-attempt time.
+
+Both legacy lifecycle engines retain the historical duplicate query for old random-ID rows and add one deterministic `messageLogs/{sha256}` transaction claim before SMTP. A successful or failed provider outcome updates that same claimed row instead of appending a random document. If the claim read/write fails, the send is skipped. This adds at most one direct read and one conditional write per legacy delivery attempt and prevents concurrent same-reference sends. `sending` is intentionally not auto-retried because provider acceptance may already have occurred.
+
+The renewal and suspension scans are bounded to five pages of 100 subscriptions and use the deployed-source composite query contracts `status + renewsOn` and `status + pastDueSinceAt`. The index and Functions changes require scoped Firebase deployment before live effect; source verification does not certify deploy state or provider delivery.
+
+July 10 deploy evidence: the Node 22 MenuList QA index attempt read the updated indexes and rules, then failed at the Firestore Rules API test endpoint with HTTP 403 caller permission. The Functions attempt targeted `verifyMenuPublish`, `computeDecisionBlocksScores`, `triggerDecisionBlocksScoring`, and `triggerStoreNightlyScheduler`; predeploy lint/build passed and Cloud Resource Manager lookup then failed with HTTP 403 caller permission. No index or Function was uploaded.
+
+The latest rerun after the owner-notification retry/digest correction produced the same results: updated indexes were not uploaded because the Rules API test request returned HTTP 403, and updated Functions were not uploaded because Cloud Resource Manager returned HTTP 403 after predeploy lint/build passed.
+
 ## Collections Touched
 
 | Collection      | Operations                     | Trigger                                |
@@ -67,6 +81,8 @@ July 5 staleness delivery diagnostics update: failed `MENU_STALE` lifecycle deli
 July 5 template output update: lifecycle template output hardening adds zero Firestore reads/writes/deletes, zero Storage operations, zero provider calls, no new index, no rule change, and no cache invalidation path. It changes only the rendered email/manual-message content boundary: metadata is escaped before HTML output, email links must parse as `http:`/`https:`, and publish-health failure codes render fixed owner copy instead of arbitrary `failureReason` strings. The app-side mirror requires the normal Next.js release path when released; the Functions mirror requires a scoped Firebase Functions deploy before live effect.
 
 July 5 template output deploy note: the scoped `menulist-qa` deploy target list was `verifyMenuPublish`, `computeDecisionBlocksScores`, `triggerDecisionBlocksScoring`, and `triggerStoreNightlyScheduler`; the exact command is recorded in `__docs__/audits/menulist-production-readiness-audit.md`. The attempt completed predeploy lint/build and then failed before upload with Cloud Resource Manager HTTP 403 caller permission for `menulist-qa`. Live Functions effect remains blocked until an account with project access can deploy the changed Functions bundle.
+
+July 13 publish-verification completion update: awaiting the two existing lifecycle delivery promises adds no Firestore read/write, message log, provider request, index, rule, Storage operation, or cache invalidation beyond the work those promises already perform. It changes only invocation ordering so `verifyMenuPublish` remains alive until the best-effort lifecycle side effect settles. Live effect requires redeploying `functions:verifyMenuPublish`.
 
 ---
 

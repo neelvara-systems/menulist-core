@@ -56,9 +56,9 @@ function sanitizeDescriptionInput(input: string, maxLength: number = 200): strin
 const actionType = {
   ADD_DESCRIPTION: AI_ACTIONS_TYPES.ADD_DESCRIPTION,
   REWRITE_DESCRIPTION: AI_ACTIONS_TYPES.REWRITE_DESCRIPTION
-}
+} as const;
 
-const descriptionPrompt = (contentLength: "Standard" | "Detailed" = "Standard", action: keyof typeof actionType, inputJson: any = {}, tone: string = "Professional") => {
+const descriptionPrompt = (contentLength: "Standard" | "Detailed" = "Standard", action: typeof actionType[keyof typeof actionType], inputJson: any = {}, tone: string = "Professional") => {
 
   // 🔒 SECURITY: Sanitize all user inputs to prevent prompt injection
   const sanitizedInputJson = {

@@ -1,7 +1,7 @@
 # Feedback System — Firebase Cost & Operations Tracking
 
-> **Version:** 1.4.0
-> **Last Updated:** 2026-05-31
+> **Version:** 1.7.0
+> **Last Updated:** 2026-07-11
 > **Audience:** Developers, Ops
 > **Source:** Codebase forensic audit
 
@@ -30,7 +30,7 @@
 | **Doc ID** | Auto-generated |
 | **Scoping** | `pId='AL' + tId + sId`; metadata links `feedbackId` |
 | **Avg Doc Size** | 0.5-2 KB |
-| **Growth Rate** | One non-blocking signal per Help Center feedback submission when `ENABLE_ANSWERLATTICE_SIGNAL_MUTATION=true` |
+| **Growth Rate** | One non-blocking signal per exact-owned Help Center feedback submission when `ENABLE_ANSWERLATTICE_SIGNAL_MUTATION=true`; malformed/coercive scope is skipped with a bounded diagnostic and dispatch-loader failures are observable |
 
 ### 1.3 article_feedback (Content Feedback)
 
@@ -101,24 +101,24 @@ Widget negative-feedback signals dedupe by `searchHistoryId` within the active r
 
 | Step | Reads | Writes |
 |------|:-----:|:------:|
-| Read article (current counts) | 1 | 0 |
-| Update likes/dislikes | 0 | 1 |
-| **Total** | **1** | **1** |
+| Transaction reads article and actor audit row | 2 | 0 |
+| Update likes/dislikes and create/append audit row | 0 | 2 (1 when audit is capped) |
+| **Total** | **2** | **1-2** |
 
 ### 2.7 Changelog Entry Like/Dislike
 
 | Step | Reads | Writes |
 |------|:-----:|:------:|
-| Transaction: read page | 1 | 0 |
-| Transaction: update entry in page | 0 | 1 |
-| **Total** | **1** | **1** |
+| Transaction reads page and actor audit row | 2 | 0 |
+| Update entry and create/append audit row | 0 | 2 (1 when audit is capped) |
+| **Total** | **2** | **1-2** |
 
 ### 2.8 Add Content Comment Feedback
 
 | Step | Reads | Writes |
 |------|:-----:|:------:|
-| Transaction: read/create feedback doc | 1 | 1 |
-| **Total** | **1** | **1** |
+| Comment is sanitized and included in the same reaction transaction | Included above | Included above |
+| **Total** | **0 additional** | **0 additional** |
 
 ---
 
@@ -149,7 +149,9 @@ Widget negative-feedback signals dedupe by `searchHistoryId` within the active r
 | Firestore writes | ~147 | ~$0.00018 |
 | **Total** | | **~$0.0003/month** |
 
-Reaction activity is capped at 200 events per article/changelog entry document, and owner reaction details load only when a specific entry preview is opened. Normal changelog/article browsing still uses existing aggregate counters and does not read the reaction activity log.
+Reaction activity is capped at 200 events per article/changelog entry document. Below the cap, rules allow only an exact one-item append; at the cap the audit row becomes immutable and later reactions update only the source counter. Owner reaction details load only when a specific entry preview is opened. Normal changelog/article browsing still uses existing aggregate counters and does not read the reaction activity log.
+
+The browser reaction marker adds no Firebase operation. It is a versioned local acknowledgement keyed and envelope-checked by `tId+sId+uId+contentType`, capped at 500 exact entries, and discarded on legacy/malformed/cross-scope input. Firestore counters and actor audit rows remain authoritative.
 
 Essentially free at any reasonable scale.
 
@@ -172,12 +174,18 @@ Feedback review reads are capped in the DAL at 200 rows even if a caller passes 
 
 | Collection | Read | Create | Update/Delete |
 |------------|------|--------|---------------|
-| `feedback` | Platform admin, support-control users in same `tId+sId`, or the submitting user reading their own row | Platform admin/support-control users, or an authenticated tenant user creating their own feedback row | Support-control update only; delete denied |
+| `feedback` | Platform admin, support-control users in same `tId+sId`, or the submitting user reading their own row | Exact admitted payload only; platform admin/support-control users, or an authenticated tenant user creating their own scoped/actor-bound row | Support-control users may change only Product Surface assignment fields plus modification metadata; content, actor and scope changes are denied; delete denied |
 | `answerlattice_signalEvents` | Support-control users in same `tId+sId` | Support-control users, plus self-scoped `type='feedback'` events from Help Center feedback | Append-only; client update/delete denied. Answerlattice nightly/admin TTL owns archival. |
-| `article_feedback/{tId}/{sId}/{docId}` | Platform admin or authenticated Answerlattice tenant members with product permissions for the same path scope | Authenticated same-tenant Answerlattice users only; document must carry `pId='AL'`, matching `tId+sId`, and a capped `list` array | Append-style updates only; `list`, `modifiedOn`, and `modifiedBy` can change; delete denied |
-| `changelog_feedback/{tId}/{sId}/{docId}` | Platform admin or authenticated Answerlattice tenant members with product permissions for the same path scope | Authenticated same-tenant Answerlattice users only; document must carry `pId='AL'`, matching `tId+sId`, and a capped `list` array | Append-style updates only; `list`, `modifiedOn`, and `modifiedBy` can change; delete denied |
+| `article_feedback/{tId}/{sId}/{docId}` | Platform admin or authenticated Answerlattice tenant members with product permissions for the same path scope | Same-scope permitted user; exactly one valid actor item and `pId='AL'` metadata | Exact one-item append plus modification metadata while below 200; capped history replacement and delete denied |
+| `changelog_feedback/{tId}/{sId}/{docId}` | Platform admin or authenticated Answerlattice tenant members with product permissions for the same path scope | Same-scope permitted user; exactly one valid actor item and `pId='AL'` metadata | Exact one-item append plus modification metadata while below 200; capped history replacement and delete denied |
 
 This allows end users to submit and view their own latest feedback without granting them access to owner review surfaces. Content reaction logs are separate because the current client transaction must read the entry-specific feedback document before appending the next capped reaction event.
+
+The `feedback` create contract requires the canonical category type, its relevant fields only, `pId='AL'`, bounded scope/actor/trace metadata, valid timestamps, a null or exact-key source context, canonical issue/request values, and no duplicate votes. The application performs the same admission before `answerlatticeRequestBodyComposer`; rules are the independent enforcement layer. Legacy rows are not rewritten by reads, and surface-only updates remain compatible because rules constrain changed keys instead of requiring old documents to satisfy the new complete create schema.
+
+**Deployment status (2026-07-11):** the local rules emulator and 102/102 aggregate source gate pass. The Node 22 rules-only `answerlattice-qa` deploy stopped at the Firebase Rules API test request with HTTP 403 caller permission before upload, so QA does not yet enforce this stricter contract.
+
+The updated content-reaction append/item rules passed the same local emulator and 102/102 aggregate. A required post-update retry returned the identical Rules API HTTP 403 before upload. Do not retry the unchanged command until QA IAM changes.
 
 ---
 
@@ -191,7 +199,5 @@ This allows end users to submit and view their own latest feedback without grant
 | `getProductSurfacesForSession` | `answerlattice_productSurfaces` | getDocs bounded query for assignment options |
 | `createAnswerlatticeSupportBoardCard` from feedback review | `answerlattice_supportBoardCards` | addDoc |
 | `getLatestFeedbackForUser` | `feedback` | getDocs (query, limit 1) |
-| `updateArticleFeedback` | `kb_articles` | getDoc + setDoc merge |
-| `updateChangelogFeedback` | `changelog/{tId}/{sId}` | Transaction: get + update |
-| `addContentFeedback` | `{type}_feedback/{tId}/{sId}` | Transaction: get + set/update |
+| `updateContentFeedbackWithAudit` | `kb_articles` or `changelog/{tId}/{sId}` plus `{type}_feedback/{tId}/{sId}` | One transaction: read both, update source, create/exact-append audit below cap |
 | `updateContentFeedback` | Router | Routes to above handlers |

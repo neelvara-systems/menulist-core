@@ -6,6 +6,7 @@ import {
     getHelpCenterSearchClientFailureMessage,
     readHelpCenterSearchResponse,
 } from '@lib/search/helpCenterSearchResponse';
+import { createRuntimeId } from '@lib/runtime/randomId';
 import { KnowledgeBaseArticleType, KnowledgeBaseCategoriesType } from '@type/knowledgeBase';
 import { Alert, Button, Flex, theme, Typography } from 'antd';
 import { useEffect, useReducer, useRef, useState } from 'react';
@@ -70,7 +71,7 @@ function AiSearchBarComponent({ initialCategories }: { initialCategories: Knowle
                 ...HELP_CENTER_SEARCH_REQUEST_POLICY,
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ query })
+                body: JSON.stringify({ requestId: createRuntimeId('help_search'), query, mode: 'qna' })
             });
             const data = await readHelpCenterSearchResponse(response, 'ai_search_modal') as SerachAPIResponseType;
 

@@ -12,7 +12,12 @@ import * as admin from 'firebase-admin';
 import * as fs from 'fs';
 import * as path from 'path';
 import { FieldValue, getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
-import { answerlatticeFirestoreDatabaseId, shouldUseSharedAnswerlatticeFirebase } from './answerlatticeConfig';
+import {
+    answerlatticeFirebaseBoundary,
+    answerlatticeFirestoreDatabaseId,
+    shouldUseSharedAnswerlatticeFirebase,
+} from './answerlatticeConfig';
+import { isAnswerlatticeEmulatorProjectId } from '@data/shared/answerlatticeFirebaseBoundary';
 import {
     getBoundedFirebaseAdminStringContext,
     logFirebaseAdminFailure,
@@ -20,6 +25,15 @@ import {
 
 const ANSWERLATTICE_APP_NAME = 'answerlattice-admin';
 const DEFAULT_APP_NAME = '[DEFAULT]';
+const isAnswerlatticeEmulator = process.env.FUNCTIONS_EMULATOR === 'true'
+    || Boolean(process.env.FIRESTORE_EMULATOR_HOST)
+    || Boolean(process.env.FIREBASE_AUTH_EMULATOR_HOST)
+    || Boolean(process.env.FIREBASE_STORAGE_EMULATOR_HOST);
+
+function isAllowedAnswerlatticeProjectId(projectId: string): boolean {
+    return projectId === answerlatticeFirebaseBoundary.expectedProjectId
+        || (isAnswerlatticeEmulator && isAnswerlatticeEmulatorProjectId(projectId));
+}
 
 const getAnswerlatticeProjectId = () =>
     process.env.ANSWERLATTICE_FIREBASE_PROJECT_ID ||
@@ -42,6 +56,18 @@ function getAdminCredential(prefix: 'FIREBASE' | 'ANSWERLATTICE_FIREBASE'): admi
     const clientEmail = process.env[`${prefix}_CLIENT_EMAIL`];
 
     if (!projectId || !privateKey || !clientEmail) return null;
+    if (
+        prefix === 'ANSWERLATTICE_FIREBASE'
+        && !shouldUseSharedAnswerlatticeFirebase
+        && !isAllowedAnswerlatticeProjectId(projectId)
+    ) {
+        logFirebaseAdminFailure('answerlattice_admin_env_project_mismatch', new Error('Answerlattice project mismatch.'), {
+            credentialSource: 'env',
+            product: 'answerlattice',
+            projectMatchesExpected: false,
+        }, { developmentOnly: true });
+        return null;
+    }
 
     try {
         return admin.credential.cert({
@@ -75,6 +101,9 @@ function getAnswerlatticeServiceAccountFileCredential(): admin.credential.Creden
         if (!projectId || !privateKey || !clientEmail) {
             throw new Error('Missing project_id, private_key, or client_email in Answerlattice service-account file.');
         }
+        if (!shouldUseSharedAnswerlatticeFirebase && !isAllowedAnswerlatticeProjectId(projectId)) {
+            throw new Error('Answerlattice service-account project does not match the active deployment stage.');
+        }
 
         return admin.credential.cert({
             projectId,
@@ -96,6 +125,7 @@ function initializeLocalAnswerlatticeAdcApp(appName?: string): admin.app.App | n
 
     const projectId = getAnswerlatticeProjectId();
     if (!projectId) return null;
+    if (!shouldUseSharedAnswerlatticeFirebase && !isAllowedAnswerlatticeProjectId(projectId)) return null;
 
     try {
         const options: admin.AppOptions = {
@@ -149,12 +179,17 @@ function getDefaultAdminAppForAnswerlattice(): admin.app.App | null {
 }
 
 function getAnswerlatticeAdminApp(): admin.app.App | null {
+    if (!answerlatticeFirebaseBoundary.valid) return null;
     if (shouldUseSharedAnswerlatticeFirebase) {
         return getDefaultAdminAppForAnswerlattice();
     }
 
     const existing = admin.apps.find(app => app?.name === ANSWERLATTICE_APP_NAME);
-    if (existing) return existing;
+    if (existing) {
+        return existing.options.projectId && isAllowedAnswerlatticeProjectId(existing.options.projectId)
+            ? existing
+            : null;
+    }
 
     const answerlatticeCredential = getAdminCredential('ANSWERLATTICE_FIREBASE');
     const answerlatticeFileCredential = getAnswerlatticeServiceAccountFileCredential();

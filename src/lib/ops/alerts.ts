@@ -44,11 +44,24 @@ interface CreateAlertParams {
   metadata?: Record<string, any>;
 }
 
+interface CreateAlertOptions {
+  documentId?: string;
+}
+
+function isAlreadyExistsError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const code = (error as { code?: unknown }).code;
+  return code === 6 || code === '6' || code === 'already-exists' || code === 'ALREADY_EXISTS';
+}
+
 /**
  * Create an alert from a Next.js API route.
  * Also triggers Telegram notification (fire-and-forget) if alerts are not muted.
  */
-export async function createAlert(params: CreateAlertParams): Promise<string> {
+export async function createAlert(
+  params: CreateAlertParams,
+  options: CreateAlertOptions = {},
+): Promise<string> {
   try {
     const alertMetadata = {
       ...(params.metadata || {}),
@@ -56,7 +69,7 @@ export async function createAlert(params: CreateAlertParams): Promise<string> {
       ...(params.productId ? { productId: params.productId } : {}),
       ...(params.category ? { category: params.category } : {}),
     };
-    const docRef = await db.collection(DB_COLLECTIONS.SYSTEM_ALERTS).add({
+    const alertData = {
       type: params.type || 'error',
       severity: params.severity,
       title: params.title,
@@ -68,7 +81,19 @@ export async function createAlert(params: CreateAlertParams): Promise<string> {
       actionRequired: params.severity === 'critical',
       actionTaken: false,
       metadata: alertMetadata,
-    });
+    };
+    const alertsCollection = db.collection(DB_COLLECTIONS.SYSTEM_ALERTS);
+    const docRef = options.documentId
+      ? alertsCollection.doc(options.documentId)
+      : alertsCollection.doc();
+    try {
+      await docRef.create(alertData);
+    } catch (error) {
+      if (options.documentId && isAlreadyExistsError(error)) {
+        return docRef.id;
+      }
+      throw error;
+    }
 
     // Fire-and-forget Telegram notification
     try {

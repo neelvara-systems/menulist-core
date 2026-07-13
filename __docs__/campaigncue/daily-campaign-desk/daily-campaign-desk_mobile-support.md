@@ -17,10 +17,14 @@ Daily Campaign Desk is supported in the responsive CampaignCue owner workspace. 
 
 - Keep actions at least 44px high.
 - Keep the first action visible before dense lists.
+- Show one Campaign Rhythm action before the campaign history list.
+- Keep readiness as five short checks and never label it predicted performance.
+- Require an explicit local date/time before creating a manual reminder.
 - Do not put the full creative editor into the daily desk.
 - Use Daily desk to route owners to Inputs, Assets, Packs, Results, and Editor when needed.
 - Keep quick result options as buttons before the freeform note.
 - Keep asset reuse as a route to Assets/Editor/CueLayers, not a dense layer-editing surface on the desk.
+- Keep safe pack reuse as one confirmation action that creates a new current-fact pack.
 - No provider posting, no account connection, and no spend action on mobile.
 
 ## Current Implementation

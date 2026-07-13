@@ -49,6 +49,11 @@ function verifyPackageScript() {
     packageJson.scripts['verify:compliance-pages-boundary'] === 'node scripts/verification/verify-compliance-pages-boundary.js',
     'package.json must expose verify:compliance-pages-boundary',
   );
+  assert(
+    typeof packageJson.scripts['test:compliance-pages:rules'] === 'string'
+      && packageJson.scripts['test:compliance-pages:rules'].includes('test-compliance-pages-rules.ts'),
+    'package.json must expose the compliance rules emulator regression',
+  );
 }
 
 function verifySanitizerRuntime() {
@@ -109,7 +114,6 @@ function verifyTemplatesRuntime() {
 function verifyApiBoundary() {
   const route = read('src/app/api/compliance/route.ts');
   const serverDal = read('src/database/compliance/server.ts');
-  const clientDal = read('src/database/compliance/index.ts');
 
   assertIncludes(route, "export const dynamic = 'force-dynamic';", 'Compliance API route dynamic boundary');
   assertIncludes(route, "import { withAuth } from '../../../middleware/auth';", 'Compliance API auth guard');
@@ -167,7 +171,10 @@ function verifyApiBoundary() {
   assertIncludes(serverDal, 'firestoreAdmin.collection(COLLECTION).doc(documentId)', 'Compliance server DAL normalized store-scoped doc id');
   assertNotIncludes(serverDal, 'firestoreAdmin.collection(COLLECTION).doc(String(sId))', 'Compliance server DAL must not build refs from raw String(sId)');
   assertIncludes(serverDal, 'admin.firestore.FieldValue.delete()', 'Compliance server DAL reset deletes override field');
-  assertIncludes(clientDal, 'deleteField()', 'Compliance client DAL reset deletes override field');
+  assert(
+    !fs.existsSync(path.join(ROOT, 'src/database/compliance/index.ts')),
+    'Compliance client mutation DAL must stay absent; owner writes are server-owned',
+  );
 }
 
 function verifyPublicRouteBoundary() {
@@ -285,15 +292,8 @@ function verifyRulesAndConstantsBoundary() {
 
   assertIncludes(rules, 'match /compliancePages/{docId}', 'Firestore compliancePages rule');
   assertIncludes(rules, 'allow read: if true;', 'Firestore compliancePages public read');
-  assertIncludes(rules, 'allow create: if canWriteCompliancePage(docId, request.resource.data);', 'Firestore compliancePages create guard');
-  assertIncludes(rules, 'allow update: if canWriteCompliancePage(docId, request.resource.data)', 'Firestore compliancePages update guard');
-  assertIncludes(rules, 'allow delete: if false;', 'Firestore compliancePages no client delete');
-  assertIncludes(rules, 'function canWriteCompliancePage(docId, data)', 'Firestore compliance write helper');
-  assertIncludes(rules, "data.keys().hasAll(['tId', 'sId'])", 'Firestore compliance write shape guard');
-  assertIncludes(rules, 'string(docId) == string(data.sId)', 'Firestore compliance doc/store match guard');
-  assertIncludes(rules, 'belongsToTenantById(data.tId)', 'Firestore compliance tenant guard');
-  assertIncludes(rules, 'belongsToStoreById(data.sId)', 'Firestore compliance store guard');
-  assertIncludes(rules, 'hasTenantWriteRole()', 'Firestore compliance tenant write role guard');
+  assertIncludes(rules, 'allow write: if false;', 'Firestore compliancePages server-only write boundary');
+  assertNotIncludes(rules, 'canWriteCompliancePage', 'Firestore compliancePages must not retain a direct client write helper');
 }
 
 function verifyDocsBoundary() {
@@ -353,6 +353,7 @@ function verifyDocsBoundary() {
   assertIncludes(firebaseDoc, 'direct compliancePages doc read', 'Compliance Firebase current override read cost');
   assertIncludes(firebaseDoc, 'July 6 public override document-ID boundary', 'Compliance Firebase public override document ID boundary note');
   assertIncludes(firebaseDoc, 'July 6 session document-ID boundary', 'Compliance Firebase session document ID boundary note');
+  assertIncludes(firebaseDoc, 'July 13 server-owned compliance mutation boundary', 'Compliance Firebase server-owned mutation note');
   assertIncludes(firebaseDoc, 'July 2 sanitizer/source-gate hardening', 'Compliance Firebase sanitizer/source-gate note');
   assertIncludes(firebaseDoc, 'July 5 public override-read diagnostics', 'Compliance Firebase public override-read diagnostics note');
   assertIncludes(firebaseDoc, 'July 5 owner store-lookup diagnostics', 'Compliance Firebase owner store lookup diagnostics note');
@@ -368,6 +369,7 @@ function verifyDocsBoundary() {
   assertIncludes(changelog, 'Compliance Pages Public Override Document ID Boundary', 'Changelog Compliance public override document ID boundary entry');
   assertIncludes(changelog, 'Compliance Pages Owner Store-Lookup Diagnostics', 'Changelog Compliance owner store lookup diagnostics entry');
   assertIncludes(changelog, 'Compliance Pages Public Override-Read Diagnostics', 'Changelog Compliance public override-read diagnostics entry');
+  assertIncludes(changelog, 'Compliance Page Server-Owned Mutation Boundary', 'Changelog Compliance server-owned mutation entry');
   assertIncludes(changelog, 'Compliance Pages Spec Launch Boundary', 'Changelog Compliance spec boundary entry');
   assertIncludes(changelog, 'Compliance Pages Technical Docs Top Boundary', 'Changelog Compliance technical-doc boundary entry');
 }

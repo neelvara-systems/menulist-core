@@ -1,4 +1,4 @@
-import { FieldValue, Timestamp } from 'firebase-admin/firestore';
+import { Timestamp } from 'firebase-admin/firestore';
 import * as functions from 'firebase-functions';
 import { DB_COLLECTIONS } from '../constants/database';
 import { firestoreAdmin } from '../firebaseAdmin';
@@ -50,38 +50,38 @@ function getPublicCacheTargetContext(result: { addressCount?: number; error?: st
 
 async function touchDigitalScreenContentVersionForStore(normalizedStoreId: string, context: string): Promise<void> {
     try {
-        const now = Timestamp.now();
         const screenRef = firestoreAdmin
             .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
             .doc(`campaigns_${normalizedStoreId}`);
-        const screenSnap = await screenRef.get();
-        const screen = screenSnap.exists ? screenSnap.data()?.screen : null;
-
-        if (!screen?.screenToken) {
-            return;
-        }
-
-        const nextContentVersion = Number(screen.contentVersion || 0) + 1;
         const publicScreenRef = firestoreAdmin
             .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
             .doc(`screen_${normalizedStoreId}`);
-        const batch = firestoreAdmin.batch();
 
-        batch.update(screenRef, {
-            'screen.contentVersion': FieldValue.increment(1),
-            'screen.lastContentChangeAt': now,
+        await firestoreAdmin.runTransaction(async (transaction) => {
+            const screenSnap = await transaction.get(screenRef);
+            const screen = screenSnap.exists ? screenSnap.data()?.screen : null;
+
+            if (!screen?.screenToken) {
+                return;
+            }
+
+            const now = Timestamp.now();
+            const nextContentVersion = Number(screen.contentVersion || 0) + 1;
+
+            transaction.update(screenRef, {
+                'screen.contentVersion': nextContentVersion,
+                'screen.lastContentChangeAt': now,
+            });
+            transaction.set(publicScreenRef, {
+                contentVersion: nextContentVersion,
+                enabled: screen.enabled === true,
+                lastContentChangeAt: now,
+                screenToken: screen.screenToken,
+                storeId: String(normalizedStoreId),
+                updatedAt: now,
+            }, { merge: false });
         });
-        batch.set(publicScreenRef, {
-            contentVersion: nextContentVersion,
-            enabled: screen.enabled === true,
-            lastContentChangeAt: now,
-            screenToken: screen.screenToken,
-            storeId: String(normalizedStoreId),
-            updatedAt: now,
-        }, { merge: true });
-
-        await batch.commit();
-    } catch (error: any) {
+    } catch (error: unknown) {
         functions.logger.warn('[publicCacheRevalidation] Digital screen version touch failed', {
             failureCode: PUBLIC_CACHE_SCREEN_TOUCH_FAILED_CODE,
             ...getPublicCacheRequestContext(normalizedStoreId, context),
@@ -142,7 +142,7 @@ export async function revalidatePublicClientCacheForStore(
                 });
             }
         }
-    } catch (error: any) {
+    } catch (error: unknown) {
         functions.logger.warn('[publicCacheRevalidation] Public cache revalidation errored', {
             failureCode: PUBLIC_CACHE_REVALIDATION_REQUEST_ERRORED_CODE,
             ...getPublicCacheRequestContext(normalizedStoreId, context),

@@ -3,7 +3,7 @@
 > **Status:** IMPLEMENTED — Source-Validated Cache
 > **Version:** 1.1.0
 > **Created:** 2026-03-09
-> **Last Updated:** 2026-03-09
+> **Last Updated:** 2026-07-11
 > **Feature Flag:** `ENABLE_ANSWERLATTICE_INSTANT_CACHE`
 > **Expansion Tracker:** Item #3
 > **Doctrine Compliance:** ✅ Freeze §2 — Performance optimization (additive, no schema changes)
@@ -76,7 +76,7 @@ Redis sits as **Layer 0**. A Redis hit still performs a small freshness check be
 
 **Cache key format:**
 ```
-canon:{tId}:{sId}:entity:{entityId}:v{answerVersion}:plan:{plan}:role:{role}
+canon:v2:{tId}:{sId}:e:{entityId}:v{answerVersion}:p:{plan}:r:{role}:s:{state}
 ```
 
 This leverages existing infrastructure instead of building a parallel system.

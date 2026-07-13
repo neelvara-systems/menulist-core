@@ -1,8 +1,8 @@
-import { languageActionType } from './types/api.types';
 import { AI_SERVICE_ROUTE_REQUEST_OPTIONS, readAiServiceResponseJson } from "@services/ai/aiServiceDiagnostics";
 import { syncBalanceFromResponse } from "@services/ai/balanceSync";
 import { AICapacityError, checkCapacityResponse } from "@services/ai/capacityError";
 import { TranslationAPIParams } from './types';
+import { normalizeTranslationMap } from '@lib/ai/translationOutput';
 import {
     getBoundedTranslationStringContext,
     getTranslationLanguageLogContext,
@@ -18,8 +18,8 @@ type MenuTranslationApiResponse = {
     transaction?: unknown;
 };
 
-async function getTranslations({ inputJson, targetLang, sourceLang, action, projectId, fileId }: TranslationAPIParams): Promise<Record<string, string>> {
-    const normalizedAction = (languageActionType as Record<string, string>)[action] || action;
+async function getTranslations({ inputJson, targetLang, sourceLang, action, projectId, fileId }: TranslationAPIParams): Promise<Record<string, string> | null> {
+    const normalizedAction = action;
     const translationKeyCount = inputJson && typeof inputJson === 'object' ? Object.keys(inputJson).length : 0;
     let responseStatus: number | undefined;
 
@@ -63,13 +63,9 @@ async function getTranslations({ inputJson, targetLang, sourceLang, action, proj
         const { data } = responseJson;
         if (data && typeof data === 'object' && !Array.isArray(data) && 'translations' in data) {
             const translations = (data as { translations?: unknown }).translations;
-            return translations && typeof translations === 'object' && !Array.isArray(translations)
-                ? translations as Record<string, string>
-                : null;
+            return normalizeTranslationMap(translations, Object.keys(inputJson));
         }
-        return data && typeof data === 'object' && !Array.isArray(data)
-            ? data as Record<string, string>
-            : null;
+        return normalizeTranslationMap(data, Object.keys(inputJson));
 
     } catch (error) {
         if (error instanceof AICapacityError) throw error;

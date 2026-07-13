@@ -77,6 +77,7 @@ Answerlattice App Predictive Trigger ID Boundary: owner/admin trigger actions no
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-07-11 | 1.1.3 | Added exact product/workspace mutation and allowlisted public-summary/runtime parsing boundaries. |
 | 2026-07-06 | 1.1.2 | Added app-side predictive trigger document-ID boundary for CRUD/action refs and audit IDs. |
 | 2026-06-28 | 1.1.1 | Bounded nightly predictive trigger sync diagnostics with fixed failure codes and source metadata. |
 | 2026-05-24 | 1.1.0 | Added capability gating, summary-backed resolved suggestions, targeted answer lookup, unchanged-write skip, and Redis fail-closed notes. |

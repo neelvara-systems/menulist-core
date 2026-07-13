@@ -16,7 +16,7 @@ Know what to promote, why it is useful now, what is missing, and whether it is s
 - Every cue explains why this, why now, missing inputs, trust risk, and ready outputs.
 - CampaignCue can say "not enough facts" or "do not promote this yet" instead of generating unsafe content.
 - The recommendation feeds a Campaign Pack, not a single post or random design.
-- Manual export, copy, and download remain the delivery boundary until explicit posting integrations are added later.
+- Manual export, copy, and download are the active delivery boundary. Direct posting or account connection requires a separate explicitly enabled provider layer and must not be implied in owner-facing copy.
 
 ## Do Not Claim
 
@@ -32,4 +32,3 @@ Know what to promote, why it is useful now, what is missing, and whether it is s
 - "Blocked until this fact is confirmed."
 - "Ready to prepare."
 - "Use this campaign manually."
-

@@ -7,18 +7,30 @@ export const dynamic = 'force-dynamic';
  * POST /api/analytics/weekly-narrative/generate-local
  */
 
-import { GEMINI_MODELS } from '@constant/AI/models';
+import { FEATURE_FLAGS } from '@config/features';
+import { ANSWERLATTICE_TEXT_MODEL } from '@constant/answerlattice/ai';
+import { ANSWERLATTICE_PERMISSION_KEYS } from '@constant/answerlattice/permissions';
 import { AI_ACTIONS_TYPES } from '@constant/common';
 import { DB_COLLECTIONS } from '@constant/database';
-import { PERMISSIONS } from '@constant/permissions';
-import { recordAiOperationForSession } from '@lib/ai/operationLog';
+import { PRODUCT_IDS } from '@constant/product';
+import { getAIProviderRetryAfter, isAIProviderRateLimitError } from '@lib/ai/providerErrors';
+import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
+import { recordAnswerlatticeAiOperation } from '@lib/answerlattice/aiAccounting';
+import { getAnswerlatticeCompletedWeeklyWindows } from '@lib/answerlattice/analyticsIntelligenceContracts';
+import {
+  type AnswerlatticeChatAnalyticsDay,
+  parseAnswerlatticeChatAnalyticsDay,
+} from '@lib/answerlattice/chatAnalyticsContracts';
+import { answerlatticeGenAIClient } from '@lib/answerlattice/genAiClient';
+import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
+import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
+import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { logger } from '@lib/monitoring/logger';
-import { requireAnyStorePermission } from '@lib/permissions/server';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
-import { hashPublicRateLimitValue } from 'src/middleware/publicApi';
 import { withAuth } from '@/middleware/auth';
+import { FieldValue } from 'firebase-admin/firestore';
 import { NextRequest, NextResponse } from 'next/server';
 
 type WeeklyNarrativePayload = {
@@ -32,35 +44,42 @@ const WEEKLY_NARRATIVE_CATEGORY_MAX_LENGTH = 80;
 const WEEKLY_NARRATIVE_OUTPUT_TEXT_MAX_LENGTH = 500;
 const WEEKLY_NARRATIVE_OUTPUT_LIST_ITEM_MAX_LENGTH = 220;
 const WEEKLY_NARRATIVE_OUTPUT_LIST_MAX_ITEMS = 5;
-const WEEKLY_NARRATIVE_TOP_QUESTIONS_SCAN_LIMIT = 25;
-const WEEKLY_NARRATIVE_METRIC_MAX_VALUE = 1_000_000;
+const WEEKLY_NARRATIVE_DAYS = 7;
 
-const normalizeWeeklyNarrativeMetric = (
-  value: unknown,
-  maxValue = WEEKLY_NARRATIVE_METRIC_MAX_VALUE,
-): number => {
-  const numericValue = typeof value === 'number'
-    ? value
-    : typeof value === 'string'
-      ? Number(value)
-      : 0;
-
-  if (!Number.isFinite(numericValue) || numericValue <= 0) return 0;
-  return Math.min(numericValue, maxValue);
+type WeeklyNarrativeAggregate = {
+  totalChats: number;
+  totalFeedback: number;
+  totalMessages: number;
+  totalPositiveFeedback: number;
+  topQuestion: string;
 };
 
-const normalizeWeeklyNarrativeCategory = (value: unknown): string => {
-  if (typeof value !== 'string') return 'General';
+const aggregateWeeklyNarrativeDays = (
+  days: AnswerlatticeChatAnalyticsDay[],
+): WeeklyNarrativeAggregate => {
+  const questions = new Map<string, { label: string; count: number }>();
+  let totalChats = 0;
+  let totalFeedback = 0;
+  let totalMessages = 0;
+  let totalPositiveFeedback = 0;
 
-  const normalized = value
-    .replace(/[\u0000-\u001f\u007f]/g, ' ')
-    .replace(/[{}<>`$\\]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .slice(0, WEEKLY_NARRATIVE_CATEGORY_MAX_LENGTH)
-    .trim();
+  days.forEach((day) => {
+    totalChats += day.totalChats;
+    totalFeedback += day.totalFeedback;
+    totalMessages += day.totalMessages;
+    totalPositiveFeedback += day.positiveFeedback;
+    day.topQuestions.forEach((question) => {
+      const key = question.question.toLocaleLowerCase('en-US');
+      const current = questions.get(key) || { label: question.question, count: 0 };
+      current.count += question.count;
+      questions.set(key, current);
+    });
+  });
 
-  return normalized || 'General';
+  const topQuestion = Array.from(questions.values())
+    .sort((left, right) => right.count - left.count || left.label.localeCompare(right.label, 'en-US'))[0]
+    ?.label.slice(0, WEEKLY_NARRATIVE_CATEGORY_MAX_LENGTH) || 'No recurring question';
+  return { totalChats, totalFeedback, totalMessages, totalPositiveFeedback, topQuestion };
 };
 
 const getWeeklyNarrativeRouteLogContext = (
@@ -73,8 +92,8 @@ const getWeeklyNarrativeRouteLogContext = (
   } = {},
 ) => ({
   endpoint: WEEKLY_NARRATIVE_LOCAL_ENDPOINT,
-  ...getBoundedRuntimeStringContext('tenantId', session?.tId),
-  ...getBoundedRuntimeStringContext('storeId', session?.sId),
+  ...getBoundedRuntimeStringContext('tenantId', resolveAnswerlatticeSessionScope(session)?.tenantId),
+  ...getBoundedRuntimeStringContext('storeId', resolveAnswerlatticeSessionScope(session)?.storeId),
   ...getBoundedRuntimeStringContext('userId', session?.uId),
   ...getBoundedRuntimeStringContext('weekStart', metadata.weekStart),
   ...getBoundedRuntimeStringContext('weekEnd', metadata.weekEnd),
@@ -153,34 +172,36 @@ const parseWeeklyNarrativeResponse = (
   }
 };
 
-export async function generateWeeklyNarrativeLocally(request: NextRequest, session: any) {
+async function generateWeeklyNarrativeLocally(request: NextRequest, session: any) {
   let sessionForLog: any = session;
   let weekStartForLog: string | undefined;
   let weekEndForLog: string | undefined;
 
   try {
-    // 🛡️ SAFE_MODE: Block expensive AI operations during system maintenance
+    if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_WEEKLY_DIGEST) {
+      return NextResponse.json({ error: 'Weekly digest is not enabled.' }, { status: 403 });
+    }
+
+    const scope = resolveAnswerlatticeSessionScope(session);
+    if (!scope) {
+      return NextResponse.json({ error: 'Not onboarded' }, { status: 400 });
+    }
+    const tId = scope.tenantId;
+    const sId = scope.storeId;
+
+    // SAFE_MODE blocks the explicit provider call during maintenance.
     const { checkSafeMode } = await import('@lib/ops/safeMode');
     const safeModeResponse = await checkSafeMode();
     if (safeModeResponse) return safeModeResponse;
 
-    // 1. Scope validation. withAuth handles authentication, CORS, role, and blocked-account checks.
-    if (!session?.tId || !session?.sId) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    const tId = String(session.tId);
-    const sId = String(session.sId);
-
-    const rateLimitConfig = getRateLimitForFeature('BATCH_OPERATION');
-    const userRateLimitHash = hashPublicRateLimitValue(session.uId);
-    const tenantRateLimitHash = hashPublicRateLimitValue(tId);
-    const storeRateLimitHash = hashPublicRateLimitValue(sId);
+    const rateLimitConfig = getRateLimitForFeature('AI_OPERATION');
     const rateLimit = await checkRateLimit({
-      key: `weekly-narrative:${userRateLimitHash}:${tenantRateLimitHash}:${storeRateLimitHash}`,
+      key: buildAnswerlatticeRateLimitKey(
+        'answerlattice-weekly-narrative',
+        session?.uId || session?.user?.id || 'unknown',
+        tId,
+        sId,
+      ),
       ...rateLimitConfig,
     });
     if (!rateLimit.allowed) {
@@ -199,128 +220,86 @@ export async function generateWeeklyNarrativeLocally(request: NextRequest, sessi
       );
     }
 
-    const permissionError = await requireAnyStorePermission(
+    const permission = await requireAnswerlatticePermission(
       request,
       session,
-      [PERMISSIONS.VIEW_ANALYTICS],
-      'Weekly narrative',
+      ANSWERLATTICE_PERMISSION_KEYS.VIEW_READINESS,
     );
-    if (permissionError) return permissionError;
+    if (permission.response) return permission.response;
 
     logger.info('[Weekly Narrative Local] Generating weekly narrative', getWeeklyNarrativeRouteLogContext(session));
 
-    // 2. Import Gemini service (uses shared client — same pattern as descriptions/route.ts)
-    const { genAIClient } = await import('@lib/google/genAi');
-
-    if (!process.env.GEMINI_AI_KEY) {
-      throw new Error('Gemini API key not configured');
-    }
-
-    // 3. Fetch analytics data from Firestore
-    const { firestoreAdmin } = await import('@lib/firebase/firebaseAdmin');
-
-    const endDate = new Date();
-    const startDate = new Date();
-    startDate.setDate(endDate.getDate() - 7);
-
-    const weekStart = startDate.toISOString().split('T')[0];
-    const weekEnd = endDate.toISOString().split('T')[0];
+    const weeklyWindows = getAnswerlatticeCompletedWeeklyWindows(new Date(), WEEKLY_NARRATIVE_DAYS);
+    if (!weeklyWindows) throw new Error('weekly_narrative_time_invalid');
+    const { weekStart, weekEnd, previousWeekStart, previousWeekEnd } = weeklyWindows;
     weekStartForLog = weekStart;
     weekEndForLog = weekEnd;
 
-    // Query chatAnalytics for the last 7 days
-    const snapshot = await firestoreAdmin
+    const queryRange = (start: string, end: string) => answerlatticeFirestoreAdmin
       .collection(DB_COLLECTIONS.CHAT_ANALYTICS)
+      .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
       .where('tId', '==', tId)
       .where('sId', '==', sId)
-      .where('date', '>=', weekStart)
-      .where('date', '<=', weekEnd)
+      .where('date', '>=', start)
+      .where('date', '<=', end)
+      .orderBy('date', 'asc')
+      .limit(WEEKLY_NARRATIVE_DAYS)
       .get();
+    const [snapshot, previousSnapshot] = await Promise.all([
+      queryRange(weekStart, weekEnd),
+      queryRange(previousWeekStart, previousWeekEnd),
+    ]);
 
     if (snapshot.empty) {
       return NextResponse.json({
         status: 'no_data',
-        message: 'No analytics data found for the past week. Please run backfill aggregation first.',
+        message: 'No completed analytics summary is available for the past week.',
       });
     }
 
-    // 4. Aggregate metrics
-    let totalChats = 0;
-    let totalSatisfied = 0;
-    let totalFeedback = 0;
-    let totalMessages = 0;
-    const categories: Record<string, number> = Object.create(null);
-
-    snapshot.forEach((doc: any) => {
-      const data = doc.data();
-      totalChats += normalizeWeeklyNarrativeMetric(data.totalChats);
-      totalSatisfied += normalizeWeeklyNarrativeMetric(data.satisfiedUsers);
-      totalFeedback += normalizeWeeklyNarrativeMetric(data.totalFeedback);
-      totalMessages += normalizeWeeklyNarrativeMetric(data.totalMessages);
-
-      if (data.topQuestions && Array.isArray(data.topQuestions)) {
-        data.topQuestions.slice(0, WEEKLY_NARRATIVE_TOP_QUESTIONS_SCAN_LIMIT).forEach((q: any) => {
-          const category = normalizeWeeklyNarrativeCategory(q?.category);
-          const count = normalizeWeeklyNarrativeMetric(q?.count);
-          if (count > 0) {
-            categories[category] = (categories[category] || 0) + count;
-          }
-        });
+    const parseSnapshot = (input: FirebaseFirestore.QuerySnapshot): AnswerlatticeChatAnalyticsDay[] => {
+      const parsed = input.docs.map((document) => parseAnswerlatticeChatAnalyticsDay({
+        id: document.id,
+        value: document.data(),
+        scope: { tId, sId },
+      }));
+      if (parsed.some((day) => !day)) {
+        throw new Error('weekly_narrative_analytics_contract_invalid');
       }
-    });
+      return parsed.flatMap((day) => day ? [day] : []);
+    };
+    const currentDays = parseSnapshot(snapshot);
+    const previousDays = parseSnapshot(previousSnapshot);
+    if (currentDays.some((day) => !day.sourceComplete)) {
+      return NextResponse.json(
+        { error: 'The weekly analytics summary is still incomplete. Try again after aggregation finishes.' },
+        { status: 409 },
+      );
+    }
 
-    // Find top category
-    let topCategory = 'General';
-    let maxCount = 0;
-    Object.entries(categories).forEach(([cat, count]) => {
-      if (count > maxCount) {
-        topCategory = cat;
-        maxCount = count;
-      }
-    });
-
-    // 5. Calculate comparison with previous week
-    const prevWeekStart = new Date(weekStart);
-    prevWeekStart.setDate(prevWeekStart.getDate() - 7);
-    const prevWeekEnd = new Date(weekEnd);
-    prevWeekEnd.setDate(prevWeekEnd.getDate() - 7);
-
-    const prevSnapshot = await firestoreAdmin
-      .collection(DB_COLLECTIONS.CHAT_ANALYTICS)
-      .where('tId', '==', tId)
-      .where('sId', '==', sId)
-      .where('date', '>=', prevWeekStart.toISOString().split('T')[0])
-      .where('date', '<=', prevWeekEnd.toISOString().split('T')[0])
-      .get();
-
-    let prevTotalChats = 0;
-    let prevTotalSatisfied = 0;
-    let prevTotalFeedback = 0;
-
-    prevSnapshot.forEach((doc: any) => {
-      const data = doc.data();
-      prevTotalChats += normalizeWeeklyNarrativeMetric(data.totalChats);
-      prevTotalSatisfied += normalizeWeeklyNarrativeMetric(data.satisfiedUsers);
-      prevTotalFeedback += normalizeWeeklyNarrativeMetric(data.totalFeedback);
-    });
-
-    const volumeChange = prevTotalChats > 0
-      ? ((totalChats - prevTotalChats) / prevTotalChats) * 100
+    const current = aggregateWeeklyNarrativeDays(currentDays);
+    const previous = aggregateWeeklyNarrativeDays(previousDays);
+    const volumeChange = previous.totalChats > 0
+      ? ((current.totalChats - previous.totalChats) / previous.totalChats) * 100
       : 0;
-
-    const currentSatRate = totalFeedback > 0 ? Math.min((totalSatisfied / totalFeedback) * 100, 100) : 0;
-    const prevSatRate = prevTotalFeedback > 0 ? Math.min((prevTotalSatisfied / prevTotalFeedback) * 100, 100) : 0;
+    const currentSatRate = current.totalFeedback > 0
+      ? (current.totalPositiveFeedback / current.totalFeedback) * 100
+      : 0;
+    const prevSatRate = previous.totalFeedback > 0
+      ? (previous.totalPositiveFeedback / previous.totalFeedback) * 100
+      : 0;
     const satisfactionChange = prevSatRate > 0 ? currentSatRate - prevSatRate : 0;
+    const conversationLabel = current.totalChats === 1 ? 'conversation' : 'conversations';
     const fallbackNarrative: WeeklyNarrativePayload = {
-      narrative: `MenuList reviewed ${totalChats} customer conversations for the week ending ${weekEnd}. The main topic was ${topCategory}, with satisfaction at ${currentSatRate.toFixed(1)}%.`,
+      narrative: `Answerlattice reviewed ${current.totalChats} ${conversationLabel} for the week ending ${weekEnd}. The most frequent question was ${current.topQuestion}, with satisfaction at ${currentSatRate.toFixed(1)}%.`,
       highlights: [
-        `${totalChats} conversations reviewed`,
+        `${current.totalChats} ${conversationLabel} reviewed`,
         `${currentSatRate.toFixed(1)}% satisfaction rate`,
-        `${topCategory} was the most common topic`,
+        `${current.topQuestion} was the most frequent question`,
       ],
       recommendations: [
         'Review the most common customer questions.',
-        'Keep menu and business details up to date.',
+        'Keep canonical answers and product details up to date.',
       ],
     };
 
@@ -328,23 +307,23 @@ export async function generateWeeklyNarrativeLocally(request: NextRequest, sessi
     const prompt = `Generate a concise weekly performance summary for a chat support system.
 
 Weekly Metrics:
-- Total Conversations: ${totalChats}
+- Total Conversations: ${current.totalChats}
 - Satisfaction Rate: ${currentSatRate.toFixed(1)}%
-- Avg Messages/Chat: ${(totalChats > 0 ? totalMessages / totalChats : 0).toFixed(1)}
+- Avg Messages/Chat: ${(current.totalChats > 0 ? current.totalMessages / current.totalChats : 0).toFixed(1)}
 - Volume Change: ${volumeChange > 0 ? '+' : ''}${volumeChange.toFixed(1)}% vs last week
 - Satisfaction Change: ${satisfactionChange > 0 ? '+' : ''}${satisfactionChange.toFixed(1)}% vs last week
-- Top Category: ${topCategory}
+- Most Frequent Question: ${current.topQuestion}
 
 Generate a JSON response with:
 {
   "narrative": "2-3 sentence executive summary",
   "highlights": ["3-5 key achievements or notable changes"],
   "recommendations": ["2-3 actionable recommendations"]
-}`;
+    }`;
 
     const operationStart = Date.now();
-    const aiModel = GEMINI_MODELS.TEXT_GEN;
-    const geminiResult = await genAIClient.models.generateContent({
+    const aiModel = ANSWERLATTICE_TEXT_MODEL;
+    const geminiResult = await answerlatticeGenAIClient.models.generateContent({
       model: aiModel,
       contents: prompt,
     });
@@ -355,6 +334,7 @@ Generate a JSON response with:
 
     // 7. Save to Firestore
     const narrative = {
+      pId: PRODUCT_IDS.ANSWERLATTICE,
       tId,
       sId,
       weekStart,
@@ -365,22 +345,24 @@ Generate a JSON response with:
       keyMetrics: {
         volumeChange,
         satisfactionChange,
-        topCategory,
+        topCategory: current.topQuestion,
       },
-      generatedAt: new Date(),
-      promptVersion: 'v1-local',
+      generationMode: 'model_assisted',
+      generatedAt: FieldValue.serverTimestamp(),
+      promptVersion: 'v2-answerlattice-manual',
+      sourceHash: FieldValue.delete(),
     };
 
-    await firestoreAdmin
+    await answerlatticeFirestoreAdmin
       .collection(DB_COLLECTIONS.INSIGHTS)
-      .doc(tId)
+      .doc(String(tId))
       .collection(DB_COLLECTIONS.STORES)
-      .doc(sId)
+      .doc(String(sId))
       .collection(DB_COLLECTIONS.AI)
       .doc('weekly')
       .set(narrative, { merge: true });
 
-    recordAiOperationForSession(session, {
+    recordAnswerlatticeAiOperation({ tId, sId }, {
       action: AI_ACTIONS_TYPES.WEEKLY_NARRATIVE,
       billingMode: 'internal',
       clientResponse: {
@@ -393,7 +375,11 @@ Generate a JSON response with:
       geminiResponse: geminiResult,
       model: aiModel,
       processingTime: Date.now() - operationStart,
-      source: 'weekly_narrative_local',
+      source: 'answerlattice_weekly_narrative_manual',
+    }, {
+      id: session?.uId || session?.user?.id,
+      name: session?.user?.name,
+      email: session?.user?.email,
     }).catch((logError) => {
       logRuntimeFailure('weekly_narrative_operation_log_failed', logError, getWeeklyNarrativeRouteLogContext(session, {
         highlightsCount: parsed.highlights?.length || 0,
@@ -422,7 +408,20 @@ Generate a JSON response with:
       },
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
+    if (isAIProviderRateLimitError(error)) {
+      const retryAfter = getAIProviderRetryAfter(error) || 60;
+      return NextResponse.json(
+        { error: 'Weekly digest generation is temporarily busy. Please try again later.', retryAfter },
+        {
+          status: 429,
+          headers: {
+            'Cache-Control': 'no-store',
+            'Retry-After': String(retryAfter),
+          },
+        },
+      );
+    }
     logRuntimeFailure('weekly_narrative_local_generation_failed', error, getWeeklyNarrativeRouteLogContext(sessionForLog, {
       weekEnd: weekEndForLog,
       weekStart: weekStartForLog,

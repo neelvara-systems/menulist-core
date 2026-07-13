@@ -8,11 +8,12 @@ import { PERMISSIONS } from '@constant/permissions';
 import GlobalLanguagesList from '@data/languages';
 import { getSuggestionValue } from '@data/shared/extractedBusinessProfile';
 import { assertStoreUpdateSucceeded, updateStore } from '@database/stores';
-import { assertProjectUpdateSucceeded, updateProjectWithoutLoader, uploadFile } from '@database/projects';
+import { appendImageBatchProjectSelections, assertProjectUpdateSucceeded, updateProjectWithoutLoader, uploadFile } from '@database/projects';
 import { useImageBatchJobListener } from '@hook/useImageBatchJobListener';
 import useMenuProcessingJob from '@hook/useMenuProcessingJob';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
+import { appendImageBatchSelectionsToProject } from '@lib/ai/imageBatchProjectSelection';
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { getDismissedMenuProcessingJobIds, clearExpiredMenuProcessingJobDismissals } from '@lib/extraction/menuProcessingDismissal';
 import { runComparisonEngine } from '@lib/extraction/comparisonEngine';
@@ -623,6 +624,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
     const persistTimerRef = useRef<number | null>(null);
     const retryTimerRef = useRef<number | null>(null);
     const isPersistingRef = useRef(false);
+    const persistenceIdleWaitersRef = useRef<Array<() => void>>([]);
     const menuUpdateGenerationRef = useRef(0);
     const projectImageAutoGenerationAttemptRef = useRef<Set<string>>(new Set());
     const [itemInheritanceStates, setItemInheritanceStates] = useState<Record<string, InheritanceState>>({});
@@ -989,6 +991,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
             }
         } finally {
             isPersistingRef.current = false;
+            persistenceIdleWaitersRef.current.splice(0).forEach((resolve) => resolve());
 
             if (
                 pendingMenuRef.current &&
@@ -1003,6 +1006,13 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
             }
         }
     }, [getPersistableMenuProjectWithLinkedOverrides, replaceProjectInList, t]);
+
+    const waitForMenuPersistenceIdle = useCallback(async () => {
+        if (!isPersistingRef.current) return;
+        await new Promise<void>((resolve) => {
+            persistenceIdleWaitersRef.current.push(resolve);
+        });
+    }, []);
 
     const queueMenuPersist = useCallback((updatedProject: any) => {
         if (!updatedProject?.projectId) return;
@@ -4709,6 +4719,43 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                         }}
                         initialBatchItemIds={imageModalInitialBatchItemIds}
                         onImageUpload={handleModalImageUpload}
+                        onBatchImagesPersist={async (selections) => {
+                            await waitForMenuPersistenceIdle();
+                            const pendingProject = pendingMenuRef.current;
+                            if (pendingProject?.projectId) {
+                                await persistMenuProjectImmediately(pendingProject);
+                            }
+                            const sourceProject = menuDataRef.current;
+                            if (!sourceProject?.projectId) {
+                                throw new Error('mobile_menu_image_batch_project_missing');
+                            }
+
+                            const savedProject = await appendImageBatchProjectSelections({
+                                projectId: sourceProject.projectId,
+                                masterProjectId: sourceProject.masterProjectId,
+                                selections,
+                            });
+                            const updatedDisplayProject = appendImageBatchSelectionsToProject(
+                                sourceProject,
+                                selections,
+                            );
+
+                            if (sourceProject.masterProjectId) {
+                                const rawSavedProject = removeObjRef(savedProject);
+                                rawMenuProjectRef.current = rawSavedProject;
+                                persistedMenuRef.current = rawSavedProject;
+                                persistedLocalSnapshotRef.current = JSON.stringify(rawSavedProject);
+                                menuDataRef.current = updatedDisplayProject;
+                                setMenuData(updatedDisplayProject);
+                                replaceProjectInList(rawSavedProject);
+                            } else {
+                                syncSavedMenuProject({
+                                    ...sourceProject,
+                                    ...savedProject,
+                                    files: updatedDisplayProject.files,
+                                });
+                            }
+                        }}
                         onProjectDataUpdate={async (updatedProject) => {
                             if (!updatedProject.projectId) return;
                             const projectToSave = getPersistableMenuProjectWithLinkedOverrides(updatedProject);

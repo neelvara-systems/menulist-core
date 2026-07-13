@@ -79,12 +79,12 @@ export interface FirestoreSubscriptionDoc {
   currency: Currency;
 
   // --- CRITICAL: Billing Cycle Dates ---
-  cycleStartDate: Timestamp;        // NEW: The start date of the current billing period.
-  cycleEndDate: Timestamp;          // NEW: The end date of the current billing period.
-  renewsOn: Timestamp;              // NEW: When the next charge will occur. Same as cycleEndDate.
-  subscriptionStartDate: Timestamp;     // NEW: When the subscription will start.
-  subscriptionEndDate: Timestamp;     // NEW: When the subscription will end.
-  pastDueSinceAt: Timestamp;        // NEW: When the subscription was past due.
+  cycleStartDate: Timestamp | null;        // Null until the provider starts the first billing cycle.
+  cycleEndDate: Timestamp | null;          // Null until the provider supplies the current cycle end.
+  renewsOn: Timestamp | null;              // Null while a pending subscription has no next charge.
+  subscriptionStartDate: Timestamp | null; // Null until the subscription is authenticated or active.
+  subscriptionEndDate: Timestamp | null;   // Null until the provider supplies an end boundary.
+  pastDueSinceAt: Timestamp | null;        // Set only while the subscription is past due.
 
   // --- CRITICAL: Credit Management System ---
   monthlyCreditsAllowance: number;  // NEW: The fixed number of credits this plan grants per cycle. Set ONCE.
@@ -94,6 +94,13 @@ export interface FirestoreSubscriptionDoc {
   carryForwardCredits?: number;      // Server-computed credits moved during a subscription upgrade.
   carryForwardFromSubscriptionId?: string;
   carryForwardAppliedAt?: Timestamp;
+  upgradeReplacementSubscriptionId?: string;
+  founderMonitorReplacementForSubscriptionId?: string;
+  founderMonitorReplacementMrrPaise?: number;
+  founderMonitorReplacementPlanId?: string | null;
+  founderMonitorReplacementPlanName?: string | null;
+  /** Durable Functions retry marker cleared only after entitlement/cache sync succeeds. */
+  billingEntitlementSyncPending?: boolean;
 
   totalPaymentsNeededCount: number;
   totalPaymentsMadeCount: number;
@@ -132,12 +139,14 @@ export interface FirestoreSubscriptionDoc {
     event: string;
     timestamp: Timestamp;
   } | null;
+  /** Recent provider event keys used to make partial-failure retries idempotent. */
+  webhookEventHistory?: string[];
 
   // --- Reseller Dashboard Fields ---
   // @see __docs__/reseller-dashboard/reseller-dashboard_impl.md §2.1
   billingMode?: 'auto' | 'manual';           // 'auto' = Razorpay recurring, 'manual' = reseller offline
   validUntil?: Timestamp | null;             // For manual billing only: when access expires
-  onboardingSource?: 'WEBSITE_ONBOARDING' | 'RESELLER_ONBOARDING' | 'MESSAGING_ONBOARDING' | 'PUBLIC_MENU_ENTRY';  // How this store was onboarded
+  onboardingSource?: 'WEBSITE_ONBOARDING' | 'RESELLER_ONBOARDING' | 'MESSAGING_ONBOARDING' | 'PUBLIC_MENU_ENTRY' | 'ANSWERLATTICE_ONBOARDING';  // How this store was onboarded
   resellerId?: string | null;                // User ID of the reseller who onboarded this store
   resellerProfileId?: string | null;         // resellerProfiles doc used for caps/stats when present
   resellerPricingTier?: string | null;       // 'FOUNDER_400' | 'FOUNDER_500' | 'STANDARD'

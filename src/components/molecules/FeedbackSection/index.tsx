@@ -11,6 +11,7 @@ interface FeedbackSectionProps {
     dislikes: number;
     feedbackGiven: FeedbackType | null;
     isFeedbackModalVisible: boolean;
+    isSubmitting?: boolean;
     onFeedback: (type: FeedbackType) => void;
     onFeedbackSubmit: (comment: string) => void;
     onModalClose: () => void;
@@ -26,6 +27,7 @@ const FeedbackSection: React.FC<FeedbackSectionProps> = ({
     dislikes,
     feedbackGiven,
     isFeedbackModalVisible,
+    isSubmitting = false,
     onFeedback,
     onFeedbackSubmit,
     onModalClose,
@@ -53,7 +55,8 @@ const FeedbackSection: React.FC<FeedbackSectionProps> = ({
                     shape="round"
                     icon={<LuThumbsUp />}
                     onClick={() => onFeedback('like')}
-                    disabled={feedbackGiven === 'dislike'}
+                    disabled={isSubmitting || feedbackGiven === 'dislike'}
+                    loading={isSubmitting && feedbackGiven !== 'dislike'}
                     type={feedbackGiven === 'like' ? 'primary' : 'default'}
                     aria-label={`Like this ${contentLabel}`}
                     title={feedbackGiven === 'like' ? 'Click to remove your like' : `Like this ${contentLabel}`}
@@ -64,7 +67,8 @@ const FeedbackSection: React.FC<FeedbackSectionProps> = ({
                     shape="round"
                     icon={<LuThumbsDown />}
                     onClick={() => onFeedback('dislike')}
-                    disabled={feedbackGiven === 'like'}
+                    disabled={isSubmitting || feedbackGiven === 'like'}
+                    loading={isSubmitting && feedbackGiven !== 'like'}
                     type={feedbackGiven === 'dislike' ? 'primary' : 'default'}
                     danger={feedbackGiven === 'dislike'}
                     aria-label={`Dislike this ${contentLabel}`}
@@ -80,10 +84,10 @@ const FeedbackSection: React.FC<FeedbackSectionProps> = ({
                 open={isFeedbackModalVisible}
                 onCancel={onModalClose}
                 footer={[
-                    <Button key="back" onClick={onModalClose}>
+                    <Button key="back" onClick={onModalClose} disabled={isSubmitting}>
                         Skip
                     </Button>,
-                    <Button key="submit" type="primary" onClick={() => form.submit()}>
+                    <Button key="submit" type="primary" onClick={() => form.submit()} loading={isSubmitting} disabled={isSubmitting}>
                         Send
                     </Button>,
                 ]}

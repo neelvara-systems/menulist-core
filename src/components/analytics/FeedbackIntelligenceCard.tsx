@@ -1,6 +1,6 @@
 /**
  * FeedbackIntelligenceCard Component
- * Displays AI-generated feedback analysis
+ * Displays source-backed feedback analysis.
  */
 
 import React from 'react';
@@ -91,7 +91,7 @@ export const FeedbackIntelligenceCard: React.FC<FeedbackIntelligenceCardProps> =
           <Space>
             <RobotOutlined style={{ color: token.colorPrimary }} />
             <span>Feedback Intelligence</span>
-            <Tag color="purple">Gemini 2.5 Flash</Tag>
+            <Tag color="blue">Source-backed</Tag>
           </Space>
         }
       >

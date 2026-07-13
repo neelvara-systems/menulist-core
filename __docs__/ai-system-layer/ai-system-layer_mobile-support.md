@@ -1,8 +1,10 @@
 # AI System Layer — Mobile Support Assessment
 
 **Feature:** Centralized AI Infrastructure for MenuList  
-**Status:** 📝 DOCUMENTED  
-**Last Updated:** June 29, 2026
+**Status:** Source-backed mobile assessment — not current device or release certification
+**Last Updated:** July 10, 2026
+
+> **Launch boundary:** Not current launch certification or deploy approval. This document records source-gated AI System Layer evidence only. Current MenuList approval still requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:ai-accounting`, `npm run verify:functions-deploy-preflight`, `npm run verify:menu-extraction-pipeline`, scoped Firebase deploy evidence for affected MenuList Functions, target Vercel deploy evidence for affected app routes, provider smoke with target-specific key/model/quota configuration, SAFE_MODE/rate-limit/accounting/provider-health smoke, authenticated browser/device QA for affected owner/platform surfaces, and production-host smoke. Answerlattice retains separate doctrine, credentials, Firebase target, billing/cost evidence, deploy approval, and release certification; this document cannot authorize an Answerlattice deploy or release.
 
 ---
 
@@ -41,4 +43,4 @@ N/A — Backend infrastructure only. Inherits from existing Cloud Functions cont
 
 ---
 
-_Document Status: 📝 DOCUMENTED — No mobile UI needed_
+_Document Status: Source-backed mobile assessment; no direct mobile UI, and not current device or release certification._

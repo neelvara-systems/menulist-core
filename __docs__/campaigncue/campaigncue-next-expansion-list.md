@@ -5,7 +5,7 @@
 
 ## Implemented From Market Gap Pass
 
-Daily Campaign Desk is no longer a parked expansion. It is implemented under [daily-campaign-desk](./daily-campaign-desk/README.md) as the owner-first first screen: deterministic Campaign Decision Engine recommendation, why-this evidence, Missing Input Inbox, ready-pack controls, twelve SMB recipes, first-class campaign pack review, structured manual delivery cards, local visibility cues, multi-format output list, print/photo tasks, asset reuse/CueLayers entry, and structured one-tap result memory. It adds no new overview read path.
+Daily Campaign Desk and Campaign Operating Loop are no longer parked expansions. They are implemented under [daily-campaign-desk](./daily-campaign-desk/README.md) and [campaign-operating-loop](./campaign-operating-loop/README.md): deterministic recommendations, Owner Pulse, commercial gates, fourteen SMB action recipes, Missing Input Inbox, freshness-aware packs, manual delivery/staff tasks, local presence, protected-language handoff, CueLayers reuse, and owner-reported result receipts. They add no new overview read path or collection.
 
 Now implemented and not future scope:
 
@@ -16,6 +16,13 @@ Now implemented and not future scope:
 - canonical `CampaignCueOutputPack` and browser-local Campaign Pack ZIP download
 - local visibility tab and `cue_local_visibility_refresh` opportunity
 - compact `campaign.resultMemory` and repeat/adjust opportunities
+- Owner Pulse and commercial policy inside the existing default Business Brain/source snapshot batch
+- pack source-hash/expiry receipt with one conditional current-snapshot read before public-use actions
+- honest review-request and owner-managed return-customer recipes without review manipulation, contact import, or direct send
+- Local Presence Passport and protected local-language handoff without provider connection or automatic translation
+- staff assignee/task metadata on the existing schedule document
+- bounded result receipt metrics and deterministic one-variable learning on the existing campaign document
+- bounded Pattern Cue with one current workspace-level example, raw-note non-persistence, original hook options, reel/UGC projection, and pattern-hash recheck without a new collection or overview read
 
 ## Expansion Candidates
 
@@ -38,3 +45,5 @@ Now implemented and not future scope:
 ## Non-Expansion Guardrail
 
 Do not expand CampaignCue into a generic design editor, generic social scheduler, email/SMS blast platform, AI-avatar UGC factory, or ad autopilot. Those categories are crowded, expensive, and policy-heavy. CampaignCue should keep the wedge: source-backed local campaign packs with trust checks, export/download delivery, approvals, and confidence-labeled learning.
+
+Pattern Cue does not change this boundary. Recurring creator-account monitoring, scraping, viral alerts, copied scripts, synthetic-customer output, and creator-marketplace operations remain rejected.

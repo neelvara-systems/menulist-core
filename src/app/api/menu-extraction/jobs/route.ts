@@ -13,6 +13,7 @@ import {
   MENU_LINK_IMPORT_MIME_TYPES,
   normalizeProjectJobSource,
 } from "@data/shared/menuExtractionJob";
+import { findDuplicateMenuExtractionFileUids } from "@data/shared/menuExtractionIntegrity";
 import { MENU_EXTRACTION_PROJECT_DOCUMENT_SIZE_LIMITS } from "@data/shared/menuExtractionProjectSize";
 import { MenuIntakeFileInput } from "@data/shared/menuIntakeIdentity";
 import { firestoreAdmin, storageAdmin } from "@lib/firebase/firebaseAdmin";
@@ -31,6 +32,10 @@ import {
   runMenuIntakeIdentityCheck,
 } from "@lib/menu-extraction/menuIntakeIdentityServer";
 import { normalizeMenuExtractionJobId } from "@lib/menu-extraction/jobIdBoundary";
+import {
+  createOrReuseActiveMenuExtractionJob,
+  MENU_EXTRACTION_ACTIVE_JOB_STATUSES,
+} from "@lib/menu-extraction/activeJobClaim";
 import { normalizeMenuExtractionProjectId } from "@lib/menu-extraction/projectIdBoundary";
 import { checkSafeMode } from "@lib/ops/safeMode";
 import { checkRateLimit } from "@lib/rateLimit";
@@ -44,7 +49,7 @@ import { verifyTenantAccess, withAuth } from "src/middleware/auth";
 import { hashPublicRateLimitValue } from "src/middleware/publicApi";
 import { z } from "zod";
 
-const ACTIVE_JOB_STATUSES = ["pending", "processing", "preview_ready"];
+const ACTIVE_JOB_STATUSES = MENU_EXTRACTION_ACTIVE_JOB_STATUSES;
 const MENU_EXTRACTION_JOB_MAX_BODY_BYTES = 128 * 1024;
 const MENU_LINK_IMPORT_MIME_TYPE_SET = new Set<string>(MENU_LINK_IMPORT_MIME_TYPES);
 const OWNER_UPLOAD_DEDUPE_VERSION = 1;
@@ -69,7 +74,7 @@ const getMenuExtractionJobRouteLogContext = (params: {
 });
 
 const JobFileSchema = z.object({
-  uid: z.string().min(1).max(120),
+  uid: z.string().min(1).max(120).refine((value) => value.trim() === value),
   name: z.string().min(1).max(240),
   size: z.number().min(0).max(MAX_MENU_INTAKE_PREFLIGHT_FILE_SIZE),
   type: z.string().min(1).max(120),
@@ -101,6 +106,14 @@ const RequestSchema = z.object({
   retriedFromJobId: MenuExtractionJobIdSchema.optional(),
   retryCount: z.number().int().min(0).max(10).optional(),
   targetLanguages: z.array(TargetLanguageSchema).min(1).max(12),
+}).superRefine((value, context) => {
+  if (findDuplicateMenuExtractionFileUids(value.files).length > 0) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Uploaded files must have unique identities.",
+      path: ["files"],
+    });
+  }
 });
 
 function requireMenuExtractionRetryJobId(value: unknown): string {
@@ -245,6 +258,7 @@ async function findExistingActiveJob(projectId: string, userId: string): Promise
     .where("projectId", "==", projectId)
     .where("uId", "==", userId)
     .where("status", "in", ACTIVE_JOB_STATUSES)
+    .limit(10)
     .get();
 
   if (snapshot.empty) return null;
@@ -398,6 +412,8 @@ async function findReusableCompletedOwnerJob(params: {
     .where("projectId", "==", params.projectId)
     .where("uId", "==", params.userId)
     .where("status", "==", "completed")
+    .where("sourceFingerprint", "==", params.fingerprint)
+    .orderBy("completedAt", "desc")
     .limit(50)
     .get();
 
@@ -750,7 +766,6 @@ export const POST = withAuth(async (request: NextRequest, session) => {
       });
     }
 
-    const jobRef = firestoreAdmin.collection(DB_COLLECTIONS.MENU_IMAGE_PROCESSING_JOBS).doc();
     const now = Timestamp.now();
     const sourceMetadata = {
       ...(retryContext?.sourceMetadata || {}),
@@ -774,7 +789,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
       } : {}),
     };
 
-    await jobRef.set({
+    const jobData = {
       action: validation.data.action || AI_ACTIONS_TYPES.IMAGE_PROCESSING,
       createdAt: now,
       currentStep: "Queued",
@@ -809,11 +824,49 @@ export const POST = withAuth(async (request: NextRequest, session) => {
       targetLanguages,
       uId: ids.uId,
       updatedAt: now,
+    };
+    const jobCreation = await createOrReuseActiveMenuExtractionJob({
+      db: firestoreAdmin,
+      jobData,
+      projectId,
     });
+
+    if (!jobCreation.created) {
+      if (!validation.data.retriedFromJobId && jobSource === MENU_EXTRACTION_SOURCES.OWNER_UPLOAD) {
+        await deleteUnreferencedOwnerUploadFiles({
+          files: requestedFiles,
+          ids,
+          reason: "concurrent_active_job_reuse",
+          reusedJobData: jobCreation.match.data,
+        });
+      }
+      if (String(jobCreation.match.data.uId || "") !== ids.uId) {
+        return NextResponse.json(
+          { success: false, error: "Another menu extraction is already running." },
+          { status: 409 },
+        );
+      }
+      return NextResponse.json({
+        success: true,
+        jobId: jobCreation.match.id,
+        projectId,
+        reusedExistingJob: true,
+      });
+    }
+
+    if (!validation.data.retriedFromJobId && jobSource === MENU_EXTRACTION_SOURCES.OWNER_UPLOAD) {
+      const acceptedUids = new Set(filesForJob.map((file) => file.uid));
+      const excludedFiles = requestedFiles.filter((file) => !acceptedUids.has(file.uid));
+      await deleteUnreferencedOwnerUploadFiles({
+        files: excludedFiles,
+        ids,
+        reason: "identity_filtered_files",
+      });
+    }
 
     logMenuProcessingDiagnostic("menu_extraction_owner_job_created", {
       ...getMenuExtractionJobRouteLogContext({
-        jobId: jobRef.id,
+        jobId: jobCreation.match.id,
         projectId,
         sId: ids.sId,
         tId: ids.tId,
@@ -825,7 +878,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
     return NextResponse.json({
       success: true,
-      jobId: jobRef.id,
+      jobId: jobCreation.match.id,
       projectId,
       identityCheck,
     });

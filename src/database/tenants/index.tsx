@@ -1,15 +1,46 @@
 import { DB_COLLECTIONS } from "@constant/database";
-import { mergeStoreSummaryFields, updateTenantsCountInPlatformSummary } from "@database/platformSummary";
+import { reserveNextPlatformEntityId } from "@database/platformSummary";
 import { deleteFileByUrl } from "@database/storage/deleteFromStorage";
 import uploadBase64ToStorage from "@database/storage/uploadBase64ToStorage";
-import { collection, getDocs, query, where } from "@firebase/firestore";
+import { collection, getDocs, limit, query, where } from "@firebase/firestore";
 import { requestBodyComposer } from "@lib/apiHelper";
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
-import { revalidatePublicClientCache } from "@lib/cache/publicClientCache";
+import { AUTH_BROWSER_REQUEST_POLICY } from "@lib/auth/browserRequestPolicy";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
-import { doc, getDoc, setDoc, updateDoc, writeBatch } from "firebase/firestore";
+import { readJsonResponseWithLimit } from "@lib/security/boundedResponseBody";
+import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 
 const COLLECTION = DB_COLLECTIONS.TENANTS;
+const TENANT_NAME_RESPONSE_MAX_BYTES = 32 * 1024;
+
+const updateTenantNameAtomically = async (params: {
+    name: string;
+    storesList?: unknown[];
+    tenantId: string | number;
+}): Promise<void> => {
+    const storesList = Array.isArray(params.storesList)
+        ? params.storesList
+            .filter((store): store is Record<string, unknown> => Boolean(store) && typeof store === 'object' && !Array.isArray(store))
+            .map((store) => ({ name: store.name, storeId: store.storeId }))
+        : undefined;
+    const response = await fetch('/api/tenants/name', {
+        ...AUTH_BROWSER_REQUEST_POLICY,
+        body: JSON.stringify({ name: params.name, storesList, tenantId: params.tenantId }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+    });
+    const payload = await readJsonResponseWithLimit<unknown>(response, TENANT_NAME_RESPONSE_MAX_BYTES);
+    if (
+        !response.ok
+        || !payload
+        || typeof payload !== 'object'
+        || Array.isArray(payload)
+        || (payload as { success?: unknown }).success !== true
+        || String((payload as { tenantId?: unknown }).tenantId || '') !== String(params.tenantId)
+    ) {
+        throw new Error('tenant_name_update_rejected');
+    }
+};
 
 const getCollectionRef = () => {
     return collection(firebaseClient, COLLECTION)
@@ -33,16 +64,13 @@ export const getAllTenants = async () => {
     );
 }
 
-export const getTenantByEmail = (email: string) => {
-    return new Promise(async (res, rej) => {
-        const q = query(getCollectionRef(), where("email", "==", email));
-        const querySnapshot = await getDocs(q);
-        if (querySnapshot.empty) {
-            res(null);
-        } else {
-            querySnapshot.forEach(doc => res({ ...doc.data(), id: doc.id }));
-        }
-    })
+export const getTenantByEmail = async (email: string) => {
+    const q = query(getCollectionRef(), where("email", "==", email), limit(1));
+    const querySnapshot = await getDocs(q);
+    if (querySnapshot.empty) return null;
+
+    const tenantDoc = querySnapshot.docs[0];
+    return { ...tenantDoc.data(), id: tenantDoc.id };
 }
 
 export const readTenantById = async (id: number) => {
@@ -71,6 +99,9 @@ export const addTenant = async (data: any, from: string = "") => {
 
             delete data.imageToUpdate;
             delete data.imageType;
+            if (from !== "onboarding") {
+                data.tenantId = await reserveNextPlatformEntityId('tenant');
+            }
             const docId = data.tenantId//which is tenantId
             const docRef = await getDocRef(`${docId}`);
 
@@ -87,10 +118,7 @@ export const addTenant = async (data: any, from: string = "") => {
                 data.logo = logoUrl;
             }
             data.storesList = [];
-            await setDoc(docRef, await requestBodyComposer(data));
-            if (from != "onboarding") {
-                await updateTenantsCountInPlatformSummary()
-            }
+            await setDoc(docRef, await requestBodyComposer(data, { isNew: true }));
             return ({ ...data, id: docId })
         },
         data,
@@ -143,35 +171,20 @@ export const updateTenant = async (data: any) => {
                 const sourceStoresList = Array.isArray(data.storesList)
                     ? data.storesList
                     : currentTenantData?.storesList;
-                if (Array.isArray(sourceStoresList)) {
-                    data.storesList = sourceStoresList.map((store: any) => ({
-                        ...store,
-                        tenantName: nextTenantName,
-                    }));
-                }
+                await updateTenantNameAtomically({
+                    name: nextTenantName,
+                    storesList: Array.isArray(sourceStoresList) ? sourceStoresList : undefined,
+                    tenantId: docId,
+                });
             }
-            const composedData = await requestBodyComposer(data);
-            await updateDoc(collectionDocRef, composedData);
-
+            const directTenantUpdate = { ...data };
             if (shouldPropagateTenantName) {
-                const storesRef = collection(firebaseClient, DB_COLLECTIONS.STORES);
-                const storesQuery = query(storesRef, where("tenantId", "==", docId));
-                const storesSnapshot = await getDocs(storesQuery);
-
-                if (!storesSnapshot.empty) {
-                    const batch = writeBatch(firebaseClient);
-                    const storeIds: Array<string | number> = [];
-                    storesSnapshot.forEach((storeDoc) => {
-                        const storeId = storeDoc.data()?.storeId || storeDoc.id;
-                        storeIds.push(storeId);
-                        batch.update(storeDoc.ref, { tenantName: nextTenantName });
-                    });
-                    await batch.commit();
-                    await Promise.all(storeIds.map(async (storeId) => {
-                        await mergeStoreSummaryFields(storeId, { tenantName: nextTenantName });
-                        await revalidatePublicClientCache(storeId, "updateTenantName");
-                    }));
-                }
+                delete directTenantUpdate.name;
+                delete directTenantUpdate.storesList;
+            }
+            if (Object.keys(directTenantUpdate).length > 0) {
+                const composedData = await requestBodyComposer(directTenantUpdate, { isNew: false });
+                await updateDoc(collectionDocRef, composedData);
             }
             return data;
         },
@@ -196,23 +209,4 @@ export function assertTenantUpdateSucceeded(
     if (String(savedTenantId) !== String(expectedTenantId)) {
         throw new Error(rejectionCode);
     }
-}
-
-export function assertTenantsStoresListUpdateSucceeded(
-    result: unknown,
-    rejectionCode = 'tenant_stores_list_update_rejected',
-): asserts result is true {
-    if (result === true) return;
-    throw new Error(rejectionCode);
-}
-
-export const updateTenantsStoreslist = async (data) => {
-    return await apiCallComposer(
-        async () => {
-            await setDoc(await getDocRef(data.tenantId), { "storesList": data.storesList }, { merge: true });
-            return true
-        },
-        data,
-        "updateTenantsStoreslist"
-    );
 }

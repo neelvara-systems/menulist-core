@@ -2,7 +2,7 @@
 
 **Status:** ✅ IMPLEMENTED
 **Created:** February 20, 2026  
-**Last Updated:** May 1, 2026
+**Last Updated:** July 13, 2026
 **Audience:** CEO, PM, Non-developers
 
 ---
@@ -77,10 +77,10 @@ This takes 5-10 minutes and requires context-switching between 4 tools. The ops 
 
 ## Non-Functional Requirements
 
-- **Access:** Superadmin only (platform role check)
+- **Access:** Superadmin only; signed platform admission plus exact current persisted role/lifecycle/identity/revocation verification on high-risk ops APIs
 - **Data loading:** Fetch-on-open, no real-time listeners, manual refresh button
 - **Design:** Numeric blocks only, no charts, no graphs (Lean v1)
-- **Cost:** ~5-10 Firestore reads per page load (pre-aggregated data where possible)
+- **Cost:** Core `/ops` load stays manually bounded. Linked notification monitors add one direct current-user authorization read and one bounded recent-window scan; their counts never aggregate over collection history.
 - **Not in sidebar:** Direct URL access only (`/ops`)
 
 ---

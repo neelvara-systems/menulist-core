@@ -1,38 +1,110 @@
 import { DB_COLLECTIONS } from "@constant/database";
-import { PricingPlan } from "@data/common";
+import { PlanType, PricingPlan } from "@data/common";
 import { collection, getDoc, getDocs, query, where } from "@firebase/firestore";
-import { requestBodyComposer } from "@lib/apiHelper";
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
-import { addDoc, doc, serverTimestamp, updateDoc } from "firebase/firestore";
+import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
+import { addDoc, doc, runTransaction, serverTimestamp } from "firebase/firestore";
 
 const COLLECTION = DB_COLLECTIONS.PRICING_PLANS;
+const PLAN_NAME_MAX_LENGTH = 120;
+const PLAN_DESCRIPTION_MAX_LENGTH = 1000;
+const PLAN_FEATURE_MAX_LENGTH = 240;
+const PLAN_FEATURE_MAX_ITEMS = 50;
+const PLAN_PROVIDER_ID_MAX_LENGTH = 128;
+
+export type PricingPlanMutationInput = Omit<PricingPlan, 'createdOn' | 'id' | 'modifiedOn' | 'version'>;
+
+const normalizeRequiredString = (value: unknown, maxLength: number): string | null => {
+    if (typeof value !== 'string') return null;
+    const normalized = value.trim();
+    return normalized && normalized.length <= maxLength ? normalized : null;
+};
+
+const normalizeOptionalString = (value: unknown, maxLength: number): string | null | undefined => {
+    if (value === undefined || value === null || value === '') return undefined;
+    return normalizeRequiredString(value, maxLength);
+};
+
+const normalizePricingPlanFields = (value: unknown): PricingPlanMutationInput | null => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    const plan = value as Partial<PricingPlan>;
+    const name = normalizeRequiredString(plan.name, PLAN_NAME_MAX_LENGTH);
+    const description = normalizeRequiredString(plan.description, PLAN_DESCRIPTION_MAX_LENGTH);
+    const razorpayPlanId = normalizeOptionalString(plan.razorpayPlanId, PLAN_PROVIDER_ID_MAX_LENGTH);
+    const features = Array.isArray(plan.features)
+        ? plan.features.map((feature) => normalizeRequiredString(feature, PLAN_FEATURE_MAX_LENGTH))
+        : [];
+    if (
+        !name
+        || !description
+        || typeof plan.price !== 'number'
+        || !Number.isSafeInteger(plan.price)
+        || plan.price < 0
+        || (plan.periodicity !== 'MONTH' && plan.periodicity !== 'YEAR')
+        || (plan.currency !== 'USD' && plan.currency !== 'INR')
+        || !Array.isArray(plan.features)
+        || plan.features.length > PLAN_FEATURE_MAX_ITEMS
+        || features.some((feature) => feature === null)
+        || typeof plan.active !== 'boolean'
+        || (plan.planType !== 'B2C' && plan.planType !== 'B2B')
+        || razorpayPlanId === null
+        || (plan.recommended !== undefined && typeof plan.recommended !== 'boolean')
+    ) {
+        return null;
+    }
+
+    return {
+        active: plan.active,
+        currency: plan.currency,
+        description,
+        features: features as string[],
+        name,
+        periodicity: plan.periodicity,
+        planType: plan.planType,
+        price: plan.price,
+        ...(plan.recommended !== undefined ? { recommended: plan.recommended } : {}),
+        ...(razorpayPlanId !== undefined ? { razorpayPlanId } : {}),
+    };
+};
 
 const getCollectionRef = () => {
     return collection(firebaseClient, COLLECTION)
 }
 
-const getDocRef = (docId: any) => {
+const getDocRef = (docId: string) => {
     return doc(firebaseClient, `${COLLECTION}`, docId)
 }
+
+export const normalizePricingPlan = (value: unknown, id: string): PricingPlan | null => {
+    const fields = normalizePricingPlanFields(value);
+    const version = value && typeof value === 'object' && !Array.isArray(value)
+        ? (value as Partial<PricingPlan>).version
+        : null;
+    if (!fields || !isValidFirestoreDocumentId(id) || !Number.isSafeInteger(version) || Number(version) < 1) {
+        return null;
+    }
+    return { ...fields, id, version: Number(version) };
+};
 
 export const getAllPricingPlans = async () => {
     return await apiCallComposer(
         async () => {
             const querySnapshot = await getDocs(getCollectionRef());
-            const list = [];
-            querySnapshot.forEach((doc) => {
-                list.push({ ...doc.data(), id: doc.id })
-            });
-            return (list);
+            return querySnapshot.docs
+                .map((planDoc) => normalizePricingPlan(planDoc.data(), planDoc.id))
+                .filter((plan): plan is PricingPlan => plan !== null);
         },
         "getAllPricingPlans"
     );
 }
 
-export const getActivePricingPlans = async (planType?: string) => {
+export const getActivePricingPlans = async (planType?: PlanType) => {
     return await apiCallComposer(
         async () => {
+            if (planType !== undefined && planType !== 'B2C' && planType !== 'B2B') {
+                throw new Error('Invalid pricing plan type');
+            }
             // Create base query for active plans
             let queryRef = query(getCollectionRef(), where("active", "==", true));
 
@@ -45,11 +117,9 @@ export const getActivePricingPlans = async (planType?: string) => {
             if (querySnapshot.empty) {
                 return ([]);
             } else {
-                const list: any = [];
-                querySnapshot.forEach((doc) => {
-                    list.push({ ...doc.data(), id: doc.id })
-                });
-                return (list)
+                return querySnapshot.docs
+                    .map((planDoc) => normalizePricingPlan(planDoc.data(), planDoc.id))
+                    .filter((plan): plan is PricingPlan => plan !== null);
             }
         },
         "getActivePricingPlans"
@@ -59,10 +129,11 @@ export const getActivePricingPlans = async (planType?: string) => {
 export const getPricingPlanById = async (id: string) => {
     return await apiCallComposer(
         async () => {
+            if (!isValidFirestoreDocumentId(id)) return null;
             const collectionDocRef = getDocRef(id);
             const docSnap = await getDoc(collectionDocRef);
             if (docSnap.exists()) {
-                return { ...docSnap.data(), id: docSnap.id };
+                return normalizePricingPlan(docSnap.data(), docSnap.id);
             } else {
                 return null
             }
@@ -72,25 +143,24 @@ export const getPricingPlanById = async (id: string) => {
     );
 }
 
-export const addPricingPlan = async (data: PricingPlan) => {
+export const addPricingPlan = async (data: PricingPlanMutationInput) => {
     return await apiCallComposer(
         async () => {
-            // Add version and timestamps
+            const fields = normalizePricingPlanFields(data);
+            if (!fields) throw new Error('Invalid pricing plan data');
             const planData = {
-                ...data,
+                ...fields,
                 version: 1,
-                active: data.active ?? true,
                 createdOn: serverTimestamp(),
                 modifiedOn: serverTimestamp()
             };
 
-            // Add plan to Firestore
-            const docRef = await addDoc(getCollectionRef(), await requestBodyComposer(planData));
+            const docRef = await addDoc(getCollectionRef(), planData);
 
-            // Return the added plan with ID
             return {
-                ...planData,
-                id: docRef.id
+                ...fields,
+                id: docRef.id,
+                version: 1,
             };
         },
         data,
@@ -98,27 +168,29 @@ export const addPricingPlan = async (data: PricingPlan) => {
     );
 }
 
-export const updatePricingPlan = async (data: PricingPlan) => {
+export const updatePricingPlan = async (data: PricingPlanMutationInput & { id: string }) => {
     return await apiCallComposer(
         async () => {
-            if (!data.id) {
+            if (!data.id || !isValidFirestoreDocumentId(data.id)) {
                 throw new Error("Plan ID is required for updates");
             }
-
-            // Get current plan to increment version
-            const currentPlan = await getPricingPlanById(data.id);
-
-            // Prepare update data
-            const updateData = {
-                ...data,
-                version: (currentPlan?.version || 0) + 1,
-                modifiedOn: serverTimestamp()
-            };
-
-            // Update the plan
-            await updateDoc(getDocRef(data.id), updateData);
-
-            return updateData;
+            const fields = normalizePricingPlanFields(data);
+            if (!fields) throw new Error('Invalid pricing plan data');
+            const planRef = getDocRef(data.id);
+            return runTransaction(firebaseClient, async (transaction) => {
+                const snapshot = await transaction.get(planRef);
+                const currentPlan = snapshot.exists() ? normalizePricingPlan(snapshot.data(), snapshot.id) : null;
+                if (!currentPlan || currentPlan.version >= Number.MAX_SAFE_INTEGER) {
+                    throw new Error('Pricing plan is unavailable for update');
+                }
+                const version = currentPlan.version + 1;
+                transaction.update(planRef, {
+                    ...fields,
+                    version,
+                    modifiedOn: serverTimestamp(),
+                });
+                return { ...fields, id: data.id, version };
+            });
         },
         data,
         "updatePricingPlan"
@@ -128,31 +200,26 @@ export const updatePricingPlan = async (data: PricingPlan) => {
 export const deactivatePricingPlan = async (id: string) => {
     return await apiCallComposer(
         async () => {
-            await updateDoc(getDocRef(id), {
-                active: false,
-                modifiedOn: serverTimestamp()
+            if (!isValidFirestoreDocumentId(id)) {
+                throw new Error('Invalid plan ID');
+            }
+            const planRef = getDocRef(id);
+            return runTransaction(firebaseClient, async (transaction) => {
+                const snapshot = await transaction.get(planRef);
+                const currentPlan = snapshot.exists() ? normalizePricingPlan(snapshot.data(), snapshot.id) : null;
+                if (!currentPlan || currentPlan.version >= Number.MAX_SAFE_INTEGER) {
+                    throw new Error('Pricing plan is unavailable for deactivation');
+                }
+                const version = currentPlan.version + 1;
+                transaction.update(planRef, {
+                    active: false,
+                    modifiedOn: serverTimestamp(),
+                    version,
+                });
+                return { id, active: false, version };
             });
-            return { id, active: false };
         },
         id,
         "deactivatePricingPlan"
-    );
-}
-
-// Helper function to seed initial plans if needed
-export const seedInitialPlans = async (plans: PricingPlan[]) => {
-    return await apiCallComposer(
-        async () => {
-            const results = [];
-
-            for (const plan of plans) {
-                const result = await addPricingPlan(plan);
-                results.push(result);
-            }
-
-            return results;
-        },
-        plans,
-        "seedInitialPlans"
     );
 }

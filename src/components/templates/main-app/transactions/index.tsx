@@ -120,7 +120,11 @@ function TransactionPage() {
                 delete pageCursorsRef.current[page + 1];
             }
 
-            if (response.data.length === 0 && page > 1) {
+            if (
+                response.data.length === 0
+                && page > 1
+                && (!response.hasMore || !response.lastVisibleDoc)
+            ) {
                 message.info(t('noMoreTransactions'));
                 setPagination((previous) => ({
                     ...previous,
@@ -156,7 +160,7 @@ function TransactionPage() {
     const fetchProjectsList = useCallback(async () => {
         try {
             const fetchedProjects = await getExistingProjectsListWithoutLoader();
-            setProjectsList(fetchedProjects?.projects || fetchedProjects || [])
+            setProjectsList(fetchedProjects.projects);
         } catch (error) {
             logRuntimeFailure(AI_TRANSACTIONS_PROJECTS_LOAD_FAILED, error, getTransactionsPageLogContext({
                 actionFilter,

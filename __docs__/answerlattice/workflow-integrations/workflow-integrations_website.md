@@ -1,7 +1,7 @@
 # Answerlattice — External Workflow Integrations — Website Content
 
-> **Version:** 1.1.0
-> **Last Updated:** 2026-05-24
+> **Version:** 1.2.0
+> **Last Updated:** 2026-07-13
 > **Audience:** Website / Landing Page
 > **Page:** answerlattice.com/integrations (future)
 
@@ -30,12 +30,12 @@ Answerlattice detects when your support knowledge drifts from product reality an
 ## §3 — Integration Cards
 
 ### Slack
-**Instant governance alerts in your team channel.**
-Drift detected. Knowledge gap found. Coverage dropped. Answerlattice sends structured Block Kit messages to your Slack channel within minutes of detection. No bot installation required — just an incoming webhook URL.
+**Governance alerts in your team channel.**
+Nightly governance activity, recurring AI failure, and critical coverage drops use structured Block Kit messages. No bot installation required — just an incoming webhook URL.
 
 ### Email
-**Weekly digest + critical alerts.**
-Receive a calm weekly summary of everything Answerlattice did — drift cleared, proposals created, coverage changes. Critical events (coverage drops, recurring AI failures) arrive immediately. Same infrastructure-grade tone as everything in Answerlattice.
+**Nightly activity digest + critical alerts.**
+Receive a calm summary when the nightly governance run records activity — drift cleared, proposals created, coverage changes. Critical events (coverage drops, recurring AI failures) use the same bounded delivery path. Same infrastructure-grade tone as everything in Answerlattice.
 
 ### Linear / GitHub
 **Controlled rollout.**
@@ -46,7 +46,7 @@ Issue creation adapters exist, but they should be marketed only when the per-ten
 ## §4 — How It Works (3 Steps)
 
 ### Step 1: Connect
-Add your Slack webhook URL or email recipients in Answerlattice settings. Send a test notification, then save.
+Add your Slack webhook URL or email recipients in Answerlattice settings. Save the connection, then send a test notification.
 
 ### Step 2: Filter
 Choose which governance events each integration receives. Coverage drops can go to Slack; nightly summaries can go to email. You control the signal.
@@ -56,15 +56,13 @@ Answerlattice pushes bounded digest events automatically. Nightly governance run
 
 ---
 
-## §5 — Event Types Section
+## §5 — Active Automated Event Types
 
 | Event | What Triggers It | Why It Matters |
 |-------|-----------------|----------------|
-| **Drift Detected** | Canonical answer flagged as potentially stale | Answer may be wrong — review before customers see it |
-| **Mutation Proposed** | Signal cluster suggests answer update | Your knowledge base wants to improve itself |
-| **Knowledge Gap** | 5+ queries with no canonical answer | Customers are asking about something you haven't documented |
 | **Coverage Drop** | Canonical coverage falls below 60% | Your knowledge base is losing ground |
-| **Article Approved** | Team member approves a knowledge update | Confirmation that governance is working |
+| **Recurring AI Failure** | The nightly run records repeated generation failures | Review the affected support-generation path |
+| **Nightly Summary** | The workspace nightly run records governance activity | Review aggregate drift, proposal, coverage, and signal counts |
 
 ---
 
@@ -74,7 +72,7 @@ Answerlattice pushes bounded digest events automatically. Nightly governance run
 A: No. Answerlattice uses Slack Incoming Webhooks — just paste the URL. No OAuth, no app review, no permissions.
 
 **Q: How fast are notifications?**
-A: Governance events from the nightly batch arrive within minutes of the 3:00 AM UTC run. Real-time events (article approvals) arrive within seconds.
+A: Automated events are queued after the workspace-local nightly governance run and normally arrive within minutes of that run completing. The current source does not claim direct real-time article-approval delivery.
 
 **Q: Can I use multiple integrations?**
 A: Yes. Slack and email can each have their own event filters.
@@ -91,5 +89,6 @@ A: Self-service v1 supports Slack and email. Linear/GitHub issue creation is con
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-07-13 | 1.2.0 | Aligned public event coverage and timing with active nightly summary, recurring-AI-failure, and coverage-drop producers. |
 | 2026-05-24 | 1.1.0 | Updated public positioning to self-service Slack/email only and marked Linear/GitHub issue creation as controlled rollout. |
 | 2026-03-09 | 1.0.0 | Initial website content |

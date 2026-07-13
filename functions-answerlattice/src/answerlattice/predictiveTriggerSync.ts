@@ -11,7 +11,7 @@
  * @see __docs__/answerlattice/predictive-support/
  */
 
-import { Timestamp } from 'firebase-admin/firestore';
+import { DocumentReference, Timestamp } from 'firebase-admin/firestore';
 import * as logger from 'firebase-functions/logger';
 import { createHash } from 'crypto';
 import { DB_COLLECTIONS } from '../constants/database';
@@ -35,6 +35,14 @@ const MAX_ENTITY_IDS_PER_ANSWER_LOOKUP = 30;
 const ANSWERLATTICE_PREDICTIVE_TRIGGER_AUTOGENERATE_FAILED = 'ANSWERLATTICE_PREDICTIVE_TRIGGER_AUTOGENERATE_FAILED';
 const ANSWERLATTICE_PREDICTIVE_TRIGGER_CACHE_REBUILD_FAILED = 'ANSWERLATTICE_PREDICTIVE_TRIGGER_CACHE_REBUILD_FAILED';
 const ANSWERLATTICE_PREDICTIVE_TRIGGER_EFFECTIVENESS_FAILED = 'ANSWERLATTICE_PREDICTIVE_TRIGGER_EFFECTIVENESS_FAILED';
+const ANSWERLATTICE_PRODUCT_ID = 'AL';
+
+function isOwnedOrLegacyPredictiveDocument(value: any, tId: number, sId: number): boolean {
+    return value
+        && value.tId === tId
+        && value.sId === sId
+        && (value.pId === undefined || value.pId === ANSWERLATTICE_PRODUCT_ID);
+}
 
 function getPredictiveTriggerSourceErrorContext(error: unknown): {
     sourceErrorName: string | null;
@@ -164,6 +172,7 @@ async function autoGenerateSuggestions(tId: number, sId: number): Promise<number
         if (!frictionDoc.exists) return 0;
 
         const snapshot = frictionDoc.data();
+        if (!snapshot || snapshot.pId !== ANSWERLATTICE_PRODUCT_ID || snapshot.tId !== tId || snapshot.sId !== sId) return 0;
         const topEntities = snapshot?.topFrictionEntities || [];
 
         if (topEntities.length === 0) return 0;
@@ -179,6 +188,7 @@ async function autoGenerateSuggestions(tId: number, sId: number): Promise<number
         const coveredEntityIds = new Set<string>();
         existingSnap.docs.forEach(d => {
             const data = d.data();
+            if (!isOwnedOrLegacyPredictiveDocument(data, tId, sId)) return;
             const entityId = normalizeAnswerlatticeResolvedFunctionEntityId(data.action?.entityId);
             if (entityId) {
                 coveredEntityIds.add(entityId);
@@ -195,6 +205,7 @@ async function autoGenerateSuggestions(tId: number, sId: number): Promise<number
 
             const now = Timestamp.now();
             await db.collection(DB_COLLECTIONS.ANSWERLATTICE_PREDICTIVE_TRIGGERS).add({
+                pId: ANSWERLATTICE_PRODUCT_ID,
                 tId,
                 sId,
                 name: `Help for ${entity.entityName}`,
@@ -247,7 +258,18 @@ async function rebuildTriggerCache(tId: number, sId: number): Promise<number> {
             .get();
 
         const triggers: Record<string, any> = {};
-        const rawTriggers: any[] = snap.docs.map(d => ({ ...d.data(), id: d.id }));
+        const legacyRefs: DocumentReference[] = [];
+        const rawTriggers: any[] = snap.docs.flatMap(d => {
+            const data = d.data();
+            if (!isOwnedOrLegacyPredictiveDocument(data, tId, sId)) return [];
+            if (data.pId === undefined) legacyRefs.push(d.ref);
+            return [{ ...data, pId: ANSWERLATTICE_PRODUCT_ID, id: d.id }];
+        });
+        if (legacyRefs.length > 0) {
+            const backfill = db.batch();
+            legacyRefs.slice(0, 450).forEach(ref => backfill.set(ref, { pId: ANSWERLATTICE_PRODUCT_ID }, { merge: true }));
+            await backfill.commit();
+        }
         const activeTriggerEntityIds = rawTriggers
             .filter(trigger => trigger.status === 'active' && typeof trigger.action?.entityId === 'string' && trigger.action.entityId)
             .map(trigger => normalizeAnswerlatticeResolvedFunctionEntityId(trigger.action.entityId))
@@ -278,7 +300,18 @@ async function rebuildTriggerCache(tId: number, sId: number): Promise<number> {
         });
 
         const triggerCount = Object.keys(triggers).length;
-        const activeTriggerCount = Object.values(triggers).filter(trigger => trigger.status === 'active').length;
+        const now = Date.now();
+        const activeTriggerCount = Object.values(triggers).filter(trigger => {
+            if (trigger.status !== 'active') return false;
+            if (trigger.kind !== 'known_issue') return true;
+            const rawEndsAt = trigger.knownIssue?.endsAt;
+            const endsAt = typeof rawEndsAt?.toMillis === 'function'
+                ? Number(rawEndsAt.toMillis())
+                : typeof rawEndsAt === 'string' || typeof rawEndsAt === 'number'
+                    ? new Date(rawEndsAt).getTime()
+                    : null;
+            return endsAt === null || !Number.isFinite(endsAt) || endsAt > now;
+        }).length;
         const sourceHash = hashPayload({ triggerCount, activeTriggerCount, triggers });
         const docRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(`predictiveTriggers_${tId}_${sId}`);
         const existingSnap = await docRef.get();
@@ -287,6 +320,7 @@ async function rebuildTriggerCache(tId: number, sId: number): Promise<number> {
         }
 
         await docRef.set({
+            pId: ANSWERLATTICE_PRODUCT_ID,
             tId,
             sId,
             lastUpdated: Timestamp.now(),
@@ -368,6 +402,9 @@ async function updateEffectiveness(tId: number, sId: number): Promise<{ updated:
         let batchCount = 0;
 
         for (const triggerDoc of triggerSnap.docs) {
+            const trigger = triggerDoc.data();
+            if (!isOwnedOrLegacyPredictiveDocument(trigger, tId, sId)) continue;
+            if (trigger.kind === 'known_issue' || trigger.action?.type === 'known_issue') continue;
             const triggerId = triggerDoc.id;
             const signals = triggerSignals.get(triggerId);
 
@@ -385,6 +422,7 @@ async function updateEffectiveness(tId: number, sId: number): Promise<{ updated:
             // Auto-disable if low performing
             if (signals.shown >= AUTO_DISABLE_MIN_IMPRESSIONS && score < AUTO_DISABLE_SCORE_THRESHOLD) {
                 batch.update(triggerDoc.ref, {
+                    pId: ANSWERLATTICE_PRODUCT_ID,
                     effectiveness,
                     status: 'disabled',
                     modifiedOn: Timestamp.now(),
@@ -392,6 +430,7 @@ async function updateEffectiveness(tId: number, sId: number): Promise<{ updated:
                 disabled++;
             } else {
                 batch.update(triggerDoc.ref, {
+                    pId: ANSWERLATTICE_PRODUCT_ID,
                     effectiveness,
                     modifiedOn: Timestamp.now(),
                 });

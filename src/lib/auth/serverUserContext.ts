@@ -12,12 +12,29 @@ import { formatStaffLoginId, getPhoneLookupCandidates, normalizeLoginDigits } fr
 import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
 import { normalizeStorePermissionScopeDocumentId } from "@lib/permissions/server";
 import { removeDangerousKeys } from "@lib/security/sanitizeObject";
+import { createHash } from "crypto";
 
 const USERS_COLLECTION = DB_COLLECTIONS.USERS;
+
+export class AuthUserIdentityConflictError extends Error {
+    constructor() {
+        super('Authentication identity is not unique.');
+        this.name = 'AuthUserIdentityConflictError';
+        Object.setPrototypeOf(this, AuthUserIdentityConflictError.prototype);
+    }
+}
 
 export const normalizePhoneUsername = normalizeLoginDigits;
 
 const normalizeEmail = (email: string) => String(email || '').toLowerCase().trim();
+
+export const getGlobalEmailUserDocumentId = (email: string): string | null => {
+    const normalizedEmail = normalizeEmail(email);
+    if (!normalizedEmail) return null;
+    return `oauth_${createHash('sha256').update(normalizedEmail).digest('hex').slice(0, 40)}`;
+};
+
+export const getOAuthUserDocumentId = getGlobalEmailUserDocumentId;
 
 const sanitizeForAdminFirestore = <T>(value: T): T => {
     if (value === undefined) return null as T;
@@ -44,24 +61,40 @@ const sanitizeForAdminFirestore = <T>(value: T): T => {
 
 const getUsersCollection = () => firestoreAdmin.collection(USERS_COLLECTION);
 
-const getFirstAuthUserByField = async (field: string, value: string) => {
-    const snapshot = await getUsersCollection()
+const getAuthUsersByField = async (
+    collection: FirebaseFirestore.CollectionReference,
+    field: string,
+    value: string,
+) => {
+    const snapshot = await collection
         .where(field, "==", value)
-        .limit(1)
+        .limit(2)
         .get();
 
-    if (snapshot.empty) return null;
-
-    const userDoc = snapshot.docs[0];
-    const safeData = removeDangerousKeys(userDoc.data());
-    return { ...safeData, id: userDoc.id };
+    return snapshot.docs.map((userDoc) => ({
+        ...removeDangerousKeys(userDoc.data()),
+        id: userDoc.id,
+    }));
 };
 
-export const getAuthUserByEmail = async (email: string) => {
+const getUniqueAuthUserFromMatches = (matches: Array<{ id: string; [key: string]: unknown }>) => {
+    const uniqueMatches = new Map(matches.map((match) => [match.id, match]));
+    if (uniqueMatches.size > 1) throw new AuthUserIdentityConflictError();
+    return uniqueMatches.values().next().value || null;
+};
+
+export const getUniqueAuthUserByEmailFromCollection = async (
+    collection: FirebaseFirestore.CollectionReference,
+    email: string,
+) => {
     const normalizedEmail = normalizeEmail(email);
     if (!normalizedEmail) return null;
 
-    return getFirstAuthUserByField("email", normalizedEmail);
+    return getUniqueAuthUserFromMatches(await getAuthUsersByField(collection, 'email', normalizedEmail));
+};
+
+export const getAuthUserByEmail = async (email: string) => {
+    return getUniqueAuthUserByEmailFromCollection(getUsersCollection(), email);
 };
 
 export const getAuthUserByLoginIdentifier = async (identifier: string) => {
@@ -75,36 +108,38 @@ export const getAuthUserByLoginIdentifier = async (identifier: string) => {
     const phoneUsername = normalizePhoneUsername(normalizedIdentifier);
     if (!phoneUsername) return null;
 
-    for (const field of ['username', 'loginUsername', 'phoneUsername']) {
-        const user = await getFirstAuthUserByField(field, phoneUsername);
-        if (user) return user;
-    }
+    const lookupPairs: Array<[field: string, value: string]> = [
+        ['username', phoneUsername],
+        ['loginUsername', phoneUsername],
+        ['phoneUsername', phoneUsername],
+    ];
 
     const staffLoginId = formatStaffLoginId(phoneUsername);
     if (staffLoginId) {
-        const user = await getFirstAuthUserByField('staffLoginId', staffLoginId);
-        if (user) return user;
+        lookupPairs.push(['staffLoginId', staffLoginId]);
     }
 
     for (const candidate of getPhoneLookupCandidates(normalizedIdentifier)) {
         for (const field of ['phone', 'phoneNumber']) {
-            const user = await getFirstAuthUserByField(field, candidate);
-            if (user) return user;
+            lookupPairs.push([field, candidate]);
         }
     }
 
-    return null;
+    const uniqueLookupPairs = Array.from(new Map(
+        lookupPairs.map(([field, value]) => [`${field}\0${value}`, [field, value] as const]),
+    ).values());
+    const matches = (await Promise.all(uniqueLookupPairs.map(([field, value]) => (
+        getAuthUsersByField(getUsersCollection(), field, value)
+    )))).flat();
+    return getUniqueAuthUserFromMatches(matches);
 };
 
 export const addAuthPlatformUser = async (data: any) => {
     const normalizedEmail = normalizeEmail(data?.email);
-
-    if (normalizedEmail) {
-        const existing = await getAuthUserByEmail(normalizedEmail);
-        if (existing) {
-            throw new Error("EMAIL_ALREADY_EXISTS");
-        }
-    }
+    const userDocumentId = getOAuthUserDocumentId(normalizedEmail);
+    if (!userDocumentId) throw new Error("INVALID_OAUTH_EMAIL");
+    const existing = await getAuthUserByEmail(normalizedEmail);
+    if (existing) return existing;
 
     const now = admin.firestore.Timestamp.now();
     const userToAdd = sanitizeForAdminFirestore({
@@ -121,10 +156,20 @@ export const addAuthPlatformUser = async (data: any) => {
         createdOn: data?.createdOn ?? now,
     });
 
-    const docRef = await getUsersCollection().add(userToAdd);
-    await docRef.set({ id: docRef.id }, { merge: true });
-
-    return { ...userToAdd, id: docRef.id };
+    const docRef = getUsersCollection().doc(userDocumentId);
+    return firestoreAdmin.runTransaction(async (transaction) => {
+        const snapshot = await transaction.get(docRef);
+        if (snapshot.exists) {
+            const current = removeDangerousKeys(snapshot.data());
+            if (normalizeEmail(String(current.email || '')) !== normalizedEmail) {
+                throw new Error("OAUTH_USER_ID_CONFLICT");
+            }
+            return { ...current, id: snapshot.id };
+        }
+        const persistedUser = { ...userToAdd, id: userDocumentId };
+        transaction.create(docRef, persistedUser);
+        return persistedUser;
+    });
 };
 
 export const getAuthEntitySnapshot = async (collectionName: string, id?: string | number | null) => {

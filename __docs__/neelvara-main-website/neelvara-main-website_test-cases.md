@@ -28,6 +28,8 @@
 | ARCH-04 | No Firebase project introduced | Neelvara targets have empty `firebaseProjectId` |
 | ARCH-05 | Static site only | No Neelvara API routes, server functions, or DB clients |
 | ARCH-06 | Local dev prefix works | `/__neelvara/` rewrites to `/sites/neelvara` |
+| ARCH-07 | Homepage survives catch-all compilation | Root returns `200` after a missing Neelvara route returns `404` |
+| ARCH-08 | Homepage aliases stay canonical | `/__neelvara/home` and `/nv/home` render the same `/sites/neelvara` page |
 
 ---
 
@@ -37,12 +39,13 @@
 | --- | --- | --- |
 | CNT-01 | Brand spelling | `Neelvara Systems` everywhere |
 | CNT-02 | Relationship line | Approved operated-product sentence appears where company/product relationship is explicit |
-| CNT-03 | Public lineup | MenuList, Answerlattice, and CampaignCue are shown; no inactive, future, or unapproved product cards |
+| CNT-03 | Public lineup | MenuList and Answerlattice are shown; CampaignCue and all other unpublished products are absent |
 | CNT-04 | CTA set | Company-site primary CTAs route to `View Products`, contact, or email paths |
 | CNT-05 | No product funnel | No pricing, demo, trial, sign-in, or checkout |
 | CNT-06 | Legal wording safe | No Pvt Ltd/LLP/Inc/group/holding-company claim unless approved |
 | CNT-07 | GST/PAN/address | Not displayed unless approved |
-| CNT-08 | Product links | Products page links to MenuList, Answerlattice, and CampaignCue canonical production URLs |
+| CNT-08 | Product links | Products page links to MenuList and Answerlattice canonical production URLs only |
+| CNT-09 | Public copy audit | No placeholders, hype claims, forbidden AI language, unsupported company-status claims, or inactive product names |
 
 ---
 
@@ -89,9 +92,16 @@
 | VIS-01 | Neelvara mesh/grain | Background mesh and grain are scoped to Neelvara pages |
 | VIS-02 | Glass primitive | Header, cards, policy panels, product band, and CTAs reuse one glass treatment |
 | VIS-03 | No product-funnel import | SaaS pricing/customer/testimonial sections are not copied as-is |
-| VIS-04 | Home section order | Hero, studio mock, ledger, problem-first bento, spotlight cards, quote, product lineup, contact routes, CTA, footer |
-| VIS-05 | Small-phone hero | Large hero mock is hidden on small phones so the entity ledger appears in the first viewport |
+| VIS-04 | Home section order | Hero, ledger, operating approach, relationship statement, product lineup, surface guide, contact routes, CTA, footer |
+| VIS-05 | Homepage transition | Hero flows directly into the entity ledger without a decorative or duplicate company-reference panel |
 | VIS-06 | CTA contrast | Solid CTA text remains dark and readable in normal, visited, and focus states |
+| VIS-07 | Akshar typography | Neelvara content, navigation, buttons, cards, footer, and legal text resolve to Akshar with Inter/system fallback |
+| VIS-08 | Scroll reveal completion | Normal scroll, fast scrollbar jumps, Page Down, and anchor movement cannot leave reached sections transparent |
+| VIS-09 | Reduced motion | Reveal and decorative motion are disabled while all content remains visible |
+| VIS-10 | Header breakpoint separation | Desktop hides the menu toggle and exposes 44px primary links; mobile hides the full nav until the 44px toggle opens it |
+| VIS-11 | Product logo source | Answerlattice product placements reuse `src/components/atoms/answerlatticeLogoMark/index.tsx`, the same mark used by the Answerlattice header and footer, without copied or recolored paths |
+| VIS-12 | Home product layout | The product section uses an unframed header and two equal product cards on desktop, stacks cards on mobile, preserves actual logos and links, and has no horizontal overflow |
+| VIS-13 | Cross-page grid fit | Every repeated-item grid uses the current item count without empty desktop tracks; the two-product map/detail grids use two columns and collapse to one column on mobile |
 
 ---
 
@@ -104,10 +114,14 @@
 | MOB-03 | Tap targets | Header/footer/CTA targets are at least 44px |
 | MOB-04 | Text readability | No viewport-scaled tiny text |
 | MOB-05 | Footer legal links | Legal/privacy/terms visible on mobile |
+| MOB-06 | Collapsed mobile navigation | Products, About, and Contact remain reachable through the 44px menu control |
+| MOB-07 | Secondary page panels | Text/list panels collapse to one column without clipped list content |
 | A11Y-01 | Keyboard nav | Header, CTAs, and footer links reachable |
 | A11Y-02 | Focus states | Browser focus indicator remains visible |
 | A11Y-03 | Semantic headings | One H1 per page, logical heading order |
 | A11Y-04 | Color contrast | Text and buttons meet readable contrast |
+| A11Y-05 | Skip link | The first keyboard target reveals a visible skip link and moves focus to `main-content` |
+| A11Y-06 | Zoom | Viewport metadata permits user zoom up to 5x |
 
 ---
 
@@ -157,3 +171,4 @@ Expected:
 | LCH-07 | Search preview | Titles/descriptions and OG image render correctly |
 | LCH-08 | Missing routes | Unmatched Neelvara routes return the Neelvara 404 response |
 | LCH-09 | Deployment approval | User explicitly requested Vercel deployment in current session |
+| LCH-10 | Product destination availability | Every production product hostname resolves and serves the intended product website |

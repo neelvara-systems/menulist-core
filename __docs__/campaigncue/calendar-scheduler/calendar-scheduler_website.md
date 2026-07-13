@@ -6,17 +6,18 @@ Explain campaign planning and scheduling as part of the campaign workspace.
 
 ## Approved Public Copy
 
-> Plan approved campaign exports, manual tasks, reminders, and follow-up reviews on one channel-aware calendar.
+> Choose a local time, keep the manual campaign task visible, and return to record what happened.
 
 ## Supporting Points
 
-- Shows planned, approved, blocked, completed, and manual-task status.
+- Shows scheduled and due manual-task status.
 - Uses the business timezone.
-- Keeps channel limits visible.
-- Turns completed campaigns into review cues.
+- Keeps trust, freshness, approval, and manual-delivery limits visible.
+- Feeds the next manual action into Campaign Rhythm.
 
 ## Do Not Say
 
-- Do not claim full auto-publishing across every platform.
+- Do not call it automatic scheduling or a scheduled post.
+- Do not claim auto-publishing on any platform.
 - Do not promise exact platform delivery timing.
 - Do not frame it as a standalone calendar product.

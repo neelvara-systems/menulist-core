@@ -1,12 +1,18 @@
 # Trust Health Signal — Implementation Plan
 
-**Status:** ✅ IMPLEMENTED (flags OFF — awaiting real traffic)  
+**Status:** Dormant computation/UI skeleton; not scheduled, mounted, or activated
 **Author:** Cascade (Lead Architect)  
 **Date:** February 19, 2026  
 **Audience:** Developers  
 **Pillar:** 4 of 6
 
 ---
+
+## Current Runtime Boundary — July 13, 2026
+
+This document retains the activation design below, but the earlier implementation claim is not current runtime evidence. The computation module is not exported through the Functions entry point and no consolidated scheduler invokes `processHealthSignalsForAllStores()`. `HealthSignalCards.tsx` is not mounted in `OwnerDashboard`, and no mobile screen reads `healthSignals`. All three root flags are `false`; there are no matching Functions flags. The retained computation must fail closed on missing exact unique/direct counters and remain dormant until a separate activation audit proves bounded queries, scheduler lease/cost, persisted shape, desktop/mobile parity, freshness behavior, and real-traffic thresholds.
+
+## Target Activation Architecture
 
 ## Architecture Overview
 
@@ -61,10 +67,10 @@ interface StoreDataType {
 
 ## Cloud Function: Trust Health Computation
 
-### Scheduler
+### Scheduler (Required Before Activation; Not Present)
 
 - **Frequency:** Weekly (Sunday 3 AM UTC, after existing nightly aggregation)
-- **Runtime:** Added to existing `masterScheduler.ts`
+- **Runtime:** Must be added to the consolidated MenuList maintenance scheduler with an explicit cadence and lease; no current scheduler calls it
 - **Memory:** 256MiB (lightweight aggregation)
 - **Timeout:** 120s
 
@@ -131,9 +137,9 @@ async function computeTrustHealth(
 | File                                                                               | Purpose                               | LOC  | Status      |
 | ---------------------------------------------------------------------------------- | ------------------------------------- | ---- | ----------- |
 | `functions/src/analytics/healthSignalsComputation.ts`                              | Weekly trust+loyalty+risk computation | ~290 | ✅ NEW      |
-| `functions/src/schedulers/masterScheduler.ts`                                      | Added Task 5 (Sunday weekly)          | ~40  | ✅ MODIFIED |
+| consolidated MenuList scheduler                                                    | No health-signal task currently wired | —    | Dormant     |
 | `src/components/templates/main-app/dashboard/OwnerDashboard/HealthSignalCards.tsx` | Desktop cards (Trust+Loyalty+Risk)    | ~170 | ✅ NEW      |
-| `src/components/mobile/screens/MobileDashboardScreen.tsx`                          | Mobile health signal display          | ~60  | ✅ MODIFIED |
+| `src/components/mobile/screens/MobileDashboardScreen.tsx`                          | No health-signal consumer currently   | —    | Dormant     |
 | `src/types/platform/store.ts`                                                      | `healthSignals` on StoreDataType      | ~30  | ✅ MODIFIED |
 
 **Total new code:** ~590 lines across 2 new files + 3 modified files
@@ -192,4 +198,4 @@ function TrustHealthCard({ store }: { store: StoreDataType }) {
 
 ---
 
-**Last Updated:** February 19, 2026
+**Last Updated:** July 13, 2026

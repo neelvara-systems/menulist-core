@@ -1,330 +1,248 @@
 import { DB_COLLECTIONS } from '@constant/database';
-import uploadBase64ToStorage from '@database/storage/uploadBase64ToStorage';
-import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentComposer';
+import { deleteFileByUrl } from '@database/storage/deleteFromStorage';
+import uploadBase64ToStorage, { type SupportedFileType } from '@database/storage/uploadBase64ToStorage';
+import { apiCallComposer } from '@lib/apiHelper/apiCallComposer';
+import {
+    ANSWERLATTICE_CHANGELOG_MAX_FILE_BYTES,
+    ANSWERLATTICE_CHANGELOG_MAX_FILES,
+    AnswerlatticeChangelogActionResultSchema,
+    normalizeAnswerlatticeStoredChangelogPage,
+    parseAnswerlatticeChangelogAction,
+    type AnswerlatticeChangelogAction,
+} from '@lib/answerlattice/changelogContracts';
+import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import getActiveSession from '@lib/auth/getActiveSession';
-import { revalidateAnswerlatticePublicClientCache } from '@lib/cache/answerlatticePublicClientCache';
 import { answerlatticeFirebaseClient, answerlatticeStorage } from '@lib/firebase/answerlatticeFirebaseClient';
+import { createRuntimeId } from '@lib/runtime/randomId';
+import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { STORAGE_CACHE_CONTROL } from '@lib/storage/cacheControl';
 import { generateStoragePath } from '@lib/storage/pathGenerator';
-import { ChangelogPage } from '@type/changelog';
-import { UserUploadedFileType } from '@type/common';
-import {
-    collection,
-    doc,
-    getDocs,
-    limit,
-    orderBy,
-    query,
-    runTransaction,
-    Timestamp,
-    where
-} from 'firebase/firestore';
-
-const db = answerlatticeFirebaseClient;
-const PAGE_SIZE_LIMIT = 900_000; // 900 KB safety margin
+import type { ChangelogPage } from '@type/changelog';
+import type { UserUploadedFileType } from '@type/common';
+import { collection, getDocs, limit, orderBy, query, where } from 'firebase/firestore';
 
 const COLLECTION = DB_COLLECTIONS.CHANGELOG;
+const ALLOWED_IMAGE_TYPES = new Set<SupportedFileType>(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
+const CHANGELOG_ACTION_RESPONSE_MAX_BYTES = 64 * 1024;
 
-/**
- * Upload changelog file to Firebase Storage with tenant/store isolation
- * @param data - File data with base64 content
- * @param type - File category (e.g., 'files', 'documents')
- */
-const uploadImage = async (data: UserUploadedFileType, type = 'files') => {
-
-    let uploadedUrl: any = '';
-    const docId = `${new Date().getTime()}-${data.uid}`;
-
-    if (data.url?.includes('base64')) {
-        // Get fresh session for tenant-scoped storage paths
-        const session = await getActiveSession();
-
-        // Generate tenant/store-scoped path for multi-tenancy isolation
-        const path = generateStoragePath({
-            collection: COLLECTION,
-            fileType: type,
-            session,
-            fileId: docId
-        });
-
-        // Upload to Firebase Storage
-        uploadedUrl = await uploadBase64ToStorage({
-            cacheControl: STORAGE_CACHE_CONTROL.immutablePublic,
-            fileId: docId,
-            storage: answerlatticeStorage,
-            url: data.url,
-            path,
-            type: data.type
-        })
-    }
-    return uploadedUrl || data.url;
-}
-
-// Helper to estimate the size of a JavaScript object
-async function estimateSizeBytes(obj: any): Promise<number> {
-    try {
-        // Blob is more accurate for Firestore's UTF-8 based calculation
-        return new Blob([JSON.stringify(obj)]).size;
-    } catch {
-        // Fallback for environments where Blob is not available
-        return JSON.stringify(obj).length;
-    }
-}
-
-
-const getCollectionRef = (session: any) => {
-    return collection(answerlatticeFirebaseClient, `${COLLECTION}/${session.tId}/${session.sId}`)
-}
-
-/**
- * Adds a new entry to the changelog. It handles page creation and rolling over when the page size limit is reached.
- * This operation is performed within a transaction to ensure atomicity.
- */
-export const addChangelogEntry = async (entryPayload: any) => {
-    // Perform file uploads before the transaction starts
-    if (entryPayload.files && entryPayload.files.length > 0) {
-        for (let i = 0; i < entryPayload.files.length; i++) {
-            if (entryPayload.files[i].url.includes('base64')) {
-                entryPayload.files[i].url = await uploadImage(entryPayload.files[i]);
-            }
-        }
-    }
-
+const getScope = async () => {
     const session = await getActiveSession();
-    const result = await runTransaction(db, async (tx) => {
-        const pagesCollectionRef = getCollectionRef(session);
-        const latestPageQuery = query(pagesCollectionRef, orderBy('pageNumber', 'desc'), limit(1));
-        const latestPageSnap = await getDocs(latestPageQuery);
-
-        const newEntryId = crypto.randomUUID();
-
-        const newEntryForEstimate = await answerlatticeRequestBodyComposer({
-            id: newEntryId,
-            ...entryPayload,
-        });
-
-        if (latestPageSnap.empty) {
-            // First entry, create the first page
-            const newPageNumber = 1;
-            const newPageId = `page_${String(newPageNumber).padStart(6, '0')}`;
-            const newPageRef = doc(pagesCollectionRef, newPageId);
-
-            const newPageData = await answerlatticeRequestBodyComposer({
-                pageNumber: newPageNumber,
-                nextPageId: null,
-                entries: [{ ...newEntryForEstimate, createdOn: Timestamp.now() }],
-                entryIds: [newEntryId],
-            });
-
-            tx.set(newPageRef, newPageData);
-            return { createdNewPage: true, pageId: newPageId, entryId: newEntryId };
-        } else {
-            const latestPageDoc = latestPageSnap.docs[0];
-            const latestPageRef = latestPageDoc.ref;
-            const latestPageData = latestPageDoc.data();
-
-            const combinedEntriesForEstimate = [newEntryForEstimate, ...(latestPageData.entries || [])];
-            const estSize = await estimateSizeBytes({ ...latestPageData, entries: combinedEntriesForEstimate });
-
-            if (estSize < PAGE_SIZE_LIMIT) {
-                // Append to the current latest page
-                const newEntries = [{ ...newEntryForEstimate, createdOn: Timestamp.now() }, ...(latestPageData.entries || [])];
-                const newEntryIds = [newEntryId, ...(latestPageData.entryIds || [])];
-                const pageUpdatePayload = await answerlatticeRequestBodyComposer({ isUpdate: true });
-                tx.update(latestPageRef, {
-                    entries: newEntries,
-                    entryIds: newEntryIds,
-                    approxSizeBytes: estSize,
-                    modifiedOn: pageUpdatePayload.modifiedOn,
-                    modifiedBy: pageUpdatePayload.modifiedBy,
-                });
-                return { appended: true, pageId: latestPageDoc.id, entryId: newEntryId };
-            } else {
-                // Page is full, create a new page
-                const newPageNumber = (latestPageData.pageNumber || 0) + 1;
-                const newPageId = `page_${String(newPageNumber).padStart(6, '0')}`;
-                const newPageRef = doc(pagesCollectionRef, newPageId);
-
-                const newPageData = await answerlatticeRequestBodyComposer({
-                    pageNumber: newPageNumber,
-                    nextPageId: latestPageDoc.id || null,
-                    entries: [{ ...newEntryForEstimate, createdOn: Timestamp.now() }],
-                    entryIds: [newEntryId],
-                });
-
-                tx.set(newPageRef, newPageData);
-                return { createdNewPage: true, pageId: newPageId, entryId: newEntryId };
-            }
-        }
-    });
-    await revalidateAnswerlatticePublicClientCache({ tId: session?.tId, sId: session?.sId }, ['changelog', 'context'], 'addChangelogEntry');
-    return result;
+    const scope = resolveAnswerlatticeSessionScope(session);
+    if (!session || !scope) throw new Error('Answerlattice workspace scope is required');
+    return { session, tId: scope.tenantId, sId: scope.storeId };
 };
 
-/**
- * Fetches the most recent changelog page.
- */
-export const fetchLatestChangelogPage = async (): Promise<ChangelogPage | null> => {
-    const session = await getActiveSession();
-    const pagesCollectionRef = getCollectionRef(session);
-    const q = query(pagesCollectionRef, orderBy('pageNumber', 'desc'), limit(1));
-    const snap = await getDocs(q);
+const getCollectionRef = (scope: { tId: number; sId: number }) => collection(
+    answerlatticeFirebaseClient,
+    `${COLLECTION}/${scope.tId}/${scope.sId}`,
+);
 
-    if (snap.empty) {
+const toIsoDate = (value: unknown): string | null => {
+    if (!value || typeof value !== 'object' || typeof (value as { toDate?: unknown }).toDate !== 'function') return null;
+    try {
+        const date = (value as { toDate(): Date }).toDate();
+        return Number.isFinite(date.getTime()) ? date.toISOString() : null;
+    } catch {
         return null;
     }
-
-    const doc = snap.docs[0];
-    return { id: doc.id, ...doc.data() } as ChangelogPage;
 };
 
-/**
- * Loads an older changelog page based on the current page number.
- */
+const validatePendingFile = (value: unknown): UserUploadedFileType => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Invalid changelog image');
+    const file = value as Record<string, unknown>;
+    const name = typeof file.name === 'string' ? file.name.trim() : '';
+    const type = typeof file.type === 'string' ? file.type.trim().toLowerCase() as SupportedFileType : '' as SupportedFileType;
+    const uid = typeof file.uid === 'string' ? file.uid.trim() : '';
+    const url = typeof file.url === 'string' ? file.url.trim() : '';
+    const size = file.size;
+    if (!name || name.length > 240
+        || !uid || uid.length > 180
+        || !ALLOWED_IMAGE_TYPES.has(type)
+        || typeof size !== 'number' || !Number.isSafeInteger(size) || size < 0 || size > ANSWERLATTICE_CHANGELOG_MAX_FILE_BYTES
+        || (!url.startsWith('https://') && !url.startsWith(`data:${type};base64,`))) {
+        throw new Error('Changelog images must be JPG, PNG, WebP, or GIF files up to 5 MB.');
+    }
+    return { name, type, uid, url, size };
+};
+
+const uploadPendingFiles = async (
+    values: unknown,
+    session: any,
+) => {
+    if (!Array.isArray(values) || values.length > ANSWERLATTICE_CHANGELOG_MAX_FILES) {
+        throw new Error(`A changelog entry can include up to ${ANSWERLATTICE_CHANGELOG_MAX_FILES} images.`);
+    }
+    const files = values.map(validatePendingFile);
+    const uploadedUrls: string[] = [];
+    try {
+        const prepared = [];
+        for (const file of files) {
+            if (!file.url.startsWith('data:')) {
+                prepared.push(file);
+                continue;
+            }
+            const fileId = createRuntimeId('changelog_image');
+            const path = generateStoragePath({
+                collection: COLLECTION,
+                fileType: 'files',
+                session,
+                fileId,
+            });
+            const url = await uploadBase64ToStorage({
+                cacheControl: STORAGE_CACHE_CONTROL.immutablePublic,
+                fileId,
+                storage: answerlatticeStorage,
+                url: file.url,
+                path,
+                type: file.type as SupportedFileType,
+            });
+            uploadedUrls.push(url);
+            prepared.push({ ...file, url });
+        }
+        return { files: prepared, uploadedUrls };
+    } catch (error) {
+        await Promise.allSettled(uploadedUrls.map((url) => deleteFileByUrl(url, answerlatticeStorage)));
+        throw error;
+    }
+};
+
+const buildMutationAction = async (
+    action: 'create' | 'update',
+    entryPayload: unknown,
+    entryId?: string,
+): Promise<{ parsed: AnswerlatticeChangelogAction; uploadedUrls: string[] }> => {
+    if (!entryPayload || typeof entryPayload !== 'object' || Array.isArray(entryPayload)) throw new Error('Invalid changelog entry');
+    const value = entryPayload as Record<string, unknown>;
+    const { session } = await getScope();
+    const releasedOn = toIsoDate(value.releasedOn);
+    if (!releasedOn) throw new Error('Invalid changelog release date');
+    const prepared = await uploadPendingFiles(value.files ?? [], session);
+    const raw = {
+        action,
+        requestId: typeof value.requestId === 'string' ? value.requestId : createRuntimeId(`changelog_${action}`),
+        ...(entryId ? { entryId } : {}),
+        entry: {
+            title: value.title,
+            description: value.description,
+            tags: value.tags ?? [],
+            releasedOn,
+            published: value.published === true,
+            version: typeof value.version === 'string' && value.version.trim() ? value.version.trim() : null,
+            contextKeys: value.contextKeys ?? [],
+            kbSources: value.kbSources ?? [],
+            youtubeLinks: value.youtubeLinks ?? [],
+            files: prepared.files,
+            entityChanges: value.entityChanges ?? [],
+            releaseId: value.releaseId ?? null,
+        },
+    };
+    const parsed = parseAnswerlatticeChangelogAction(raw);
+    if (!parsed) {
+        await Promise.allSettled(prepared.uploadedUrls.map((url) => deleteFileByUrl(url, answerlatticeStorage)));
+        throw new Error('Invalid changelog entry');
+    }
+    return { parsed, uploadedUrls: prepared.uploadedUrls };
+};
+
+const executeChangelogAction = async (action: AnswerlatticeChangelogAction) => {
+    const response = await fetch('/api/answerlattice/changelog', {
+        method: 'POST',
+        cache: 'no-store',
+        credentials: 'same-origin',
+        redirect: 'manual',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(action),
+    });
+    const payload = await readJsonResponseWithLimit<unknown>(response, CHANGELOG_ACTION_RESPONSE_MAX_BYTES)
+        .catch(() => null);
+    if (!response.ok) {
+        throw new Error('Changelog action failed');
+    }
+    const parsed = AnswerlatticeChangelogActionResultSchema.safeParse(payload);
+    if (!parsed.success) throw new Error('Changelog action returned an invalid response');
+    return parsed.data;
+};
+
+const cleanupRemovedFiles = async (urls: string[]) => {
+    if (urls.length === 0) return;
+    const results = await Promise.allSettled(urls.map((url) => deleteFileByUrl(url, answerlatticeStorage)));
+    if (results.some((result) => result.status === 'rejected')) {
+        logRuntimeFailure('answerlattice_changelog_storage_cleanup_failed', new Error('storage_cleanup_failed'), {
+            fileCount: urls.length,
+        });
+    }
+};
+
+export const addChangelogEntry = async (entryPayload: unknown) => apiCallComposer(
+    async () => {
+        const prepared = await buildMutationAction('create', entryPayload);
+        try {
+            return await executeChangelogAction(prepared.parsed);
+        } catch (error) {
+            await cleanupRemovedFiles(prepared.uploadedUrls);
+            throw error;
+        }
+    },
+    { hasEntryPayload: Boolean(entryPayload) },
+    'addChangelogEntry',
+);
+
+export const updateChangelogEntry = async (entryId: string, entryPayload: unknown) => apiCallComposer(
+    async () => {
+        const prepared = await buildMutationAction('update', entryPayload, entryId);
+        try {
+            const result = await executeChangelogAction(prepared.parsed);
+            await cleanupRemovedFiles(result.removedFileUrls);
+            return result;
+        } catch (error) {
+            await cleanupRemovedFiles(prepared.uploadedUrls);
+            throw error;
+        }
+    },
+    { entryId, hasEntryPayload: Boolean(entryPayload) },
+    'updateChangelogEntry',
+);
+
+export const deleteChangelogEntry = async (entryId: string) => apiCallComposer(
+    async () => {
+        await getScope();
+        const action = parseAnswerlatticeChangelogAction({
+            action: 'delete',
+            requestId: createRuntimeId('changelog_delete'),
+            entryId,
+        });
+        if (!action) throw new Error('Invalid changelog entry ID');
+        const result = await executeChangelogAction(action);
+        await cleanupRemovedFiles(result.removedFileUrls);
+        return result;
+    },
+    { entryId },
+    'deleteChangelogEntry',
+);
+
+export const fetchLatestChangelogPage = async (): Promise<ChangelogPage | null> => {
+    const scope = await getScope();
+    const snapshot = await getDocs(query(getCollectionRef(scope), orderBy('pageNumber', 'desc'), limit(1)));
+    const page = snapshot.docs[0];
+    if (!page) return null;
+    const normalized = normalizeAnswerlatticeStoredChangelogPage(page.data(), page.id, scope);
+    if (!normalized) throw new Error('Invalid persisted changelog page');
+    return normalized;
+};
+
 export const loadOlderChangelogPage = async (currentPageNumber: number): Promise<ChangelogPage | null> => {
-    const session = await getActiveSession();
-    const pagesCollectionRef = getCollectionRef(session);
-    const q = query(
-        pagesCollectionRef,
+    if (!Number.isSafeInteger(currentPageNumber) || currentPageNumber <= 1) return null;
+    const scope = await getScope();
+    const snapshot = await getDocs(query(
+        getCollectionRef(scope),
         where('pageNumber', '<', currentPageNumber),
         orderBy('pageNumber', 'desc'),
-        limit(1)
-    );
-
-    const snap = await getDocs(q);
-    if (snap.empty) {
-        return null;
-    }
-
-    const doc = snap.docs[0];
-    return { id: doc.id, ...doc.data() } as ChangelogPage;
-};
-
-/**
- * Updates the feedback count (likes or dislikes) for a specific changelog entry.
- * This operation is performed within a transaction to ensure atomicity.
- */
-export const updateChangelogFeedback = async (pageId: string, entryId: string, feedbackType: 'like' | 'dislike', increment: boolean = true) => {
-    const session = await getActiveSession();
-    const pagesCollectionRef = getCollectionRef(session);
-    const pageRef = doc(pagesCollectionRef, pageId);
-
-    return runTransaction(db, async (tx) => {
-        const pageDoc = await tx.get(pageRef);
-
-        if (!pageDoc.exists()) {
-            throw new Error(`Changelog page with ID "${pageId}" does not exist.`);
-        }
-
-        const pageData = pageDoc.data() as ChangelogPage;
-        const entries = pageData.entries || [];
-        const entryIndex = entries.findIndex(entry => entry.id === entryId);
-
-        if (entryIndex === -1) {
-            throw new Error(`Changelog entry with ID "${entryId}" not found in page "${pageId}".`);
-        }
-
-        const entryToUpdate = { ...entries[entryIndex] };
-
-        if (feedbackType === 'like') {
-            entryToUpdate.likes = increment
-                ? (entryToUpdate.likes || 0) + 1
-                : Math.max(0, (entryToUpdate.likes || 0) - 1);
-        } else if (feedbackType === 'dislike') {
-            entryToUpdate.dislikes = increment
-                ? (entryToUpdate.dislikes || 0) + 1
-                : Math.max(0, (entryToUpdate.dislikes || 0) - 1);
-        }
-
-        const updatedEntries = [
-            ...entries.slice(0, entryIndex),
-            entryToUpdate,
-            ...entries.slice(entryIndex + 1),
-        ];
-
-        tx.update(pageRef, { entries: updatedEntries });
-
-        return entryToUpdate; // Return the updated entry for immediate UI feedback
-    });
-};
-
-/**
- * Deletes a changelog entry from its page.
- */
-export const deleteChangelogEntry = async (entryId: string) => {
-    const session = await getActiveSession();
-    const result = await runTransaction(db, async (tx) => {
-        const pagesCollectionRef = getCollectionRef(session);
-        const q = query(pagesCollectionRef, where('entryIds', 'array-contains', entryId));
-        const querySnapshot = await getDocs(q);
-
-        if (querySnapshot.empty) {
-            throw new Error(`Entry with ID ${entryId} not found.`);
-        }
-
-        const pageDoc = querySnapshot.docs[0];
-        const pageRef = pageDoc.ref;
-        const pageData = pageDoc.data() as ChangelogPage;
-
-        const updatedEntries = pageData.entries.filter(entry => entry.id !== entryId);
-        const updatedEntryIds = pageData.entryIds.filter(id => id !== entryId);
-
-        const updatePayload = await answerlatticeRequestBodyComposer({ isUpdate: true });
-
-        tx.update(pageRef, {
-            entries: updatedEntries,
-            entryIds: updatedEntryIds,
-            modifiedOn: updatePayload.modifiedOn,
-            modifiedBy: updatePayload.modifiedBy,
-        });
-
-        return { deleted: true, entryId: entryId, pageId: pageDoc.id };
-    });
-    await revalidateAnswerlatticePublicClientCache({ tId: session?.tId, sId: session?.sId }, ['changelog', 'context'], 'deleteChangelogEntry');
-    return result;
-};
-
-export const updateChangelogEntry = async (entryId: string, updatedPayload: any) => {
-    // Perform file uploads before the transaction starts
-    if (updatedPayload.files && updatedPayload.files.length > 0) {
-        for (let i = 0; i < updatedPayload.files.length; i++) {
-            if (updatedPayload.files[i].url.includes('base64')) {
-                updatedPayload.files[i].url = await uploadImage(updatedPayload.files[i]);
-            }
-        }
-    }
-
-    const session = await getActiveSession();
-    const result = await runTransaction(db, async (tx) => {
-        const pagesCollectionRef = getCollectionRef(session);
-        const q = query(pagesCollectionRef, where('entryIds', 'array-contains', entryId));
-        const querySnapshot = await getDocs(q);
-
-        if (querySnapshot.empty) {
-            throw new Error(`Entry with ID ${entryId} not found.`);
-        }
-
-        const pageDoc = querySnapshot.docs[0];
-        const pageRef = pageDoc.ref;
-        const pageData = pageDoc.data() as ChangelogPage;
-
-        const entryIndex = pageData.entries.findIndex(entry => entry.id === entryId);
-        if (entryIndex === -1) {
-            throw new Error(`Entry with ID ${entryId} not found within the page.`);
-        }
-
-        const updatePayloadWithTimestamp = await answerlatticeRequestBodyComposer({ ...updatedPayload, isUpdate: true });
-        const updatedEntries = [...pageData.entries];
-        updatedEntries[entryIndex] = { ...updatedEntries[entryIndex], ...updatePayloadWithTimestamp };
-
-        tx.update(pageRef, {
-            entries: updatedEntries,
-            modifiedOn: updatePayloadWithTimestamp.modifiedOn,
-            modifiedBy: updatePayloadWithTimestamp.modifiedBy,
-        });
-
-        return { updated: true, entryId: entryId, pageId: pageDoc.id };
-    });
-    await revalidateAnswerlatticePublicClientCache({ tId: session?.tId, sId: session?.sId }, ['changelog', 'context'], 'updateChangelogEntry');
-    return result;
+        limit(1),
+    ));
+    const page = snapshot.docs[0];
+    if (!page) return null;
+    const normalized = normalizeAnswerlatticeStoredChangelogPage(page.data(), page.id, scope);
+    if (!normalized) throw new Error('Invalid persisted changelog page');
+    return normalized;
 };

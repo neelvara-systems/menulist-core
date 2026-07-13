@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SignalDesk AI Revenue Workflow Market Brief — July 11, 2026</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #142033;
+      --muted: #5f6c7b;
+      --line: #dce4ec;
+      --paper: #f4f7fa;
+      --card: #ffffff;
+      --navy: #10243f;
+      --blue: #1769e0;
+      --blue-soft: #eaf2ff;
+      --green: #08785b;
+      --green-soft: #e7f7f1;
+      --amber: #986500;
+      --amber-soft: #fff5d6;
+      --red: #b42318;
+      --red-soft: #fff0ed;
+      --violet: #6941c6;
+      --violet-soft: #f1edff;
+    }
+    * { box-sizing: border-box; }
+    html { max-width: 100%; scroll-behavior: smooth; overflow-x: hidden; }
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.55;
+      max-width: 100%;
+      overflow-x: hidden;
+    }
+    a { color: var(--blue); }
+    .wrap { width: min(1180px, calc(100% - 32px)); min-width: 0; margin: 0 auto; }
+    header {
+      padding: 78px 0 58px;
+      background:
+        radial-gradient(circle at 82% 20%, rgba(58, 139, 255, .42), transparent 32%),
+        linear-gradient(135deg, #0b182a 0%, #112b4e 54%, #175cc3 100%);
+      color: #fff;
+    }
+    .eyebrow { font-size: 13px; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; color: #bcd6ff; }
+    h1 { max-width: 960px; margin: 14px 0 18px; font-size: clamp(42px, 7vw, 78px); line-height: 1.01; letter-spacing: -.05em; overflow-wrap: anywhere; }
+    header p { max-width: 820px; margin: 0; font-size: 20px; color: #dce9ff; overflow-wrap: anywhere; }
+    .meta { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 28px; }
+    .meta span { padding: 7px 10px; border: 1px solid rgba(255,255,255,.24); border-radius: 999px; font-size: 13px; }
+    nav { position: sticky; top: 0; z-index: 10; background: rgba(255,255,255,.93); backdrop-filter: blur(14px); border-bottom: 1px solid var(--line); }
+    nav .wrap { display: flex; gap: 22px; overflow-x: auto; padding-top: 13px; padding-bottom: 13px; }
+    nav a { color: var(--navy); font-size: 14px; font-weight: 750; text-decoration: none; white-space: nowrap; }
+    main { padding: 50px 0 76px; }
+    section { margin: 0 0 58px; scroll-margin-top: 70px; }
+    h2 { margin: 0 0 18px; font-size: 32px; letter-spacing: -.025em; }
+    h3 { margin: 0 0 8px; font-size: 19px; }
+    p { margin: 0 0 14px; }
+    .lead { max-width: 940px; font-size: 19px; color: #344054; }
+    .loop {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 24px;
+    }
+    .step { position: relative; min-height: 118px; padding: 18px; border: 1px solid #cbd8e8; background: var(--card); border-radius: 16px; }
+    .step b { display: block; margin-bottom: 7px; color: var(--blue); }
+    .step:not(:nth-child(4)):not(:last-child)::after { content: "→"; position: absolute; right: -11px; top: 42px; z-index: 2; color: var(--blue); font-weight: 900; }
+    .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+    .grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .card { padding: 20px; background: var(--card); border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 8px 28px rgba(15, 35, 65, .045); }
+    .tag { display: inline-block; margin-bottom: 10px; padding: 4px 8px; border-radius: 999px; background: var(--blue-soft); color: var(--blue); font-size: 12px; font-weight: 800; }
+    .tag.violet { background: var(--violet-soft); color: var(--violet); }
+    .tag.green { background: var(--green-soft); color: var(--green); }
+    .card ul { margin: 10px 0 0; padding-left: 18px; }
+    .card li { margin: 5px 0; }
+    .callout { padding: 20px 22px; border-left: 5px solid var(--green); background: var(--green-soft); border-radius: 12px; }
+    .callout + .callout { margin-top: 12px; }
+    .callout.warning { border-left-color: var(--amber); background: var(--amber-soft); }
+    .callout.reject { border-left-color: var(--red); background: var(--red-soft); }
+    .stat-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 22px; }
+    .stat { padding: 18px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; }
+    .stat strong { display: block; color: var(--blue); font-size: 30px; line-height: 1.05; letter-spacing: -.03em; }
+    .stat span { display: block; margin-top: 8px; color: var(--muted); font-size: 13px; }
+    table { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+    th, td { padding: 13px 14px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { background: #edf3fa; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; }
+    tr:last-child td { border-bottom: 0; }
+    .status { display: inline-block; padding: 3px 7px; border-radius: 999px; font-size: 11px; font-weight: 800; }
+    .covered { background: var(--green-soft); color: var(--green); }
+    .later { background: var(--amber-soft); color: var(--amber); }
+    .blocked { background: var(--red-soft); color: var(--red); }
+    .timeline { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+    .gate { padding: 18px; border-top: 4px solid var(--blue); background: var(--card); border-radius: 10px 10px 16px 16px; }
+    .gate strong { color: var(--blue); }
+    .sources { columns: 2; column-gap: 36px; }
+    .sources li { margin: 0 0 8px; break-inside: avoid; }
+    .small { font-size: 13px; color: var(--muted); }
+    footer { padding: 28px 0 46px; color: var(--muted); border-top: 1px solid var(--line); }
+    @media (max-width: 920px) {
+      .loop, .stat-grid, .timeline { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .step::after { display: none; }
+      .grid { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 640px) {
+      header { padding-top: 52px; }
+      h1 { font-size: 40px; }
+      nav .wrap { width: 100%; padding-left: 16px; padding-right: 16px; }
+      .loop, .stat-grid, .timeline, .grid, .grid.two { grid-template-columns: 1fr; }
+      .sources { columns: 1; }
+      .table-scroll { overflow-x: auto; }
+      table { min-width: 820px; }
+    }
+    @media print {
+      body { background: #fff; }
+      nav { display: none; }
+      header { background: #173967 !important; print-color-adjust: exact; }
+      .card, .step, .stat, .gate { break-inside: avoid; box-shadow: none; }
+      a { color: inherit; text-decoration: none; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <div class="eyebrow">MenuList SignalDesk · AI revenue research</div>
+      <h1>AI should close the loop, not multiply the noise.</h1>
+      <p>How current teams use AI across sales, marketing, distribution, activation, and retention—and why SignalDesk should prove its existing governed workflow before adding another agent layer.</p>
+      <div class="meta"><span>July 11, 2026</span><span>Current public research</span><span>Repo-truth cross-check</span><span>Founder-controlled</span></div>
+    </div>
+  </header>
+
+  <nav aria-label="Brief sections">
+    <div class="wrap"><a href="#overview">Overview</a><a href="#workflows">Workflows</a><a href="#competitors">Competitors</a><a href="#fit">SignalDesk fit</a><a href="#guidance">Guidance</a><a href="#sources">Sources</a></div>
+  </nav>
+
+  <main class="wrap">
+    <section id="overview">
+      <h2>Overview</h2>
+      <p class="lead">The leading pattern is a continuous, governed revenue workflow. AI assembles context, classifies, recommends, drafts, and monitors. Deterministic policy decides what is allowed. People retain permission, commercial judgment, relationships, exceptions, and material risk.</p>
+      <div class="loop" aria-label="AI revenue operating loop">
+        <div class="step"><b>1 · Signal</b>Intent, reply, behavior, referral, or market event</div>
+        <div class="step"><b>2 · Context</b>Identity, history, source rights, offer, and outcome</div>
+        <div class="step"><b>3 · Decide</b>Policy, risk, budget, confidence, and channel checks</div>
+        <div class="step"><b>4 · Prepare</b>Research, classify, recommend, draft, or summarize</div>
+        <div class="step"><b>5 · Act</b>Human approval or bounded low-risk execution</div>
+        <div class="step"><b>6 · Record</b>Conversation, opportunity, content, activation, and cost</div>
+        <div class="step"><b>7 · Observe</b>Customer, revenue, retention, and risk outcomes</div>
+        <div class="step"><b>8 · Learn</b>Evaluate, pause, narrow, improve, or stop</div>
+      </div>
+      <div class="stat-grid">
+        <div class="stat"><strong>88%</strong><span>of respondents in McKinsey's 2025 survey reported regular AI use in at least one business function.</span></div>
+        <div class="stat"><strong>62%</strong><span>reported experimenting with or scaling agents, while scaling remained limited by function.</span></div>
+        <div class="stat"><strong>39%</strong><span>attributed any enterprise EBIT impact to AI; broad use is not the same as broad value.</span></div>
+        <div class="stat"><strong>3×</strong><span>AI high performers were nearly three times as likely to have fundamentally redesigned workflows.</span></div>
+      </div>
+      <p class="small" style="margin-top:12px">Survey figures are McKinsey respondent reports, not independently audited MenuList benchmarks.</p>
+      <div class="callout" style="margin-top:20px"><strong>SignalDesk verdict:</strong> the product direction is already correct. Prove the shared context, policy, preparation, approval, outcome, and learning loop with real permissioned work before adding more automation.</div>
+    </section>
+
+    <section id="workflows">
+      <h2>What people are using AI for now</h2>
+      <div class="grid">
+        <article class="card"><span class="tag">Research</span><h3>Account and meeting preparation</h3><p>Summarize company, person, relationship, recent events, likely need, questions, objections, and relevant proof before a seller acts.</p></article>
+        <article class="card"><span class="tag">Signals</span><h3>Enrichment and prioritization</h3><p>Combine first-party behavior, CRM history, approved provider data, fit, intent, timing, and risk; route to action, nurture, or no action.</p></article>
+        <article class="card"><span class="tag">Outbound</span><h3>Evidence-grounded drafting</h3><p>Draft around a verified trigger and approved offer. Small cohorts and source-backed facts outperform synthetic familiarity.</p></article>
+        <article class="card"><span class="tag">Inbound</span><h3>Qualification and routing</h3><p>Collect missing required information, answer from approved knowledge, then book, self-serve, nurture, suppress, or hand off with context.</p></article>
+        <article class="card"><span class="tag">Calls</span><h3>Notes, follow-up, and proposed updates</h3><p>Extract objections, commitments, authority, timeline, and next step. Sellers accept, edit, or reject CRM and proposal suggestions.</p></article>
+        <article class="card"><span class="tag">Commercial</span><h3>Standard quote preparation</h3><p>Assemble structured product, price, term, and eligibility data under role and discount rules; escalate nonstandard decisions.</p></article>
+        <article class="card"><span class="tag violet">Content</span><h3>Derivative supply chains</h3><p>Turn one approved proof source into channel and locale variants with brand, claim, rights, accessibility, and approval checks.</p></article>
+        <article class="card"><span class="tag violet">Creators</span><h3>Matching and amplification</h3><p>Recommend fit from audience and performance signals; humans still review portfolio, contract, rights, disclosure, and authenticity.</p></article>
+        <article class="card"><span class="tag violet">Paid</span><h3>Platform-native optimization</h3><p>Explore bids, audiences, placements, and creative combinations from goals and conversion data inside hard budget and exclusion boundaries.</p></article>
+        <article class="card"><span class="tag green">Discovery</span><h3>Accurate AI-search inputs</h3><p>Maintain useful, crawlable, current first-party truth and supported feeds. Google says ordinary SEO fundamentals still apply.</p></article>
+        <article class="card"><span class="tag green">Lifecycle</span><h3>Retention and journey recovery</h3><p>Detect drop-off, campaign collisions, churn, expansion, and referral opportunities; prepare bounded interventions from one customer record.</p></article>
+        <article class="card"><span class="tag green">Governance</span><h3>Evaluation and safe pause</h3><p>Track accuracy, edits, escalation precision, drift, cost, outcome, and incidents; stop affected scope when quality or policy fails.</p></article>
+      </div>
+    </section>
+
+    <section id="competitors">
+      <h2>Competitors</h2>
+      <p class="lead">The competitive pressure comes from five operating models, not one direct product. Each model is useful evidence, but none should pull SignalDesk outside its private, policy-governed MenuList boundary.</p>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Operating model</th><th>Representative platforms</th><th>Strength</th><th>Risk</th><th>SignalDesk response</th></tr></thead>
+          <tbody>
+            <tr><td>CRM-native agents</td><td>Salesforce, HubSpot, Microsoft</td><td>One customer and revenue record across sales, service, quoting, and workflow</td><td>Platform lock-in and broad action authority</td><td>Keep product-isolated account, opportunity, offer, policy, activation, and audit context</td></tr>
+            <tr><td>Signal and enrichment orchestration</td><td>Clay, Common Room, Apollo</td><td>Fast signal-to-research-to-action loops</td><td>Provider cost, unclear source rights, and scaled spam</td><td>Reuse source policy, waterfalls, budgets, evidence, prior-contact guards, and approval</td></tr>
+            <tr><td>Conversation and deal intelligence</td><td>Gong, Outreach, Apollo, Microsoft</td><td>Less note-taking, better follow-up, searchable objections, cleaner CRM</td><td>Transcript privacy and silent false updates</td><td>Add later only if real calls justify it; require evidence and accept/edit/reject</td></tr>
+            <tr><td>Content and lifecycle supply chain</td><td>Adobe, Canva, Klaviyo</td><td>Faster variant creation and coordinated customer journeys</td><td>Content volume, synthetic sameness, and message collisions</td><td>Reuse canonical assets, approvals, performance, activation, and proof permissions</td></tr>
+            <tr><td>Channel-native AI optimization</td><td>Google, Meta, YouTube, Reddit, X</td><td>Large platform behavior sets optimize discovery and paid delivery</td><td>Opaque expansion, proxy goals, spend leakage, and dependence</td><td>Use only after activation proof, with budgets, exclusions, experiments, and stop rules</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <h2>Practitioner reality</h2>
+      <div class="grid two">
+        <article class="card"><span class="tag green">What is sticking</span><h3>Preparation and administration</h3><ul><li>Pre-call and account briefs</li><li>Meeting notes and transcript summaries</li><li>Follow-up and proposal first drafts</li><li>Suggested CRM updates</li><li>Old-opportunity reactivation research</li><li>Content angles, derivatives, and translation</li><li>Lead scoring, routing, and anomaly detection</li></ul></article>
+        <article class="card"><span class="tag" style="background:var(--red-soft);color:var(--red)">What is breaking</span><h3>Volume without truth</h3><ul><li>Weak ICP and timing scaled faster</li><li>Recognizable generic personalization</li><li>Prompts, assets, approvals, and analytics split across tools</li><li>More content without a distribution system</li><li>Spam, sender-health, and meeting-quality damage</li><li>Missing version lineage and replayable learning</li><li>Autonomy ahead of reliable outcome data</li></ul></article>
+      </div>
+      <div class="callout warning" style="margin-top:16px"><strong>Field lesson:</strong> AI is more valuable for deciding who, why now, what evidence, and what next than for polishing a message to someone who has no reason to care.</div>
+    </section>
+
+    <section id="fit">
+      <h2>SignalDesk fit</h2>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Market capability</th><th>Current repo truth</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td>Shared revenue context</td><td>Accounts, opportunities, conversations, offers, envelopes, activation watches, outcomes</td><td><span class="status covered">Covered</span></td></tr>
+            <tr><td>Signal and source governance</td><td>Source policies, provenance, retention, provider budgets, vendor and enrichment ledgers</td><td><span class="status covered">Covered</span></td></tr>
+            <tr><td>AI preparation and evaluation</td><td>Gemini assist, model routes/evals, decision snapshots, rejected facts, cost and audit</td><td><span class="status covered">Covered</span></td></tr>
+            <tr><td>Evidence-bound personalization</td><td>Evidence references, allowed variables, unsupported claim slots, approval packets</td><td><span class="status covered">Covered</span></td></tr>
+            <tr><td>Inbound and reply support</td><td>Classification, suppression, playbooks, qualification, self-service CTA, next action</td><td><span class="status covered">Covered</span></td></tr>
+            <tr><td>Content supply chain</td><td>Source, canonical asset, drafts, approval, calendar, performance, pause</td><td><span class="status covered">Covered</span></td></tr>
+            <tr><td>Partner and creator operations</td><td>Profiles, niche tests, briefs, deals, deliverables, metrics, renewal, spend gates</td><td><span class="status covered">Covered</span></td></tr>
+            <tr><td>Commercial lifecycle</td><td>Deterministic opportunity, immutable offer, approved envelope, activation-driven win</td><td><span class="status covered">Covered</span></td></tr>
+            <tr><td>Meeting/transcript intelligence</td><td>No live calendar or transcript connector</td><td><span class="status later">Later if proven</span></td></tr>
+            <tr><td>Proposal/payment provider</td><td>Boundary documented; external providers absent</td><td><span class="status later">Later if proven</span></td></tr>
+            <tr><td>Paid optimization</td><td>Intentionally disabled and budget-gated</td><td><span class="status blocked">Correctly blocked</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout" style="margin-top:16px"><strong>Build decision:</strong> no new generic agent, CRM, social publisher, collection, or campaign optimizer is justified before a real permissioned run.</div>
+    </section>
+
+    <section id="guidance">
+      <h2>Guidance</h2>
+      <div class="callout"><strong>Adopt now:</strong> AI research, classification, recommendation, and drafting in shadow or prepare-and-approve mode; deterministic permission; shared account history; outcome, attention, cost, and quality measurement.</div>
+      <div class="callout warning"><strong>Delay:</strong> transcript/calendar/proposal/payment connectors, automated low-risk follow-up, lifecycle reactivation, creator scoring, paid optimization, prompt auto-promotion, and new contribution summaries until real evidence exposes the need.</div>
+      <div class="callout reject"><strong>Reject:</strong> scraped signal-to-send, cold social automation, inferred consent, unsupported familiarity, silent truth changes, autonomous material spend or discounting, self-graduating autonomy, and guaranteed AI-discovery claims.</div>
+    </section>
+
+    <section>
+      <h2>Controlled rollout</h2>
+      <div class="timeline">
+        <div class="gate"><strong>Gate A · Shadow</strong><p>AI prepares fit, timing, proof, risk, and next action. Founder accepts, edits, rejects, or holds. No AI send.</p></div>
+        <div class="gate"><strong>Gate B · Approve each</strong><p>Use the first real replies to test classification, objection extraction, response drafts, and accepted deterministic updates.</p></div>
+        <div class="gate"><strong>Gate C · Batch/sample</strong><p>One pod, offer, sender, channel, template set, budget, duration, and stop policy after low edit and exception rates.</p></div>
+        <div class="gate"><strong>Gate D · Exceptions</strong><p>Only proven low-risk reminders, FAQs, booking/self-service routes, standard proposals, and activation recovery.</p></div>
+      </div>
+      <div class="grid" style="margin-top:16px">
+        <article class="card"><h3>Trial evidence</h3><ul><li>12 evidence packets</li><li>5 private previews</li><li>3 two-surface activations</li><li>1 permissioned proof asset</li></ul></article>
+        <article class="card"><h3>AI quality</h3><ul><li>Acceptance and edit rates</li><li>Rejected facts and claims</li><li>Escalation precision</li><li>Model/prompt drift</li></ul></article>
+        <article class="card"><h3>Final efficiency metric</h3><p style="font-size:22px;font-weight:800;line-height:1.2;color:var(--blue)">Founder attention minutes per activated business</p><p class="small">Automation volume is not the objective.</p></article>
+      </div>
+      <p class="small" style="margin-top:14px">Immediate blocker: one permissioned owner or partner introduction and the exact sender/manual identity.</p>
+    </section>
+
+    <section id="sources">
+      <h2>Sources</h2>
+      <ul class="sources">
+        <li><a href="https://www.mckinsey.com/capabilities/quantumblack/our-insights/the-state-of-ai">McKinsey: The state of AI in 2025</a></li>
+        <li><a href="https://www.mckinsey.com/capabilities/growth-marketing-and-sales/our-insights/agents-for-growth-turning-ai-promise-into-impact">McKinsey: Agents for growth</a></li>
+        <li><a href="https://www.nist.gov/itl/ai-risk-management-framework">NIST AI Risk Management Framework</a></li>
+        <li><a href="https://www.linkedin.com/business/sales/blog/product-updates/introducing-the-new-lead-iq-and-enhanced-account-iq-features-for-sales-navigator">LinkedIn Lead IQ and Account IQ</a></li>
+        <li><a href="https://www.microsoft.com/en-us/microsoft-365/blog/2025/03/05/new-sales-agents-accessible-in-microsoft-365-copilot-help-teams-close-more-deals-faster/">Microsoft Sales Agent and Sales Chat</a></li>
+        <li><a href="https://www.salesforce.com/news/stories/winter-2025-product-release-announcement/">Salesforce Agentforce SDR</a></li>
+        <li><a href="https://www.hubspot.com/products/artificial-intelligence?lang=en-US">HubSpot Breeze AI</a></li>
+        <li><a href="https://www.apollo.io/product/ai-sales-automation-software">Apollo AI sales automation</a></li>
+        <li><a href="https://www.commonroom.io/blog/roomieai-for-pipe-gen/">Common Room RoomieAI</a></li>
+        <li><a href="https://www.clay.com/blog/manage-enrich-inbound-automatically">Clay inbound enrichment</a></li>
+        <li><a href="https://support.outreach.io/support/solutions/articles/159000431194-outreach-product-release-notes-may-2026">Outreach May 2026 release notes</a></li>
+        <li><a href="https://www.gong.io/conversation-intelligence">Gong conversation intelligence</a></li>
+        <li><a href="https://www.intercom.com/help/en/articles/13927077-how-to-train-fin-for-sales">Intercom: Train Fin for Sales</a></li>
+        <li><a href="https://www.salesforce.com/news/stories/agentforce-for-revenue-announcement/">Salesforce Agentforce for Revenue</a></li>
+        <li><a href="https://business.adobe.com/products/genstudio-for-performance-marketing.html">Adobe GenStudio for Performance Marketing</a></li>
+        <li><a href="https://www.canva.com/newsroom/news/magic-studio/">Canva Magic Studio</a></li>
+        <li><a href="https://www.klaviyo.com/newsroom/CRM-agents">Klaviyo Composer and Customer Agent</a></li>
+        <li><a href="https://about.fb.com/news/2024/02/creator-marketplace-for-brands-and-creators-to-collaborate-on-instagram/">Instagram Creator Marketplace</a></li>
+        <li><a href="https://blog.youtube/news-and-events/youtube-creator-partnerships-newfronts-2026/">YouTube Creator Partnerships 2026</a></li>
+        <li><a href="https://support.google.com/google-ads/answer/10724817?hl=en">Google Performance Max</a></li>
+        <li><a href="https://developers.google.com/search/docs/appearance/ai-features">Google Search Central: AI features</a></li>
+        <li><a href="https://openai.com/index/chatgpt-shopping-research/">OpenAI shopping research</a></li>
+        <li><a href="https://www.reddit.com/r/sales/comments/1r6j849/how_are_you_actually_using_ai_to_make_your_work/">Reddit seller workflow discussion</a></li>
+        <li><a href="https://www.reddit.com/r/digital_marketing/comments/1t6wvn6/what_are_people_actually_using_to_manage_ai/">Reddit marketer workflow discussion</a></li>
+      </ul>
+      <p class="small">Vendor and community material is interpreted as market evidence, not proof of MenuList performance, product readiness, outreach rights, or provider authority.</p>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">Internal MenuList SignalDesk research brief · No external contact, publication, spend, provider connection, runtime change, build, or deploy.</div>
+  </footer>
+</body>
+</html>

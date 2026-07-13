@@ -61,7 +61,7 @@ function FontPresets() {
                 code: `eai-f-${file.name.split(".")[0]}`,
                 name: file.name.split(".")[0],
                 size: file.size,
-                type: file.type,
+                type: file.type || 'font/ttf',
                 fileUrl: await getBase64(file)
             }
             setFontDetails(fontData)
@@ -132,32 +132,48 @@ function FontPresets() {
     };
 
     const onClickSave = async () => {
-        const fontsListCopy = removeObjRef(fontsList)
-        if (fontDetails.id) {
-            const fondRes = await updateFontPreset({ ...fontDetails })
-            const index = fontsListCopy.findIndex(f => f.id == fontDetails.id);
-            fontsListCopy[index] = fondRes
-            dispatch(showSuccessToast("Font updated successfully"))
-        } else {
-            const fondRes = await addFontPreset({
-                ...fontDetails,
-                index: fontsList.length,
-            })
-            fontsListCopy.push(fondRes);
-            dispatch(showSuccessToast("Font added successfully"))
+        try {
+            const fontsListCopy = removeObjRef(fontsList)
+            if (fontDetails.id) {
+                const fontResult = await updateFontPreset({ ...fontDetails })
+                const index = fontsListCopy.findIndex(f => f.id == fontDetails.id);
+                if (index < 0) throw new Error('platform_font_preset_local_state_missing');
+                fontsListCopy[index] = fontResult
+                dispatch(showSuccessToast("Font updated successfully"))
+            } else {
+                const fontResult = await addFontPreset({
+                    ...fontDetails,
+                    index: fontsList.length,
+                })
+                fontsListCopy.push(fontResult);
+                dispatch(showSuccessToast("Font added successfully"))
+            }
+            setFontsList(fontsListCopy);
+            setFontDetails(emptyFontDetails)
+        } catch (error) {
+            logRuntimeFailure('platform_font_preset_save_failed', error, {
+                ...getBoundedRuntimeStringContext('fontCode', fontDetails.code),
+                hasFontId: Boolean(fontDetails.id),
+            });
         }
-        setFontsList(fontsListCopy);
-        setFontDetails(emptyFontDetails)
     }
 
     const onDeleteFont = async () => {
-        await deletFontPreset(fontDetails.id, fontDetails.fileUrl);
-        const fontsListCopy = removeObjRef(fontsList)
-        const index = fontsListCopy.findIndex(f => f.id == fontDetails.id);
-        fontsListCopy.splice(index, 1);
-        setFontsList(fontsListCopy);
-        setFontDetails(emptyFontDetails)
-        dispatch(showSuccessToast("Font deleted successfully"))
+        try {
+            await deletFontPreset(fontDetails.id, fontDetails.fileUrl);
+            const fontsListCopy = removeObjRef(fontsList)
+            const index = fontsListCopy.findIndex(f => f.id == fontDetails.id);
+            if (index < 0) throw new Error('platform_font_preset_local_state_missing');
+            fontsListCopy.splice(index, 1);
+            setFontsList(fontsListCopy);
+            setFontDetails(emptyFontDetails)
+            dispatch(showSuccessToast("Font deleted successfully"))
+        } catch (error) {
+            logRuntimeFailure('platform_font_preset_delete_failed', error, {
+                ...getBoundedRuntimeStringContext('fontCode', fontDetails.code),
+                hasFontId: Boolean(fontDetails.id),
+            });
+        }
     }
 
     return (

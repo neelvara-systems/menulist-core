@@ -1,91 +1,89 @@
 import { DB_COLLECTIONS } from "@constant/database";
 import { requestBodyComposer } from "@lib/apiHelper";
 import { firebaseDatabase } from "@lib/firebase/firebaseClient";
-import { child, get, onValue, ref, set } from "firebase/database";
+import { get, push, ref, set, update } from "firebase/database";
 import {
     getBoundedDatabaseLoggerStringContext,
     logDatabaseLoggerFailure,
 } from "./loggerDiagnostics";
 
 const COLLECTION = DB_COLLECTIONS.APPLICATION_LOGS;
+type DatabaseLogRecord = Record<string, unknown>;
 
-const getCollectionRef = (logId) => {
-    return ref(firebaseDatabase, `${COLLECTION}/${logId}`)
+const getCollectionRef = () => {
+    return ref(firebaseDatabase, COLLECTION)
 }
 
-const getDocRef = (docId) => {
-    return ref(firebaseDatabase, `${COLLECTION}/${docId}`)
+const getDocRef = (docId: string | number) => {
+    const normalizedId = String(docId);
+    if (!/^[A-Za-z0-9_-]{1,160}$/.test(normalizedId)) {
+        throw new Error('INVALID_APPLICATION_LOG_ID');
+    }
+    return ref(firebaseDatabase, `${COLLECTION}/${normalizedId}`)
 }
 
-export const addApplicationLog = (logDetails) => {
-    return new Promise(async (res, rej) => {
-        const logId = new Date().getTime();
-        set(getCollectionRef(logId), await requestBodyComposer(logDetails)).then((docRef: any) => {
-            res(logId)
-        }).catch((err) => {
-            logDatabaseLoggerFailure('application_log_write_failed', err, {
-                ...getBoundedDatabaseLoggerStringContext('logId', logId),
-            });
-            res(null);
-        })
-    })
-}
+export const addApplicationLog = async (logDetails: DatabaseLogRecord): Promise<string | null> => {
+    let logId: string | null = null;
+    try {
+        const logRef = push(getCollectionRef());
+        logId = logRef.key;
+        if (!logId) {
+            logDatabaseLoggerFailure('application_log_id_allocation_failed');
+            return null;
+        }
 
-export const getRealtimeApplicationLogs = (filters: any) => {
-    return new Promise((res, rej) => {
-        const starCountRef = ref(firebaseDatabase, COLLECTION);
-        onValue(starCountRef, (snapshot) => {
-            const data = snapshot.val();
-            res(data);
+        await set(logRef, await requestBodyComposer(logDetails, { isNew: true }));
+        return logId;
+    } catch (error) {
+        logDatabaseLoggerFailure('application_log_write_failed', error, {
+            ...(logId ? getBoundedDatabaseLoggerStringContext('logId', logId) : {}),
         });
-    })
+        return null;
+    }
+}
+
+export const getRealtimeApplicationLogs = async (_filters?: unknown): Promise<unknown | null> => {
+    try {
+        const snapshot = await get(getCollectionRef());
+        return snapshot.exists() ? snapshot.val() : null;
+    } catch (error) {
+        logDatabaseLoggerFailure('application_log_realtime_read_failed', error);
+        return null;
+    }
 }
 // Read data once with get()
-export const getApplicationLog = (filters: any) => {
-    return new Promise(async (res, rej) => {
-        get(child(ref(firebaseDatabase), COLLECTION)).then((snapshot) => {
-            if (snapshot.exists()) {
-                res(snapshot.val())
-            } else {
-                res(null)
-            }
-        }).catch((error) => {
-            res(null)
-            logDatabaseLoggerFailure('application_log_read_failed', error);
+export const getApplicationLog = async (_filters?: unknown): Promise<unknown | null> => {
+    try {
+        const snapshot = await get(getCollectionRef());
+        return snapshot.exists() ? snapshot.val() : null;
+    } catch (error) {
+        logDatabaseLoggerFailure('application_log_read_failed', error);
+        return null;
+    }
+}
+
+export const updateApplicationLog = async (logDetails: DatabaseLogRecord & { id: string | number }): Promise<void> => {
+    const { id, ...patch } = logDetails;
+    await update(getDocRef(id), await requestBodyComposer(patch, { isNew: false }));
+}
+
+export const getApplicationLogById = async (logId: string | number): Promise<unknown | null> => {
+    try {
+        const snapshot = await get(getDocRef(logId));
+        if (!snapshot.exists()) return null;
+        const value = snapshot.val();
+        return value && typeof value === 'object' && !Array.isArray(value)
+            ? { ...value, logId }
+            : null;
+    } catch (error) {
+        logDatabaseLoggerFailure('application_log_read_by_id_failed', error, {
+            ...getBoundedDatabaseLoggerStringContext('logId', logId),
         });
-
-
-    })
-}
-
-export const updateApplicationLog = (logDetails) => {
-    return new Promise(async (res, rej) => {
-        const response = await set(getDocRef(logDetails.id), await requestBodyComposer(logDetails))
-        res(response)
-    })
-}
-
-export const getApplicationLogById = (logId) => {
-    return new Promise(async (res, rej) => {
-        get(child(ref(firebaseDatabase), `${COLLECTION}/${logId}`)).then((snapshot) => {
-            if (snapshot.exists()) {
-                res({ ...(snapshot.val()), logId })
-            } else {
-                res(null)
-            }
-        }).catch((error) => {
-            logDatabaseLoggerFailure('application_log_read_by_id_failed', error, {
-                ...getBoundedDatabaseLoggerStringContext('logId', logId),
-            });
-            res(null);
-        });
-    })
+        return null;
+    }
 }
 
 
-export const deleteApplicationLog = (logId) => {
-    return new Promise(async (res, rej) => {
-        const response = await set(getDocRef(logId), null)
-        res(response)
-    })
+export const deleteApplicationLog = async (logId: string | number): Promise<void> => {
+    await set(getDocRef(logId), null);
 }

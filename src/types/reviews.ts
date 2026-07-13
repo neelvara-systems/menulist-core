@@ -37,7 +37,7 @@ export interface Review {
 
 // ================================================================
 // REVIEW STATE (Classification + Block/Escalation)
-// Collection: reviewsState/{tId}/{sId}/{reviewId}
+// Collection: reviewsState/{reviewId}; tenant/store ownership lives in tId/sId fields
 // ================================================================
 
 export type ReviewClassification =

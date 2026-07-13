@@ -42,6 +42,21 @@ export type UserDataType = {
     deleted: boolean;
     deletedAt: string;
     authDisabled?: boolean;
+    authSyncPending?: {
+        desiredDisabled: boolean;
+        leaseExpiresAt: any;
+        operationId: string;
+        requestedAt: any;
+    };
+    authSyncRevision?: string;
+    authSyncStatus?: "pending" | "synced" | "auth_user_missing" | "failed";
+    authSyncedAt?: any;
+    passcodeResetPending?: {
+        leaseExpiresAt: any;
+        operationId: string;
+        requestedAt: any;
+        requestedBy: string;
+    };
     authTokensRevokedAt?: any;
     sessionRevokedAt?: any;
     sessionRevokedBy?: string;

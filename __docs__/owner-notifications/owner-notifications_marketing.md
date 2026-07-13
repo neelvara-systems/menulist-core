@@ -1,8 +1,10 @@
 # Owner Notifications - Internal Positioning
 
 **Status:** Internal guidance
-**Date:** 2026-06-02
+**Date:** 2026-07-13
 **Audience:** Product, sales, support
+
+July 13 verification: internal recovery authorization and bounded-read hardening do not change this positioning, owner channels, or customer claims.
 
 ## One-Line Positioning
 

@@ -13,9 +13,8 @@ import SupportTicketCategory from '@organisms/SupportTicket/SupportTicketCategor
 import SupportTicketPriority from '@organisms/SupportTicket/SupportTicketPriority';
 import SupportTicketStatus from '@organisms/SupportTicket/SupportTicketStatus';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
-import { SUPPORT_TICKET_STATUS, SupportTicketType, TicketMessage } from '@type/supportTicket';
+import { SUPPORT_TICKET_STATUS, SupportTicketType } from '@type/supportTicket';
 import { Badge, Button, Card, Drawer, Flex, Grid, Image as AntImage, message, Tag, theme, Tooltip, Typography } from 'antd';
-import { Timestamp } from 'firebase/firestore';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -84,33 +83,8 @@ function TicketDetailView({ activeTicket, onUpdate, setSelectedTicket, from }: T
     const handleTicketUpdate = async (values: Partial<SupportTicketType>) => {
         if (!ticket || !session?.user) return;
 
-        // Create a copy to avoid mutating the original
         const updatePayload = { ...values };
-
-        // Check if status has changed
-        const statusChanged = values.status && values.status !== activeTicket.status;
-
-        // If status changed, create a system message
-        if (statusChanged) {
-            const systemMessage: TicketMessage = {
-                id: `system-${Date.now()}`,
-                text: `Status changed from ${activeTicket.status} to ${values.status}`,
-                type: 'system',
-                sender: {
-                    id: session.user.id,
-                    name: session.user.name,
-                    email: session.user.email,
-                },
-                timestamp: Timestamp.now(),
-            };
-
-            // Add system message to the messages array
-            updatePayload.messages = [...(ticket.messages || []), systemMessage];
-        } else {
-            // IMPORTANT: Don't include messages field if status didn't change
-            // This prevents overwriting messages in the database
-            delete updatePayload.messages;
-        }
+        const statusChanged = Boolean(values.status && values.status !== activeTicket.status);
 
         dispatch(startLoader('Updating ticket...'));
         try {
@@ -125,7 +99,8 @@ function TicketDetailView({ activeTicket, onUpdate, setSelectedTicket, from }: T
                 ticket.id,
                 'platform_ticket_detail_update_rejected',
             );
-            onUpdate({ ...res, ...updatePayload, id: ticket.id });
+            setTicket(res as SupportTicketType);
+            onUpdate(res);
             let summaryRefreshSucceeded = true;
             if (FEATURE_FLAGS.ENABLE_ANSWERLATTICE_PRODUCT_SURFACES) {
                 summaryRefreshSucceeded = await rebuildProductSurfaceContentSummaryWithDiagnostics({
@@ -151,7 +126,7 @@ function TicketDetailView({ activeTicket, onUpdate, setSelectedTicket, from }: T
                     emitTicketResolutionSignal({
                         ticketId: ticket.id,
                         subject: ticket.subject || '',
-                        messages: ticket.messages || [],
+                        messages: (res as SupportTicketType).messages || [],
                         category: ticket.category || '',
                         tId: Number(ticket.tId),
                         sId: Number(ticket.sId),

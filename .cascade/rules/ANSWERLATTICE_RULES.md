@@ -183,7 +183,10 @@ Answerlattice STILL shares with MenuList:
 - Answerlattice DAL files import `answerlatticeFirebaseClient`, NEVER `firebaseClient`
 - Answerlattice Cloud Functions live in `functions-answerlattice/`, NEVER `functions/`
 - Answerlattice NEVER reads MenuList session directly — always via CCT → `AnswerlatticePlatformContext`
-- `requestBodyComposer` is for MenuList single-product writes only. Answerlattice cross-product documents are built by feature code using decoded CCT.
+- Answerlattice feature code uses `answerlatticeRequestBodyComposer`, never the
+  MenuList `requestBodyComposer` wrapper directly. The Answerlattice wrapper may
+  reuse the shared pure composition/sanitization primitive after resolving the
+  scoped product account or decoded CCT context.
 - No cross-project Firestore queries. Ever.
 
 @see `__docs__/answerlattice/doctrine/07-multi-product-tenancy.md` v4.3.0

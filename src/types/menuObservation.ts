@@ -17,31 +17,33 @@ import { Timestamp } from "firebase/firestore";
 /**
  * Types of menu changes that can be tracked
  */
-export type MenuChangeType =
-    | "PRICE"              // Price changed
-    | "AVAILABILITY"       // Available toggle changed
-    | "ITEM_ADDED"         // New item added
-    | "ITEM_REMOVED"       // Item deleted
-    | "ITEM_ACTIVE"        // Active toggle changed
-    | "CATEGORY_ADDED"     // New category
-    | "CATEGORY_REMOVED"   // Category deleted
-    | "CATEGORY_REORDER"   // Category order changed
-    | "ITEM_REORDER"       // Item order changed within category
-    | "NAME_CHANGE"        // Item/category name changed
-    | "DESCRIPTION_CHANGE" // Item description changed
-    | "IMAGE_CHANGE"       // Item image added/removed/changed
-    | "STRUCTURE"          // Other structural changes
-    | "MENU_REVISION_SUMMARY" // Compact per-save/publish summary
-    | "PUBLISH"            // Menu published (canonical truth event)
-    | "EXTRACTION_CORRECTION"; // Owner corrected AI-extracted data (Infrastructure Compounding 10.2)
+export const MENU_CHANGE_TYPES = [
+    "PRICE",
+    "AVAILABILITY",
+    "ITEM_ADDED",
+    "ITEM_REMOVED",
+    "ITEM_ACTIVE",
+    "CATEGORY_ADDED",
+    "CATEGORY_REMOVED",
+    "CATEGORY_REORDER",
+    "ITEM_REORDER",
+    "NAME_CHANGE",
+    "DESCRIPTION_CHANGE",
+    "IMAGE_CHANGE",
+    "STRUCTURE",
+    "MENU_REVISION_SUMMARY",
+    "PUBLISH",
+    "EXTRACTION_CORRECTION",
+] as const;
+
+export type MenuChangeType = typeof MENU_CHANGE_TYPES[number];
 
 /**
  * Who made the change
  */
-export type ChangeActor =
-    | "OWNER"   // Business owner
-    | "STAFF"   // Team member
-    | "SYSTEM"; // Automated (future - AI, scheduled jobs)
+export const MENU_CHANGE_ACTORS = ["OWNER", "STAFF", "SYSTEM"] as const;
+
+export type ChangeActor = typeof MENU_CHANGE_ACTORS[number];
 
 /**
  * Immutable log entry for a menu change
@@ -53,11 +55,11 @@ export interface MenuChangeLogEntry {
     itemId?: string;               // Which item (null for category/structure changes)
     categoryId?: string;           // Which category (for category-level changes)
     changeType: MenuChangeType;    // What changed
-    oldValue: any;                 // Previous value (sanitized)
-    newValue: any;                 // New value (sanitized)
+    oldValue: unknown;             // Previous value (sanitized)
+    newValue: unknown;             // New value (sanitized)
     changedBy: ChangeActor;        // Who made the change
     userId?: string;               // User ID if available
-    metadata?: Record<string, any>; // Compact source/mode metadata
+    metadata?: Record<string, unknown>; // Compact source/mode metadata
     timestamp: Timestamp;          // When the change was made
 
     // Session context (auto-populated by requestBodyComposer pattern)
@@ -113,7 +115,8 @@ export interface DerivedItemMetrics {
     daysSinceLastAvailabilityChange: number | null;
 
     // Internal flags (NEVER exposed to UI - for system use only)
-    _priceStale: boolean;          // daysSinceLastPriceChange > 180
+    _priceStale: boolean | null;
+    _priceStaleStatus: 'measured' | 'unavailable_outside_rolling_window';
     _availabilityChurn: boolean;   // toggleCount30d > 10
     _highVolatility: boolean;      // priceChangeCount30d > 5
 
@@ -151,11 +154,17 @@ export interface CostTelemetry {
  */
 export type ChangeLogDebounceKey = string;
 
+export interface MenuChangeScope {
+    readonly tId: number;
+    readonly sId: number;
+}
+
 /**
  * Pending change for debounced write
  */
 export interface PendingMenuChange {
     entry: MenuChangeLogInput;
+    scope: MenuChangeScope;
     debounceKey: ChangeLogDebounceKey;
     queuedAt: number;              // Date.now()
 }

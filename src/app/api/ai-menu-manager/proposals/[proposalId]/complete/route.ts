@@ -14,6 +14,7 @@ import {
 import { normalizeAiMenuManagerProposalId } from '@lib/ai-menu-manager/routeIds';
 import { AiMenuManagerProposalCompleteSchema } from '@lib/ai-menu-manager/schemas';
 import { requireAnyStorePermissionForStore } from '@lib/permissions/server';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/middleware/auth';
@@ -96,7 +97,15 @@ export const POST = withAuth(async (
         });
 
         return NextResponse.json({ data: result });
-    } catch {
-        return NextResponse.json({ error: 'Completion failed' }, { status: 400 });
+    } catch (error) {
+        logRuntimeFailure('ai_menu_manager_proposal_completion_failed', error, {
+            ...getBoundedRuntimeStringContext('proposalId', proposalId),
+            ...getBoundedRuntimeStringContext('projectId', parsed.data.projectId),
+            ...getBoundedRuntimeStringContext('actionType', parsed.data.actionType),
+            ...getBoundedRuntimeStringContext('tenantId', scope.tId),
+            ...getBoundedRuntimeStringContext('storeId', scope.sId),
+            ...getBoundedRuntimeStringContext('executionId', parsed.data.executionId),
+        });
+        return NextResponse.json({ error: 'Completion failed' }, { status: 409 });
     }
 });

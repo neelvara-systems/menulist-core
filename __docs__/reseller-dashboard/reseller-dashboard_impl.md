@@ -446,6 +446,8 @@ const ResellerOnboardSchema = z.object({
 
 If a new Firebase Auth owner account is created and the Firestore onboarding transaction later fails, the route still attempts best-effort Auth rollback before returning the original failure. Failed rollback logs `reseller_onboard_auth_cleanup_failed` through bounded reseller API diagnostics with only reseller/auth/login-email presence and length metadata plus source error name/code/status. It does not log raw owner credentials, raw Auth UID, raw owner email, or the original transaction exception.
 
+The owner user is claimed before tenant/store creation inside the same Firestore transaction. An existing candidate is re-read and must remain unlinked with the expected normalized email and compatible Firebase UID; a new candidate requires `users/{authUid}` not to exist and is created with transaction `create`. Concurrent onboarding attempts cannot both bind the owner or leave two tenant/store scopes. Rollback checks that `users/{authUid}` is still absent before deleting an Auth identity created by the request.
+
 If online Razorpay plan lookup or subscription creation fails after the reseller tenant/store/user transaction succeeds, the route calls `compensateFailedTenantStoreOnboarding()`, clears the just-set owner custom claims back to owner identity without tenant/store scope, revalidates the public menu/OBP cache, and returns the existing generic onboarding failure response. The compensation marks the created tenant/store inactive, updates `storesSummary` for summary-backed public reads, and clears the failed store mapping from the owner user document only when it matches the just-created scope.
 
 **Response:**
@@ -479,12 +481,12 @@ const ConfirmPaymentSchema = z.object({
 **Logic:**
 
 1. Apply `DATA_WRITE` rate limit and bounded 16KB JSON parsing before validation or subscription reads
-2. Verify subscription belongs to this reseller
-3. Verify subscription is `pending` and `billingMode: 'manual'`
-4. Update subscription: `status: 'active'`, `manualPaymentConfirmed: true`, `manualPaymentConfirmedAt: now`
-5. Sync store entitlement and public/assistant cache state
+2. Re-read the current reseller profile or platform user and reject inactive, revoked, malformed, or identity-mismatched authority
+3. Transactionally re-read the subscription and require exact reseller ownership (unless current platform authority), MenuList product identity, coherent tenant/store aliases, integer paise amount, `INR`, `billingMode: 'manual'`, and `status: 'pending'`
+4. Append one `active` status and set `manualPaymentConfirmed` inside the same transaction. Concurrent requests serialize; a retry after a committed/lost response returns successful `alreadyConfirmed: true` without appending another status
+5. On both first success and replay, repair the authoritative store entitlement/public-assistant cache projection and idempotent owner-referral settlement from the transaction-normalized scope
 
-**Firebase cost:** 3 writes (subscription + transaction + resellerProfile)
+**Firebase cost:** one current-authority read plus one subscription transaction read. First confirmation writes one subscription document; replay writes none. Entitlement/referral reconciliation adds its existing bounded, state-dependent reads/writes and cache invalidation.
 
 ### 4.3 `GET /api/reseller/clients` — List Reseller's Clients
 
@@ -625,6 +627,8 @@ const checkoutUrl = razorpaySubscription.short_url;
 **File:** `functions/src/schedulers/menulistMaintenanceScheduler.ts`
 
 The `reseller_license_expiry` maintenance task runs daily at 2:30 AM UTC under the existing per-task lease model. The old `functions/src/decisionBlocksScoring.ts` nightly scheduler no longer owns reseller expiry.
+
+Expiry is transaction-serialized with the subscription and reseller profile count. It rechecks `billingMode`, current status, `validUntil`, exact tenant/store scope, and profile state before appending the terminal history and decrementing the counter without going below zero. The task processes up to five bounded 100-row pages per run. It writes `billingEntitlementSyncPending: true` with the expiry, clears it only after the authoritative current-active entitlement/cache sync succeeds, and scans pending markers on later runs so a post-commit cache or mirror failure is recoverable rather than silently permanent.
 
 Runtime contract:
 

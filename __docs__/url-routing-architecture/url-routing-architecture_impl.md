@@ -40,7 +40,9 @@ Customer opens: storypizza.menulist.ai/food-menu
 	                    └────────────────────────┘
 ```
 
-`src/lib/multiTenant/getTenantFromHeaders.ts` reads middleware-set tenant headers and host fallbacks for public menu, OBP, compliance, and PWA handoff pages. If no host header is available, it logs only bounded header-presence booleans through `secureError()` and never emits raw request header values. `src/lib/multiTenant/domainLookup.ts` follows the same rule for Firestore lookup failures: it logs lookup type and value length only, not raw subdomain/custom-domain values or provider exception text.
+`src/lib/multiTenant/getTenantFromHeaders.ts` derives public menu, OBP, compliance, sitemap, robots, and PWA handoff tenant identity only from the validated original `Host` authority. `src/middleware.ts` deletes incoming `x-tenant-*` and hosted-help routing headers, then forwards middleware-owned values on the rewritten request. Tenant headers are checked as integrity claims but never override Host; `x-forwarded-host`, deployment aliases, and environment fallbacks are not accepted as tenant selectors. If Host is missing or malformed, the helper logs bounded presence context through `secureError()` and fails closed without emitting raw request header values. `src/lib/multiTenant/domainLookup.ts` follows the same bounded logging rule for Firestore lookup failures.
+
+Middleware also owns `x-product-id`, `x-product-name`, and `x-product-base-path`. `getSanitizedRoutingRequestHeaders()` removes tenant, hosted-help, and product routing headers before every internal rewrite or pass-through. Product branches then add only the product metadata derived from the active Host/path contract. This prevents direct request headers from changing MenuList/MyCodex aliases, Answerlattice/CampaignCue base paths, SignalDesk path handling, or server loader branding.
 
 `src/app/client/sitemap.ts` keeps tenant sitemap lookup failures fail-closed and bounded. Master-store lookup failure logs `tenant_sitemap_master_store_lookup_failed` and returns an empty sitemap; outlet lookup failure logs `tenant_sitemap_outlets_lookup_failed` and omits outlet entries; project lookup failure logs `tenant_sitemap_projects_lookup_failed` and omits project entries. The diagnostic guard caps unique failure shapes and logs only presence/length metadata plus fallback-policy labels, never raw tenant hosts, custom domains, IDs, slugs, generated sitemap URLs, or exception text.
 
@@ -93,6 +95,8 @@ outletSlug?: string;  // NEW: URL path segment for outlet routing
 | `src/constants/reservedSlugs.ts`                                    | Reserved slug/subdomain namespace constants + validators  |
 | `src/app/api/subdomain/check/route.ts`                              | Subdomain availability checker API (GET)                  |
 | `src/app/api/domain/route.ts`                                       | MenuList store custom-domain management via Vercel API (POST/GET/DELETE) |
+| `src/lib/routing/customDomainClaim.ts`                              | Deterministic custom-domain claim, request reservation, release lease, and legacy collision boundary |
+| `src/lib/publicTruth/entityEligibility.ts`                          | Shared inactive/deleted/platform-block eligibility used by canonical public and owner-domain checks |
 | `src/lib/auth/browserRequestPolicy.ts`                              | Shared authenticated browser request policy for owner domain setup calls |
 | `src/lib/domains/vercelDomains.ts`                                  | Shared Vercel domain add/check/remove helper used by MenuList and Answerlattice hosted help |
 | `src/components/.../businessSettings/tabs/SubdomainTab.tsx`         | Subdomain settings UI tab                                 |
@@ -122,6 +126,16 @@ outletSlug?: string;  // NEW: URL path segment for outlet routing
 ---
 
 ## Key Implementation Details
+
+### 0. Custom-Domain Transaction and Provider State Machine
+
+`POST /api/domain` normalizes the session tenant/store IDs, rate-limits, bounds the body, and transactionally reads the canonical tenant, store, deterministic claim, and bounded legacy `stores.customDomain` query before provider work. Every add attempt receives a UUID reservation ID. Another same-store or cross-store request cannot replace an active reservation or `releasing` lease; finalization must present the same reservation ID. Provider add `409` is accepted only when the pre-reservation state proves MenuList provenance and `GET /v9/projects/{projectId}/domains/{domain}` proves the hostname belongs to the configured Vercel project.
+
+Finalization rechecks authorization, store/tenant lifecycle and identity, exact reservation ownership, and the prior hostname. Replacement writes the new store mapping/current claim and the old claim's bounded `releasing` lease atomically. Provider removal runs after that lock; a successful/404 removal is followed by `released`. Failed or ambiguous removal keeps the release lease until its 15-minute expiry, preventing a late cleanup from racing a new claimant while still permitting bounded recovery.
+
+`GET /api/domain` performs a claim-aware transaction before the Vercel reads and another exact-domain transaction before any verification write. It sets verification only when `/v6/domains/{domain}/config` is explicitly configured and `/v9/projects/{projectId}/domains/{domain}` confirms assignment to the configured project. Explicit DNS misconfiguration or project `404` removes verification; transport, non-404 provider, unknown-shape, body-timeout, and body-parse failures preserve last confirmed state and return `providerStatusPending`. The provider abort deadline remains active through bounded body consumption, and a malformed HTTP-200 body becomes a gateway failure rather than `{ ok: true, data: {} }`. `DELETE /api/domain` locks a valid unique mapping as `releasing`, removes the store routing fields, invalidates public cache, removes the provider binding, then releases the claim. Duplicate rows, mismatched claim owners, or active incompatible claim states return `409` without mutating a store. Malformed legacy values are cleared locally but are never sent to the provider.
+
+Public store lookup remains store-payload driven but is no longer store-only for eligibility: on a cache miss it validates exact store document identity, exact tenant reference, tenant existence, and inactive/deleted/platform-blocked state before returning the store object. Tenant fields are eligibility-only and never enter the public DTO.
 
 ### 1. Slug Generation (addProject)
 
@@ -241,6 +255,11 @@ VERCEL_TEAM_ID=team_xxxxxxxxxxxx  # Optional
 | XSS prevention                 | ✅     | `slugify()` strips all non-alphanumeric chars         |
 | Redirect loop prevention       | ✅     | Only redirects if `redirectSlug !== slug`             |
 | Domain ownership validation    | ✅     | Vercel handles DNS verification + SSL                 |
+| Custom-domain claim isolation  | ✅     | Deterministic claim plus UUID reservation prevents same-store and cross-store overlapping provider work |
+| Provider conflict ownership    | ✅     | Vercel `409` requires MenuList provenance plus current-project domain confirmation |
+| Replace/remove cleanup order   | ✅     | Old claim is `releasing` before provider deletion and `released` only after the awaited provider result |
+| Duplicate legacy hostname      | ✅     | Duplicate/mismatched valid mappings return `409` without clearing one row or selecting a public winner |
+| Verification TOCTOU            | ✅     | Exact domain, tenant/store lifecycle, permission, and claim are rechecked transactionally after provider status |
 | DNS setup display              | ✅     | Desktop and mobile Domain Settings render Vercel verification/configured records as copyable rows, not raw provider JSON |
 | Domain browser handoffs        | ✅     | Desktop and mobile copy/open/DNS-copy failures log bounded URL/DNS metadata only |
 | Mobile rejected domain reads   | ✅     | Mobile Domain Settings keeps current status/availability state on rejected `/api/domain` and `/api/subdomain/check` reads; malformed subdomain-check responses log bounded parse/shape diagnostics before fixed failure copy |

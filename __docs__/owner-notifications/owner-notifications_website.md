@@ -1,7 +1,9 @@
 # Owner Notifications - Website Content Guidance
 
 **Status:** Public-content guidance only
-**Date:** 2026-06-02
+**Date:** 2026-07-13
+
+July 13 verification: internal recovery authorization and bounded-read hardening do not change public capability or this website guidance.
 
 Owner Notifications is mostly infrastructure. It does not need a standalone public landing page unless product packaging later exposes it as a trust/readiness capability.
 

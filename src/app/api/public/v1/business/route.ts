@@ -12,38 +12,40 @@ import { FEATURE_FLAGS } from "@config/features";
 import { getBrandStoreLabel } from "@lib/businessIdentity/names";
 import { getLocalizedText, getPrimaryLocalizedLanguage } from "@lib/localization/text";
 import { getPublicBusinessDescription } from "@lib/obp/getPublicBusinessDescription";
-import { apiError, buildPullApiResponseHeaders, generateETag, hashApiKey, isMenuListPublicApiTargetAllowed, logApiRequest, normalizeMenuListPublicApiNumericId, PULL_API_SCHEMA_VERSION, validatePublicApiKey } from "@lib/publicApi/auth";
+import { getActivePublicTempStatus, normalizePublicBusinessAttributes } from '@lib/publicApi/businessProjection';
+import { buildPullApiResponseHeaders, generatePullApiETag, hasPublicApiCredentialScope, hashApiKey, isMenuListPublicApiTargetAllowed, logApiRequest, normalizeMenuListPublicApiNumericId, normalizePublicApiKey, PULL_API_KEY_RATE_LIMIT, PULL_API_PREAUTH_RATE_LIMIT, PULL_API_RATE_LIMIT_WINDOW_SECONDS, PULL_API_SCHEMA_VERSION, pullApiError, pullApiRateLimitError, validatePublicApiKey } from "@lib/publicApi/auth";
+import { isMenuListPublicApiCredentialInScope } from '@lib/publicApi/menuListScope';
 import { checkRateLimit } from "@lib/rateLimit";
 import { getBoundedSecurityStringContext, logSecurityFailure } from "@lib/security/securityDiagnostics";
 import { NextRequest, NextResponse } from "next/server";
-
-function getActiveTempStatus(tempStatus: any): { type: any; message: any; expiresAt: any } | null {
-    if (!tempStatus?.expiresAt) return null;
-
-    const expiresAtMs = new Date(tempStatus.expiresAt).getTime();
-    if (!Number.isFinite(expiresAtMs) || expiresAtMs <= Date.now()) return null;
-
-    return {
-        type: tempStatus.type,
-        message: tempStatus.message,
-        expiresAt: tempStatus.expiresAt,
-    };
-}
+import { getClientIp, hashPublicRateLimitValue } from "src/middleware/publicApi";
 
 export async function GET(request: NextRequest) {
     if (!FEATURE_FLAGS.ENABLE_PUBLIC_API) {
-        return apiError('FEATURE_DISABLED', 'API not available', 403);
+        return pullApiError('FEATURE_DISABLED', 'API not available', 403);
     }
 
-    const apiKey = request.headers.get('x-api-key');
-    if (!apiKey) {
-        return apiError('MISSING_API_KEY', 'Missing X-API-Key header', 401);
+    const rawApiKey = request.headers.get('x-api-key');
+    if (!rawApiKey) {
+        return pullApiError('MISSING_API_KEY', 'Missing X-API-Key header', 401);
     }
-    if (!apiKey.trim().startsWith('ml_')) {
-        return apiError('INVALID_API_KEY', 'Invalid API key', 401);
+    const apiKey = normalizePublicApiKey(rawApiKey);
+    if (!apiKey || !apiKey.startsWith('ml_')) {
+        return pullApiError('INVALID_API_KEY', 'Invalid API key', 401);
     }
 
-    // Rate limit per API key
+    // Bound rotating invalid credentials before per-key lookup/limit work.
+    const preAuthRateLimitResult = await checkRateLimit({
+        key: `public-api-preauth:${hashPublicRateLimitValue(getClientIp(request))}`,
+        limit: PULL_API_PREAUTH_RATE_LIMIT,
+        window: PULL_API_RATE_LIMIT_WINDOW_SECONDS,
+        failClosedOnProviderError: true,
+    });
+    if (!preAuthRateLimitResult.allowed) {
+        return pullApiRateLimitError(preAuthRateLimitResult);
+    }
+
+    // Rate limit each admitted API-key shape independently.
     const apiKeyRateLimitId = hashApiKey(apiKey).slice(0, 16);
     let failureContext: Record<string, boolean | number | string | null | undefined> = {
         endpoint: '/api/public/v1/business',
@@ -51,28 +53,36 @@ export async function GET(request: NextRequest) {
         ...getBoundedSecurityStringContext('apiKeyRateLimitId', apiKeyRateLimitId),
     };
 
-    const rlResult = await checkRateLimit({ key: `public-api:${apiKeyRateLimitId}`, limit: 60, window: 60 });
+    const rlResult = await checkRateLimit({
+        key: `public-api:${apiKeyRateLimitId}`,
+        limit: PULL_API_KEY_RATE_LIMIT,
+        window: PULL_API_RATE_LIMIT_WINDOW_SECONDS,
+        failClosedOnProviderError: true,
+    });
     if (!rlResult.allowed) {
-        const retryAfter = Math.ceil((rlResult.resetAt - Date.now()) / 1000);
-        return apiError('RATE_LIMIT_EXCEEDED', 'Too many requests', 429, {
-            'Retry-After': String(Math.max(retryAfter, 1)),
-        });
+        return pullApiRateLimitError(rlResult);
     }
 
     try {
         const result = await validatePublicApiKey(apiKey);
         if (!result) {
-            return apiError('INVALID_API_KEY', 'Invalid API key', 401);
+            return pullApiError('INVALID_API_KEY', 'Invalid API key', 401);
         }
 
-        const { storeData, storeId } = result;
+        const { credential, storeData, storeId } = result;
+        if (
+            !isMenuListPublicApiCredentialInScope(credential)
+            || !hasPublicApiCredentialScope(credential, 'public:read')
+        ) {
+            return pullApiError('INVALID_API_KEY', 'Invalid API key', 401);
+        }
         const storeNumericId = normalizeMenuListPublicApiNumericId(storeId);
         if (storeNumericId == null) {
-            return apiError('INVALID_API_KEY', 'Invalid API key', 401);
+            return pullApiError('INVALID_API_KEY', 'Invalid API key', 401);
         }
         const storeDocumentId = String(storeNumericId);
-        if (!(await isMenuListPublicApiTargetAllowed(storeData))) {
-            return apiError('INVALID_API_KEY', 'Invalid API key', 401);
+        if (!(await isMenuListPublicApiTargetAllowed(storeData, storeDocumentId))) {
+            return pullApiError('INVALID_API_KEY', 'Invalid API key', 401);
         }
         failureContext = {
             ...failureContext,
@@ -95,14 +105,14 @@ export async function GET(request: NextRequest) {
         );
         const publicDescription = getPublicBusinessDescription(storeData);
         const activeTempStatus = FEATURE_FLAGS.ENABLE_TEMP_STATUS
-            ? getActiveTempStatus(storeData.tempStatus)
+            ? getActivePublicTempStatus(storeData.tempStatus)
             : null;
 
         // Abuse logging
         logApiRequest(request, storeDocumentId, 'GET /business');
 
         // Build business details response
-        const response: Record<string, any> = {
+        const response: Record<string, unknown> = {
             schemaVersion: PULL_API_SCHEMA_VERSION,
             generatedAt: new Date().toISOString(),
             storeId: storeNumericId,
@@ -145,12 +155,15 @@ export async function GET(request: NextRequest) {
         };
 
         // Conditionally add feature-flagged fields
-        if (FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES && storeData.businessAttributes) {
-            response.businessAttributes = storeData.businessAttributes;
+        const publicBusinessAttributes = FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES
+            ? normalizePublicBusinessAttributes(storeData.businessAttributes)
+            : null;
+        if (publicBusinessAttributes) {
+            response.businessAttributes = publicBusinessAttributes;
         }
 
         // ETag: conditional request support
-        const etag = `"${generateETag(response)}"`;
+        const etag = `"${generatePullApiETag(response)}"`;
         const responseHeaders = buildPullApiResponseHeaders(etag);
         const ifNoneMatch = request.headers.get('if-none-match');
         if (ifNoneMatch === etag) {
@@ -165,6 +178,6 @@ export async function GET(request: NextRequest) {
         });
     } catch (error) {
         logSecurityFailure('public_api_business_route_failed', error, failureContext);
-        return apiError('INTERNAL_ERROR', 'Internal error', 500);
+        return pullApiError('INTERNAL_ERROR', 'Internal error', 500);
     }
 }

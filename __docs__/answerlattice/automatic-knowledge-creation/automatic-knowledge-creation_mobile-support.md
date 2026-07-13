@@ -1,9 +1,9 @@
 # Automatic Knowledge Creation — Mobile Support Assessment
 
 > **Status:** DOCUMENTED
-> **Version:** 1.0.0
+> **Version:** 1.0.1
 > **Created:** 2026-03-09
-> **Last Updated:** 2026-03-09
+> **Last Updated:** 2026-07-11
 > **Audience:** Developers
 
 ---
@@ -54,7 +54,7 @@ If future data shows founders regularly reviewing proposals on mobile (e.g., via
 ## §5 — Shared Logic
 
 Despite being desktop-only for UI, the following are shared between desktop and mobile:
-- **DAL functions:** `approveDraftAsCanonicalAnswer()` — same function regardless of surface
+- **Governance client:** `runAnswerlatticeGovernanceAction()` calls the same protected server action from any admitted review surface; no mobile or desktop client receives direct canonical-write authority
 - **Types:** Extended `AnswerlatticeMutationProposal` type — shared
 - **Feature flags:** `ENABLE_ANSWERLATTICE_AUTO_KNOWLEDGE` — shared
 - **Signal emitter:** `emitAnswerlatticeSignal()` — already works on mobile (signals generated from mobile chat/feedback feed into this pipeline)

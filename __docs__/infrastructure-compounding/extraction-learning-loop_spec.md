@@ -1,18 +1,18 @@
 # Extraction Learning Loop — Spec + Implementation
 
-**Feature:** 10.2  
-**Priority:** P1 — Authority Phase (HIGHEST LEVERAGE UNBUILT SYSTEM)  
-**Status:** 📋 DOCUMENTATION PHASE  
-**Depends On:** 10.1 (Extraction Confidence Scoring)  
+**Feature:** 10.2
+**Priority:** P1 — Authority Phase
+**Status:** Active correction-count aggregation; prompt adaptation is not implemented
+**Depends On:** 10.1 (Extraction Confidence Scoring)
 **Feeds Into:** 10.3 (Store Truth Confidence)
 
 ---
 
 ## 1. What Is This?
 
-A system that tracks what owners correct after AI extraction, aggregates correction patterns, and uses those patterns to improve extraction accuracy over time.
+A system that tracks bounded owner corrections after extraction and aggregates correction counts for internal reliability state.
 
-**This is the single most impactful unbuilt infrastructure system.** Every owner correction is a free training signal that MenuList currently throws away.
+Current runtime records detailed correction events only in detailed MOL mode. Default summary mode carries compact per-field/per-confidence counters in `MENU_REVISION_SUMMARY`, so the nightly aggregator remains functional without adding per-field writes. It does not yet apply patterns to extraction prompts, and it does not claim a correction rate without an authoritative extraction denominator.
 
 ---
 
@@ -20,9 +20,9 @@ A system that tracks what owners correct after AI extraction, aggregates correct
 
 **Current state:** Owner uploads menu → AI extracts → Owner corrects mistakes → Corrections are saved to project → AI learns NOTHING from the corrections.
 
-**With learning loop:** Owner uploads menu → AI extracts (with confidence per item, from 10.1) → Owner corrects mistakes → Corrections are logged as `EXTRACTION_CORRECTION` events in MOL → Nightly job aggregates patterns → Correction patterns inform future extraction prompts.
+**Current loop:** Owner uploads menu → extraction stamps source metadata → owner corrections become detailed events or compact summary counters → nightly job aggregates correction counts → internal reliability state consumes only values that are actually measured.
 
-**Impact:** Every extraction gets slightly better because the system learns from all previous corrections across all stores.
+Prompt improvement remains outside the active runtime until a reviewed, tenant-safe denominator and prompt-application contract exist.
 
 ---
 
@@ -154,13 +154,11 @@ New task in the nightly scheduler: `processExtractionLearningForAllStores()`
 
 #### What It Does
 
-1. Query `menuChangeLog` for `EXTRACTION_CORRECTION` events from last 30 days
-2. Aggregate into patterns:
-   - **Price correction rate:** % of extracted prices that were wrong
-   - **Name correction rate:** % of extracted names that were wrong  
-   - **Common price errors:** e.g., "₹199" misread as "₹99" (missing digit)
-   - **Confidence calibration:** Were items marked "high confidence" actually correct?
-3. Store aggregate in a single document: `platformSummary/extractionLearning`
+1. Page through each active store's last 30 days of timestamped MOL events with 500-document pages and a 50,000-document per-store/run budget.
+2. Accept either detailed `EXTRACTION_CORRECTION` events or bounded correction counters in `MENU_REVISION_SUMMARY`.
+3. Aggregate into store-local counters, merging a store into platform counters only after its complete scan succeeds.
+4. Store one internal document at `platformSummary/extractionLearning`.
+5. Persist rate/accuracy fields as `null` until total extracted fields by field/confidence are measured authoritatively.
 
 #### Firestore Schema
 
@@ -169,38 +167,32 @@ platformSummary/extractionLearning
 {
     computedAt: Timestamp,
     windowDays: 30,
-    totalExtractions: number,
     totalCorrections: number,
-    correctionRate: number,          // corrections / total items extracted
+    correctionRate: null,
+    correctionRateStatus: 'unavailable_without_extraction_denominator',
     
     byField: {
-        name: { corrections: number, total: number, rate: number },
-        price: { corrections: number, total: number, rate: number },
-        description: { corrections: number, total: number, rate: number },
-        categoryId: { corrections: number, total: number, rate: number },
+        name: { corrections: number, total: null, rate: null },
+        price: { corrections: number, total: null, rate: null },
+        description: { corrections: number, total: null, rate: null },
+        categoryId: { corrections: number, total: null, rate: null },
     },
     
     // Confidence calibration (from 10.1)
     confidenceCalibration: {
-        high: { total: number, corrected: number, accuracy: number },
-        medium: { total: number, corrected: number, accuracy: number },
-        low: { total: number, corrected: number, accuracy: number },
+        high: { total: null, corrected: number, accuracy: null },
+        medium: { total: null, corrected: number, accuracy: null },
+        low: { total: null, corrected: number, accuracy: null },
     },
-    
-    // Top correction patterns (max 10)
-    topPatterns: Array<{
-        field: string,
-        pattern: string,     // e.g., "price_digit_missing", "name_abbreviation"
-        count: number,
-        example?: { extracted: string, corrected: string },
-    }>,
+    storesWithCorrections: number,
+    storesFailed: number,
 }
 ```
 
 **Why `platformSummary`?** 
 - Existing collection, no new collection needed
 - Single document, no querying complexity
-- Read once per extraction (1 read), updated nightly (1 write)
+- Updated once per nightly run; current extraction prompts do not read this document
 
 #### Nightly Job Implementation
 
@@ -210,31 +202,22 @@ platformSummary/extractionLearning
 export async function processExtractionLearningForAllStores(): Promise<{
     totalCorrections: number;
     storesProcessed: number;
+    storesWithCorrections: number;
+    storesFailed: number;
     readsCount: number;
     writesCount: number;
 }> {
     // 1. Read storesSummary (1 read)
-    // 2. For each active store: query EXTRACTION_CORRECTION events (1 read per store)
-    // 3. Aggregate patterns in memory
+    // 2. For each active store: page through the 30-day timestamp window
+    // 3. Normalize detailed corrections and compact summary counters in memory
     // 4. Write to platformSummary/extractionLearning (1 write)
     // 5. Log telemetry (1 write)
 }
 ```
 
-### 4.4 Layer 3: Apply to Extraction Prompt
+### 4.4 Prompt-Application Boundary
 
-In `processMenuImages.ts`, before calling Gemini:
-
-1. Read `platformSummary/extractionLearning` (1 read, cached for session)
-2. If correction rate is significant (>5%), add targeted warnings to prompt:
-
-```
-QUALITY NOTES FROM PREVIOUS EXTRACTIONS:
-- Prices: {rate}% of extracted prices needed correction. Double-check all prices.
-- Common issue: {topPattern.pattern} — {topPattern.example}
-```
-
-This costs 1 extra Firestore read per extraction job (not per batch). Negligible.
+Prompt application is not part of the current runtime. `processMenuImages.ts` does not read `platformSummary/extractionLearning`, rates remain unavailable without a measured denominator, and no owner-derived raw values are injected into provider prompts. Any future prompt adaptation requires a separate reviewed contract for tenant influence, minimum sample size, poisoning resistance, prompt safety, and measurable rollback.
 
 ---
 
@@ -242,13 +225,10 @@ This costs 1 extra Firestore read per extraction job (not per batch). Negligible
 
 ```typescript
 // functions/src/constants/features.ts
-ENABLE_EXTRACTION_LEARNING: true,           // Master flag for all 3 layers
-ENABLE_EXTRACTION_LEARNING_CAPTURE: true,   // Layer 1: Capture corrections
-ENABLE_EXTRACTION_LEARNING_AGGREGATE: true, // Layer 2: Nightly aggregation
-ENABLE_EXTRACTION_LEARNING_APPLY: true,     // Layer 3: Apply to prompt
+ENABLE_EXTRACTION_LEARNING: true, // Nightly aggregation
 
 // src/config/features.ts
-ENABLE_EXTRACTION_LEARNING: true,           // Client-side (Layer 1 capture)
+ENABLE_EXTRACTION_LEARNING: true, // Queue-time correction capture
 ```
 
 ---
@@ -261,37 +241,32 @@ CAPTURE (Real-time):
     ↓
   detectAndLogChanges() detects change to recently-extracted item
     ↓
-  Logs EXTRACTION_CORRECTION to menuChangeLog/{tId}/{sId}
-    ↓ (debounced, fire-and-forget, feature-flag gated)
+  Logs detailed EXTRACTION_CORRECTION in detailed mode,
+  or bounded correction counters in MENU_REVISION_SUMMARY by default
+    ↓ (queued, fire-and-forget, feature-flag gated)
 
 AGGREGATE (Nightly at 2:30 AM):
   processExtractionLearningForAllStores()
     ↓
-  Reads EXTRACTION_CORRECTION events (30-day window)
+  Reads timestamp-paged MOL events (30-day window)
     ↓
-  Computes correction rates, confidence calibration, top patterns
+  Computes correction counts by field/confidence
     ↓
   Writes to platformSummary/extractionLearning (1 doc)
 
-APPLY (Per extraction):
-  processMenuImagesLogic()
+CONSUME (Nightly internal reliability):
+  storeTruthConfidence reads platformSummary/extractionLearning
     ↓
-  Reads platformSummary/extractionLearning (1 read)
+  Uses a measured correction rate only when one exists
     ↓
-  Injects relevant warnings into Gemini prompt
-    ↓
-  AI extraction is slightly more accurate
-    ↓
-  Fewer owner corrections needed
-    ↓
-  Correction rate decreases over time → COMPOUNDING
+  Falls back to a neutral extraction component while rate is unavailable
 ```
 
 ---
 
 ## 7. What This Does NOT Do
 
-- ❌ No fine-tuning of Gemini model (prompt engineering only)
+- ❌ No fine-tuning or extraction-prompt modification
 - ❌ No per-store customization (aggregate patterns across ALL stores)
 - ❌ No real-time prompt modification (nightly batch only)
 - ❌ No UI showing correction patterns to owners
@@ -302,12 +277,12 @@ APPLY (Per extraction):
 
 ## 8. Success Criteria
 
-1. Every owner correction post-extraction is logged as `EXTRACTION_CORRECTION`
-2. Nightly aggregation produces correction rates and patterns
-3. Extraction prompts include relevant quality warnings when correction rate >5%
-4. Over 3 months: measurable decrease in correction rate (target: 20% improvement)
-5. Zero impact on extraction speed (<100ms added for learning doc read)
-6. Total Firebase cost <$0.05/month at 100 stores
+1. Recently extracted name/price corrections survive both detailed and default summary MOL modes.
+2. Nightly aggregation accepts legacy detailed events and compact summary counters.
+3. Invalid, negative, fractional, or oversized counters do not affect the aggregate.
+4. Rates and accuracy remain `null` until an authoritative extraction denominator exists.
+5. Extraction prompts perform no additional read and receive no owner-derived raw correction values.
+6. Timestamp scans are paginated and cost is reported from actual telemetry rather than a fixed estimate.
 
 ---
 
@@ -316,10 +291,10 @@ APPLY (Per extraction):
 | Risk | Mitigation |
 |------|-----------|
 | Owner edits unrelated to extraction quality | Only log corrections within 24h of extraction AND for recently-extracted items (has `_extractedAt`) |
-| Correction data is too sparse initially | Start with prompt warnings only when >50 corrections accumulated |
+| Correction denominator is unavailable | Store counts, keep rates/accuracy `null`, and use a neutral downstream score |
 | Nightly aggregation adds scheduler time | Non-blocking task, feature-flag gated, with timeout |
-| Learning data biased toward specific menu types | Aggregate across ALL stores to reduce bias |
-| Prompt injection from correction data | Never inject raw correction text — only structured patterns |
+| One tenant produces disproportionate events | Validate store/project scope, bound summary counters, and do not apply the aggregate to prompts |
+| Prompt injection from correction data | Current extraction prompts do not consume this aggregate or raw correction values |
 
 ---
 

@@ -24,6 +24,32 @@ const TREND_METRICS = [
     'unavailable_demand',
     'missing_searches',
 ] as const;
+const DASHBOARD_DAILY_NUMERIC_FIELDS = [
+    'actionSessions', 'engagedSessions', 'intentSessions', 'menuSessions',
+    'totalAppOpens', 'totalClicks', 'totalDecisionBlocksRendered', 'totalInstalled',
+    'totalInstallStarted', 'totalItemViews', 'totalMenuActionClicks', 'totalPromptDismissed',
+    'totalPromptShown', 'totalRecommendationClicks', 'totalSearches', 'totalSessions',
+    'totalUnavailableItemTaps', 'totalViews', 'uniqueInstallSessions', 'zeroResultSearches',
+] as const;
+const DASHBOARD_DAILY_STRING_MAP_FIELDS = new Set([
+    'attributeFilterNames', 'categoryNames', 'itemNames', 'languageNames',
+]);
+const DASHBOARD_DAILY_NUMERIC_MAP_FIELDS = new Set([
+    'actionSessionsByOpenHoursState', 'actionSessionsBySource', 'appOpensByPlatform',
+    'attributeFilterActionClicks', 'attributeFilterInteractions', 'attributeFilterItemTaps',
+    'attributeFilterItemViews', 'attributeFilterSearches', 'attributeFilterUnavailableTaps',
+    'clicksByCategory', 'clicksByDevice', 'clicksByItem', 'clicksByLocation',
+    'decisionBlocksRendered', 'hourlyAppOpens', 'hourlyClicks', 'hourlyItemViews',
+    'hourlyMenuActionClicks', 'hourlyPromptShown', 'hourlySearches',
+    'hourlyUnavailableItemTaps', 'hourlyViews', 'installsByDevice', 'installsByLocation',
+    'installsByPlatform', 'installsBySource', 'languageAdoptions', 'menuActionClicks',
+    'menuActionClicksByOpenHoursState', 'menuActionClicksBySource', 'menuSessionsByLanguage',
+    'menuSessionsBySource', 'menuViewsByLanguage', 'recommendationClicks',
+    'recommendationClicksByItem', 'searchTerms', 'shortcutClicks',
+    'unavailableItemTapsByItem', 'viewsByCampaign', 'viewsByCategory', 'viewsByContent',
+    'viewsByDevice', 'viewsByEntrySource', 'viewsByItem', 'viewsByLocation',
+    'viewsByMedium', 'viewsBySource', 'zeroResultSearchTerms',
+]);
 
 type OwnerTrendMetric = typeof TREND_METRICS[number];
 type OwnerTrendPeriod = 'week' | 'month';
@@ -1628,8 +1654,100 @@ function pickNestedHourlyMap(
     return result;
 }
 
+function isDashboardAnalyticsMap(value: unknown, expectString: boolean): boolean {
+    return value === undefined || (
+        Boolean(value)
+        && typeof value === 'object'
+        && !Array.isArray(value)
+        && Object.entries(value as Record<string, unknown>).every(([key, entry]) => (
+            /^[A-Za-z0-9_:-]{1,120}$/.test(key)
+            && (expectString
+                ? typeof entry === 'string' && entry.trim().length > 0 && entry.length <= 120
+                : typeof entry === 'number' && Number.isFinite(entry) && entry >= 0)
+        ))
+    );
+}
+
 function isAnalyticsRow(row: Record<string, any> | undefined): row is Record<string, any> {
-    return Boolean(row);
+    if (!row || typeof row !== 'object' || Array.isArray(row)) return false;
+    const date = typeof row.date === 'string' ? row.date : '';
+    const parsedDate = /^\d{4}-\d{2}-\d{2}$/.test(date) ? new Date(`${date}T00:00:00.000Z`) : null;
+    if (!parsedDate || Number.isNaN(parsedDate.getTime()) || parsedDate.toISOString().slice(0, 10) !== date) return false;
+    if (DASHBOARD_DAILY_NUMERIC_FIELDS.some((field) => (
+        row[field] !== undefined
+        && (typeof row[field] !== 'number' || !Number.isFinite(row[field]) || row[field] < 0)
+    ))) return false;
+    if (row.languageTrackingEnabled !== undefined && typeof row.languageTrackingEnabled !== 'boolean') return false;
+
+    return Object.entries(row).every(([field, value]) => {
+        if ((DASHBOARD_DAILY_NUMERIC_FIELDS as readonly string[]).includes(field)) return true;
+        if (field === 'date' || field === 'languageTrackingEnabled') return true;
+        if (DASHBOARD_DAILY_STRING_MAP_FIELDS.has(field)) return isDashboardAnalyticsMap(value, true);
+        if (field === 'hourlyClicksByItem') {
+            return value === undefined || (
+                Boolean(value)
+                && typeof value === 'object'
+                && !Array.isArray(value)
+                && Object.values(value as Record<string, unknown>).every((hours) => isDashboardAnalyticsMap(hours, false))
+            );
+        }
+        if (DASHBOARD_DAILY_NUMERIC_MAP_FIELDS.has(field)) {
+            return isDashboardAnalyticsMap(value, false);
+        }
+        return true;
+    });
+}
+
+export function normalizeDashboardAnalyticsRowForTest(value: unknown): Record<string, any> | null {
+    const candidate = value as Record<string, any> | undefined;
+    return isAnalyticsRow(candidate) ? candidate : null;
+}
+
+function normalizeAnalyticsSummaryRecord(value: unknown): Record<string, any> | null {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    const summary = value as Record<string, any>;
+    for (const [field, entry] of Object.entries(summary)) {
+        if (field.startsWith('lifetime') && field !== 'lifetime') {
+            if (typeof entry !== 'number' || !Number.isFinite(entry) || entry < 0) return null;
+        }
+        if (DASHBOARD_DAILY_STRING_MAP_FIELDS.has(field) && !isDashboardAnalyticsMap(entry, true)) return null;
+        if (DASHBOARD_DAILY_NUMERIC_MAP_FIELDS.has(field) && !isDashboardAnalyticsMap(entry, false)) return null;
+    }
+    if (summary.lifetime !== undefined) {
+        if (!summary.lifetime || typeof summary.lifetime !== 'object' || Array.isArray(summary.lifetime)) return null;
+        if (Object.values(summary.lifetime).some((entry) => (
+            typeof entry !== 'number' || !Number.isFinite(entry) || entry < 0
+        ))) return null;
+    }
+    return summary;
+}
+
+export function normalizeDashboardAnalyticsSummaryForTest(value: unknown): Record<string, any> | null {
+    return normalizeAnalyticsSummaryRecord(value);
+}
+
+function normalizeAnalyticsDashboardIdentity(
+    value: unknown,
+    expected: { projectId: string; sId: string; tId: string },
+): Record<string, any> | null {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    const dashboard = value as Record<string, any>;
+    const expectedKind = expected.projectId === 'customerApp'
+        ? 'customerAppDashboardSummary'
+        : 'ownerDashboardSummary';
+    return String(dashboard.tId ?? '') === expected.tId
+        && String(dashboard.sId ?? '') === expected.sId
+        && dashboard.projectId === expected.projectId
+        && dashboard.kind === expectedKind
+        ? dashboard
+        : null;
+}
+
+export function normalizeDashboardAnalyticsIdentityForTest(
+    value: unknown,
+    expected: { projectId: string; sId: string; tId: string },
+): Record<string, any> | null {
+    return normalizeAnalyticsDashboardIdentity(value, expected);
 }
 
 function buildIntelligence7dSnapshot(
@@ -1762,8 +1880,9 @@ function compactAnalyticsDay(date: string, data: Record<string, any>) {
 function buildDailyMapFromRows(rows: any[], startDate: string, endDate: string): Map<string, Record<string, any>> {
     const result = new Map<string, Record<string, any>>();
     rows.forEach((row) => {
-        const date = String(row?.date || '');
-        if (!date || date < startDate || date > endDate) return;
+        if (!isAnalyticsRow(row)) return;
+        const date = row.date;
+        if (date < startDate || date > endDate) return;
         result.set(date, row);
     });
     return result;
@@ -1781,16 +1900,18 @@ async function buildIncrementalDailyMap(
     const startDate = addDaysToAnalyticsDateKey(settlementDate, -(MENU_DAILY_CACHE_DAYS - 1));
     const previousSettledDate = addDaysToAnalyticsDateKey(settlementDate, -1);
     const existingRows = Array.isArray(existingDashboard?.daily30d) ? existingDashboard.daily30d : [];
-    const firstExistingDate = existingRows
-        .map((row: any) => String(row?.date || ''))
+    const normalizedExistingRows = existingRows.filter(isAnalyticsRow);
+    const firstExistingDate = normalizedExistingRows
+        .map((row) => row.date)
         .filter(Boolean)
         .sort()[0] || '';
     const canIncrement = existingDashboard?.lastSettledLocalDate === previousSettledDate
         && existingRows.length > 0
+        && normalizedExistingRows.length === existingRows.length
         && firstExistingDate <= startDate;
 
     if (canIncrement) {
-        const dailyMap = buildDailyMapFromRows(existingRows, startDate, previousSettledDate);
+        const dailyMap = buildDailyMapFromRows(normalizedExistingRows, startDate, previousSettledDate);
         if (settledDailyData) {
             dailyMap.set(settlementDate, compactAnalyticsDay(settlementDate, settledDailyData));
         }
@@ -1814,16 +1935,18 @@ async function buildIncrementalCustomerAppDailyMap(
     const startDate = addDaysToAnalyticsDateKey(settlementDate, -(CUSTOMER_APP_DAILY_CACHE_DAYS - 1));
     const previousSettledDate = addDaysToAnalyticsDateKey(settlementDate, -1);
     const existingRows = Array.isArray(existingDashboard?.daily30d) ? existingDashboard.daily30d : [];
-    const firstExistingDate = existingRows
-        .map((row: any) => String(row?.date || ''))
+    const normalizedExistingRows = existingRows.filter(isAnalyticsRow);
+    const firstExistingDate = normalizedExistingRows
+        .map((row) => row.date)
         .filter(Boolean)
         .sort()[0] || '';
     const canIncrement = existingDashboard?.lastSettledLocalDate === previousSettledDate
         && existingRows.length > 0
+        && normalizedExistingRows.length === existingRows.length
         && firstExistingDate <= startDate;
 
     if (canIncrement) {
-        const dailyMap = buildDailyMapFromRows(existingRows, startDate, previousSettledDate);
+        const dailyMap = buildDailyMapFromRows(normalizedExistingRows, startDate, previousSettledDate);
         if (settledDailyData) {
             dailyMap.set(settlementDate, {
                 date: settlementDate,
@@ -1916,7 +2039,21 @@ async function fetchExistingDailyDocsByDate(
     snapshot.docs.forEach((doc) => {
         const data = doc.data();
         const date = String(data.date || data.localDate || doc.id.slice(prefix.length));
-        result.set(date, data);
+        const row = { ...data, date };
+        const expectedSurface = projectId === 'customerApp' ? 'customerApp' : 'menu';
+        if (
+            doc.id === getAnalyticsDocId.daily(tId, sId, projectId, date)
+            && String(data.tId ?? '') === tId
+            && String(data.sId ?? '') === sId
+            && data.projectId === projectId
+            && data.grain === 'daily'
+            && data.analyticsScope === 'customer'
+            && data.surface === expectedSurface
+            && data.localDate === date
+            && isAnalyticsRow(row)
+        ) {
+            result.set(date, row);
+        }
     });
     return result;
 }
@@ -1933,7 +2070,12 @@ async function writeCustomerAppDashboardSummary(
         dashboardRef.get(),
         db.collection(ANALYTICS_COLLECTION).doc(getAnalyticsDocId.summary(tId, sId, 'customerApp')).get(),
     ]);
-    const existingDashboard = dashboardSnap.exists ? dashboardSnap.data() || {} : null;
+    const existingDashboard = dashboardSnap.exists
+        ? normalizeAnalyticsDashboardIdentity(dashboardSnap.data(), { projectId: 'customerApp', sId, tId })
+        : null;
+    if (dashboardSnap.exists && !existingDashboard) {
+        throw new Error('CUSTOMER_ANALYTICS_DASHBOARD_CONTRACT_INVALID');
+    }
     const { dailyMap, source } = await buildIncrementalCustomerAppDailyMap(
         db,
         tId,
@@ -1951,7 +2093,9 @@ async function writeCustomerAppDashboardSummary(
             daysLoaded: dailyMap.size,
         });
     }
-    const summary = summarySnap.exists ? summarySnap.data() || {} : {};
+    const normalizedSummary = summarySnap.exists ? normalizeAnalyticsSummaryRecord(summarySnap.data()) : null;
+    if (summarySnap.exists && !normalizedSummary) throw new Error('CUSTOMER_ANALYTICS_SUMMARY_CONTRACT_INVALID');
+    const summary = normalizedSummary || {};
 
     if (!summarySnap.exists && dailyMap.size === 0) return;
 
@@ -2005,7 +2149,12 @@ async function writeMenuDashboardSummary(
         dashboardRef.get(),
         db.collection(ANALYTICS_COLLECTION).doc(getAnalyticsDocId.summary(tId, sId, projectId)).get(),
     ]);
-    const existingDashboard = dashboardSnap.exists ? dashboardSnap.data() || {} : null;
+    const existingDashboard = dashboardSnap.exists
+        ? normalizeAnalyticsDashboardIdentity(dashboardSnap.data(), { projectId, sId, tId })
+        : null;
+    if (dashboardSnap.exists && !existingDashboard) {
+        throw new Error('CUSTOMER_ANALYTICS_DASHBOARD_CONTRACT_INVALID');
+    }
     const wtdDates = getDateRange(addDaysToAnalyticsDateKey(settlementDate, -6), settlementDate);
     const firstOfMonth = `${settlementDate.slice(0, 7)}-01`;
     const mtdDates = getDateRange(firstOfMonth, settlementDate);
@@ -2028,7 +2177,9 @@ async function writeMenuDashboardSummary(
             daysLoaded: dailyMap.size,
         });
     }
-    const summary = summarySnap.exists ? summarySnap.data() || {} : {};
+    const normalizedSummary = summarySnap.exists ? normalizeAnalyticsSummaryRecord(summarySnap.data()) : null;
+    if (summarySnap.exists && !normalizedSummary) throw new Error('CUSTOMER_ANALYTICS_SUMMARY_CONTRACT_INVALID');
+    const summary = normalizedSummary || {};
 
     if (!summarySnap.exists && dailyMap.size === 0) return;
 

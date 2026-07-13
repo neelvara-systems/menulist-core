@@ -1,8 +1,10 @@
 # Public Menu Entry — Firebase Cost Tracking
 
 **Version:** 1.0
-**Status:** ✅ IMPLEMENTED — Production-audited
-**Last Updated:** July 2, 2026
+**Status:** Source/cost audited — not current target, launch, or deploy certification
+**Last Updated:** July 10, 2026
+
+> **Launch boundary:** Not current launch certification or deploy approval. This document is source-gated Public Menu Entry evidence only. The `/create-menu` page is public, but source submission, acquisition, extraction, preview polling, claim, and publish require a signed-in owner. Current release approval still requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:menu-extraction-pipeline`, `npm run verify:public-business-truth`, `npm run verify:auth-security-failure-matrix`, signed-in desktop/mobile browser QA, physical-device camera/link/preview/claim QA, Gemini extraction provider smoke, Razorpay sandbox evidence where conversion is in scope, applicable target Firebase/Vercel deploy evidence, and production-host smoke.
 
 ---
 
@@ -26,20 +28,21 @@
 | Operation | Collection | Type | Count | Trigger |
 |-----------|-----------|------|-------|---------|
 | Check reusable active/same-source owner draft | `publicMenuDrafts` | READ | 0-2 queries, capped at 20 docs/query | POST /api/public/create-menu |
-| Create draft doc | `publicMenuDrafts` | WRITE | 1 | POST /api/public/create-menu |
 | Upload image or link artifact | Firebase Storage | WRITE | 1 | Same API route |
-| Create extraction job | `menuImageProcessingJobs` | WRITE | 1 | Same API route |
-| Update draft with job id | `publicMenuDrafts` | WRITE | 1 | Same API route |
-| Worker reads source artifact | Storage + `publicMenuDrafts` | READ | 1 | Shared extraction worker |
-| Worker updates draft (extraction result) | `publicMenuDrafts` | WRITE | 1 | Shared extraction worker |
-| **Subtotal (new source)** | | | **2-3R + 3W + 1 job write + 1 Storage** | |
+| Atomically create draft + deterministic extraction job | `publicMenuDrafts` + `menuImageProcessingJobs` | WRITE | 2 in one create-only batch | Same API route |
+| Worker verifies authoritative draft/job/owner/source binding | `publicMenuDrafts` | READ | 1 | Before provider work |
+| Worker reads source artifact | Storage | READ | 1 | Shared extraction worker |
+| Worker updates job + draft lifecycle/result | `menuImageProcessingJobs` + `publicMenuDrafts` | WRITE | Existing bounded worker lifecycle | Shared extraction worker |
+| **Subtotal (new source)** | | | **route: 1-2 reusable queries + 2 atomic Firestore writes + 1 Storage write; worker: 1 binding read + existing lifecycle** | |
 | **Subtotal (reused source)** | | | **1-2R + 0W + 0 Storage + 0 AI job** | |
 
 For public menu links, the route rejects JSON bodies above 8KB before link validation, active-draft reuse, same-input dedupe, the `PUBLIC_MENU_ENTRY_AUTH` user limit, outbound source acquisition, Storage writes, or extraction job creation. Unsafe protocols, private IPs, unsafe redirects, unsupported content types, login/CAPTCHA-dependent sources, and low-confidence non-menu pages are rejected before draft creation. Link input is additionally gated by `ENABLE_MENU_LINK_IMPORT`.
 
 June 29 authenticated limiter-key hardening is Firebase-cost neutral. `POST /api/public/create-menu` still uses the 5-per-owner-per-day `PUBLIC_MENU_ENTRY_AUTH` cap, and `POST /api/public/create-menu/claim` still uses the payment-onboarding publish bucket, but both routes hash the owner id segment with `hashPublicRateLimitValue()` before the key reaches Upstash. This resets existing rate-limit buckets once and changes no Firestore reads/writes/deletes, Storage operations, provider calls, cache invalidations, rules, indexes, schema fields, or claim/publish behavior.
 
-June 29 create-menu cleanup diagnostics are cost-neutral in the success path. When upload or link draft creation fails after a Storage artifact or draft document exists, the route still attempts the same best-effort Storage delete and draft delete. Failed cleanup is now logged through bounded `public_menu_entry_storage_cleanup_failed` / `public_menu_entry_draft_cleanup_failed` diagnostics only. This adds no new reads, writes, Storage operations, indexes, rules, schema fields, owner-facing settings, or deploy requirements beyond the already-attempted cleanup operations.
+July 10 atomic create/collision hardening replaces the sequential draft → job → draft-job-id writes with one create-only Firestore batch containing `publicMenuDrafts/{ownerContentUuid}` and `menuImageProcessingJobs/public_{ownerContentUuid}`. The successful route uses two Firestore writes instead of the previous three and cannot leave an orphan draft/job state. A concurrent loser performs one exact draft read and returns the matching winner; if that proof read fails, it preserves the deterministic shared Storage path and logs `public_menu_entry_collision_lookup_failed` rather than risking winner corruption. Confirmed non-collision failures still attempt the Storage delete and log bounded `public_menu_entry_storage_cleanup_failed` on failure.
+
+The owner/content UUID and Storage download token are deterministic. Image identity uses the validated content hash; link identity uses the acquired artifact content hash. Active-draft reuse remains the first cheap path, while atomic create is the concurrency backstop.
 
 June 29 browser response-parse hardening is Firebase-cost neutral. `src/app/(website)/create-menu/CreateMenuClient.tsx` caps upload/link POST response parsing at 8KB, logs `public_create_menu_response_parse_failed` / `public_create_menu_response_invalid`, and redirects only after a non-empty `draftId` is present. This adds no Firestore reads/writes/deletes, Storage operations, provider calls, source-acquisition calls, route calls, cache invalidations, rules, indexes, schema changes, Cloud Function logic changes, owner-facing settings, Firebase deploy requirement, or Vercel deploy action.
 
@@ -83,6 +86,8 @@ Failed draft polling returns one fixed owner-safe retry message and never serial
 
 The project metadata and `projectsSummary` writes include the resolved `businessType` and `businessCategory`. Low-confidence unknown types resolve to canonical `Other` while preserving the best known category when the draft has one. This mirrors the already-created store truth without adding extra reads, writes, collections, indexes, or Storage operations.
 
+The claim transaction re-normalizes the persisted extracted DTO and validates the source envelope against the configured Storage bucket, exact draft prefix, allowed MIME types, download token, and size cap before project writes. The first successful claim stores `convertedTenantId`, `convertedStoreId`, `convertedProjectId`, `convertedProjectSlug`, `convertedSubdomain`, and `convertedWasNewAccount` as the complete retry receipt. A lost-response retry by the same draft owner costs one transaction read and zero project/tenant/store/draft writes, returns the receipt idempotently, and re-runs the independent cache/screen/context invalidations. Incomplete legacy claimed drafts continue to return 409.
+
 Existing-account claims now fail closed before project/store/summary writes unless the transaction can read the session store and tenant, confirm the store belongs to that tenant, and confirm neither document is inactive, deleted, or platform-blocked. This adds up to two reads on existing-account claims only. It adds no new writes, collections, indexes, Storage operations, Cloud Function logic changes, Firebase deploy requirement, or Vercel deploy action.
 
 Claim route diagnostics are bounded only. Successful claim, cache-revalidation failure, and unexpected claim failure logs record draft/user/tenant/store/project presence and length metadata plus account-state booleans and source error metadata only. Raw draft IDs, user IDs, tenant IDs, store IDs, project IDs, cache errors, and route exceptions must not be passed to `secureLog()` or `secureError()`. This does not add reads, writes, indexes, cache invalidations, or owner-facing settings.
@@ -109,7 +114,7 @@ Because the same payment entitlement sync revalidates `menu-store-{storeId}`, `s
 
 | Phase | Reads | Writes | Storage |
 |-------|-------|--------|---------|
-| Upload + Extract (new source) | 2-3 | 4 | 1 upload |
+| Upload + Extract (new source) | 2-3 plus worker binding/lifecycle reads | 2 route writes plus worker lifecycle | 1 upload |
 | Preview (avg 3 polls) | 3 | 0 | 0 |
 | Claim + Publish | 3-4 | 4-6 | 0 |
 | **TOTAL** | **8-10** | **8-10** | **1 upload** |
@@ -118,7 +123,7 @@ Because the same payment entitlement sync revalidates `menu-store-{storeId}`, `s
 
 | Phase | Reads | Writes | Storage |
 |-------|-------|--------|---------|
-| Upload + Extract (new source) | 2-3 | 4 | 1 upload |
+| Upload + Extract (new source) | 2-3 plus worker binding/lifecycle reads | 2 route writes plus worker lifecycle | 1 upload |
 | Preview (avg 3 polls) | 3 | 0 | 0 |
 | Nightly cleanup | 1 | 0 | 1 delete |
 | Nightly delete doc | 0 | 1 (delete) | 0 |
@@ -190,14 +195,7 @@ Presence confirmations still use `menuPresence`. For starter stores, Presence Mo
 ## 4. Indexes Required
 
 ```json
-// firestore.indexes.json additions
-{
-    "collectionGroup": "publicMenuDrafts",
-    "queryScope": "COLLECTION",
-    "fields": [
-        { "fieldPath": "token", "order": "ASCENDING" }
-    ]
-},
+// firestore.indexes.json active composite
 {
     "collectionGroup": "publicMenuDrafts",
     "queryScope": "COLLECTION",
@@ -212,30 +210,13 @@ Presence confirmations still use `menuPresence`. For starter stores, Presence Mo
 
 ## 5. Security Rules
 
-```
-// firestore.rules addition
-match /publicMenuDrafts/{docId} {
-    // Only server (admin SDK) can read/write
-    // No client-side access — all operations go through API routes
-    allow read, write: if false;
-}
-```
-
-All operations on `publicMenuDrafts` happen via server-side API routes or the consolidated maintenance scheduler through the Admin SDK. No client-side Firestore access is allowed.
+`firestore.rules` has no allow match for `publicMenuDrafts`, so unmatched client reads/writes are denied. All operations happen through authenticated server-side API routes, the shared Functions worker, or the consolidated maintenance scheduler using the Admin SDK. No client-side Firestore access is allowed.
 
 ---
 
 ## 6. Storage Rules
 
-```
-// storage.rules addition
-match /publicMenuDrafts/{draftId}/{fileName} {
-    // Only server can write/delete
-    // Public read for preview image display
-    allow read: if true;
-    allow write, delete: if false;  // Server-side only via admin SDK
-}
-```
+`storage.rules` has no allow match for `publicMenuDrafts`, so direct client rule-based reads/writes/deletes are denied by the final catch-all. The Admin SDK owns writes/deletes. Authenticated preview and later public project rendering use the scoped Firebase download-token URL stored by the server.
 
 ---
 
@@ -252,6 +233,10 @@ match /publicMenuDrafts/{draftId}/{fileName} {
 9. **Claim body size:** 8KB bounded JSON cap prevents oversized claim requests from reaching draft reads or project/store writes.
 10. **Draft reuse/dedupe:** Active pending/processing drafts and same-source completed drafts return the existing preview before new Storage or AI work.
 11. **Public link safety:** Permission confirmation plus SSRF-safe acquisition blocks unsafe hosts, private IPs, unsupported protocols, and unbounded crawling before AI work.
+12. **Atomic identity:** Deterministic owner/content draft and job IDs plus create-only batch operations prevent concurrent duplicates and orphan states.
+13. **Worker binding:** Job/draft/owner/source/project/expiry fields must agree before provider work or any draft status update.
+14. **Allowlisted DTO and source envelope:** Provider and legacy data are normalized again before preview/claim; arbitrary fields, orphan relationships, external URLs, wrong buckets/paths, disallowed MIME types, and malformed TTLs fail closed.
+15. **Retry-safe cleanup:** Scheduler rejects cross-draft paths and leaves the draft intact when Storage deletion fails so the next run can retry.
 
 ---
 

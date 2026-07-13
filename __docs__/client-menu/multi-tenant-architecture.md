@@ -45,7 +45,7 @@ This guide covers the complete implementation, UX recommendations, and setup ins
 │   1. Parse hostname via resolveDomain()                             │
 │   2. Determine: platform | subdomain | custom | localhost           │
 │   3. If client domain → rewrite to /client/*                       │
-│   4. Pass tenant info via x-tenant-* headers                        │
+│   4. Sanitize + forward trusted x-tenant-* request headers          │
 └─────────────────────────────────────────────────────────────────────┘
                                 │
            ┌────────────────────┼────────────────────┐
@@ -58,7 +58,7 @@ This guide covers the complete implementation, UX recommendations, and setup ins
 │   • About, Pricing      │            │   • Client sitemap.xml       │
 │   • Blog                │            │   • Client robots.txt        │
 │   • Platform sitemap    │            │                              │
-│                         │            │   Headers received:          │
+│                         │            │   Integrity headers:         │
 │   Domain:               │            │   • x-tenant-subdomain       │
 │   menulist.ai           │            │   • x-tenant-custom-domain   │
 │   www.menulist.ai       │            │   • x-tenant-type            │
@@ -97,16 +97,16 @@ These subdomains are reserved and NOT treated as client tenants:
 www, app, api, admin, dashboard, mail, blog, help, support, status
 ```
 
-### 4. Tenant Header Flow
+### 4. Tenant Host and Header Flow
 
 ```
 Request: joespizza.menulist.ai
     ↓
-Middleware sets headers:
+Middleware deletes caller-supplied routing headers and forwards trusted claims:
     x-tenant-subdomain: "joespizza"
     x-tenant-type: "subdomain"
     ↓
-Page reads headers:
+Page derives identity from the original validated Host and checks claims:
     const { subdomain, tenantType } = getTenantFromHeaders()
     ↓
 Database lookup:
@@ -243,7 +243,7 @@ Based on industry research (Linktree, Carrd, Notion, etc.):
    - Value: `cname.vercel-dns.com`
 4. User configures DNS at their domain provider
 5. User clicks "Verify" → System checks DNS
-6. Once Vercel reports the domain configured, `/api/domain` writes `domainVerified: true`, invalidates the public cache, and the custom domain can serve the menu.
+6. A newly connected hostname starts with `domainVerified: false`; `/api/domain` invalidates public cache, and the custom domain can serve only after a current provider check confirms it.
 
 ---
 
@@ -284,9 +284,13 @@ Subdomains like `*.menulist.ai` are handled automatically via Vercel's wildcard 
 ### For Custom Domains (Owner DNS + MenuList/Vercel API)
 
 1. Client adds CNAME record at their DNS provider
-2. `POST /api/domain` adds the domain to the Vercel project and writes the store routing fields with `domainVerified: false`
-3. `GET /api/domain` checks the Vercel domain config and flips `domainVerified: true` only after Vercel reports the domain configured
+2. `POST /api/domain` transactionally reserves a deterministic MenuList claim with a request UUID, adds or proves the domain in the configured Vercel project, rechecks the canonical tenant/store and reservation, then starts a new hostname unverified (an idempotent same-domain retry preserves or reconciles already-confirmed state)
+3. `GET /api/domain` checks Vercel and reconciles `domainVerified` in both directions only for explicit configured/misconfigured responses; provider errors preserve the last confirmed value
 4. Certificate provisioning is provider-managed after the domain is accepted and configured
+
+`platformSummary/customDomainClaim_{domain}` is the ownership ledger. Active `reserved` and `releasing` leases block every other operation, including one from the same store; finalization requires the same reservation UUID. Replace/remove locks the old claim before provider deletion and releases it only after the awaited cleanup result. A Vercel `409` requires MenuList provenance plus current-project confirmation. Duplicate store rows, mismatched claim owners, and incompatible legacy claim states fail closed with `409`; malformed legacy hostnames may be cleared locally but are not sent to Vercel.
+
+Public lookup returns store truth only, but a cold cache miss also reads the referenced tenant document to validate tenant existence, exact identity, and lifecycle/platform-block eligibility. Tenant fields do not cross into the public store payload.
 
 ### Vercel Domains API
 
@@ -340,16 +344,13 @@ await fetch("https://api.vercel.com/v10/projects/{projectId}/domains", {
 | Wrong menu shown     | Wrong `primaryProjectId`       | Update store record                  |
 | SSL error            | Vercel hasn't provisioned cert | Wait 5 mins, or add domain in Vercel |
 
-### Debugging Headers
+### Debugging Tenant Resolution
 
-Add to `client/[[...slug]]/page.tsx`:
+Use the bounded resolver result rather than logging raw request headers:
 
 ```typescript
-console.log("Tenant headers:", {
-  subdomain: headersList.get("x-tenant-subdomain"),
-  customDomain: headersList.get("x-tenant-custom-domain"),
-  type: headersList.get("x-tenant-type"),
-});
+const tenant = await getTenantFromHeaders("ClientPage");
+// Inspect only in an approved local debugger. Do not add raw header logging.
 ```
 
 ---

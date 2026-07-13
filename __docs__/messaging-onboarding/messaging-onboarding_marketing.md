@@ -1,9 +1,11 @@
 # Messaging Onboarding — Marketing & Sales Collateral
 
 **Feature:** Messaging Onboarding — Zero-Friction SMB Acquisition Engine
-**Status:** Implementation-Complete Sales Reference
-**Last Updated:** June 22, 2026
+**Status:** Source-gated positioning draft — not approved sales, demo, or launch collateral
+**Last Updated:** July 10, 2026
 **Audience:** Internal — Sales team, marketing, business development
+
+> **Launch boundary:** Not current launch certification or deploy approval. Current source registers WhatsApp only, while checked-in Functions environments keep provider processing disabled. `/whatsapp` is informational and routes its actions to the signed-in `/create-menu` photo or public-link intake. Do not market live WhatsApp intake until the final owned account, real Meta secrets, webhook registration, target enablement/deploy evidence, provider smoke, browser/device QA, and production-host smoke exist.
 
 ---
 
@@ -169,7 +171,7 @@ Average time to live: **2-7 days** with significant human effort.
 
 ### CTA Variants
 
-- "Send list on WhatsApp" (primary on `/whatsapp`; currently wired to the supplied test number)
+- "Start with a photo or link" (current `/whatsapp` action; routes to `/create-menu` while provider intake remains disabled)
 - "Start from current list" (fallback for non-WhatsApp current-list setup paths)
 - "See how it works" (informational)
 
@@ -254,4 +256,4 @@ Never lead with pricing during onboarding. Lead with: "Get your menu live first.
 
 ---
 
-_Document Status: Implementation-Complete (v3.3 — Marketing collateral reflects the implemented WhatsApp-first messaging-onboarding flow, broad SMB list inputs, owner approval, `/whatsapp` campaign route, and test-number click-to-WhatsApp CTA. Production number, response owner, operating hours, consent copy, and tracking remain launch gates. Last updated: June 22, 2026.)_
+_Document Status: Source-gated positioning draft (v3.4 — Public actions fail closed to `/create-menu`; provider activation, owned-account operations, live smoke, and launch approval remain external gates. Last updated: July 10, 2026.)_

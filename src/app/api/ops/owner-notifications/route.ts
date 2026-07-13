@@ -4,9 +4,11 @@ export const dynamic = 'force-dynamic';
  * Platform-only owner notification tracking and recovery API.
  *
  * Cost model:
- * - GET list uses one bounded event query plus small count aggregations.
- * - GET detail adds one direct event read, one bounded deliveries query, and one scope read.
- * - No realtime listeners and no composite indexes are required by this route.
+ * - GET list uses one current-user authorization read plus one bounded event query.
+ * - GET detail adds one direct event read, one newest-first bounded deliveries query,
+ *   and zero, one, or two scope reads.
+ * - No realtime listeners are used. Delivery detail requires the documented
+ *   eventId ASC / createdAt DESC composite index in each product project.
  */
 
 import { PRODUCT_IDS } from '@constant/product';
@@ -16,10 +18,16 @@ import {
   OWNER_NOTIFICATION_COLLECTIONS,
   type OwnerNotificationChannel,
   type OwnerNotificationProductId,
+  type OwnerNotificationRecipientRole,
 } from '@data/shared/ownerNotificationRegistry';
-import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
+import { getCurrentPlatformUser } from '@lib/auth/currentPlatformUser';
+import {
+  answerlatticeAdminApp,
+  answerlatticeFirestoreAdmin,
+} from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
+import { sanitizeForFirestore as sanitizeFirestoreValue } from '@lib/firestore/sanitizeForFirestore';
 import {
   enqueueOwnerNotification,
   processOwnerNotificationEvent,
@@ -29,11 +37,14 @@ import {
   resolveOwnerNotificationFormattingContext,
 } from '@lib/owner-notifications/formatters';
 import {
+  normalizeMenuListOwnerNotificationScopeDocumentId,
+  normalizeOwnerNotificationRecipientDocumentId,
   resolveOwnerNotificationRecipient,
   resolveOwnerNotificationScope,
 } from '@lib/owner-notifications/recipientResolver';
 import { renderOwnerNotificationTemplate } from '@lib/owner-notifications/templates';
 import type {
+  OwnerNotificationDeliveryStatus,
   OwnerNotificationEventDoc,
   OwnerNotificationEventStatus,
 } from '@lib/owner-notifications/types';
@@ -45,9 +56,11 @@ import type {
   OwnerNotificationOpsEventRow,
   OwnerNotificationOpsManualTemplate,
   OwnerNotificationOpsRecipient,
+  OwnerNotificationOpsRecipientRole,
   OwnerNotificationOpsSnapshot,
   OwnerNotificationOpsStatusFilter,
 } from '@lib/ops/ownerNotificationTypes';
+import { buildOwnerNotificationWindow } from '@lib/ops/notificationOpsSnapshotBoundary';
 import { getBoundedOpsStringContext, logOpsFailure } from '@lib/ops/opsDiagnostics';
 import { logger } from '@lib/monitoring/logger';
 import { checkRateLimit } from '@lib/rateLimit';
@@ -70,13 +83,20 @@ const EVENT_STATUSES: OwnerNotificationEventStatus[] = [
   'failed',
   'skipped',
 ];
+const DELIVERY_STATUSES: OwnerNotificationDeliveryStatus[] = ['sent', 'failed', 'skipped', 'rate_limited'];
+const RECIPIENT_ROLES: OwnerNotificationRecipientRole[] = [
+  'primary_owner',
+  'billing_owner',
+  'support_owner',
+  'whatsapp_owner',
+];
 
 const PRODUCT_IDS_FOR_OPS: OwnerNotificationProductId[] = [
   PRODUCT_IDS.MENULIST,
   PRODUCT_IDS.ANSWERLATTICE,
 ] as OwnerNotificationProductId[];
 
-const STATUS_FILTERS: OwnerNotificationOpsStatusFilter[] = ['all', ...EVENT_STATUSES];
+const STATUS_FILTERS: OwnerNotificationOpsStatusFilter[] = ['all', ...EVENT_STATUSES, 'invalid'];
 const DELIVERY_DETAIL_LIMIT = 12;
 const OWNER_NOTIFICATION_OPS_ACTION_MAX_BODY_BYTES = 8 * 1024;
 const SAFE_METADATA_PREVIEW_KEYS = new Set([
@@ -99,6 +119,12 @@ const OwnerNotificationEventIdSchema = z.string()
   .min(8)
   .max(120)
   .refine(isValidFirestoreDocumentId, 'Invalid event ID');
+
+const OwnerNotificationActionIdSchema = z.string()
+  .trim()
+  .min(8)
+  .max(96)
+  .regex(/^[A-Za-z0-9_-]+$/, 'Invalid action ID');
 
 function normalizeOwnerNotificationEventId(value: unknown): string | null {
   if (typeof value !== 'string') return null;
@@ -135,6 +161,7 @@ const PostActionSchema = z.discriminatedUnion('action', [
     channel: z.enum(['email', 'whatsapp']),
     destination: z.string().trim().min(3).max(254),
     reason: z.string().trim().max(400).optional(),
+    actionId: OwnerNotificationActionIdSchema,
   }),
   z.object({
     action: z.literal('manualHandoff'),
@@ -143,15 +170,79 @@ const PostActionSchema = z.discriminatedUnion('action', [
     channel: z.enum(['email', 'whatsapp']),
     destination: z.string().trim().min(3).max(254).optional(),
     note: z.string().trim().max(600).optional(),
+    actionId: OwnerNotificationActionIdSchema,
   }),
 ]);
 
 function getDbForProduct(productId: OwnerNotificationProductId): Firestore | null {
   if (productId === PRODUCT_IDS.ANSWERLATTICE) {
-    const db = answerlatticeFirestoreAdmin as any;
-    return db && typeof db.collection === 'function' ? answerlatticeFirestoreAdmin : null;
+    return answerlatticeAdminApp ? answerlatticeFirestoreAdmin : null;
   }
   return firestoreAdmin;
+}
+
+function normalizeOpsRecipientRole(value: unknown): OwnerNotificationOpsRecipientRole {
+  return RECIPIENT_ROLES.includes(value as OwnerNotificationRecipientRole)
+    ? value as OwnerNotificationRecipientRole
+    : 'invalid';
+}
+
+function normalizeActionRecipientRole(
+  value: unknown,
+  productId: OwnerNotificationProductId,
+  triggerType: unknown,
+): OwnerNotificationRecipientRole {
+  if (RECIPIENT_ROLES.includes(value as OwnerNotificationRecipientRole)) {
+    return value as OwnerNotificationRecipientRole;
+  }
+  const registryEntry = typeof triggerType === 'string'
+    ? getOwnerNotificationRegistryEntry(productId, triggerType)
+    : undefined;
+  return registryEntry?.recipientRole || 'primary_owner';
+}
+
+function isUnknownRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+type ManualSendSourceEvent = Pick<
+  OwnerNotificationEventDoc,
+  'productId' | 'triggerType' | 'tenantId' | 'storeId' | 'workspaceId' | 'recipientRole' | 'metadata'
+>;
+
+function normalizeManualSendSourceEvent(
+  value: unknown,
+  productId: OwnerNotificationProductId,
+): ManualSendSourceEvent | null {
+  if (!isUnknownRecord(value) || value.productId !== productId) return null;
+  const triggerType = typeof value.triggerType === 'string' ? value.triggerType.trim() : '';
+  if (!triggerType || !getOwnerNotificationRegistryEntry(productId, triggerType)) return null;
+
+  if (productId === PRODUCT_IDS.MENULIST) {
+    const tenantScope = normalizeMenuListOwnerNotificationScopeDocumentId(value.tenantId);
+    const storeScope = normalizeMenuListOwnerNotificationScopeDocumentId(value.storeId);
+    if (!tenantScope || !storeScope) return null;
+    return {
+      productId,
+      triggerType,
+      tenantId: tenantScope.documentId,
+      storeId: storeScope.documentId,
+      recipientRole: normalizeActionRecipientRole(value.recipientRole, productId, triggerType),
+      metadata: isUnknownRecord(value.metadata) ? value.metadata : {},
+    };
+  }
+
+  const tenantId = normalizeOwnerNotificationRecipientDocumentId(value.tenantId);
+  const workspaceId = normalizeOwnerNotificationRecipientDocumentId(value.workspaceId ?? value.storeId);
+  if (!tenantId || !workspaceId) return null;
+  return {
+    productId,
+    triggerType,
+    tenantId,
+    workspaceId,
+    recipientRole: normalizeActionRecipientRole(value.recipientRole, productId, triggerType),
+    metadata: isUnknownRecord(value.metadata) ? value.metadata : {},
+  };
 }
 
 function sha256(input: string): string {
@@ -210,18 +301,10 @@ function isPhone(value: string): boolean {
 }
 
 function sanitizeForFirestore(value: any): any {
-  if (value === undefined) return null;
-  if (value === null) return null;
-  if (value instanceof Date) return value.toISOString();
-  if (Array.isArray(value)) return value.map(sanitizeForFirestore);
-  if (typeof value === 'object' && typeof value.toDate !== 'function') {
-    return Object.fromEntries(
-      Object.entries(value)
-        .filter(([, nested]) => nested !== undefined)
-        .map(([key, nested]) => [key, sanitizeForFirestore(nested)]),
-    );
-  }
-  return value;
+  return sanitizeFirestoreValue(value, {
+    dateTransform: (date) => date.toISOString(),
+    undefinedObjectValue: 'omit',
+  });
 }
 
 function normalizeDestinationForAudit(channel: OwnerNotificationChannel, destination: string): string {
@@ -277,9 +360,7 @@ function sanitizeMetadataPreview(metadata: any): Record<string, string | number 
       typeof value === 'number' ||
       typeof value === 'boolean'
     ) {
-      acc[key] = typeof value === 'string' && value.length > 160
-        ? `${value.slice(0, 157)}...`
-        : value;
+      acc[key] = typeof value === 'string' ? cleanOpsText(value, 160) : value;
     }
     return acc;
   }, {});
@@ -292,21 +373,23 @@ function normalizeChannels(value: any): OwnerNotificationChannel[] {
 
 function serializeEventDoc(
   doc: FirebaseFirestore.DocumentSnapshot | FirebaseFirestore.QueryDocumentSnapshot,
-): OwnerNotificationOpsEventRow {
+  expectedProductId: OwnerNotificationProductId,
+): OwnerNotificationOpsEventRow | null {
   const data = doc.data() || {};
+  if (data.productId !== expectedProductId) return null;
   return {
     id: doc.id,
-    productId: data.productId || PRODUCT_IDS.MENULIST,
-    triggerType: String(data.triggerType || 'UNKNOWN'),
-    tenantId: String(data.tenantId || '-'),
-    storeId: data.storeId ? String(data.storeId) : undefined,
-    workspaceId: data.workspaceId ? String(data.workspaceId) : undefined,
-    referenceId: String(data.referenceId || '-'),
-    recipientRole: data.recipientRole || 'primary_owner',
+    productId: expectedProductId,
+    triggerType: cleanOpsText(data.triggerType || 'UNKNOWN', 120),
+    tenantId: cleanOpsText(data.tenantId || '-', 120),
+    storeId: data.storeId ? cleanOpsText(data.storeId, 120) : undefined,
+    workspaceId: data.workspaceId ? cleanOpsText(data.workspaceId, 120) : undefined,
+    referenceId: cleanOpsText(data.referenceId || '-', 240),
+    recipientRole: normalizeOpsRecipientRole(data.recipientRole),
     requestedChannels: normalizeChannels(data.requestedChannels),
-    priority: String(data.priority || '-'),
-    status: EVENT_STATUSES.includes(data.status) ? data.status : 'pending',
-    sourcePath: String(data.source?.path || data.sourcePath || '-'),
+    priority: cleanOpsText(data.priority || '-', 40),
+    status: EVENT_STATUSES.includes(data.status) ? data.status : 'invalid',
+    sourcePath: cleanOpsText(data.source?.path || data.sourcePath || '-', 200),
     error: getOwnerNotificationErrorSummary(data.error),
     createdAt: toIso(data.createdAt),
     updatedAt: toIso(data.updatedAt),
@@ -319,23 +402,29 @@ function serializeEventDoc(
   };
 }
 
-function serializeDeliveryDoc(doc: FirebaseFirestore.QueryDocumentSnapshot): OwnerNotificationOpsDeliveryRow {
+function serializeDeliveryDoc(
+  doc: FirebaseFirestore.QueryDocumentSnapshot,
+  expectedProductId: OwnerNotificationProductId,
+): OwnerNotificationOpsDeliveryRow | null {
   const data = doc.data() || {};
+  if (data.productId !== expectedProductId) return null;
+  const status = DELIVERY_STATUSES.includes(data.status) ? data.status : 'invalid';
+  const attempt = Number(data.attempt);
   return {
     id: doc.id,
     eventId: String(data.eventId || '-'),
-    productId: data.productId || PRODUCT_IDS.MENULIST,
-    triggerType: String(data.triggerType || '-'),
-    channel: data.channel === 'whatsapp' ? 'whatsapp' : 'email',
-    recipientRole: data.recipientRole || 'primary_owner',
-    recipientMasked: String(data.recipientMasked || '***'),
-    status: data.status || 'failed',
+    productId: expectedProductId,
+    triggerType: cleanOpsText(data.triggerType || '-', 120),
+    channel: data.channel === 'email' || data.channel === 'whatsapp' ? data.channel : 'invalid',
+    recipientRole: normalizeOpsRecipientRole(data.recipientRole),
+    recipientMasked: cleanOpsText(data.recipientMasked || '***', 120),
+    status,
     subject: getOwnerNotificationStoredTextSummary('Subject', data.subject),
-    templateKey: String(data.templateKey || '-'),
-    templateVersion: String(data.templateVersion || '-'),
+    templateKey: cleanOpsText(data.templateKey || '-', 120),
+    templateVersion: cleanOpsText(data.templateVersion || '-', 80),
     providerMessageId: getOwnerNotificationStoredTextSummary('Provider message id', data.providerMessageId),
     error: getOwnerNotificationErrorSummary(data.error),
-    attempt: Number(data.attempt || 1),
+    attempt: Number.isSafeInteger(attempt) && attempt > 0 ? attempt : 1,
     createdAt: toIso(data.createdAt),
     sentAt: toIso(data.sentAt),
     deliveryMode: data.deliveryMode === 'manual_handoff' ? 'manual_handoff' : 'system',
@@ -377,55 +466,22 @@ function buildManualTemplate(
     : undefined;
 }
 
-async function countQuery(query: FirebaseFirestore.Query): Promise<number> {
-  const snapshot = await query.count().get();
-  return Number(snapshot.data().count || 0);
-}
-
-async function getStatusCounts(db: Firestore): Promise<Record<OwnerNotificationEventStatus, number>> {
-  const entries = await Promise.all(
-    EVENT_STATUSES.map(async (status) => {
-      const count = await countQuery(
-        db.collection(OWNER_NOTIFICATION_COLLECTIONS.EVENTS).where('status', '==', status),
-      );
-      return [status, count] as const;
-    }),
-  );
-
-  return entries.reduce(
-    (acc, [status, count]) => ({ ...acc, [status]: count }),
-    {
-      pending: 0,
-      processing: 0,
-      delivered: 0,
-      partial: 0,
-      failed: 0,
-      skipped: 0,
-    },
-  );
-}
-
-async function getEventRows(params: {
+async function getRecentEventRows(params: {
   db: Firestore;
   productId: OwnerNotificationProductId;
-  status: OwnerNotificationOpsStatusFilter;
-  limit: number;
   scanLimit: number;
   cost: OwnerNotificationOpsCost;
 }): Promise<OwnerNotificationOpsEventRow[]> {
-  const collection = params.db.collection(OWNER_NOTIFICATION_COLLECTIONS.EVENTS);
-  const query = params.status === 'all'
-    ? collection.orderBy('updatedAt', 'desc').limit(params.scanLimit)
-    : collection.where('status', '==', params.status).limit(params.scanLimit);
-  const snapshot = await query.get();
+  const snapshot = await params.db
+    .collection(OWNER_NOTIFICATION_COLLECTIONS.EVENTS)
+    .orderBy('updatedAt', 'desc')
+    .limit(params.scanLimit)
+    .get();
   params.cost.eventReads += snapshot.docs.length;
 
   return snapshot.docs
-    .map(serializeEventDoc)
-    .filter((row) => row.productId === params.productId)
-    .filter((row) => params.status === 'all' || row.status === params.status)
-    .sort((a, b) => millis(b.updatedAt) - millis(a.updatedAt))
-    .slice(0, params.limit);
+    .map((doc) => serializeEventDoc(doc, params.productId))
+    .filter((row): row is OwnerNotificationOpsEventRow => Boolean(row));
 }
 
 async function getDetail(params: {
@@ -438,6 +494,7 @@ async function getDetail(params: {
   deliveries: OwnerNotificationOpsDeliveryRow[];
   resolvedRecipient?: OwnerNotificationOpsRecipient;
   manualTemplate?: OwnerNotificationOpsManualTemplate;
+  detailError?: 'recipient_resolution_failed';
 }> {
   const eventId = requireOwnerNotificationEventId(params.eventId);
   const eventSnap = await params.db
@@ -450,33 +507,47 @@ async function getDetail(params: {
     return { deliveries: [] };
   }
 
-  const rawEvent = eventSnap.data() as OwnerNotificationEventDoc;
-  if (rawEvent.productId !== params.productId) {
+  const persistedEvent = eventSnap.data() as OwnerNotificationEventDoc;
+  if (persistedEvent.productId !== params.productId) {
     return { deliveries: [] };
   }
+  const rawEvent: OwnerNotificationEventDoc = {
+    ...persistedEvent,
+    recipientRole: normalizeActionRecipientRole(
+      persistedEvent.recipientRole,
+      params.productId,
+      persistedEvent.triggerType,
+    ),
+  };
 
   const deliveriesSnap = await params.db
     .collection(OWNER_NOTIFICATION_COLLECTIONS.DELIVERIES)
     .where('eventId', '==', eventId)
+    .orderBy('createdAt', 'desc')
     .limit(DELIVERY_DETAIL_LIMIT)
     .get();
   params.cost.deliveryReads += deliveriesSnap.docs.length;
 
   let resolvedRecipient: OwnerNotificationOpsRecipient | undefined;
   let manualTemplate: OwnerNotificationOpsManualTemplate | undefined;
+  let detailError: 'recipient_resolution_failed' | undefined;
   try {
-    const scope = await resolveOwnerNotificationScope(rawEvent);
-    params.cost.scopeReads += rawEvent.storeId || rawEvent.workspaceId ? 1 : 0;
+    const scope = await resolveOwnerNotificationScope(rawEvent, {
+      onRead: () => {
+        params.cost.scopeReads += 1;
+      },
+    });
     const recipient = resolveOwnerNotificationRecipient(rawEvent, scope);
     resolvedRecipient = {
       role: recipient.role,
-      name: recipient.name,
+      name: recipient.name ? cleanOpsText(recipient.name, 160) : undefined,
       email: recipient.email,
       whatsappNumber: recipient.whatsappNumber,
       whatsappConsent: recipient.whatsappConsent,
     };
     manualTemplate = buildManualTemplate(rawEvent, scope, resolvedRecipient);
   } catch (error) {
+    detailError = 'recipient_resolution_failed';
     logOpsFailure('owner_notifications_recipient_resolution_failed', error, {
       ...getBoundedOpsStringContext('productId', rawEvent.productId),
       ...getBoundedOpsStringContext('eventId', eventId),
@@ -487,12 +558,14 @@ async function getDetail(params: {
   }
 
   return {
-    selectedEvent: serializeEventDoc(eventSnap),
+    selectedEvent: serializeEventDoc(eventSnap, params.productId) || undefined,
     deliveries: deliveriesSnap.docs
-      .map(serializeDeliveryDoc)
+      .map((doc) => serializeDeliveryDoc(doc, params.productId))
+      .filter((row): row is OwnerNotificationOpsDeliveryRow => Boolean(row))
       .sort((a, b) => millis(b.createdAt) - millis(a.createdAt)),
     resolvedRecipient,
     manualTemplate,
+    detailError,
   };
 }
 
@@ -500,8 +573,8 @@ function getOperatorId(session: any): string {
   return String(session?.uId || session?.user?.id || session?.user?.email || 'platform');
 }
 
-function getOperatorEmailMasked(session: any): string | null {
-  const email = String(session?.user?.email || session?.email || '').trim();
+function getOperatorEmailMasked(value: unknown): string | null {
+  const email = String(value || '').trim();
   return email && isEmail(email) ? maskEmail(email) : null;
 }
 
@@ -515,20 +588,20 @@ async function loadRawEvent(
   db: Firestore,
   productId: OwnerNotificationProductId,
   eventId: string,
-): Promise<OwnerNotificationEventDoc | null> {
+): Promise<ManualSendSourceEvent | null> {
   const normalizedEventId = requireOwnerNotificationEventId(eventId);
   const snap = await db.collection(OWNER_NOTIFICATION_COLLECTIONS.EVENTS).doc(normalizedEventId).get();
   if (!snap.exists) return null;
-  const event = snap.data() as OwnerNotificationEventDoc;
-  return event.productId === productId ? event : null;
+  return normalizeManualSendSourceEvent(snap.data(), productId);
 }
 
 async function runManualSend(params: {
-  event: OwnerNotificationEventDoc;
+  event: ManualSendSourceEvent;
   eventId: string;
   channel: OwnerNotificationChannel;
   destination: string;
   reason?: string;
+  actionId: string;
 }): Promise<OwnerNotificationOpsActionResult> {
   const eventId = requireOwnerNotificationEventId(params.eventId);
   const normalizedDestination = normalizeDestinationForAudit(params.channel, params.destination);
@@ -538,8 +611,12 @@ async function runManualSend(params: {
     tenantId: params.event.tenantId,
     ...(params.event.storeId ? { storeId: params.event.storeId } : {}),
     ...(params.event.workspaceId ? { workspaceId: params.event.workspaceId } : {}),
-    referenceId: `manual-${eventId}-${Date.now()}`,
-    recipientRole: params.event.recipientRole,
+    referenceId: `manual-${eventId}-${params.actionId}`,
+    recipientRole: normalizeActionRecipientRole(
+      params.event.recipientRole,
+      params.event.productId,
+      params.event.triggerType,
+    ),
     requestedChannels: [params.channel],
     recipientHints: params.channel === 'email'
       ? { email: normalizedDestination }
@@ -555,7 +632,7 @@ async function runManualSend(params: {
       runtime: 'next',
       path: 'src/app/api/ops/owner-notifications/route.ts:manualSend',
     },
-  });
+  }, { processImmediately: true, processExisting: false });
 
   return {
     ok: true,
@@ -566,68 +643,105 @@ async function runManualSend(params: {
     sent: 'sent' in result ? result.sent : 0,
     failed: 'failed' in result ? result.failed : 0,
     skipped: 'skipped' in result ? result.skipped : 0,
-    message: `Manual ${params.channel} send was processed`,
+    replayed: result.created === false,
+    message: result.created === false
+      ? `Manual ${params.channel} send was already processed`
+      : `Manual ${params.channel} send was processed`,
   };
 }
 
 async function recordManualHandoff(params: {
   db: Firestore;
-  event: OwnerNotificationEventDoc;
+  productId: OwnerNotificationProductId;
   eventId: string;
   channel: OwnerNotificationChannel;
   destination?: string;
   note?: string;
-  session: any;
-}): Promise<OwnerNotificationOpsActionResult> {
+  actionId: string;
+  operatorUserId: string;
+  operatorEmailMasked: string | null;
+}): Promise<OwnerNotificationOpsActionResult | null | 'conflict'> {
   const eventId = requireOwnerNotificationEventId(params.eventId);
   const now = Timestamp.now();
   const normalizedDestination = params.destination
     ? normalizeDestinationForAudit(params.channel, params.destination)
     : undefined;
   const destinationValue = normalizedDestination || `manual:${eventId}:${params.channel}`;
-  const deliveryId = safeId(`manual|${eventId}|${params.channel}|${destinationValue}|${Date.now()}`);
+  const deliveryId = safeId(`manual|${eventId}|${params.actionId}`);
   const recipientMasked = params.destination
     ? maskDestination(params.channel, normalizedDestination || params.destination)
     : `manual:${params.channel}`;
+  const eventRef = params.db.collection(OWNER_NOTIFICATION_COLLECTIONS.EVENTS).doc(eventId);
+  const deliveryRef = params.db.collection(OWNER_NOTIFICATION_COLLECTIONS.DELIVERIES).doc(deliveryId);
+  const committed = await params.db.runTransaction(async (transaction) => {
+    const currentEventSnapshot = await transaction.get(eventRef);
+    if (!currentEventSnapshot.exists) return null;
+    const currentEvent = currentEventSnapshot.data() as OwnerNotificationEventDoc;
+    if (currentEvent.productId !== params.productId) return null;
+    const existingDeliverySnapshot = await transaction.get(deliveryRef);
+    if (existingDeliverySnapshot.exists) {
+      const existingDelivery = existingDeliverySnapshot.data() || {};
+      if (
+        existingDelivery.eventId !== eventId
+        || existingDelivery.productId !== params.productId
+        || existingDelivery.channel !== params.channel
+        || existingDelivery.recipientHash !== sha256(destinationValue.toLowerCase())
+        || existingDelivery.note !== (params.note || null)
+        || existingDelivery.operatorUserId !== params.operatorUserId
+      ) {
+        return { status: currentEvent.status, replayed: false, conflict: true };
+      }
+      return { status: currentEvent.status, replayed: true };
+    }
 
-  await params.db.collection(OWNER_NOTIFICATION_COLLECTIONS.DELIVERIES).doc(deliveryId).set(sanitizeForFirestore({
-    eventId,
-    productId: params.event.productId,
-    triggerType: params.event.triggerType,
-    channel: params.channel,
-    recipientRole: params.event.recipientRole,
-    recipientHash: sha256(destinationValue.toLowerCase()),
-    recipientMasked,
-    status: 'sent',
-    subject: null,
-    templateKey: 'manual_handoff',
-    templateVersion: '2026-06-02',
-    providerMessageId: `manual:${Date.now()}`,
-    error: null,
-    attempt: 1,
-    deliveryMode: 'manual_handoff',
-    operatorUserId: getOperatorId(params.session),
-    operatorEmailMasked: getOperatorEmailMasked(params.session),
-    note: params.note || null,
-    createdAt: now,
-    sentAt: now,
-  }));
+    transaction.create(deliveryRef, sanitizeForFirestore({
+      eventId,
+      productId: currentEvent.productId,
+      triggerType: currentEvent.triggerType,
+      channel: params.channel,
+      recipientRole: normalizeActionRecipientRole(
+        currentEvent.recipientRole,
+        params.productId,
+        currentEvent.triggerType,
+      ),
+      recipientHash: sha256(destinationValue.toLowerCase()),
+      recipientMasked,
+      status: 'sent',
+      subject: null,
+      templateKey: 'manual_handoff',
+      templateVersion: '2026-06-02',
+      providerMessageId: `manual:${now.toMillis()}`,
+      error: null,
+      attempt: 1,
+      deliveryMode: 'manual_handoff',
+      operatorUserId: params.operatorUserId,
+      operatorEmailMasked: params.operatorEmailMasked,
+      actionIdHash: sha256(params.actionId),
+      note: params.note || null,
+      createdAt: now,
+      sentAt: now,
+    }));
+    transaction.update(eventRef, sanitizeForFirestore({
+      manualHandoffAt: now,
+      manualHandoffBy: params.operatorUserId,
+      manualHandoffByEmailMasked: params.operatorEmailMasked,
+      manualHandoffChannel: params.channel,
+      manualHandoffNote: params.note || null,
+      updatedAt: now,
+    }));
+    return { status: currentEvent.status, replayed: false };
+  });
 
-  await params.db.collection(OWNER_NOTIFICATION_COLLECTIONS.EVENTS).doc(eventId).set(sanitizeForFirestore({
-    manualHandoffAt: now,
-    manualHandoffBy: getOperatorId(params.session),
-    manualHandoffByEmailMasked: getOperatorEmailMasked(params.session),
-    manualHandoffChannel: params.channel,
-    manualHandoffNote: params.note || null,
-    updatedAt: now,
-  }), { merge: true });
+  if (!committed) return null;
+  if ('conflict' in committed && committed.conflict) return 'conflict';
 
   return {
     ok: true,
     action: 'manualHandoff',
     eventId,
-    status: params.event.status,
-    message: 'Manual handoff recorded',
+    status: committed.status,
+    replayed: committed.replayed,
+    message: committed.replayed ? 'Manual handoff was already recorded' : 'Manual handoff recorded',
   };
 }
 
@@ -646,35 +760,76 @@ export const GET = withAuth(async (request, session) => {
     return NextResponse.json({ error: 'Invalid query parameters' }, { status: 400 });
   }
 
-  const { productId, status, limit, eventId } = params.data;
-  const db = getDbForProduct(productId);
-  if (!db) {
-    return NextResponse.json({ error: 'Notification Firestore target unavailable' }, { status: 503 });
+  const sessionOperatorId = getOperatorId(session);
+  const operatorRateLimitHash = hashPublicRateLimitValue(sessionOperatorId);
+  const rateLimitResult = await checkRateLimit({
+    key: `owner-notification-ops-read:${operatorRateLimitHash}`,
+    limit: 60,
+    window: 60 * 60,
+    failClosedOnProviderError: true,
+  });
+  if (!rateLimitResult.allowed) {
+    const retryAfter = Math.max(1, Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000));
+    logger.security('Owner Notification Ops Read Rate Limited', {
+      ...getBoundedSecurityRouteContext(session, request),
+      endpoint: request.nextUrl.pathname,
+      providerUnavailable: rateLimitResult.reason === 'provider_unavailable',
+    }, 'medium');
+    return NextResponse.json(
+      {
+        error: rateLimitResult.reason === 'provider_unavailable'
+          ? 'Owner notification access is temporarily unavailable'
+          : 'Too many owner notification refreshes',
+        retryAfter,
+      },
+      {
+        status: rateLimitResult.reason === 'provider_unavailable' ? 503 : 429,
+        headers: { 'Retry-After': String(retryAfter) },
+      },
+    );
   }
 
+  const { productId, status, limit, eventId } = params.data;
   const scanLimit = Math.min(Math.max(limit * 3, 40), 90);
   const cost: OwnerNotificationOpsCost = {
+    authReads: 1,
     eventReads: 0,
     deliveryReads: 0,
     scopeReads: 0,
-    countQueries: EVENT_STATUSES.length,
+    countQueries: 0,
     writes: 0,
     scanLimit,
-    note: 'Manual refresh only. No realtime listener. Detail recipient resolution runs only after selecting one event.',
+    note: 'Manual refresh only. One current-user authorization read and one bounded recent-event scan. Counts and filters describe that same product-scoped recent window; detail recipient resolution runs only after selecting one event.',
   };
 
   try {
-    const [counts, events, detail] = await Promise.all([
-      getStatusCounts(db),
-      getEventRows({ db, productId, status, limit, scanLimit, cost }),
-      eventId ? getDetail({ db, productId, eventId, cost }) : Promise.resolve(undefined),
-    ]);
+    const currentPlatformUser = await getCurrentPlatformUser(session);
+    if (!currentPlatformUser) {
+      logger.security('Authorization Failed - Owner Notification Current Platform Role', {
+        ...getBoundedSecurityRouteContext(session, request),
+        endpoint: request.nextUrl.pathname,
+      }, 'high');
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const db = getDbForProduct(productId);
+    if (!db) {
+      return NextResponse.json({ error: 'Notification Firestore target unavailable' }, { status: 503 });
+    }
+    const recentRows = await getRecentEventRows({ db, productId, scanLimit, cost });
+    const { counts, events } = buildOwnerNotificationWindow({
+      rows: recentRows,
+      productId,
+      status,
+      limit,
+    });
+    const detail = eventId ? await getDetail({ db, productId, eventId, cost }) : undefined;
 
     const body: OwnerNotificationOpsSnapshot = {
       generatedAt: new Date().toISOString(),
       feature: {
         dashboardEnabled: true,
-        accessModel: 'platform_role',
+        accessModel: 'current_persisted_platform_user',
         realtimeListeners: false,
         productId,
       },
@@ -690,6 +845,7 @@ export const GET = withAuth(async (request, session) => {
       deliveries: detail?.deliveries,
       resolvedRecipient: detail?.resolvedRecipient,
       manualTemplate: detail?.manualTemplate,
+      detailError: detail?.detailError,
       cost,
     };
 
@@ -721,6 +877,7 @@ export const POST = withAuth(async (request, session) => {
     key: `owner-notification-ops:${userRateLimitHash}`,
     limit: 30,
     window: 60 * 60,
+    failClosedOnProviderError: true,
   });
   if (!rateLimitResult.allowed) {
     const retryAfter = Math.max(1, Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000));
@@ -729,9 +886,38 @@ export const POST = withAuth(async (request, session) => {
       endpoint: request.nextUrl.pathname,
     }, 'medium');
     return NextResponse.json(
-      { error: 'Too many owner notification recovery actions', retryAfter },
-      { status: 429, headers: { 'Retry-After': String(retryAfter) } },
+      {
+        error: rateLimitResult.reason === 'provider_unavailable'
+          ? 'Owner notification recovery is temporarily unavailable'
+          : 'Too many owner notification recovery actions',
+        retryAfter,
+      },
+      {
+        status: rateLimitResult.reason === 'provider_unavailable' ? 503 : 429,
+        headers: { 'Retry-After': String(retryAfter) },
+      },
     );
+  }
+
+  let operatorUserId: string;
+  let operatorEmailMasked: string | null;
+  try {
+    const currentPlatformUser = await getCurrentPlatformUser(session);
+    if (!currentPlatformUser) {
+      logger.security('Authorization Failed - Owner Notification Current Platform Role', {
+        ...getBoundedSecurityRouteContext(session, request),
+        endpoint: request.nextUrl.pathname,
+      }, 'high');
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+    operatorUserId = currentPlatformUser.documentId;
+    operatorEmailMasked = getOperatorEmailMasked(currentPlatformUser.userData.email);
+  } catch (error) {
+    logOpsFailure('owner_notifications_current_authorization_failed', error, {
+      ...getBoundedOpsStringContext('userId', userId),
+      ...getBoundedOpsStringContext('requestPath', request.nextUrl.pathname),
+    });
+    return NextResponse.json({ error: 'Owner notification recovery action failed' }, { status: 500 });
   }
 
   const bodyResult = await readBoundedJsonBody(request, OWNER_NOTIFICATION_OPS_ACTION_MAX_BODY_BYTES, {
@@ -761,6 +947,13 @@ export const POST = withAuth(async (request, session) => {
 
     if (validation.data.action === 'retry') {
       const result = await processOwnerNotificationEvent(validation.data.productId, eventId);
+      if (result.claimed === false) {
+        const notFound = result.claimReason === 'not_found_or_product_mismatch';
+        return NextResponse.json(
+          { error: notFound ? 'Owner notification event not found' : 'Owner notification event cannot be retried' },
+          { status: notFound ? 404 : 409 },
+        );
+      }
       return NextResponse.json({
         ok: true,
         action: 'retry',
@@ -773,12 +966,11 @@ export const POST = withAuth(async (request, session) => {
       } satisfies OwnerNotificationOpsActionResult);
     }
 
-    const event = await loadRawEvent(db, validation.data.productId, eventId);
-    if (!event) {
-      return NextResponse.json({ error: 'Owner notification event not found' }, { status: 404 });
-    }
-
     if (validation.data.action === 'manualSend') {
+      const event = await loadRawEvent(db, validation.data.productId, eventId);
+      if (!event) {
+        return NextResponse.json({ error: 'Owner notification event not found' }, { status: 404 });
+      }
       const destinationError = validateDestination(validation.data.channel, validation.data.destination);
       if (destinationError) {
         return NextResponse.json({ error: destinationError }, { status: 400 });
@@ -790,6 +982,7 @@ export const POST = withAuth(async (request, session) => {
         channel: validation.data.channel,
         destination: validation.data.destination,
         reason: validation.data.reason,
+        actionId: validation.data.actionId,
       });
       return NextResponse.json(result);
     }
@@ -803,13 +996,21 @@ export const POST = withAuth(async (request, session) => {
 
     const result = await recordManualHandoff({
       db,
-      event,
+      productId: validation.data.productId,
       eventId,
       channel: validation.data.channel,
       destination: validation.data.destination,
       note: validation.data.note,
-      session,
+      actionId: validation.data.actionId,
+      operatorUserId,
+      operatorEmailMasked,
     });
+    if (!result) {
+      return NextResponse.json({ error: 'Owner notification event not found' }, { status: 404 });
+    }
+    if (result === 'conflict') {
+      return NextResponse.json({ error: 'Owner notification action ID conflict' }, { status: 409 });
+    }
     return NextResponse.json(result);
   } catch (error) {
     logOpsFailure('owner_notifications_action_failed', error, {

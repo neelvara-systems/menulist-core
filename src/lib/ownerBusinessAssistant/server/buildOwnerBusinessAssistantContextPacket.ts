@@ -16,11 +16,16 @@ import type {
   OwnerBusinessHealthCurrentDoc,
 } from '../types';
 import {
+  parseOwnerBusinessAnalyticsIndexDoc,
+  parseOwnerBusinessHealthCurrentDoc,
+} from '../readModelBoundary';
+import {
   buildOwnerBusinessAssistantPacketCacheKey,
   readOwnerBusinessAssistantPacketCache,
   writeOwnerBusinessAssistantPacketCache,
 } from './contextPacketCache';
 import { buildOwnerBusinessDomainCapabilities } from './domainCapabilityMatrix';
+import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 
 const nowIso = () => new Date().toISOString();
 const numberFormatter = new Intl.NumberFormat('en');
@@ -258,8 +263,34 @@ export async function buildOwnerBusinessAssistantContextPacket(params: {
   const currentSnap = shouldReadCurrent ? reads[readIndex++] : null;
   const analyticsSnap = shouldReadAnalytics ? reads[readIndex++] : null;
 
-  const current = (currentSnap?.exists ? currentSnap.data() : null) as OwnerBusinessHealthCurrentDoc | null;
-  const analytics = (analyticsSnap?.exists ? analyticsSnap.data() : null) as OwnerBusinessAnalyticsIndexDoc | null;
+  const current = currentSnap?.exists
+    ? parseOwnerBusinessHealthCurrentDoc(currentSnap.data(), { tId, sId })
+    : null;
+  const analytics = analyticsSnap?.exists
+    ? parseOwnerBusinessAnalyticsIndexDoc(analyticsSnap.data(), { tId, sId })
+    : null;
+  if (currentSnap?.exists && !current) {
+    logRuntimeFailure(
+      'owner_business_assistant_persisted_current_invalid',
+      new Error('owner_business_assistant_persisted_current_invalid'),
+      {
+        expectedStoreIdLength: sId.length,
+        expectedTenantIdLength: tId.length,
+        fallbackPolicy: 'not_ready_health',
+      },
+    );
+  }
+  if (analyticsSnap?.exists && !analytics) {
+    logRuntimeFailure(
+      'owner_business_assistant_persisted_analytics_invalid',
+      new Error('owner_business_assistant_persisted_analytics_invalid'),
+      {
+        expectedStoreIdLength: sId.length,
+        expectedTenantIdLength: tId.length,
+        fallbackPolicy: 'analytics_unavailable',
+      },
+    );
+  }
   const health = current || buildFallbackHealthDoc(tId, sId);
   const analyticsIndexDocId = OWNER_BUSINESS_ASSISTANT_DOCS.getAnalyticsIndex(tId, sId);
   const scopedAnalytics = buildScopedAnalytics(analytics, params.projectId);

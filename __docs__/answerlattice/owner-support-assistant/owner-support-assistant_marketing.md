@@ -1,9 +1,9 @@
 # Owner Support Assistant - Marketing Notes
 
-> **Status:** DOCS FROZEN
+> **Status:** PRIVATE RUNTIME POSITIONING - public launch copy withheld
 > **Created:** 2026-06-07
 > **Audience:** Product and go-to-market planning
-> **Public copy status:** Do not publish until implementation is live.
+> **Public copy status:** Do not publish from source evidence alone; deployment, authenticated browser/device QA, and launch approval are pending.
 
 ---
 
@@ -52,7 +52,7 @@ It is not positioned as a chatbot. It is a private support operations layer that
 | Governance preserved | Publishing and approval remain in Answerlattice review flows. |
 | Cost discipline | The assistant uses summary-first reads and no transcript store by default. |
 | Mobile usable | Owners can review a support brief from the responsive Answerlattice dashboard. |
-| Confirmed actions | Supported actions require preview, owner confirmation, and existing product write paths. |
+| Read-only boundary | The live assistant links owners to existing governed screens and performs no mutation. |
 
 ---
 
@@ -70,7 +70,7 @@ Allowed after runtime verification:
 
 - "Helps teams decide what support knowledge needs review."
 - "Shows evidence and routes changes through review."
-- "Prepares supported actions for owner confirmation."
+- "Links owners to the relevant governed review screen."
 - "Uses Answerlattice's governed answer system."
 
 Not allowed:

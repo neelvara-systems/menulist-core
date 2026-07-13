@@ -9,7 +9,8 @@
  * All signals are aggregate-only. No individual visitor tracking.
  * Results stored as `healthSignals` field on existing store document (zero new collections).
  *
- * Schedule: Weekly (Sunday 3 AM UTC) — called from masterScheduler or standalone
+ * Runtime boundary: retained for compatibility, but not currently exported or
+ * scheduled. Keep dormant until exact visitor counters and an activation gate exist.
  *
  * @see __docs__/trust-health-signal/trust-health-signal_impl.md
  * @see __docs__/loyalty-health-signal/loyalty-health-signal_impl.md
@@ -17,11 +18,17 @@
  */
 
 import * as functions from 'firebase-functions';
-import { DB_COLLECTIONS } from '../constants/database';
+import { FieldPath } from 'firebase-admin/firestore';
+import { DB_COLLECTIONS, getAnalyticsDocId } from '../constants/database';
 import { firestoreAdmin } from '../firebaseAdmin';
 import { getAnalyticsErrorContext, getAnalyticsIdContext } from './analyticsDiagnostics';
 
 const logger = functions.logger;
+const HEALTH_SIGNAL_WINDOW_DAYS = 56;
+const MAX_DAILY_ANALYTICS_DOCS_PER_STORE = 1_000;
+const STORE_PAGE_SIZE = 200;
+const MAX_STORE_PAGES = 100;
+const ANALYTICS_DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 // ================================================================
 // TYPES
@@ -46,9 +53,10 @@ interface WeeklyMetrics {
 
 interface DailyAnalyticsSummary {
     id: string;
+    localDate: string;
     totalViews: number;
-    uniqueVisitors?: number;
-    directVisits?: number;
+    uniqueVisitors: number;
+    directVisits: number;
     totalActions: number;
 }
 
@@ -57,55 +65,159 @@ interface DailyAnalyticsSummary {
 // ================================================================
 
 /**
- * Get daily analytics docs for a store over the last N days.
- * Reads from existing analytics collection (zero new reads beyond what's already cached).
+ * Get a bounded daily analytics window for a store.
+ * This is a direct Firestore query and must remain dormant until activation cost is approved.
  */
+function normalizeNumericScopeDocumentId(value: unknown): string | null {
+    const raw = typeof value === 'string' || typeof value === 'number' ? String(value) : '';
+    if (!/^[1-9]\d*$/.test(raw)) return null;
+    const numeric = Number(raw);
+    return Number.isSafeInteger(numeric) && String(numeric) === raw ? raw : null;
+}
+
+function readNonNegativeInteger(value: unknown): number | null {
+    return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : null;
+}
+
+function normalizeAnalyticsDateKey(value: unknown): string | null {
+    if (typeof value !== 'string' || !ANALYTICS_DATE_KEY_PATTERN.test(value)) return null;
+    const parsed = new Date(`${value}T00:00:00.000Z`);
+    return Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== value
+        ? null
+        : value;
+}
+
+function normalizeDailyAnalyticsDocument(
+    id: string,
+    data: Record<string, unknown>,
+    expectedTId: string,
+    expectedSId: string,
+): DailyAnalyticsSummary | null {
+    const projectId = typeof data.projectId === 'string' ? data.projectId : '';
+    const localDate = normalizeAnalyticsDateKey(data.localDate ?? data.date);
+    if (
+        !projectId
+        || !localDate
+        || String(data.tId ?? '') !== expectedTId
+        || String(data.sId ?? '') !== expectedSId
+        || data.grain !== 'daily'
+        || data.analyticsScope !== 'customer'
+        || data.surface !== 'menu'
+        || id !== getAnalyticsDocId.daily(expectedTId, expectedSId, projectId, localDate)
+    ) return null;
+
+    const totalViews = readNonNegativeInteger(data.totalMenuViews ?? data.totalViews);
+    const uniqueVisitors = readNonNegativeInteger(data.uniqueVisitors);
+    const entrySources = data.viewsByEntrySource && typeof data.viewsByEntrySource === 'object'
+        && !Array.isArray(data.viewsByEntrySource)
+        ? data.viewsByEntrySource as Record<string, unknown>
+        : null;
+    const directVisits = readNonNegativeInteger(data.directVisits)
+        ?? readNonNegativeInteger(entrySources?.direct);
+    const totalActions = readNonNegativeInteger(
+        data.totalActions ?? data.totalClicks ?? data.totalMenuActionClicks ?? 0,
+    );
+
+    // These signals claim to use exact unique/direct counts. Missing fields
+    // must hide the signal instead of fabricating percentages from page views.
+    if (totalViews === null || uniqueVisitors === null || directVisits === null || totalActions === null) {
+        return null;
+    }
+
+    return {
+        id,
+        localDate,
+        totalViews,
+        uniqueVisitors,
+        directVisits,
+        totalActions,
+    };
+}
+
 async function getDailyAnalytics(
-    tId: number,
-    sId: number,
+    tId: string,
+    sId: string,
     days: number,
 ): Promise<DailyAnalyticsSummary[]> {
     const now = new Date();
     const cutoff = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
     const cutoffStr = cutoff.toISOString().split('T')[0]; // YYYY-MM-DD
+    const todayStr = now.toISOString().split('T')[0];
 
     const analyticsRef = firestoreAdmin.collection(DB_COLLECTIONS.ANALYTICS);
-
-    // Daily analytics docs follow pattern: {tId}_{sId}_daily_{YYYY-MM-DD}
-    // or {tId}_{sId}_menu_daily_{YYYY-MM-DD}
-    const prefix = `${tId}_${sId}_menu_daily_`;
     const snapshot = await analyticsRef
-        .where('__name__', '>=', prefix + cutoffStr)
-        .where('__name__', '<=', prefix + '\uf8ff')
+        .where('tId', '==', tId)
+        .where('sId', '==', sId)
+        .where('grain', '==', 'daily')
+        .where('localDate', '>=', cutoffStr)
+        .where('localDate', '<=', todayStr)
+        .orderBy('localDate', 'asc')
+        .limit(MAX_DAILY_ANALYTICS_DOCS_PER_STORE + 1)
         .get();
 
-    return snapshot.docs.map((doc) => {
-        const data = doc.data() || {};
-        const totalViews = Number(data.totalMenuViews || data.totalViews || 0);
+    if (snapshot.size > MAX_DAILY_ANALYTICS_DOCS_PER_STORE) {
+        logger.warn('[HealthSignals] Analytics window rejected at document limit', {
+            failureCode: 'HEALTH_SIGNALS_ANALYTICS_WINDOW_LIMIT_EXCEEDED',
+            tenantId: getAnalyticsIdContext(tId),
+            storeId: getAnalyticsIdContext(sId),
+            maxDocuments: MAX_DAILY_ANALYTICS_DOCS_PER_STORE,
+        });
+        return [];
+    }
 
-        return {
-            id: doc.id,
-            totalViews: Number.isFinite(totalViews) ? totalViews : 0,
-            uniqueVisitors: Number.isFinite(Number(data.uniqueVisitors)) ? Number(data.uniqueVisitors) : undefined,
-            directVisits: Number.isFinite(Number(data.directVisits)) ? Number(data.directVisits) : undefined,
-            totalActions: Number(data.totalActions || data.totalClicks || 0),
-        };
-    });
+    const normalizedRows: DailyAnalyticsSummary[] = [];
+    let malformedMenuRow = false;
+    for (const doc of snapshot.docs) {
+        const data = doc.data() || {};
+        if (data.surface !== 'menu') continue;
+        const normalized = normalizeDailyAnalyticsDocument(doc.id, doc.data() || {}, tId, sId);
+        if (!normalized) {
+            malformedMenuRow = true;
+            continue;
+        }
+        normalizedRows.push(normalized);
+    }
+
+    const dates = normalizedRows.map((row) => row.localDate);
+    const hasMultipleProjectRowsForDate = new Set(dates).size !== dates.length;
+    if (malformedMenuRow || hasMultipleProjectRowsForDate) {
+        logger.warn('[HealthSignals] Analytics window rejected as incomplete or non-additive', {
+            failureCode: 'HEALTH_SIGNALS_ANALYTICS_WINDOW_INVALID',
+            tenantId: getAnalyticsIdContext(tId),
+            storeId: getAnalyticsIdContext(sId),
+            malformedMenuRow,
+            hasMultipleProjectRowsForDate,
+        });
+        return [];
+    }
+
+    return normalizedRows;
 }
 
 /**
  * Group daily analytics into weekly buckets.
  */
 function groupByWeek(dailyDocs: DailyAnalyticsSummary[]): WeeklyMetrics[] {
+    const dayMap = new Map<string, Omit<DailyAnalyticsSummary, 'id'>>();
+    for (const doc of dailyDocs) {
+        const existing = dayMap.get(doc.localDate) || {
+            localDate: doc.localDate,
+            totalViews: 0,
+            uniqueVisitors: 0,
+            directVisits: 0,
+            totalActions: 0,
+        };
+        existing.totalViews += doc.totalViews;
+        existing.uniqueVisitors += doc.uniqueVisitors;
+        existing.directVisits += doc.directVisits;
+        existing.totalActions += doc.totalActions;
+        dayMap.set(doc.localDate, existing);
+    }
+
     const weekMap = new Map<string, WeeklyMetrics>();
 
-    for (const doc of dailyDocs) {
-        // Extract date from doc id (format: tId_sId_menu_daily_YYYY-MM-DD)
-        const parts = doc.id.split('_');
-        const dateStr = parts[parts.length - 1];
-        if (!dateStr) continue;
-
-        const date = new Date(dateStr);
+    for (const doc of dayMap.values()) {
+        const date = new Date(`${doc.localDate}T00:00:00.000Z`);
         // ISO week start (Monday)
         const weekStart = getISOWeekStart(date);
         const weekKey = weekStart.toISOString().split('T')[0];
@@ -123,8 +235,8 @@ function groupByWeek(dailyDocs: DailyAnalyticsSummary[]): WeeklyMetrics[] {
 
         const week = weekMap.get(weekKey)!;
         week.totalViews += doc.totalViews;
-        week.uniqueVisitors += (doc.uniqueVisitors || Math.ceil(doc.totalViews * 0.7));
-        week.directVisits += (doc.directVisits || Math.ceil(doc.totalViews * 0.4));
+        week.uniqueVisitors += doc.uniqueVisitors;
+        week.directVisits += doc.directVisits;
         week.totalActions += doc.totalActions;
         week.daysWithData += 1;
     }
@@ -135,11 +247,36 @@ function groupByWeek(dailyDocs: DailyAnalyticsSummary[]): WeeklyMetrics[] {
 
 function getISOWeekStart(date: Date): Date {
     const d = new Date(date);
-    const day = d.getDay();
-    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-    d.setDate(diff);
-    d.setHours(0, 0, 0, 0);
+    const day = d.getUTCDay();
+    const diff = d.getUTCDate() - day + (day === 0 ? -6 : 1);
+    d.setUTCDate(diff);
+    d.setUTCHours(0, 0, 0, 0);
     return d;
+}
+
+function isSameISOWeek(previousComputedAt: unknown, currentDate: Date): boolean {
+    if (typeof previousComputedAt !== 'string') return false;
+    const previousDate = new Date(previousComputedAt);
+    if (Number.isNaN(previousDate.getTime())) return false;
+    return getISOWeekStart(previousDate).getTime() === getISOWeekStart(currentDate).getTime();
+}
+
+function getRecentQualifyingWeeks(weeks: WeeklyMetrics[], currentDate: Date): WeeklyMetrics[] {
+    const currentWeekStartMillis = getISOWeekStart(currentDate).getTime();
+    const recent = weeks
+        .filter((week) => {
+            const weekStart = new Date(`${week.weekStart}T00:00:00.000Z`).getTime();
+            return Number.isFinite(weekStart) && weekStart < currentWeekStartMillis;
+        })
+        .slice(-4);
+    if (recent.length < 4 || recent.some((week) => week.uniqueVisitors < 50)) return [];
+
+    for (let index = 1; index < recent.length; index += 1) {
+        const previous = new Date(`${recent[index - 1].weekStart}T00:00:00.000Z`).getTime();
+        const current = new Date(`${recent[index].weekStart}T00:00:00.000Z`).getTime();
+        if (current - previous !== 7 * 24 * 60 * 60 * 1000) return [];
+    }
+    return recent;
 }
 
 /**
@@ -154,14 +291,13 @@ function normalize(value: number, min: number, max: number): number {
 // TRUST HEALTH COMPUTATION (Pillar 4)
 // ================================================================
 
-function computeTrustHealth(weeks: WeeklyMetrics[], previousState?: HealthSignalState): HealthSignalState {
+function computeTrustHealth(weeks: WeeklyMetrics[], currentDate: Date): HealthSignalState {
+    const computedAt = currentDate.toISOString();
     // Visibility threshold: 50+ unique visitors/week for 4+ consecutive weeks
-    const qualifyingWeeks = weeks.filter(w => w.uniqueVisitors >= 50);
-    if (qualifyingWeeks.length < 4) {
-        return { state: 'stable', visible: false, dataPoints: 0, computedAt: new Date().toISOString() };
+    const recent = getRecentQualifyingWeeks(weeks, currentDate);
+    if (recent.length < 4) {
+        return { state: 'stable', visible: false, dataPoints: 0, computedAt };
     }
-
-    const recent = qualifyingWeeks.slice(-4); // Last 4 qualifying weeks
 
     // Signal 1: Volume Trend (compare last 2 weeks avg vs previous 2 weeks avg)
     const recentAvg = (recent[2].totalViews + recent[3].totalViews) / 2;
@@ -193,8 +329,8 @@ function computeTrustHealth(weeks: WeeklyMetrics[], previousState?: HealthSignal
     return {
         state,
         visible: true,
-        dataPoints: qualifyingWeeks.length,
-        computedAt: new Date().toISOString(),
+        dataPoints: recent.length,
+        computedAt,
     };
 }
 
@@ -202,13 +338,12 @@ function computeTrustHealth(weeks: WeeklyMetrics[], previousState?: HealthSignal
 // LOYALTY HEALTH COMPUTATION (Pillar 5)
 // ================================================================
 
-function computeLoyaltyHealth(weeks: WeeklyMetrics[], previousState?: HealthSignalState): HealthSignalState {
-    const qualifyingWeeks = weeks.filter(w => w.uniqueVisitors >= 50);
-    if (qualifyingWeeks.length < 4) {
-        return { state: 'stable', visible: false, dataPoints: 0, computedAt: new Date().toISOString() };
+function computeLoyaltyHealth(weeks: WeeklyMetrics[], currentDate: Date): HealthSignalState {
+    const computedAt = currentDate.toISOString();
+    const recent = getRecentQualifyingWeeks(weeks, currentDate);
+    if (recent.length < 4) {
+        return { state: 'stable', visible: false, dataPoints: 0, computedAt };
     }
-
-    const recent = qualifyingWeeks.slice(-4);
 
     // Signal 1: Return Ratio (totalViews / uniqueVisitors — higher = more returning visitors)
     const totalViews = recent.reduce((sum, w) => sum + w.totalViews, 0);
@@ -235,8 +370,8 @@ function computeLoyaltyHealth(weeks: WeeklyMetrics[], previousState?: HealthSign
     return {
         state,
         visible: true,
-        dataPoints: qualifyingWeeks.length,
-        computedAt: new Date().toISOString(),
+        dataPoints: recent.length,
+        computedAt,
     };
 }
 
@@ -249,17 +384,20 @@ function computeRiskState(
     loyalty: HealthSignalState,
     weeks: WeeklyMetrics[],
     previousRisk?: HealthSignalState,
+    currentDate = new Date(),
 ): HealthSignalState {
+    const computedAt = currentDate.toISOString();
     // Prerequisites: both trust and loyalty must be visible
     if (!trust.visible || !loyalty.visible) {
-        return { state: 'stable', visible: false, consecutiveWeakWeeks: 0, computedAt: new Date().toISOString() };
+        return { state: 'stable', visible: false, consecutiveWeakWeeks: 0, computedAt };
     }
 
     const trustWeak = trust.state === 'weak';
     const loyaltyWeak = loyalty.state === 'weak';
 
-    // Engagement trend (last 2 weeks vs previous 2 weeks)
-    const recent = weeks.slice(-4);
+    // Use the same four completed, consecutive, qualifying weeks as trust and
+    // loyalty. A partial current week must not create a false decline signal.
+    const recent = getRecentQualifyingWeeks(weeks, currentDate);
     let engagementDeclining = false;
     if (recent.length >= 4) {
         const recentActions = (recent[2].totalActions + recent[3].totalActions) / 2;
@@ -268,9 +406,17 @@ function computeRiskState(
     }
 
     // Count consecutive weak weeks
-    const prevWeakWeeks = previousRisk?.consecutiveWeakWeeks || 0;
+    const previousWeakWeeks = previousRisk?.consecutiveWeakWeeks;
+    const prevWeakWeeks = Number.isSafeInteger(previousWeakWeeks) && Number(previousWeakWeeks) >= 0
+        ? Number(previousWeakWeeks)
+        : 0;
     const anyWeak = trustWeak || loyaltyWeak || engagementDeclining;
-    const consecutiveWeakWeeks = anyWeak ? prevWeakWeeks + 1 : 0;
+    const sameWeek = isSameISOWeek(previousRisk?.computedAt, currentDate);
+    const consecutiveWeakWeeks = anyWeak
+        ? sameWeek
+            ? Math.max(1, prevWeakWeeks)
+            : prevWeakWeeks + 1
+        : 0;
 
     // Determine state
     let state: 'stable' | 'watch' | 'at_risk' = 'stable';
@@ -283,7 +429,7 @@ function computeRiskState(
         state,
         visible: true,
         consecutiveWeakWeeks,
-        computedAt: new Date().toISOString(),
+        computedAt,
     };
 }
 
@@ -293,7 +439,7 @@ function computeRiskState(
 
 /**
  * Process health signals for all active stores.
- * Called weekly by masterScheduler or standalone scheduler.
+ * Retained dormant. Do not wire it until the exact-metric activation gate is approved.
  */
 export async function processHealthSignalsForAllStores(): Promise<{
     processed: number;
@@ -303,55 +449,97 @@ export async function processHealthSignalsForAllStores(): Promise<{
     const result = { processed: 0, updated: 0, errors: 0 };
 
     try {
-        // Get all active stores
-        const storesSnapshot = await firestoreAdmin
-            .collection(DB_COLLECTIONS.STORES)
-            .where('active', '==', true)
-            .get();
+        let cursor: FirebaseFirestore.QueryDocumentSnapshot | null = null;
+        let reachedPageLimit = true;
 
-        logger.info(`[HealthSignals] Processing ${storesSnapshot.size} active stores`);
+        for (let page = 0; page < MAX_STORE_PAGES; page += 1) {
+            let storesQuery = firestoreAdmin
+                .collection(DB_COLLECTIONS.STORES)
+                .where('active', '==', true)
+                .orderBy(FieldPath.documentId())
+                .limit(STORE_PAGE_SIZE);
+            if (cursor) storesQuery = storesQuery.startAfter(cursor);
 
-        for (const storeDoc of storesSnapshot.docs) {
-            const storeData = storeDoc.data();
-            const tId = storeData.tenantId;
-            const sId = storeData.storeId;
-
-            if (!tId || !sId) continue;
-            result.processed++;
-
-            try {
-                // Get last 8 weeks of daily analytics
-                const dailyDocs = await getDailyAnalytics(tId, sId, 56);
-                if (dailyDocs.length === 0) continue; // No data — skip silently
-
-                const weeks = groupByWeek(dailyDocs);
-                const existingSignals = storeData.healthSignals || {};
-
-                // Compute all three signals
-                const trustState = computeTrustHealth(weeks, existingSignals.trust);
-                const loyaltyState = computeLoyaltyHealth(weeks, existingSignals.loyalty);
-                const riskState = computeRiskState(trustState, loyaltyState, weeks, existingSignals.risk);
-
-                // Only write if something changed or is visible
-                const hasVisibleSignal = trustState.visible || loyaltyState.visible || riskState.visible;
-                const hadSignals = existingSignals.trust || existingSignals.loyalty || existingSignals.risk;
-
-                if (hasVisibleSignal || hadSignals) {
-                    await storeDoc.ref.update({
-                        'healthSignals.trust': trustState,
-                        'healthSignals.loyalty': loyaltyState,
-                        'healthSignals.risk': riskState,
-                    });
-                    result.updated++;
-                }
-            } catch (storeError) {
-                logger.warn('[HealthSignals] Store processing failed', {
-                    tenantId: getAnalyticsIdContext(tId),
-                    storeId: getAnalyticsIdContext(sId),
-                    error: getAnalyticsErrorContext(storeError),
-                });
-                result.errors++;
+            const storesSnapshot = await storesQuery.get();
+            if (storesSnapshot.empty) {
+                reachedPageLimit = false;
+                break;
             }
+
+            for (const storeDoc of storesSnapshot.docs) {
+                const storeData = storeDoc.data();
+                const tId = normalizeNumericScopeDocumentId(storeData.tenantId ?? storeData.tId);
+                const sId = normalizeNumericScopeDocumentId(storeData.storeId ?? storeData.sId);
+
+                if (!tId || !sId || storeDoc.id !== sId) {
+                    logger.warn('[HealthSignals] Store identity invalid; skipping', {
+                        documentId: getAnalyticsIdContext(storeDoc.id),
+                        tenantId: getAnalyticsIdContext(tId),
+                        storeId: getAnalyticsIdContext(sId),
+                    });
+                    result.errors++;
+                    continue;
+                }
+                result.processed++;
+
+                try {
+                    // Read the bounded current project-scoped daily window. Rows
+                    // are admitted only after their embedded identity matches.
+                    const dailyDocs = await getDailyAnalytics(tId, sId, HEALTH_SIGNAL_WINDOW_DAYS);
+                    const weeks = groupByWeek(dailyDocs);
+                    const existingSignals = storeData.healthSignals && typeof storeData.healthSignals === 'object'
+                        && !Array.isArray(storeData.healthSignals)
+                        ? storeData.healthSignals as Record<string, HealthSignalState | undefined>
+                        : {};
+                    const computationDate = new Date();
+
+                    // Compute all three signals from exact counters only.
+                    const trustState = computeTrustHealth(weeks, computationDate);
+                    const loyaltyState = computeLoyaltyHealth(weeks, computationDate);
+                    const riskState = computeRiskState(
+                        trustState,
+                        loyaltyState,
+                        weeks,
+                        existingSignals.risk,
+                        computationDate,
+                    );
+
+                    // If prior signals exist but the exact input window has aged
+                    // out, write hidden states so stale owner truth is not retained.
+                    const hasVisibleSignal = trustState.visible || loyaltyState.visible || riskState.visible;
+                    const hadSignals = Boolean(
+                        existingSignals.trust || existingSignals.loyalty || existingSignals.risk,
+                    );
+
+                    if (hasVisibleSignal || hadSignals) {
+                        await storeDoc.ref.update({
+                            'healthSignals.trust': trustState,
+                            'healthSignals.loyalty': loyaltyState,
+                            'healthSignals.risk': riskState,
+                        });
+                        result.updated++;
+                    }
+                } catch (storeError) {
+                    logger.warn('[HealthSignals] Store processing failed', {
+                        tenantId: getAnalyticsIdContext(tId),
+                        storeId: getAnalyticsIdContext(sId),
+                        error: getAnalyticsErrorContext(storeError),
+                    });
+                    result.errors++;
+                }
+            }
+
+            cursor = storesSnapshot.docs[storesSnapshot.docs.length - 1] || null;
+            if (storesSnapshot.size < STORE_PAGE_SIZE || !cursor) {
+                reachedPageLimit = false;
+                break;
+            }
+        }
+
+        if (reachedPageLimit) {
+            logger.warn('[HealthSignals] Active-store scan reached bounded page limit', {
+                maxStores: STORE_PAGE_SIZE * MAX_STORE_PAGES,
+            });
         }
 
         logger.info(`[HealthSignals] Complete: ${result.processed} processed, ${result.updated} updated, ${result.errors} errors`);
@@ -363,4 +551,36 @@ export async function processHealthSignalsForAllStores(): Promise<{
     }
 
     return result;
+}
+
+export function normalizeHealthSignalDailyDocumentForTest(
+    id: string,
+    data: Record<string, unknown>,
+    tId: string,
+    sId: string,
+): DailyAnalyticsSummary | null {
+    return normalizeDailyAnalyticsDocument(id, data, tId, sId);
+}
+
+export function groupHealthSignalDailyDocumentsForTest(
+    dailyDocs: DailyAnalyticsSummary[],
+): WeeklyMetrics[] {
+    return groupByWeek(dailyDocs);
+}
+
+export function getRecentQualifyingHealthSignalWeeksForTest(
+    weeks: WeeklyMetrics[],
+    currentDate: Date,
+): WeeklyMetrics[] {
+    return getRecentQualifyingWeeks(weeks, currentDate);
+}
+
+export function computeRiskStateForTest(
+    trust: HealthSignalState,
+    loyalty: HealthSignalState,
+    weeks: WeeklyMetrics[],
+    previousRisk: HealthSignalState | undefined,
+    currentDate: Date,
+): HealthSignalState {
+    return computeRiskState(trust, loyalty, weeks, previousRisk, currentDate);
 }

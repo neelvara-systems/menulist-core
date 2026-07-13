@@ -6,6 +6,8 @@
 - Daily Desk builder calls `buildCampaignCueOutputPack()`.
 - `outputPack.downloadBundle.files` exists.
 - `outputPack.proofDeck` exists and `proof-deck/campaign-proof-deck.md` is present in the bundle.
+- `outputPack.readiness` contains exactly five bounded checks and `trust/pack-readiness.md` is present.
+- `outputPack.rhythm` exists and `instructions/campaign-rhythm.md` is present.
 - Owner UI includes `OutputPackSummary`.
 - ZIP path includes `campaign-pack-summary.md` and `campaign-pack.json`.
 - Verifier rejects direct publish/send/provider wording.
@@ -18,6 +20,13 @@
 | Missing required input exists | Output pack marks missing-input files as Needs input. |
 | Trust warning exists | Trust report and summary show Needs review. |
 | Trust blocked exists | Output pack marks blocked reasons and export action remains server-gated. |
+| Agency pack not approved | Approval readiness is zero, public-use actions are blocked, and approve/reject only resolve a requested approval. |
+| Competing approval decisions | Transaction rechecks waiting state; the first decision wins and the other receives a conflict. |
+| Closed/already-approved pack | New approval request is unavailable and rejected server-side. |
+| Readiness score shown | Score measures facts, trust, freshness, approval, and manual handoff only; copy explicitly rejects engagement/reach prediction. |
+| Useful past result | Rhythm nominates the source campaign and reuse creates a new current-truth pack with provenance only. |
+| Old campaign used or archived | It does not create a stale agency approval reminder. |
+| Legacy pack without stored decision | It never borrows decision evidence or missing-input questions from a different recipe. |
 | WhatsApp output exists | ZIP includes WhatsApp message/status/reply/catalog reminder files. |
 | Google output exists | ZIP includes title/description/date/link/terms files. |
 | No hosted mini-page route | ZIP includes mini-page/QR brief only, not a public URL claim. |
@@ -30,7 +39,8 @@
 ## Commands
 
 ```bash
-node scripts/verification/verify-campaigncue-runtime.js
+npm run verify:campaigncue-operating-loop
+npm run verify:campaigncue
 npx tsc --noEmit --incremental false --pretty false
 npm run lint
 git diff --check

@@ -35,12 +35,13 @@
 | Widget activity timestamp normalization | 0 READ / 0 WRITE | `/api/answerlattice/widget-activity` accepts Firestore Timestamp-like values and canonical ISO `...Z` strings only when sorting fallback rows or serializing `createdAt`; malformed stored values become `null`/oldest instead of permissive parsed dates | $0.00 |
 | Widget management persisted scope checks fail closed | 0 READ / 0 WRITE | Protected widget-config, widget-activity fallback filtering, and hosted-help registry/store checks normalize persisted tenant/store scope before comparing the active workspace | $0.00 |
 | Public iframe response validation | 0 READ / 0 WRITE | WidgetClient validates widget search responses in the browser before rendering assistant messages; feedback request policy changes stay browser-local | $0.00 |
+| Host-to-iframe runtime authorization | 0 READ / 0 WRITE beyond existing key/config lookup | Config mints a 15-minute HMAC token bound to the widget key and workspace; the loader refreshes it before expiry and search/feedback verify it in process | No new Firestore collection, document, listener, or write |
 
 ## No New Collections
 
 Widget v2 reuses ALL existing Answerlattice collections. Zero new Firestore collections created. The feedback route writes to `aiSearchHistory` (existing) and `answerlattice_signal_events` (existing).
 
-The `widgetConfig`, `widgetAllowedOrigins`, `widgetConfigVersion`, and `answerlatticeWidgetApi` fields are stored on the existing `stores` document — no new document or collection. Widget keys use `answerlatticeWidgetApi.keyHashes` for one-query runtime lookup and `answerlatticeWidgetApi.keysByHash` for key names, prefixes/suffixes, scopes, and status. Raw keys are not stored for dashboard recovery after creation. Stored origin values are normalized to origin format (`scheme://host[:port]`), and configured allowlists reject missing or unlisted request origins. Route blocklists are stored inside `widgetConfig.blockedRoutes` and evaluated locally by the loader script.
+The `widgetConfig`, `widgetAllowedOrigins`, `widgetConfigVersion`, and `answerlatticeWidgetApi` fields are stored on the existing `stores` document — no new document or collection. Widget keys use `answerlatticeWidgetApi.keyHashes` for one-query runtime lookup and `answerlatticeWidgetApi.keysByHash` for key names, prefixes/suffixes, scopes, and status. Raw keys are not stored for dashboard recovery after creation. Stored origin values are normalized to origin format (`scheme://host[:port]`). The customer page must first pass that allowlist on config load; the resulting short-lived token lets the Answerlattice-origin iframe call search/feedback without pretending that its browser `Origin` is the customer host. Route blocklists are stored inside `widgetConfig.blockedRoutes` and evaluated locally by the loader script.
 
 ## Widget Activity Index
 

@@ -1,7 +1,7 @@
 # Answerlattice — External Workflow Integrations — Implementation
 
-> **Version:** 1.1.11
-> **Last Updated:** 2026-06-29
+> **Version:** 1.2.0
+> **Last Updated:** 2026-07-13
 > **Audience:** Developers
 > **Feature Flag:** `ENABLE_ANSWERLATTICE_WORKFLOW_INTEGRATIONS` (client + CF)
 
@@ -81,20 +81,25 @@ src/
 ### 3.1 — Integration Events Collection
 
 **Collection:** `answerlattice_integrationEvents` (Answerlattice Firestore)
-**Write pattern:** Append-only. Write once, never update.
+**Write pattern:** Immutable event identity/payload plus transactional lifecycle updates.
 **Triggered by:** Nightly batch steps + governance UI actions
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `eventId` | string | Auto-generated doc ID |
+| document ID | string | Auto-generated for manual events; deterministic hash for idempotent nightly events; not duplicated as a field |
 | `pId` | string | Always `AL` |
 | `eventType` | string | One of 7 event types (see §4) |
 | `tId` | number | Tenant ID |
 | `sId` | number | Store ID |
 | `severity` | string | `'critical' \| 'high' \| 'medium' \| 'low'` |
 | `payload` | map | Event-specific data (varies by type) |
+| `idempotencyFingerprint` | string, optional | SHA-256 fingerprint binding deterministic event identity to exact scope/type/severity/payload |
 | `status` | string | `'pending' \| 'processing' \| 'delivered' \| 'failed'` |
 | `createdAt` | Timestamp | When event was created |
+| `processingStartedAt` | Timestamp, optional | When the transaction claimed the pending event |
+| `processingAttemptCount` | number, optional | Bounded claim count for diagnostics |
+| `completedAt` | Timestamp, optional | When processing reached delivered/failed |
+| `failureCode` | string, optional | Fixed local failure reason for rejected event contracts |
 | `expiresAt` | Timestamp | Firestore TTL deletion timestamp |
 
 **Index:** `tId ASC, createdAt DESC` (for tenant event history query)
@@ -103,7 +108,7 @@ src/
 ### 3.2 — Integration Delivery Logs Collection
 
 **Collection:** `answerlattice_integrationDeliveryLogs` (Answerlattice Firestore)
-**Write pattern:** Append-only. One doc per delivery attempt.
+**Write pattern:** Append-only. One create-only deterministic document per event/adapter/attempt.
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -142,6 +147,9 @@ The processor reads/writes these docs by direct ID inside transactions. No colle
 
 | Field | Type | Description |
 |-------|------|-------------|
+| `pId` | `'AL'` | Persisted product ownership; must match exactly |
+| `tId` | positive safe integer | Persisted tenant ownership; must match the document path scope |
+| `sId` | positive safe integer | Persisted workspace ownership; must match the document path scope |
 | `slack.enabled` | boolean | Slack integration active |
 | `slack.webhookUrl` | string | Slack Incoming Webhook URL |
 | `slack.channel` | string | Channel name (display only, webhook determines actual channel) |
@@ -151,10 +159,12 @@ The processor reads/writes these docs by direct ID inside transactions. No colle
 | `email.eventFilters` | string[] | Which event types to deliver |
 | `linear.*` | map | Controlled-rollout adapter config. Not exposed in owner settings until secret management is production-ready. |
 | `github.*` | map | Controlled-rollout adapter config. Not exposed in owner settings until secret management is production-ready. |
-| `circuitBreaker` | map | Per-adapter: `{ consecutiveFailures: number, disabledAt: Timestamp \| null }` |
+| `circuitBreaker` | map | Per-adapter: `{ consecutiveFailures, disabledAt, probeStartedAt }`; the probe timestamp is a 2-minute transactional lease |
 | `modifiedOn` | Timestamp | Last config change |
 
-**Why platformSummary?** Follows existing Answerlattice pattern (branding, coverage KPI). No new collection. Config is small (<2KB). Read once per event dispatch.
+**Ownership and legacy behavior:** The settings producer writes `pId/tId/sId` on every save. The settings GET/test routes and Functions consumer compare embedded ownership with the session/event-derived document path before using adapter secrets. Documents with no ownership fields at all are the bounded legacy shape: the derived scope is claimed by writing the three fields inside a Firestore transaction. Partial, wrong-product, or conflicting scope is rejected; the owner API returns support-review status and Functions return an all-disabled config. The owner route re-reads ownership in the same transaction that merges only Slack/email fields, so it cannot overwrite a concurrently changed identity and never rewrites controlled Linear/GitHub or transaction-owned circuit-breaker maps from an earlier read. Circuit-breaker success/failure changes also re-read ownership inside a Firestore transaction.
+
+**Why platformSummary?** Follows existing Answerlattice pattern (branding, coverage KPI). No new collection. Config is small (<2KB). Read once per event dispatch, plus a transaction read when circuit-breaker state must be reconciled.
 
 ### 3.4 — Delivery Health Summary
 
@@ -162,7 +172,7 @@ The processor reads/writes these docs by direct ID inside transactions. No colle
 
 This doc stores sanitized last attempt/success/failure state per adapter. The owner settings UI reads this through the server API, so it never queries raw delivery logs. The API keeps stored delivery error text server-side and returns a fixed `Delivery needs review.` marker when an adapter has a last error, preserving the dashboard status signal without exposing provider/runtime text.
 
-The settings GET route applies the shared Answerlattice dashboard `DATA_READ` limiter before permission and `platformSummary` reads. Load/save route failures use fixed runtime diagnostic codes with bounded tenant/store metadata. The controlled test-event route applies its workspace limiter before permission, config reads, and event writes; unexpected failures use fixed-code bounded tenant/store diagnostics.
+The settings GET route applies the shared Answerlattice dashboard `DATA_READ` limiter before permission and `platformSummary` reads. It independently verifies or transactionally claims the embedded config and health ownership before serialization. The save route validates ownership and writes owner-controlled fields in one transaction. Load/save route failures use fixed runtime diagnostic codes with bounded tenant/store metadata. The controlled test-event route applies its workspace limiter before permission, verifies or claims config ownership in a transaction, and only then writes an event; unexpected failures use fixed-code bounded tenant/store diagnostics.
 
 ---
 
@@ -298,34 +308,40 @@ export async function emitIntegrationEvent(params: {
   sId: number;
   eventType: IntegrationEventType;
   severity: EventSeverity;
-  payload: Record<string, any>;
-}): Promise<void>
+  payload: Record<string, unknown>;
+  deduplicationKey?: string;
+}): Promise<boolean>
 ```
 
 **Behavior:**
 1. Feature flag check (`ENABLE_ANSWERLATTICE_WORKFLOW_INTEGRATIONS`)
 2. Add `pId: 'AL'` and `expiresAt`
-3. Sanitize payload and write document to `answerlattice_integrationEvents` with `status: 'pending'`
-4. Fire-and-forget — errors logged, never thrown
-5. Cloud Function `processIntegrationEvent` triggers on `onCreate`
+3. Sanitize payload and reject unsupported, nested, or secret-bearing values
+4. For a deduplication key, create a deterministic event document and bind it to an exact payload fingerprint
+5. Suppress exact replays; reject changed-payload reuse of the same key; neither consumes the nightly cap
+6. Write `status: 'pending'`; errors are logged and returned as `false`, never thrown
+7. Cloud Function `processIntegrationEvent` triggers on `onCreate`
 
 **Wiring points (nightly batch):**
 - Step 13 reads whether a tenant has any enabled adapter. A config-read failure is recorded as `ANSWERLATTICE_INTEGRATION_ADAPTER_CHECK_FAILED`, marks that tenant's workflow integration task failed, and keeps event delivery fail-closed for that tenant instead of reporting a normal no-adapter skip.
 - It emits `coverage_drop` immediately only when coverage is below threshold.
+- It emits `ai_failure_recurring` only when the bounded nightly AI-failure threshold is reached.
 - It emits one tenant `nightly_summary` digest when the tenant has governance/support activity.
 - It does not emit per-drift/per-proposal/per-gap fan-out by default; those event types remain available for explicit flows and controlled rollout.
 
-**Wiring points (real-time):**
-- Governance UI: approve mutation → emit `article_approved`
+**Other entry point:**
+- The authenticated owner test route writes one controlled `nightly_summary` event after permission, config-ownership, and rate-limit checks. Its exact `test: true` plus `runLogId: 'manual-test'` marker bypasses ordinary event filters only for enabled self-service Slack/email adapters so the single global test action verifies both saved connections; controlled Linear/GitHub filters are unchanged.
+- No direct real-time governance producer is currently wired. `drift_detected`, `mutation_proposed`, `knowledge_gap_detected`, and `article_approved` remain supported adapter/filter schemas, not active emission claims.
 
 ### 5.2 — Event Processor (`functions-answerlattice/src/integrations/eventProcessor.ts`)
 
 **Purpose:** Cloud Function triggered by `onCreate` on `answerlattice_integrationEvents`.
 
 **Flow:**
-1. Read event document
-2. Read tenant integration config from `platformSummary/integrationConfig_{tId}_{sId}`
-3. For each enabled adapter where event type matches filter:
+1. Validate product/scope/type/severity/payload/timestamps from the trigger snapshot
+2. Transactionally claim only the exact matching pending document; changed payload or timestamp fails closed
+3. Read tenant integration config from `platformSummary/integrationConfig_{tId}_{sId}`
+4. For each enabled adapter where event type matches filter:
    a. Consume per-adapter minute counter
    b. Consume per-adapter daily counter
    c. For email, consume per-recipient daily counters
@@ -333,18 +349,21 @@ export async function emitIntegrationEvent(params: {
    e. Attempt delivery with bounded retry
    f. Log result to `answerlattice_integrationDeliveryLogs`
    g. Update compact health summary in `platformSummary/integrationHealth_{tId}_{sId}`
-4. Update event status to `'delivered'` or `'failed'`
+5. Update event status to `'delivered'` only when every attempted adapter succeeds; any attempted adapter failure makes the event `'failed'`
 
-**Retry strategy:** bounded exponential backoff without open-ended retries
+**Retry strategy:** bounded adapter retry without open-ended or ambiguous provider replay
 - Attempt 1: immediate
 - Attempt 2: 1 second delay
 - Attempt 3: 4 seconds delay
-- After 3 failures: mark as failed, log, move on
+- Attempts 2 and 3 run only when the adapter returns an explicit retryable HTTP 429/5xx result
+- Network/timeout/SMTP exceptions use fixed local failures and are not blindly replayed because provider acceptance can be ambiguous
+- The Firestore trigger has platform retry enabled for pre-claim infrastructure failures. The transactional pending-event claim prevents a second invocation from replaying an already claimed provider delivery.
+- After the third total attempt: mark as failed, log, move on
 
 **Circuit breaker:**
 - Track consecutive failures per adapter per tenant
 - After 10 consecutive failures: disable adapter, set `circuitBreaker.disabledAt`
-- Auto-recover: if disabledAt > 24 hours ago, try one probe delivery
+- Auto-recover: if disabledAt > 24 hours ago, transactionally lease one probe delivery for 2 minutes; concurrent probes fail closed
 - On probe success: reset counter, re-enable
 
 ### 5.3 — Adapter Interface
@@ -358,7 +377,7 @@ export interface IIntegrationAdapter {
     config: AdapterConfig,
   ): Promise<DeliveryResult>;
   
-  formatPayload(event: AnswerlatticeIntegrationEvent): any;
+  formatPayload(event: AnswerlatticeIntegrationEvent): Record<string, unknown>;
 }
 
 export interface DeliveryResult {
@@ -375,7 +394,9 @@ export interface DeliveryResult {
 **Payload:** Slack Block Kit JSON
 **Auth:** Webhook URL contains auth token (no additional auth needed)
 **Timeout:** 10 seconds
-**Error handling:** Non-2xx → retry. Timeout → retry. DNS failure → retry.
+**Error handling:** HTTP 429/5xx responses are retryable. Timeout, DNS, target-validation, and other request exceptions are fixed local failures and are not automatically replayed.
+
+All HTTP adapters reject redirects. Slack therefore cannot follow a redirect away from its validated `hooks.slack.com` target, and the fixed Linear/GitHub provider origins remain fixed for the entire request.
 
 **Message template per event type:**
 - `drift_detected` → 🔴 emoji, red severity bar, entity name, drift reason
@@ -389,9 +410,20 @@ export interface DeliveryResult {
 ### 5.5 — Email Adapter
 
 **Method:** SMTP via nodemailer (reuses existing transporter pattern)
-**Auth:** Same SMTP env vars as lifecycle messaging
+**Auth:** Answerlattice project secrets only: `ANSWERLATTICE_SMTP_HOST`, `ANSWERLATTICE_SMTP_PORT`, `ANSWERLATTICE_SMTP_USER`, `ANSWERLATTICE_SMTP_PASS`
 **Template:** HTML email with inline styles, calm infrastructure tone
 **Rate limit:** 20 emails/day per recipient (same as existing notification system)
+
+Before deploying the processor to an Answerlattice Firebase project, provision all four secret versions in that same project:
+
+```bash
+firebase functions:secrets:set ANSWERLATTICE_SMTP_HOST --project answerlattice-qa
+firebase functions:secrets:set ANSWERLATTICE_SMTP_PORT --project answerlattice-qa
+firebase functions:secrets:set ANSWERLATTICE_SMTP_USER --project answerlattice-qa
+firebase functions:secrets:set ANSWERLATTICE_SMTP_PASS --project answerlattice-qa
+```
+
+Repeat against `answerlattice` for production with production values. Generic `SMTP_*` variables belong to other runtime planes and are intentionally not used by Answerlattice Functions.
 
 ### 5.6 — Linear Adapter
 
@@ -419,14 +451,14 @@ export interface DeliveryResult {
 
 ## §6 — ADRs (Architecture Decision Records)
 
-### ADR-1: Append-Only Event Log vs Direct Delivery
+### ADR-1: Persisted Event Lifecycle vs Direct Delivery
 
-**Decision:** Write events to Firestore first, then deliver via onCreate trigger.
+**Decision:** Write immutable event facts to Firestore first, then advance delivery lifecycle state through an onCreate-triggered transaction.
 
 **Why not direct delivery?**
 - Decouples event generation from delivery (nightly batch doesn't wait for Slack)
-- Provides audit trail of all events ever generated
-- Enables retry without re-running governance logic
+- Provides an audit trail with exact scope/payload identity and observable processing state
+- Enables bounded pre-claim trigger retry without re-running governance logic or duplicating claimed provider work
 - Matches Stripe/GitHub webhook architecture pattern
 
 ### ADR-2: platformSummary for Config vs New Collection
@@ -464,7 +496,7 @@ export interface DeliveryResult {
 **Decision:** Use onCreate trigger, not Firestore onSnapshot listeners.
 
 **Why?**
-- onCreate fires once per event (predictable cost)
+- One event document drives the onCreate pipeline; at-least-once trigger acknowledgements are contained by the transactional pending-event claim
 - onSnapshot keeps connections open (unpredictable cost at scale)
 - Delivery latency of <5 seconds is acceptable for governance events
 - Matches industry pattern (Stripe, GitHub, Intercom all use async delivery)
@@ -475,7 +507,7 @@ export interface DeliveryResult {
 
 **Current production behavior:**
 - Slack webhook URL is stored server-side in Answerlattice Firestore and is never returned to the browser after save.
-- Email uses existing SMTP function environment variables.
+- Email uses only Answerlattice-scoped `ANSWERLATTICE_SMTP_*` Function secrets; it does not inherit generic SMTP variables from another product runtime.
 - Linear/GitHub credentials are not configurable from the owner dashboard.
 
 **Why?**
@@ -498,11 +530,12 @@ Step 13: Integration Event Emission
   - Skip tenants with no enabled adapter
   - Mark adapter-config read failure as a bounded failed task
   - Emit coverage_drop only below threshold
+  - Emit ai_failure_recurring only when the bounded nightly failure threshold is reached
   - Emit one tenant nightly_summary digest when there is activity
   - Let Firestore TTL own old event/log/counter cleanup
 ```
 
-**Cost:** One config read per tenant to skip unused work, plus 0-2 event writes for active tenants. Failed config reads do not add retry reads or event writes. No cleanup queries.
+**Cost:** One config read per tenant to skip unused work, plus 0-3 event writes for active tenants (coverage, recurring AI failure, summary). Failed config reads do not add retry reads or event writes. No cleanup queries.
 
 ---
 
@@ -525,16 +558,15 @@ Step 13: Integration Event Emission
 ## §9 — Observability
 
 ### Logging
-- Every event emission: `[Answerlattice Integration] Emitted: {eventType} for {tId}/{sId}`
-- Every delivery attempt: `[Answerlattice Integration] Delivery: {adapter} {status} for {eventId}`
-- Circuit breaker changes: `[Answerlattice Integration] Circuit breaker {opened/closed} for {adapter} {tId}/{sId}`
+- Event emission logs event type/severity, payload-key count, and scope-presence booleans; raw tenant/workspace/event IDs are not logged.
+- Delivery attempts log adapter, attempt, success/status code/duration, and bounded event-ID/scope metadata.
+- Circuit-breaker opening logs the adapter, bounded failure count, and scope-presence booleans.
 
-### Metrics (in nightly summary)
-- `totalEventsEmitted`: Number of integration events generated
-- `totalDeliveriesAttempted`: Number of delivery attempts
-- `totalDeliveriesSucceeded`: Successful deliveries
-- `totalDeliveriesFailed`: Failed deliveries after all retries
-- `circuitBreakersOpen`: Number of disabled adapters
+### Persisted operational evidence
+- Scheduler run state records `integrationEventsEmitted` for successfully created events.
+- Create-only delivery-attempt rows are the per-attempt audit ledger.
+- `platformSummary/integrationHealth_{tId}_{sId}` stores the owner-safe last status per adapter.
+- Circuit-breaker state remains in the tenant/workspace integration config transactionally.
 
 ---
 
@@ -593,6 +625,12 @@ The GitHub adapter keeps the fixed `https://api.github.com` provider host and no
 
 `functions-answerlattice/src/index.ts` keeps the deployed `processIntegrationEvent` trigger and still passes the raw event ID to `processEvent()` because Firestore document lookup requires it. Runtime breadcrumbs now log event ID presence/length metadata instead of raw event IDs when an integration event starts and completes processing.
 
+The trigger timeout is 240 seconds, platform retry is enabled, and the function declares `ANSWERLATTICE_SMTP_HOST`, `ANSWERLATTICE_SMTP_PORT`, `ANSWERLATTICE_SMTP_USER`, and `ANSWERLATTICE_SMTP_PASS` through `ANSWERLATTICE_SECRET_GROUPS.WORKFLOW_INTEGRATIONS`. An unexpected invocation failure attempts to move an exact claimed event to `failed` before rethrowing; a retry cannot reclaim an event that already advanced beyond `pending`.
+
+### Delivery Identity and Payload Boundaries
+
+Deterministic scheduler events use a SHA-256 document ID derived from tenant, workspace, event type, and deduplication key. A separate SHA-256 fingerprint binds that ID to exact severity and sanitized payload. Create-only writes suppress exact replays and reject changed-payload key reuse. Event claims compare the persisted product/scope/type/severity/payload/created timestamp with the original trigger snapshot. Adapter formatters accept only bounded primitive payload values and normalize malformed legacy arrays/counts/ratios instead of throwing or interpolating untrusted numeric-shaped strings.
+
 ### Event Processor Runtime Diagnostics
 
 `functions-answerlattice/src/integrations/eventProcessor.ts` still uses raw event IDs and tenant/store scope for the required status updates, delivery logs, rate-limit documents, health summaries, and adapter dispatch contracts. Its runtime breadcrumbs now use stable invalid-event failure codes, event ID presence/length metadata, and tenant/store scope booleans instead of raw event IDs or raw `tId/sId` values for invalid-event, delivery-attempt, and no-enabled-adapter logs.
@@ -610,6 +648,10 @@ Status-update, rate-limit-counter, email-recipient-limit, and circuit-breaker su
 ### Adapter Failure Text
 
 Slack, email, GitHub, and Linear adapters still return local configuration errors, numeric provider status codes when available, duration, and success/failure state to the delivery logger. Provider response bodies, GraphQL error messages, and thrown SMTP/fetch exception messages are no longer read into delivery results. Provider/runtime failures now use fixed local failure text so delivery logs and health summaries do not persist provider response bodies or exception text.
+
+### Delivery Completion and Circuit Concurrency
+
+An event is `delivered` only when all attempted adapters succeed; partial success is `failed`. Delivery attempts use deterministic create-only log IDs so a repeated acknowledgement cannot overwrite the first audit row. Circuit-breaker failure increments and success resets derive from transaction snapshots. After cooldown, only one transaction can acquire the 2-minute probe lease; success resets the breaker and failure clears the lease while reopening the cooldown.
 
 ---
 
@@ -629,6 +671,7 @@ Slack, email, GitHub, and Linear adapters still return local configuration error
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-07-13 | 1.2.0 | Added exact event claims, payload-bound emission idempotency, create-only attempt logs, all-adapter completion semantics, transactional circuit probes, malformed payload normalization, platform retry guardrails, and Answerlattice-scoped SMTP secret binding. |
 | 2026-06-30 | 1.1.12 | Added bounded Settings response validation for integration load/save/test results before UI state or success copy advances. |
 | 2026-06-29 | 1.1.11 | Recorded nightly adapter-config read failures as bounded failed scheduler tasks instead of silent no-adapter skips. |
 | 2026-06-29 | 1.1.10 | Bounded event-processor side-effect failure diagnostics while preserving status, rate-limit, circuit-breaker, and delivery behavior. |

@@ -1,5 +1,6 @@
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
+import { isAnswerlatticeStoreInScope } from '@lib/answerlattice/sessionScope';
 import { normalizeWidgetConfig } from '@lib/answerlattice/widgetConfig';
 import { answerlatticeFirestoreAdmin, answerlatticeStorageAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
@@ -25,13 +26,20 @@ import {
     compiledSourceVersionsEqual,
     getAnswerlatticeBundleLockDocId,
     getAnswerlatticeBundleManifestDocId,
+    getNextAnswerlatticeBundleVersion,
+    hasExactAnswerlatticeReadyBundleVersions,
     getPrivateBundlePath,
     getPublicBundlePath,
+    normalizeAnswerlatticeStoredBundleVersion,
     normalizeCompiledSourceVersions,
+    resolveAnswerlatticeExistingBundleVersion,
 } from './compiledContext';
 import { getAnswerlatticeCompiledSourceVersionsAdmin } from './compiledSourceVersionsAdmin';
 import { normalizeAnswerlatticeResolvedEntityId } from './governanceIdBoundary';
-import { getContextContentSummaryDocId } from './productSurfaceContent';
+import {
+    getContextContentSummaryDocId,
+    normalizeAnswerlatticeSurfaceContentSummary,
+} from './productSurfaceContent';
 import { rebuildProductSurfaceContentSummaryServer } from './productSurfaceContentServer';
 
 const MAX_ENTITIES_FOR_BUNDLE = 1_000;
@@ -78,12 +86,10 @@ const getBucket = () => {
 };
 
 const assertScope = (tId: number, sId: number) => {
-    const tenantId = Number(tId);
-    const storeId = Number(sId);
-    if (!Number.isFinite(tenantId) || tenantId <= 0 || !Number.isFinite(storeId) || storeId <= 0) {
+    if (!Number.isSafeInteger(tId) || tId <= 0 || !Number.isSafeInteger(sId) || sId <= 0) {
         throw new Error('Invalid Answerlattice tenant scope.');
     }
-    return { tenantId, storeId };
+    return { tenantId: tId, storeId: sId };
 };
 
 const normalizeAnswerlatticeContextBundleBuildReason = (reason: unknown): BuildReason => {
@@ -327,7 +333,9 @@ const loadSourceData = async (tId: number, sId: number) => {
                 const snap = await db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
                     .doc(getContextContentSummaryDocId(tId, sId))
                     .get();
-                return snap.exists ? ({ ...snap.data(), id: snap.id } as AnswerlatticeSurfaceContentSummary) : null;
+                return snap.exists
+                    ? normalizeAnswerlatticeSurfaceContentSummary({ ...snap.data(), id: snap.id }, { tId, sId }, snap.id)
+                    : null;
             }),
         loadDocs<AnswerlatticeEntity>(
             db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITIES)
@@ -384,8 +392,11 @@ const loadSourceData = async (tId: number, sId: number) => {
     const surfaces = surfacesRaw.filter(surface => surface.active !== false);
     const releases = releasesRaw.filter((release: any) => String(release.status || '').toLowerCase() === 'active');
     const storeData = storeSnap.exists ? (storeSnap.data() || {}) : {};
-    const storeTenantId = Number(storeData.tId || storeData.tenantId);
-    const store = storeSnap.exists && (!Number.isFinite(storeTenantId) || storeTenantId === Number(tId))
+    const store = storeSnap.exists && isAnswerlatticeStoreInScope(
+        storeData,
+        { tenantId: tId, storeId: sId },
+        storeSnap.id,
+    )
         ? { ...storeData, id: storeSnap.id }
         : {};
 
@@ -740,6 +751,10 @@ export const buildAnswerlatticeContextBundleServer = async (params: {
 
     const existingManifestSnap = await manifestRef.get();
     const existingManifest = existingManifestSnap.exists ? existingManifestSnap.data() : null;
+    const existingBundleVersion = resolveAnswerlatticeExistingBundleVersion(existingManifest);
+    if (existingBundleVersion === null) throw new Error('Invalid Answerlattice context bundle manifest version.');
+    const existingActiveVersion = normalizeAnswerlatticeStoredBundleVersion(existingManifest?.activeVersion) ?? 0;
+    const existingLastReadyVersion = normalizeAnswerlatticeStoredBundleVersion(existingManifest?.lastReadyVersion) ?? 0;
     const sourceVersionsAtStart = await getAnswerlatticeCompiledSourceVersionsAdmin(tenantId, storeId);
     const normalizedStartVersions = normalizeCompiledSourceVersions(sourceVersionsAtStart);
     const buildReason = normalizeAnswerlatticeContextBundleBuildReason(params.reason);
@@ -748,6 +763,7 @@ export const buildAnswerlatticeContextBundleServer = async (params: {
     if (
         !params.force
         && existingManifest?.status === 'ready'
+        && hasExactAnswerlatticeReadyBundleVersions(existingManifest)
         && compiledSourceVersionsEqual(existingManifest.sourceVersions, normalizedStartVersions)
     ) {
         return { ...existingManifest, id: manifestRef.id } as AnswerlatticeContextBundleManifest;
@@ -779,7 +795,8 @@ export const buildAnswerlatticeContextBundleServer = async (params: {
     }, { merge: true });
 
     try {
-        const bundleVersion = Number(existingManifest?.bundleVersion || existingManifest?.activeVersion || 0) + 1;
+        const bundleVersion = getNextAnswerlatticeBundleVersion(existingManifest);
+        if (bundleVersion === null) throw new Error('Answerlattice context bundle version is exhausted.');
         const publicBundleId = getPublicBundleId(existingManifest, tenantId, storeId);
         const generatedAt = new Date().toISOString();
         const source = await loadSourceData(tenantId, storeId);
@@ -841,8 +858,8 @@ export const buildAnswerlatticeContextBundleServer = async (params: {
             sId: storeId,
             publicBundleId,
             bundleVersion,
-            activeVersion: superseded ? Number(existingManifest?.activeVersion || 0) : bundleVersion,
-            lastReadyVersion: superseded ? Number(existingManifest?.lastReadyVersion || 0) : bundleVersion,
+            activeVersion: superseded ? existingActiveVersion : bundleVersion,
+            lastReadyVersion: superseded ? existingLastReadyVersion : bundleVersion,
             status: superseded ? 'superseded' : 'ready',
             generatedAt: Timestamp.fromDate(new Date(generatedAt)) as any,
             lastBuildStartedAt: startedAt as any,
@@ -895,8 +912,8 @@ export const buildAnswerlatticeContextBundleServer = async (params: {
             lastBuildError: 'build_failed',
             lastBuildCompletedAt: FieldValue.serverTimestamp(),
             staleReason: 'build_failed',
-            activeVersion: Number(existingManifest?.activeVersion || 0),
-            lastReadyVersion: Number(existingManifest?.lastReadyVersion || 0),
+            activeVersion: existingActiveVersion,
+            lastReadyVersion: existingLastReadyVersion,
         }, { merge: true });
         await lockRef.set({
             status: 'failed',

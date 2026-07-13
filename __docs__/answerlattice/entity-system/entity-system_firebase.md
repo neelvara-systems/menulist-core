@@ -160,18 +160,18 @@ All existing Answerlattice indexes remain unchanged:
 | getEntities | READ | 1 | 0 |
 | getEntitiesByType | READ | 1 | 0 |
 | getEntityById | READ | 1 | 0 |
-| addEntity | WRITE | 0 | 1 |
-| updateEntity | WRITE | 0 | 1 |
-| deprecateEntity | READ+WRITE | 2+ | 1 |
+| addEntity | SERVER TRANSACTION | bounded point reads | entity + search index + slug/counter/invalidation/operation writes |
+| updateEntity | SERVER TRANSACTION | entity + operation | entity + invalidation/operation writes |
+| deprecateEntity | SERVER TRANSACTION | entity + operation | entity + invalidation/operation writes |
 | getEntityRelations | READ | 1 | 0 |
 | getRelationsForEntity | READ | 1 | 0 |
-| addEntityRelation | WRITE | 0 | 1 |
-| deleteEntityRelation | WRITE | 0 | 1 |
+| addEntityRelation | SERVER TRANSACTION | bounded point reads | relation + counter/invalidation/operation writes |
+| deleteEntityRelation | SERVER TRANSACTION | bounded point reads | relation delete + counter/invalidation/operation writes |
 | getEntitySearchIndex | READ | 1 | 0 |
-| upsertEntitySearchIndex | WRITE | 0 | 1 |
+| upsertEntitySearchIndex | SERVER TRANSACTION | bounded point reads | search-index + invalidation/operation writes |
 | **mergeEntities** | **READ+WRITE** | **4+** | **5+** | **NEW (E5)** |
 
-`addEntity()` also performs the existing ontology-limit count query, compiled-context source-version marker, and non-blocking tenant-summary marker used by scheduler discovery. The tenant-summary marker browser request uses no-store cache, same-origin credentials, manual redirect handling, and a 16 KB bounded response reader before accepting the `{ success: true }` acknowledgement. Tenant-summary marker failures now log `answerlattice_entity_tenant_summary_marker_failed` with bounded metadata only. This diagnostic adds no Firestore reads/writes beyond the already-attempted marker request and does not block entity creation.
+Entity mutation costs are owned by the protected ontology transaction rather than direct browser writes. Entity creation and candidate promotion atomically update entity, search-index, ontology counter, invalidation/source-version, slug-index and operation-replay state. The server then awaits the tenant-summary merge used by scheduler discovery. A failed derived-summary write returns failure after the authoritative transaction; retrying the idempotent action replays the committed result and retries summary synchronization.
 | **syncAliasesToSearchIndex** | **READ+WRITE** | **1** | **1** | **NEW (E1)** |
 
 ### entityCandidates.ts (7 functions — unchanged)
@@ -181,14 +181,14 @@ All existing Answerlattice indexes remain unchanged:
 | getEntityCandidates | READ | 1 | 0 |
 | getPendingCandidates | READ | 1 | 0 |
 | addEntityCandidate | WRITE | 0 | 1 |
-| approveCandidateStatus | WRITE | 0 | 1 |
-| rejectCandidateStatus | WRITE | 0 | 1 |
-| promoteCandidate | READ+WRITE | 2 | 4 |
-| mergeCandidateStatus | WRITE | 0 | 1 |
+| approveCandidateStatus (compatibility alias to `promoteCandidate`) | WRITE | 0 | Server-owned promotion transaction |
+| rejectCandidateStatus | SERVER TRANSACTION | candidate + operation | candidate + counter/operation writes |
+| promoteCandidate | SERVER TRANSACTION | candidate/entity/slug/counter/operation | entity + search index + candidate + counter/slug/invalidation/operation writes |
+| mergeCandidateStatus | SERVER TRANSACTION | candidate + operation | candidate + counter/operation writes |
 
-Answerlattice App Entity Candidate ID Boundary: candidate status and promotion actions validate candidate document IDs before Firestore refs or promotion audit metadata. This adds no reads/writes for valid candidate IDs and fails before Firestore access for malformed, reserved, empty, or path-shaped IDs.
+Answerlattice App Entity Candidate ID Boundary: the browser normalizes action IDs and performs no candidate writes. The server transaction revalidates candidate scope/status and owns all candidate/entity/search-index/counter/operation writes.
 
-Answerlattice App Entity DAL ID Boundary: entity update/deprecate, relation delete, search-index upsert, alias sync, and entity merge validate entity, relation, and search-index document IDs before Firestore refs or query keys. This adds no reads/writes for valid IDs and fails before Firestore access for malformed, reserved, empty, path-shaped, or unresolved entity IDs.
+Answerlattice App Entity DAL ID Boundary: browser reads validate stored contracts; mutation IDs are normalized before server-owned ontology/governance actions. Malformed, reserved, path-shaped or unresolved IDs fail before dispatch, and no browser mutation can bypass the server transaction.
 
 ### entityExtraction.ts (3 functions — 1 new)
 

@@ -26,7 +26,7 @@ const SWR_CONFIG_LIVE = {
 };
 
 function createCacheKey(type: string, ...parts: Array<string | number | undefined>): string {
-  return `analytics-${type}-${parts.filter(Boolean).join('-')}`;
+  return `analytics:${type}:${JSON.stringify(parts)}`;
 }
 
 async function cachedFetcher<T>(
@@ -100,7 +100,8 @@ function isTodayRange(endDate: string, timeZone?: string, businessDayEndTime?: s
  * - Uses the nightly dashboard read model for ranges covered by the compact
  *   `daily30d` cache.
  * - Ranges including today read the read model plus today's daily doc only.
- * - True custom/older ranges fall back to daily range reads.
+ * - Older/custom ranges outside compact read-model coverage return unavailable
+ *   instead of triggering an unbounded client daily-range query.
  */
 export const useAnalyticsData = (dateRange?: AnalyticsDateRange, projectId?: string) => {
   const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
@@ -138,7 +139,7 @@ export const useAnalyticsData = (dateRange?: AnalyticsDateRange, projectId?: str
     error,
     isLoading,
     mutate,
-  } = useSWR(
+  } = useSWR<AnalyticsData>(
     canFetch ? ['analytics', 'optimized', tId, sId, projectId, effectiveRange.startDate, effectiveRange.endDate] : null,
     () => {
       const cacheKey = createCacheKey(
@@ -185,7 +186,7 @@ export const useAnalyticsData = (dateRange?: AnalyticsDateRange, projectId?: str
   );
 
   return {
-    data: (data || null) as AnalyticsData | null,
+    data: data || null,
     loading: canFetch && isLoading && !data,
     error: error || null,
     mutate,

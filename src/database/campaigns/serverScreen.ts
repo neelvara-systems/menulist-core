@@ -1,9 +1,19 @@
 import { DB_COLLECTIONS } from "@constant/database";
 import { getStoreContextName } from "@lib/businessIdentity/names";
 import { firestoreAdmin } from "@lib/firebase/firebaseAdmin";
-import { parseSummaryProjects } from "@lib/firestore/parseSummaryProjects";
+import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
+import { getPublicStoreById } from "@lib/firestore/clientStoreLookup";
+import {
+    isActiveRegularSummaryProject,
+    isDefaultSummaryProject,
+    parseSummaryProjects,
+    withAuthoritativeSummaryProjectId,
+} from "@lib/firestore/parseSummaryProjects";
 import { getDefaultProjectUrl } from "@lib/obp/generateOBPUrl";
+import { normalizePublicProjectSlug } from "@lib/publicRouting/pathSegments";
+import { mergeSpecialMenuOverlayProjects } from "@lib/menu/specialMenuOverlay";
 import { extractScreenMenuItemsFromProject } from "@lib/screen/screenContent";
+import { isValidScreenToken } from "@lib/screen/utils";
 import { secureError } from "@lib/security/secureLogger";
 import {
     CampaignsSummaryDocument,
@@ -15,6 +25,9 @@ import {
 const getLogErrorName = (error: unknown): string => (
     error instanceof Error ? error.name : typeof error
 );
+
+const CAMPAIGN_SUMMARY_ID_PATTERN = /^campaigns_(\d+)$/;
+const NUMERIC_SCOPE_ID_PATTERN = /^\d+$/;
 
 const logServerScreenFailure = (
     failureCode: string,
@@ -79,26 +92,28 @@ export const getScreenDataByTokenServer = async (token: string): Promise<{
     storeInfo: ScreenStoreInfo;
 } | null> => {
     try {
+        if (!isValidScreenToken(token)) return null;
+
         const snapshot = await firestoreAdmin
             .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
             .where("screen.screenToken", "==", token)
-            .limit(1)
+            .limit(2)
             .get();
 
-        if (snapshot.empty) return null;
+        if (snapshot.size !== 1) return null;
 
         const docSnap = snapshot.docs[0];
         const data = docSnap.data() as CampaignsSummaryDocument;
-        if (!data.screen?.enabled) return null;
+        if (!data.screen?.enabled || data.screen.screenToken !== token) return null;
 
-        const storeId = docSnap.id.replace("campaigns_", "");
-        const storeDoc = await firestoreAdmin
-            .collection(DB_COLLECTIONS.STORES)
-            .doc(storeId)
-            .get();
-        const storeData = storeDoc.exists ? storeDoc.data() : null;
+        const summaryIdMatch = docSnap.id.match(CAMPAIGN_SUMMARY_ID_PATTERN);
+        const storeId = summaryIdMatch?.[1] || '';
+        if (!storeId) return null;
 
-        if (storeData && (storeData.active === false || storeData.blocked === true)) return null;
+        const storeData = await getPublicStoreById(storeId);
+        if (!storeData) return null;
+        const tenantId = String(storeData.tenantId ?? storeData.tId ?? '');
+        if (!NUMERIC_SCOPE_ID_PATTERN.test(tenantId)) return null;
 
         const activeSpecialMenuId = storeData?.activeSpecialMenuId || null;
         const projectionContext = getUsableScreenProjectionContext(data.screen?.menuProjection, {
@@ -117,18 +132,18 @@ export const getScreenDataByTokenServer = async (token: string): Promise<{
                 if (summarySnap.exists) {
                     const projectMap = parseSummaryProjects(summarySnap.data() || {});
                     const activeProjects = Object.entries(projectMap)
-                        .map(([projectId, projectData]) => ({ projectId, ...(projectData || {}) }))
-                        .filter((project: any) => (
-                            project?.active !== false
-                            && project?.deleted !== true
-                            && project?.isSpecialMenu !== true
-                        ));
-                    const fallbackProject = activeProjects.find((project: any) => project?.isDefault === true) || activeProjects[0];
+                        .map(([projectId, projectData]) => withAuthoritativeSummaryProjectId(projectId, projectData))
+                        .filter(isActiveRegularSummaryProject);
+                    const fallbackProject = activeProjects.find(isDefaultSummaryProject) || activeProjects[0];
                     baseProjectId = fallbackProject?.projectId || null;
-                    selectedProjectSlug = fallbackProject?.slug;
+                    selectedProjectSlug = normalizePublicProjectSlug(fallbackProject?.slug) || undefined;
                 }
-            } catch {
-                // Silent fallback: alias URL still works through public routing.
+            } catch (error) {
+                logServerScreenFailure(
+                    "digital_screen_server_project_summary_failed",
+                    error,
+                    { storeIdLength: storeId.length },
+                );
             }
         }
 
@@ -148,7 +163,7 @@ export const getScreenDataByTokenServer = async (token: string): Promise<{
             screen: data.screen,
             today: data.today,
             storeId,
-            tenantId: String(storeData?.tenantId || ""),
+            tenantId,
             baseProjectId,
             activeSpecialMenuId,
             storeInfo,
@@ -214,40 +229,25 @@ export const getMenuItemsForScreenServer = async (
     tags?: string[];
 }>> => {
     try {
-        if (!tenantId) return [];
+        if (
+            !NUMERIC_SCOPE_ID_PATTERN.test(storeId)
+            || !NUMERIC_SCOPE_ID_PATTERN.test(tenantId)
+        ) {
+            return [];
+        }
+
+        const storeData = await getPublicStoreById(storeId);
+        if (!storeData || String(storeData.tenantId ?? storeData.tId ?? '') !== tenantId) {
+            return [];
+        }
+        const eligibleSpecialMenuId = String(storeData.activeSpecialMenuId || '') || null;
+        if ((activeSpecialMenuId || null) !== eligibleSpecialMenuId) return [];
+        if (baseProjectId && !isValidFirestoreDocumentId(baseProjectId)) return [];
 
         const extractMenuItemsFromProject = extractScreenMenuItemsFromProject;
 
-        const mergeOverlayMenu = (baseProject: any, specialProject: any) => {
-            if (!specialProject?.files?.length) return baseProject;
-            if (!baseProject?.files?.length) return specialProject;
-
-            const merged = JSON.parse(JSON.stringify(baseProject));
-            const specialData = specialProject.files[0]?.extractedData?.data;
-            if (!specialData) return merged;
-
-            if (merged.files[0]?.extractedData?.data) {
-                const baseData = merged.files[0].extractedData.data;
-                baseData.categories = [
-                    ...(baseData.categories || []),
-                    ...(specialData.categories || []).map((category: any) => ({
-                        ...category,
-                        _isSpecialSection: true,
-                    })),
-                ];
-                baseData.items = [
-                    ...(baseData.items || []),
-                    ...(specialData.items || []).map((item: any) => ({
-                        ...item,
-                        _isSpecialSection: true,
-                    })),
-                ];
-            }
-
-            return merged;
-        };
-
         const getProjectDoc = async (projectId: string) => {
+            if (!isValidFirestoreDocumentId(projectId)) return null;
             const projectDoc = await firestoreAdmin
                 .collection(`${DB_COLLECTIONS.PROJECTS}/${tenantId}/${storeId}`)
                 .doc(projectId)
@@ -265,17 +265,13 @@ export const getMenuItemsForScreenServer = async (
                 .get();
             const projectMap = summarySnap.exists ? parseSummaryProjects(summarySnap.data() || {}) : {};
             const activeProjects = Object.entries(projectMap)
-                .map(([projectId, projectData]) => ({ projectId, ...(projectData || {}) }))
-                .filter((project: any) => (
-                    project?.active !== false
-                    && project?.deleted !== true
-                    && project?.isSpecialMenu !== true
-                ));
-            const defaultProjectId = activeProjects.find((project: any) => project?.isDefault === true)?.projectId;
+                .map(([projectId, projectData]) => withAuthoritativeSummaryProjectId(projectId, projectData))
+                .filter(isActiveRegularSummaryProject);
+            const defaultProjectId = activeProjects.find(isDefaultSummaryProject)?.projectId;
             loadedOrderedProjectIds = [
                 ...(defaultProjectId ? [defaultProjectId] : []),
                 ...activeProjects
-                    .map((project: any) => project.projectId)
+                    .map((project) => project.projectId)
                     .filter((projectId, index, allProjectIds) => allProjectIds.indexOf(projectId) === index),
             ];
             return loadedOrderedProjectIds;
@@ -291,7 +287,10 @@ export const getMenuItemsForScreenServer = async (
                 : null;
 
             if (
-                specialProject?._specialMenu?.status === "active"
+                specialProject?.active !== false
+                && specialProject?.deleted !== true
+                && specialProject?.isSpecialMenu === true
+                && specialProject?._specialMenu?.status === "active"
                 && specialEndsAt != null
                 && Number.isFinite(specialEndsAt)
                 && specialEndsAt > Date.now()
@@ -307,7 +306,9 @@ export const getMenuItemsForScreenServer = async (
                         const baseDoc = await getProjectDoc(baseProjectId);
                         const baseProject = baseDoc?.data();
                         if (baseProject) {
-                            const mergedItems = extractMenuItemsFromProject(mergeOverlayMenu(baseProject, specialProject));
+                            const mergedItems = extractMenuItemsFromProject(
+                                mergeSpecialMenuOverlayProjects(baseProject, specialProject),
+                            );
                             if (mergedItems.length > 0) return mergedItems;
                         }
                     }

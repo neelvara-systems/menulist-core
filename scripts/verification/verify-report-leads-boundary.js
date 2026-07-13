@@ -40,6 +40,9 @@ const FILES = [
   'src/components/templates/main-app/platform/reportLeadMonitor/index.tsx',
   'src/lib/ops/reportLeadTypes.ts',
   'src/lib/ops/reportLeadClientResponse.ts',
+  'src/lib/auth/currentPlatformUser.ts',
+  'scripts/verification/test-current-platform-user.ts',
+  'scripts/verification/test-current-platform-user-emulator.ts',
   'scripts/verification/verify-report-leads-boundary.js',
 ];
 
@@ -53,6 +56,7 @@ const page = read('src/app/(main)/ops/report-leads/page.tsx');
 const monitor = read('src/components/templates/main-app/platform/reportLeadMonitor/index.tsx');
 const types = read('src/lib/ops/reportLeadTypes.ts');
 const responseHelper = read('src/lib/ops/reportLeadClientResponse.ts');
+const currentPlatformUser = read('src/lib/auth/currentPlatformUser.ts');
 const features = read('src/config/features.ts');
 const packageJson = read('package.json');
 const aggregateVerifier = read('scripts/verification/verify-public-truth-tools.js');
@@ -69,6 +73,8 @@ const changelog = read('__docs__/changelog.md');
 
 assertIncludes(features, 'ENABLE_PUBLIC_TRUTH_REPORT_LEAD_OPS_DASHBOARD: true', 'Report Leads feature flag');
 assertIncludes(packageJson, '"verify:report-leads-boundary": "node scripts/verification/verify-report-leads-boundary.js"', 'Report Leads package verifier');
+assertIncludes(packageJson, '"test:current-platform-user"', 'Current platform-user regression registry');
+assertIncludes(packageJson, '"test:current-platform-user:emulator"', 'Current platform-user emulator regression registry');
 assertIncludes(aggregateVerifier, 'verify-report-leads-boundary.js', 'Report Leads aggregate verifier');
 
 [
@@ -95,6 +101,8 @@ assertNotIncludes(
   "toolId: z.string().trim().max(80).optional().default('all')",
   'limit: z.coerce.number().int().min(5).max(60).default(30)',
   'validateAPIInput(ReportLeadQuerySchema',
+  'getCurrentPlatformUser(session)',
+  'Authorization Failed - Report Lead Current Platform Role',
   'hashPublicRateLimitValue(operatorId)',
   'REPORT_LEAD_OPS_RATE_LIMIT_KEY',
   "key: `${REPORT_LEAD_OPS_RATE_LIMIT_KEY}:${operatorRateLimitHash}`",
@@ -127,8 +135,31 @@ assertNotIncludes(
 assertOrder(route, [
   'validateAPIInput(ReportLeadQuerySchema',
   'const rateLimitResponse = await checkReportLeadOpsRateLimit(session);',
+  'const currentPlatformUser = await getCurrentPlatformUser(session);',
   "collection(DB_COLLECTIONS.LANDING_PAGE_ENQUIRIES)",
 ], 'Report Leads ops API admission order');
+
+[
+  'export function isCurrentPlatformUserRecordEligible',
+  'export async function getCurrentPlatformUser',
+  "userData.platformRole !== ECOMSAI_PLATFORM_USER_ROLE",
+  'userData.active !== true',
+  'userData.isVerified !== true',
+  'userData.authDisabled === true',
+  'isPlatformEntityBlocked(userData)',
+  'currentPlatformTimestampMillis(userData.sessionRevokedAt)',
+  'revocationTimestamps.some((timestamp) => timestamp === null)',
+  'issuedAt === null || issuedAt <= 0',
+  'revokedAt === 0 || revokedAt < issuedAt',
+  'if (!directSnapshot.exists) return null',
+].forEach((token) => assertIncludes(currentPlatformUser, token, 'Report Leads current platform-user guard'));
+
+[
+  ".where('email', '==', email)",
+  'emailSnapshot',
+].forEach((token) => assertNotIncludes(currentPlatformUser, token, 'Report Leads current platform-user guard direct identity boundary'));
+
+assertIncludes(route, 'sourcePath: normalizePublicContactSourcePath(data.sourcePath)', 'Report Leads legacy source-path minimization');
 
 [
   'export const POST',
@@ -182,6 +213,7 @@ assertIncludes(opsControlRoom, 'href="/ops/report-leads"', 'Ops Control Room Rep
   "accessModel: 'platform_role'",
   'realtimeListeners: false',
   'writes: 0',
+  'authReads: 1',
 ].forEach((token) => assertIncludes(types, token, 'Report Leads ops types'));
 
 [
@@ -193,10 +225,17 @@ assertIncludes(opsControlRoom, 'href="/ops/report-leads"', 'Ops Control Room Rep
   'isReportLeadSetupJob',
   'value.setupJobList.every(isReportLeadSetupJob)',
   'isReportLeadOpsCost',
+  'value.authReads === 1',
   'REPORT_LEAD_OPS_RESPONSE_PARSE_FAILED',
   'REPORT_LEAD_OPS_RESPONSE_REJECTED',
   'REPORT_LEAD_OPS_RESPONSE_INVALID',
 ].forEach((token) => assertIncludes(responseHelper, token, 'Report Leads response helper'));
+
+assertIncludes(
+  monitor,
+  'current-user authorization read plus',
+  'Report Leads current authorization read cost disclosure',
+);
 
 [
   'response.json()',
@@ -217,14 +256,16 @@ assertIncludes(opsControlRoom, 'href="/ops/report-leads"', 'Ops Control Room Rep
   'no report storage',
   'canonical ISO generated timestamp or `null`',
   'where report gaps become the job list',
+  're-reads the exact current `users/{userId}` document',
 ].forEach((token) => assertIncludes(implDoc, token, 'Shareable Tool Reports implementation Report Leads coverage'));
 
 [
   'Report Lead Ops',
-  'Reads recent `landingPageEnquiries`',
+  'bounded recent `landingPageEnquiries` query',
   '0 writes',
   'canonical ISO `reportGeneratedAt` or `null`',
   'bounded `setupJobList`',
+  '1 exact `users/{userId}` read',
 ].forEach((token) => assertIncludes(firebaseDoc, token, 'Shareable Tool Reports Firebase Report Leads coverage'));
 
 [
@@ -237,14 +278,17 @@ assertIncludes(opsControlRoom, 'href="/ops/report-leads"', 'Ops Control Room Rep
 [
   'Report Lead Ops is an internal platform-admin desktop monitor',
   'no owner-mobile action',
+  'current persisted platform authorization',
 ].forEach((token) => assertIncludes(mobileDoc, token, 'Shareable Tool Reports mobile Report Leads boundary'));
 
 assertIncludes(testCasesDoc, 'STR-015', 'Shareable Tool Reports Report Leads test coverage');
 assertIncludes(testCasesDoc, 'canonical ISO `reportGeneratedAt` or `null`', 'Shareable Tool Reports Report Leads timestamp test coverage');
 assertIncludes(testCasesDoc, 'shows setup job lists', 'Shareable Tool Reports Report Leads setup job test coverage');
+assertIncludes(testCasesDoc, 'STR-018', 'Shareable Tool Reports current platform-user authorization test coverage');
 assertIncludes(validationDoc, 'npm run verify:report-leads-boundary', 'Shareable Tool Reports Report Leads validation gate');
 assertIncludes(validationDoc, 'follow-up source metadata stores canonical ISO `reportGeneratedAt` or `null`', 'Shareable Tool Reports Report Leads timestamp validation gate');
 assertIncludes(validationDoc, 'setup job list is derived from visible report gaps', 'Shareable Tool Reports Report Leads setup job validation gate');
+assertIncludes(validationDoc, 'current persisted platform role, lifecycle, identity, and revocation state', 'Shareable Tool Reports current platform-user validation gate');
 
 [
   'Report Leads source timestamp metadata boundary checkpoint: fixed in source.',
@@ -253,9 +297,21 @@ assertIncludes(validationDoc, 'setup job list is derived from visible report gap
 ].forEach((token) => assertIncludes(productionAudit, token, 'Report Leads production audit source timestamp checkpoint'));
 
 [
+  'Report Leads current platform authorization checkpoint: fixed in source.',
+  'a stale signed session cannot read current lead PII',
+  'Legacy source paths are projected as pathnames only',
+].forEach((token) => assertIncludes(productionAudit, token, 'Report Leads production audit current authorization checkpoint'));
+
+[
   'Report Leads Source Timestamp Metadata Boundary',
   'Report lead `reportGeneratedAt` is ISO-only or null',
   'canonical ISO timestamp normalization',
 ].forEach((token) => assertIncludes(changelog, token, 'Report Leads changelog source timestamp checkpoint'));
+
+[
+  'Report Leads Current Authorization Boundary',
+  'current persisted platform authorization',
+  'exact current `users/{userId}` read',
+].forEach((token) => assertIncludes(changelog, token, 'Report Leads changelog current authorization checkpoint'));
 
 console.log('Report Leads boundary verification passed');

@@ -1,5 +1,6 @@
 import { CloudTasksClient } from '@google-cloud/tasks';
 import { logger } from '@lib/monitoring/logger';
+import { getImageBatchCloudTaskId } from '@lib/ai/imageBatchServerBoundary';
 import { getBoundedRuntimeStringContext, logRuntimeDiagnostic, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { GenerateImageViaApiPayloadBatchType } from '@template/main-app/projects/types';
 
@@ -64,8 +65,11 @@ export async function enqueueImageGenerationTask(data: GenerateImageViaApiPayloa
 
     const cloudTasksClient = getCloudTasksClient();
     const parent = cloudTasksClient.queuePath(PROJECT_ID, QUEUE_LOCATION, QUEUE_ID);
+    const taskId = getImageBatchCloudTaskId(String(data.jobId), String(data.itemDetails?.id));
+    const taskName = cloudTasksClient.taskPath(PROJECT_ID, QUEUE_LOCATION, QUEUE_ID, taskId);
 
     const task = {
+        name: taskName,
         httpRequest: {
             httpMethod: 'POST' as const,
             url: IMAGE_GENERATION_WORKER_URL,
@@ -90,6 +94,16 @@ export async function enqueueImageGenerationTask(data: GenerateImageViaApiPayloa
         });
         return response.name;
     } catch (error) {
+        const errorCode = typeof error === 'object' && error !== null && 'code' in error
+            ? (error as { code?: unknown }).code
+            : undefined;
+        if (errorCode === 6 || errorCode === '6' || errorCode === 'ALREADY_EXISTS') {
+            logger.info('Batch image generation task already exists', {
+                ...getImageGenerationTaskLogContext(data),
+                ...getBoundedRuntimeStringContext('taskName', taskName),
+            });
+            return taskName;
+        }
         logRuntimeFailure(
             'cloud_tasks_batch_image_task_create_failed',
             error,

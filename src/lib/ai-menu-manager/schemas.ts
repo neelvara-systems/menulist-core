@@ -6,6 +6,7 @@ import {
     normalizeAiMenuManagerProjectId,
     normalizeAiMenuManagerSessionId,
 } from './routeIds';
+import { normalizeAiMenuManagerSessionDate } from './idempotency';
 
 const idSchema = z.string().trim().min(1).max(160);
 const projectIdSchema = z.string()
@@ -14,6 +15,9 @@ const projectIdSchema = z.string()
     .refine((value) => normalizeAiMenuManagerProjectId(value) === value);
 const sessionIdSchema = z.string()
     .refine((value) => normalizeAiMenuManagerSessionId(value) === value);
+const sessionDateSchema = z.string()
+    .trim()
+    .refine((value) => normalizeAiMenuManagerSessionDate(value) === value);
 const knownActionTypes = new Set<string>(Object.values(AI_MENU_MANAGER_ACTION_TYPES));
 const actionTypeSchema = z.string()
     .trim()
@@ -56,7 +60,7 @@ export const AiMenuManagerInboxRequestSchema = z.object({
     sessionId: sessionIdSchema.optional(),
     storeId: z.union([z.string(), z.number()]).optional().transform((value) => value === undefined ? undefined : String(value)),
     projectId: projectIdSchema,
-    sessionDate: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    sessionDate: sessionDateSchema.optional(),
 });
 
 export const AiMenuManagerProposalActionSchema = z.object({
@@ -69,8 +73,8 @@ export const AiMenuManagerProposalActionSchema = z.object({
 
 export const AiMenuManagerProposalCompleteSchema = z.object({
     storeId: z.union([z.string(), z.number()]).transform((value) => String(value)),
-    projectId: projectIdSchema.optional(),
-    actionType: actionTypeSchema.optional(),
+    projectId: projectIdSchema,
+    actionType: actionTypeSchema,
     executionId: idSchema,
     patchHash: z.string().trim().min(16).max(128),
     result: z.enum(['executed', 'failed']),

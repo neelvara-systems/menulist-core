@@ -4,11 +4,15 @@
 **Created:** July 7, 2026
 **Primary output:** 6-second, 15-second, and 30-second paid ad cuts
 
+**Mandatory production standard:** [MenuList Founder-Approved Video Production Standard](./videos_founder-approved-production-standard.md).
+
 ## Purpose
 
 Paid ad cutdowns are for controlled tests after the activation and tracking gates are ready.
 
 Do not start broad paid spend before the upload -> preview -> approval -> publish -> two-surface activation chain can be measured.
+
+Every paid candidate requires a completed [conversion brief](./videos_conversion-brief-template.md) and an eligible row in [the campaign measurement ledger](./videos_campaign-measurement-ledger.md). `Blocked` is the default until evidence changes it.
 
 ## Ad Rules
 
@@ -18,6 +22,10 @@ Do not start broad paid spend before the upload -> preview -> approval -> publis
 4. Do not claim automatic external-platform updates.
 5. Do not claim sales lift, ranking lift, traffic lift, AI citations, or conversion improvement.
 6. Use demo visuals or permissioned real proof.
+7. Change one declared variable per A/B test.
+8. Use one linked action and one destination.
+9. Give each hook/edit/aspect/voice/CTA variant a unique asset id and `utm_content`.
+10. Optimize to the deepest reliable product milestone, not views alone.
 
 ## 6-Second Bumper
 
@@ -83,6 +91,27 @@ Do not run paid ads until:
 - demo visuals are approved;
 - landing page copy matches the ad claim;
 - founder has set budget ceiling and stop rules.
+- the asset has a unique `utm_content` and a predeclared primary/guard metric;
+- platform conversion windows and attribution interpretation are documented;
+- the landing destination preserves the ad's promise and does not add a second competing CTA;
+- the campaign ledger marks the exact version `eligible`.
+
+## Required Test Record
+
+```text
+Asset id:
+Test variable:
+Control:
+Variant:
+Audience:
+Placement:
+Budget/window:
+Primary metric:
+Guard metric:
+Baseline:
+Minimum detectable effect:
+Decision date:
+```
 
 ## Stop Rules
 
@@ -93,3 +122,6 @@ Pause or revise if:
 - comments show misunderstanding such as "does this update Google automatically?";
 - ad platform comments frame MenuList as only a QR menu app;
 - acquisition cost is being measured before activation quality is proven.
+- the platform reports a click winner but deeper owner progress worsens;
+- the test changes more than one meaningful variable;
+- the exact creative or destination cannot be matched to one ledger row.

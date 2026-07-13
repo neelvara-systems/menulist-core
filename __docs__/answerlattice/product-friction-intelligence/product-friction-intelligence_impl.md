@@ -228,7 +228,7 @@ Output:
 ### 3.3 — Daily Stats Cleanup (extends Step 8)
 
 **What:** Delete `answerlattice_frictionDailyStats` documents older than 90 days.
-**Method:** Same pattern as existing signal TTL cleanup in answerlatticeNightly.
+**Method:** Bounded timestamp query and capped batch deletion in `answerlatticeNightly`; signal retention now uses Firestore TTL instead of this scheduler pattern.
 **Batch limit:** 100 docs per tenant per night.
 
 ---

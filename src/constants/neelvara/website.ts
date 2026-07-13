@@ -24,9 +24,8 @@ export const NEELVARA_PRIVACY_EMAIL = publicEnvOrFallback(
 );
 export const NEELVARA_MENULIST_URL = getProductDeploymentTarget('menulist', 'production').url;
 export const NEELVARA_ANSWERLATTICE_URL = getProductDeploymentTarget('answerlattice', 'production').url;
-export const NEELVARA_CAMPAIGNCUE_URL = getProductDeploymentTarget('campaigncue', 'production').url;
 export const NEELVARA_RELATIONSHIP_LINE =
-    'MenuList, Answerlattice, and CampaignCue are operated by Neelvara Systems.';
+    'MenuList and Answerlattice are operated by Neelvara Systems.';
 
 export const NEELVARA_PRODUCT_LINEUP = [
     {
@@ -40,12 +39,6 @@ export const NEELVARA_PRODUCT_LINEUP = [
         status: 'Operated product',
         url: NEELVARA_ANSWERLATTICE_URL,
         summary: 'Keeps support knowledge, help content, and business responses tied to approved answers.',
-    },
-    {
-        name: 'CampaignCue',
-        status: 'Operated product',
-        url: NEELVARA_CAMPAIGNCUE_URL,
-        summary: 'Keeps campaign briefs, reusable content, and marketing assets tied to business context.',
     },
 ] as const;
 
@@ -66,7 +59,7 @@ export const NEELVARA_PUBLIC_PAGES: Array<{
     {
         path: '/products',
         title: 'Operated Products - Neelvara Systems',
-        description: 'Current operated products and product website routing for Neelvara Systems.',
+        description: 'Products currently operated by Neelvara Systems and links to their official websites.',
         priority: 0.8,
         changeFrequency: 'monthly',
     },

@@ -3,6 +3,7 @@
 import { useArticleCache } from '@hook/useArticleCache';
 import ArticleView from '@organisms/ArticleView';
 import { KnowledgeBaseArticleMeta, KnowledgeBaseArticleType } from '@type/knowledgeBase';
+import type { AnswerlatticeReadableArticle } from '@lib/answerlattice/publicContentBoundary';
 import { Button, Divider, Flex, Grid, Modal, Skeleton, Space, Typography, theme } from 'antd';
 import { useEffect, useState } from 'react';
 import { LuFileX, LuSearch } from 'react-icons/lu';
@@ -12,14 +13,14 @@ const { Text, Title } = Typography;
 interface ArticleViewModalProps {
     open: boolean;
     onClose: () => void;
-    article: KnowledgeBaseArticleMeta | KnowledgeBaseArticleType | null;
+    article: KnowledgeBaseArticleMeta | AnswerlatticeReadableArticle | null;
 }
 
 export default function ArticleViewModal({ open, onClose, article: providedArticle }: ArticleViewModalProps) {
     const { token } = theme.useToken();
     const screens = Grid.useBreakpoint();
     const { getArticle, addArticleToCache } = useArticleCache();
-    const [fullArticle, setFullArticle] = useState<KnowledgeBaseArticleType | null>(null);
+    const [fullArticle, setFullArticle] = useState<AnswerlatticeReadableArticle | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const isMobile = screens.md === false;
 
@@ -34,7 +35,7 @@ export default function ArticleViewModal({ open, onClose, article: providedArtic
 
         if (isFull) {
             // Already have full article - use it and cache it
-            const fullArt = providedArticle as KnowledgeBaseArticleType;
+            const fullArt = providedArticle as AnswerlatticeReadableArticle;
             setFullArticle(fullArt);
             addArticleToCache(fullArt);
         } else {

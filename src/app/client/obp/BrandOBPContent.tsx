@@ -15,7 +15,6 @@ import PublicMenuListAttribution from "@/components/customer/PublicMenuListAttri
 import { getResolvedAnalyticsPreferences } from "@lib/analytics/preferences";
 import { getBrandName } from "@lib/businessIdentity/names";
 import { firestoreAdmin } from "@lib/firebase/firebaseAdmin";
-import { parseSummaryStores } from "@lib/firestore/parseSummaryStores";
 import {
     appendPublicLanguageParam,
     getNextIntlLocaleForPublicLanguage,
@@ -30,6 +29,7 @@ import { getStoreOpenStatus } from "@lib/obp/hoursStatus";
 import { resolveHoursOutput } from "@lib/outputControl";
 import { resolveMenuListAttributionPolicy } from "@lib/platform/menuListBranding";
 import { isPlatformEntityBlocked } from "@lib/platform/entityBlock";
+import { normalizeMultiOutletNumericDocumentId } from "@lib/multiOutlet/projectIdBoundary";
 import { normalizePublicOutletSlug } from "@lib/publicRouting/pathSegments";
 import { StoreDataType } from "@type/platform/store";
 import { unstable_cache } from "next/cache";
@@ -50,61 +50,46 @@ interface OutletInfo {
     timeZone?: string;
     active?: boolean;
     blocked?: boolean;
-    modifiedOn?: any;
+    modifiedOn?: unknown;
     isMaster?: boolean;
 }
 
-const mapSummaryStoreToOutlet = (storeId: string, data: any): OutletInfo => ({
-    storeId: Number(data.storeId || storeId),
-    name: data.name,
-    outletSlug: data.outletSlug,
-    city: data.city,
-    addressLine: data.addressLine,
-    logo: data.logo,
-    workingHours: data.workingHours,
-    timeZone: data.timeZone,
-    active: data.active,
-    blocked: data.blocked,
-    isMaster: data.isMaster,
-    modifiedOn: data.modifiedOn,
-});
+function isOutletRecord(value: unknown): value is Record<string, unknown> {
+    return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
 
-// Summary-first active outlet list. Falls back to the store collection for
-// legacy summaries that do not yet carry outletSlug/isMaster fields.
-const getSummaryOutletsForTenant = unstable_cache(
-    async (tenantId: number): Promise<OutletInfo[] | null> => {
-        const summarySnap = await firestoreAdmin
-            .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
-            .doc("storesSummary")
-            .get();
-        if (!summarySnap.exists) return null;
+function normalizeOutletStringMap(value: unknown): Record<string, string> | undefined {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+    const entries = Object.entries(value).filter((entry): entry is [string, string] => (
+        Boolean(entry[0]) && typeof entry[1] === 'string'
+    ));
+    return entries.length > 0 ? Object.fromEntries(entries) : undefined;
+}
 
-        const stores = parseSummaryStores(summarySnap.data());
-        const tenantStores = Object.entries(stores)
-            .filter(([, data]: [string, any]) => data?.tId === tenantId && data?.active !== false && !isPlatformEntityBlocked(data))
-            .map(([storeId, data]: [string, any]) => mapSummaryStoreToOutlet(storeId, data));
+const mapCanonicalStoreToOutlet = (storeId: string, value: unknown): OutletInfo | null => {
+    const storeScope = normalizeMultiOutletNumericDocumentId(storeId);
+    if (!storeScope || !isOutletRecord(value) || isPlatformEntityBlocked(value)) return null;
+    return {
+        storeId: storeScope.numericId,
+        name: typeof value.name === 'string' ? value.name : '',
+        outletSlug: typeof value.outletSlug === 'string' ? value.outletSlug : undefined,
+        city: typeof value.city === 'string' ? value.city : undefined,
+        addressLine: typeof value.addressLine === 'string' ? value.addressLine : undefined,
+        logo: typeof value.logo === 'string' ? value.logo : undefined,
+        workingHours: normalizeOutletStringMap(value.workingHours),
+        timeZone: typeof value.timeZone === 'string' ? value.timeZone : undefined,
+        active: typeof value.active === 'boolean' ? value.active : undefined,
+        blocked: typeof value.blocked === 'boolean' ? value.blocked : undefined,
+        isMaster: typeof value.isMaster === 'boolean' ? value.isMaster : undefined,
+        modifiedOn: value.modifiedOn,
+    };
+};
 
-        if (tenantStores.length === 0) return null;
-
-        // Old summaries only contain name/type fields, so they cannot power
-        // customer-routable location cards. Use collection fallback until the
-        // next store/outlet save backfills summary routing fields.
-        const hasRoutableOutlet = tenantStores.some((entry) => normalizePublicOutletSlug(entry.outletSlug));
-        if (!hasRoutableOutlet) return null;
-
-        return tenantStores.sort((a, b) => {
-            if (a.isMaster) return -1;
-            if (b.isMaster) return 1;
-            return (a.name || '').localeCompare(b.name || '');
-        });
-    },
-    ['brand-obp-summary-outlets'],
-    { revalidate: 60, tags: ['client-stores'] },
-);
-
-// Legacy fallback for storesSummary docs that predate outlet routing fields.
+// Public outlet selection derives tenant membership and identity only from
+// canonical store documents. storesSummary remains an internal read model and
+// must not become a public routing or authorization source.
 const getCollectionOutletsForTenant = unstable_cache(
-    async (tenantId: number, masterStoreId: number): Promise<OutletInfo[]> => {
+    async (tenantId: number): Promise<OutletInfo[]> => {
         const snapshot = await firestoreAdmin
             .collection(DB_COLLECTIONS.STORES)
             .where("tenantId", "==", tenantId)
@@ -114,28 +99,12 @@ const getCollectionOutletsForTenant = unstable_cache(
         if (snapshot.empty) return [];
 
         return snapshot.docs
-            .map((doc) => {
-                const data = doc.data();
-                return {
-                    storeId: data.storeId,
-                    name: data.name,
-                    outletSlug: data.outletSlug,
-                    city: data.city,
-                    addressLine: data.addressLine,
-                    logo: data.logo,
-                    workingHours: data.workingHours,
-                    timeZone: data.timeZone,
-                    active: data.active,
-                    blocked: data.blocked,
-                    isMaster: data.isMaster,
-                    modifiedOn: data.modifiedOn,
-                } as OutletInfo & { isMaster?: boolean };
-            })
-            .filter((store) => !isPlatformEntityBlocked(store))
+            .map((doc) => mapCanonicalStoreToOutlet(doc.id, doc.data()))
+            .filter((store): store is OutletInfo => Boolean(store))
             // Sort: master store first, then alphabetical
             .sort((a, b) => {
-                if ((a as any).isMaster) return -1;
-                if ((b as any).isMaster) return 1;
+                if (a.isMaster) return -1;
+                if (b.isMaster) return 1;
                 return (a.name || '').localeCompare(b.name || '');
             });
     },
@@ -143,10 +112,8 @@ const getCollectionOutletsForTenant = unstable_cache(
     { revalidate: 60, tags: ['client-stores'] }
 );
 
-async function getOutletsForTenant(tenantId: number, masterStoreId: number): Promise<OutletInfo[]> {
-    const summaryOutlets = await getSummaryOutletsForTenant(tenantId);
-    if (summaryOutlets) return summaryOutlets;
-    return getCollectionOutletsForTenant(tenantId, masterStoreId);
+async function getOutletsForTenant(tenantId: number): Promise<OutletInfo[]> {
+    return getCollectionOutletsForTenant(tenantId);
 }
 
 interface BrandOBPContentProps {
@@ -167,7 +134,7 @@ function localizeOutletStatusText(value: string | undefined, t: (key: string, va
 export default async function BrandOBPContent({ store, baseUrl, requestedLanguage }: BrandOBPContentProps) {
     const contentLanguage = resolveStorePublicLanguage(store, requestedLanguage);
     const t = getOBPTranslations(getNextIntlLocaleForPublicLanguage(contentLanguage));
-    const allOutlets = await getOutletsForTenant(store.tenantId, store.storeId);
+    const allOutlets = await getOutletsForTenant(store.tenantId);
     // G-12 (§11 PUBLIC-ROUTING-DOCTRINE): only outlets with a safe, real
     // outletSlug are ever routable and linkable. The outlet-create API writes
     // safe slugs, but legacy summary/collection data can drift, so public

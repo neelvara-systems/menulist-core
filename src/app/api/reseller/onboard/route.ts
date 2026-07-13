@@ -11,11 +11,17 @@ import { getBoundedResellerApiStringContext, getResellerApiFailureLogData, logRe
 import { safeSyncStorePlanEntitlementFromSubscription } from "@lib/billing/subscriptionEntitlementSync";
 import { revalidateMenuCache } from "@lib/actions/revalidateMenuCache";
 import { admin, authAdmin } from "@lib/firebase/firebaseAdmin";
+import { sanitizeForFirestore } from "@lib/firestore/sanitizeForFirestore";
 import { logger } from "@lib/monitoring/logger";
 import { compensateFailedTenantStoreOnboarding } from "@lib/onboarding/compensateFailedOnboarding";
 import { createTenantStoreInTransaction, preCheckSubdomain } from "@lib/onboarding/createTenantStore";
 import { requireOnboardingUserId } from "@lib/onboarding/onboardingUserId";
 import { normalizePhoneNumberForStorage } from "@lib/phone/phoneNumber";
+import {
+    canDeleteCreatedResellerAuthUser,
+    readResellerOwnerClaimInTransaction,
+    ResellerOwnerClaimConflictError,
+} from "@lib/reseller/resellerOwnerClaim";
 import { safelyRecordOwnerReferralPaymentAndRepair } from '@lib/ownerReferral/ownerReferralSettlementServer';
 import { checkRateLimit } from "@lib/rateLimit";
 import { getRateLimitForFeature } from "@lib/rateLimit/configs";
@@ -40,9 +46,9 @@ const RESELLER_ONBOARD_AUTH_CLAIMS_COMPENSATION_FAILED = "reseller_onboard_auth_
 const RESELLER_ONBOARD_PROVIDER_COMPENSATION_FAILED = "reseller_onboard_provider_compensation_failed";
 const RESELLER_ONBOARD_PROVIDER_COMPENSATION_CACHE_REVALIDATION_FAILED = "reseller_onboard_provider_compensation_cache_revalidation_failed";
 
-const removeUndefinedFields = (data: Record<string, unknown>) => Object.fromEntries(
-    Object.entries(data).filter(([, value]) => value !== undefined),
-);
+const removeUndefinedFields = (data: Record<string, unknown>) => sanitizeForFirestore(data, {
+    undefinedObjectValue: "omit",
+});
 
 async function getAuthUserByEmail(email: string) {
     try {
@@ -61,18 +67,16 @@ async function assertOwnerLoginIsAvailable(params: {
     username: string;
 }) {
     const [emailSnapshot, usernameSnapshot, authUser] = await Promise.all([
-        params.db.collection(DB_COLLECTIONS.USERS).where('email', '==', params.email).limit(1).get(),
-        params.db.collection(DB_COLLECTIONS.USERS).where('username', '==', params.username).limit(1).get(),
+        params.db.collection(DB_COLLECTIONS.USERS).where('email', '==', params.email).limit(2).get(),
+        params.db.collection(DB_COLLECTIONS.USERS).where('username', '==', params.username).limit(2).get(),
         getAuthUserByEmail(params.email),
     ]);
 
-    const emailDoc = emailSnapshot.docs[0];
-    if (emailDoc && emailDoc.id !== params.existingOwnerDocId) {
+    if (emailSnapshot.docs.some((emailDoc) => emailDoc.id !== params.existingOwnerDocId)) {
         return "This owner email is already linked to another MenuList account.";
     }
 
-    const usernameDoc = usernameSnapshot.docs[0];
-    if (usernameDoc && usernameDoc.id !== params.existingOwnerDocId) {
+    if (usernameSnapshot.docs.some((usernameDoc) => usernameDoc.id !== params.existingOwnerDocId)) {
         return "This owner phone is already used as a login username.";
     }
 
@@ -333,6 +337,15 @@ export const POST = withAuth(async (request, session) => {
 
         try {
             result = await db.runTransaction(async (transaction) => {
+                const userId = requireOnboardingUserId(existingOwnerDoc?.id || authAccount.uid);
+                const ownerClaim = await readResellerOwnerClaimInTransaction({
+                    authUid: authAccount.uid,
+                    db,
+                    existingOwnerExpected: Boolean(existingOwnerDoc),
+                    expectedEmail: ownerLoginEmail,
+                    transaction,
+                    userId,
+                });
                 // Centralized tenant + store creation
                 const core = await createTenantStoreInTransaction(transaction, db, {
                     businessName,
@@ -359,22 +372,21 @@ export const POST = withAuth(async (request, session) => {
                 });
 
                 const ownerStoreMapping = { storeId: core.storeId, name: core.storeName, role: getOwnerRoleId() };
-                const userId = existingOwnerDoc?.id || authAccount.uid;
-
                 if (existingOwnerDoc) {
-                    const currentStores = Array.isArray(existingOwnerData?.stores) ? existingOwnerData.stores : [];
-                    const currentStoreIds = Array.isArray(existingOwnerData?.storeIds) ? existingOwnerData.storeIds : [];
+                    const freshOwnerData = ownerClaim.data;
+                    const currentStores = Array.isArray(freshOwnerData.stores) ? freshOwnerData.stores : [];
+                    const currentStoreIds = Array.isArray(freshOwnerData.storeIds) ? freshOwnerData.storeIds : [];
 
-                    transaction.update(existingOwnerDoc.ref, removeUndefinedFields({
-                        active: existingOwnerData?.active !== false,
+                    transaction.update(ownerClaim.ref, removeUndefinedFields({
+                        active: freshOwnerData.active !== false,
                         firebaseUid: authAccount.uid,
                         isVerified: true,
                         tenantId: core.tenantId,
                         storeId: core.storeId,
                         stores: [...currentStores, ownerStoreMapping],
                         storeIds: Array.from(new Set([...currentStoreIds, core.storeId])),
-                        platformRole: existingOwnerData?.platformRole || 'OWNER',
-                        role: existingOwnerData?.role || getOwnerRoleId(),
+                        platformRole: freshOwnerData.platformRole || 'OWNER',
+                        role: freshOwnerData.role || getOwnerRoleId(),
                         onboardingSource: 'RESELLER_ONBOARDING',
                         email: ownerLoginEmail,
                         loginEmail: ownerLoginEmail,
@@ -388,9 +400,7 @@ export const POST = withAuth(async (request, session) => {
                         modifiedOn: core.now,
                     }));
                 } else {
-                    const userRef = db.collection(DB_COLLECTIONS.USERS).doc(requireOnboardingUserId(authAccount.uid));
-
-                    transaction.set(userRef, {
+                    transaction.create(ownerClaim.ref, {
                         firebaseUid: authAccount.uid,
                         countryCode: normalizedOwnerPhone.countryCode,
                         dialCode: normalizedOwnerPhone.dialCode,
@@ -435,7 +445,9 @@ export const POST = withAuth(async (request, session) => {
         } catch (error) {
             if (authAccount.cleanupOnFailure) {
                 try {
-                    await authAdmin.deleteUser(authAccount.uid);
+                    if (await canDeleteCreatedResellerAuthUser(db, authAccount.uid)) {
+                        await authAdmin.deleteUser(authAccount.uid);
+                    }
                 } catch (cleanupError) {
                     logResellerApiFailure(RESELLER_ONBOARD_AUTH_CLEANUP_FAILED, cleanupError, {
                         ...getBoundedResellerApiStringContext('resellerId', resellerId),
@@ -444,6 +456,9 @@ export const POST = withAuth(async (request, session) => {
                         hadExistingOwnerDoc: Boolean(existingOwnerDoc),
                     });
                 }
+            }
+            if (error instanceof ResellerOwnerClaimConflictError) {
+                return NextResponse.json({ error: "This owner login was linked by another request." }, { status: 409 });
             }
             throw error;
         }

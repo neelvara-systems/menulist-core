@@ -1,7 +1,7 @@
 # Menu Presence Monitor — Implementation Plan
 
-> **Version:** 2.7 (focused boundary source gate)
-> **Last Updated:** July 10, 2026
+> **Version:** 2.8 (atomic presence projection)
+> **Last Updated:** July 11, 2026
 > **Audience:** Developers
 
 ---
@@ -22,6 +22,10 @@ Failed desktop copy/confirm/remove actions use `use_menulist_presence_official_l
 `updateMenuPresence()` returns a typed `MenuPresenceUpdateResult` with `success: true`, `storeId`, `surface`, and `confirmed`. Desktop and mobile callers must call `assertMenuPresenceUpdateSucceeded()` before changing local presence state, showing success copy, or closing/clearing the selected surface. If the DAL wrapper returns a fallback value after a failed write, the existing bounded confirm/remove failure handlers must run instead.
 
 `updateMenuPresence()` and `recordStarterActivationSignal()` must call the active-session store guard before any store write. A passed store that does not match the active session must reject with `menu_presence_store_scope_mismatch` or `starter_activation_signal_store_scope_mismatch` before writing `menuPresence` or `starterActivationSignals`.
+
+`recordStarterActivationSignal()` also requires a positive safe-integer store ID and `isStarterActivationSignal(signal)` before interpolating the signal into a Firestore dotted field path. Invalid runtime values reject with `starter_activation_signal_input_invalid`.
+
+For presence confirmation/removal, the DAL also validates the surface, boolean action, optional starter signal, numeric store/tenant scope, and freshly read store identity. It transactionally updates the canonical store and current `storesSummary` slot, including the bounded tenant identity required by Firestore rules. `revalidatePublicClientCache` runs only after the transaction commits. A rejected summary scope or changed store scope therefore rolls back both projections, and consumers are not told that a partial write succeeded.
 
 ---
 
@@ -128,38 +132,17 @@ src/config/features.ts           # Modified — add ENABLE_MENU_PRESENCE_MONITOR
 ### Phase 1: Data Layer (~30 min)
 
 1. Add `menuPresence` optional field to `StoreDataType` in `src/types/platform/store.ts`
-2. Add `updateMenuPresence()` and `recordStarterActivationSignal()` functions to `src/database/stores/index.tsx`:
+2. Add `updateMenuPresence()` and `recordStarterActivationSignal()` functions to `src/database/stores/index.tsx`. The current presence write contract is:
    ```typescript
-   export const updateMenuPresence = async (
-     storeId: number,
-     surface: MenuPresenceSurface,
-     confirmed: boolean,
-     options?: { starterSignal?: StarterActivationSignal },
-   ) => {
-     return await apiCallComposer(
-       async () => {
-         const docRef = getDocRef(`${storeId}`);
-         const now = new Date().toISOString();
-         if (confirmed) {
-           const updatePayload: Record<string, string> = {
-             [`menuPresence.${surface}`]: now,
-           };
-           if (options?.starterSignal) {
-             updatePayload[`starterActivationSignals.actions.${options.starterSignal}`] = now;
-             updatePayload["starterActivationSignals.lastSignalAt"] = now;
-           }
-           await updateDoc(docRef, updatePayload);
-         } else {
-           await updateDoc(docRef, {
-             [`menuPresence.${surface}`]: deleteField(),
-           });
-         }
-         return { surface, confirmed };
-       },
-       { storeId, surface, confirmed, starterSignal: options?.starterSignal },
-       "updateMenuPresence",
-     );
-   };
+   validateRuntimeInputAndActiveSessionScope();
+   await runTransaction(firebaseClient, async (transaction) => {
+     const store = await readAndVerifyCurrentStoreScope(transaction);
+     transaction.update(store.ref, canonicalPresenceAndOptionalStarterSignalUpdate);
+     transaction.set(storesSummaryRef, {
+       stores: { [storeId]: { menuPresence: { [surface]: timestampOrNull }, tId: tenantId } },
+     }, { merge: true });
+   });
+   await revalidatePublicClientCache(storeId, "updateMenuPresence");
    ```
 3. Add feature flag `ENABLE_MENU_PRESENCE_MONITOR: false` to `src/config/features.ts`
 
@@ -197,7 +180,7 @@ src/config/features.ts           # Modified — add ENABLE_MENU_PRESENCE_MONITOR
 ## 5. Security
 
 - **Auth:** Same as Use MenuList page — requires authenticated session
-- **Tenant isolation:** `updateMenuPresence` uses `getActiveSession()` for tId/sId
+- **Tenant isolation:** `updateMenuPresence` validates active-session tId/sId, then rechecks the freshly read canonical store identity inside the transaction
 - **No API route needed** — client-side DAL only (store document update)
 - **Rate limiting:** Not needed — simple field update, not expensive
 
@@ -213,6 +196,7 @@ src/config/features.ts           # Modified — add ENABLE_MENU_PRESENCE_MONITOR
 6. Refresh page → confirmation persists
 7. Set flag to `false` → card disappears
 8. Confirm Activation proof distinguishes MenuList-recorded actions from owner-confirmed external placements
+9. Run `npm run test:stores-summary:rules` and confirm rejected forged-summary identity rolls back the canonical presence update
 
 ---
 

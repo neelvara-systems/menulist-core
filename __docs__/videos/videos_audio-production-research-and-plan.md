@@ -5,6 +5,10 @@
 **Research date:** July 7, 2026
 **Scope:** MenuList launch and product-marketing videos produced locally with HyperFrames.
 
+**Current founder-approved audio authority:** [MenuList Founder-Approved Video Production Standard](./videos_founder-approved-production-standard.md). Its Indian-English voice, reusable brand-bed, crescendo, ducking, sting, and approval rules supersede older scratch-audio assumptions in this research history.
+
+**July 12, 2026 hard override:** active MenuList production uses only original locally synthesized music and stings. Earlier external-track research below is historical evaluation evidence, not an approved production source. Do not use downloaded, stock, paid-plan, attribution-dependent, or third-party music by default.
+
 ## Purpose
 
 This document converts the audio-quality issue from the first HyperFrames drafts into a repeatable production plan.
@@ -19,10 +23,66 @@ Default stack:
 
 - HyperFrames for video composition, animation, captions, and rendering.
 - Local rendering on the Mac.
-- Local or license-safe audio assets.
+- Original locally synthesized music and sting assets.
 - FFmpeg for audio mixing, ducking, normalization, muxing, and QC.
 - No Remotion parallel workflow unless the founder explicitly asks for a Remotion-only experiment.
 - No paid/cloud voice, music, SFX, avatar, or generated-media service unless the founder explicitly approves it for a specific asset.
+
+## Vetted Public-Domain And CC0 Exception Sources
+
+**Research refreshed:** July 12, 2026
+
+The original locally synthesized MenuList bed remains the production default. The sources below are an exception pool for a future cut that genuinely needs a different musical character.
+
+"Free," "royalty-free," and "no copyright" are not sufficient rights evidence. Admit an external recording only when its individual source page explicitly marks the **recording**, not only the composition, as `CC0`, `Public Domain`, or unrestricted commercial reuse without permission. Preserve the source URL, page capture, download date, filename, and SHA-256 hash beside the local asset.
+
+### Strongest Sources
+
+| Source | What may be used | MenuList decision |
+| --- | --- | --- |
+| [OpenGameArt](https://opengameart.org/) | Individual music downloads explicitly marked `CC0` | Best external exception source. Verify the license on each asset page and download the attached file, not an unlicensed preview. |
+| [Library of Congress Citizen DJ](https://citizen-dj.labs.loc.gov/about/) | Collection sounds identified as unrestricted for creating new music | Good for building an original sampled bed. Follow the collection-specific use note and preserve cultural context. |
+| [Smithsonian Open Access](https://www.si.edu/openaccess) | Individual audio explicitly carrying the Smithsonian `CC0` designation | Permits commercial reuse without Smithsonian attribution or fee; availability of usable music recordings is limited and third-party rights still require review. |
+| [Openverse](https://openverse.org/) | Audio search filtered to `CC0` or Public Domain Mark | Discovery only. Verify the original host's item page before admission because Openverse aggregates external metadata. |
+| [Wikimedia Commons](https://commons.wikimedia.org/) | Individual audio files explicitly marked `CC0` or Public Domain | Discovery/archive source only. Many Commons files use attribution licenses, so do not treat the site as blanket unrestricted. |
+| [Musopen](https://musopen.org/) | Individual recordings identified as public domain | Classical-only option. Musopen says it does not independently guarantee every user-uploaded status, so verify both the composition and the exact recording. |
+| [Freesound](https://freesound.org/) | Individual samples explicitly marked `CC0` | Useful for original SFX or music construction, not blanket track use. Avoid `CC BY`, `CC BY-NC`, and old Sampling+ assets. |
+| [Free Music Archive](https://freemusicarchive.org/) | Individual tracks explicitly marked `CC0` | Secondary discovery source. FMA does not own uploaded tracks, so preserve item-level evidence and do not use other FMA license types by default. |
+
+### Current CC0 Music Candidates
+
+These are external candidates, not approved replacements for the current MenuList bed:
+
+| Track | Source declaration | Potential use |
+| --- | --- | --- |
+| [Scaling Up](https://opengameart.org/content/scaling-up) | OpenGameArt page marks the track `CC0` and Public Domain | Best fit from this review for a practical product demo or operations-led launch cut. |
+| [Our Expanse](https://opengameart.org/content/our-expanse) | OpenGameArt page marks all supplied versions `CC0` | Hero-film candidate with a calm opening, build, and energetic transition. |
+| [City Loop](https://opengameart.org/content/city-loop-0) | OpenGameArt page marks the track `CC0` and Public Domain | Faster social or product-action reel candidate. |
+| [MindStream](https://opengameart.org/content/mindstream) | OpenGameArt page marks the track `CC0` | Restrained ambient candidate for product walkthroughs. |
+| [Contemplation](https://opengameart.org/content/contemplation-0) | OpenGameArt page marks the track `CC0` | Calm founder or trust-oriented cut; likely too reflective for the main launch film. |
+
+### Rejected As A Default Source
+
+- FreeToUse.com: its free tier prohibits commercial content; MenuList company, website, product, sponsored, and advertising videos require a paid commercial or single-track license.
+- Pixabay Music: free and attribution-optional under the Pixabay Content License, but not public domain or license-independent. User-uploaded content may also carry additional third-party rights and Content ID risk.
+- Mixkit Music: offered under Mixkit's Stock Music Free License, not CC0 or public domain. It remains a third-party licensed input even when no payment or attribution is required.
+- YouTube Audio Library: suitable for YouTube-first publishing when the individual track terms are followed, but YouTube explicitly does not provide legal guidance for off-platform use. It is not the universal website, paid-ad, Instagram, LinkedIn, and WhatsApp default.
+- PremiumBeat, Artlist, Musicbed, Epidemic Sound, Soundstripe, Adobe Stock Audio, Uppbeat, and Audiio: legitimate paid licensing options, but outside the founder-approved no-third-party-music default. Do not subscribe or purchase a track without an explicit founder exception for a named asset.
+- FreePD: the website states that it permanently closed in 2025.
+- Any asset labeled only `royalty-free`, `free download`, or `no copyright` without an item-level CC0/Public Domain declaration.
+- Any `CC BY`, `CC BY-SA`, `CC BY-NC`, `CC BY-ND`, or custom stock-library asset when the requirement is no attribution, no commercial restriction, and no separate license management.
+
+Paid-library track suggestions such as PremiumBeat `Gadgets` or Artlist `Themis` may be used only as internal tonal references. Do not copy, publish, or build a production dependency on their preview files. Metadata is not an audition: final fit must be judged under the actual MenuList voiceover, and tracks containing backing vocals, prominent melodies, playful marimba, vocal samples, or heavy trailer energy should not be admitted merely because a catalog tags them `technology` or `corporate`.
+
+### Admission Checklist
+
+1. Confirm the exact recording is `CC0` or Public Domain; an old composition performed in a modern recording is not enough.
+2. Confirm commercial use, synchronization to video, editing, and distribution are permitted.
+3. Capture the item page and rights statement on the download date.
+4. Store the source URL, creator, filename, rights marker, download date, and SHA-256 hash.
+5. Run a Content ID test upload before public campaign use; public-domain status does not prevent mistaken automated claims.
+6. Keep attribution in internal metadata even when it is not legally required.
+7. Prefer the original MenuList procedural bed whenever external provenance is weaker than the local source chain.
 
 ## Local HyperFrames CLI Findings
 
@@ -281,6 +341,16 @@ The first MenuList launch-cut BGM pass reviewed the founder-supplied free tracks
 | `Chain Reaction` by Aetheric | FreeToUse | Downloaded as alternate | Stronger product/showreel energy; better for future bumpers than the main trust-first launch cut |
 | `Snap Crackle` by Aetheric | FreeToUse | Downloaded as alternate | Better fit for faster reels and ad cutdowns |
 | `See You Later` by marmixer | Pixabay | Reviewed, not downloaded | License is usable, but the terminal download was blocked by a Cloudflare challenge and the tone is more romantic/piano than operational |
+
+### July 11, 2026 Commercial-License And Opening-Audibility Review
+
+| Track | Source | Decision | Reason |
+| --- | --- | --- | --- |
+| `Close Up` by Michael Ramir C. | Mixkit | Selected for MenuList brand-audio v3 | Positive technology/corporate fit, naturally audible opening, gradual first-30-second rise, and Mixkit Stock Music Free License metadata for commercial and personal projects |
+| `Motivating Mornings` by Ahjay Stelino | Mixkit | Rejected for this cut | Strong energy jump around 10 seconds makes the build less controlled |
+| `Running Out of Time` by Ahjay Stelino | Mixkit | Rejected for this cut | Starts more urgently and risks making the calm owner-ease story feel pressured |
+
+License correction: FreeToUse's current plan page excludes company content and paid/sponsored use from its no-plan/personal path. Existing FreeToUse tracks remain internal rollback references only unless MenuList obtains the required commercial license. Do not describe those tracks as no-cost public launch music.
 
 Project ledger:
 
@@ -678,3 +748,4 @@ Default if no input is provided:
 - [Pixabay See You Later](https://pixabay.com/music/modern-classical-see-you-later-203103/)
 - [Pixabay license summary](https://pixabay.com/service/license-summary/)
 - [Mixkit license](https://mixkit.co/license/)
+- [Mixkit corporate music library](https://mixkit.co/free-stock-music/corporate-music/)

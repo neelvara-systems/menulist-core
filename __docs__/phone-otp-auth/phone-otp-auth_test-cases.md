@@ -13,9 +13,15 @@
 - Verify rejects expired challenge.
 - Verify increments attempts on invalid code.
 - Verify marks challenge `too_many_attempts` after max attempts.
+- Invalid-attempt and expiry state changes remain committed after the helper returns its typed error.
+- Concurrent valid-code verification produces one finalized login token and leaves no active verification lease.
+- A failure between reservation and finalization can release only its own challenge operation for retry.
 - Verify creates one-time login token for valid code.
-- NextAuth consumes login token once.
+- NextAuth consumes a login token only after reading the exact stored user and matching the stored email inside the transaction.
 - A second token consumption fails.
+- Expired login-token status persists after the typed expiry error.
+
+Automated coverage: `npm run test:phone-otp-transaction:emulator` exercises the durable-attempt, expiry, concurrent verification, exact-user consumption, replay, and token-expiry boundaries against the Firestore emulator.
 
 ## Dashboard Login
 

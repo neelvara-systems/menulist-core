@@ -8,9 +8,12 @@ import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
 import {
     AI_OPERATION_DATE_FILTER_MAX_LENGTH,
+    isAiOperationHistoryCursorAdmissible,
     isValidAiOperationCursorId,
     normalizeAiOperationHistoryDateRange,
+    resolveAiOperationActionScanBoundary,
 } from '@lib/ai/operationHistoryQuery';
+import { projectAiOperationHistoryFields } from '@lib/ai/operationHistoryProjection';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { getSafeZodValidationDetails } from '@lib/security/inputValidation';
 import { hashPublicRateLimitValue } from 'src/middleware/publicApi';
@@ -96,6 +99,10 @@ const PLATFORM_VISIBLE_FIELDS = new Set([
     'transactionId',
 ]);
 
+const OWNER_RESPONSE_FIELDS = new Set(
+    Array.from(OWNER_VISIBLE_FIELDS).filter((key) => !PLATFORM_ONLY_FIELDS.has(key)),
+);
+
 type AiOperationHistoryScopeDocumentId = {
     numericId: number;
     documentId: string;
@@ -144,34 +151,20 @@ function getAiOperationsReadLogContext(
     };
 }
 
-function serializeFirestoreValue(value: any): any {
-    if (value == null) return value;
-    if (typeof value?.toDate === 'function') {
-        return value.toDate().toISOString();
-    }
-    if (Array.isArray(value)) {
-        return value.map(serializeFirestoreValue);
-    }
-    if (typeof value === 'object') {
-        return Object.fromEntries(
-            Object.entries(value).map(([key, entry]) => [key, serializeFirestoreValue(entry)]),
-        );
-    }
-    return value;
+function sanitizeOwnerOperation(id: string, data: Record<string, unknown>) {
+    return projectAiOperationHistoryFields({
+        data,
+        documentId: id,
+        visibleFields: OWNER_RESPONSE_FIELDS,
+    });
 }
 
-function sanitizeOwnerOperation(id: string, data: Record<string, any>) {
-    const serialized = serializeFirestoreValue({ id, ...data });
-    return Object.fromEntries(
-        Object.entries(serialized).filter(([key]) => OWNER_VISIBLE_FIELDS.has(key) && !PLATFORM_ONLY_FIELDS.has(key)),
-    );
-}
-
-function sanitizePlatformOperation(id: string, data: Record<string, any>) {
-    const serialized = serializeFirestoreValue({ id, ...data });
-    return Object.fromEntries(
-        Object.entries(serialized).filter(([key]) => PLATFORM_VISIBLE_FIELDS.has(key)),
-    );
+function sanitizePlatformOperation(id: string, data: Record<string, unknown>) {
+    return projectAiOperationHistoryFields({
+        data,
+        documentId: id,
+        visibleFields: PLATFORM_VISIBLE_FIELDS,
+    });
 }
 
 async function getCursorDoc(
@@ -239,13 +232,25 @@ async function getActionFilteredDocs({
     }
 
     const docs = matchedDocs.slice(0, pageSize);
-    const hasMore = docs.length > 0 && (matchedDocs.length > pageSize || (!reachedEnd && scannedDocs >= MAX_FILTER_SCAN_DOCS && Boolean(scanCursorDoc)));
-    const cursorSource = docs.length > 0 ? docs[docs.length - 1] : scanCursorDoc;
+    const boundary = resolveAiOperationActionScanBoundary({
+        hasScanCursor: Boolean(scanCursorDoc),
+        matchedCount: matchedDocs.length,
+        maxScanDocs: MAX_FILTER_SCAN_DOCS,
+        pageSize,
+        reachedEnd,
+        scannedDocs,
+    });
+    const cursorSource = boundary.cursorSource === 'last_match'
+        ? docs[docs.length - 1]
+        : boundary.cursorSource === 'scan_cursor'
+            ? scanCursorDoc
+            : null;
 
     return {
         docs,
-        hasMore,
+        hasMore: boundary.hasMore,
         lastVisibleDoc: cursorSource ? { id: cursorSource.id } : null,
+        requiresManualContinuation: boundary.requiresManualContinuation,
     };
 }
 
@@ -331,6 +336,15 @@ export const GET = withAuth(async (request: NextRequest, session) => {
         }
 
         const cursorDoc = await getCursorDoc(tenantId, storeId, cursorId);
+        if (!isAiOperationHistoryCursorAdmissible({
+            cursorCreatedOn: cursorDoc?.get('createdOn'),
+            cursorExists: Boolean(cursorDoc),
+            cursorRequested: Boolean(cursorId),
+            dateRange,
+        })) {
+            return NextResponse.json({ error: 'Invalid cursor' }, { status: 400 });
+        }
+
         const result = action
             ? await getActionFilteredDocs({ action, cursorDoc, pageSize, query })
             : await (async () => {
@@ -340,6 +354,7 @@ export const GET = withAuth(async (request: NextRequest, session) => {
                     docs,
                     hasMore: snapshot.docs.length > pageSize,
                     lastVisibleDoc: docs.length > 0 ? { id: docs[docs.length - 1].id } : null,
+                    requiresManualContinuation: false,
                 };
             })();
 
@@ -354,6 +369,7 @@ export const GET = withAuth(async (request: NextRequest, session) => {
             data,
             hasMore: result.hasMore,
             lastVisibleDoc: result.lastVisibleDoc,
+            requiresManualContinuation: result.requiresManualContinuation,
         });
     } catch (error) {
         logRuntimeFailure('ai_operations_read_failed', error, getAiOperationsReadLogContext(request, session));

@@ -1,10 +1,12 @@
 # Menu Link Import
 
-**Status:** Implemented behind feature flag  
+**Status:** Implemented source evidence behind feature flag; not current launch certification
 **Feature flag:** `ENABLE_MENU_LINK_IMPORT`  
 **Owner copy:** Import from existing menu link
 
-Menu Link Import lets an authenticated owner paste a public menu URL and receive an extraction draft for review. It is an intake convenience for menus the owner already controls or has permission to import. It is not a general-purpose web scraper, marketplace crawler, or auto-publish flow.
+> **Launch boundary:** Not current launch certification or deploy approval. This document records source-gated Menu Link Import evidence only. Both current intake paths require a signed-in owner before source acquisition or extraction: the owner app uses `/api/menu-link-imports`, while the public `/create-menu` page submits through the authenticated `/api/public/create-menu` route. Current release approval still requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md), `npm run verify:production-readiness-local`, `npm run verify:menu-extraction-pipeline`, `npm run verify:functions-deploy-preflight`, authenticated desktop/mobile owner-flow QA, signed-in `/create-menu` browser QA, direct and rendered source-acquisition smoke, Gemini extraction provider smoke where fallback is used, applicable target Firebase/Vercel deploy evidence, and production-host smoke.
+
+Menu Link Import lets a signed-in owner paste a public menu URL from either the owner app or the public `/create-menu` setup page and receive an extraction draft for review. The public page may be opened before sign-in, but submitting a link redirects an unauthenticated visitor to sign in before acquisition begins. It is an intake convenience for menus the owner already controls or has permission to import. It is not a general-purpose web scraper, marketplace crawler, or auto-publish flow.
 
 ## Document Set
 
@@ -21,7 +23,7 @@ Menu Link Import lets an authenticated owner paste a public menu URL and receive
 
 ## Final Architecture
 
-Owner-provided URL -> protected API -> URL safety gate -> DNS-pinned direct acquisition -> private artifact -> existing `menuImageProcessingJobs` pipeline -> existing review screen -> owner approval -> existing project write and public cache invalidation.
+Owner-provided URL -> signed-in owner -> protected owner or `/create-menu` API -> URL safety gate -> DNS-pinned direct acquisition -> private artifact -> existing `menuImageProcessingJobs` pipeline -> review -> owner claim/approval -> existing project write and public cache invalidation.
 
 ## Hard Boundaries
 

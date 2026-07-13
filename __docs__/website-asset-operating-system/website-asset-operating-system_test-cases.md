@@ -26,7 +26,18 @@
 | AUDIT-03 | Point manifest to a missing file. | Audit reports missing physical file. |
 | AUDIT-04 | Use a file above budget. | Audit reports oversized with actual and budget KB. |
 | AUDIT-05 | Change a source page after asset approval. | Audit reports stale source fingerprint. |
-| AUDIT-06 | Add a file in public media with no slot. | Audit reports disconnected public asset. |
+| AUDIT-06 | Add a file in public media with no slot. | Audit reports a disconnected public asset as an error and exits nonzero. |
+| AUDIT-07 | Remove the declared destination from a generated/approved manifest entry. | Audit reports the slot destination is not declared and exits nonzero. |
+| AUDIT-08 | Remove a required output role from a generated/approved manifest entry. | Audit reports the missing required output and exits nonzero. |
+| AUDIT-09 | Point two manifest slots at the same file. | Audit reports duplicate file ownership and exits nonzero. |
+| AUDIT-10 | Add a manifest entry without a slot declaration. | Audit reports an orphan manifest entry as an error and exits nonzero. |
+| AUDIT-11 | Delete a source file declared by a live slot. | Audit reports the missing declared source and exits nonzero for generated/approved assets. |
+| AUDIT-12 | Remove a watched source from a slot after fingerprint approval. | Audit reports the disappeared fingerprint path as stale and exits nonzero for generated/approved assets. |
+| AUDIT-13 | Delete the brief for a generated/approved asset. | Audit reports the missing brief as an error and exits nonzero. |
+| AUDIT-14 | Point a manifest entry at another slot's brief. | Audit reports the mismatched brief path and duplicate ownership as errors. |
+| AUDIT-15 | Set asset status to approved with a non-approved review decision. | Audit reports contradictory approved state and exits nonzero. |
+| AUDIT-16 | Approve a review with failed/warning performance or a score outside 1-10. | Audit reports incoherent approved review evidence and exits nonzero. |
+| AUDIT-17 | Assign a required role to a file with the wrong extension. | Audit reports the output-format mismatch and exits nonzero for generated/approved assets. |
 
 ## Brief Generation Tests
 
@@ -70,7 +81,7 @@
 
 | ID | Command | Expected |
 | --- | --- | --- |
-| CMD-01 | `npm run assets:audit` | Exits 0 when no generated/approved assets are broken. |
+| CMD-01 | `npm run assets:audit` | Exits 0 only when no generated/approved assets are broken and no public media file is disconnected. |
 | CMD-02 | `npm run assets:review` | Exits 0 when generated/approved files are present and under budget. |
 | CMD-03 | `npm run assets:brief -- --slot menulist.home.hero.official-source` | Writes `packages/asset-factory/briefs/menulist.home.hero.official-source.md`. |
 | CMD-04 | `npm run assets:fingerprint` | Locks watched source hashes for generated/draft assets. |

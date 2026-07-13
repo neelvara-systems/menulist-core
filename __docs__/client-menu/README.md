@@ -10,6 +10,10 @@
 
 This documentation index is customer-facing menu-output evidence; it is not current production certification. Current client-menu launch approval requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, Digital Menu Output Constitution checks, physical/mobile browser QA, low-bandwidth/offline/back-button tests, public cache/deploy evidence, and target production smoke.
 
+## Internal Menu-History Integrity Boundary
+
+The customer menu itself does not read `menuChangeLog` or `menuSnapshots`. Owner/editor writes to those internal append-only collections now retain the tenant/store scope captured when each event was queued, preserve completed publish/revision events rather than debouncing them away, use collision-safe tuple keys, and reject malformed identifiers or unbounded reads. Firestore rules require exact tenant and store membership, an owner/manager/platform write role, a real scoped project, bounded canonical or legacy payload shape, and immutable create-only behavior. The rule change requires a scoped MenuList Firestore-rules deployment before it protects live clients.
+
 ---
 
 ## Public Menu External Link Normalization
@@ -180,7 +184,7 @@ The public menu is not a website-builder surface. Store/project owners can selec
 - Customer-facing menu and category controls are non-selectable to avoid accidental text selection while tapping; footer identity and policy content remain selectable.
 - Public menu viewport locks mobile pinch zoom on the client surface to match the owner app shell and avoid accidental two-finger zoom states inside installed PWAs.
 - Fullscreen PDP image inspection owns its own touch zoom, so customers can pinch product/service photos without zooming the entire menu surface.
-- Business logos render as the uploaded image itself on menu and OBP surfaces; no extra wrapper border or crop is applied around the logo image.
+- Business logos render as the uploaded image itself on menu and OBP surfaces; no extra wrapper border or crop is applied around a valid logo image. Missing or failed logo loads fall back to the business initial inside the same 44px home link, including cold failures completed before React hydration. Failed item-image loads keep the reserved card slot for layout stability and reveal the neutral image icon instead of an empty frame.
 - Public menu language persistence is scoped to the store/project session and the project-specific local preference key; old global language preferences are ignored so installed PWAs cannot leak a previous menu language into another project.
 - Language preference storage diagnostics: public menu language preference reads/writes remain browser-local. Failed project-scoped localStorage restoration or persistence logs bounded `public_menu_language_storage_read_failed` / `public_menu_language_storage_write_failed` diagnostics only and creates no Firestore write, analytics write, Storage operation, Cloud Function, API route, cache invalidation, rule, index, or deploy requirement.
 - Compact multi-language payloads must not strip public descriptions needed by the language picker; descriptions, names, categories, route `?lang=`, and item share URLs must stay aligned when the customer changes language on the menu after arriving from OBP.

@@ -7,8 +7,8 @@
 
 ## Mobile Relevance Decision: **YES (Display Only)**
 
-Same assessment as Pillars 4 and 5. All 4 gates pass. Display-only card on mobile dashboard. Read from store data in Redux session. No interaction needed.
+Same assessment as Pillars 4 and 5. All 4 gates pass for a future display, but no current mobile screen consumes the signal and all prerequisite flags are `false`. Any activation must stay inside `MobileShell`, reuse the current Tailwind-driven mobile layer and `react-icons/lu`, and add no independent data load.
 
 ---
 
-**Last Updated:** February 19, 2026
+**Last Updated:** July 13, 2026

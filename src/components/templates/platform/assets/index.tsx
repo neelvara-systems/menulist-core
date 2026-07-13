@@ -4,6 +4,7 @@ import { deleteAssetsCategory, deleteAssetsItem, deleteAssetsSubCategory, getAll
 import { useAppDispatch } from "@hook/useAppDispatch";
 import { startLoader, stopLoader } from "@reduxSlices/loader";
 import { showSuccessToast } from "@reduxSlices/toast";
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
 import { AssetsCategoryType, CraftBuilderAssetsTypesType } from "@type/assets";
 import { sortByActive } from "@util/sorting";
 import { removeObjRef } from "@util/utils";
@@ -33,11 +34,18 @@ function AssetsUploader() {
             setActiveSubCategory(emptyDetailsData)
             const getCategories = async () => {
                 dispatch(startLoader("getAllAssetsByType"))
-                const catList = await getAllAssetsByType(activeAssetsType)
-                dispatch(stopLoader(""))
-                setCategories(catList || [])
+                try {
+                    const catList = await getAllAssetsByType(activeAssetsType)
+                    setCategories(catList)
+                } catch (error) {
+                    logRuntimeFailure('platform_assets_load_failed', error, {
+                        ...getBoundedRuntimeStringContext('assetType', activeAssetsType),
+                    });
+                } finally {
+                    dispatch(stopLoader("getAllAssetsByType"))
+                }
             }
-            getCategories()
+            void getCategories()
         }
     }, [activeAssetsType])
 
@@ -77,31 +85,40 @@ function AssetsUploader() {
 
     const onDelete = async (activeDetails) => {
         dispatch(startLoader("onDelete"))
-        if (showCategoryModal.type == 'Category') {
-            await deleteAssetsCategory(activeAssetsType, activeDetails);
-            handleModalResponse({ type: "deleted", catId: activeCategory.id, subCatId: activeSubCategory.id });
-            dispatch(showSuccessToast("Category deleted !"))
-        } else if (showCategoryModal.type == 'Sub Category') {
-            await deleteAssetsSubCategory(activeAssetsType, activeDetails, activeCategory);
-            let scId = activeCategory.subCategories.findIndex(c => c.id == activeDetails.id);
-            activeCategory.subCategories.splice(scId, 1);
-            handleModalResponse({ ...activeCategory });
-            dispatch(showSuccessToast("Category deleted !"))
-        } else if (showCategoryModal.type == 'Item') {
-            await deleteAssetsItem(activeAssetsType, activeDetails, activeCategory, activeSubCategory);
-            const activeCategoryCpy = removeObjRef(activeCategory);
-            if (Boolean(activeSubCategory?.id)) {
-                const subcategoryIndex = activeCategoryCpy.subCategories.findIndex(subcategory => subcategory.id === activeSubCategory.id);
-                const iIndex = activeCategoryCpy.subCategories[subcategoryIndex].items.findIndex(i => i.id == activeDetails.id)
-                activeCategoryCpy.subCategories[subcategoryIndex].items.splice(iIndex, 1)
-            } else {
-                const iIndex = activeCategoryCpy.items.findIndex(i => i.id == activeDetails.id)
-                activeCategoryCpy.items.splice(iIndex, 1)
+        try {
+            if (showCategoryModal.type == 'Category') {
+                await deleteAssetsCategory(activeAssetsType, activeDetails);
+                handleModalResponse({ type: "deleted", catId: activeCategory.id, subCatId: activeSubCategory.id });
+                dispatch(showSuccessToast("Category deleted !"))
+            } else if (showCategoryModal.type == 'Sub Category') {
+                await deleteAssetsSubCategory(activeAssetsType, activeDetails, activeCategory);
+                let scId = activeCategory.subCategories.findIndex(c => c.id == activeDetails.id);
+                activeCategory.subCategories.splice(scId, 1);
+                handleModalResponse({ ...activeCategory });
+                dispatch(showSuccessToast("Category deleted !"))
+            } else if (showCategoryModal.type == 'Item') {
+                await deleteAssetsItem(activeAssetsType, activeDetails, activeCategory, activeSubCategory);
+                const activeCategoryCpy = removeObjRef(activeCategory);
+                if (Boolean(activeSubCategory?.id)) {
+                    const subcategoryIndex = activeCategoryCpy.subCategories.findIndex(subcategory => subcategory.id === activeSubCategory.id);
+                    const iIndex = activeCategoryCpy.subCategories[subcategoryIndex].items.findIndex(i => i.id == activeDetails.id)
+                    activeCategoryCpy.subCategories[subcategoryIndex].items.splice(iIndex, 1)
+                } else {
+                    const iIndex = activeCategoryCpy.items.findIndex(i => i.id == activeDetails.id)
+                    activeCategoryCpy.items.splice(iIndex, 1)
+                }
+                handleModalResponse({ ...activeCategoryCpy });
+                dispatch(showSuccessToast("Item deleted !"))
             }
-            handleModalResponse({ ...activeCategoryCpy });
-            dispatch(showSuccessToast("Item deleted !"))
+        } catch (error) {
+            logRuntimeFailure('platform_assets_delete_failed', error, {
+                ...getBoundedRuntimeStringContext('assetType', activeAssetsType),
+                ...getBoundedRuntimeStringContext('entityType', showCategoryModal.type),
+                hasEntityId: activeDetails?.id !== undefined,
+            });
+        } finally {
+            dispatch(stopLoader("onDelete"))
         }
-        dispatch(stopLoader(""))
     }
 
     const renderDetailsRow = (item, onClick, active, type) => {

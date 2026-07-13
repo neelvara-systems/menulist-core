@@ -3,8 +3,8 @@
  * 
  * Automatically bootstraps the canonical layer after KB articles are published:
  * 1. Batch entity extraction from published articles
- * 2. Auto-promote high-confidence entity candidates
- * 3. Generate canonical answer drafts per promoted entity
+ * 2. Hold generated entity candidates for explicit owner review
+ * 3. Generate canonical answer drafts only for already approved entities
  * 4. Track progress on the KB generation job
  * 
  * Called as Step 12 of the nightly batch in answerlatticeNightly.ts.
@@ -19,14 +19,15 @@
  * RULES:
  * - Max 50 entities + 50 drafts per run (cost cap)
  * - Bootstrap failure never blocks KB publish (RAG works regardless)
- * - All promoted entities + drafts are audit-logged
+ * - Generated candidates never become entities without an owner action
  * - Drafts are pending_review — never auto-published (doctrine compliance)
  * - Idempotent: re-running won't create duplicates
  * 
  * @see __docs__/answerlattice/founder-onboarding/
  */
 
-import { Timestamp } from 'firebase-admin/firestore';
+import { createHash } from 'node:crypto';
+import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import * as logger from 'firebase-functions/logger';
 import { ANSWERLATTICE_TEXT_MODEL } from '../constants/ai';
 import { DB_COLLECTIONS } from '../constants/database';
@@ -38,8 +39,6 @@ import {
     callAnswerlatticeGeminiContent,
     recordGeminiCallOperation,
 } from './aiOperationAccounting';
-import { markCompiledContextSourceChanged } from './compiledContextVersions';
-import { upsertAnswerlatticeTenantSummary } from './tenantSummary';
 
 // ═══════════════════════════════════════════════════════════════
 // CONSTANTS (mirrored from src/config/onboardingBootstrapConfig.ts)
@@ -47,8 +46,6 @@ import { upsertAnswerlatticeTenantSummary } from './tenantSummary';
 // ═══════════════════════════════════════════════════════════════
 
 const CONFIG = {
-    AUTO_PROMOTE_MIN_CONFIDENCE: 0.7,
-    AUTO_PROMOTE_MIN_ARTICLE_REFS: 2,
     MAX_ENTITIES_PER_RUN: 50,
     MAX_DRAFTS_PER_RUN: 50,
     MAX_ARTICLES_TO_PROCESS: 300,
@@ -59,13 +56,11 @@ const CONFIG = {
 
 const BOOTSTRAP_PROMPT_VERSION = 'v1';
 const ANSWERLATTICE_PRODUCT_ID = 'AL';
+const MAX_PENDING_ENTITY_CANDIDATES = 100;
 const ANSWERLATTICE_BOOTSTRAP_GEMINI_CALL_FAILED = 'ANSWERLATTICE_BOOTSTRAP_GEMINI_CALL_FAILED';
 const ANSWERLATTICE_BOOTSTRAP_DISCOVERY_FAILED = 'ANSWERLATTICE_BOOTSTRAP_DISCOVERY_FAILED';
 const ANSWERLATTICE_BOOTSTRAP_EXTRACTION_BATCH_FAILED = 'ANSWERLATTICE_BOOTSTRAP_EXTRACTION_BATCH_FAILED';
 const ANSWERLATTICE_BOOTSTRAP_ENTITY_CANDIDATE_WRITE_FAILED = 'ANSWERLATTICE_BOOTSTRAP_ENTITY_CANDIDATE_WRITE_FAILED';
-const ANSWERLATTICE_BOOTSTRAP_ENTITY_PROMOTION_FAILED = 'ANSWERLATTICE_BOOTSTRAP_ENTITY_PROMOTION_FAILED';
-const ANSWERLATTICE_BOOTSTRAP_COMPILED_CONTEXT_STALE_MARK_FAILED = 'ANSWERLATTICE_BOOTSTRAP_COMPILED_CONTEXT_STALE_MARK_FAILED';
-const ANSWERLATTICE_BOOTSTRAP_TENANT_SUMMARY_SYNC_FAILED = 'ANSWERLATTICE_BOOTSTRAP_TENANT_SUMMARY_SYNC_FAILED';
 const ANSWERLATTICE_BOOTSTRAP_DRAFT_PARSE_FAILED = 'ANSWERLATTICE_BOOTSTRAP_DRAFT_PARSE_FAILED';
 const ANSWERLATTICE_BOOTSTRAP_DRAFT_GENERATION_FAILED = 'ANSWERLATTICE_BOOTSTRAP_DRAFT_GENERATION_FAILED';
 const ANSWERLATTICE_BOOTSTRAP_TENANT_FAILED = 'ANSWERLATTICE_BOOTSTRAP_TENANT_FAILED';
@@ -238,13 +233,93 @@ function normalizeEntityName(name: string): string {
     return name.toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 
-function generateSlug(name: string): string {
-    return name
-        .toLowerCase()
-        .replace(/[^a-z0-9\s-]/g, '')
-        .replace(/\s+/g, '-')
-        .replace(/-+/g, '-')
-        .trim();
+const getOntologyCounterRef = (tId: number, sId: number) => db
+    .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
+    .doc(`ontologyCounters_${tId}_${sId}`);
+
+async function ensureOntologyCounter(tId: number, sId: number): Promise<void> {
+    const counterRef = getOntologyCounterRef(tId, sId);
+    const current = await counterRef.get();
+    if (current.exists) return;
+    const [entities, candidates, relations] = await Promise.all([
+        db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITIES).where('tId', '==', tId).where('sId', '==', sId).count().get(),
+        db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITY_CANDIDATES).where('tId', '==', tId).where('sId', '==', sId).where('status', '==', 'pending').count().get(),
+        db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITY_RELATIONS).where('tId', '==', tId).where('sId', '==', sId).count().get(),
+    ]);
+    await db.runTransaction(async (transaction) => {
+        const snapshot = await transaction.get(counterRef);
+        if (snapshot.exists) return;
+        transaction.create(counterRef, {
+            schemaVersion: 1,
+            pId: ANSWERLATTICE_PRODUCT_ID,
+            tId,
+            sId,
+            entityCount: entities.data().count,
+            pendingCandidateCount: candidates.data().count,
+            relationCount: relations.data().count,
+            relationCounts: {},
+            relationCountsComplete: false,
+            relationCountAccurate: true,
+            createdAt: FieldValue.serverTimestamp(),
+            updatedAt: FieldValue.serverTimestamp(),
+        });
+    });
+}
+
+async function storeEntityCandidate(
+    tId: number,
+    sId: number,
+    entity: ExtractedEntityRaw,
+): Promise<{ id: string; created: boolean }> {
+    await ensureOntologyCounter(tId, sId);
+    const normalizedName = normalizeEntityName(entity.name);
+    const candidateId = `candidate_${createHash('sha256')
+        .update(`${tId}:${sId}:${entity.type}:${normalizedName}`)
+        .digest('hex')
+        .slice(0, 32)}`;
+    const candidateRef = db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITY_CANDIDATES).doc(candidateId);
+    const counterRef = getOntologyCounterRef(tId, sId);
+    return db.runTransaction(async (transaction) => {
+        const [candidateSnapshot, counterSnapshot] = await Promise.all([
+            transaction.get(candidateRef),
+            transaction.get(counterRef),
+        ]);
+        if (candidateSnapshot.exists) return { id: candidateId, created: false };
+        const counter = counterSnapshot.data() || {};
+        if (counter.pId !== ANSWERLATTICE_PRODUCT_ID
+            || counter.tId !== tId
+            || counter.sId !== sId
+            || !Number.isSafeInteger(counter.pendingCandidateCount)
+            || counter.pendingCandidateCount < 0) {
+            throw new Error('answerlattice_ontology_counter_invalid');
+        }
+        if (counter.pendingCandidateCount >= MAX_PENDING_ENTITY_CANDIDATES) {
+            throw new Error('answerlattice_entity_candidate_limit');
+        }
+        const now = FieldValue.serverTimestamp();
+        transaction.create(candidateRef, {
+            id: candidateId,
+            pId: ANSWERLATTICE_PRODUCT_ID,
+            tId,
+            sId,
+            name: entity.name,
+            type: entity.type,
+            confidence: entity.confidence,
+            frequency: { articles: 1, tickets: 0, chat: 0 },
+            description: entity.description,
+            status: 'pending',
+            sourceArticleIds: [],
+            createdOn: now,
+            modifiedOn: now,
+            createdBy: 'system:onboarding_bootstrap',
+            modifiedBy: 'system:onboarding_bootstrap',
+        });
+        transaction.update(counterRef, {
+            pendingCandidateCount: counter.pendingCandidateCount + 1,
+            updatedAt: now,
+        });
+        return { id: candidateId, created: true };
+    });
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -447,20 +522,11 @@ async function extractEntitiesForTenant(
     // Store as candidates (capped)
     for (const entity of deduplicated.slice(0, CONFIG.MAX_ENTITIES_PER_RUN)) {
         try {
-            const docRef = await db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITY_CANDIDATES).add({
-                tId,
-                sId,
-                name: entity.name,
-                type: entity.type,
-                confidence: entity.confidence,
-                frequency: { articles: 1, tickets: 0, chat: 0 },
-                description: entity.description,
-                status: 'pending',
-                createdOn: Timestamp.now(),
-                modifiedOn: Timestamp.now(),
-            });
-            result.candidateIds.push(docRef.id);
-            result.extracted++;
+            const stored = await storeEntityCandidate(tId, sId, entity);
+            if (stored.created) {
+                result.candidateIds.push(stored.id);
+                result.extracted++;
+            }
         } catch (error) {
             logger.error('[Answerlattice Bootstrap] Failed to store entity candidate', {
                 failureCode: ANSWERLATTICE_BOOTSTRAP_ENTITY_CANDIDATE_WRITE_FAILED,
@@ -493,143 +559,20 @@ function extractPlainText(content: any): string {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// STEP 2 — AUTO-PROMOTE HIGH-CONFIDENCE ENTITIES
+// STEP 2 — HOLD GENERATED CANDIDATES FOR OWNER REVIEW
 // ═══════════════════════════════════════════════════════════════
 
-async function autoPromoteEntities(
+async function countCandidatesForReview(
     tId: number,
     sId: number
-): Promise<{ promoted: number; forReview: number }> {
-    const result = { promoted: 0, forReview: 0 };
-
-    // Query pending candidates
-    const candidatesSnap = await db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITY_CANDIDATES)
+): Promise<number> {
+    const candidates = await db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITY_CANDIDATES)
         .where('tId', '==', tId)
         .where('sId', '==', sId)
         .where('status', '==', 'pending')
-        .limit(200)
+        .count()
         .get();
-
-    if (candidatesSnap.empty) return result;
-
-    // Check existing entities (dedup against promoted)
-    const existingSnap = await db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITIES)
-        .where('tId', '==', tId)
-        .where('sId', '==', sId)
-        .select('name', 'slug')
-        .limit(200)
-        .get();
-
-    const existingNames = new Set<string>();
-    for (const doc of existingSnap.docs) {
-        existingNames.add(normalizeEntityName(doc.data().name || ''));
-    }
-
-    for (const candidateDoc of candidatesSnap.docs) {
-        if (result.promoted >= CONFIG.MAX_ENTITIES_PER_RUN) break;
-
-        const candidate = candidateDoc.data();
-        const normalizedName = normalizeEntityName(candidate.name);
-
-        // Check auto-promote criteria
-        const meetsConfidence = candidate.confidence >= CONFIG.AUTO_PROMOTE_MIN_CONFIDENCE;
-        const meetsFrequency = (candidate.frequency?.articles || 0) >= CONFIG.AUTO_PROMOTE_MIN_ARTICLE_REFS;
-        const notDuplicate = !existingNames.has(normalizedName);
-
-        if (meetsConfidence && meetsFrequency && notDuplicate) {
-            try {
-                // Create entity
-                const slug = generateSlug(candidate.name);
-                const entityRef = await db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITIES).add({
-                    tId,
-                    sId,
-                    type: candidate.type,
-                    name: candidate.name,
-                    slug,
-                    description: candidate.description || '',
-                    status: 'active',
-                    currentVersion: 1000000, // v1.0.0
-                    createdOn: Timestamp.now(),
-                    modifiedOn: Timestamp.now(),
-                });
-
-                // Create search index entry
-                const nameTokens = tokenize(candidate.name);
-                const descTokens = tokenize(candidate.description || '').slice(0, 10);
-                const normalizedTokens = Array.from(new Set([...nameTokens, ...descTokens]));
-                await db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITY_SEARCH_INDEX).add({
-                    tId,
-                    sId,
-                    entityId: entityRef.id,
-                    canonicalName: candidate.name,
-                    synonyms: [],
-                    normalizedTokens,
-                    prefixTokens: buildPrefixTokens([candidate.name, ...normalizedTokens]),
-                    weight: 1.0,
-                    createdOn: Timestamp.now(),
-                    modifiedOn: Timestamp.now(),
-                });
-
-                // Update candidate status
-                await candidateDoc.ref.update({
-                    status: 'approved',
-                    modifiedOn: Timestamp.now(),
-                });
-
-                // Audit log
-                await db.collection(DB_COLLECTIONS.ANSWERLATTICE_AUDIT_LOGS).add({
-                    pId: ANSWERLATTICE_PRODUCT_ID,
-                    tId,
-                    sId,
-                    action: 'entity_auto_promoted_onboarding',
-                    entityType: 'entity',
-                    entityId: entityRef.id,
-                    previousState: { candidateId: candidateDoc.id, confidence: candidate.confidence },
-                    newState: { entityId: entityRef.id, name: candidate.name, type: candidate.type, slug },
-                    performedBy: 'system:onboarding_bootstrap',
-                    timestamp: Timestamp.now(),
-                });
-
-                existingNames.add(normalizedName);
-                result.promoted++;
-            } catch (error) {
-                logger.error('[Answerlattice Bootstrap] Failed to promote entity candidate', {
-                    failureCode: ANSWERLATTICE_BOOTSTRAP_ENTITY_PROMOTION_FAILED,
-                    ...getBootstrapScopeContext(tId, sId),
-                    ...getBootstrapStringContext('candidateId', candidateDoc.id),
-                    ...getBootstrapStringContext('candidateName', candidate.name),
-                    ...getBootstrapSourceErrorContext(error),
-                });
-            }
-        } else {
-            result.forReview++;
-        }
-    }
-
-    if (result.promoted > 0) {
-        await markCompiledContextSourceChanged(db, 'entities', tId, sId, {
-            reason: 'onboarding_entities_promoted',
-            sourceType: 'answerlattice_entities',
-        }).catch(error => {
-            logger.warn('[Answerlattice Onboarding] Failed to mark compiled context stale after entity promotion', {
-                failureCode: ANSWERLATTICE_BOOTSTRAP_COMPILED_CONTEXT_STALE_MARK_FAILED,
-                ...getBootstrapScopeContext(tId, sId),
-                ...getBootstrapSourceErrorContext(error),
-            });
-        });
-        await upsertAnswerlatticeTenantSummary(db, tId, sId, {
-            source: 'onboarding_bootstrap',
-            hasEntities: true,
-        }).catch(error => {
-            logger.warn('[Answerlattice Onboarding] Failed to sync tenant summary after entity promotion', {
-                failureCode: ANSWERLATTICE_BOOTSTRAP_TENANT_SUMMARY_SYNC_FAILED,
-                ...getBootstrapScopeContext(tId, sId),
-                ...getBootstrapSourceErrorContext(error),
-            });
-        });
-    }
-
-    return result;
+    return Number(candidates.data().count || 0);
 }
 
 /**
@@ -646,32 +589,18 @@ function tokenize(text: string): string[] {
         .filter(t => !['the', 'a', 'an', 'is', 'are', 'was', 'were', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'and', 'or', 'not'].includes(t));
 }
 
-function buildPrefixTokens(values: string[]): string[] {
-    const prefixes = new Set<string>();
-    const tokens = Array.from(new Set(values.flatMap(value => tokenize(value)).filter(token => token.length >= 3)));
-    for (const token of tokens) {
-        const upperBound = Math.min(token.length, 18);
-        for (let length = 3; length <= upperBound; length += 1) {
-            prefixes.add(token.slice(0, length));
-            if (prefixes.size >= 80) return Array.from(prefixes);
-        }
-        prefixes.add(token);
-        if (prefixes.size >= 80) return Array.from(prefixes);
-    }
-    return Array.from(prefixes);
-}
-
 // ═══════════════════════════════════════════════════════════════
 // STEP 3 — GENERATE CANONICAL ANSWER DRAFTS
 // ═══════════════════════════════════════════════════════════════
 
-async function generateDraftsForPromotedEntities(
+async function generateDraftsForApprovedEntities(
     tId: number,
     sId: number
 ): Promise<{ generated: number; failed: number }> {
     const result = { generated: 0, failed: 0 };
 
-    // Get recently promoted entities (from this bootstrap run)
+    // Draft only from already owner-approved active entities. Generated
+    // candidates remain pending until an explicit ontology action promotes one.
     const entitiesSnap = await db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITIES)
         .where('tId', '==', tId)
         .where('sId', '==', sId)
@@ -975,17 +904,16 @@ export async function runOnboardingBootstrap(): Promise<BootstrapResult> {
                 });
                 result.totalEntitiesExtracted += extractionResult.extracted;
 
-                // Step 2: Auto-Promote
-                const promoteResult = await autoPromoteEntities(tId, sId);
+                // Step 2: Hold generated entities for explicit owner review.
+                const candidatesForReview = await countCandidatesForReview(tId, sId);
                 await jobRef.update({
                     'onboardingBootstrap.status': 'drafting',
-                    'onboardingBootstrap.entitiesAutoPromoted': promoteResult.promoted,
-                    'onboardingBootstrap.candidatesForReview': promoteResult.forReview,
+                    'onboardingBootstrap.entitiesAutoPromoted': 0,
+                    'onboardingBootstrap.candidatesForReview': candidatesForReview,
                 });
-                result.totalEntitiesPromoted += promoteResult.promoted;
 
-                // Step 3: Generate Drafts
-                const draftResult = await generateDraftsForPromotedEntities(tId, sId);
+                // Step 3: Draft only from already approved active entities.
+                const draftResult = await generateDraftsForApprovedEntities(tId, sId);
                 result.totalDraftsGenerated += draftResult.generated;
                 result.totalDraftsFailed += draftResult.failed;
 
@@ -1002,8 +930,8 @@ export async function runOnboardingBootstrap(): Promise<BootstrapResult> {
                 logger.info('[Answerlattice Bootstrap] Tenant bootstrap completed', {
                     ...getBootstrapScopeContext(tId, sId),
                     extracted: extractionResult.extracted,
-                    promoted: promoteResult.promoted,
-                    review: promoteResult.forReview,
+                    promoted: 0,
+                    review: candidatesForReview,
                     draftsGenerated: draftResult.generated,
                     draftsFailed: draftResult.failed,
                 });

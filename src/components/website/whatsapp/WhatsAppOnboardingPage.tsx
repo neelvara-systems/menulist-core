@@ -1,6 +1,5 @@
 'use client';
 
-import type { ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
 import {
   LuArrowRight,
@@ -26,29 +25,9 @@ const flowIcons = [LuMessageCircle, LuUpload, LuClipboardCheck, LuLink];
 const businessIcons = [LuStore, LuSparkles, LuFileText, LuQrCode];
 const trustIcons = [LuBadgeCheck, LuShieldCheck, LuClipboardCheck];
 const boundaries = ['boundary0', 'boundary1', 'boundary2', 'boundary3', 'boundary4', 'boundary5'];
-const WHATSAPP_ONBOARDING_TEST_NUMBER = '15556571424';
-
-function getWhatsAppOnboardingUrl(message: string) {
-  return `https://wa.me/${WHATSAPP_ONBOARDING_TEST_NUMBER}?text=${encodeURIComponent(message)}`;
-}
-
-function WhatsAppActionLink({ children, href }: { children: ReactNode; href: string }) {
-  return (
-    <a
-      className="ws-btn ws-btn--primary"
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      data-testid="whatsapp-onboarding-cta"
-    >
-      {children}
-    </a>
-  );
-}
 
 export default function WhatsAppOnboardingPage() {
   const t = useTranslations('Website');
-  const whatsappOnboardingUrl = getWhatsAppOnboardingUrl(t('WhatsAppOnboardingPage.whatsAppPrefillMessage'));
 
   return (
     <main className="ws-whatsapp-page">
@@ -65,8 +44,9 @@ export default function WhatsAppOnboardingPage() {
               ]}
             />
             <p className="ws-whatsapp-hero__subtitle">{t('WhatsAppOnboardingPage.heroSubtitle')}</p>
+            <p className="ws-whatsapp-hero__availability">{t('WhatsAppOnboardingPage.availability')}</p>
             <div className="ws-whatsapp-hero__actions">
-              <WhatsAppActionLink href={whatsappOnboardingUrl}>{t('WhatsAppOnboardingPage.primaryCta')}</WhatsAppActionLink>
+              <WebsiteButton href="/create-menu">{t('WhatsAppOnboardingPage.primaryCta')}</WebsiteButton>
               <WebsiteButton href="/features/menu-import" variant="ghost">{t('WhatsAppOnboardingPage.secondaryCta')}</WebsiteButton>
             </div>
             <div className="ws-whatsapp-hero__trust">
@@ -230,7 +210,7 @@ export default function WhatsAppOnboardingPage() {
             />
             <p>{t('WhatsAppOnboardingPage.finalSubtitle')}</p>
             <div className="ws-whatsapp-final__actions">
-              <WhatsAppActionLink href={whatsappOnboardingUrl}>{t('WhatsAppOnboardingPage.finalCta')}</WhatsAppActionLink>
+              <WebsiteButton href="/create-menu">{t('WhatsAppOnboardingPage.finalCta')}</WebsiteButton>
               <Link href="/pricing">
                 {t('WhatsAppOnboardingPage.finalLink')}
                 <LuArrowRight size={15} aria-hidden="true" />

@@ -37,6 +37,7 @@ import {
     getProductDeploymentTarget,
 } from './deploymentTargets';
 import { FEATURE_FLAGS } from '@config/features';
+import { normalizeRequestAuthority } from '@lib/routing/hostAuthority';
 import {
     ACTIVE_CAMPAIGNCUE_PRODUCT_DOMAINS,
     CAMPAIGNCUE_LOCAL_DEV_PATH_PREFIX,
@@ -187,7 +188,8 @@ export const ALL_DEV_PATH_PREFIXES: string[] = PRODUCT_SITES
  * Returns undefined if hostname doesn't match any product domain.
  */
 export function resolveProductSiteByHostname(hostname: string): ProductDomainConfig | undefined {
-    const normalizedHost = hostname.split(':')[0].toLowerCase();
+    const normalizedHost = normalizeRequestAuthority(hostname)?.hostname;
+    if (!normalizedHost) return undefined;
     return PRODUCT_SITES.find(p =>
         p.enabled && p.domains.some(d => d === normalizedHost)
     );

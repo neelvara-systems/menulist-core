@@ -1,8 +1,10 @@
 # Public Menu Entry — Help Documentation
 
 **Version:** 1.0
-**Status:** ✅ IMPLEMENTED — Owner help copy aligned
-**Last Updated:** June 3, 2026
+**Status:** Source-backed owner help draft — not current publication or launch approval
+**Last Updated:** July 10, 2026
+
+> **Launch boundary:** Not current launch certification or deploy approval. This document is source-gated Public Menu Entry evidence only. The `/create-menu` page is public, but source submission, acquisition, extraction, preview polling, claim, and publish require a signed-in owner. Current release approval still requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:menu-extraction-pipeline`, `npm run verify:public-business-truth`, `npm run verify:auth-security-failure-matrix`, signed-in desktop/mobile browser QA, physical-device camera/link/preview/claim QA, Gemini extraction provider smoke, Razorpay sandbox evidence where conversion is in scope, applicable target Firebase/Vercel deploy evidence, and production-host smoke.
 
 ---
 
@@ -141,7 +143,6 @@ After publishing, you get:
 
 ## Need More Help?
 
-- **WhatsApp:** [Support number placeholder]
 - **Email:** support@menulist.ai
 
 ---

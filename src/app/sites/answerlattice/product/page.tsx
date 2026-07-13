@@ -166,6 +166,65 @@ const TRUST_ITEMS = [
     },
 ];
 
+const FOUNDER_CONTROL_CARDS = [
+    {
+        eyebrow: 'Every day',
+        title: 'Start with a daily support brief',
+        description: 'See the smallest useful support plan for today, then ask follow-up questions about answer risk, support gaps, intake review, release checks, setup safety, and cost guardrails. It reads summaries and stays read-only.',
+        href: '/product/support-control',
+        cta: 'See daily support control',
+    },
+    {
+        eyebrow: 'Before release',
+        title: 'Run saved answer tests',
+        description: 'Keep up to 100 critical questions and check the expected approved answer, FAQ/owner answer, provider fallback, escalation, no-answer path, source, and required wording. Deterministic checks do not call the fallback model.',
+        href: '/product/knowledge-governance',
+        cta: 'Review answer controls',
+    },
+    {
+        eyebrow: 'Release safety',
+        title: 'Recheck only affected cases',
+        description: 'Connect tests to product entities and releases so a release check stays bounded to the questions that could have changed.',
+        href: '/product/changelog',
+        cta: 'See release support',
+    },
+    {
+        eyebrow: 'Human review',
+        title: 'Prepare a rollback proposal',
+        description: 'A failed check can prepare a prior audited answer version for Governance review. It never overwrites the live answer or applies a rollback automatically.',
+        href: '/product/knowledge-governance',
+        cta: 'See the review model',
+    },
+    {
+        eyebrow: 'During an issue',
+        title: 'Show a Known Issue notice',
+        description: 'Publish an approved, contextual notice with an expiry and optional HTTPS status link while permanent support answers remain unchanged.',
+        href: '/product/proactive-help',
+        cta: 'See contextual help',
+    },
+    {
+        eyebrow: 'Trusted context',
+        title: 'Use verified visitor context',
+        description: 'Optionally sign short-lived visitor context on your server. Invalid tokens lose signed-only identity claims while normal page-aware support continues.',
+        href: '/developers/verified-visitor-context',
+        cta: 'Read the developer boundary',
+    },
+    {
+        eyebrow: 'Debug handoff',
+        title: 'Attach links, not recordings',
+        description: 'Pass up to three allowlisted HTTPS links from your own diagnostics system. AnswerLattice stores them with private widget-search activity and never fetches or embeds them.',
+        href: '/developers/verified-visitor-context',
+        cta: 'Review evidence links',
+    },
+    {
+        eyebrow: 'Data portability',
+        title: 'Use Support Truth Export',
+        description: 'Authorized owners can download a complete bounded JSON package of approved knowledge and product structure. Tickets, conversations, secrets, and raw audit logs stay out.',
+        href: '/security',
+        cta: 'Review data boundaries',
+    },
+];
+
 const DIFFERENCE_CARDS = [
     ['Not a generic chatbot', 'Official answers require review before they become support truth.'],
     ['Not static docs', 'Tickets, feedback, and releases show what support knowledge is missing or stale.'],
@@ -522,6 +581,36 @@ function ReviewAndGovernanceSections() {
     );
 }
 
+function FounderControlSection({ basePath }: { basePath: string }) {
+    return (
+        <section className="border-y border-white/[0.06] bg-white/[0.012] px-4 py-20 sm:px-6">
+            <div className="mx-auto max-w-7xl">
+                <SectionHeader
+                    eyebrow="Founder controls"
+                    title="Test support before release. Stay clear when something breaks."
+                    description="These controls protect the support layer around launches and incidents without turning AnswerLattice into a status platform, session recorder, or automatic change system."
+                />
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                    {FOUNDER_CONTROL_CARDS.map((item) => (
+                        <article key={item.title} className="flex min-h-[18rem] flex-col border-t border-white/[0.1] px-1 py-6" data-answerlattice-reveal-item>
+                            <p className="text-[10px] font-semibold uppercase tracking-widest text-teal-300">{item.eyebrow}</p>
+                            <h3 className="mt-4 text-xl font-semibold leading-snug text-white">{item.title}</h3>
+                            <p className="mt-3 flex-1 text-sm leading-relaxed text-[#a0a0c0]">{item.description}</p>
+                            <AnswerlatticeLink
+                                basePath={basePath}
+                                href={item.href}
+                                className="mt-6 inline-flex min-h-11 items-center text-sm font-semibold text-teal-200 transition hover:text-white"
+                            >
+                                {item.cta}
+                            </AnswerlatticeLink>
+                        </article>
+                    ))}
+                </div>
+            </div>
+        </section>
+    );
+}
+
 function DifferenceAndSignupSections({ basePath }: { basePath: string }) {
     return (
         <>
@@ -658,6 +747,7 @@ export default function AnswerlatticeProductPage() {
                 ))}
                 <ApprovedAnswersSection />
                 <FallbackAndReleaseSections />
+                <FounderControlSection basePath={basePath} />
                 <ReviewAndGovernanceSections />
                 <DifferenceAndSignupSections basePath={basePath} />
                 <ComparisonSection />

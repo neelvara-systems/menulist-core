@@ -1,17 +1,15 @@
 import { Button, Card, Form, Input, List, Typography } from 'antd';
+import {
+  ANSWERLATTICE_FEEDBACK_POPULAR_REQUESTS,
+  ANSWERLATTICE_FEEDBACK_TEXT_MAX_LENGTH,
+} from '@lib/answerlattice/feedbackBoundary';
 import { useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
 import { LuThumbsDown, LuThumbsUp } from 'react-icons/lu';
 
 const { Text } = Typography;
 
-const popularRequests = [
-  'Clearer setup guides',
-  'More integration options',
-  'Better billing controls',
-  'Easier data export and reports',
-  'Faster issue status updates',
-];
+const popularRequests = [...ANSWERLATTICE_FEEDBACK_POPULAR_REQUESTS];
 
 const toVotedRequests = (nextVotes: { [key: string]: boolean | null }) => (
   Object.entries(nextVotes)
@@ -54,6 +52,8 @@ const FeatureRequests = () => {
         }]}
       >
         <Input.TextArea
+          maxLength={ANSWERLATTICE_FEEDBACK_TEXT_MAX_LENGTH}
+          showCount
           rows={4}
           placeholder={t('featureRequestPlaceholder')}
         />

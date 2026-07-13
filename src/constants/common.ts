@@ -170,7 +170,7 @@ export const APP_LANGUAGES = [
     { label: "Kiswahili (Swahili)", value: "sw-KE" },
 ]
 
-export const AI_ACTIONS_TYPES: any = {
+export const AI_ACTIONS_TYPES = {
     IMAGE_PROCESSING: "image_processing",
     IMAGE_GENERATION: "image_generation",
     BATCH_IMAGE_GENERATION: "batch_image_generation",
@@ -197,18 +197,20 @@ export const AI_ACTIONS_TYPES: any = {
     ANSWERLATTICE_TRANSLATION: "answerlattice_translation",
     ANSWERLATTICE_FAQ_GENERATION: "answerlattice_faq_generation",
     ANSWERLATTICE_WIDGET_SEARCH: "answerlattice_widget_search",
+    ANSWERLATTICE_SUPPORT_SEARCH: "answerlattice_support_search",
     ANSWERLATTICE_KB_EMBEDDING: "answerlattice_kb_embedding",
     ANSWERLATTICE_DRAFT_GENERATION: "answerlattice_draft_generation",
     ANSWERLATTICE_TICKET_KNOWLEDGE_EXTRACTION: "answerlattice_ticket_knowledge_extraction",
     ANSWERLATTICE_ONBOARDING_BOOTSTRAP: "answerlattice_onboarding_bootstrap",
     ANSWERLATTICE_ENTITY_EXTRACTION: "answerlattice_entity_extraction",
     ANSWERLATTICE_FRICTION_INSIGHT: "answerlattice_friction_insight",
+    ANSWERLATTICE_ANSWER_TEST: "answerlattice_answer_test",
     ANSWERLATTICE_INTAKE_OCR: "answerlattice_intake_ocr",
     ANSWERLATTICE_INTAKE_TRANSCRIPTION: "answerlattice_intake_transcription",
     ANSWERLATTICE_INTAKE_EMBEDDING: "answerlattice_intake_embedding",
     //new item metadata actions
     NEW_ITEM_METADATA: "new_item_metadata",
-}
+} as const;
 
 export const TOKENS_PER_CREDIT = 500;
 export const CHARGE_PER_CREDIT = 100;//in paise

@@ -1,6 +1,6 @@
 # Answerlattice QA Deployment Runbook
 
-> Last updated: 2026-06-11
+> Last updated: 2026-07-11
 > Environment: QA / staging
 > Firebase project: `answerlattice-qa`
 > Local dev URL: `http://localhost:3000/__answerlattice/`
@@ -92,6 +92,7 @@ Current implementation:
 - Answerlattice onboarding writes tenant, store, user, subscription, widget key, and summaries to the Answerlattice Firebase project, then writes only the `productAccounts.AL` bridge back to the default auth user document.
 - Answerlattice widget config/key APIs use Answerlattice Firestore in separate mode.
 - Public widget runtime keys validate only against Answerlattice `answerlatticeWidgetApi` for widget routes.
+- The Next.js Answerlattice deployment has a unique server-only `ANSWERLATTICE_WIDGET_RUNTIME_SECRET` with at least 32 random characters. It signs the short-lived host-to-iframe authorization and is never exposed as a public env variable or Firebase document.
 - Answerlattice AI operation logs write to `answerlattice_aiOperations` in the Answerlattice Firebase project.
 - MenuList owner navigation does not expose Answerlattice management by default. MenuList can mount Answerlattice only as an env-configured external-client widget through the generic public script and a real `al_` widget key.
 
@@ -154,11 +155,13 @@ API/runtime flows tested:
 - Answerlattice translation feature gate `403`
 - `POST /api/answerlattice/tenant-summary`
 
-Firestore client-rule flows tested against `answerlattice-qa`:
+Firestore client-rule flows tested in dedicated/shared emulators:
 
-- Allowed tenant-scoped create/read/update for support tickets, changelog pages through a client transaction, KB articles, KB sections, KB generation jobs, KB staging sections/chunks, chat sessions, feedback, AI search history, Answerlattice entities, relations, canonical answers, releases, mutation proposals, signal events, entity search index, entity candidates, cache versions, KB categories, and `platformSummary/trustMetrics_{tId}_{sId}`.
-- Allowed tenant-scoped create/read for Answerlattice audit logs, with updates intentionally denied.
-- Rejected cross-tenant support ticket and cross-tenant changelog writes with `permission-denied`.
+- Tenant-scoped support, KB, chat, feedback, signal, surface, FAQ, and review workflows are allowed only with their required permissions.
+- Canonical answers, release activation, entity indexes, intake summaries, coverage/trust/friction, graph/context summaries, and operational logs are server-owned.
+- Client-writable `platformSummary` documents are limited to branding, predictive-trigger cache, and compiled-context freshness; document IDs must match payload `tId/sId`.
+- Audit-log creates are limited to non-reserved owner actions; authoritative governance audit actions are server-owned.
+- Cross-tenant/cross-store access and ownership mutation are rejected.
 
 Local route flows tested:
 
@@ -239,6 +242,10 @@ Firestore rules and indexes:
 - 2026-06-11: Public compiled bundle proxy responses now include public CORS handling and return a no-store `503 Bundle unavailable` when Answerlattice Storage Admin credentials/access fail. Local unauthenticated API sweep confirmed this path is service-unavailable while the local Storage credential reports `invalid_grant: account not found`.
 - 2026-06-11: Widget/public API hardening added the `aiSearchHistory` cache lookup index (`cacheKey asc`, `tId asc`, `sId asc`, `createdOn desc`). Local JSON validation, TypeScript, and targeted lint passed, but deploy is blocked for the active account. `firebase deploy --only firestore:indexes --project answerlattice-qa --config firebase-answerlattice.json --non-interactive` failed during Firebase Rules API preflight with `403 The caller does not have permission`; direct `gcloud firestore indexes composite create --project=answerlattice-qa --database='(default)' --collection-group=aiSearchHistory --query-scope=COLLECTION --field-config=field-path=cacheKey,order=ascending --field-config=field-path=tId,order=ascending --field-config=field-path=sId,order=ascending --field-config=field-path=createdOn,order=descending --quiet` failed with `PERMISSION_DENIED` for active account `tech.menulist-qa@gmail.com`.
 - 2026-06-16: Added separate Firebase content-reaction rules for `article_feedback/{tId}/{sId}/{docId}` and `changelog_feedback/{tId}/{sId}/{docId}`. Local rules compile passed during a default-project deploy, but the correct Answerlattice QA deploy remains blocked for the active account. `firebase deploy --only firestore:rules --project answerlattice-qa --config firebase-answerlattice.json --non-interactive` failed during Firebase Rules API preflight with `403 The caller does not have permission`.
+- 2026-07-11: Added exact `feedback` create-shape admission and field-confined Product Surface updates. `npm run test:answerlattice-feedback:rules` passed locally, and the complete local readiness gate passed 102/102 checks across 98 child verifiers. The required Node 22 rules-only command `firebase deploy --only firestore:rules --project answerlattice-qa --config firebase-answerlattice.json --non-interactive` again failed during the Firebase Rules API test request with HTTP 403 `The caller does not have permission`; no rules were uploaded.
+- 2026-07-11: Extended the same rules target with exact `article_feedback`/`changelog_feedback` actor-item create admission, append-only updates and immutable capped history after coupling source counters and audit items in one transaction. The focused emulator and final 102/102 local readiness gate passed. The required updated-rules command was attempted once more and returned the same Firebase Rules API HTTP 403 before upload; no QA rule revision changed, and the unchanged command must not be retried until IAM changes.
+- 2026-07-11: Moved canonical-answer publication, proposal decisions, drift state and entity merges behind the authenticated Answerlattice governance route, and made drifted or review-required retrieval fail closed before FAQ or RAG. Root TypeScript, focused contract suites, runtime-truth verifier, targeted lint, documentation links, diff integrity, separate-project rules emulation and shared-mode rules emulation passed locally. Demo, Trust, Pricing and USD Growth onboarding returned HTTP 200 from the local product route, and the unauthenticated governance action returned HTTP 401. The required rules-only QA command was attempted once on Node 20.20.2 with Firebase CLI 14.15.1 and failed during the Firebase Rules API test request with HTTP 403 `The caller does not have permission`; no QA rules were uploaded. Retry only after the active account receives the required Firebase Rules permission.
+- 2026-07-11: The Aidbase competitor-response cross-check strengthened strict plan/role/state canonical eligibility, governed fallback stops, canonical-aware cache freshness, monthly paid onboarding and checkout URL admission, retry idempotency, public mobile proof, and the separate KB publish/embed lifecycle. Root TypeScript, targeted lint, Answerlattice runtime truth, Functions build, both governance rules emulators, docs links, dependency freeze, and 390px/1280px browser QA passed locally. The scoped QA Functions command targeting `functions:answerlattice:startGeneration`, `retryGeneration`, `finalizePublish`, `embedArticleWorker`, `regenerateEmbedding`, and `publishApprovedJobFn` completed its predeploy build, then Cloud Resource Manager returned HTTP 403 `The caller does not have permission` for `answerlattice-qa` before upload. No Function changed in QA; do not retry until IAM changes.
 - 2026-06-20: Added Answerlattice AI operation/token accounting for app routes and Cloud Functions. Local root TypeScript, functions build, and diff check passed. `firebase deploy --only functions:answerlattice --project answerlattice-qa --config firebase-answerlattice.json --non-interactive` first required loading Node 20.20.2 for Firebase CLI 14, then failed at Cloud Resource Manager with `403 The caller does not have permission` for project `answerlattice-qa`.
 - 2026-06-20: Forensic audit hardening added store-scoped `chatSessions` composite indexes and removed raw approved-job payload logging from the Answerlattice publish callable. Local root TypeScript, lint, app build, functions build, Answerlattice runtime verifier, and diff check passed. `firebase deploy --only firestore:indexes,functions:answerlattice --project answerlattice-qa --config firebase-answerlattice.json --non-interactive` failed during Firestore Rules API preflight with `403 The caller does not have permission`; retrying `firebase deploy --only functions:answerlattice --project answerlattice-qa --config firebase-answerlattice.json --non-interactive` failed at Cloud Resource Manager with the same permission blocker.
 - 2026-06-28: KB callable diagnostic hardening bounded server-side failures for `regenerateEmbedding` and `publishApprovedJobFn` in both shared/local Functions and `functions-answerlattice/`. Local `npm run verify:answerlattice-runtime-truth`, `npm --prefix functions run build`, `npm --prefix functions-answerlattice run build`, `npm --prefix functions run lint`, root `npx tsc --noEmit --incremental false --pretty false`, and diff check passed. `firebase deploy --only functions:regenerateEmbedding,functions:publishApprovedJobFn --project menulist-qa --non-interactive` passed predeploy lint/build and failed at Cloud Resource Manager with `403 The caller does not have permission`; `firebase deploy --only functions:answerlattice --project answerlattice-qa --config firebase-answerlattice.json --non-interactive` passed predeploy build and failed at Cloud Resource Manager with the same permission blocker.
@@ -264,14 +271,15 @@ Firestore rules and indexes:
 
 Storage rules:
 
-- `storage-answerlattice.rules` deployed to `answerlattice-qa`.
-- Rules are Answerlattice-only and deny unknown paths by default.
+- `storage-answerlattice.rules` is the dedicated source and denies unknown paths by default. The July 11 permission/metadata hardening is emulator-verified but remains pending QA deployment because of the IAM blocker recorded below.
 - Allowed tenant-scoped paths:
   - `/chatSessions/chatimages/{tId}/{sId}/{imageId}`
   - `/supportTickets/documents/{tId}/{sId}/{fileId}`
   - `/supportTickets/messages/{tId}/{sId}/{fileId}`
   - `/changelog/files/{tId}/{sId}/{fileId}`
   - `/ingestion_source_files/{tId}/{sId}/{fileId}`
+- Changelog and ingestion writes require knowledge-management permission.
+- Ingestion writes require `delete_on_job_delete`, `knowledge_generation_only`, and `answerlattice_kb_generation` metadata.
 
 Functions deployed in `us-central1`:
 
@@ -416,6 +424,30 @@ Local Answerlattice admin code supports two safe paths:
 If `ANSWERLATTICE_FIREBASE_PRIVATE_KEY` is malformed in local `.env`, the app ignores that invalid local credential and tries the Answerlattice service-account JSON path before ADC. Production does not use the local ADC fallback; production must have valid explicit Answerlattice credentials.
 
 `ANSWERLATTICE_GOOGLE_APPLICATION_CREDENTIALS` should point to an ignored local service account JSON file only when needed. Do not commit service account JSON files.
+
+## July 11, 2026 Forensic Audit Deployment Attempt
+
+After the Firebase forensic audit passed root TypeScript, lint, the production build, the Answerlattice Functions build, runtime-truth contracts, the full dedicated/shared Firebase emulator aggregate, Storage rules, index/TTL parity, documentation links, dependency freeze, and diff integrity, the required QA deployments were attempted once:
+
+```bash
+firebase deploy --only firestore:rules,firestore:indexes,storage,functions \
+  --project answerlattice-qa \
+  --config firebase-answerlattice.json \
+  --non-interactive
+```
+
+The Functions predeploy build passed. Deployment then stopped before upload while checking `firebasestorage.googleapis.com` because Service Usage returned HTTP 403: project not found or permission denied.
+
+```bash
+firebase deploy --only firestore:rules,firestore:indexes,storage \
+  --project menulist-qa \
+  --config firebase.json \
+  --non-interactive
+```
+
+The shared-mode deployment also stopped before upload while checking `firebasestorage.googleapis.com` because Service Usage returned HTTP 403: project not found or permission denied.
+
+No QA rules, indexes, Storage rules, or Functions were changed by these failed attempts. Do not retry until the active account has project visibility plus Service Usage, Firestore Rules, Firestore index, Storage, Cloud Functions, Cloud Build, Artifact Registry, and service-account deployment permissions for the relevant QA project.
 
 ## Production Setup Checklist
 

@@ -1,8 +1,10 @@
 # Public Menu Entry — Marketing & Sales Collateral
 
 **Version:** 1.0
-**Status:** ✅ IMPLEMENTED — Active funnel
-**Last Updated:** June 3, 2026
+**Status:** Source-gated positioning draft — not approved launch or sales collateral
+**Last Updated:** July 10, 2026
+
+> **Launch boundary:** Not current launch certification or deploy approval. This document is source-gated Public Menu Entry evidence only. The `/create-menu` page is public, but source submission, acquisition, extraction, preview polling, claim, and publish require a signed-in owner. Current release approval still requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:menu-extraction-pipeline`, `npm run verify:public-business-truth`, `npm run verify:auth-security-failure-matrix`, signed-in desktop/mobile browser QA, physical-device camera/link/preview/claim QA, Gemini extraction provider smoke, Razorpay sandbox evidence where conversion is in scope, applicable target Firebase/Vercel deploy evidence, and production-host smoke.
 
 ---
 
@@ -70,7 +72,7 @@ Sign in first. No credit card for preview. Account setup connects the draft to t
 3. Salon owner pastes an existing services page link → gets a review-ready source
 
 **Slide 6 — Value:**
-- One approved link for QR, WhatsApp, and Google surfaces
+- One approved link the owner can place in QR, WhatsApp, and Google profile surfaces
 - Customers see the owner-published menu
 - Owner edits once, saves, and publishes design or page changes when needed
 
@@ -132,7 +134,7 @@ Free to start. Review before publishing.
 
 ## 8. Approved Language
 
-**Use:** "live page", "official menu link", "approved menu source", "published version", "works everywhere", "handled"
+**Use:** "live page", "official menu link", "approved menu source", "published version", "owner-placed customer link", "review before publishing"
 **Avoid:** "AI-powered", "smart", "dynamic", "optimized", "real-time sync", "cutting-edge"
 
 Per Language Governance: infrastructure language, not marketing language.

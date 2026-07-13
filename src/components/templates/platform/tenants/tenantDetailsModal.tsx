@@ -71,12 +71,11 @@ function TenantDetailsModal({ modalData, closeModal, platformSummary, setStoreMo
                     updatedChanges.imageToUpdate = selectedFile.url
                     updatedChanges.imageType = selectedFile.type
                 }
-                updatedChanges.tenantId = platformSummary.tenants.count + 1;
                 updatedChanges.tenantKey = updatedTenant.name.toLowerCase().replaceAll(" ", "_");
                 const savedTenantDetails = await addTenant(updatedChanges);
                 assertTenantUpdateSucceeded(
                     savedTenantDetails,
-                    updatedChanges.tenantId,
+                    savedTenantDetails.tenantId,
                     'platform_tenant_create_rejected',
                 );
                 closeDrawer(savedTenantDetails)
@@ -113,7 +112,7 @@ function TenantDetailsModal({ modalData, closeModal, platformSummary, setStoreMo
     return (
         <Flex style={{ overflowX: 'auto', width: '100%' }}>
             <DrawerElement
-                title={isUpdateFlow ? `Update Tenant` : `Add Tenant :: ID: ${platformSummary?.tenants?.count + 1}`}
+                title={isUpdateFlow ? `Update Tenant` : 'Add Tenant · ID assigned safely when saved'}
                 open={Boolean(modalData.active)}
                 onClose={() => closeDrawer(null)}
                 footerActions={[

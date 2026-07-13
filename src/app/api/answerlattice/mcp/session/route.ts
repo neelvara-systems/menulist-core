@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { FEATURE_FLAGS } from '@config/features';
 import { PRODUCT_IDS } from '@constant/product';
+import { isAnswerlatticeActiveStoreInScope, normalizeAnswerlatticeScopeDocumentId } from '@lib/answerlattice/sessionScope';
 import { getAnswerlatticeContextBundleManifestServer } from '@lib/answerlattice/contextBundleBuilderServer';
 import {
     canIssueAnswerlatticeMcpSession,
@@ -72,9 +73,11 @@ export async function POST(request: NextRequest) {
             return apiError('INVALID_API_KEY', 'Invalid API key', 401);
         }
 
-        const tId = Number(auth.storeData.tenantId || auth.storeData.tId);
-        const sId = Number(auth.storeData.id || auth.storeData.storeId || auth.storeId);
-        if (!Number.isFinite(tId) || !Number.isFinite(sId) || tId <= 0 || sId <= 0) {
+        const tId = normalizeAnswerlatticeScopeDocumentId(auth.storeData.tenantId ?? auth.storeData.tId);
+        const sId = normalizeAnswerlatticeScopeDocumentId(
+            auth.storeData.id ?? auth.storeData.sId ?? auth.storeData.storeId ?? auth.storeId,
+        );
+        if (!tId || !sId || !isAnswerlatticeActiveStoreInScope(auth.storeData, { tenantId: tId, storeId: sId }, auth.storeId)) {
             return apiError('INVALID_API_KEY', 'Invalid API key', 401);
         }
 

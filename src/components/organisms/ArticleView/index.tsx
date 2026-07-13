@@ -20,10 +20,10 @@
 import DateTimeDisplay from '@atoms/DateTimeDisplay';
 import { getHelpCenterArticleRouteSegment, helpCenterArticleRouting, normalizeHelpCenterRouteSegment } from '@constant/navigations';
 import { getTiptapExtensions } from '@config/tiptap';
-import { addContentFeedback } from '@database/contentFeedback';
-import { updateArticleFeedbackGeneric } from '@database/feedback/genericFeedback';
+import { updateContentFeedbackWithAudit } from '@database/contentFeedback';
 import { useArticleViewTracking } from '@hook/useArticleViewTracking';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
+import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { useFeedback } from '@hook/useFeedback';
 import { useKeyboardShortcuts } from '@hook/useKeyboardShortcuts';
 import {
@@ -38,6 +38,7 @@ import { formatViewCountShort, getUserViewCount } from '@lib/viewCount';
 import FeedbackSection from '@molecules/FeedbackSection';
 import { EditorContent, useEditor } from '@tiptap/react';
 import { KnowledgeBaseArticleType } from '@type/knowledgeBase';
+import type { AnswerlatticeReadableArticle } from '@lib/answerlattice/publicContentBoundary';
 import { Badge, Breadcrumb, Button, Card, Divider, Flex, Grid, message, theme, Tooltip, Typography } from 'antd';
 import React, { useCallback, useMemo, useState } from 'react';
 import { LuCalendar, LuCheck, LuClock, LuEye, LuFolderOpen, LuLink, LuTag } from 'react-icons/lu';
@@ -100,7 +101,7 @@ const copyArticleLinkToClipboard = async (url: string): Promise<void> => {
 };
 
 interface ArticleViewProps {
-    article: KnowledgeBaseArticleType;
+    article: AnswerlatticeReadableArticle;
     /**
      * View mode
      * - 'full': Full page view (KB Explorer)
@@ -156,7 +157,9 @@ const ArticleView: React.FC<ArticleViewProps> = ({
 }) => {
     const { token } = theme.useToken();
     const screens = Grid.useBreakpoint();
-    const { user } = useClientAuthSession() || {};
+    const session = useClientAuthSession();
+    const { user } = session || {};
+    const recentlyViewedScope = resolveAnswerlatticeSessionScope(session);
     const [linkCopied, setLinkCopied] = useState(false);
     const isMobile = screens.md === false;
 
@@ -165,7 +168,6 @@ const ArticleView: React.FC<ArticleViewProps> = ({
 
     useArticleViewTracking(disableTracking ? null : article, {
         href: helpCenterArticleRouting(articleRouteSegment),
-        includeFullArticle: mode === 'modal', // Store full article for modal view
     });
 
     // Memoize extensions to prevent infinite re-renders
@@ -190,9 +192,14 @@ const ArticleView: React.FC<ArticleViewProps> = ({
     // Calculate metadata
     const readingTime = useMemo(() => getReadingTime(article.content), [article.content]);
     const viewCount = useMemo(() => {
-        if (!user?.id) return 0;
-        return getUserViewCount(user.id, article.id, 'article');
-    }, [user?.id, article.id]);
+        if (!user?.id || !recentlyViewedScope) return 0;
+        return getUserViewCount(
+            { tId: recentlyViewedScope.tenantId, sId: recentlyViewedScope.storeId },
+            user.id,
+            article.id,
+            'article',
+        );
+    }, [article.id, recentlyViewedScope?.storeId, recentlyViewedScope?.tenantId, user?.id]);
 
     // Copy link to clipboard with visual feedback
     const handleCopyLink = useCallback(async () => {
@@ -225,19 +232,25 @@ const ArticleView: React.FC<ArticleViewProps> = ({
             initialDislikes: article.dislikes || 0,
         },
         {
-            updateFeedback: async (contentId, type, increment) => {
-                return await updateArticleFeedbackGeneric(contentId, type, increment);
+            updateFeedback: async (contentId, type, increment, _pageId, comment, action) => {
+                return await updateContentFeedbackWithAudit({
+                    type: 'article',
+                    contentId,
+                    sentiment: type,
+                    increment,
+                    comment,
+                    action,
+                });
             },
-            storeFeedback: (userId, contentId, type) => {
-                storeContentFeedback('article', userId, contentId, type);
+            storeFeedback: (scope, userId, contentId, type) => {
+                storeContentFeedback('article', scope, userId, contentId, type);
             },
-            getStoredFeedback: (userId, contentId) => {
-                return getStoredContentFeedback('article', userId, contentId);
+            getStoredFeedback: (scope, userId, contentId) => {
+                return getStoredContentFeedback('article', scope, userId, contentId);
             },
-            removeStoredFeedback: (userId, contentId) => {
-                removeStoredContentFeedback('article', userId, contentId);
+            removeStoredFeedback: (scope, userId, contentId) => {
+                removeStoredContentFeedback('article', scope, userId, contentId);
             },
-            submitComment: addContentFeedback,
         }
     );
 
@@ -443,6 +456,7 @@ const ArticleView: React.FC<ArticleViewProps> = ({
                             dislikes={feedback.dislikes}
                             feedbackGiven={feedback.feedbackGiven}
                             isFeedbackModalVisible={feedback.isFeedbackModalVisible}
+                            isSubmitting={feedback.isSubmitting}
                             onFeedback={feedback.handleFeedback}
                             onFeedbackSubmit={feedback.handleFeedbackSubmit}
                             onModalClose={() => feedback.setIsFeedbackModalVisible(false)}

@@ -13,6 +13,92 @@ export type AiOperationHistoryDateRange = {
     start?: Date;
 };
 
+export type AiOperationActionScanBoundary = {
+    cursorSource: 'last_match' | 'scan_cursor' | 'none';
+    hasMore: boolean;
+    requiresManualContinuation: boolean;
+    scanLimitReached: boolean;
+};
+
+type AiOperationHistoryCursorAdmissionInput = {
+    cursorCreatedOn: unknown;
+    cursorExists: boolean;
+    cursorRequested: boolean;
+    dateRange: AiOperationHistoryDateRange;
+};
+
+function normalizeAiOperationHistoryCursorDate(value: unknown): Date | null {
+    let candidate = value;
+
+    if (
+        candidate
+        && typeof candidate === 'object'
+        && 'toDate' in candidate
+        && typeof candidate.toDate === 'function'
+    ) {
+        try {
+            candidate = candidate.toDate();
+        } catch {
+            return null;
+        }
+    }
+
+    if (!(candidate instanceof Date) || !Number.isFinite(candidate.getTime())) {
+        return null;
+    }
+
+    return candidate;
+}
+
+export function isAiOperationHistoryCursorAdmissible({
+    cursorCreatedOn,
+    cursorExists,
+    cursorRequested,
+    dateRange,
+}: AiOperationHistoryCursorAdmissionInput): boolean {
+    if (!cursorRequested) return true;
+    if (!cursorExists) return false;
+
+    const cursorDate = normalizeAiOperationHistoryCursorDate(cursorCreatedOn);
+    if (!cursorDate) return false;
+
+    const cursorTime = cursorDate.getTime();
+    if (dateRange.start && cursorTime < dateRange.start.getTime()) return false;
+    if (dateRange.end && cursorTime > dateRange.end.getTime()) return false;
+
+    return true;
+}
+
+export function resolveAiOperationActionScanBoundary(input: {
+    hasScanCursor: boolean;
+    matchedCount: number;
+    maxScanDocs: number;
+    pageSize: number;
+    reachedEnd: boolean;
+    scannedDocs: number;
+}): AiOperationActionScanBoundary {
+    const hasBufferedMatch = input.matchedCount > input.pageSize;
+    const scanLimitReached = !input.reachedEnd
+        && input.scannedDocs >= input.maxScanDocs
+        && input.hasScanCursor;
+    const hasReturnedMatch = input.matchedCount > 0;
+
+    return {
+        cursorSource: hasBufferedMatch
+            ? 'last_match'
+            : scanLimitReached
+                ? 'scan_cursor'
+                : hasReturnedMatch
+                    ? 'last_match'
+                    : input.hasScanCursor
+                        ? 'scan_cursor'
+                        : 'none',
+        hasMore: hasBufferedMatch || scanLimitReached,
+        requiresManualContinuation: input.matchedCount === 0 && scanLimitReached,
+        scanLimitReached,
+    };
+}
+
 function buildUtcDate(year: number, month: number, day: number, endOfDay = false): Date | null {
     const parsed = new Date(Date.UTC(
         year,

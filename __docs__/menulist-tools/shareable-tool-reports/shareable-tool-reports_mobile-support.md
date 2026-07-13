@@ -36,6 +36,8 @@ V1 owner readiness modules remain inside Business Health, Share, Public Discover
 
 Report Lead Ops is an internal platform-admin desktop monitor at `/ops/report-leads`.
 
+The desktop API uses the same current persisted platform authorization boundary on every refresh; a stale browser session cannot retain lead access after its persisted role or lifecycle state changes. This adds no owner-mobile action or MobileShell state.
+
 Mobile review result:
 
 - no owner-mobile action

@@ -2,28 +2,25 @@ import { Timestamp } from 'firebase-admin/firestore';
 import * as logger from 'firebase-functions/logger';
 import { DB_COLLECTIONS } from '../constants/database';
 import { firestoreAdmin as db, storageAdmin } from '../firebaseAdmin';
-import { getAnswerlatticeBundleManifestDocId } from './compiledContextVersions';
+import {
+    getAnswerlatticeBundleManifestDocId,
+    normalizeAnswerlatticeStoredBundleVersion,
+} from './compiledContextVersions';
+import { parseExactAnswerlatticeScope } from './scopeBoundary';
+import {
+    ANSWERLATTICE_RETENTION_DAYS,
+    ANSWERLATTICE_RETENTION_DAY_MS,
+    type AnswerlatticeRetentionKey,
+    getAnswerlatticeRetentionExpiryMillis,
+} from '../sharedData/answerlatticeRetention';
 
-const DAY_MS = 24 * 60 * 60 * 1000;
 const BUNDLE_ROOT = 'answerlattice-context';
 const DEFAULT_BATCH_LIMIT = 100;
 const DEFAULT_STORAGE_DELETE_LIMIT = 250;
 const RETENTION_TASK_FAILED = 'ANSWERLATTICE_RETENTION_TASK_FAILED';
 
-export const ANSWERLATTICE_RETENTION_DAYS = {
-    schedulerRunLogs: 90,
-    notificationLogs: 90,
-    ownerNotificationEvents: 90,
-    ownerNotificationDeliveries: 90,
-    ownerNotificationRateLimits: 2,
-    contactEnquiries: 365,
-    queryEmbeddings: 30,
-    aiSearchHistory: 90,
-} as const;
-
 export const ANSWERLATTICE_CONTEXT_BUNDLE_KEEP_PREVIOUS_VERSIONS = 2;
-
-export type AnswerlatticeRetentionKey = keyof typeof ANSWERLATTICE_RETENTION_DAYS;
+export { ANSWERLATTICE_RETENTION_DAYS, type AnswerlatticeRetentionKey };
 
 export interface AnswerlatticeRetentionTenantScope {
     tId: number;
@@ -85,7 +82,7 @@ export function getAnswerlatticeRetentionExpiry(
     key: AnswerlatticeRetentionKey,
     from?: Timestamp | Date | number | null,
 ): Timestamp {
-    return Timestamp.fromMillis(toMillis(from) + getAnswerlatticeRetentionDays(key) * DAY_MS);
+    return Timestamp.fromMillis(getAnswerlatticeRetentionExpiryMillis(key, toMillis(from)));
 }
 
 export function getAnswerlatticeRetentionFields(
@@ -99,7 +96,7 @@ export function getAnswerlatticeRetentionFields(
 }
 
 const cutoffFor = (key: AnswerlatticeRetentionKey) => (
-    Timestamp.fromMillis(Date.now() - getAnswerlatticeRetentionDays(key) * DAY_MS)
+    Timestamp.fromMillis(Date.now() - getAnswerlatticeRetentionDays(key) * ANSWERLATTICE_RETENTION_DAY_MS)
 );
 
 async function deleteDocsOlderThan(params: {
@@ -125,17 +122,17 @@ async function deleteDocsOlderThan(params: {
 const extractBundleVersion = (path: string): number | null => {
     const match = path.match(/\/v(\d+)\//);
     if (!match) return null;
-    const version = Number(match[1]);
-    return Number.isFinite(version) && version > 0 ? version : null;
+    const version = normalizeAnswerlatticeStoredBundleVersion(match[1]);
+    return version !== null && version > 0 ? version : null;
 };
 
 const getVersionsToKeep = (manifest: any): Set<number> => {
-    const activeVersion = Number(manifest?.activeVersion || manifest?.bundleVersion || 0);
-    const lastReadyVersion = Number(manifest?.lastReadyVersion || activeVersion || 0);
+    const activeVersion = normalizeAnswerlatticeStoredBundleVersion(manifest?.activeVersion ?? manifest?.bundleVersion);
+    const lastReadyVersion = normalizeAnswerlatticeStoredBundleVersion(manifest?.lastReadyVersion ?? activeVersion);
     const versions = new Set<number>();
 
     [activeVersion, lastReadyVersion].forEach((baseVersion) => {
-        if (!Number.isFinite(baseVersion) || baseVersion <= 0) return;
+        if (baseVersion === null || baseVersion <= 0) return;
         for (
             let version = Math.max(1, baseVersion - ANSWERLATTICE_CONTEXT_BUNDLE_KEEP_PREVIOUS_VERSIONS);
             version <= baseVersion;
@@ -152,9 +149,9 @@ async function cleanupTenantContextBundleVersions(
     tenant: AnswerlatticeRetentionTenantScope,
     storageDeleteLimit: number,
 ): Promise<number> {
-    const tId = Number(tenant.tId);
-    const sId = Number(tenant.sId);
-    if (!Number.isFinite(tId) || !Number.isFinite(sId) || tId <= 0 || sId <= 0) return 0;
+    const scope = parseExactAnswerlatticeScope(tenant.tId, tenant.sId);
+    if (!scope) return 0;
+    const { tId, sId } = scope;
 
     const manifestSnap = await db
         .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
@@ -163,6 +160,10 @@ async function cleanupTenantContextBundleVersions(
     if (!manifestSnap.exists) return 0;
 
     const manifest = manifestSnap.data() || {};
+    if (manifest.pId !== 'AL' || manifest.tId !== tId || manifest.sId !== sId) return 0;
+    const activeVersion = normalizeAnswerlatticeStoredBundleVersion(manifest.activeVersion ?? manifest.bundleVersion);
+    const lastRetentionCleanedVersion = normalizeAnswerlatticeStoredBundleVersion(manifest.lastRetentionCleanedVersion);
+    if (!activeVersion || (lastRetentionCleanedVersion !== null && lastRetentionCleanedVersion >= activeVersion)) return 0;
     const publicBundleId = typeof manifest.publicBundleId === 'string' ? manifest.publicBundleId : '';
     const keepVersions = getVersionsToKeep(manifest);
     if (!keepVersions.size) return 0;
@@ -173,12 +174,14 @@ async function cleanupTenantContextBundleVersions(
     ].filter(Boolean);
 
     let deleted = 0;
+    let listingWasTruncated = false;
     const bucket = storageAdmin.bucket();
 
     for (const prefix of prefixes) {
         if (deleted >= storageDeleteLimit) break;
 
         const [files] = await bucket.getFiles({ prefix, maxResults: 1000 });
+        if (files.length >= 1000) listingWasTruncated = true;
         for (const file of files) {
             if (deleted >= storageDeleteLimit) break;
             const version = extractBundleVersion(file.name);
@@ -189,6 +192,13 @@ async function cleanupTenantContextBundleVersions(
         }
     }
 
+    if (!listingWasTruncated && deleted < storageDeleteLimit) {
+        await manifestSnap.ref.set({
+            lastRetentionCleanedVersion: activeVersion,
+            lastRetentionCleanedAt: Timestamp.now(),
+        }, { merge: true });
+    }
+
     return deleted;
 }
 
@@ -196,6 +206,7 @@ export async function cleanupAnswerlatticeOperationalRetention(options: {
     tenants?: AnswerlatticeRetentionTenantScope[];
     batchLimit?: number;
     storageDeleteLimit?: number;
+    includeLegacyFirestoreCleanup?: boolean;
 } = {}): Promise<AnswerlatticeRetentionCleanupResult> {
     const result = emptyResult();
     const batchLimit = Math.min(Math.max(Number(options.batchLimit || DEFAULT_BATCH_LIMIT), 1), 450);
@@ -217,7 +228,10 @@ export async function cleanupAnswerlatticeOperationalRetention(options: {
         }
     };
 
-    await runCleanup('schedulerRunLogs', async () => {
+    // Dedicated Answerlattice production uses Firestore TTL on expiresAt for
+    // these collections. The query/delete path remains available only for an
+    // explicit legacy cleanup run, avoiding seven empty reads every night.
+    if (options.includeLegacyFirestoreCleanup === true) await runCleanup('schedulerRunLogs', async () => {
         result.schedulerRunLogsDeleted = await deleteDocsOlderThan({
             collectionName: DB_COLLECTIONS.ANSWERLATTICE_SCHEDULER_RUN_LOGS,
             timestampField: 'startedAt',
@@ -226,7 +240,7 @@ export async function cleanupAnswerlatticeOperationalRetention(options: {
         });
     });
 
-    await runCleanup('notificationLogs', async () => {
+    if (options.includeLegacyFirestoreCleanup === true) await runCleanup('notificationLogs', async () => {
         result.notificationLogsDeleted = await deleteDocsOlderThan({
             collectionName: DB_COLLECTIONS.ANSWERLATTICE_NOTIFICATION_LOGS,
             timestampField: 'createdAt',
@@ -235,7 +249,7 @@ export async function cleanupAnswerlatticeOperationalRetention(options: {
         });
     });
 
-    await runCleanup('ownerNotificationEvents', async () => {
+    if (options.includeLegacyFirestoreCleanup === true) await runCleanup('ownerNotificationEvents', async () => {
         result.ownerNotificationEventsDeleted = await deleteDocsOlderThan({
             collectionName: DB_COLLECTIONS.OWNER_NOTIFICATION_EVENTS,
             timestampField: 'createdAt',
@@ -244,7 +258,7 @@ export async function cleanupAnswerlatticeOperationalRetention(options: {
         });
     });
 
-    await runCleanup('ownerNotificationDeliveries', async () => {
+    if (options.includeLegacyFirestoreCleanup === true) await runCleanup('ownerNotificationDeliveries', async () => {
         result.ownerNotificationDeliveriesDeleted = await deleteDocsOlderThan({
             collectionName: DB_COLLECTIONS.OWNER_NOTIFICATION_DELIVERIES,
             timestampField: 'createdAt',
@@ -253,7 +267,7 @@ export async function cleanupAnswerlatticeOperationalRetention(options: {
         });
     });
 
-    await runCleanup('ownerNotificationRateLimits', async () => {
+    if (options.includeLegacyFirestoreCleanup === true) await runCleanup('ownerNotificationRateLimits', async () => {
         result.ownerNotificationRateLimitsDeleted = await deleteDocsOlderThan({
             collectionName: DB_COLLECTIONS.OWNER_NOTIFICATION_RATE_LIMITS,
             timestampField: 'updatedAt',
@@ -262,7 +276,7 @@ export async function cleanupAnswerlatticeOperationalRetention(options: {
         });
     });
 
-    await runCleanup('contactEnquiries', async () => {
+    if (options.includeLegacyFirestoreCleanup === true) await runCleanup('contactEnquiries', async () => {
         result.contactEnquiriesDeleted = await deleteDocsOlderThan({
             collectionName: DB_COLLECTIONS.ANSWERLATTICE_CONTACT_ENQUIRIES,
             timestampField: 'createdAt',
@@ -271,7 +285,7 @@ export async function cleanupAnswerlatticeOperationalRetention(options: {
         });
     });
 
-    await runCleanup('queryEmbeddings', async () => {
+    if (options.includeLegacyFirestoreCleanup === true) await runCleanup('queryEmbeddings', async () => {
         result.queryEmbeddingsDeleted = await deleteDocsOlderThan({
             collectionName: DB_COLLECTIONS.QUERY_EMBEDDINGS,
             timestampField: 'createdAt',
@@ -280,7 +294,7 @@ export async function cleanupAnswerlatticeOperationalRetention(options: {
         });
     });
 
-    await runCleanup('aiSearchHistory', async () => {
+    if (options.includeLegacyFirestoreCleanup === true) await runCleanup('aiSearchHistory', async () => {
         result.aiSearchHistoryDeleted = await deleteDocsOlderThan({
             collectionName: DB_COLLECTIONS.AI_SEARCH_HISTORY,
             timestampField: 'createdOn',
@@ -291,11 +305,13 @@ export async function cleanupAnswerlatticeOperationalRetention(options: {
 
     await runCleanup('contextBundleVersions', async () => {
         const seen = new Set<string>();
-        const tenants = (options.tenants || []).filter((tenant) => {
-            const key = `${Number(tenant.tId)}:${Number(tenant.sId)}`;
-            if (seen.has(key)) return false;
+        const tenants = (options.tenants || []).flatMap((tenant) => {
+            const scope = parseExactAnswerlatticeScope(tenant.tId, tenant.sId);
+            if (!scope) return [];
+            const key = `${scope.tId}:${scope.sId}`;
+            if (seen.has(key)) return [];
             seen.add(key);
-            return true;
+            return [scope];
         });
 
         for (const tenant of tenants) {

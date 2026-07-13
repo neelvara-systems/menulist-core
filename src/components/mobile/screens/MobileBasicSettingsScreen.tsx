@@ -132,7 +132,7 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
             phoneNumber: normalizedPhone.phoneNumber,
             postalCode: formData.postalCode,
             state: formData.state,
-            tenantId: storeDetails.tenantId, // Ensure tenantId is included for syncStoreToSummary
+            tenantId: storeDetails.tenantId, // Required for the atomic canonical-store/summary scope check
         };
         if (latitude !== undefined && longitude !== undefined) {
             updates.geo = { latitude, longitude };

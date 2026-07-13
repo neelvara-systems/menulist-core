@@ -2,6 +2,7 @@
 
 **Status:** Initial planning doc
 **Created:** June 23, 2026
+**Last Updated:** July 11, 2026
 
 ## Core Rule
 
@@ -56,6 +57,13 @@ Human review is required when:
 - target has suppression ambiguity;
 - output schema fails;
 - evidence refs are missing.
+- a critic returns `revise` or `hold`;
+- stronger-model escalation is unavailable or still low confidence;
+- a workflow has not met its own measured graduation threshold.
+
+## Volume Boundary
+
+Higher AI volume does not grant higher authority. Generation, critique, and escalation may execute automatically inside the founder's AI cost envelope. Source rights, consent, suppression, send, publish, spend outside AI inference, commercial terms, and MenuList truth remain deterministic blocks or founder decisions.
 
 ## Open Questions
 
@@ -63,4 +71,4 @@ Human review is required when:
 | --- | --- |
 | Model provider and data-use terms | Founder + Codex before implementation |
 | Prompt retention policy | Founder + compliance review |
-| Eval pass thresholds | Codex + founder |
+| Eval pass thresholds | Measured per workflow in shadow review; no silent graduation |

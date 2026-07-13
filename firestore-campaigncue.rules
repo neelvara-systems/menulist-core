@@ -162,6 +162,7 @@ service cloud.firestore {
 
     function isPlatformAdmin() {
       return isAuthenticated()
+        && request.auth.token.keys().hasAny(['platformRole'])
         && request.auth.token.platformRole == 'PLATFORM';
     }
 
@@ -171,6 +172,7 @@ service cloud.firestore {
 
     function hasCampaignCueWorkspaceClaims() {
       return isAuthenticated()
+        && request.auth.token.keys().hasAll(['tenantId', 'storeId'])
         && request.auth.token.tenantId != null
         && request.auth.token.storeId != null;
     }
@@ -180,7 +182,8 @@ service cloud.firestore {
         && (
           isPlatformAdmin()
           || (
-            workspaceId == currentCampaignCueWorkspaceId()
+            hasCampaignCueWorkspaceClaims()
+            && workspaceId == currentCampaignCueWorkspaceId()
             && string(data.tId) == string(request.auth.token.tenantId)
             && string(data.sId) == string(request.auth.token.storeId)
           )
@@ -191,7 +194,10 @@ service cloud.firestore {
       return isAuthenticated()
         && (
           isPlatformAdmin()
-          || workspaceId == currentCampaignCueWorkspaceId()
+          || (
+            hasCampaignCueWorkspaceClaims()
+            && workspaceId == currentCampaignCueWorkspaceId()
+          )
         );
     }
 

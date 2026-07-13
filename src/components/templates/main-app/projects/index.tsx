@@ -2118,6 +2118,11 @@ function ProjectsPage() {
         });
 
         if (successfulUploads.length !== filesToProcess.length) {
+            await cleanupUploadedMenuFiles(
+                successfulUploads,
+                'partial_upload_failure',
+                projectDataCopy.projectId,
+            );
             throw new Error(`${filesToProcess.length - successfulUploads.length} file(s) failed to upload. Please check storage quota and try again.`);
         }
 
@@ -2471,7 +2476,7 @@ function ProjectsPage() {
         script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
         script.async = true;
 
-        return new Promise(async (resolve) => {
+        return new Promise((resolve) => {
             script.onload = async () => {
                 try {
                     const pdfjsLib = (window as any).pdfjsLib;
@@ -2524,7 +2529,7 @@ function ProjectsPage() {
                         canvas.height = 0;
                         const imageData = {
                             uid: generateMenuFileUid(tenantDetails.tenantId, storeDetails.storeId),
-                            name: `${file.name.replace('.pdf', '')}-page-${i + 1}.jpg`,
+                            name: `${file.name.replace(/\.pdf$/i, '')}-page-${i}.jpg`,
                             size: Math.round(pageUrl.length * 0.75), // Approximate size from base64
                             type: 'image/jpeg',
                             url: pageUrl,

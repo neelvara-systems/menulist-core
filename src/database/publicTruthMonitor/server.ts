@@ -1,25 +1,23 @@
 import { DB_COLLECTIONS } from "@constant/database";
 import { buildPublicTruthMonitorSummaryDocId } from "@constant/publicTruthMonitor";
 import { admin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
+import { sanitizeForFirestore } from "@lib/firestore/sanitizeForFirestore";
 import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
-import { parseSummaryProjects } from "@lib/firestore/parseSummaryProjects";
+import { parseSummaryProjects, withAuthoritativeSummaryProjectId } from "@lib/firestore/parseSummaryProjects";
 import type { OwnerPublicTruthProjectSummary } from "@lib/public-truth-tools/ownerPublicTruthReadiness";
 import type { PublicTruthMonitorSummaryDocument } from "@type/publicTruthMonitor";
 
 const sanitizeForAdminFirestore = (value: any): any => {
-    if (value === undefined) return null;
-    if (value === null) return null;
-    if (value instanceof Date) return admin.firestore.Timestamp.fromDate(value);
-    if (typeof value?.toDate === "function" && typeof value?.seconds === "number") {
-        return admin.firestore.Timestamp.fromDate(value.toDate());
-    }
-    if (Array.isArray(value)) return value.map(sanitizeForAdminFirestore);
-    if (typeof value === "object") {
-        return Object.fromEntries(
-            Object.entries(value).map(([key, nested]) => [key, sanitizeForAdminFirestore(nested)]),
-        );
-    }
-    return value;
+    return sanitizeForFirestore(value, {
+        dateTransform: (date) => admin.firestore.Timestamp.fromDate(date),
+        atomicTransform: (atomicValue) => (
+            typeof (atomicValue as { toDate?: unknown }).toDate === "function"
+            && typeof (atomicValue as { seconds?: unknown }).seconds === "number"
+        ) ? {
+            handled: true,
+            value: admin.firestore.Timestamp.fromDate((atomicValue as { toDate: () => Date }).toDate()),
+        } : { handled: false },
+    });
 };
 
 function legacyProjectBelongsToSession(params: {
@@ -108,10 +106,8 @@ export async function readPublicTruthMonitorProjectSummariesServer(
         .get();
     const projectMap = snap.exists ? parseSummaryProjects(snap.data()) : {};
 
-    return Object.entries(projectMap).map(([projectId, data]) => ({
-        projectId,
-        ...((data || {}) as Record<string, any>),
-    }));
+    return Object.entries(projectMap)
+        .map(([projectId, data]) => withAuthoritativeSummaryProjectId(projectId, data)) as OwnerPublicTruthProjectSummary[];
 }
 
 export async function readPublicTruthMonitorProjectDataServer(params: {

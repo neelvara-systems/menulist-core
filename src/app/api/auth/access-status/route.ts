@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { DB_COLLECTIONS } from "@constant/database";
+import { ECOMSAI_PLATFORM_USER_ROLE } from "@constant/user";
 import { admin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
 import { logger } from "@lib/monitoring/logger";
@@ -48,6 +49,25 @@ const normalizeOptionalDocumentId = (value?: string | number | null): string | n
     return documentId === rawDocumentId && isValidFirestoreDocumentId(documentId) ? documentId : null;
 };
 
+const isPlatformAccessSession = (session: any, userData: Record<string, any>): boolean => (
+    session?.platformRole === ECOMSAI_PLATFORM_USER_ROLE
+    || session?.user?.platformRole === ECOMSAI_PLATFORM_USER_ROLE
+    || userData.platformRole === ECOMSAI_PLATFORM_USER_ROLE
+    || userData.role === ECOMSAI_PLATFORM_USER_ROLE
+);
+
+const normalizeReferencedScopeDocumentId = (value: unknown): string | null => (
+    typeof value === "string" || typeof value === "number"
+        ? normalizeOptionalDocumentId(value)
+        : null
+);
+
+const isStoreOwnedByTenant = (storeData: Record<string, any> | null, tenantDocumentId: string | null): boolean => {
+    if (!storeData || !tenantDocumentId) return false;
+    const storeTenantDocumentId = normalizeReferencedScopeDocumentId(storeData.tenantId ?? storeData.tId);
+    return storeTenantDocumentId === tenantDocumentId;
+};
+
 const getCurrentUserSnapshot = async (session: any) => {
     const userId = session?.uId || session?.user?.id;
     if (userId) {
@@ -70,11 +90,11 @@ const getCurrentUserSnapshot = async (session: any) => {
 };
 
 const getEntityData = async (collectionName: string, id?: string | number | null) => {
-    if (id == null || id === "") return { data: null, invalidId: false };
+    if (id == null || id === "") return { data: null, documentId: null, invalidId: false };
     const documentId = normalizeOptionalDocumentId(id);
-    if (!documentId) return { data: null, invalidId: true };
+    if (!documentId) return { data: null, documentId: null, invalidId: true };
     const snapshot = await firestoreAdmin.collection(collectionName).doc(documentId).get();
-    return { data: snapshot.exists ? snapshot.data() : null, invalidId: false };
+    return { data: snapshot.exists ? snapshot.data() : null, documentId, invalidId: false };
 };
 
 const checkAccessStatusRateLimit = async (request: NextRequest, session: any) => {
@@ -157,10 +177,16 @@ export const GET = withAuth(async (request: NextRequest, session) => {
     if (userData.isVerified === false) return invalidAccess(request, session, "USER_UNVERIFIED");
     if (isPlatformEntityBlocked(userData)) return invalidAccess(request, session, "USER_BLOCKED");
 
+    const platformAccessSession = isPlatformAccessSession(session, userData);
     const tenantId = userData.tenantId ?? session?.tId ?? session?.user?.tenantId;
     const tenant = await getEntityData(DB_COLLECTIONS.TENANTS, tenantId);
     if (tenant.invalidId) {
         return invalidAccess(request, session, "TENANT_REFERENCE_INVALID", {
+            ...getBoundedRuntimeStringContext("tenantId", tenantId),
+        });
+    }
+    if (!platformAccessSession && tenantId != null && tenantId !== "" && !tenant.data) {
+        return invalidAccess(request, session, "TENANT_NOT_FOUND", {
             ...getBoundedRuntimeStringContext("tenantId", tenantId),
         });
     }
@@ -177,9 +203,26 @@ export const GET = withAuth(async (request: NextRequest, session) => {
             ...getBoundedRuntimeStringContext("storeId", storeId),
         });
     }
+    if (!platformAccessSession && storeId != null && storeId !== "" && !store.data) {
+        return invalidAccess(request, session, "STORE_NOT_FOUND", {
+            ...getBoundedRuntimeStringContext("storeId", storeId),
+        });
+    }
     if (isPlatformEntityBlocked(store.data)) {
         return invalidAccess(request, session, "STORE_BLOCKED", {
             ...getBoundedRuntimeStringContext("storeId", storeId),
+        });
+    }
+    if (!platformAccessSession && store.data && !tenant.documentId) {
+        return invalidAccess(request, session, "TENANT_NOT_FOUND", {
+            ...getBoundedRuntimeStringContext("storeId", storeId),
+            ...getBoundedRuntimeStringContext("tenantId", tenantId),
+        });
+    }
+    if (!platformAccessSession && store.data && tenant.documentId && !isStoreOwnedByTenant(store.data, tenant.documentId)) {
+        return invalidAccess(request, session, "STORE_TENANT_MISMATCH", {
+            ...getBoundedRuntimeStringContext("storeId", storeId),
+            ...getBoundedRuntimeStringContext("tenantId", tenantId),
         });
     }
 

@@ -35,10 +35,10 @@ function verifySearchBoundary() {
   assertIncludes(searchRoute, 'const HELP_CENTER_SEARCH_MAX_BODY_BYTES = 64 * 1024;', 'Help Center search API request cap');
   assertIncludes(searchRoute, 'readBoundedJsonBody(request, HELP_CENTER_SEARCH_MAX_BODY_BYTES)', 'Help Center search API bounded body parser');
   assertIncludes(searchRoute, 'getSafeZodValidationDetails(error)', 'Help Center search API safe validation details');
-  assertIncludes(searchRoute, 'isAnswerlatticeSupportClientRoute(refererUrl?.pathname)', 'MenuList Help Center Answerlattice route detector');
+  assertNotIncludes(searchRoute, 'isAnswerlatticeSupportClientRoute(refererUrl?.pathname)', 'MenuList Help Center server auth must not trust the Referer pathname');
   assertIncludes(searchRoute, 'resolveAnswerlatticeSessionScope(session)', 'MenuList Help Center Answerlattice scoped account check');
   assertIncludes(searchRoute, 'getAnswerlatticeScopedSession(session)', 'MenuList Help Center Answerlattice scoped session');
-  assertIncludes(searchRoute, "source: 'help_center_search'", 'Help Center search AI operation source');
+  assertIncludes(searchRoute, "mountContext: 'help_center'", 'Help Center search accounting and runtime source');
   assertIncludes(searchRoute, 'answerlattice_search_operation_log_failed', 'Help Center search operation-log failure code');
   assertIncludes(searchRoute, 'answerlattice_help_center_search_failed', 'Help Center search top-level failure code');
   assertNotIncludes(searchRoute, 'request.json()', 'Help Center search API unbounded JSON parser');
@@ -107,20 +107,23 @@ function verifyTicketBoundary() {
   assertIncludes(ticketsDal, 'const sessionScope = getRequiredSessionSupportTicketScope(session);', 'Support ticket store reads require normalized session scope');
   assertIncludes(ticketsDal, 'where("tId", "==", sessionScope.tId)', 'Store ticket read tenant scope');
   assertIncludes(ticketsDal, 'where("sId", "==", sessionScope.sId)', 'Store ticket read store scope');
-  assertIncludes(ticketsDal, 'requireSupportTicketMutationScope', 'Support ticket mutation scope guard');
+  assertIncludes(ticketsDal, 'requireSupportTicketMutationContext', 'Support ticket session/mutation scope guard');
+  assertIncludes(ticketsDal, 'requirePersistedTicket', 'Support ticket transaction persisted scope/schema guard');
   assertIncludes(ticketsDal, 'getSessionSupportTicketScope(session)', 'Support ticket session scope resolver');
   assertIncludes(ticketsDal, 'support_ticket_update', 'Support ticket update scope rejection code base');
   assertIncludes(ticketsDal, 'support_ticket_message', 'Support ticket message scope rejection code base');
-  assertIncludes(ticketsDal, 'delete updateData.tId;', 'Support ticket platform partial update tenant preserve');
-  assertIncludes(ticketsDal, 'delete updateData.sId;', 'Support ticket platform partial update store preserve');
-  assertIncludes(ticketsDal, 'applySupportTicketMutationScope(updateData, mutationScope);', 'Support ticket mutation scope application');
+  assertIncludes(ticketsDal, 'const currentTicket = requirePersistedTicket(', 'Support ticket update transaction revalidates persisted scope');
+  assertNotIncludes(ticketsDal, 'applySupportTicketMutationScope', 'Support ticket must not restore retired caller scope merging');
   assertNotIncludes(ticketsDal, 'where("tId", "==", session.tId)', 'Support ticket reads must not query raw session tenant scope');
   assertNotIncludes(ticketsDal, 'where("sId", "==", session.sId)', 'Support ticket reads must not query raw session store scope');
   assertNotIncludes(ticketsDal, 'const tId = Number(session?.tId ?? session?.user?.tenantId);', 'Support ticket reads must not numeric-coerce session tenant scope');
   assertNotIncludes(ticketsDal, 'const sId = Number(session?.sId ?? session?.user?.storeId);', 'Support ticket reads must not numeric-coerce session store scope');
 
   assertIncludes(firestoreRules, 'match /supportTickets/{docId}', 'Answerlattice support ticket rules block');
-  assertIncludes(firestoreRules, 'allow update: if isAnswerlatticeScopedUpdateWithSupportControl();', 'Answerlattice support ticket scoped update rule');
+  assertIncludes(firestoreRules, 'allow create: if isAnswerlatticeScopedCreateWithSupportControl()\n        && isValidAnswerlatticeSupportTicketCreate(request.resource.data);', 'Answerlattice support ticket scoped create/schema rule');
+  assertIncludes(firestoreRules, 'allow update: if isAnswerlatticeScopedUpdateWithSupportControl()\n        && isValidAnswerlatticeSupportTicketUpdate(resource.data, request.resource.data);', 'Answerlattice support ticket scoped update/schema rule');
+  assertIncludes(firestoreRules, "allow delete: if isAuthenticated() && isPlatformAdmin() && resource.data.pId == 'AL';", 'Answerlattice support ticket platform-only delete rule');
+  assertNotIncludes(firestoreRules, 'allow update: if isAnswerlatticeScopedUpdateWithSupportControl();', 'Answerlattice support ticket update must not bypass persisted transition validation');
   assertIncludes(firestoreRules, 'request.resource.data.tId == resource.data.tId', 'Answerlattice rules stable tenant scope');
   assertIncludes(firestoreRules, 'request.resource.data.sId == resource.data.sId', 'Answerlattice rules stable store scope');
 

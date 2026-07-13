@@ -3,18 +3,32 @@ export type FontPresetsType = {
     code: string;
     blackTextUrl: string;
     whiteTextUrl: string;
-    size: string;
+    size: string | number;
     type: string;
     fileUrl: string;
     id?: string;
-    index: number
+    index: number;
+    fontSize?: number;
+    width?: number;
+    height?: number;
+    uid?: string;
 }
 export type AssetsCategoryType = {
-    id?: any,
+    id?: string | number,
     active: boolean,
     name: string,
     preview: string,
-    previewType: "jpeg" | "png" | "svg",
+    previewType:
+        | "gif"
+        | "jpeg"
+        | "png"
+        | "svg"
+        | "webp"
+        | "image/gif"
+        | "image/jpeg"
+        | "image/png"
+        | "image/svg+xml"
+        | "image/webp",
     tags: string,
     subCategories?: AssetsCategoryType[],
     items?: AssetsCategoryType[],

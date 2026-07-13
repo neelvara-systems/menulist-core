@@ -1,5 +1,6 @@
 import DateTimeDisplay from '@atoms/DateTimeDisplay';
 import { addFeedback, getLatestFeedbackForUser } from '@database/feedback';
+import type { AnswerlatticeFeedbackSubmission } from '@lib/answerlattice/feedbackBoundary';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { Feedback } from '@type/feedback';
@@ -60,9 +61,9 @@ const ShareFeedbackView = () => {
         fetchLatestFeedback();
     }, [dispatch]);
 
-    const handleSendFeedback = async (values: any) => {
-        const feedbackType = steps[currentStep].key as Feedback['type'];
-        const feedbackPayload: Partial<Feedback> = {
+    const handleSendFeedback = async (values: Record<string, unknown>) => {
+        const feedbackType = steps[currentStep].key as AnswerlatticeFeedbackSubmission['type'];
+        const feedbackPayload = {
             type: feedbackType,
             rating: values.rating,
             comment: values.comment,

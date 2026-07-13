@@ -3,7 +3,7 @@
 **Sub-Feature of:** Client Menu  
 **Document Type:** Technical Implementation  
 **Status:** ✅ Implemented  
-**Last Updated:** June 3, 2026
+**Last Updated:** July 12, 2026
 
 ---
 
@@ -11,8 +11,16 @@
 
 ```
 src/lib/analytics/
-└── unified.ts                        # Core tracking logic
+├── unified.ts                        # Core tracking logic
+├── browserState.ts                   # Exact session-storage DTOs
+├── eventPayload.ts                   # Event authority, enums, and count contracts
+├── ga4Boundary.ts                    # Exact GA4 external projection
+├── queueBoundary.ts                  # Persisted queue admission and snapshot drain
+├── writePolicy.ts                    # Firestore field/value/semantic-key policy
 └── trackBeforeNavigate.ts            # Non-blocking final-action navigation tracking
+
+src/app/api/public/analytics/track/
+└── route.ts                          # Public target/preferences/date validation and Admin handoff
 
 src/database/analytics/
 └── index.ts                          # Firestore DAL
@@ -59,7 +67,7 @@ AnalyticsContext.trackMenuView() / trackItemView() / menuPageNew search + unavai
     ↓
 unified.ts → trackEvent()
     ↓
-Rate limit check (30 events/min)
+Rate limit check (20 events/min)
     ↓ PASS
 Debounce check (1 second window)
     ↓ PASS
@@ -70,9 +78,11 @@ trackFirebaseEvent()
     ↓
 database/analytics → trackAnalyticsEvent()
     ↓
-Local analytics queue (`localStorage` persisted, 15s / 20-event flush)
+Local analytics queue (`localStorage` persisted, 30s / 40-event flush)
     ↓
-Firestore: analytics/{tId}_{sId}_{projectId}_daily_{storeLocalDate}
+POST /api/public/analytics/track (cached target/policy validation)
+    ↓
+Admin write: analytics/{tId}_{sId}_{projectId}_daily_{storeLocalDate}
     └── Includes query metadata: tId, sId, projectId, grain, surface, localDate, storeTimeZone
 ```
 
@@ -86,7 +96,7 @@ Firestore: analytics/{tId}_{sId}_{projectId}_daily_{storeLocalDate}
 // src/lib/analytics/unified.ts
 
 const RATE_LIMIT = {
-  MAX_EVENTS_PER_MINUTE: 30,
+  MAX_EVENTS_PER_MINUTE: 20,
   DEBOUNCE_MS: 1000,
   MENU_VIEW_COOLDOWN_MS: 30000,
 };
@@ -171,7 +181,7 @@ const handleMenuAction = (menuAction: 'call' | 'whatsapp' | 'directions' | 'rese
 - Reuses existing `publicPresence` action URLs and visibility toggles
 - Avoids tracking hover, scroll, and intermediate UI states
 - The same tracking path is reused in the footer and unavailable-item PDP recovery actions; zero-result search now stays retrieval-only and does not duplicate footer CTAs
-- Writes immediately instead of waiting for the passive-event queue, because these are owner-facing conversion signals.
+- Enters the same coalesced browser queue immediately; page-hide/navigation handling attempts delivery without adding a second Firestore write path.
 - Public menu and OBP final-action links use `trackBeforeNavigate.ts` to wait up to 800ms for tracking on same-tab navigation while preserving modifier-click and `_blank` browser behavior. Failed tracking calls log `public_link_navigation_tracking_failed` with fixed reason labels and bounded href/target presence-length metadata only; navigation still proceeds.
 - Shared source-attribution diagnostics: `withAnalyticsSource()` still returns the same valid attributed URL when parsing succeeds and still uses the manual encoded `entry_source` fallback when parsing fails. Failed URL parsing logs `analytics_source_attribution_url_parse_failed` with source URL and entry-source presence-length metadata, URL shape booleans, and a capped per-shape reporting guard only. It creates no analytics Firestore write, event stream, Storage operation, Cloud Function, API route, cache invalidation, rule, index, or deploy requirement.
 
@@ -188,7 +198,9 @@ MENU_ACTION_CLICK -> engagedSessions + intentSessions + actionSessions
 
 - Milestone state lives in `sessionStorage`, keyed by tenant/store/project/local date/session id.
 - Milestones are attached to existing Firestore counter writes; there is no raw event table and no extra event document.
-- If storage is unavailable, full, blocked, or malformed, normal menu/item/search/action counters still write, but milestone/source/filter/search de-duplication or attribution persistence is skipped.
+- Session milestone, entry-source, and active-filter payloads are parsed from `unknown` into bounded exact DTOs. Malformed state falls back to an empty session state instead of throwing or suppressing the current event.
+- Milestone/source state is persisted only after the current counter payload is accepted into the browser queue. A rejected scope, empty policy result, or full queue does not consume the session milestone.
+- If storage is unavailable or blocked, normal menu/item/search/action counters can still enter the in-memory queue, but browser-reload recovery and session attribution persistence are unavailable.
 - Session ID storage diagnostics: failed anonymous session-id `sessionStorage` get/refresh/clear paths log bounded `analytics_session_get_failed`, `analytics_session_refresh_failed`, and `analytics_session_clear_failed` diagnostics with storage-key and session-value presence-length metadata only. If session lookup fails, the existing fresh anonymous session-id fallback remains browser-local and creates no fallback Firestore write.
 - Failed milestone/source/filter/search `sessionStorage` read/write/remove paths log bounded `analytics_session_milestones_*`, `analytics_session_source_*`, `analytics_active_filter_*`, and `analytics_search_dedup_*` diagnostics with storage-key and payload presence-length metadata plus small counts/booleans only.
 - OBP language-adoption de-dupe is scoped by tenant/store/store-local date in `OBPAnalytics`; failed storage read/write paths log bounded `obp_analytics_language_storage` diagnostics and create no fallback Firestore write.
@@ -274,22 +286,17 @@ MENU_ACTION_CLICK -> engagedSessions + intentSessions + actionSessions
 // src/database/analytics/index.ts
 
 export async function trackAnalyticsEvent(
-  updateData: Record<string, any>,
-  tenantId: number,
-  storeId: number,
+  updateData: Record<string, unknown>,
+  tenantId: string | number,
+  storeId: string | number,
   projectId: string,
-  storeTimeZone?: string
+  storeTimeZone?: string,
+  businessDayEndTime?: string
 ) {
-  const date = getAnalyticsDateKey(new Date(), storeTimeZone);
-  if (typeof window !== 'undefined') {
-    // Public customer analytics bypasses direct Firestore writes. Anonymous
-    // menu users flush the coalesced queue through /api/public/analytics/track,
-    // where the server validates the target and writes with Admin SDK.
-    enqueueAnalyticsWrite(updateData, tenantId, storeId, projectId, date, storeTimeZone);
-    return true;
-  }
-
-  await writeAnalyticsEventNow(updateData, tenantId, storeId, projectId, date, storeTimeZone);
+  const scope = normalizeAnalyticsWriteScope(tenantId, storeId, projectId);
+  if (!scope || typeof window === 'undefined') return false;
+  const date = getBusinessAnalyticsDateKey(new Date(), storeTimeZone, businessDayEndTime);
+  return enqueueAnalyticsWrite(updateData, scope, date, storeTimeZone, businessDayEndTime);
 }
 ```
 
@@ -304,6 +311,14 @@ export async function trackAnalyticsEvent(
 - Customer menu UTM map-key boundary: `src/lib/analytics/unified.ts` keeps intentional campaign parameters (`utm_source`, `utm_medium`, `utm_campaign`, and `utm_content`) on the existing menu-view and OBP-view writes, but every accepted UTM value passes through `normalizeAnalyticsMapKey()` before it becomes a `viewsBySource`, `viewsByMedium`, `viewsByCampaign`, or `viewsByContent` Firestore map-key suffix. Malformed or empty normalized values are skipped for that counter. This prevents public URL query text from creating raw dynamic Firestore field paths while preserving campaign attribution for valid link-level UTM values. No separate write path, owner setting, API route, Cloud Function, rule, index, or deploy requirement is added.
 - OBP aggregation map-key boundary: `functions/src/analytics/obpAnalyticsAggregation.ts` normalizes recovered daily and cached dashboard map keys before late-correction rollups build dotted Firestore update paths for lifetime OBP maps. Legacy dotted/raw map keys are folded into the same lowercase `[a-z0-9_-]` key shape used by live analytics writes, duplicate normalized keys are summed, and empty normalized keys are skipped. This changes late-correction aggregation only; live customer-page writes keep the same write count.
 - `src/database/analytics/index.ts` uses the same bounded diagnostics for queue flush, browser-local queue persistence, persisted queue recovery, missing identity, enqueue, and summary update failures. Queue persistence failures log only phase, queue counts, serialized-payload presence/length, and normalized source error metadata; raw queued analytics payloads are not logged.
+- Persisted queue entries are treated as untrusted input. Restore recomputes the queue key from exact positive tenant/store IDs, a canonical project ID, and a current-or-previous business date; applies the shared write policy; rejects empty, over-wide, stale, future, duplicate, expired, or malformed entries; and caps restored entries, retry count, age, and serialized storage size.
+- Queue flushes snapshot the counters being sent. A successful response subtracts only that snapshot, preserving events merged while the request was in flight. Retryable failures use bounded exponential backoff; permanent 4xx failures, expired queues, and exhausted retries are dropped instead of creating an infinite request loop.
+- Internal session IDs and arbitrary `TrackingData` properties do not enter GA4 default events. `ga4Boundary.ts` projects exact bounded primitive parameters and validates commerce item rows before external serialization. Server-side callers no longer attempt browser-only GA4 delivery for the subdomain-lock signal; the existing bounded store diagnostic remains the operational record.
+- Convenience trackers merge caller context through `buildAuthoritativeAnalyticsPayload()`: explicit item, action, search, store, and reserved `projectId='obp'` arguments always win. Caller-supplied `additionalData` cannot replace event identity or move an OBP event to another project.
+- Fixed dimensions are runtime-validated before projection and validated again by `writePolicy.ts`. Unknown action, Decision Block, source, open-hours, PWA, OBP surface/link/share, shortcut, hour, language, or filter values cannot create arbitrary Firestore map fields through the public route. Dynamic item/category/location/UTM/search dimensions retain dedicated bounded grammars.
+- Zero-result demand is recorded only when `searchResults` is a finite non-negative safe integer equal to zero. Missing, negative, fractional, infinite, or `NaN` counts do not become false zero-result demand and do not cross into GA4 count parameters.
+- Opt-in coordinate analytics use integer-tenths keys such as `geo_191_729`, preserving the existing coarse bucket without Firestore field-path dots. Multi-word and non-Latin search terms use a separate bounded dynamic-key grammar; dotted, control, path-shaped, and script-shaped terms remain rejected.
+- The public route accepts only the current or immediately previous trusted store business date. A client-supplied future date is rejected even when it is only one day ahead.
 - Public analytics route failures log `public_analytics_track_failed` with tenant/store/project presence and length metadata, update-field count, date-request presence, and source error name/code/status metadata only. They must not pass raw route exceptions or raw tenant/store/project IDs to `secureError()`.
 - Public analytics target validation must reject inactive, deleted, platform-blocked, or tenant-blocked stores before preference filtering or Admin SDK writes. The target validator reads the tenant document on 300-second cache misses only; this keeps blocked tenants from refreshing anonymous analytics while preserving the existing coalesced daily-doc write model.
 - Public analytics tenant/store document ID boundary: `POST /api/public/analytics/track` normalizes `tenantId` and `storeId` through `normalizePublicAnalyticsNumericDocumentId()` after bounded body/schema validation and before cached target reads or daily analytics writes. Malformed, reserved, whitespace-mutated, path-shaped, decimal, zero, negative, unsafe, nonnumeric, or scientific-notation tenant/store IDs fail with the existing validation error before `stores/{storeId}`, `tenants/{tenantId}`, `platformSummary/projects_{storeId}`, or `analytics/{tenantId}_{storeId}_{projectId}_daily_{date}` refs are built.
@@ -549,9 +564,9 @@ for (const store of storesForThisHour) {
 
 1. Open menu at `{subdomain}.menulist.ai`
 2. Open browser DevTools → Network
-3. Filter for Firestore writes
+3. Filter for `POST /api/public/analytics/track`
 4. Scroll, click items, use filters
-5. Verify writes to `analytics/{tId}_{sId}_{projectId}_daily_{date}`
+5. Verify the accepted request produces the scoped `analytics/{tId}_{sId}_{projectId}_daily_{date}` Admin write in the Firestore emulator or QA logs
 
 ### Manual Test: Rate Limiting
 
@@ -585,5 +600,9 @@ firebase functions:shell
 | Old docs not deleted      | TTL cleanup failed    | Manual cleanup                   |
 
 ---
+
+Public analytics write authority boundary: browser events are filtered by the shared field policy, queued for 30 seconds or 40 events, and sent only to `POST /api/public/analytics/track`. The route rejects inactive, deleted, or platform-blocked stores and tenants, rechecks project activity and analytics preferences, applies the same field policy again, and performs the Admin write. Numeric counters accept only bounded finite numbers, tracking-control scalars accept only booleans, and label maps accept only bounded strings. Direct client creates, updates, and deletes in `analytics` are denied by Firestore rules.
+
+Settlement integrity boundary: the nightly Functions pipeline uses the scheduler-provided store-local settlement date for summary idempotency, validates daily document ID and embedded tenant/store/project/date metadata before aggregation, validates compact cached daily rows before rollup/delta reuse, applies late-event summary increments and dashboard-baseline replacement in one transaction, and deletes expired daily documents through fresh bounded 400-document batches. The manual trigger uses the same daily contract and reports whether the idempotent summary transaction actually changed state.
 
 _Document Status: ✅ IMPLEMENTED_

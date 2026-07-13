@@ -1,7 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { message } from 'antd';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
 import { getBoundedHookStringContext, logHookFailure } from '@hook/hookDiagnostics';
+import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
+import type { ContentFeedbackStorageScope } from '@lib/contentFeedbackStorage';
 
 export type ContentType = 'article' | 'changelog' | 'faq' | 'workflow';
 export type FeedbackType = 'like' | 'dislike';
@@ -15,11 +17,17 @@ interface FeedbackConfig {
 }
 
 interface FeedbackHandlers {
-    updateFeedback: (contentId: string, type: FeedbackType, increment?: boolean, pageId?: string) => Promise<any>;
-    storeFeedback: (userId: string, contentId: string, type: FeedbackType) => void;
-    getStoredFeedback: (userId: string, contentId: string) => FeedbackType | null;
-    removeStoredFeedback: (userId: string, contentId: string) => void;
-    submitComment?: (contentType: ContentType, contentId: string, comment: string, sentiment: FeedbackType, action?: 'added' | 'removed') => Promise<any>;
+    updateFeedback: (
+        contentId: string,
+        type: FeedbackType,
+        increment?: boolean,
+        pageId?: string,
+        comment?: string,
+        action?: 'added' | 'removed',
+    ) => Promise<unknown>;
+    storeFeedback: (scope: ContentFeedbackStorageScope, userId: string, contentId: string, type: FeedbackType) => void;
+    getStoredFeedback: (scope: ContentFeedbackStorageScope, userId: string, contentId: string) => FeedbackType | null;
+    removeStoredFeedback: (scope: ContentFeedbackStorageScope, userId: string, contentId: string) => void;
 }
 
 interface UseFeedbackReturn {
@@ -27,6 +35,7 @@ interface UseFeedbackReturn {
     dislikes: number;
     feedbackGiven: FeedbackType | null;
     isFeedbackModalVisible: boolean;
+    isSubmitting: boolean;
     handleFeedback: (type: FeedbackType) => Promise<void>;
     handleFeedbackSubmit: (comment: string) => Promise<void>;
     setIsFeedbackModalVisible: (visible: boolean) => void;
@@ -50,33 +59,55 @@ export const useFeedback = (
     config: FeedbackConfig,
     handlers: FeedbackHandlers
 ): UseFeedbackReturn => {
-    const { user } = useClientAuthSession() || {};
+    const session = useClientAuthSession();
+    const { user } = session || {};
+    const resolvedScope = resolveAnswerlatticeSessionScope(session);
+    const storageScope = resolvedScope
+        ? { tId: resolvedScope.tenantId, sId: resolvedScope.storeId }
+        : null;
     const { contentType, contentId, pageId, initialLikes = 0, initialDislikes = 0 } = config;
     const {
         updateFeedback,
         storeFeedback,
         getStoredFeedback,
         removeStoredFeedback,
-        submitComment
     } = handlers;
 
     const [likes, setLikes] = useState(initialLikes);
     const [dislikes, setDislikes] = useState(initialDislikes);
     const [feedbackGiven, setFeedbackGiven] = useState<FeedbackType | null>(null);
     const [isFeedbackModalVisible, setIsFeedbackModalVisible] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const mutationInFlightRef = useRef(false);
 
-    // Load feedback status from localStorage on mount
+    const beginMutation = () => {
+        if (mutationInFlightRef.current) return false;
+        mutationInFlightRef.current = true;
+        setIsSubmitting(true);
+        return true;
+    };
+
+    const endMutation = () => {
+        mutationInFlightRef.current = false;
+        setIsSubmitting(false);
+    };
+
     useEffect(() => {
-        if (!user?.id) return;
-        const feedbackStatus = getStoredFeedback(user.id, contentId);
-        if (feedbackStatus) {
-            setFeedbackGiven(feedbackStatus);
-        }
-    }, [contentId, user?.id, getStoredFeedback]);
+        setLikes(initialLikes);
+        setDislikes(initialDislikes);
+        setFeedbackGiven(null);
+    }, [contentId, initialDislikes, initialLikes, storageScope?.tId, storageScope?.sId]);
+
+    // Load feedback status after content/workspace state is reset.
+    useEffect(() => {
+        if (!user?.id || !storageScope) return;
+        const feedbackStatus = getStoredFeedback(storageScope, user.id, contentId);
+        setFeedbackGiven(feedbackStatus);
+    }, [contentId, user?.id, storageScope?.tId, storageScope?.sId, getStoredFeedback]);
 
     const handleFeedback = async (type: FeedbackType) => {
         // Check authentication
-        if (!user?.id) {
+        if (!user?.id || !storageScope) {
             message.warning('Please log in to provide feedback.');
             return;
         }
@@ -92,6 +123,7 @@ export const useFeedback = (
 
         // Allow undo if clicking the same button
         if (feedbackGiven === type) {
+            if (!beginMutation()) return;
             // Undo feedback
             if (type === 'like') {
                 setLikes(prev => prev - 1);
@@ -99,23 +131,16 @@ export const useFeedback = (
                 setDislikes(prev => prev - 1);
             }
             setFeedbackGiven(null);
-            removeStoredFeedback(user.id, contentId);
+            removeStoredFeedback(storageScope, user.id, contentId);
 
             try {
                 // Decrement the count in database
-                const promises: Promise<any>[] = [
-                    updateFeedback(contentId, type, false, pageId)
-                ];
-                if (submitComment) {
-                    promises.push(submitComment(contentType, contentId, '', type, 'removed'));
-                }
-                await Promise.all(promises);
+                await updateFeedback(contentId, type, false, pageId, '', 'removed');
                 message.success('Feedback removed.');
             } catch (error) {
                 logHookFailure('answerlattice_feedback_remove_failed', error, {
                     contentType,
                     feedbackType: type,
-                    hasSubmitComment: Boolean(submitComment),
                     ...getBoundedHookStringContext('contentId', contentId),
                     ...getBoundedHookStringContext('pageId', pageId),
                 });
@@ -127,7 +152,9 @@ export const useFeedback = (
                     setDislikes(prev => prev + 1);
                 }
                 setFeedbackGiven(type);
-                storeFeedback(user.id, contentId, type);
+                storeFeedback(storageScope, user.id, contentId, type);
+            } finally {
+                endMutation();
             }
             return;
         }
@@ -142,31 +169,27 @@ export const useFeedback = (
         if (type === 'dislike') {
             setIsFeedbackModalVisible(true);
         } else {
+            if (!beginMutation()) return;
             // Handle like
             setLikes(prev => prev + 1);
             setFeedbackGiven(type);
-            storeFeedback(user.id, contentId, type);
+            storeFeedback(storageScope, user.id, contentId, type);
 
             try {
-                const promises: Promise<any>[] = [
-                    updateFeedback(contentId, type, true, pageId)
-                ];
-                if (submitComment) {
-                    promises.push(submitComment(contentType, contentId, '', type, 'added'));
-                }
-                await Promise.all(promises);
+                await updateFeedback(contentId, type, true, pageId, '', 'added');
             } catch (error) {
                 logHookFailure('answerlattice_feedback_submit_failed', error, {
                     contentType,
                     feedbackType: type,
-                    hasSubmitComment: Boolean(submitComment),
                     ...getBoundedHookStringContext('contentId', contentId),
                     ...getBoundedHookStringContext('pageId', pageId),
                 });
                 message.error('Failed to submit feedback. Please try again.');
                 setLikes(prev => prev - 1);
                 setFeedbackGiven(null);
-                removeStoredFeedback(user.id, contentId);
+                removeStoredFeedback(storageScope, user.id, contentId);
+            } finally {
+                endMutation();
             }
         }
     };
@@ -174,40 +197,33 @@ export const useFeedback = (
     const handleFeedbackSubmit = async (comment: string) => {
         setIsFeedbackModalVisible(false);
 
-        if (!user?.id) {
+        if (!user?.id || !storageScope) {
             message.warning('Please log in to provide feedback.');
             return;
         }
+        if (!beginMutation()) return;
 
         setDislikes(prev => prev + 1);
         setFeedbackGiven('dislike');
-        storeFeedback(user.id, contentId, 'dislike');
+        storeFeedback(storageScope, user.id, contentId, 'dislike');
 
         try {
-            const promises: Promise<any>[] = [
-                updateFeedback(contentId, 'dislike', true, pageId)
-            ];
-
-            // Add comment submission if handler provided
-            if (submitComment) {
-                promises.push(submitComment(contentType, contentId, comment, 'dislike', 'added'));
-            }
-
-            await Promise.all(promises);
+            await updateFeedback(contentId, 'dislike', true, pageId, comment, 'added');
             message.success('Thank you for your feedback!');
         } catch (error) {
             logHookFailure('answerlattice_feedback_comment_submit_failed', error, {
                 contentType,
                 commentPresent: comment.trim().length > 0,
                 commentLength: comment.length,
-                hasSubmitComment: Boolean(submitComment),
                 ...getBoundedHookStringContext('contentId', contentId),
                 ...getBoundedHookStringContext('pageId', pageId),
             });
             message.error('Failed to submit feedback. Please try again.');
             setDislikes(prev => prev - 1);
             setFeedbackGiven(null);
-            removeStoredFeedback(user.id, contentId);
+            removeStoredFeedback(storageScope, user.id, contentId);
+        } finally {
+            endMutation();
         }
     };
 
@@ -216,6 +232,7 @@ export const useFeedback = (
         dislikes,
         feedbackGiven,
         isFeedbackModalVisible,
+        isSubmitting,
         handleFeedback,
         handleFeedbackSubmit,
         setIsFeedbackModalVisible,

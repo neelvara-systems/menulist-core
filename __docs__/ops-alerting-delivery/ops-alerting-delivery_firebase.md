@@ -1,7 +1,7 @@
 # Ops Alerting Delivery — Firebase Cost Analysis
 
 **Created:** February 20, 2026
-**Last Updated:** June 30, 2026
+**Last Updated:** July 13, 2026
 
 ---
 
@@ -17,6 +17,18 @@
 | Platform WhatsApp delivery | 0 Firestore cost | Provider/conversation cost only |
 | **Total per alert delivery** | | **~₹0.003** |
 
+### Platform Ops Actions And Monitor
+
+| Operation | Bounded Firebase impact |
+| --- | --- |
+| Alert mute | 1 direct current-user authorization read + 1 `ops_config/system` merge write |
+| SAFE_MODE changed state | 1 direct current-user authorization read + 1 transactional `ops_config/system` read + 1 config write + 1 `systemAlerts` write; alert delivery may add the existing mute read |
+| SAFE_MODE repeated current state | 1 direct current-user authorization read + 1 transactional config read; 0 config/alert writes |
+| Platform notification refresh | 1 direct current-user authorization read + up to 150 recent `systemAlerts` reads; 0 aggregation queries |
+| Selected alert outside recent window | Adds 1 direct `systemAlerts/{eventId}` read |
+
+All ops read/action limiters fail closed before these Firebase business operations when the shared limiter provider is unavailable. Recent alert counts describe the same bounded window and do not grow with collection history.
+
 Note: The alert creation itself (writing to `systemAlerts` collection) is already accounted for in the existing alert framework. Email/WhatsApp delivery uses existing provider integrations and does not create an extra Firestore collection or retry queue.
 
 Deployment note: WhatsApp outbound secrets are currently included in `SECRET_GROUPS.PLATFORM_ALERT_DELIVERY`. SMTP and Telegram stay runtime-gated until their Secret Manager values are created in `menulist-qa`; adding them to the function `secrets:` option before the values exist blocks Firebase deploy validation.
@@ -31,8 +43,8 @@ Deployment note: WhatsApp outbound secrets are currently included in `SECRET_GRO
 | Count aggregations | 5 count queries | Manual refresh only |
 | Direct alert read | 1 document read | Only when opening one detail row |
 | Acknowledge | 1 document write | Operator action |
-| Record manual handoff | 1 document write | Operator action |
-| Create manual alert | 1 alert write + mute-check read when alert delivery is enabled | Operator action |
+| Record manual handoff | 1 document read + 1 write; identical action replay is 1 read + 0 writes | Operator action |
+| Create manual alert | 1 atomic alert create + mute-check read when alert delivery is enabled; identical action replay adds 0 writes and 0 delivery work | Operator action |
 
 Dashboard filters are applied over the bounded recent-alert window to avoid composite indexes and avoid unbounded scans. The dashboard does not open realtime listeners.
 

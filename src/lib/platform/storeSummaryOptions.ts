@@ -1,4 +1,5 @@
 import { parseSummaryStores } from '@lib/firestore/parseSummaryStores';
+import { normalizeMultiOutletNumericDocumentId } from '@lib/multiOutlet/projectIdBoundary';
 
 export interface PlatformStoreSummaryOption {
     key: string;
@@ -24,23 +25,25 @@ export function buildPlatformStoreSummaryOptions(summary: unknown): PlatformStor
     const parsedStores = parseSummaryStores(summary);
 
     return Object.entries(parsedStores)
-        .map(([sId, data]: [string, any]) => {
-            const tId = data?.tId != null ? String(data.tId) : '';
+        .map(([sId, data]) => {
+            const storeScope = normalizeMultiOutletNumericDocumentId(sId);
+            const tenantScope = normalizeMultiOutletNumericDocumentId(data.tId);
+            if (!storeScope || !tenantScope) return null;
             const option: PlatformStoreSummaryOption = {
-                key: sId,
+                key: storeScope.documentId,
                 label: '',
-                sId,
-                tId,
-                name: data?.name || '',
-                tenantName: data?.tenantName || '',
-                active: data?.active,
-                city: data?.city || '',
-                businessType: data?.businessType || '',
+                sId: storeScope.documentId,
+                tId: tenantScope.documentId,
+                name: typeof data.name === 'string' ? data.name : '',
+                tenantName: typeof data.tenantName === 'string' ? data.tenantName : '',
+                active: typeof data.active === 'boolean' ? data.active : undefined,
+                city: typeof data.city === 'string' ? data.city : '',
+                businessType: typeof data.businessType === 'string' ? data.businessType : '',
             };
             option.label = buildStoreLabel(option);
             return option;
         })
-        .filter((store) => store.tId)
+        .filter((store): store is PlatformStoreSummaryOption => Boolean(store))
         .sort((a, b) => {
             const tenantCompare = (a.tenantName || '').localeCompare(b.tenantName || '');
             if (tenantCompare !== 0) return tenantCompare;

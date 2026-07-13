@@ -1,6 +1,6 @@
 # AI Enhancement Packs — Mobile Support
 
-**Last Updated:** May 20, 2026
+**Last Updated:** July 11, 2026
 **Decision:** ✅ MOBILE SUPPORTED — billing and enhancement packs are handled on mobile through the same Razorpay + subscription contract as desktop
 
 ---
@@ -15,6 +15,10 @@
 | **Value** | ✅ PASS | Phone-only owners must be able to recover billing and add enhancement capacity without desktop |
 
 **Decision:** Mobile supported. Enhancement pack purchase remains an owner billing action, so it lives in `MobileBillingScreen` and reuses the desktop payment handler instead of creating a mobile-only DAL.
+
+## Credit Presentation
+
+Mobile and desktop must use the same transparent Pack contract: 250 credits, with current examples of up to 50 generated menu images or 250 description rewrites. Examples come from `src/data/shared/contentCreditPolicy.ts`. Do not expose monthly included capacity, provider cost, margin, internal tax valuation, or overdraft.
 
 ---
 

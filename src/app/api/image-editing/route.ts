@@ -5,7 +5,7 @@ import { AI_ACTIONS_TYPES, CHARGE_PER_CREDIT, TOKENS_PER_CREDIT } from "@constan
 import { PERMISSIONS } from "@constant/permissions";
 import { GenerateContentResponse, Modality } from "@google/genai";
 import { finalizeAiOperationAccounting } from "@lib/ai/accounting";
-import { checkAICapacity } from "@lib/ai/capacityCheck";
+import { checkAICapacity, refundAiCapacityReservationSafely, reserveAiCapacity } from "@lib/ai/capacityCheck";
 import { summarizeImageProviderResponse } from "@lib/ai/imageOperationLogging";
 import { getImageAsBase64, type ImageFetchStorageScope } from "@lib/apiUtils";
 import { genAIClient } from "@lib/google/genAi";
@@ -108,6 +108,7 @@ export const POST = withAuth(async (request, session) => {
     const requestId = crypto.randomUUID();
     let projectIdForLog: string | undefined;
     let fileIdForLog: string | undefined;
+    let capacityReservation: Awaited<ReturnType<typeof reserveAiCapacity>> | null = null;
 
     try {
         // �️ SAFE_MODE: Block expensive operations during system maintenance
@@ -203,6 +204,16 @@ export const POST = withAuth(async (request, session) => {
                 code: capacityCheck.reason,
             }, { status: 402 });
         }
+        capacityReservation = await reserveAiCapacity({
+            action: ACTION,
+            pId: session.pId ?? session.user?.pId ?? session.user?.productId,
+            sId: session.sId,
+            source: '/api/image-editing',
+            subscription: capacityCheck.subscription!,
+            tId: session.tId,
+            uId: session.uId ?? session.user?.id,
+            unitsToReserve: capacityCheck.unitsRequired,
+        });
 
         const startTime = new Date().getTime();
         const generatedPrompt = generateImageEditingPrompt(businessType, generationConfig, itemDetails);
@@ -290,12 +301,14 @@ export const POST = withAuth(async (request, session) => {
         try {
             transactionObject.unitsConsumed = getUnitCost(transactionObject.action);
             const accounting = await finalizeAiOperationAccounting({
+                capacityReservation,
                 capacitySubscription: capacityCheck.subscription,
                 context: { userId, projectId, fileId, action: transactionObject.action },
                 input: transactionObject,
                 logLabel: 'Image editing',
                 session,
             });
+            capacityReservation = null;
             transactionObject.unitsConsumed = accounting.unitsConsumed;
             transactionObject.transactionId = accounting.transactionId;
             remainingBalance = accounting.remainingBalance;
@@ -360,5 +373,10 @@ export const POST = withAuth(async (request, session) => {
         }
         await writeErrorLogEntry(LOG_FILE, error);
         return NextResponse.json({ error: 'Image editing failed' }, { status: 500 });
+    } finally {
+        await refundAiCapacityReservationSafely(capacityReservation, 'image_editing_request_did_not_settle', {
+            endpoint: '/api/image-editing',
+            requestId,
+        });
     }
 });

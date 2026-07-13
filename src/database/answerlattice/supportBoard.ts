@@ -340,7 +340,7 @@ export const createAnswerlatticeSupportBoardCard = async (data: CreateAnswerlatt
         async () => {
             const normalized = normalizeCardInput(data);
             if (!normalized.title) throw new Error('Support board card title is required');
-            const submitData = await answerlatticeRequestBodyComposer(normalized);
+            const submitData = await answerlatticeRequestBodyComposer(normalized, { isNew: true });
             const docRef = await addDoc(getCollectionRef(), submitData);
             return { ...submitData, id: docRef.id } as AnswerlatticeSupportBoardCard;
         },
@@ -361,7 +361,7 @@ export const createAnswerlatticeSupportBoardCards = async (cards: CreateAnswerla
             for (const card of limitedCards) {
                 const normalized = normalizeCardInput(card);
                 if (!normalized.title) continue;
-                const submitData = await answerlatticeRequestBodyComposer(normalized);
+                const submitData = await answerlatticeRequestBodyComposer(normalized, { isNew: true });
                 const docRef = doc(getCollectionRef());
                 batch.set(docRef, submitData);
                 created.push({ ...submitData, id: docRef.id } as AnswerlatticeSupportBoardCard);
@@ -406,13 +406,13 @@ export const updateAnswerlatticeSupportBoardCard = async (
                     const updateData = await answerlatticeRequestBodyComposer({
                         ...updatePatch,
                         ...(statusChanged ? { statuses: nextStatuses } : {}),
-                    });
+                    }, { isNew: false });
                     transaction.set(cardRef, updateData, { merge: true });
                     return updateData;
                 });
             }
 
-            const updateData = await answerlatticeRequestBodyComposer(updatePatch);
+            const updateData = await answerlatticeRequestBodyComposer(updatePatch, { isNew: false });
             await setDoc(getDocRef(cardId), updateData, { merge: true });
             return updateData;
         },
@@ -461,7 +461,7 @@ export const addAnswerlatticeSupportBoardNote = async (
                     notes,
                     notesCount: notes.length,
                     lastNoteAt: createdAt,
-                });
+                }, { isNew: false });
                 transaction.set(cardRef, updateData, { merge: true });
             });
 

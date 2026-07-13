@@ -1,8 +1,10 @@
 # AI System Layer — Product Specification
 
 **Feature:** Centralized AI Infrastructure for MenuList  
-**Status:** ✅ PRODUCTION HARDENING ACTIVE — Gateway, key failover, model constants, health checks
-**Last Updated:** June 25, 2026
+**Status:** Source-implemented and hardened — not current launch or deploy certification
+**Last Updated:** July 10, 2026
+
+> **Launch boundary:** Not current launch certification or deploy approval. This document records source-gated AI System Layer evidence only. Current MenuList approval still requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:ai-accounting`, `npm run verify:functions-deploy-preflight`, `npm run verify:menu-extraction-pipeline`, scoped Firebase deploy evidence for affected MenuList Functions, target Vercel deploy evidence for affected app routes, provider smoke with target-specific key/model/quota configuration, SAFE_MODE/rate-limit/accounting/provider-health smoke, authenticated browser/device QA for affected owner/platform surfaces, and production-host smoke. Answerlattice retains separate doctrine, credentials, Firebase target, billing/cost evidence, deploy approval, and release certification; this document cannot authorize an Answerlattice deploy or release.
 
 ---
 
@@ -305,4 +307,4 @@ These are planning estimates only. Do not treat them as production savings, laun
 
 ---
 
-_Document Status: ✅ PHASE 1 IMPLEMENTED — Key rotation + gateway live_
+_Document Status: Source-implemented and hardened; not current launch or deploy certification._

@@ -18,6 +18,7 @@ import {
     Segmented,
     Select,
     Skeleton,
+    Space,
     Switch,
     Tag,
     Tabs,
@@ -43,6 +44,7 @@ import {
     LuSmartphone,
     LuTrash2,
     LuEyeOff,
+    LuExternalLink,
 } from 'react-icons/lu';
 import {
     AnswerlatticeWidgetConfig,
@@ -85,6 +87,7 @@ import {
     toAnswerlatticeDashboardRoute,
 } from '@constant/answerlattice/navigations';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import WidgetSecurityControls from './WidgetSecurityControls';
 
 const { Title, Text, Paragraph } = Typography;
 const ANSWERLATTICE_WIDGET_MANAGEMENT_COPY_CLIPBOARD_UNAVAILABLE = 'answerlattice_widget_management_copy_clipboard_unavailable';
@@ -148,6 +151,8 @@ type WidgetActivityItem = {
     visitorId?: string | null;
     visitorName?: string | null;
     visitorEmail?: string | null;
+    visitorVerified?: boolean;
+    evidenceLinks?: Array<{ url: string; label?: string | null }>;
     widgetSessionId?: string | null;
     requestOrigin?: string | null;
     requestPath?: string | null;
@@ -269,6 +274,11 @@ const isWidgetActivityItem = (value: unknown): value is WidgetActivityItem => {
         && isOptionalNullableString(value.visitorId)
         && isOptionalNullableString(value.visitorName)
         && isOptionalNullableString(value.visitorEmail)
+        && isOptionalBoolean(value.visitorVerified)
+        && (value.evidenceLinks === undefined || (
+            Array.isArray(value.evidenceLinks)
+            && value.evidenceLinks.every(link => isRecord(link) && typeof link.url === 'string' && isOptionalNullableString(link.label))
+        ))
         && isOptionalNullableString(value.widgetSessionId)
         && isOptionalNullableString(value.requestOrigin)
         && isOptionalNullableString(value.requestPath)
@@ -1414,6 +1424,7 @@ export default function AnswerlatticeWidgetManagement({ embeddedMobile = false, 
                                                                             <Flex gap={8} wrap="wrap" align="center">
                                                                                 <Text strong style={{ wordBreak: 'break-word' }}>{item.query}</Text>
                                                                                 {item.canonical ? <Tag color="success">Canonical</Tag> : <Tag>Fallback</Tag>}
+                                                                                {item.visitorVerified ? <Tag color="processing">Verified user</Tag> : null}
                                                                                 {item.feedback ? <Tag color={item.feedback === 'good' ? 'success' : 'warning'}>{item.feedback === 'good' ? 'Useful' : 'Needs review'}</Tag> : null}
                                                                             </Flex>
                                                                         )}
@@ -1434,6 +1445,22 @@ export default function AnswerlatticeWidgetManagement({ embeddedMobile = false, 
                                                                                 ) : null}
                                                                                 {item.answerPreview ? (
                                                                                     <Text type="secondary" style={{ wordBreak: 'break-word' }}>{item.answerPreview}</Text>
+                                                                                ) : null}
+                                                                                {item.evidenceLinks && item.evidenceLinks.length > 0 ? (
+                                                                                    <Space size={[6, 6]} wrap>
+                                                                                        {item.evidenceLinks.map(link => (
+                                                                                            <Button
+                                                                                                key={link.url}
+                                                                                                href={link.url}
+                                                                                                target="_blank"
+                                                                                                rel="noopener noreferrer"
+                                                                                                icon={<LuExternalLink size={12} />}
+                                                                                                size="small"
+                                                                                            >
+                                                                                                {link.label || 'Debug evidence'}
+                                                                                            </Button>
+                                                                                        ))}
+                                                                                    </Space>
                                                                                 ) : null}
                                                                             </Flex>
                                                                         )}
@@ -1857,6 +1884,10 @@ export default function AnswerlatticeWidgetManagement({ embeddedMobile = false, 
                                             )}
                                         </Flex>
                                     </Card>
+                                </Col>
+
+                                <Col xs={24}>
+                                    <WidgetSecurityControls isMobile={isMobile} />
                                 </Col>
 
                                 <Col xs={24}>

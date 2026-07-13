@@ -11,6 +11,7 @@
  * - models.embedContent()
  * - models.generateImages()
  * - files.upload()
+ * - files.delete()
  *
  * Behavior:
  * - On 429 (rate limit): rotate to next key, retry immediately
@@ -22,6 +23,7 @@
  */
 
 import * as functions from 'firebase-functions';
+import { isSafeModeActive } from '../monitoring/safeMode';
 import { AI_PROVIDER_CONFIG_MISSING_CODE, KeyManager } from "./keyManager";
 
 // ═══════════════════════════════════════════════════════════════
@@ -36,6 +38,16 @@ const BASE_BACKOFF_DELAY_MS = 1000;
 
 /** Max delay for exponential backoff (ms) */
 const MAX_BACKOFF_DELAY_MS = 16_000;
+export const AI_PROVIDER_SAFE_MODE_ACTIVE_CODE = 'AI_PROVIDER_SAFE_MODE_ACTIVE';
+
+export class AIProviderSafeModeActiveError extends Error {
+    readonly code = AI_PROVIDER_SAFE_MODE_ACTIVE_CODE;
+
+    constructor() {
+        super(AI_PROVIDER_SAFE_MODE_ACTIVE_CODE);
+        this.name = 'AIProviderSafeModeActiveError';
+    }
+}
 const PROVIDER_ERROR_INDICATOR_KEYS = new Set([
     'code',
     'domain',
@@ -206,6 +218,8 @@ export class AIGateway {
         return {
             upload: (config: any) =>
                 this.executeWithRetry('fileUpload', config),
+            delete: (config: any) =>
+                this.executeWithRetry('fileDelete', config),
         };
     }
 
@@ -220,6 +234,16 @@ export class AIGateway {
      * 5. After MAX_RETRY_ATTEMPTS → throw last error
      */
     private async executeWithRetry(method: string, config: any): Promise<any> {
+        // Cleanup must remain available while provider generation is paused.
+        if (method !== 'fileDelete' && await isSafeModeActive()) {
+            const error = new AIProviderSafeModeActiveError();
+            this.logger.warn('[AIGateway] Provider call blocked by SAFE_MODE', {
+                failureCode: AI_PROVIDER_SAFE_MODE_ACTIVE_CODE,
+                method,
+            });
+            throw error;
+        }
+
         if (!this.keyManager.hasConfiguredKeys()) {
             const error = new Error(AI_PROVIDER_CONFIG_MISSING_CODE);
             error.name = AI_PROVIDER_CONFIG_MISSING_CODE;
@@ -243,6 +267,8 @@ export class AIGateway {
 
                 if (method === 'fileUpload') {
                     result = await client.files.upload(config);
+                } else if (method === 'fileDelete') {
+                    result = await client.files.delete(config);
                 } else {
                     result = await (client.models as any)[method](config);
                 }

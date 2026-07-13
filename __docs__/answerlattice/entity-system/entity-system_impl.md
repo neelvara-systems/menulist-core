@@ -26,8 +26,8 @@
 
 | File                                         | Functions | Purpose                                       |
 | -------------------------------------------- | --------- | --------------------------------------------- |
-| `src/database/answerlattice/entities.ts`          | 12        | Full entity CRUD + relations + search index; entity creation marks tenant-summary discovery state with bounded failure diagnostics |
-| `src/database/answerlattice/entityCandidates.ts`  | 7         | Candidate lifecycle + promote pipeline        |
+| `src/database/answerlattice/entities.ts`          | 12        | Scoped validated reads plus server-owned ontology/governance mutations |
+| `src/database/answerlattice/entityCandidates.ts`  | 7         | Scoped validated candidate reads plus server-owned review/promotion actions |
 | `src/database/answerlattice/canonicalAnswers.ts`  | 8         | Answers bound to entities via scope.entityIds |
 | `src/database/answerlattice/signalEvents.ts`      | 4         | Signal events with entityId                   |
 | `src/database/answerlattice/mutationProposals.ts` | 7         | Proposals with relatedEntityIds               |
@@ -46,9 +46,9 @@
 
 Answerlattice entity retrieval ID boundary: `src/lib/answerlattice/entityLookup.ts` and `src/lib/answerlattice/canonicalRetrieval.ts` normalize entity IDs through the resolved-entity helpers in `src/lib/answerlattice/governanceIdBoundary.ts` before direct `answerlattice_entities/{entityId}` reads. Search-index and context-boost entity IDs that are malformed, unresolved, reserved, or path-shaped are skipped before Firestore refs are built; valid entity retrieval behavior and query shapes are unchanged.
 
-Answerlattice App Entity Candidate ID Boundary: `src/database/answerlattice/entityCandidates.ts` uses `src/lib/answerlattice/entityCandidateIdBoundary.ts` before candidate approval/rejection/promote/merge refs, promotion status writes, promotion audit previous state, and promotion return metadata. Invalid candidate IDs fail with fixed errors before Firestore document refs, while valid candidate review and entity-promotion behavior is unchanged.
+Answerlattice App Entity Candidate ID Boundary: `src/database/answerlattice/entityCandidates.ts` validates persisted candidate rows on read and normalizes candidate IDs before calling the protected `review_candidate` or `promote_candidate` server action. The browser DAL performs no candidate writes. Invalid IDs fail before the server action, while the server transaction revalidates persisted workspace ownership and lifecycle state.
 
-Answerlattice App Entity DAL ID Boundary: `src/database/answerlattice/entities.ts` normalizes entity document IDs, relation document IDs, search-index document IDs, relation endpoint entity IDs, alias-sync entity IDs, and merge survivor/merged IDs before Firestore refs, query keys, compiled-context source-version IDs, and audit metadata. Invalid entity/relation/search-index IDs fail before document refs; merge not-found errors avoid raw IDs.
+Answerlattice App Entity DAL ID Boundary: `src/database/answerlattice/entities.ts` validates persisted entity/relation/search-index rows on scoped reads and normalizes action IDs before protected ontology/governance calls. Entity, relation and search-index mutations are server-owned; the browser DAL performs no direct writes. Invalid IDs fail before action dispatch, while the server transaction owns persisted scope, counters, invalidation and operation replay.
 
 ### 1.4 Hooks
 
@@ -107,7 +107,7 @@ export interface AnswerlatticeEntity {
 
 No new functions needed. Existing `updateEntity()` already handles partial updates with merge. The `aliases` field will be writable through the existing update path.
 
-Current `addEntity()` also marks the compiled context `entities` source stale and calls `markAnswerlatticeTenantHasEntities()` so the centralized scheduler can discover newly-active tenants from `platformSummary/answerlatticeTenantsSummary`. That tenant-summary marker remains non-blocking for entity creation, but the browser request now uses no-store cache, same-origin credentials, manual redirect handling, and a 16 KB bounded response reader that requires the `{ success: true }` acknowledgement shape. Failures emit `answerlattice_entity_tenant_summary_marker_failed` through Answerlattice bounded diagnostics with tenant/store/entity presence-length metadata only.
+Current `addEntity()` delegates to the protected server ontology transaction. That transaction creates entity/search-index/counter/invalidation/operation state atomically. After commit, the server awaits tenant-summary discovery synchronization. If the derived summary write fails, the request fails and the same idempotent ontology action can be retried; a replay then re-attempts the summary sync instead of silently losing scheduler discovery state.
 
 ### 2.3 Hook Changes
 
@@ -406,106 +406,28 @@ function shouldExtract(articleId: string): boolean {
 
 ## 6. Enhancement E5 — Entity Merge
 
-### 6.1 New DAL Function
+### 6.1 Server-Owned Merge Transaction
 
-**File:** `src/database/answerlattice/entities.ts` (add to existing file)
+**Files:** `src/database/answerlattice/entities.ts`, `src/lib/answerlattice/governanceClient.ts`, `src/app/api/answerlattice/governance/actions/route.ts`, `src/lib/answerlattice/governanceServer.ts`
 
-```typescript
-export const mergeEntities = async (
-  survivorId: string,
-  mergedId: string,
-  tId: number,
-  sId: number,
-): Promise<{ success: boolean; transferredRefs: number }> => {
-  return await apiCallComposer(
-    async () => {
-      // 1. Fetch both entities
-      const survivor = await getEntityById(survivorId);
-      const merged = await getEntityById(mergedId);
-      if (!survivor || !merged) throw new Error("Entity not found");
-      if (survivor.type !== merged.type)
-        throw new Error("Cannot merge entities of different types");
+The DAL sends `{ action: 'merge_entities', requestId, survivorId, mergedId }` to the protected governance route. The browser does not send trusted tenant/store/actor fields and does not update canonical answers, relations, search indexes, entities, or audit logs directly.
 
-      // 2. Transfer canonical answer references
-      const { getCanonicalAnswers, updateCanonicalAnswer } =
-        await import("@database/answerlattice/canonicalAnswers");
-      const answers = await getCanonicalAnswers(tId, sId);
-      let transferred = 0;
-      for (const answer of answers || []) {
-        if (answer.scope.entityIds.includes(mergedId)) {
-          const newEntityIds = answer.scope.entityIds
-            .map((id) => (id === mergedId ? survivorId : id))
-            .filter((id, i, arr) => arr.indexOf(id) === i); // dedupe
-          await updateCanonicalAnswer({
-            id: answer.id,
-            scope: { ...answer.scope, entityIds: newEntityIds },
-          });
-          transferred++;
-        }
-      }
+The Admin Firestore transaction:
 
-      // 3. Transfer relations
-      const relations = await getEntityRelations(tId, sId);
-      for (const rel of relations || []) {
-        if (rel.fromEntityId === mergedId || rel.toEntityId === mergedId) {
-          await deleteEntityRelation(rel.id);
-          await addEntityRelation({
-            tId,
-            sId,
-            fromEntityId:
-              rel.fromEntityId === mergedId ? survivorId : rel.fromEntityId,
-            toEntityId:
-              rel.toEntityId === mergedId ? survivorId : rel.toEntityId,
-            relationType: rel.relationType,
-          });
-        }
-      }
+1. Validates same-type active entities inside the authenticated workspace.
+2. Loads bounded canonical references, survivor active answers, inbound/outbound relations, and entity-search rows.
+3. Rewrites entity references and rejects a merge that would create overlapping active answer scopes/version windows.
+4. Rewrites or removes relations, merges aliases, updates/removes search-index rows, and deprecates the merged entity.
+5. Writes before/after canonical audit snapshots plus one idempotent `entity_merged` audit.
+6. Increments affected canonical/entity/relation source versions and marks compiled context stale.
 
-      // 4. Transfer aliases — add merged entity name as alias on survivor
-      const mergedAliases = merged.aliases || [];
-      const survivorAliases = survivor.aliases || [];
-      const combinedAliases = [
-        ...new Set([
-          ...survivorAliases,
-          ...mergedAliases,
-          merged.name.toLowerCase().trim(),
-        ]),
-      ].slice(0, 20);
-
-      await updateEntity({ id: survivorId, aliases: combinedAliases });
-
-      // 5. Mark merged entity
-      const composedData = await requestBodyComposer({ status: "deprecated" });
-      await setDoc(getEntityDocRef(mergedId), composedData, { merge: true });
-
-      // 6. Audit log
-      const { addAuditLog } = await import("@database/answerlattice/auditLogs");
-      const { Timestamp } = await import("firebase/firestore");
-      await addAuditLog({
-        tId,
-        sId,
-        action: "entity_merged",
-        entityType: "entity",
-        entityId: survivorId,
-        previousState: { mergedEntityId: mergedId, mergedName: merged.name },
-        newState: { survivorId, combinedAliases, transferredRefs: transferred },
-        performedBy: "admin",
-        timestamp: Timestamp.now(),
-      });
-
-      return { success: true, transferredRefs: transferred };
-    },
-    { survivorId, mergedId, tId, sId },
-    "mergeEntities",
-  );
-};
-```
+Reference and write caps stop the operation before Firestore transaction limits; larger migrations require a controlled server migration.
 
 ### 6.2 Hook Addition
 
 **File:** `src/hooks/answerlattice/useEntities.ts`
 
-Add `merge` function to the hook return:
+The hook calls the server-backed DAL and reports transferred answer/relation counts:
 
 ```typescript
 const merge = useCallback(
@@ -513,8 +435,10 @@ const merge = useCallback(
     try {
       const result = await mergeEntities(survivorId, mergedId, tId, sId);
       if (result?.success) {
+        const transferred = Number(result.transferredAnswers || 0)
+          + Number(result.transferredRelations || 0);
         message.success(
-          `Entities merged. ${result.transferredRefs} references transferred.`,
+          `Entities merged. ${transferred} reference(s) transferred.`,
         );
         await refresh();
       }

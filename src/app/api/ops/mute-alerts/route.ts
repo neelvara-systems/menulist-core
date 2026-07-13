@@ -8,12 +8,14 @@ export const dynamic = 'force-dynamic';
  * Request: { durationMinutes: number }
  * Response: { success: true, mutedUntil: string }
  * 
- * Firebase cost: 1 write per mute (rare — before deploys only).
+ * Cost: one fail-closed limiter operation, one current-user Firestore read,
+ * and one ops_config write per admitted mute (rare — before deploys only).
  * 
  * @see __docs__/ops-alerting-delivery/ops-alerting-delivery_impl.md
  */
 
 import { DB_COLLECTIONS } from '@constant/database';
+import { getCurrentPlatformUser } from '@lib/auth/currentPlatformUser';
 import { logger } from '@lib/monitoring/logger';
 import { getBoundedOpsStringContext, logOpsFailure } from '@lib/ops/opsDiagnostics';
 import { checkRateLimit } from '@lib/rateLimit';
@@ -44,6 +46,7 @@ export const POST = withAuth(async (request, session) => {
       key: `ops-mute-alerts:${operatorRateLimitHash}`,
       limit: 10,
       window: 60 * 60,
+      failClosedOnProviderError: true,
     });
     if (!rateLimit.allowed) {
       const retryAfter = Math.max(1, Math.ceil((rateLimit.resetAt - Date.now()) / 1000));
@@ -51,9 +54,25 @@ export const POST = withAuth(async (request, session) => {
         ...getBoundedSecurityRouteContext(session, request),
       }, 'medium');
       return NextResponse.json(
-        { error: 'Too many alert mute attempts', retryAfter },
-        { status: 429, headers: { 'Retry-After': String(retryAfter) } },
+        {
+          error: rateLimit.reason === 'provider_unavailable'
+            ? 'Alert mute controls are temporarily unavailable'
+            : 'Too many alert mute attempts',
+          retryAfter,
+        },
+        {
+          status: rateLimit.reason === 'provider_unavailable' ? 503 : 429,
+          headers: { 'Retry-After': String(retryAfter) },
+        },
       );
+    }
+
+    const currentPlatformUser = await getCurrentPlatformUser(session);
+    if (!currentPlatformUser) {
+      logger.security('Authorization Failed - Alert Mute Current Platform Role', {
+        ...getBoundedSecurityRouteContext(session, request),
+      }, 'high');
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const bodyResult = await readBoundedJsonBody(request, OPS_MUTE_ALERTS_MAX_BODY_BYTES, {
@@ -84,7 +103,11 @@ export const POST = withAuth(async (request, session) => {
     );
 
     await opsRef.set(
-      { alertsMutedUntil: mutedUntil },
+      {
+        alertsMutedUntil: mutedUntil,
+        alertsMutedAt: Timestamp.now(),
+        alertsMutedBy: currentPlatformUser.documentId,
+      },
       { merge: true }
     );
 

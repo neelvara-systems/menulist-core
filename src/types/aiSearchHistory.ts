@@ -1,5 +1,15 @@
-import { KnowledgeBaseArticleType } from "./knowledgeBase";
 import type { AnswerlatticeCacheSourceVersions } from '@lib/answerlattice/cacheVersionManifest';
+
+export interface AiSearchHistoryReference {
+    id: string;
+    title?: string;
+    url?: string;
+    categoryId?: string;
+    sectionId?: string;
+    categoryTitle?: string;
+    sectionTitle?: string;
+    similarityScore?: number;
+}
 
 export interface AiSearchHistory {
     id?: string;
@@ -7,7 +17,7 @@ export interface AiSearchHistory {
     cacheKey: string; // Unique cache key (text-only: normalized query, with image: normalized + hash)
     generatedQueryFromImage?: string; // AI-generated query from image
     craftedAnswer: string;
-    references: KnowledgeBaseArticleType[]; // Now includes similarity scores
+    references: AiSearchHistoryReference[];
     imageUrl?: string; // Firebase Storage URL of uploaded image
     // Session-related fields that will be added by the DAL
     uId?: string;

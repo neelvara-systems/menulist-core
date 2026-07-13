@@ -1,11 +1,19 @@
 # Owner Notifications - Implementation Plan
 
 **Status:** Implemented for MenuList lifecycle owner notifications, Answerlattice owner test notification, and internal ops tracking
-**Last Reviewed:** June 30, 2026
-**Date:** 2026-06-02
+**Last Reviewed:** July 13, 2026
+**Date:** 2026-07-13
 **Audience:** Developers
 
 > **Launch boundary:** Not current launch certification or deploy approval. This implementation plan is source-gated owner-notification runtime evidence only; owner-notification release approval still requires current production-readiness audit evidence, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:owner-notifications-boundary`, SMTP/WhatsApp provider smoke where enabled, authenticated owner settings/status QA for the target owner surface, platform recovery monitor browser QA, target Firebase deploy evidence where Functions logic changes, target Vercel deploy evidence where app routes change, and production-host smoke.
+
+July 10 transactional tenant-boundary follow-up: app and MenuList Functions delivery now share the byte-identical pure contract in `src/data/shared/ownerNotificationDeliveryBoundary.ts` and `functions/src/sharedData/ownerNotificationDeliveryBoundary.ts`. It admits exact Firestore document identity, exact positive numeric MenuList scope, bounded control-free references, and only `pending` or bounded `failed` processing attempts. Event creation uses a direct-ID Firestore transaction with `create`; event processing uses a second transaction to claim `processingAttempt` before any recipient read, rate-limit mutation, or provider call. Concurrent delivery, delivered/partial/skipped re-entry, and retries after the second processing attempt fail closed.
+
+July 10 retry/digest follow-up: Functions retry now queries `ownerNotificationEvents` by `status == failed` and `updatedAt >= 24h` with ascending order and limit 20, so old arbitrary rows cannot consume the scan. Digest totals use aggregate counts over `ownerNotificationDeliveries.status + createdAt` rather than arbitrary 200-row reads. The matching composite indexes are in `firestore.indexes.json`. App and Functions delivery-log writes transactionally preserve the first `createdAt`, add `lastAttemptAt`, and write the claimed event `processingAttempt`.
+
+Recipient resolution now treats scope as mandatory delivery authority. MenuList canonical stores must carry the matching `tenantId` or legacy `tId`; nested legacy stores may omit the redundant tenant field but cannot contradict their parent tenant. Answerlattice uses `workspaceId` (with `storeId` only as legacy compatibility) and verifies the workspace document's tenant before returning recipient data. Missing or mismatched scope records the stable `scope_not_found_or_mismatch` event code and makes no provider call. Caller hints are destination inputs only for platform-authorized events marked `metadata.manualRecipientOverride === true`; normal lifecycle events cannot send to hint-only email or WhatsApp recipients. The Functions processor applies the same canonical/nested MenuList tenant checks and does not use stored recipient hints as delivery destinations.
+
+The Next.js and Functions legacy lifecycle fallbacks use the same deterministic SHA-256 `messageLogs` claim over store, event, and reference before SMTP. This closes the query-before-send race if the migrated queue path is unavailable. Store daily-rate counters now include tenant and store identity. `npm run test:owner-notification-delivery-boundaries`, `npm run verify:owner-notifications-boundary`, and `npm run verify:menulist-api-tenant-safety` are the local regression gates; provider smoke and target deploy evidence remain required.
 
 ## Architecture Summary
 
@@ -73,6 +81,10 @@ Implemented on June 2, 2026:
 The implementation processes events inline after writing `ownerNotificationEvents/{eventId}`. This keeps the queue-first audit model without adding a new Firestore trigger in this pass.
 
 The platform dashboard treats stored event/delivery errors as display summaries only. The API returns compact local codes or stored-text presence/length summaries, and `ownerNotificationMonitor/index.tsx` applies a local display guard before rendering error fields so long stored provider/error text cannot print even if an older or regressed response reaches the browser. Raw event IDs and resolved recipient contact values remain available only where required for retry, manual send, and manual handoff actions.
+
+July 13 ops authorization/cost follow-up: both GET and POST keep signed platform-role admission, then use a fail-closed HMAC-keyed limiter before one exact current `users/{uId}` authorization read. Current identity, email, platform role, active/verified lifecycle, block/delete/auth-disable state, issuance, and revocation must all pass before owner-notification Firestore or provider work. GET performs one newest-first event scan capped at 90; product filtering happens before recent-window counts and status filtering, so counts are bounded and cannot include sister-product rows. Detail delivery rows must also match the selected event product. Scope resolution reports its exact zero/one/two document reads. Manual handoff transactionally re-reads the source event and commits its delivery row plus event marker together; deleted or cross-product source events return `404` without orphan or recreation. Full resolved recipient contact remains deliberately available only in selected-event detail for the platform recovery flow and is normalized/bounded before serialization.
+
+Independent retry/data-integrity follow-up: retry returns `404` for missing/product-mismatched events and `409` when the processor cannot claim the event; `partial`, `skipped`, active, terminal, and exhausted-attempt events are not announced as successful retries. Persisted invalid event status, delivery status/channel, or recipient role is serialized as explicit `invalid` state instead of being relabeled as pending, failed, email, or primary owner. Delivery detail is ordered by `createdAt DESC` before the 12-row limit. Manual send and handoff require a stable bounded `actionId`; manual send derives its queue reference from it and manual handoff derives a deterministic transaction-created delivery row from it, so an identical response retry is a replay rather than a new side effect. Recipient scope reads are counted as each successful read completes, including a canonical miss followed by a failing legacy fallback; selected detail exposes a fixed `recipient_resolution_failed` code when that partial path fails.
 
 ## Current Implementation Evidence
 
@@ -179,9 +191,9 @@ The first implementation migrates Answerlattice Next-side owner test notificatio
 
 Route: `/ops/owner-notifications`.
 
-Access: `platformRole === 'PLATFORM'` only, enforced both by the page guard and `withAuth(..., { requiredPlatformRole: 'PLATFORM' })` on the API route.
+Access: signed `platformRole === 'PLATFORM'` admission is enforced by the page guard and `withAuth`; the API then re-proves the exact current persisted platform user before private reads, provider calls, or writes.
 
-The API is also feature-flag guarded: it returns `404` before Firestore reads or recovery writes when either `ENABLE_OWNER_NOTIFICATIONS` or `ENABLE_OWNER_NOTIFICATION_OPS_DASHBOARD` is disabled. POST recovery actions apply a per-operator limiter with HMAC-hashed key material and reject bodies above 8KB before event reads, retry processing, manual send enqueueing, or manual handoff writes.
+The API is also feature-flag guarded: it returns `404` before Firestore reads or recovery writes when either `ENABLE_OWNER_NOTIFICATIONS` or `ENABLE_OWNER_NOTIFICATION_OPS_DASHBOARD` is disabled. GET and POST apply separate per-operator fail-closed limiters with HMAC-hashed key material. POST rejects bodies above 8KB before event reads, retry processing, manual send enqueueing, or manual handoff writes.
 
 Capabilities:
 
@@ -200,16 +212,16 @@ July 5 ops event-id follow-up: `/api/ops/owner-notifications` now validates sele
 
 Manual system send writes a new owner notification event with `metadata.manualRecipientOverride === true`; the recipient resolver prefers the entered email or WhatsApp number only for that marked event. Normal event delivery still resolves recipients from owner/store/workspace notification settings. WhatsApp manual-send validation and manual-handoff recipient hashes use the same international-recipient normalizer used by automated delivery.
 
-Manual handoff writes a delivery record with `deliveryMode: 'manual_handoff'`, masked/hashed destination, operator audit fields, and `manualHandoffAt` fields on the source event. The original event status is not silently changed, so failed events remain visible for review.
+Manual handoff transactionally writes a delivery record with `deliveryMode: 'manual_handoff'`, masked/hashed destination, current operator audit fields, and `manualHandoffAt` fields on the existing source event. The original event status is not silently changed, so failed events remain visible for review; deletion/product drift cannot leave a partial delivery or recreate an event.
 
 Cost constraints:
 
 - Manual refresh only; no realtime listener.
 - List reads are bounded by `scanLimit <= 90`.
-- Count aggregations use one query per status.
+- Counts are derived from the same product-scoped recent scan; no collection-wide aggregation query is used.
 - Delivery logs and resolved full recipient contact are loaded only after selecting an event.
 - Prefilled manual message generation is template rendering only; it does not add Firestore reads beyond the selected-event detail read/scope read.
-- No Firestore composite index or new scheduled function is required.
+- No additional Firestore composite index or scheduled function is required.
 
 ## Feature Flags
 

@@ -11,7 +11,7 @@
 
 Neelvara Systems is the operating trade name / company trust layer for the current operated product lineup.
 
-The website must make the entity credible, searchable, and legally consistent without pulling commercial attention away from MenuList, Answerlattice, or CampaignCue.
+The website must make the entity credible, searchable, and legally consistent without pulling commercial attention away from MenuList or Answerlattice.
 
 Current repo truth supports this boundary:
 
@@ -30,7 +30,7 @@ Create a small public website that answers five questions:
 
 1. What is Neelvara Systems?
 2. What products are in the lineup today?
-3. How is it related to MenuList, Answerlattice, and CampaignCue?
+3. How is it related to MenuList and Answerlattice?
 4. How can someone contact the operator?
 5. Where can someone find basic legal, privacy, and terms information?
 
@@ -107,7 +107,7 @@ Use this long-form positioning internally and in public copy where appropriate:
 
 Use this relationship line exactly:
 
-> MenuList, Answerlattice, and CampaignCue are operated by Neelvara Systems.
+> MenuList and Answerlattice are operated by Neelvara Systems.
 
 ### Safer Legal Description
 
@@ -230,10 +230,8 @@ Search query ownership targets:
 - Neelvara Systems
 - Neelvara Systems MenuList
 - Neelvara Systems Answerlattice
-- Neelvara Systems CampaignCue
 - MenuList Neelvara
 - Answerlattice Neelvara
-- CampaignCue Neelvara
 
 ---
 

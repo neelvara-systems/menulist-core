@@ -1,5 +1,5 @@
 import { useContentViewTracking } from '@hook/useContentViewTracking';
-import { KnowledgeBaseArticleType } from '@type/knowledgeBase';
+import type { AnswerlatticeReadableArticle } from '@lib/answerlattice/publicContentBoundary';
 
 /**
  * Convenience hook for tracking article views
@@ -17,10 +17,9 @@ import { KnowledgeBaseArticleType } from '@type/knowledgeBase';
  * ```
  */
 export const useArticleViewTracking = (
-    article: KnowledgeBaseArticleType | null,
+    article: AnswerlatticeReadableArticle | null,
     options?: {
         href?: string;
-        includeFullArticle?: boolean;
     }
 ) => {
     useContentViewTracking(
@@ -31,10 +30,8 @@ export const useArticleViewTracking = (
                   title: article.title,
                   href: options?.href,
                   meta: {
-                      categoryTitle: article.categoryTitle || null,
-                      sectionTitle: article.sectionTitle || null,
-                      // Optionally store full article data (useful for modal views)
-                      ...(options?.includeFullArticle && { fullArticle: article }),
+                      ...(article.categoryTitle ? { categoryTitle: article.categoryTitle } : {}),
+                      ...(article.sectionTitle ? { sectionTitle: article.sectionTitle } : {}),
                   },
               }
             : null

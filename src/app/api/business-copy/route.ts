@@ -6,6 +6,8 @@ import { AI_ACTIONS_TYPES, CHARGE_PER_CREDIT, TOKENS_PER_CREDIT } from "@constan
 import { PERMISSIONS } from "@constant/permissions";
 import { HarmBlockThreshold, HarmCategory } from "@google/genai";
 import { finalizeAiOperationAccounting } from "@lib/ai/accounting";
+import { normalizeBusinessCopyGenerationResult } from "@lib/ai/businessCopyOutput";
+import { summarizeAiProviderUsage } from "@lib/ai/providerUsage";
 import { checkAICapacity } from "@lib/ai/capacityCheck";
 import { getAIGatewayDiagnostics, getAIErrorDiagnostics, getAIRouteLogContext, getAIRouteSecurityContext, logAIRouteFailure } from "@lib/google/genAi/diagnostics";
 import { genAIClient } from "@lib/google/genAi";
@@ -46,6 +48,7 @@ function getBusinessCopyClientResponseSummary(response: {
     metaDescription?: string;
     metaTitle?: string;
     pwaShortName?: string;
+    specialNote?: string;
     tagline?: string;
 }) {
     return {
@@ -58,6 +61,7 @@ function getBusinessCopyClientResponseSummary(response: {
         pwaShortNameLength: response.pwaShortName?.length || 0,
         responseShape: 'object',
         responseSummaryKind: 'business_copy_generation',
+        specialNoteLength: response.specialNote?.length || 0,
         taglineLength: response.tagline?.length || 0,
     };
 }
@@ -203,12 +207,14 @@ export const POST = withAuth(async (request, session) => {
 
         const startTime = Date.now();
         let response;
+        const providerResponses: unknown[] = [];
         try {
             response = await genAIClient.models.generateContent({
                 model: AI_MODEL,
                 contents: businessCopyPrompt(payload),
                 config: GENERATION_CONFIG,
             });
+            providerResponses.push(response);
         } catch (generationError) {
             const errorDiagnostics = getAIErrorDiagnostics(generationError);
             const gatewayDiagnostics = getAIGatewayDiagnostics(genAIClient);
@@ -268,6 +274,7 @@ export const POST = withAuth(async (request, session) => {
                 contents: `${businessCopyPrompt(payload)}\n\nReturn valid JSON only. Do not add markdown, commentary, or code fences.`,
                 config: GENERATION_CONFIG,
             });
+            providerResponses.push(retryResponse);
             parsedRawText = getResponseText(retryResponse);
 
             try {
@@ -313,8 +320,9 @@ export const POST = withAuth(async (request, session) => {
             }
         }
 
-        if (!generatedData || typeof generatedData !== 'object' || Array.isArray(generatedData)) {
-            logAIRouteFailure('business_copy_generation_non_object_response', undefined, {
+        const cleaned = normalizeBusinessCopyGenerationResult(generatedData);
+        if (!cleaned) {
+            logAIRouteFailure('business_copy_generation_invalid_shape_response', undefined, {
                 isArray: Array.isArray(generatedData),
                 model: AI_MODEL,
                 requestId,
@@ -340,19 +348,9 @@ export const POST = withAuth(async (request, session) => {
             return NextResponse.json({ error: 'Business copy generation failed' }, { status: 500 });
         }
 
-        const cleaned = {
-            descriptor: String(generatedData.descriptor || '').trim().slice(0, 40),
-            knownFor: String(generatedData.knownFor || '').trim().slice(0, 40),
-            tagline: String(generatedData.tagline || '').trim().slice(0, 100),
-            metaTitle: String(generatedData.metaTitle || '').trim().slice(0, 60),
-            metaDescription: String(generatedData.metaDescription || '').trim().slice(0, 160),
-            keywords: Array.isArray(generatedData.keywords)
-                ? generatedData.keywords.map((value: unknown) => String(value || '').trim()).filter(Boolean).slice(0, 10)
-                : [],
-            pwaShortName: String(generatedData.pwaShortName || '').trim().slice(0, 12),
-        };
-
         const processingTime = Date.now() - startTime;
+        const providerUsage = summarizeAiProviderUsage(providerResponses);
+        const realCostPaise = getRealCostPaise(action) * providerUsage.providerCallCount;
         const transactionObject: any = {
             action,
             chargePerCredit: CHARGE_PER_CREDIT,
@@ -362,15 +360,16 @@ export const POST = withAuth(async (request, session) => {
             itemsList: [],
             model: AI_MODEL,
             processingTime,
-            promptTokenCount: response.usageMetadata?.promptTokenCount || 0,
-            candidatesTokenCount: response.usageMetadata?.candidatesTokenCount || 0,
-            totalTokenCount: response.usageMetadata?.totalTokenCount || 0,
+            promptTokenCount: providerUsage.promptTokenCount,
+            candidatesTokenCount: providerUsage.candidatesTokenCount,
+            providerCallCount: providerUsage.providerCallCount,
+            totalTokenCount: providerUsage.totalTokenCount,
             tokenPerCredit: TOKENS_PER_CREDIT,
-            totalCredits: ((response.usageMetadata?.totalTokenCount || 0) / TOKENS_PER_CREDIT),
-            totalCharge: CHARGE_PER_CREDIT * ((response.usageMetadata?.totalTokenCount || 0) / TOKENS_PER_CREDIT),
-            realCostPaise: getRealCostPaise(action),
+            totalCredits: providerUsage.totalTokenCount / TOKENS_PER_CREDIT,
+            totalCharge: CHARGE_PER_CREDIT * (providerUsage.totalTokenCount / TOKENS_PER_CREDIT),
+            realCostPaise,
             ourChargePaise: getOurChargePaise(action),
-            marginPaise: getOurChargePaise(action) - getRealCostPaise(action),
+            marginPaise: getOurChargePaise(action) - realCostPaise,
             unitsConsumed: getUnitCost(action),
         };
         const getTransactionLogSummary = () => ({
@@ -379,6 +378,7 @@ export const POST = withAuth(async (request, session) => {
             model: transactionObject.model,
             processingTime: transactionObject.processingTime,
             promptTokenCount: transactionObject.promptTokenCount,
+            providerCallCount: transactionObject.providerCallCount,
             responseSummary: {
                 descriptorLength: cleaned.descriptor.length,
                 keywordCount: cleaned.keywords.length,
@@ -386,6 +386,7 @@ export const POST = withAuth(async (request, session) => {
                 metaDescriptionLength: cleaned.metaDescription.length,
                 metaTitleLength: cleaned.metaTitle.length,
                 pwaShortNameLength: cleaned.pwaShortName.length,
+                specialNoteLength: cleaned.specialNote.length,
                 taglineLength: cleaned.tagline.length,
             },
             totalCharge: transactionObject.totalCharge,

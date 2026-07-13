@@ -2,6 +2,17 @@
 
 This folder holds the implementation, cost, owner-support, and validation docs for AI Enhancement Packs.
 
+## Current Credit Transparency Contract
+
+Founder direction on July 11, 2026 supersedes the earlier outcome-only presentation rule:
+
+- website, desktop Billing, and mobile Billing Pack cards show the exact `250 credits` amount;
+- pricing can explain that 250 credits currently cover up to 50 generated menu images or 250 description rewrites;
+- owner-referral rewards show their exact 100/50 credit amounts and matching examples;
+- monthly included capacity, provider costs, margins, internal tax valuation, and overdraft policy remain private.
+
+Public examples are derived from `src/data/shared/contentCreditPolicy.ts`; charged AI operations consume the same rates through `src/constants/AI/unitCosts.ts`.
+
 ## Primary Docs
 
 - [Spec](./ai-enhancement-packs_spec.md)

@@ -1,6 +1,6 @@
 # Owner Support Assistant - Test Cases
 
-> **Status:** DOCS FROZEN
+> **Status:** LIVE READ-ONLY SOURCE TESTS PLUS DEFERRED EXPANSION CASES
 > **Created:** 2026-06-07
 > **Scope:** Verification checklist for runtime implementation
 
@@ -14,7 +14,7 @@
 | Product naming check | Main docs use Answerlattice Owner Support Assistant / Support Assistant, not old runtime naming. |
 | Cost check | Firebase doc rejects transcript/event collections and defines summary-first read budgets. |
 | Governance check | Spec and impl block direct approve/publish/close/widget/billing mutations. |
-| Website check | Website doc does not claim live public capability before implementation. |
+| Website check | Public copy says read-only, summary-only, no transcript, no mutation, and no raw ticket/conversation read. |
 | Owner analytics check | Owner stats plan uses existing daily aggregates plus `platformSummary`, not a dedicated analytics collection. |
 | Action support check | Action docs require typed adapters, preview, confirmation, existing write paths, audit reuse, and no action collection. |
 | Cases/actions check | Cases/actions doc lists handled prompts, supported actions, permission gates, and blocked prompts without promising unrestricted business actions. |
@@ -50,18 +50,17 @@
 | Case | Expected result |
 | --- | --- |
 | Empty question | Zod validation error, no context expansion. |
-| Oversized question | Validation error or trimmed bounded request, no provider call. |
+| Oversized question | Validation error, no summary read or provider call. |
 | "What needs review today?" | Summary-only answer with evidence and safe next action. |
-| "Approve all answers" | `unsupported` answer with link to Governance review. |
-| "Publish this article" | `unsupported` answer with proper review route, no publish write. |
-| "Reply to this ticket" | Draft/preview only until owner confirms; no write from query endpoint. |
-| "Mark this ticket resolved" | Action preview shows target and risk; no write until execute endpoint confirmation. |
-| "Change my MenuList menu item price" | `unsupported` from Answerlattice unless a product-owned bridge exists. |
-| "Turn this repeated reply into a FAQ draft" | Creates only a preview until owner confirms Knowledge Intake `repeated_reply` creation. |
-| "Show unanswered questions from last week" | Uses Support Board, owner analytics, and bounded signal/friction sources only. |
-| Topic-specific question | Bounded detail reads only after intent classification. |
+| "Which answers are at risk?" | Uses trust/coverage summaries and links to Governance. |
+| "Where are users getting stuck?" | Uses the seven-day friction snapshot and links to governed review. |
+| "Is support ready for more users?" | Uses coverage/resolution summaries and links to Dashboard. |
+| "What knowledge is waiting for review?" | Uses Knowledge Intake summary and links to Knowledge Intake. |
+| "Approve all answers" | `unsupported`; no write and no action-preview path. |
+| "Reply to this ticket" | `unsupported`; no ticket or conversation read and no write. |
+| Topic-specific question outside the six intents | `unsupported`; no detail read or provider call. |
 | Missing summary docs | `insufficient_data` answer and source workflow link. |
-| Provider failure | Deterministic fallback or clear partial answer. |
+| Repeated query within 60 seconds | Reuses the in-process packet and reports zero Firestore reads for the warm request. |
 
 ---
 
@@ -69,19 +68,12 @@
 
 | Case | Expected result |
 | --- | --- |
-| Initial load | Summary reads only, no list scan, no listener, no AI call, no write. |
-| Summary-only query | Reuses cached/session summary packet when possible. |
-| Detail query | Uses capped DAL reads with documented limits. |
-| Unsupported query | Performs no expensive detail fetch and no AI call. |
-| LLM mode disabled | Deterministic answer returns without AI operation log. |
-| LLM mode enabled | Rate limit applies, AI accounting runs, operation log is written. |
-| Save plan | Uses existing Support Board write path only. |
-| Prepare draft | Uses existing review/mutation path only. |
-| Action preview | Reads current target only and performs 0 writes. |
-| Action execute | Uses existing target write path plus audit/summary metadata; no action queue document. |
-| Today stats | Uses owner analytics summary; no raw session/search/ticket scan by default. |
-| Week/month stats | Uses standard period summaries. |
-| Custom analytics range | Reads only capped daily aggregate docs and returns `insufficient_data` when outside cap. |
+| Cold initial load | Exactly five compact summary reads, no list scan, listener, provider call, or write. |
+| Warm summary query | Reuses the 60-second in-process packet and performs zero Firestore reads. |
+| Unsupported query | Uses the same summary packet only and performs no detail fetch or provider call. |
+| Any query | Creates no transcript, feedback, assistant summary, AI operation, action, or analytics record. |
+| Concurrent workspaces | Cache key includes exact tenant and store scope; one workspace cannot reuse another packet. |
+| Cache growth | Process cache remains capped at 300 workspace packets. |
 
 ---
 
@@ -95,7 +87,6 @@
 | Phone long question | Input does not cover answer. |
 | Phone unsupported answer | Refusal and next review route are readable and tappable. |
 | Slow network | Loading state does not duplicate submissions. |
-| Action confirmation | Duplicate taps do not duplicate status changes or replies because idempotency applies. |
 
 ---
 
@@ -103,14 +94,17 @@
 
 | Case | Expected result |
 | --- | --- |
-| Secret-like data in prompt | Prompt is not logged raw and is not sent as a privileged instruction. |
+| Secret-like data in question | Raw question is not written to Firestore or an assistant transcript. |
 | Widget key request | Assistant refuses to show or mutate keys. |
-| Billing/team role request | Assistant refuses and links to proper owner settings if allowed. |
-| Raw ticket dump request | Assistant refuses or summarizes only bounded safe context. |
-| Execute without confirmation | Mutation is rejected. |
-| Execute with reused idempotency key | Duplicate mutation is rejected or returns the existing result without duplicating writes. |
-| Cross-product mutation | Answerlattice endpoint refuses unless product-owned bridge verification passes. |
+| Billing/team role request | Assistant returns unsupported and performs no mutation. |
+| Raw ticket dump request | Assistant returns unsupported and never reads raw ticket records. |
+| Action-like question | No action preview or execute endpoint is called; only summary evidence/routes can be returned. |
+| Cross-product mutation | Answerlattice assistant returns unsupported and performs no cross-product read or write. |
 | Sensitive logs | Server logs do not include raw tokens, secrets, or full private payloads. |
+
+## Deferred Expansion Tests
+
+Action preview/execute, ticket reply/status, idempotency, AI wording, feedback, owner analytics, and bounded-detail cases remain documented in the deferred architecture files. They are not current-runtime tests and must not be used as release evidence until those capabilities exist.
 
 ---
 
@@ -122,7 +116,7 @@ rg -n "\\bC[a]nonica\\b|\\bC[A]NONICA\\b|/[c]anonica\\b|/api/[c]anonica\\b|ENABL
 rg -n "ENABLE_ANSWERLATTICE_OWNER_SUPPORT_ASSISTANT|support-assistant|ownerSupportAssistant" src __docs__/answerlattice/owner-support-assistant
 ```
 
-Docs-only planning does not require TypeScript validation.
+The live runtime requires the Answerlattice verifier and root TypeScript validation.
 
 ---
 

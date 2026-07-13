@@ -57,7 +57,7 @@ All actions must use the existing `/api/signaldesk/actions` guard pattern: `with
 | `upsert-trust-partner-profile` | `source.configure` | Create/update candidate partner profile and trust-test fields. |
 | `create-trust-partner-niche-test` | `policy.approve` | Create a 3-5 test plan for a niche and market pod. |
 | `create-trust-partner-brief` | `draft.create` | Generate/store one-page brief using approved claim rails. |
-| `review-trust-partner-deal` | `policy.approve` | Approve/reject partner deal and budget. |
+| `review-trust-partner-deal` | `signaldesk.configure` | Founder-admin approves/rejects the partner deal and budget. |
 | `record-trust-partner-deliverable` | `source.configure` | Capture due date, post URL, and review state. |
 | `record-trust-partner-metrics` | `source.configure` | Capture compact result metrics and outcome refs. |
 | `review-trust-partner-renewal` | `policy.approve` | Approve renew, hold, cut, or retest. |

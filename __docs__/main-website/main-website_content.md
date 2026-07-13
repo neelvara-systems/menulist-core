@@ -1,7 +1,7 @@
 # Website Content — MenuList Main Website (menulist.ai)
 
 **Status:** ✅ CURRENT — Canonical website copy and section map
-**Last Updated:** July 5, 2026
+**Last Updated:** July 10, 2026
 **Governance:** All content follows `02-language-governance.md` + `10-communication-worldbuilding-doctrine.md`  
 **Test:** Every line passes: "Would a busy restaurant owner in Mumbai, reading this on their phone between lunch rush and dinner prep, immediately understand what this means for them?"
 
@@ -93,7 +93,7 @@ Supporting pages now share the same official-source discipline through shared he
 
 **Analytics feature page policy (June 22, 2026; updated July 1, 2026):** `/features/analytics` is the dedicated public page for the shipped owner analytics dashboard. It may describe today, overview, daily, weekly, monthly, and overall dashboard views; menu sessions; engaged sessions; item taps; item status labels; searches; no-result search fix prompts; unavailable demand; actions while open, closed, or unknown; action rate; Official Business Page actions; customer app activity; desktop/mobile owner dashboard availability; and privacy-conscious aggregate reporting. It must not imply customer profiling, heatmaps, exact GPS tracking, revenue attribution, POS revenue, guaranteed sales lift, or a generic BI product. Analytics is linked from the `/features` Menu analytics card and discovery files.
 
-**WhatsApp onboarding campaign page policy (June 22, 2026):** `/whatsapp` is the public campaign route for the implemented messaging-onboarding flow. It should own the WhatsApp-first wedge without turning MenuList into a WhatsApp replacement, Meta partner claim, automatic catalog-sync claim, or bulk outreach tool. The page may describe sending menus, service lists, rate cards, package lists, catalogs, photos, screenshots, PDFs, and text through the onboarding channel; preview preparation; owner approval before publish; and one official customer link/QR after publish. The live website CTA now uses the supplied test WhatsApp onboarding number `+1 555 657 1424`; production launch still needs the final public WhatsApp account, response owner, operating hours, consent note, and tracking decision.
+**WhatsApp onboarding campaign page policy (June 22, 2026; fail-closed action updated July 10, 2026):** `/whatsapp` is an informational campaign route for the source-implemented messaging-onboarding flow. It should explain the WhatsApp-first wedge without presenting provider intake as open, turning MenuList into a WhatsApp replacement, making a Meta partner claim, implying automatic catalog sync, or offering bulk outreach. Checked-in Functions targets keep provider processing disabled, so the page must show localized availability copy and route both primary actions to `/create-menu`. It must not contain a test number or active provider deep link before current provider activation evidence exists.
 
 **AI Menu Manager placement policy (June 17, 2026):** AI Menu Manager is now the website growth hook after the source-to-public workflow. The homepage should first establish one approved MenuList source, then show how AI Menu Manager keeps that source current by message. The dedicated public route is `/ai-menu-manager`. Copy must keep the loop explicit: owner intent -> prepared card -> approval when needed -> existing MenuList operation -> receipt. Unsupported external posting must be described as a manual task/export/handoff, not direct completion. As of v3.6.63, the dedicated page may mention guided item/category/menu-area selection as owner control, but it should not read like UI instructions or weaken the natural-language promise. As of v3.6.73, public AI Menu Manager copy uses approval-based language instead of `AI-powered` shorthand.
 
@@ -136,7 +136,7 @@ The `/resources` layer is an evergreen MenuList public website surface, not a ch
 
 **Localization rule:** English long-form resource content is the source of truth. Every active public website-switcher language now has reviewed structured resource coverage: Hindi, Tamil, Telugu, Marathi, Bengali, Arabic, and Spanish. Each pack covers all 15 articles, including long-form sections, checklists, comparison rows, FAQ, metadata, and CTAs. Future languages must stay on English fallback until complete reviewed packs pass `npm run verify:website-resource-locales` and their locale URLs are added to sitemap, `hreflang`, and LLM context.
 
-**Website copy-layer rule (June 10, 2026; contact fallback tightened June 28, 2026; response parsing tightened June 29, 2026; submission handoff tightened June 30, 2026; acknowledgement tightened July 1, 2026):** active marketing-surface text should stay in the `Website` locale namespace, including fallback states, placeholders, button labels, helper headings, and accessibility labels. The `/create-menu/preview/[draftId]` page is part of this contract: loading, processing, failure, expiry, empty-state, detected-detail, stats, and claim-form copy must not be hardcoded in the component. The public contact form uses `Website.Contact.submitFailed` and `Website.Contact.securityCheckRequired` for fixed fallback copy, submits to `/api/public/contact` with same-origin credentials, no-store cache policy, and manual redirect handling, parses API responses through a shared bounded 8KB reader, requires `source: "menulist_public_contact"`, `status: "accepted"`, and the expected help topic before submitted state, logs only `website_contact_response_parse_failed` / `website_contact_response_invalid` metadata, and must not display API response text or browser exception messages. Legal policy bodies, static metadata titles, and pricing/account billing internals can remain static unless a dedicated localization pass is planned.
+**Website copy-layer rule (June 10, 2026; contact fallback tightened June 28, 2026; response parsing tightened June 29, 2026; submission handoff tightened June 30, 2026; acknowledgement tightened July 1, 2026; persistence minimization tightened July 13, 2026):** active marketing-surface text should stay in the `Website` locale namespace, including fallback states, placeholders, button labels, helper headings, and accessibility labels. The `/create-menu/preview/[draftId]` page is part of this contract: loading, processing, failure, expiry, empty-state, detected-detail, stats, and claim-form copy must not be hardcoded in the component. The public contact form uses `Website.Contact.submitFailed` and `Website.Contact.securityCheckRequired` for fixed fallback copy, submits to `/api/public/contact` with same-origin credentials, no-store cache policy, and manual redirect handling, parses API responses through a shared bounded 8KB reader, requires `source: "menulist_public_contact"`, `status: "accepted"`, and the expected help topic before submitted state, logs only `website_contact_response_parse_failed` / `website_contact_response_invalid` metadata, and must not display API response text or browser exception messages. Server persistence strips query strings/fragments from source/referrer attribution and preserves valid zero report counts. Legal policy bodies, static metadata titles, and pricing/account billing internals can remain static unless a dedicated localization pass is planned.
 
 **Create-menu auth-state rule (June 27, 2026):** `/create-menu` must show a deterministic public landing state for signed-out visitors: sign in, add current list, review before publishing, supported inputs, and the trust line that nothing goes public until review. Session checking may appear only as a small saved-sign-in status, not as the page's primary account state. This preserves sign-in-first upload/link-import behavior while avoiding a loading-first acquisition surface.
 
@@ -993,25 +993,27 @@ On mobile, the hamburger keeps `Features` open by default because feature discov
 
 1. Menu Import — `/features/menu-import`
 2. Menu Content Prep — `/features/menu-content-prep`
-3. Menu Quality Validation — `/features/menu-quality-validation`
-4. Featured Choices — `/features/featured-choices`
-5. Official Business Page — `/features/official-business-page`
-6. QR Menu and Links — `/features/qr-menu-links`
-7. Print-ready Kit — `/features/print-ready-kit`
-8. AI Menu Manager — `/ai-menu-manager`
-9. Owner PWA Dashboard — `/features/owner-phone-dashboard`
-10. Analytics Dashboard — `/features/analytics`
-11. Business Health — `/features/business-health`
+3. Featured Choices — `/features/featured-choices`
+4. Official Business Page — `/features/official-business-page`
+5. QR Menu and Links — `/features/qr-menu-links`
+6. Print-ready Kit — `/features/print-ready-kit`
+7. AI Menu Manager — `/ai-menu-manager`
+8. Owner PWA Dashboard — `/features/owner-phone-dashboard`
+9. Analytics Dashboard — `/features/analytics`
+10. Business Health — `/features/business-health`
+11. Menu Quality Validation — `/features/menu-quality-validation`
 12. Customer Feedback Loop — `/features/customer-feedback-loop`
 13. Public Discovery — `/features/public-discovery`
 
 **Selection rationale:**
 
-- These are the feature surfaces most likely to help a non-technical SMB owner understand why MenuList is useful: start from the current menu, prepare descriptions/images/languages, catch quality issues, guide customers toward useful choices, create one public customer source, share it through QR/links, deploy print-ready files, update by message, manage core owner work from phone or PWA, understand aggregate customer signals, know what needs attention, and provide a clearer public source for search/answer systems.
+- These are the feature surfaces most likely to help a non-technical SMB owner understand why MenuList is useful: start from the current menu, prepare descriptions/images/languages, guide customers toward useful choices, create one public customer source, share it through QR/links, deploy print-ready files, update by message, manage core owner work from phone or PWA, understand aggregate customer signals, know what needs attention, catch quality/readiness issues, and provide a clearer public source for search/answer systems.
 - POS sync, staff roles, and advanced multi-location governance remain on `/features`, `/multi-location`, or supporting resources. They should not crowd the primary header dropdown unless the buyer strategy changes.
 - v3.6.86 closes the dedicated feature-page dropdown parity gap by adding Analytics Dashboard and Menu Quality Validation to `websiteFeatureNavGroups`. Because `Header.tsx` renders both the desktop hover dropdown and mobile hamburger feature accordion from that same source, both surfaces now expose the same dedicated feature-page set.
+- v3.6.110 keeps the shared Start/Publish/Operate grouping, but moves Menu Quality Validation from Start to Operate. That keeps Start focused on setup and moves ongoing correctness checks beside Activity View, Business Health, Customer Feedback Loop, and Public Discovery.
 - v3.6.43 adds `/features/customer-feedback-loop` as a dedicated page and navigation link in the desktop Features dropdown and mobile hamburger feature list. Public customer feedback is valuable proof when framed as a correction loop from customer issue to owner source.
-- v3.6.44 groups the desktop dropdown by the same Start, Publish, and Operate categories used by mobile. Keep this grouping source shared through `websiteFeatureNavGroups`; do not return to a flat desktop list.
+- v3.6.44 groups the desktop dropdown by the same Start, Publish, and Operate categories used by mobile. v3.6.110 changes the desktop presentation from three vertical columns into stacked workflow rows with three-card wrapping where possible. Keep this grouping source shared through `websiteFeatureNavGroups`; do not return to a flat desktop list.
+- v3.6.111 keeps the dropdown content and grouping unchanged, but hardens interaction behavior. Desktop Features and Resources dropdowns close on Escape, Resources gets scroll containment and pointer-travel protection, and the mobile drawer stays a full-screen dialog above the public consent banner with its CTA outside the scrollable nav.
 - Mobile feature navigation groups the same top feature links as Start, Publish, and Operate so the drawer is readable on phone screens without becoming a full product sitemap.
 
 **Campaign page pattern:**
@@ -1575,7 +1577,7 @@ Right-side sticky cards:
 
 ## Page 4B: WhatsApp Onboarding (/whatsapp)
 
-**Purpose:** Public campaign page for the implemented messaging-onboarding flow. It should make the WhatsApp-first acquisition wedge visible for broad SMBs while keeping the claim boundary owner-trust-safe.
+**Purpose:** Informational campaign page for the source-implemented messaging-onboarding flow. It keeps the WhatsApp-first acquisition concept visible while making current provider availability explicit.
 
 **Metadata title:**
 
@@ -1583,21 +1585,25 @@ Right-side sticky cards:
 
 **Metadata description:**
 
-> Send a menu, service list, rate card, package list, or PDF on WhatsApp. MenuList prepares a preview, publishes after approval, and sends back one official customer link.
+> See how WhatsApp-first onboarding will prepare an owner-reviewed preview and official customer link. Start now with a photo or public menu link.
 
 **Heading:**
 
-> Send your current list on WhatsApp. Get one official customer link.
+> WhatsApp onboarding is being prepared. Start with one official customer link.
 
 **Subline:**
 
-> MenuList turns a menu, service list, rate card, package list, catalog, photo, PDF, or message into an owner-approved public page, link, and QR. Start from the list you already send customers.
+> For now, upload a photo or use a public menu link. MenuList prepares an owner-reviewed public page, link, and QR from the list you already share with customers.
+
+**Availability:**
+
+> WhatsApp intake is not open yet. Start now with a photo or public menu link.
 
 **Primary CTA:**
 
-> Send list on WhatsApp
+> Start with a photo or link
 
-**CTA destination:** Prefilled click-to-WhatsApp CTA using the supplied test onboarding number `+1 555 657 1424` (`https://wa.me/15556571424`). Replace this with the final public onboarding account before production campaign launch.
+**CTA destination:** `/create-menu` while checked-in Functions targets keep provider processing disabled. Do not add a public provider deep link until the final owned account and current activation evidence are approved.
 
 **Proof visual:**
 
@@ -1618,8 +1624,8 @@ Chat-style sequence:
 
 **Notes:**
 
-- This page markets an implemented flow documented under `__docs__/messaging-onboarding/`.
-- Treat the public WhatsApp CTA as a test-number activation until the final onboarding account, response owner, operating hours, consent note, and tracking decision are approved.
+- This page describes a source-implemented flow documented under `__docs__/messaging-onboarding/`; it does not certify current provider availability.
+- Keep the public action on `/create-menu` until the final owned account, response owner, operating hours, consent note, tracking decision, target enablement/deploy evidence, provider smoke, browser/device QA, and production-host smoke are approved.
 - Do not claim official WhatsApp/Meta partnership, automatic WhatsApp catalog sync, bulk message outreach, or publish-without-approval behavior.
 
 ---

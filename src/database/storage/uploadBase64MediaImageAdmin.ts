@@ -15,7 +15,14 @@ interface UploadBase64MediaImageAdminInput {
     tenantId: number | string;
 }
 
-export async function uploadBase64MediaImageAdmin({
+export type UploadedMediaImageAdminResult = {
+    mimeType: string;
+    path: string;
+    sizeBytes: number;
+    url: string;
+};
+
+export async function uploadBase64MediaImageAdminWithMetadata({
     aspectRatio,
     dataUrl,
     entityId,
@@ -23,7 +30,7 @@ export async function uploadBase64MediaImageAdmin({
     profile,
     storeId,
     tenantId,
-}: UploadBase64MediaImageAdminInput): Promise<string> {
+}: UploadBase64MediaImageAdminInput): Promise<UploadedMediaImageAdminResult> {
     const profileConfig = getMediaImageProfile(profile);
     const prepared = await prepareMediaImageAdmin(dataUrl, profile, { aspectRatio });
     const uploadMediaId = mediaId || prepared.mediaId;
@@ -69,5 +76,16 @@ export async function uploadBase64MediaImageAdmin({
         resumable: false,
     });
 
-    return `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(path)}?alt=media&token=${token}`;
+    return {
+        mimeType: prepared.mimeType,
+        path,
+        sizeBytes: prepared.sizeBytes,
+        url: `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(path)}?alt=media&token=${token}`,
+    };
+}
+
+export async function uploadBase64MediaImageAdmin(
+    input: UploadBase64MediaImageAdminInput,
+): Promise<string> {
+    return (await uploadBase64MediaImageAdminWithMetadata(input)).url;
 }

@@ -1,6 +1,6 @@
 # Owner Support Assistant - Cases and Actions Catalogue
 
-> **Status:** DOCS FROZEN
+> **Status:** MIXED - summary questions live; mutations and expanded cases deferred
 > **Created:** 2026-06-07
 > **Purpose:** Define exactly which owner questions, review cases, and confirmed actions the assistant can handle.
 

@@ -2,7 +2,7 @@
 
 import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
 import { PricingPlan } from '@data/common';
-import { addPricingPlan, deactivatePricingPlan, getAllPricingPlans, updatePricingPlan } from '@database/pricingPlans';
+import { addPricingPlan, deactivatePricingPlan, getAllPricingPlans, PricingPlanMutationInput, updatePricingPlan } from '@database/pricingPlans';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { Button, Card, Col, Divider, Drawer, Form, Input, InputNumber, Modal, Radio, Row, Space, Switch, Table, Tag, Typography, message } from 'antd';
 import { useEffect, useState } from 'react';
@@ -59,10 +59,10 @@ function PricingPlans() {
         setDrawerVisible(true);
     };
 
-    const handleSavePlan = async (values: any) => {
+    const handleSavePlan = async (values: PricingPlanMutationInput & { price: number }) => {
         try {
             // Convert price to paise for storage
-            const planData: PricingPlan = {
+            const planData: PricingPlanMutationInput = {
                 ...values,
                 price: Math.round(values.price * 100), // Convert to paise
                 features: values.features.filter((f: string) => f.trim() !== ''),
@@ -219,7 +219,7 @@ function PricingPlans() {
         {
             title: 'Actions',
             key: 'actions',
-            render: (_: any, record: PricingPlan) => (
+            render: (_: unknown, record: PricingPlan) => (
                 <Space>
                     <Button
                         icon={<EditOutlined />}

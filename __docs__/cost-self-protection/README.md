@@ -4,6 +4,7 @@
 **Feature Flag:** `ENABLE_COST_PROTECTION: true`
 **Priority:** 🔴 P0 — Verify before production
 **Created:** February 20, 2026
+**Last Updated:** July 13, 2026
 **Source:** ChatGPT launch infra review → Cascade critical review
 
 **Launch boundary:** Not current launch certification or deploy approval. This README documents source-built SAFE_MODE protection; production readiness still requires current production-readiness audit evidence, External Certification Runbook evidence, `npm run verify:production-readiness-local`, explicit target deploy approval, scoped deploy evidence, SAFE_MODE browser/provider/Functions smoke, and production-host smoke.
@@ -24,7 +25,9 @@
 
 ## One-Liner
 
-Global circuit breaker that instantly disables expensive operations (AI generation, bulk actions, heavy writes) when the system detects anomalous behavior or the founder manually triggers protection.
+Expensive-work circuit breaker that stops explicitly guarded app operations and all Gemini provider calls through the shared MenuList Functions gateway when the founder or budget-alert path activates protection.
+
+The platform toggle re-proves current persisted platform authority after a fail-closed limiter. State changes are transactional and idempotent: repeating the current state performs no config or alert write, while a committed toggle remains successful even if its secondary alert record cannot be created.
 
 ## Architecture Overview (60-second summary)
 
@@ -36,11 +39,11 @@ Firestore: ops_config/system
   └── alertsMutedUntil: timestamp (deploy mute)
 
 When SAFE_MODE = true:
-  → AI generation endpoints return 503
-  → Bulk operations blocked
+  → Explicitly guarded app AI endpoints return 503
+  → Shared MenuList Functions AI gateway rejects Gemini calls before key/provider access
+  → AI-backed batch work is blocked; unrelated writes and maintenance are not globally stopped
   → Publish still works (core product)
   → Public menu viewing still works (cached)
-  → Feedback submission rate-limited harder
 ```
 
 ## Key Decision: What ChatGPT Got Wrong
@@ -61,10 +64,10 @@ Before production, verify:
 
 1. `ops_config/system` exists with `SAFE_MODE: false`.
 2. Ops Control Room can enable and disable SAFE_MODE.
-3. Expensive AI routes return `503` while SAFE_MODE is active.
+3. Explicitly guarded app AI routes return `503` while SAFE_MODE is active.
 4. Public menu and OBP pages still load while SAFE_MODE is active.
 5. `gcpBudgetAlertWebhook` is deployed, secret-protected, and connected to the GCP Budget Alert Pub/Sub subscription.
-6. Direct Cloud Function entry points are audited for SAFE_MODE coverage before any expensive callable/trigger is treated as production-ready.
+6. A direct MenuList Cloud Function provider generation, embedding, image, or upload call fails with `AI_PROVIDER_SAFE_MODE_ACTIVE` before key selection or provider I/O; `files.delete` remains available for cleanup while SAFE_MODE is active, and workflow-specific entry-point checks still provide cleaner task/status responses where implemented.
 
 ## What Already Exists
 
@@ -76,7 +79,7 @@ Before production, verify:
 | Platform Cost Posture | ✅ BUILT | `/platform/cost-posture`, `__docs__/platform-cost-posture/` |
 | Cloud Billing export to BigQuery | ☐ PRE-PROD MANUAL | `__docs__/production-readiness/launch-prerequisites.md` Step 2B |
 | Versioned Storage cache metadata | ✅ BUILT | Public immutable for versioned public assets; private immutable for internal/source uploads |
-| **Global circuit breaker**      | ✅ CORE BUILT / ☐ PRE-PROD VERIFY | `src/lib/ops/safeMode.ts`, `/api/ops/safe-mode`, `functions/src/triggers/operations.ts` |
+| **Expensive-work circuit breaker** | ✅ CORE BUILT / ☐ PRE-PROD VERIFY | `src/lib/ops/safeMode.ts`, `/api/ops/safe-mode`, `functions/src/monitoring/safeMode.ts`, `functions/src/ai/aiGateway.ts` |
 
 ## Feature Flag
 
@@ -90,6 +93,8 @@ ENABLE_COST_PROTECTION: true; // in src/config/features.ts
 
 | Version | Date              | Changes                                   |
 | ------- | ----------------- | ----------------------------------------- |
+| 1.7     | July 13, 2026     | Added current persisted platform authorization, fail-closed toggle limiting, transactional idempotency, and explicit secondary-alert failure semantics |
+| 1.6     | July 11, 2026     | Added shared MenuList Functions AI-gateway enforcement and clarified that SAFE_MODE is not a global write lock |
 | 1.5     | May 24, 2026      | Corrected SAFE_MODE status: core built, production verification still required |
 | 1.4     | May 24, 2026      | Added repo-wide Storage cache metadata policy for safe versioned public/private uploads |
 | 1.3     | May 24, 2026      | Clarified Cloud Billing export to BigQuery as pre-production cost visibility, separate from app analytics or Firestore cost cron jobs |

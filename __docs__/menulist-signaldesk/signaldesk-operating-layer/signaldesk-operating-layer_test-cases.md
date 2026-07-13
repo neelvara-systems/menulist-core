@@ -16,8 +16,8 @@
 | Upsert offer/CTA | Writes approved ask, blocked claims, and activation surface. |
 | Upsert reply playbook | Writes intent, approved reply, route type, and review rules. |
 | Create source-quality snapshot | Writes activation-oriented source quality snapshot. |
-| Create research agent table | Prompt creates provider-run-backed table rows with enrichment columns, pass/fail/unsure fit decisions, and source refs. |
-| Dashboard lead batch | Latest pass/unsure research rows appear as up to 30 lead cards with evidence, contact path, share message, and next action. |
+| Create research agent table | Prompt creates provider-run-backed table rows with enrichment columns, pass/fail/unsure fit decisions, source refs, evidence summary, recommended channel, CTA, and message angle. |
+| Dashboard lead batch | Latest pass/unsure research rows appear as up to 30 lead cards with evidence, recommended channel, CTA/message angle, share message, and next action. |
 | Failed research rows | Remain in Research Output but are excluded from Today's Lead Batch. |
 | Fallback target batch | Includes only clear, non-held, non-rejected targets. |
 | Market prompt presets | Fill the approved Bengaluru area/category prompt, research type, and 25-row first-trial batch without bypassing the 30-row hard cap or source policy. |

@@ -160,7 +160,7 @@ Store (storeId: 1)
 
 | Operation    | Collections                                                                     |
 | ------------ | ------------------------------------------------------------------------------- |
-| Create Store | `stores`, `tenants`, `platformSummary/default`, `platformSummary/storesSummary` |
+| Create Store | `stores`, `tenants`, canonical `platformSummary/summary`, legacy counter floor, `platformSummary/storesSummary` |
 | Update Store | `stores`, `tenants` (if name changed), `platformSummary/storesSummary`          |
 
 ---

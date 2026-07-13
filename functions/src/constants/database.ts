@@ -54,6 +54,7 @@ export const DB_COLLECTIONS = {
     KB_GENERATION_JOBS: 'kb_generation_jobs',
     KB_STAGING_SECTIONS: 'kb_staging_sections',
     KB_STAGING_CHUNKS: 'kb_staging_chunks',
+    ANSWERLATTICE_CACHE_VERSIONS: 'answerlattice_cacheVersions',
 
     // Monitoring & Telemetry
     SYSTEM_TELEMETRY: 'systemTelemetry',        // System performance logs
@@ -146,9 +147,11 @@ export const DB_COLLECTIONS = {
     // @see __docs__/answerlattice/doctrine/05-architecture-evolution.md
     // ═══════════════════════════════════════════════════════════════
     ANSWERLATTICE_ENTITIES: 'answerlattice_entities',
+    ANSWERLATTICE_ENTITY_SLUG_INDEX: 'answerlattice_entitySlugIndex',
     ANSWERLATTICE_ENTITY_RELATIONS: 'answerlattice_entityRelations',
     ANSWERLATTICE_CANONICAL_ANSWERS: 'answerlattice_canonicalAnswers',
     ANSWERLATTICE_RELEASES: 'answerlattice_releases',
+    ANSWERLATTICE_CHANGELOG_ENTRY_INDEX: 'answerlattice_changelogEntryIndex',
     ANSWERLATTICE_MUTATION_PROPOSALS: 'answerlattice_mutationProposals',
     ANSWERLATTICE_SIGNAL_EVENTS: 'answerlattice_signalEvents',
     ANSWERLATTICE_AUDIT_LOGS: 'answerlattice_auditLogs',

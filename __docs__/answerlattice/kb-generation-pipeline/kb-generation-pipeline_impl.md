@@ -1,7 +1,7 @@
 # KB Generation Pipeline — Technical Implementation Blueprint
 
-> **Version:** 1.0.0
-> **Last Updated:** 2026-07-05
+> **Version:** 1.1.0
+> **Last Updated:** 2026-07-11
 > **Audience:** Developers
 > **Source:** Codebase forensic audit (code is truth)
 
@@ -76,16 +76,31 @@ Answerlattice KB generation session lookup diagnostics (July 5, 2026): deprecate
 | `getIngestionJobCollectionRef(session)` | 0 | 0 | Returns query ref with tId + sId + active status filter |
 | `getPreviousIngestionJobs(session)` | N | 0 | Completed/failed/cancelled for tenant |
 | `updateJob(jobId, data)` | 0 | 1 | Merge update; returns acknowledged `{ success, id, updatedFields }` |
-| `deleteIngestionJob(jobId)` | 1+N | 1+N+storage | Transaction: delete job + articles + categories + storage files; returns acknowledged `{ success, jobId, deleted }` |
+| `deleteIngestionJob(jobId)` | 3+N | 2+N+storage | Platform-only, exact-scope cleanup for unpublished safe states. Claims a `deletionRun`, deletes draft articles, verifies every Storage result, retains failed cleanup for retry, then deletes the job only under the same operation ownership. |
 | `retryJob(jobId)` | 1 | 1 | Resets failed job to pending; returns acknowledged job write |
 | `cancelJob(jobId)` | 0 | 1 | Marks job cancelled; returns acknowledged job write |
 | `addIngestionJob(data)` | 0 | 1 | Creates job and returns acknowledged job write. Dev: calls `triggerStartGeneration()`. Prod: Firestore trigger fires. |
 
 ### 2.3 Cloud Functions
 
+The separate Answerlattice package exports the current lifecycle as six bounded entry points:
+
+| Export | Trigger | Current contract |
+| --- | --- | --- |
+| `startGeneration` | Firestore create | Claims a pending generation job and starts source-backed generation. |
+| `retryGeneration` | Firestore update | Restarts an explicitly retried failed generation without adding a second scheduler. |
+| `finalizePublish` | Firestore update | Dispatches deterministic current-run tasks and finalizes only after the durable pending ID set is fully represented by the completed set with no failures. |
+| `embedArticleWorker` | Cloud Task | Uses deterministic task identity, retry count, a typed embedding lease conflict, and bounded final-attempt failure state. |
+| `regenerateEmbedding` | HTTPS callable | Reuses the shared article embedding lease/persistence helper for one article. |
+| `publishApprovedJobFn` | HTTPS callable | Publishes reviewed articles and derives FAQ document IDs from the article plus suggestion index instead of trusting generated IDs. |
+
+`functions-answerlattice/src/logic/embeddingSourceBoundary.ts` defines the normalized category/section/title/content input and source hash. `articleEmbedding.ts` owns the lease, provider call, vector validation, and transactional persistence. `kbPublishingLifecycle.ts` strictly parses bounded durable ID sets, dispatches deterministic task IDs, and owns atomic job/cache/source-version/bundle finalization. The task queue has three total attempts; only the final or a permanent failure settles terminal failure state. A current-run task must carry the exact run ID, and an article outside the pending set cannot poison the job.
+
+The active embedding registry is `gemini-embedding-2`, 768 dimensions, cache version `gemini-embedding-2:768:v2`, and Firestore field `embeddingV2`. The same registry file is mirrored byte-for-byte into the root app, shared Functions compatibility tree, and dedicated Answerlattice Functions. Document and query formatting are v2-specific and omit the legacy `taskType` option. Query-cache keys include the registry cache version. New or changed articles require v2 and preserve or best-effort dual-write the v1 `embedding` field for rollback. `embeddingV2Migration.ts` is a bounded cursor-based task inside `answerlatticeMasterScheduler.ts`; it does not introduce another scheduled function.
+
 | File | Trigger | Purpose |
 |------|---------|---------|
-| `functions/src/logic/embedArticleWorker.ts` | Task queue | Re-embeds articles when category/section titles change. Reads article, generates embedding via `genrateEmbedding()`, updates article + increments job counter. |
+| `functions/src/logic/embedArticleWorker.ts` | Task queue | Shared-mode compatibility worker. Verifies product/workspace/job/run ownership, reuses or generates a validated embedding, and transactionally updates the article plus durable completion set. |
 | `functions/src/logic/regenerateEmbedding.ts` and `functions-answerlattice/src/logic/regenerateEmbedding.ts` | HTTPS callable | Re-generates embedding for single article by ID. Uses `FieldValue.vector()` for storage. |
 | `functions/src/triggers/shared` | Firestore triggers | `embedArticleWorker`, `processMenuImages`, `publishApprovedJobFn`, `regenerateEmbedding` — exported from index.ts |
 
@@ -150,6 +165,10 @@ Firestore trigger: onCreate on kb_generation_jobs (status=pending)
 ### 3.3 Review + Reconciliation
 
 Review category, section, article, and duplicate-resolution edits call `updateJob()` and must require `assertIngestionJobWriteSucceeded()` before local review state, modal close, or success copy advances. Job-card delete/retry/cancel and job-history delete actions must require `assertIngestionJobWriteSucceeded()` or `assertIngestionJobDeleteSucceeded()` before success copy. Rejected acknowledgement codes use the `kb_generation_*_rejected` pattern and are guarded by `npm run verify:answerlattice-runtime-truth`.
+
+`updateJob()` accepts only `articleIds`, `articlesToReview`, and `categories`. The browser boundary validates exact allowed keys, bounded document IDs and strings, reconciliation status/target invariants, navigation nesting, duplicate IDs, and a 700 KiB UTF-8 serialized limit before any Firestore write. It uses `TextEncoder`, not Node-only `Buffer`, because this DAL runs in the browser.
+
+Job deletion is visible only for `needs_review`, `failed`, and `cancelled` active-card states and only for `failed`/`cancelled` history rows. The DAL remains authoritative: it refuses published or active article provenance, embedding-failed jobs, malformed or excessive source-file lists, stale `modifiedOn`, and concurrent deletion ownership. Draft article deletion and the job's deletion lease are atomic. A fulfilled Storage response with `success: false` is a failure; the retained job records a retryable failed deletion instead of being removed while source files remain.
 ```
 KBGenerationTemplate detects activeJob.status === 'needs_review'
   → Check articlesToReview for unresolved items
@@ -166,27 +185,31 @@ KBGenerationTemplate detects activeJob.status === 'needs_review'
 Publish approved
   → Job status: 'publishing'
   → Articles written to kb_articles collection
-  → Generated FAQs written to answerlattice_faqs and mirrored to kb_articles.faqIds
-  → Article metadata synced to kb_categories document
-  → Each article queued for embedding generation
+  → Final category/section/article IDs and reconciliation state are runtime-validated
+  → Navigation URLs are derived from validated IDs; client-supplied paths are not persisted as authority
+  → Generated FAQs receive deterministic article-scoped IDs, are written to answerlattice_faqs, and are mirrored to kb_articles.faqIds
+  → Article metadata is synced to the exact-workspace kb_categories document in the same bounded transaction
+  → Each article queued with deterministic Cloud Task identity for embedding generation
   → embedArticleWorker processes queue:
-    → Read article content
-    → genrateEmbedding() → text-embedding-004
-    → Update article with embedding vector
-    → Increment job.articlesEmbeddedCount
-  → When articlesEmbeddedCount === articlesToEmbedCount:
-    → Job status: 'published'
+    → Claim or reject the typed embedding lease
+    → Require the exact current embedding run and pending article membership
+    → Hash the current embedding input and reuse only an exact current-version/dimension/hash vector, otherwise generate the configured vector
+    → Transactionally persist only if the article/source hash still matches
+    → Add the article ID to the durable completed set and remove it from the failure set
+  → Firestore finalizer validates durable sets:
+    → every pending ID completed and no failed IDs → atomically publish job and bump KB/source/bundle versions
+    → terminal embedding failure → job stays failed with fixed bounded copy
 ```
 
 ### 3.5 Job Deletion (Cascade)
 ```
 deleteIngestionJob(jobId)
-  → Firestore transaction:
-    1. Read job document
-    2. Remove job categories from master kb_categories/categories doc
-    3. Query all articles with jobId → delete each
-    4. Delete job document
-  → Post-transaction: delete source files from Storage
+  → Require platform access, exact Answerlattice scope, and a safe unpublished terminal/review state
+  → Query bounded exact-scope job articles and refuse any published/active provenance
+  → Transactionally claim a deletion lease and delete only unpublished article drafts
+  → Delete every source file and inspect thrown plus acknowledged-failure results
+  → On cleanup failure: retain the job with retryable failed deletion state
+  → On success: transactionally prove operation ownership and delete the job
 ```
 
 ---
@@ -206,10 +229,10 @@ deleteIngestionJob(jobId)
 |---|-------|----------|-----------|-------|
 | 1 | Deprecated `getIngestionJobs()` compatibility helper could read globally | Resolved | `jobs.ts` | Non-platform reads are tenant/store scoped; platform admins keep the administrative list path |
 | 2 | Dev/prod behavior difference in `addIngestionJob` | Low | `jobs.ts:140` | Dev manually triggers CF, prod uses Firestore trigger |
-| 3 | No job timeout/retry for stuck processing | Medium | — | Job could stay in `processing` forever |
+| 3 | No job timeout/retry for stuck processing | Resolved | scheduler + `retryJob()` | Stuck jobs are failed by the watchdog and can be retried through the bounded lifecycle |
 | 4 | Source files not cleaned up on failure | Low | — | Only deleted on explicit job delete |
-| 5 | `console.error` used instead of `secureError` | Low | `index.tsx:72` | Debug logging |
-| 6 | No pagination on job history | Low | `getPreviousIngestionJobs` | Fetches all completed jobs |
+| 5 | Raw server/provider diagnostics could leak payload context | Resolved | shared + dedicated Functions | Stable codes and bounded metadata only |
+| 6 | Job history could grow without a read bound | Resolved | `getPreviousIngestionJobs` | Query is ordered and capped |
 
 ---
 
@@ -219,7 +242,17 @@ deleteIngestionJob(jobId)
 |----------|:-----:|:--------:|
 | UI components | 21 | ✅ |
 | DAL functions | 5 (+1 query ref) | ✅ |
-| Cloud Functions | 2 | ✅ |
+| Cloud Functions lifecycle | 6 exported entry points plus shared helpers | ✅ |
 | Hooks | 1 | ✅ |
 | Types | 9 interfaces + 3 constants | ✅ |
-| **Total** | **30+ items** | **✅ 100%** |
+| **Overall** | **Current paths and contracts above** | **✅ Source checked** |
+
+---
+
+## 7. Version History
+
+| Date | Version | Change |
+| --- | --- | --- |
+| 2026-07-13 | 1.2.0 | Added the versioned Embedding 2 registry, v2 persistence/query cutover, rollback dual-write, and resumable master-scheduler corpus backfill. |
+| 2026-07-11 | 1.1.0 | Aligned the separate Answerlattice generation/publish/embedding lifecycle, typed embedding leases, deterministic task/FAQ identity, retry settlement, and finalizer behavior to current Functions source. |
+| 2026-07-05 | 1.0.0 | Initial codebase forensic blueprint. |

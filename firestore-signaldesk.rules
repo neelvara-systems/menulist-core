@@ -8,7 +8,6 @@ service cloud.firestore {
 
     match /signaldeskTeamMembers/{memberId} {
       allow read: if isSignalDeskPlatformAdmin()
-        || isSignedInSignalDeskMember()
         || (isAuthenticated() && memberId == request.auth.uid);
       allow write: if false;
     }
@@ -298,6 +297,11 @@ service cloud.firestore {
     }
 
     match /signaldeskContentPerformanceSummaries/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
+    match /signaldeskProofPermissions/{docId} {
       allow read: if canReadSignalDesk();
       allow write: if false;
     }

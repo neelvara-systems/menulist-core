@@ -42,6 +42,7 @@ npm run verify:public-truth-tools
 | STR-015 | Report Lead Ops monitor | `/ops/report-leads` is platform-admin only, manual-refresh, reads recent existing enquiries, shows setup job lists, parses bounded responses, and performs no lead mutation or report storage |
 | STR-016 | Invalid, oversized, malformed, or wrong-shape hash payload | Decoder logs bounded `shareable_tool_report_payload_decode_failed` diagnostics with shape metadata only and keeps the invalid-report state |
 | STR-017 | Hash payload has non-ISO `generatedAt` or control characters in display strings | Decoder rejects the non-canonical timestamp, strips control characters from accepted display strings, and never renders `Invalid Date` as report generated time |
+| STR-018 | A signed platform session is stale after the user is downgraded, disabled, blocked, deleted, identity-mismatched, or revoked | `/api/ops/report-leads` re-reads `users/{userId}`, returns generic `403`, and performs no `landingPageEnquiries` query; malformed issuance/revocation timestamps also fail closed |
 
 ---
 

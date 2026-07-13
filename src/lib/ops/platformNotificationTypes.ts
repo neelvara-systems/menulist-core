@@ -23,7 +23,6 @@ export interface PlatformNotificationRow {
   actionTaken: boolean;
   timestamp: string | null;
   acknowledgedAt?: string | null;
-  acknowledgedBy?: string | null;
   manualHandoffAt?: string | null;
   manualHandoffChannel?: 'email' | 'whatsapp_web' | null;
   metadataPreview: Record<string, string | number | boolean | null>;
@@ -33,6 +32,7 @@ export interface PlatformNotificationRow {
 }
 
 export interface PlatformNotificationOpsCost {
+  authReads: number;
   alertReads: number;
   countQueries: number;
   writes: number;
@@ -44,7 +44,7 @@ export interface PlatformNotificationSnapshot {
   generatedAt: string;
   feature: {
     dashboardEnabled: boolean;
-    accessModel: 'platform_role';
+    accessModel: 'current_persisted_platform_user';
     realtimeListeners: false;
   };
   filters: {

@@ -343,7 +343,7 @@ export interface AiMenuManagerSessionDoc {
     sessionId: string;
     tId: number | string;
     sId: number | string;
-    projectId?: string;
+    projectId: string;
     sessionDate: string;
     storageMode: "daily_compact" | "detailed";
     status: "active" | "closed";
@@ -462,8 +462,8 @@ export interface AiMenuManagerProposalActionRequest {
 
 export interface AiMenuManagerProposalCompleteRequest {
     storeId: string | number;
-    projectId?: string;
-    actionType?: AiMenuManagerActionType;
+    projectId: string;
+    actionType: AiMenuManagerActionType;
     executionId: string;
     patchHash: string;
     result: "executed" | "failed";

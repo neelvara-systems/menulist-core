@@ -60,7 +60,11 @@ assertIncludes(answerlatticeOnboarding, "Paid plan is required.", 'Answerlattice
 assertNotMatches(answerlatticeOnboarding, /answerlattice_beta|getAnswerlatticeBetaPlan|['"]free['"]/i, 'Answerlattice onboarding route');
 
 const answerlatticeForm = read('src/app/sites/answerlattice/get-started/OnboardingForm.tsx');
-assertIncludes(answerlatticeForm, "planId: 'answerlattice_starter'", 'Answerlattice public onboarding form');
+assertIncludes(answerlatticeForm, "initialPlanId = 'answerlattice_starter'", 'Answerlattice public onboarding default paid plan');
+assertIncludes(answerlatticeForm, "ONBOARDING_PLAN_IDS.has(initialPlanId) ? initialPlanId : 'answerlattice_starter'", 'Answerlattice public onboarding paid-plan fallback');
+assertIncludes(answerlatticeForm, 'const ONBOARDING_PLANS = getAnswerlatticePlans()', 'Answerlattice public onboarding active plan registry');
+assertIncludes(answerlatticeForm, 'body: JSON.stringify({', 'Answerlattice public onboarding request body');
+assertIncludes(answerlatticeForm, 'planId,', 'Answerlattice public onboarding selected paid plan submission');
 assertNotMatches(answerlatticeForm, /value=["']free["']|No paid plan/i, 'Answerlattice public onboarding form');
 
 const productBilling = read('src/lib/billing/productBillingPlans.ts');

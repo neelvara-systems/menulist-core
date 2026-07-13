@@ -2,6 +2,7 @@
 
 import { SIGNIN_URL } from "@constant/urls";
 import { CAMPAIGNCUE_PAGE_SIZE } from "@constant/campaigncue/database";
+import { CAMPAIGNCUE_DAILY_DESK_RECIPES } from "@constant/campaigncue/dailyDesk";
 import { CAMPAIGNCUE_CREATIVE_EDITOR_AI_ACTIONS } from "@constant/campaigncue/creativeEditorAiTools";
 import { CAMPAIGNCUE_DESIGN_CUE_COMMANDS } from "@constant/campaigncue/designCue";
 import { CAMPAIGNCUE_LOCAL_DEV_PATH_PREFIX } from "@constant/campaigncue/domains";
@@ -40,6 +41,7 @@ import { readJsonResponseWithLimit } from "@lib/security/boundedResponseBody";
 import { FEATURE_FLAGS } from "@config/features";
 import { runCampaignCueCreativeEditorAiTool } from "@lib/campaigncue/creativeEditorAiTools";
 import { buildCampaignCueDailyDesk } from "@lib/campaigncue/dailyDesk";
+import { isCampaignCueSourceInputCurrent } from "@lib/campaigncue/operatingLoop";
 import { applyCampaignCueDesignCuePatchSet } from "@lib/campaigncue/design-cue/apply";
 import { runCampaignCueDesignCue } from "@lib/campaigncue/design-cue/intent";
 import {
@@ -51,7 +53,7 @@ import {
     listCampaignCuePackTemplates,
 } from "@lib/campaigncue/pack-templates/catalog";
 import { saveCampaignCueWorkspacePackTemplate } from "@lib/campaigncue/pack-templates/workspaceTemplates";
-import { formatDateTime, fromNativeDateTimeInputValue, type DateLike, type IntlFormatter } from "@util/dateTime";
+import { formatDateTime, fromNativeDateTimeInputValue, toNativeDateTimeInputValue, type DateLike, type IntlFormatter } from "@util/dateTime";
 import {
     type CreativeEditorDocument,
     type CreativeEditorDesignCueApplyHandler,
@@ -66,6 +68,7 @@ import {
 } from "@/modules/creative-editor/providers/campaigncue";
 import type {
     CampaignCueActionType,
+    CampaignCueAIAssistItem,
     CampaignCueAsset,
     CampaignCueCampaign,
     CampaignCueChannel,
@@ -80,6 +83,7 @@ import type {
     CampaignCueProviderStatus,
     CampaignCueSourceInput,
     CampaignCueTrustSummaryItem,
+    CampaignCueWorkspaceRole,
 } from "@type/campaigncue";
 import type {
     CampaignCueCueLayerBootPackage,
@@ -139,6 +143,8 @@ import {
     LuUpload,
     LuUploadCloud,
     LuUsers,
+    LuVideo,
+    LuX,
 } from "react-icons/lu";
 import PackTemplatePicker from "./PackTemplatePicker";
 import styles from "./CampaignCueWorkspaceApp.module.scss";
@@ -232,7 +238,7 @@ const CAMPAIGNCUE_HANDOFF_COPY_FALLBACK_FAILED = "campaigncue_handoff_copy_fallb
 
 type CampaignCueWorkspaceResponseResult<T> =
     | { code?: undefined; ok: true; data: T; status: number }
-    | { code?: string; ok: false; status: number };
+    | { code?: string; message?: string; ok: false; status: number };
 
 const isRecord = (value: unknown): value is Record<string, unknown> => (
     Boolean(value) && typeof value === "object" && !Array.isArray(value)
@@ -289,6 +295,10 @@ const isCampaignCueWorkspaceResponseCode = (payload: unknown): string | undefine
     isRecord(payload) && typeof payload.code === "string" ? payload.code : undefined
 );
 
+const isCampaignCueWorkspaceResponseMessage = (payload: unknown): string | undefined => (
+    isRecord(payload) && typeof payload.error === "string" ? payload.error.slice(0, 240) : undefined
+);
+
 const readCampaignCueWorkspaceData = async <T,>(
     response: Response,
     operation: string,
@@ -314,7 +324,12 @@ const readCampaignCueWorkspaceData = async <T,>(
 
     if (!response.ok) {
         logRuntimeFailure("campaigncue_workspace_response_rejected", undefined, context);
-        return { code: isCampaignCueWorkspaceResponseCode(payload), ok: false, status: response.status };
+        return {
+            code: isCampaignCueWorkspaceResponseCode(payload),
+            message: isCampaignCueWorkspaceResponseMessage(payload),
+            ok: false,
+            status: response.status,
+        };
     }
 
     if (!isDataEnvelope(payload) || !isValidData(payload.data)) {
@@ -391,11 +406,56 @@ const ownerStatusLabel = (status?: string) => {
     return "Needs review";
 };
 
-const campaignBlocksPublicUse = (campaign?: CampaignCueCampaign | null) => (
-    campaign?.trustGate === "blocked" || campaign?.trustGate === "needs_fix"
+const isCampaignPackExpired = (campaign?: CampaignCueCampaign | null) => {
+    const value = campaign?.pack?.freshness?.expiresAt;
+    if (!value) return false;
+    const date = value instanceof Date
+        ? value
+        : typeof value === "string" || typeof value === "number"
+            ? new Date(value)
+            : typeof (value as { toDate?: unknown }).toDate === "function"
+                ? (value as { toDate: () => Date }).toDate()
+                : null;
+    return Boolean(date && !Number.isNaN(date.getTime()) && date.getTime() < Date.now());
+};
+
+const campaignBlocksPublicUse = (
+    campaign?: CampaignCueCampaign | null,
+    approvalRequired = false,
+) => (
+    campaign?.trustGate === "blocked"
+    || campaign?.trustGate === "needs_fix"
+    || campaign?.pack?.freshness?.status === "stale"
+    || campaign?.pack?.freshness?.status === "expired"
+    || isCampaignPackExpired(campaign)
+    || campaign?.ownerApprovalState === "requested"
+    || campaign?.ownerApprovalState === "rejected"
+    || (approvalRequired && campaign?.ownerApprovalState !== "approved")
 );
 
-const publicUseBlockedLabel = "Fix blocked trust issues before downloading, scheduling, or marking this pack used.";
+const publicUseBlockedLabel = "Resolve blocked checks, freshness, or required approval before downloading, scheduling, or marking this pack used.";
+
+const canRequestCampaignApproval = (campaign?: CampaignCueCampaign | null) => Boolean(
+    campaign
+    && campaign.status !== "used"
+    && campaign.status !== "archived"
+    && campaign.ownerApprovalState !== "requested"
+    && campaign.ownerApprovalState !== "approved"
+);
+
+const campaignApprovalActionLabel = (campaign: CampaignCueCampaign) => {
+    if (campaign.ownerApprovalState === "requested") return "Approval waiting";
+    if (campaign.ownerApprovalState === "approved") return "Approved";
+    if (campaign.status === "used" || campaign.status === "archived") return "Campaign closed";
+    return "Request approval";
+};
+
+const campaignCueCanResolveApproval = (role?: CampaignCueWorkspaceRole) => (
+    role === "owner"
+    || role === "admin"
+    || role === "reviewer"
+    || role === "local_manager"
+);
 
 const decisionTone = (value?: string) => {
     if (value === "high" || value === "ready_to_prepare") return "green";
@@ -552,7 +612,8 @@ const buildCampaignPackExport = (
         matchingPackReview?.reason ? `Pack reason: ${matchingPackReview.reason}` : "",
         matchingPackReview?.decision ? `Decision confidence: ${matchingPackReview.decision.confidence}` : "",
         matchingPackReview?.decision ? `Decision status: ${decisionLabel(matchingPackReview.decision.decisionStatus)}` : "",
-        matchingPackReview?.decision ? `Decision score: ${matchingPackReview.decision.score.finalScore}/100` : "",
+        matchingPackReview?.decision ? `Recommendation fit: ${matchingPackReview.decision.score.finalScore}/100` : "",
+        matchingPackReview?.outputPack ? `Pack readiness: ${matchingPackReview.outputPack.readiness.score}/100 (${ownerStatusLabel(matchingPackReview.outputPack.readiness.status)})` : "",
         "",
         "## Why this recommendation",
         ...(matchingPackReview?.decision?.explanation.whyThis.length
@@ -589,6 +650,21 @@ const buildCampaignPackExport = (
                 ...card.fields.map((field) => `- ${field.label}: ${field.value} (${ownerStatusLabel(field.status)})`),
             ])
             : ["- Create a pack to see channel handoff fields."]),
+        "",
+        "## AI assistance plan",
+        dailyDesk?.aiAssistance ? `Status: ${ownerStatusLabel(dailyDesk.aiAssistance.status)}` : "Status: Not included",
+        dailyDesk?.aiAssistance ? `Next action: ${dailyDesk.aiAssistance.nextBestAction.label} - ${dailyDesk.aiAssistance.nextBestAction.detail}` : "",
+        dailyDesk?.aiAssistance?.costPolicy.summary || "",
+        ...(dailyDesk?.aiAssistance?.items.length
+            ? dailyDesk.aiAssistance.items.map((item) => `- ${item.label}: ${ownerStatusLabel(item.status)}. ${item.suggestedAction}`)
+            : ["- Assistant work plan was not included in this export."]),
+        "",
+        "## Campaign rhythm",
+        dailyDesk?.rhythm ? `Next action: ${dailyDesk.rhythm.title}` : "Next action: Not included",
+        dailyDesk?.rhythm?.detail || "",
+        dailyDesk?.rhythm ? `Manual use: ${dailyDesk.rhythm.suggestedUse}` : "",
+        dailyDesk?.rhythm ? `Follow-up: ${dailyDesk.rhythm.followUp}` : "",
+        dailyDesk?.rhythm?.reuseCandidate ? `Safe reuse: ${dailyDesk.rhythm.reuseCandidate.title}` : "Safe reuse: No proven pack nominated.",
         "",
         "## Local visibility",
         ...(matchingPackReview?.localVisibilityCues?.length
@@ -1074,14 +1150,6 @@ const buildCampaignPackZipBlob = async (
     };
 };
 
-const downloadCampaignPackZip = async (
-    campaign: CampaignCueCampaign,
-    dailyDesk?: CampaignCueOverview["dailyDesk"],
-) => {
-    const zip = await buildCampaignPackZipBlob(campaign, dailyDesk);
-    downloadBlob(zip.filename, zip.blob);
-};
-
 const bumpAnalytics = (
     data: CampaignCueOverview,
     action: CampaignCueActionType | "campaign_created",
@@ -1109,6 +1177,16 @@ const prependBounded = <T extends { id: string }>(items: T[], item: T, limit: nu
     [item, ...items.filter((existing) => existing.id !== item.id)].slice(0, limit)
 );
 
+const prependCampaignCueSourceInput = (
+    items: CampaignCueSourceInput[],
+    item: CampaignCueSourceInput,
+) => {
+    const next = [item, ...items.filter((existing) => existing.id !== item.id)];
+    const pattern = next.find((source) => source.sourceType === "inspiration_pattern");
+    const businessInputs = next.filter((source) => source.sourceType !== "inspiration_pattern").slice(0, CAMPAIGNCUE_PAGE_SIZE);
+    return pattern ? [pattern, ...businessInputs] : businessInputs;
+};
+
 const replaceBounded = <T extends { id: string }>(items: T[], item: T, limit: number) => {
     const exists = items.some((existing) => existing.id === item.id);
     const next = exists
@@ -1117,21 +1195,48 @@ const replaceBounded = <T extends { id: string }>(items: T[], item: T, limit: nu
     return next.slice(0, limit);
 };
 
-const withFreshDailyDesk = (overview: CampaignCueOverview): CampaignCueOverview => ({
-    ...overview,
-    dailyDesk: buildCampaignCueDailyDesk({
+const withFreshDailyDesk = (overview: CampaignCueOverview): CampaignCueOverview => {
+    const campaigns = overview.campaigns.map((campaign) => {
+        const freshness = campaign.pack?.freshness;
+        const currentPatternHash = overview.workspace.patternCueSource?.patternCue?.sourceHash;
+        const patternChanged = Boolean(
+            campaign.pack?.patternCueSourceHash
+            && campaign.pack.patternCueSourceHash !== currentPatternHash,
+        );
+        const businessFactsChanged = Boolean(
+            freshness?.sourceHash
+            && overview.sourceHash
+            && freshness.sourceHash !== overview.sourceHash,
+        );
+        if (!patternChanged && !businessFactsChanged) return campaign;
+        return {
+            ...campaign,
+            pack: {
+                ...campaign.pack,
+                freshness: {
+                    ...freshness,
+                    status: "stale" as const,
+                },
+            },
+        };
+    });
+    const current = { ...overview, campaigns };
+    return {
+        ...current,
+        dailyDesk: buildCampaignCueDailyDesk({
         analytics: overview.analytics,
         assets: overview.assets,
         businessBrain: overview.businessBrain,
-        campaigns: overview.campaigns,
+        campaigns,
         locations: overview.locations,
         opportunities: overview.opportunities,
         schedules: overview.schedules,
         sourceFacts: overview.sourceFacts,
         sourceInputs: overview.sourceInputs,
         workspace: overview.workspace,
-    }),
-});
+        }),
+    };
+};
 
 function LoadingState() {
     return (
@@ -1263,6 +1368,78 @@ function OwnerStepCard({
     );
 }
 
+const aiAssistIconForStage = (stage: CampaignCueAIAssistItem["stage"]): ComponentType<{ size?: number }> => {
+    if (stage === "source_intake" || stage === "missing_input") return LuFileText;
+    if (stage === "pack_drafting") return LuPackageCheck;
+    if (stage === "trust_explainer") return LuShieldCheck;
+    if (stage === "result_interpreter") return LuClipboardCheck;
+    if (stage === "photo_coach") return LuCamera;
+    return LuSparkles;
+};
+
+function AIAssistancePlan({
+    onOpenTarget,
+    plan,
+}: {
+    onOpenTarget: (target: CampaignCueWorkspaceTabKey) => void;
+    plan: CampaignCueOverview["dailyDesk"]["aiAssistance"];
+}) {
+    return (
+        <div className={styles.grid}>
+            <article className={styles.provider}>
+                <div className={styles.row}>
+                    <div className={styles.titleBlock}>
+                        <h3>Assistant boundary</h3>
+                        <p>{plan.providerPolicy.summary}</p>
+                    </div>
+                    <span className={styles.chip} data-tone={ownerStatusTone(plan.status)}>
+                        {ownerStatusLabel(plan.status)}
+                    </span>
+                </div>
+                <div className={styles.noteBox}>
+                    <strong>No extra Firebase or model cost</strong>
+                    <p>{plan.costPolicy.summary}</p>
+                </div>
+                <button className={styles.ghostButton} onClick={() => onOpenTarget(plan.nextBestAction.targetTab as CampaignCueWorkspaceTabKey)} type="button">
+                    {plan.nextBestAction.label}
+                    <LuArrowRight size={16} />
+                </button>
+            </article>
+            {plan.items.map((item) => {
+                const Icon = aiAssistIconForStage(item.stage);
+                return (
+                    <article className={styles.provider} key={item.id}>
+                        <div className={styles.rowStart}>
+                            <div className={styles.iconBox}>
+                                <Icon size={18} />
+                            </div>
+                            <div className={styles.titleBlock}>
+                                <h3>{item.label}</h3>
+                                <p>{item.ownerValue}</p>
+                            </div>
+                        </div>
+                        <div className={styles.chips}>
+                            <span className={styles.chip} data-tone={ownerStatusTone(item.status)}>
+                                {ownerStatusLabel(item.status)}
+                            </span>
+                            <span className={styles.chip}>{displayLabel(item.authority)}</span>
+                            <span className={styles.chip}>{item.providerCallAllowed ? "Provider call" : "No provider call"}</span>
+                        </div>
+                        <div className={styles.noteBox}>
+                            <strong>{item.currentInput}</strong>
+                            <p>{item.suggestedAction}</p>
+                        </div>
+                        <button className={styles.ghostButton} onClick={() => onOpenTarget(item.targetTab as CampaignCueWorkspaceTabKey)} type="button">
+                            Open {displayLabel(item.targetTab)}
+                            <LuArrowRight size={16} />
+                        </button>
+                    </article>
+                );
+            })}
+        </div>
+    );
+}
+
 function OutputFieldSummary({ output }: { output: CampaignCueOutput }) {
     const fields = output.fields;
     if (!fields) return null;
@@ -1372,17 +1549,30 @@ function OutputPackSummary({
                     <h3>Campaign Pack Output</h3>
                     <p>One bundle with decision, copy, handoff fields, trust notes, reuse notes, and result memory.</p>
                 </div>
-                <span className={styles.chip} data-tone={ownerStatusTone(outputPack.trustReport.status)}>
-                    {ownerStatusLabel(outputPack.trustReport.status)}
+                <span className={styles.chip} data-tone={ownerStatusTone(outputPack.readiness.status)}>
+                    {ownerStatusLabel(outputPack.readiness.status)}
                 </span>
             </div>
             <div className={styles.statusGrid}>
+                <StatCard label="Pack readiness" value={`${outputPack.readiness.score}/100`} />
                 <StatCard label="Ready files" value={counts.ready} />
                 <StatCard label="Needs input" value={counts.needsInput} />
                 <StatCard label="Needs review" value={counts.needsReview} />
                 <StatCard label="Blocked" value={counts.blocked} />
             </div>
             <div className={styles.detailStack}>
+                <div className={styles.noteBox}>
+                    <strong>Pack readiness: {ownerStatusLabel(outputPack.readiness.status)}</strong>
+                    <p>{outputPack.readiness.summary}</p>
+                    <div className={styles.chips}>
+                        {outputPack.readiness.checks.map((check) => (
+                            <span className={styles.chip} data-tone={ownerStatusTone(check.status)} key={check.id} title={check.detail}>
+                                {check.label}: {check.points}/20
+                            </span>
+                        ))}
+                    </div>
+                    <p>This measures completeness and safety, not predicted engagement or reach.</p>
+                </div>
                 <div className={styles.noteBox}>
                     <strong>Folders included</strong>
                     <p>{folders.join(", ")}</p>
@@ -1402,8 +1592,30 @@ function OutputPackSummary({
                     </span>
                 </div>
                 <div className={styles.noteBox}>
+                    <strong>Current facts and commercial safety</strong>
+                    <p>
+                        Truth receipt: {displayLabel(outputPack.freshness.status)}. Commercial check: {displayLabel(outputPack.commercialSafety.status)}.
+                    </p>
+                    {outputPack.commercialSafety.findings[0] ? <p>{outputPack.commercialSafety.findings[0]}</p> : null}
+                </div>
+                <div className={styles.noteBox}>
+                    <strong>Local presence and languages</strong>
+                    <p>{outputPack.presencePassport.profiles.filter((profile) => profile.status === "ready").length} owner-managed destinations are saved.</p>
+                    <p>{outputPack.language.targetLocales.length ? `Review variants for ${outputPack.language.targetLocales.join(", ")}.` : "No local-language variant is requested."}</p>
+                </div>
+                <div className={styles.noteBox}>
+                    <strong>Staff handoff and next test</strong>
+                    <p>{outputPack.staffExecution.steps[0] || outputPack.staffExecution.completionPrompt}</p>
+                    <p>{outputPack.learning.instruction}</p>
+                </div>
+                <div className={styles.noteBox}>
                     <strong>Result memory</strong>
                     <p>{outputPack.resultMemory.question}</p>
+                </div>
+                <div className={styles.noteBox}>
+                    <strong>Campaign rhythm</strong>
+                    <p>{outputPack.rhythm.title}: {outputPack.rhythm.detail}</p>
+                    <p>{outputPack.rhythm.followUp}</p>
                 </div>
             </div>
             {disabled && disabledReason ? (
@@ -1432,7 +1644,7 @@ function DecisionEvidenceCard({ decision }: { decision: CampaignCueDecision }) {
                     <span className={styles.chip} data-tone={decisionTone(decision.decisionStatus)}>
                         {decisionLabel(decision.decisionStatus)}
                     </span>
-                    <span className={styles.chip}>{decision.score.finalScore}/100</span>
+                    <span className={styles.chip}>Recommendation fit {decision.score.finalScore}/100</span>
                 </div>
             </div>
             <div className={styles.grid}>
@@ -1466,6 +1678,18 @@ function DecisionEvidenceCard({ decision }: { decision: CampaignCueDecision }) {
                         ))}
                     </div>
                 </div>
+                {decision.commercialGate ? (
+                    <div className={styles.noteBox}>
+                        <strong>Commercial safety: {ownerStatusLabel(decision.commercialGate.status)}</strong>
+                        <p>{decision.commercialGate.findings[0] || "Promotion, discount, stock, and capacity rules are clear."}</p>
+                    </div>
+                ) : null}
+                {decision.experiment ? (
+                    <div className={styles.noteBox}>
+                        <strong>Change one thing next: {displayLabel(decision.experiment.variable)}</strong>
+                        <p>{decision.experiment.instruction}</p>
+                    </div>
+                ) : null}
             </div>
             {decision.missingInputs.length ? (
                 <div className={styles.noteBox}>
@@ -1498,20 +1722,39 @@ export default function CampaignCueWorkspaceApp() {
     const [publicSiteHref, setPublicSiteHref] = useState("/");
     const [businessDraft, setBusinessDraft] = useState({
         agencyMode: false,
+        appleBusinessConnectUrl: "",
         avoidList: "",
         bookingUrl: "",
         brandFeel: "",
+        businessState: "normal",
         businessType: "restaurant",
+        capacityStatus: "unknown",
+        currencyCode: "INR",
+        discountApprovalRequired: true,
+        discountsAllowed: true,
+        doNotPromote: "",
+        facebookUrl: "",
+        googleBusinessProfileUrl: "",
+        googleReviewUrl: "",
         inspirationNotes: "",
+        instagramUrl: "",
         locale: CAMPAIGNCUE_DEFAULT_LOCALE,
+        localMoment: "",
         locality: "",
         logoUrl: "",
+        maxDiscountPercent: "",
+        minimumPromotedPrice: "",
         multiLocationMode: false,
         name: "",
         phone: "",
         primaryColor: CAMPAIGNCUE_DEFAULT_PRIMARY_COLOR,
         productFocus: "",
+        promotionsAllowed: true,
         publicMenuUrl: "",
+        pulseNote: "",
+        pulseValidUntil: "",
+        stockStatus: "unknown",
+        targetLocales: "",
         targetAudience: "",
         timezone: CAMPAIGNCUE_DEFAULT_TIMEZONE,
         typographyNotes: "",
@@ -1519,6 +1762,7 @@ export default function CampaignCueWorkspaceApp() {
         voice: "friendly",
         website: "",
         whatsapp: "",
+        whatsappCatalogUrl: "",
     });
     const [sourceDraft, setSourceDraft] = useState({
         expiresAt: "",
@@ -1526,6 +1770,15 @@ export default function CampaignCueWorkspaceApp() {
         sourceType: "manual_note",
         status: "needs_review",
         value: "",
+    });
+    const [inspirationDraft, setInspirationDraft] = useState({
+        durationSeconds: "",
+        label: "",
+        ownerTakeaway: "",
+        platform: "other",
+        rightsStatus: "reference_only",
+        sourceUrl: "",
+        transcriptOrNotes: "",
     });
     const [locationDraft, setLocationDraft] = useState({
         locality: "",
@@ -1550,19 +1803,41 @@ export default function CampaignCueWorkspaceApp() {
     const [editorDocument, setEditorDocument] = useState<CreativeEditorDocument | null>(null);
     const [editorContext, setEditorContext] = useState<CampaignCueEditorContext | null>(null);
     const [editorSourceLabel, setEditorSourceLabel] = useState("Blank asset");
-    const [outcomeDraft, setOutcomeDraft] = useState("Got replies, bookings, walk-ins, orders, or useful comments.");
+    const [outcomeDraft, setOutcomeDraft] = useState("");
+    const [approvalDecisionNote, setApprovalDecisionNote] = useState("");
     const [selectedOutcomeSignalId, setSelectedOutcomeSignalId] = useState<string | undefined>();
+    const [resultReceiptDraft, setResultReceiptDraft] = useState({
+        bookings: "",
+        calls: "",
+        experimentVariable: "",
+        linkClicks: "",
+        orders: "",
+        replies: "",
+        usedAt: "",
+        walkIns: "",
+    });
+    const [staffTaskDraft, setStaffTaskDraft] = useState({
+        assigneeLabel: "",
+        scheduledAt: "",
+        taskType: "post",
+    });
+    const [scheduleCampaignId, setScheduleCampaignId] = useState<string | undefined>();
+    const [resultCampaignId, setResultCampaignId] = useState<string | undefined>();
     const [packTemplateState, setPackTemplateState] = useState<PackTemplateState>({ loading: false });
     const data = state.data;
     const campaignCueThemeVars = useMemo(() => getCampaignCueThemeVars(token), [token]);
+    const visibleWorkspaceTabs = useMemo(() => CAMPAIGNCUE_WORKSPACE_TABS.filter((item) => (
+        item.key !== "inspiration" || FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_PATTERN_CUE
+    )), []);
     const activeTabDefinition = useMemo(() => (
-        CAMPAIGNCUE_WORKSPACE_TABS.find((item) => item.key === tab) || CAMPAIGNCUE_WORKSPACE_TABS[0]
-    ), [tab]);
+        visibleWorkspaceTabs.find((item) => item.key === tab) || visibleWorkspaceTabs[0]
+    ), [tab, visibleWorkspaceTabs]);
     const activeTabLabel = tChrome(`tabs.${activeTabDefinition.key}` as any);
     const sidebarOffset = isCollapsed && !sidebarShellExpanded
         ? DASHBOARD_SIDEBAR_COLLAPSED_WIDTH
         : DASHBOARD_SIDEBAR_EXPANDED_WIDTH;
     const sessionUser = session?.user || {};
+    const sessionUserId = String((session as any)?.uId || (sessionUser as any)?.id || "");
     const userLoginLabel = (sessionUser as any)?.displayEmail
         || (sessionUser as any)?.phone
         || (sessionUser as any)?.phoneUsername
@@ -1575,7 +1850,7 @@ export default function CampaignCueWorkspaceApp() {
     };
     const userInitials = getUserInitials(userData.name, userLoginLabel);
     const campaignCueNavItems = useMemo<DashboardSidebarShellItem[]>(() => {
-        const groups = CAMPAIGNCUE_WORKSPACE_TABS.reduce((groupMap, item) => {
+        const groups = visibleWorkspaceTabs.reduce((groupMap, item) => {
             const items = groupMap.get(item.group) || [];
             items.push(item);
             groupMap.set(item.group, items);
@@ -1602,7 +1877,7 @@ export default function CampaignCueWorkspaceApp() {
                 })),
             };
         });
-    }, [tChrome, tab]);
+    }, [tChrome, tab, visibleWorkspaceTabs]);
     const campaignCueActionItems = useMemo<DashboardSidebarShellItem[]>(() => ([
         {
             icon: LuSettings2,
@@ -1891,22 +2166,46 @@ export default function CampaignCueWorkspaceApp() {
     useEffect(() => {
         if (!data) return;
         const playbook = data.businessBrain.brandKit.playbook;
+        const operatingPulse = data.businessBrain.operatingPulse;
+        const commercialPolicy = data.businessBrain.commercialPolicy;
+        const presence = data.businessBrain.presence;
         setBusinessDraft({
             agencyMode: data.workspace.agencyMode,
+            appleBusinessConnectUrl: presence.appleBusinessConnectUrl || "",
             avoidList: playbook.avoidList.join(", "),
             bookingUrl: data.businessBrain.contacts.bookingUrl || "",
             brandFeel: playbook.brandFeel.join(", "),
+            businessState: operatingPulse.businessState,
             businessType: data.businessBrain.businessType,
+            capacityStatus: operatingPulse.capacityStatus,
+            currencyCode: commercialPolicy.currencyCode,
+            discountApprovalRequired: commercialPolicy.discountApprovalRequired,
+            discountsAllowed: commercialPolicy.discountsAllowed,
+            doNotPromote: commercialPolicy.doNotPromote.join(", "),
+            facebookUrl: presence.facebookUrl || "",
+            googleBusinessProfileUrl: presence.googleBusinessProfileUrl || "",
+            googleReviewUrl: presence.googleReviewUrl || "",
             inspirationNotes: playbook.inspirationNotes.join(", "),
+            instagramUrl: presence.instagramUrl || "",
             locale: data.workspace.settings.locale || data.businessBrain.locale || CAMPAIGNCUE_DEFAULT_LOCALE,
+            localMoment: operatingPulse.localMoment || "",
             locality: data.businessBrain.locality || "",
             logoUrl: data.businessBrain.brandKit.logoUrl || "",
+            maxDiscountPercent: commercialPolicy.maxDiscountPercent == null ? "" : String(commercialPolicy.maxDiscountPercent),
+            minimumPromotedPrice: commercialPolicy.minimumPromotedPrice == null ? "" : String(commercialPolicy.minimumPromotedPrice),
             multiLocationMode: data.workspace.multiLocationMode,
             name: data.businessBrain.name,
             phone: data.businessBrain.contacts.phone || "",
             primaryColor: data.businessBrain.brandKit.primaryColor || CAMPAIGNCUE_DEFAULT_PRIMARY_COLOR,
             productFocus: playbook.productFocus.join(", "),
+            promotionsAllowed: commercialPolicy.promotionsAllowed,
             publicMenuUrl: data.businessBrain.contacts.publicMenuUrl || "",
+            pulseNote: operatingPulse.note || "",
+            pulseValidUntil: operatingPulse.validUntil
+                ? toNativeDateTimeInputValue(operatingPulse.validUntil as DateLike, data.businessBrain.timezone)
+                : "",
+            stockStatus: operatingPulse.stockStatus,
+            targetLocales: data.businessBrain.languagePolicy.targetLocales.join(", "),
             targetAudience: playbook.targetAudience || "",
             timezone: data.workspace.settings.timezone || data.businessBrain.timezone || CAMPAIGNCUE_DEFAULT_TIMEZONE,
             typographyNotes: playbook.typographyNotes || "",
@@ -1914,10 +2213,33 @@ export default function CampaignCueWorkspaceApp() {
             voice: data.businessBrain.brandKit.voice,
             website: data.businessBrain.contacts.website || "",
             whatsapp: data.businessBrain.contacts.whatsapp || "",
+            whatsappCatalogUrl: presence.whatsappCatalogUrl || "",
         });
     }, [data]);
 
     const latestCampaign = data?.campaigns?.[0];
+    const scheduleCampaign = data?.campaigns.find((campaign) => campaign.id === scheduleCampaignId) || latestCampaign;
+    const resultCampaign = data?.campaigns.find((campaign) => campaign.id === resultCampaignId) || latestCampaign;
+    const resultCampaignRecipe = CAMPAIGNCUE_DAILY_DESK_RECIPES.find((recipe) => (
+        recipe.id === resultCampaign?.pack?.recipeId
+    ));
+    const resultOptions = resultCampaignRecipe?.resultOptions
+        || data?.dailyDesk.readyPack?.resultOptions
+        || data?.dailyDesk.resultPrompt?.resultOptions
+        || data?.dailyDesk.recipe.resultOptions
+        || [];
+    const currentWorkspaceRole = data?.workspace.members?.[sessionUserId]?.role || data?.workspace.defaultRole;
+    const canResolveCampaignApproval = campaignCueCanResolveApproval(currentWorkspaceRole);
+    const isCampaignActionBusy = (
+        campaignId: string,
+        action: CampaignCueActionType,
+        outputId = "campaign",
+    ) => busyKey === `${campaignId}:${action}:${outputId}`;
+    const isCampaignApprovalBusy = (campaignId: string) => (
+        Boolean(busyKey?.startsWith(`${campaignId}:request_approval:`))
+        || Boolean(busyKey?.startsWith(`${campaignId}:approve:`))
+        || Boolean(busyKey?.startsWith(`${campaignId}:reject:`))
+    );
     const trustFindings = useMemo(() => (
         data?.campaigns.flatMap((campaign) => campaign.outputs.map((output) => ({
             campaign,
@@ -1931,11 +2253,13 @@ export default function CampaignCueWorkspaceApp() {
             .map((output) => ({ campaign, output }))) || []
     );
 
-    const campaignCreationBlockedReason = (opportunityId?: string) => {
+    const campaignCreationBlockedReason = (opportunityId?: string, recipeId?: string) => {
         const decisions = data?.dailyDesk.candidateDecisions || [];
-        const decision = opportunityId
-            ? decisions.find((item) => item.opportunityId === opportunityId)
-            : data?.dailyDesk.decision;
+        const decision = recipeId
+            ? decisions.find((item) => item.recipeId === recipeId)
+            : opportunityId
+                ? decisions.find((item) => item.opportunityId === opportunityId)
+                : data?.dailyDesk.decision;
         if (!decision || decision.decisionStatus === "ready_to_prepare") return "";
         const firstMissingInput = decision.missingInputs.find((input) => input.required) || decision.missingInputs[0];
         if (firstMissingInput?.ownerQuestion) return firstMissingInput.ownerQuestion;
@@ -1951,14 +2275,22 @@ export default function CampaignCueWorkspaceApp() {
             templateId: string;
             title: string;
         },
+        reuseCampaignId?: string,
     ) => {
-        const blockedReason = campaignCreationBlockedReason(opportunityId);
+        const reuseSource = reuseCampaignId
+            ? data?.campaigns.find((campaign) => campaign.id === reuseCampaignId)
+            : undefined;
+        const blockedReason = campaignCreationBlockedReason(opportunityId, reuseSource?.pack?.recipeId);
         if (blockedReason) {
             setNotice(blockedReason);
             setTab((data?.dailyDesk.summary.targetTab as CampaignCueWorkspaceTabKey | undefined) || "sources");
             return;
         }
-        setBusyKey(templateDraft ? `cue-template:${templateDraft.templateId}` : `cue:${opportunityId || "default"}`);
+        setBusyKey(
+            reuseCampaignId
+                ? `cue-reuse:${reuseCampaignId}`
+                : templateDraft ? `cue-template:${templateDraft.templateId}` : `cue:${opportunityId || "default"}`,
+        );
         setNotice("");
         try {
             const res = await fetch(CAMPAIGNCUE_API_ROUTES.CAMPAIGNS, {
@@ -1969,6 +2301,7 @@ export default function CampaignCueWorkspaceApp() {
                     brief: templateDraft?.brief,
                     channels: templateDraft?.channels,
                     opportunityId,
+                    reuseCampaignId,
                     title: templateDraft?.title,
                     idempotencyKey: buildIdempotencyKey("create"),
                 }),
@@ -1982,10 +2315,14 @@ export default function CampaignCueWorkspaceApp() {
                 isRecordData,
             );
             if (!payload.ok) {
-                setNotice("Campaign pack could not be created.");
+                setNotice(("message" in payload && payload.message) || "Campaign pack could not be created.");
                 return;
             }
-            setNotice(templateDraft ? "Campaign pack created from reusable base." : "Campaign pack created.");
+            setNotice(
+                reuseCampaignId
+                    ? "Campaign pack rebuilt from current checked facts."
+                    : templateDraft ? "Campaign pack created from reusable base." : "Campaign pack created.",
+            );
             setTab("campaigns");
             if (payload.data.campaign) {
                 updateOverview((current) => ({
@@ -2003,11 +2340,63 @@ export default function CampaignCueWorkspaceApp() {
         setBusyKey("business");
         setNotice("");
         try {
+            const {
+                appleBusinessConnectUrl,
+                businessState,
+                capacityStatus,
+                currencyCode,
+                discountApprovalRequired,
+                discountsAllowed,
+                doNotPromote,
+                facebookUrl,
+                googleBusinessProfileUrl,
+                googleReviewUrl,
+                instagramUrl,
+                localMoment,
+                maxDiscountPercent,
+                minimumPromotedPrice,
+                promotionsAllowed,
+                pulseNote,
+                pulseValidUntil,
+                stockStatus,
+                targetLocales,
+                whatsappCatalogUrl,
+                ...businessFields
+            } = businessDraft;
+            const requestPayload = {
+                ...businessFields,
+                commercialPolicy: {
+                    currencyCode,
+                    discountApprovalRequired,
+                    discountsAllowed,
+                    doNotPromote,
+                    maxDiscountPercent: maxDiscountPercent.trim() ? Number(maxDiscountPercent) : null,
+                    minimumPromotedPrice: minimumPromotedPrice.trim() ? Number(minimumPromotedPrice) : null,
+                    promotionsAllowed,
+                },
+                operatingPulse: {
+                    businessState,
+                    capacityStatus,
+                    localMoment,
+                    note: pulseNote,
+                    stockStatus,
+                    validUntil: parseDateTimeLocal(pulseValidUntil, businessDraft.timezone) || null,
+                },
+                presence: {
+                    appleBusinessConnectUrl,
+                    facebookUrl,
+                    googleBusinessProfileUrl,
+                    googleReviewUrl,
+                    instagramUrl,
+                    whatsappCatalogUrl,
+                },
+                targetLocales,
+            };
             const res = await fetch(CAMPAIGNCUE_API_ROUTES.WORKSPACE, {
                 method: "PATCH",
                 credentials: "include",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(businessDraft),
+                body: JSON.stringify(requestPayload),
             });
             const payload = await readCampaignCueWorkspaceData<Partial<CampaignCueOverview>>(
                 res,
@@ -2025,6 +2414,7 @@ export default function CampaignCueWorkspaceApp() {
                     ...current,
                     businessBrain: result.businessBrain as CampaignCueOverview["businessBrain"],
                     opportunities: result.opportunities || current.opportunities,
+                    sourceHash: result.sourceHash || current.sourceHash,
                     sourceFacts: result.sourceFacts || current.sourceFacts,
                     workspace: result.workspace as CampaignCueOverview["workspace"],
                 }));
@@ -2053,7 +2443,7 @@ export default function CampaignCueWorkspaceApp() {
                 (value): value is CampaignCueSourceInput => isRecord(value) && typeof value.id === "string",
             );
             if (!payload.ok) {
-                setNotice("Source input could not be saved.");
+                setNotice(("message" in payload && payload.message) || "Source input could not be saved.");
                 return;
             }
             setSourceDraft({ expiresAt: "", label: "", sourceType: "manual_note", status: "needs_review", value: "" });
@@ -2066,9 +2456,66 @@ export default function CampaignCueWorkspaceApp() {
                         ...(sourceInput.facts || []),
                         ...current.sourceFacts.filter((fact) => !(sourceInput.facts || []).some((nextFact) => nextFact.id === fact.id)),
                     ],
-                    sourceInputs: prependBounded(current.sourceInputs, sourceInput, CAMPAIGNCUE_PAGE_SIZE),
+                    sourceHash: `changed:${sourceInput.id}`,
+                    sourceInputs: prependCampaignCueSourceInput(current.sourceInputs, sourceInput),
                 }));
             }
+        } finally {
+            setBusyKey(null);
+        }
+    };
+
+    const createInspirationPattern = async () => {
+        if (!FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_PATTERN_CUE) return;
+        setBusyKey("inspiration-pattern");
+        setNotice("");
+        try {
+            const res = await fetch(CAMPAIGNCUE_API_ROUTES.SOURCES, {
+                method: "POST",
+                credentials: "include",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    inspiration: {
+                        durationSeconds: inspirationDraft.durationSeconds
+                            ? Number(inspirationDraft.durationSeconds)
+                            : undefined,
+                        ownerTakeaway: inspirationDraft.ownerTakeaway || undefined,
+                        platform: inspirationDraft.platform,
+                        rightsStatus: inspirationDraft.rightsStatus,
+                        sourceUrl: inspirationDraft.sourceUrl,
+                        transcriptOrNotes: inspirationDraft.transcriptOrNotes,
+                    },
+                    label: inspirationDraft.label,
+                    sourceType: "inspiration_pattern",
+                    status: "active",
+                    value: inspirationDraft.sourceUrl,
+                }),
+            });
+            const payload = await readCampaignCueWorkspaceData(
+                res,
+                "inspiration_pattern_create",
+                (value): value is CampaignCueSourceInput => isRecord(value) && typeof value.id === "string" && isRecord(value.patternCue),
+            );
+            if (!payload.ok) {
+                setNotice(("message" in payload && payload.message) || "Example pattern could not be prepared.");
+                return;
+            }
+            setInspirationDraft({
+                durationSeconds: "",
+                label: "",
+                ownerTakeaway: "",
+                platform: "other",
+                rightsStatus: "reference_only",
+                sourceUrl: "",
+                transcriptOrNotes: "",
+            });
+            setNotice("Example pattern ready for the next reel or creator brief.");
+            const sourceInput = payload.data;
+            updateOverview((current) => ({
+                ...current,
+                sourceInputs: prependCampaignCueSourceInput(current.sourceInputs, sourceInput),
+                workspace: { ...current.workspace, patternCueSource: sourceInput },
+            }));
         } finally {
             setBusyKey(null);
         }
@@ -2121,8 +2568,13 @@ export default function CampaignCueWorkspaceApp() {
             const exportZip = action === "export"
                 ? await buildCampaignPackZipBlob(campaign, data?.dailyDesk)
                 : null;
+            const resultMetrics = Object.fromEntries(
+                (["replies", "calls", "bookings", "orders", "walkIns", "linkClicks"] as const)
+                    .map((key) => [key, resultReceiptDraft[key].trim() ? Number(resultReceiptDraft[key]) : undefined] as const)
+                    .filter(([, value]) => typeof value === "number" && Number.isFinite(value)),
+            );
             const scheduledAt = action === "schedule"
-                ? new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+                ? parseDateTimeLocal(staffTaskDraft.scheduledAt, businessDraft.timezone) || undefined
                 : undefined;
             const res = await fetch(getCampaignCueCampaignActionApiPath(campaign.id), {
                 method: "POST",
@@ -2134,13 +2586,25 @@ export default function CampaignCueWorkspaceApp() {
                     outputId: output?.id,
                     scheduledAt,
                     note: action === "schedule"
-                        ? "Manual CampaignCue task"
+                        ? staffTaskDraft.assigneeLabel.trim()
+                            ? `Manual CampaignCue task for ${staffTaskDraft.assigneeLabel.trim()}`
+                            : "Manual CampaignCue task"
                         : action === "record_outcome"
                             ? noteOverride ?? outcomeDraft
+                            : action === "approve" || action === "reject"
+                                ? (noteOverride ?? approvalDecisionNote.trim()) || undefined
                             : undefined,
                     resultSignalId: action === "record_outcome"
                         ? resultSignalId || selectedOutcomeSignalId
                         : undefined,
+                    resultReceipt: action === "record_outcome" ? {
+                        evidenceNote: noteOverride ?? outcomeDraft,
+                        experimentVariable: resultReceiptDraft.experimentVariable || undefined,
+                        metrics: resultMetrics,
+                        usedAt: parseDateTimeLocal(resultReceiptDraft.usedAt, businessDraft.timezone) || undefined,
+                    } : undefined,
+                    staffAssignee: action === "schedule" ? staffTaskDraft.assigneeLabel : undefined,
+                    taskType: action === "schedule" ? staffTaskDraft.taskType : undefined,
                     idempotencyKey: buildIdempotencyKey(action),
                 }),
             });
@@ -2153,8 +2617,8 @@ export default function CampaignCueWorkspaceApp() {
                 "campaign_action_record",
                 isRecordData,
             );
-            if (!payload.ok) {
-                setNotice("Action could not be recorded.");
+            if (payload.ok === false) {
+                setNotice(("message" in payload && payload.message) || "Action could not be recorded.");
                 return;
             }
             if (action === "download" && output) {
@@ -2167,6 +2631,32 @@ export default function CampaignCueWorkspaceApp() {
                 setNotice("Campaign pack ZIP downloaded and recorded.");
             } else if (action === "record_outcome") {
                 setNotice("Result recorded.");
+                setResultCampaignId(campaign.id);
+                setSelectedOutcomeSignalId(undefined);
+                setOutcomeDraft("");
+                setResultReceiptDraft((current) => ({
+                    ...current,
+                    bookings: "",
+                    calls: "",
+                    experimentVariable: "",
+                    linkClicks: "",
+                    orders: "",
+                    replies: "",
+                    usedAt: "",
+                    walkIns: "",
+                }));
+            } else if (action === "approve") {
+                setNotice("Campaign pack approved.");
+                setApprovalDecisionNote("");
+            } else if (action === "reject") {
+                setNotice("Campaign pack rejected with review notes.");
+                setApprovalDecisionNote("");
+            } else if (action === "request_approval") {
+                setNotice(payload.data.replayed ? "Approval is already waiting." : "Approval requested.");
+            } else if (action === "schedule") {
+                setNotice("Manual campaign reminder scheduled.");
+                setStaffTaskDraft((current) => ({ ...current, scheduledAt: "" }));
+                setScheduleCampaignId(undefined);
             } else {
                 setNotice("Action recorded.");
             }
@@ -2548,9 +3038,9 @@ export default function CampaignCueWorkspaceApp() {
                             <div className={styles.chips}>
                                 <button
                                     className={styles.ghostButton}
-                                    disabled={campaignBlocksPublicUse(campaign)}
+                                    disabled={isCampaignActionBusy(campaign.id, "download", output.id) || campaignBlocksPublicUse(campaign, data?.workspace.agencyMode)}
                                     onClick={() => recordAction(campaign, "download", output)}
-                                    title={campaignBlocksPublicUse(campaign) ? publicUseBlockedLabel : undefined}
+                                    title={campaignBlocksPublicUse(campaign, data?.workspace.agencyMode) ? publicUseBlockedLabel : undefined}
                                     type="button"
                                 >
                                     <LuDownload size={16} />
@@ -2564,17 +3054,22 @@ export default function CampaignCueWorkspaceApp() {
                                 ) : null}
                                 <button
                                     className={styles.ghostButton}
-                                    disabled={campaignBlocksPublicUse(campaign)}
-                                    onClick={() => recordAction(campaign, "schedule", output)}
-                                    title={campaignBlocksPublicUse(campaign) ? publicUseBlockedLabel : undefined}
+                                    disabled={campaignBlocksPublicUse(campaign, data?.workspace.agencyMode)}
+                                    onClick={() => openScheduleCampaign(campaign)}
+                                    title={campaignBlocksPublicUse(campaign, data?.workspace.agencyMode) ? publicUseBlockedLabel : undefined}
                                     type="button"
                                 >
                                     <LuCalendarDays size={16} />
-                                    Schedule
+                                    Plan reminder
                                 </button>
-                                <button className={styles.ghostButton} onClick={() => recordAction(campaign, "request_approval", output)} type="button">
+                                <button
+                                    className={styles.ghostButton}
+                                    disabled={!canRequestCampaignApproval(campaign) || isCampaignApprovalBusy(campaign.id)}
+                                    onClick={() => recordAction(campaign, "request_approval", output)}
+                                    type="button"
+                                >
                                     <LuUsers size={16} />
-                                    Approval
+                                    {campaignApprovalActionLabel(campaign)}
                                 </button>
                             </div>
                         </article>
@@ -2604,6 +3099,26 @@ export default function CampaignCueWorkspaceApp() {
     const primaryCreateOpportunityId = dailyDesk.primaryOpportunity?.id || firstOpportunity?.id;
     const primaryCreateBlockedReason = campaignCreationBlockedReason(primaryCreateOpportunityId);
     const openDeskTarget = (target: CampaignCueWorkspaceTabKey) => setTab(target);
+    const openScheduleCampaign = (campaign: CampaignCueCampaign) => {
+        setScheduleCampaignId(campaign.id);
+        setTab("calendar");
+    };
+    const openResultCampaign = (campaign: CampaignCueCampaign) => {
+        setResultCampaignId(campaign.id);
+        setSelectedOutcomeSignalId(undefined);
+        setOutcomeDraft("");
+        setResultReceiptDraft({
+            bookings: "",
+            calls: "",
+            experimentVariable: "",
+            linkClicks: "",
+            orders: "",
+            replies: "",
+            usedAt: "",
+            walkIns: "",
+        });
+        setTab("analytics");
+    };
     const copyHandoffValue = async (value: string) => {
         try {
             await copyCampaignCueHandoffValueToClipboard(value);
@@ -2623,9 +3138,38 @@ export default function CampaignCueWorkspaceApp() {
             void createCampaign(primaryCreateOpportunityId);
             return;
         }
+        if (dailyDesk.summary.actionKind === "result_memory" && dailyDesk.rhythm.resultCampaignId) {
+            const campaign = data.campaigns.find((item) => item.id === dailyDesk.rhythm.resultCampaignId);
+            if (campaign) {
+                openResultCampaign(campaign);
+                return;
+            }
+        }
         openDeskTarget(dailyDesk.summary.targetTab as CampaignCueWorkspaceTabKey);
     };
-    const editorPublicUseBlocked = Boolean(editorContext?.campaign && campaignBlocksPublicUse(editorContext.campaign));
+    const runCampaignRhythmAction = () => {
+        const rhythm = dailyDesk.rhythm;
+        if (rhythm.status === "reuse_ready" && rhythm.reuseCandidate) {
+            void createCampaign(undefined, undefined, rhythm.reuseCandidate.campaignId);
+            return;
+        }
+        if (rhythm.status === "approval_due" && rhythm.approvalCampaignId) {
+            const campaign = data.campaigns.find((item) => item.id === rhythm.approvalCampaignId);
+            if (campaign?.ownerApprovalState === "not_requested") {
+                void recordAction(campaign, "request_approval");
+                return;
+            }
+        }
+        if (rhythm.status === "result_due" && rhythm.resultCampaignId) {
+            const campaign = data.campaigns.find((item) => item.id === rhythm.resultCampaignId);
+            if (campaign) {
+                openResultCampaign(campaign);
+                return;
+            }
+        }
+        openDeskTarget(rhythm.primaryAction.targetTab as CampaignCueWorkspaceTabKey);
+    };
+    const editorPublicUseBlocked = Boolean(editorContext?.campaign && campaignBlocksPublicUse(editorContext.campaign, data?.workspace.agencyMode));
     const editorHeaderActions = editorContext?.campaign ? [
         {
             disabled: editorPublicUseBlocked,
@@ -2636,28 +3180,19 @@ export default function CampaignCueWorkspaceApp() {
             tone: "primary" as const,
         },
         {
-            disabled: editorPublicUseBlocked || busyKey === "campaign-pack-zip",
+            disabled: editorPublicUseBlocked || isCampaignActionBusy(editorContext.campaign.id, "export"),
             icon: <LuDownload size={16} />,
             id: "campaigncue-download-pack",
             label: "Download pack",
-            loading: busyKey === "campaign-pack-zip",
-            onClick: async () => {
-                if (!editorContext.campaign) return;
-                setBusyKey("campaign-pack-zip");
-                try {
-                    await downloadCampaignPackZip(editorContext.campaign, data.dailyDesk);
-                    await recordAction(editorContext.campaign, "export");
-                } finally {
-                    setBusyKey(null);
-                }
-            },
+            loading: isCampaignActionBusy(editorContext.campaign.id, "export"),
+            onClick: () => recordAction(editorContext.campaign as CampaignCueCampaign, "export"),
             tone: "accent" as const,
         },
         {
             icon: <LuClipboardCheck size={16} />,
             id: "campaigncue-record-result",
             label: "Record result",
-            onClick: () => openDeskTarget("analytics"),
+            onClick: () => openResultCampaign(editorContext.campaign as CampaignCueCampaign),
             tone: "default" as const,
         },
     ] : editorContext ? [
@@ -2986,7 +3521,11 @@ export default function CampaignCueWorkspaceApp() {
                                         <div className={styles.topActions}>
                                             <button
                                                 className={styles.button}
-                                                disabled={dailyDesk.summary.actionKind === "campaign_pack" && (!primaryCreateOpportunityId || Boolean(primaryCreateBlockedReason))}
+                                                disabled={dailyDesk.summary.actionKind === "campaign_pack" && (
+                                                    !primaryCreateOpportunityId
+                                                    || Boolean(primaryCreateBlockedReason)
+                                                    || busyKey === `cue:${primaryCreateOpportunityId}`
+                                                )}
                                                 onClick={runDailyDeskPrimaryAction}
                                                 title={primaryCreateBlockedReason || undefined}
                                                 type="button"
@@ -3009,6 +3548,73 @@ export default function CampaignCueWorkspaceApp() {
                                 </div>
                             </section>
 
+                            {FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_OPERATING_LOOP ? (
+                            <section className={styles.section}>
+                                <div className={styles.sectionHeader}>
+                                    <div>
+                                        <span className={styles.eyebrow}>Owner pulse</span>
+                                        <h2>What can the business handle right now?</h2>
+                                        <p>One quick update keeps recommendations aligned with current stock, slots, capacity, and local context.</p>
+                                    </div>
+                                    <button className={styles.button} disabled={busyKey === "business"} onClick={saveBusinessDetails} type="button">
+                                        <LuCheck size={16} />
+                                        Save pulse
+                                    </button>
+                                </div>
+                                <div className={styles.panel}>
+                                    <div className={styles.formGrid}>
+                                        <div className={styles.field}>
+                                            <label htmlFor="pulse-business-state">Business right now</label>
+                                            <select className={styles.select} id="pulse-business-state" onChange={(event) => setBusinessDraft((draft) => ({ ...draft, businessState: event.target.value }))} value={businessDraft.businessState}>
+                                                <option value="normal">Running normally</option>
+                                                <option value="quiet">Quiet, more demand is useful</option>
+                                                <option value="busy">Busy, reduce demand</option>
+                                                <option value="closed">Closed for this window</option>
+                                            </select>
+                                        </div>
+                                        <div className={styles.field}>
+                                            <label htmlFor="pulse-capacity">Slots or capacity</label>
+                                            <select className={styles.select} id="pulse-capacity" onChange={(event) => setBusinessDraft((draft) => ({ ...draft, capacityStatus: event.target.value }))} value={businessDraft.capacityStatus}>
+                                                <option value="unknown">Not confirmed</option>
+                                                <option value="available">Available</option>
+                                                <option value="limited">Limited</option>
+                                                <option value="full">Full</option>
+                                            </select>
+                                        </div>
+                                        <div className={styles.field}>
+                                            <label htmlFor="pulse-stock">Stock or promoted item</label>
+                                            <select className={styles.select} id="pulse-stock" onChange={(event) => setBusinessDraft((draft) => ({ ...draft, stockStatus: event.target.value }))} value={businessDraft.stockStatus}>
+                                                <option value="unknown">Not confirmed</option>
+                                                <option value="available">Available</option>
+                                                <option value="low">Low</option>
+                                                <option value="unavailable">Unavailable</option>
+                                            </select>
+                                        </div>
+                                        <div className={styles.field}>
+                                            <label htmlFor="pulse-valid-until">Keep this pulse until</label>
+                                            <input className={styles.input} id="pulse-valid-until" onChange={(event) => setBusinessDraft((draft) => ({ ...draft, pulseValidUntil: event.target.value }))} type="datetime-local" value={businessDraft.pulseValidUntil} />
+                                        </div>
+                                        <div className={styles.field}>
+                                            <label htmlFor="pulse-local-moment">Local or seasonal moment</label>
+                                            <input className={styles.input} id="pulse-local-moment" onChange={(event) => setBusinessDraft((draft) => ({ ...draft, localMoment: event.target.value }))} placeholder="Example: festival weekend, rain, local event" value={businessDraft.localMoment} />
+                                        </div>
+                                        <div className={styles.field}>
+                                            <label htmlFor="pulse-note">Short owner note</label>
+                                            <input className={styles.input} id="pulse-note" onChange={(event) => setBusinessDraft((draft) => ({ ...draft, pulseNote: event.target.value }))} placeholder="Example: two slots open after 4 PM" value={businessDraft.pulseNote} />
+                                        </div>
+                                    </div>
+                                    <div className={styles.chips}>
+                                        <span className={styles.chip} data-tone={dailyDesk.decision.commercialGate?.status === "blocked" ? "red" : dailyDesk.decision.commercialGate?.status === "needs_review" ? "amber" : "green"}>
+                                            Commercial check: {displayLabel(dailyDesk.decision.commercialGate?.status || "ready")}
+                                        </span>
+                                        {dailyDesk.decision.experiment ? (
+                                            <span className={styles.chip}>Next test: {displayLabel(dailyDesk.decision.experiment.variable)}</span>
+                                        ) : null}
+                                    </div>
+                                </div>
+                            </section>
+                            ) : null}
+
                             <section className={styles.section}>
                                 <div className={styles.sectionHeader}>
                                     <div>
@@ -3019,6 +3625,80 @@ export default function CampaignCueWorkspaceApp() {
                                 </div>
                                 <DecisionEvidenceCard decision={dailyDesk.decision} />
                             </section>
+
+                            <section className={styles.section}>
+                                <div className={styles.sectionHeader}>
+                                    <div>
+                                        <span className={styles.eyebrow}>Campaign rhythm</span>
+                                        <h2>{dailyDesk.rhythm.title}</h2>
+                                        <p>{dailyDesk.rhythm.detail}</p>
+                                    </div>
+                                    <button
+                                        className={styles.button}
+                                        disabled={
+                                            (dailyDesk.rhythm.status === "reuse_ready"
+                                                && busyKey === `cue-reuse:${dailyDesk.rhythm.reuseCandidate?.campaignId || ""}`)
+                                            || (dailyDesk.rhythm.status === "approval_due"
+                                                && Boolean(dailyDesk.rhythm.approvalCampaignId)
+                                                && isCampaignApprovalBusy(dailyDesk.rhythm.approvalCampaignId || ""))
+                                        }
+                                        onClick={runCampaignRhythmAction}
+                                        type="button"
+                                    >
+                                        <LuRefreshCw size={16} />
+                                        {dailyDesk.rhythm.primaryAction.label}
+                                    </button>
+                                </div>
+                                <div className={styles.statusGrid}>
+                                    <StatCard label="Due manual tasks" value={dailyDesk.rhythm.dueTaskCount} />
+                                    <StatCard label="Scheduled next" value={dailyDesk.rhythm.scheduledTaskCount} />
+                                    <StatCard
+                                        label="Next time"
+                                        value={formatCampaignCueDateTime(dailyDesk.rhythm.nextScheduledAt, formatter) || "Owner chooses"}
+                                    />
+                                    <StatCard label="Safe reuse" value={dailyDesk.rhythm.reuseCandidate ? "Available" : "Not yet"} />
+                                </div>
+                                <div className={styles.grid}>
+                                    <div className={styles.noteBox}>
+                                        <strong>Manual use window</strong>
+                                        <p>{dailyDesk.rhythm.suggestedUse}</p>
+                                    </div>
+                                    <div className={styles.noteBox}>
+                                        <strong>Follow-up</strong>
+                                        <p>{dailyDesk.rhythm.followUp}</p>
+                                    </div>
+                                    <div className={styles.noteBox}>
+                                        <strong>{dailyDesk.rhythm.reuseCandidate ? "Useful pack available" : "Reuse after a useful result"}</strong>
+                                        <p>
+                                            {dailyDesk.rhythm.reuseCandidate
+                                                ? `${dailyDesk.rhythm.reuseCandidate.title}. ${dailyDesk.rhythm.reuseCandidate.reason}`
+                                                : "Record an owner-observed result first. CampaignCue never recycles a pack automatically."}
+                                        </p>
+                                        {dailyDesk.rhythm.reuseCandidate?.positiveEvidence.length ? (
+                                            <ul>
+                                                {dailyDesk.rhythm.reuseCandidate.positiveEvidence.map((item) => <li key={item}>{item}</li>)}
+                                            </ul>
+                                        ) : null}
+                                    </div>
+                                </div>
+                            </section>
+
+                            {FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_AI_ASSISTANCE_PLAN ? (
+                                <section className={styles.section}>
+                                    <div className={styles.sectionHeader}>
+                                        <div>
+                                            <span className={styles.eyebrow}>AI assistance plan</span>
+                                            <h2>Use AI where it removes owner work</h2>
+                                            <p>CampaignCue can use AI for intake, draft wording, trust explanations, results, and photo coaching. The model does not choose campaigns, change protected facts, or post anywhere.</p>
+                                        </div>
+                                        <button className={styles.ghostButton} onClick={() => openDeskTarget(dailyDesk.aiAssistance.nextBestAction.targetTab as CampaignCueWorkspaceTabKey)} type="button">
+                                            <LuSparkles size={16} />
+                                            {dailyDesk.aiAssistance.nextBestAction.label}
+                                        </button>
+                                    </div>
+                                    <AIAssistancePlan onOpenTarget={openDeskTarget} plan={dailyDesk.aiAssistance} />
+                                </section>
+                            ) : null}
 
                             <section className={styles.section}>
                                 <div className={styles.sectionHeader}>
@@ -3075,9 +3755,9 @@ export default function CampaignCueWorkspaceApp() {
                                             <div className={styles.chips}>
                                                 <button
                                                     className={styles.button}
-                                                    disabled={campaignBlocksPublicUse(dailyDeskCampaign)}
+                                                    disabled={isCampaignActionBusy(dailyDeskCampaign.id, "export") || campaignBlocksPublicUse(dailyDeskCampaign, data?.workspace.agencyMode)}
                                                     onClick={() => recordAction(dailyDeskCampaign, "export")}
-                                                    title={campaignBlocksPublicUse(dailyDeskCampaign) ? publicUseBlockedLabel : undefined}
+                                                    title={campaignBlocksPublicUse(dailyDeskCampaign, data?.workspace.agencyMode) ? publicUseBlockedLabel : undefined}
                                                     type="button"
                                                 >
                                                     <LuDownload size={16} />
@@ -3089,15 +3769,15 @@ export default function CampaignCueWorkspaceApp() {
                                                 </button>
                                                 <button
                                                     className={styles.ghostButton}
-                                                    disabled={campaignBlocksPublicUse(dailyDeskCampaign)}
+                                                    disabled={isCampaignActionBusy(dailyDeskCampaign.id, "mark_used") || campaignBlocksPublicUse(dailyDeskCampaign, data?.workspace.agencyMode)}
                                                     onClick={() => recordAction(dailyDeskCampaign, "mark_used")}
-                                                    title={campaignBlocksPublicUse(dailyDeskCampaign) ? publicUseBlockedLabel : undefined}
+                                                    title={campaignBlocksPublicUse(dailyDeskCampaign, data?.workspace.agencyMode) ? publicUseBlockedLabel : undefined}
                                                     type="button"
                                                 >
                                                     <LuCheck size={16} />
                                                     Mark used
                                                 </button>
-                                                <button className={styles.ghostButton} onClick={() => recordAction(dailyDeskCampaign, "record_outcome")} type="button">
+                                                <button className={styles.ghostButton} onClick={() => openResultCampaign(dailyDeskCampaign)} type="button">
                                                     <LuClipboardCheck size={16} />
                                                     Record result
                                                 </button>
@@ -3141,7 +3821,7 @@ export default function CampaignCueWorkspaceApp() {
                                             </div>
                                             <button
                                                 className={styles.button}
-                                                disabled={!primaryCreateOpportunityId || Boolean(primaryCreateBlockedReason)}
+                                                disabled={!primaryCreateOpportunityId || Boolean(primaryCreateBlockedReason) || busyKey === `cue:${primaryCreateOpportunityId}`}
                                                 onClick={() => createCampaign(primaryCreateOpportunityId)}
                                                 title={primaryCreateBlockedReason || undefined}
                                                 type="button"
@@ -3219,7 +3899,7 @@ export default function CampaignCueWorkspaceApp() {
                                         </article>
                                         <OutputPackSummary
                                             busy={Boolean(dailyDeskCampaign && busyKey === `${dailyDeskCampaign.id}:export:campaign`)}
-                                            disabled={campaignBlocksPublicUse(dailyDeskCampaign)}
+                                            disabled={campaignBlocksPublicUse(dailyDeskCampaign, data?.workspace.agencyMode)}
                                             disabledReason={publicUseBlockedLabel}
                                             onDownload={() => dailyDeskCampaign && recordAction(dailyDeskCampaign, "export")}
                                             outputPack={dailyDesk.packReview.outputPack}
@@ -3491,6 +4171,40 @@ export default function CampaignCueWorkspaceApp() {
                                         <label htmlFor="business-avoid-list">Avoid list</label>
                                         <textarea className={styles.textarea} id="business-avoid-list" onChange={(event) => setBusinessDraft((draft) => ({ ...draft, avoidList: event.target.value }))} placeholder="fake reviews, cartoon graphics, heavy discounts, result promises" rows={3} value={businessDraft.avoidList} />
                                     </div>
+                                    <div className={styles.fieldWide}>
+                                        <div className={styles.noteBox}>
+                                            <strong>Commercial safety</strong>
+                                            <p>These rules can block an unsafe recommendation before a pack is created.</p>
+                                        </div>
+                                    </div>
+                                    <label className={styles.toggleRow}>
+                                        <input checked={businessDraft.promotionsAllowed} onChange={(event) => setBusinessDraft((draft) => ({ ...draft, promotionsAllowed: event.target.checked }))} type="checkbox" />
+                                        Promotional campaigns are allowed
+                                    </label>
+                                    <label className={styles.toggleRow}>
+                                        <input checked={businessDraft.discountsAllowed} onChange={(event) => setBusinessDraft((draft) => ({ ...draft, discountsAllowed: event.target.checked }))} type="checkbox" />
+                                        Discount campaigns are allowed
+                                    </label>
+                                    <label className={styles.toggleRow}>
+                                        <input checked={businessDraft.discountApprovalRequired} onChange={(event) => setBusinessDraft((draft) => ({ ...draft, discountApprovalRequired: event.target.checked }))} type="checkbox" />
+                                        Review every discount before use
+                                    </label>
+                                    <div className={styles.field}>
+                                        <label htmlFor="business-max-discount">Maximum discount %</label>
+                                        <input className={styles.input} id="business-max-discount" min="0" max="100" onChange={(event) => setBusinessDraft((draft) => ({ ...draft, maxDiscountPercent: event.target.value }))} placeholder="Example: 20" type="number" value={businessDraft.maxDiscountPercent} />
+                                    </div>
+                                    <div className={styles.field}>
+                                        <label htmlFor="business-min-price">Minimum promoted price</label>
+                                        <input className={styles.input} id="business-min-price" min="0" onChange={(event) => setBusinessDraft((draft) => ({ ...draft, minimumPromotedPrice: event.target.value }))} placeholder="Example: 499" type="number" value={businessDraft.minimumPromotedPrice} />
+                                    </div>
+                                    <div className={styles.field}>
+                                        <label htmlFor="business-currency">Currency code</label>
+                                        <input className={styles.input} id="business-currency" maxLength={3} onChange={(event) => setBusinessDraft((draft) => ({ ...draft, currencyCode: event.target.value.toUpperCase() }))} placeholder="INR" value={businessDraft.currencyCode} />
+                                    </div>
+                                    <div className={styles.fieldWide}>
+                                        <label htmlFor="business-do-not-promote">Do not promote</label>
+                                        <textarea className={styles.textarea} id="business-do-not-promote" onChange={(event) => setBusinessDraft((draft) => ({ ...draft, doNotPromote: event.target.value }))} placeholder="Items, services, offers, or claims CampaignCue must never recommend" rows={3} value={businessDraft.doNotPromote} />
+                                    </div>
                                 </div>
                             </div>
                             <div className={styles.list}>
@@ -3589,23 +4303,29 @@ export default function CampaignCueWorkspaceApp() {
                                     <div className={styles.fieldWide}>
                                         <label htmlFor="source-value">Details to use in campaigns</label>
                                         <textarea className={styles.textarea} id="source-value" onChange={(event) => setSourceDraft((draft) => ({ ...draft, value: event.target.value }))} placeholder="Example: 20% off hair spa this Friday, valid from 4 PM to 7 PM, booking link..." value={sourceDraft.value} />
+                                        <p>For return-customer packs, describe the audience only. Do not paste customer names, phone numbers, email addresses, or contact lists.</p>
                                     </div>
                                 </div>
                             </div>
                             <div className={styles.list}>
-                                {data.sourceInputs.map((source: CampaignCueSourceInput) => (
-                                    <div className={styles.assetRow} key={source.id}>
-                                        <div className={styles.rowStart}>
-                                            <div className={styles.iconBox}><LuFileText size={18} /></div>
-                                            <div className={styles.titleBlock}>
-                                                <h3>{source.label}</h3>
-                                                <p>{CAMPAIGNCUE_SOURCE_TYPE_LABELS[source.sourceType] || source.sourceType} · {source.value}</p>
+                                {data.sourceInputs.filter((source) => source.sourceType !== "inspiration_pattern").map((source: CampaignCueSourceInput) => {
+                                    const current = isCampaignCueSourceInputCurrent(source);
+                                    return (
+                                        <div className={styles.assetRow} key={source.id}>
+                                            <div className={styles.rowStart}>
+                                                <div className={styles.iconBox}><LuFileText size={18} /></div>
+                                                <div className={styles.titleBlock}>
+                                                    <h3>{source.label}</h3>
+                                                    <p>{CAMPAIGNCUE_SOURCE_TYPE_LABELS[source.sourceType] || source.sourceType} · {source.value}</p>
+                                                </div>
                                             </div>
+                                            <span className={styles.chip} data-tone={current ? "green" : "amber"}>
+                                                {current ? "ready to use" : source.status === "active" ? "expired" : displayLabel(source.status)}
+                                            </span>
                                         </div>
-                                        <span className={styles.chip} data-tone={source.status === "active" ? "green" : "amber"}>{source.status === "active" ? "ready to use" : displayLabel(source.status)}</span>
-                                    </div>
-                                ))}
-                                {!data.sourceInputs.length ? (
+                                    );
+                                })}
+                                {!data.sourceInputs.some((source) => source.sourceType !== "inspiration_pattern") ? (
                                     <div className={styles.empty}>
                                         <p>No inputs yet. Add an offer, event, menu link, booking link, or simple note first.</p>
                                     </div>
@@ -3635,7 +4355,7 @@ export default function CampaignCueWorkspaceApp() {
                                     </div>
                                     <div className={styles.titleBlock}>
                                         <h3>Day-one delivery</h3>
-                                        <p>Use Download text, Download campaign pack ZIP, Schedule task, Request approval, Mark used, and Record result. CampaignCue does not post to social platforms.</p>
+                                        <p>Use Download text, Download campaign pack ZIP, Plan reminder, Request approval, Mark used, and Record result. CampaignCue does not post to social platforms.</p>
                                     </div>
                                 </div>
                             </div>
@@ -3651,7 +4371,7 @@ export default function CampaignCueWorkspaceApp() {
                                     {dailyDeskCampaign ? (
                                         <OutputPackSummary
                                             busy={busyKey === `${dailyDeskCampaign.id}:export:campaign`}
-                                            disabled={campaignBlocksPublicUse(dailyDeskCampaign)}
+                                            disabled={campaignBlocksPublicUse(dailyDeskCampaign, data?.workspace.agencyMode)}
                                             disabledReason={publicUseBlockedLabel}
                                             onDownload={() => recordAction(dailyDeskCampaign, "export")}
                                             outputPack={dailyDesk.packReview.outputPack}
@@ -3708,6 +4428,11 @@ export default function CampaignCueWorkspaceApp() {
                                     <div className={styles.field}>
                                         <label htmlFor="settings-locale">Locale</label>
                                         <input className={styles.input} id="settings-locale" onChange={(event) => setBusinessDraft((draft) => ({ ...draft, locale: event.target.value }))} value={businessDraft.locale} />
+                                    </div>
+                                    <div className={styles.fieldWide}>
+                                        <label htmlFor="settings-target-locales">Local-language pack variants</label>
+                                        <input className={styles.input} id="settings-target-locales" onChange={(event) => setBusinessDraft((draft) => ({ ...draft, targetLocales: event.target.value }))} placeholder="Example: hi-IN, kn-IN" value={businessDraft.targetLocales} />
+                                        <p>CampaignCue prepares a protected-fact handoff. A person must review names, prices, dates, contacts, links, and offer terms before use.</p>
                                     </div>
                                     <label className={styles.toggleRow}>
                                         <input checked={businessDraft.agencyMode} onChange={(event) => setBusinessDraft((draft) => ({ ...draft, agencyMode: event.target.checked }))} type="checkbox" />
@@ -3792,13 +4517,169 @@ export default function CampaignCueWorkspaceApp() {
                         </section>
                     ) : null}
 
+                    {tab === "inspiration" && FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_PATTERN_CUE ? (
+                        <section className={styles.section}>
+                            <div className={styles.sectionHeader}>
+                                <div>
+                                    <span className={styles.eyebrow}>Use an example</span>
+                                    <h2>Learn the format, not the content</h2>
+                                    <p>Add one public example and your notes. CampaignCue prepares an original reel or creator brief from your checked business facts.</p>
+                                </div>
+                                <button
+                                    className={styles.button}
+                                    disabled={
+                                        busyKey === "inspiration-pattern"
+                                        || !inspirationDraft.label.trim()
+                                        || !inspirationDraft.sourceUrl.trim()
+                                        || inspirationDraft.transcriptOrNotes.trim().length < 20
+                                    }
+                                    onClick={createInspirationPattern}
+                                    type="button"
+                                >
+                                    <LuSparkles size={16} />
+                                    Prepare pattern
+                                </button>
+                            </div>
+                            <div className={styles.panel}>
+                                <div className={styles.formGrid}>
+                                    <div className={styles.field}>
+                                        <label htmlFor="inspiration-label">Short title</label>
+                                        <input
+                                            className={styles.input}
+                                            id="inspiration-label"
+                                            maxLength={120}
+                                            onChange={(event) => setInspirationDraft((draft) => ({ ...draft, label: event.target.value }))}
+                                            placeholder="Example: Quick lunch reveal"
+                                            value={inspirationDraft.label}
+                                        />
+                                    </div>
+                                    <div className={styles.field}>
+                                        <label htmlFor="inspiration-platform">Where you found it</label>
+                                        <select
+                                            className={styles.select}
+                                            id="inspiration-platform"
+                                            onChange={(event) => setInspirationDraft((draft) => ({ ...draft, platform: event.target.value }))}
+                                            value={inspirationDraft.platform}
+                                        >
+                                            <option value="other">Detect from link</option>
+                                            <option value="instagram">Instagram</option>
+                                            <option value="tiktok">TikTok</option>
+                                            <option value="youtube">YouTube</option>
+                                        </select>
+                                    </div>
+                                    <div className={styles.fieldWide}>
+                                        <label htmlFor="inspiration-url">Public example link</label>
+                                        <input
+                                            className={styles.input}
+                                            id="inspiration-url"
+                                            maxLength={1000}
+                                            onChange={(event) => setInspirationDraft((draft) => ({ ...draft, sourceUrl: event.target.value }))}
+                                            placeholder="https://www.instagram.com/reel/..."
+                                            type="url"
+                                            value={inspirationDraft.sourceUrl}
+                                        />
+                                        <p>Public HTTPS links only. CampaignCue does not monitor accounts, bypass platform access, or fetch private posts.</p>
+                                    </div>
+                                    <div className={styles.field}>
+                                        <label htmlFor="inspiration-duration">Approximate length</label>
+                                        <input
+                                            className={styles.input}
+                                            id="inspiration-duration"
+                                            max="600"
+                                            min="1"
+                                            onChange={(event) => setInspirationDraft((draft) => ({ ...draft, durationSeconds: event.target.value }))}
+                                            placeholder="Seconds"
+                                            type="number"
+                                            value={inspirationDraft.durationSeconds}
+                                        />
+                                    </div>
+                                    <div className={styles.field}>
+                                        <label htmlFor="inspiration-rights">How the source may be used</label>
+                                        <select
+                                            className={styles.select}
+                                            id="inspiration-rights"
+                                            onChange={(event) => setInspirationDraft((draft) => ({ ...draft, rightsStatus: event.target.value }))}
+                                            value={inspirationDraft.rightsStatus}
+                                        >
+                                            <option value="reference_only">Format reference only</option>
+                                            <option value="owner_authorized">I control or may reuse the source</option>
+                                        </select>
+                                    </div>
+                                    <div className={styles.fieldWide}>
+                                        <label htmlFor="inspiration-notes">Transcript or format notes</label>
+                                        <textarea
+                                            className={styles.textarea}
+                                            id="inspiration-notes"
+                                            maxLength={12000}
+                                            onChange={(event) => setInspirationDraft((draft) => ({ ...draft, transcriptOrNotes: event.target.value }))}
+                                            placeholder="Describe the opening, shots, pacing, proof moment, and CTA. Do not paste private messages or customer contact data."
+                                            value={inspirationDraft.transcriptOrNotes}
+                                        />
+                                        <p>These notes are analyzed during this request and are not stored. CampaignCue keeps only the compact format observation.</p>
+                                    </div>
+                                    <div className={styles.fieldWide}>
+                                        <label htmlFor="inspiration-takeaway">What should CampaignCue learn?</label>
+                                        <input
+                                            className={styles.input}
+                                            id="inspiration-takeaway"
+                                            maxLength={320}
+                                            onChange={(event) => setInspirationDraft((draft) => ({ ...draft, ownerTakeaway: event.target.value }))}
+                                            placeholder="Example: The product appears in the first two seconds and the CTA is simple."
+                                            value={inspirationDraft.ownerTakeaway}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                            <div className={styles.list}>
+                                {data.sourceInputs.filter((source) => source.sourceType === "inspiration_pattern" && source.patternCue).map((source) => (
+                                    <article className={styles.campaign} key={source.id}>
+                                        <div className={styles.row}>
+                                            <div className={styles.rowStart}>
+                                                <div className={styles.iconBox}><LuVideo size={18} /></div>
+                                                <div className={styles.titleBlock}>
+                                                    <h3>{source.label}</h3>
+                                                    <p>{source.patternCue?.summary}</p>
+                                                </div>
+                                            </div>
+                                            <span className={styles.chip} data-tone={source.status === "active" ? "green" : "amber"}>
+                                                {source.status === "active" ? "Ready for next reel" : "Needs review"}
+                                            </span>
+                                        </div>
+                                        <div className={styles.chips}>
+                                            <span className={styles.chip}>{displayLabel(source.patternCue?.platform)}</span>
+                                            <span className={styles.chip}>{displayLabel(source.patternCue?.format)}</span>
+                                            <span className={styles.chip}>{displayLabel(source.patternCue?.pacing)}</span>
+                                            <span className={styles.chip}>{source.patternCue?.rightsStatus === "reference_only" ? "Format only" : "Owner authorized"}</span>
+                                        </div>
+                                        <div className={styles.noteBox}>
+                                            <strong>Original hook options</strong>
+                                            {source.patternCue?.candidateHooks.map((hook) => <p key={hook}>{hook}</p>)}
+                                        </div>
+                                        <div className={styles.row}>
+                                            <p className={styles.muted}>The raw transcript is not saved. The next video or creator output uses this structure only.</p>
+                                            <a className={styles.ghostButton} href={source.patternCue?.sourceUrl} rel="noopener noreferrer" target="_blank">
+                                                <LuExternalLink size={16} />
+                                                Open example
+                                            </a>
+                                        </div>
+                                    </article>
+                                ))}
+                                {!data.sourceInputs.some((source) => source.sourceType === "inspiration_pattern" && source.patternCue) ? (
+                                    <div className={styles.empty}>
+                                        <p>No saved examples yet. Add one useful public format instead of browsing hundreds of templates.</p>
+                                    </div>
+                                ) : null}
+                            </div>
+                        </section>
+                    ) : null}
+
                     {tab === "campaigns" ? (
                         <section className={styles.section}>
                             <div className={styles.sectionHeader}>
                                 <div>
                                     <span className={styles.eyebrow}>Packs</span>
                                     <h2>Campaign packs</h2>
-                                    <p>{data.campaigns.length ? "Packs are ready to download, export, schedule, or send for approval." : "Create your first pack from a campaign idea or saved business details."}</p>
+                                    <p>{data.campaigns.length ? "Review each pack's trust, freshness, and approval state before manual use." : "Create your first pack from a campaign idea or saved business details."}</p>
                                 </div>
                                 <button className={styles.ghostButton} disabled={busyKey === "cue:default"} onClick={() => createCampaign()} type="button">
                                     <LuPackageCheck size={16} />
@@ -3817,6 +4698,14 @@ export default function CampaignCueWorkspaceApp() {
                                                 <span className={styles.chip} data-tone={trustTone(campaign.trustGate)}>
                                                     {displayLabel(campaign.trustGate)}
                                                 </span>
+                                            </div>
+                                            <div className={styles.chips}>
+                                                <span className={styles.chip} data-tone={campaign.ownerApprovalState === "approved" ? "green" : campaign.ownerApprovalState === "rejected" ? "red" : campaign.ownerApprovalState === "requested" ? "amber" : undefined}>
+                                                    Approval: {displayLabel(campaign.ownerApprovalState)}
+                                                </span>
+                                                {campaign.pack?.reusedFromCampaignId ? (
+                                                    <span className={styles.chip}>Rebuilt from a useful pack</span>
+                                                ) : null}
                                             </div>
                                             {dailyDesk.packReview?.campaignId === campaign.id ? (
                                                 <div className={styles.detailStack}>
@@ -3857,9 +4746,9 @@ export default function CampaignCueWorkspaceApp() {
                                                         <div className={styles.chips}>
                                                             <button
                                                                 className={styles.ghostButton}
-                                                                disabled={busyKey === `${campaign.id}:download:${output.id}` || campaignBlocksPublicUse(campaign)}
+                                                                disabled={busyKey === `${campaign.id}:download:${output.id}` || campaignBlocksPublicUse(campaign, data?.workspace.agencyMode)}
                                                                 onClick={() => recordAction(campaign, "download", output)}
-                                                                title={campaignBlocksPublicUse(campaign) ? publicUseBlockedLabel : undefined}
+                                                                title={campaignBlocksPublicUse(campaign, data?.workspace.agencyMode) ? publicUseBlockedLabel : undefined}
                                                                 type="button"
                                                             >
                                                                 <LuDownload size={16} />
@@ -3882,23 +4771,39 @@ export default function CampaignCueWorkspaceApp() {
                                             <div className={styles.chips}>
                                                 <button
                                                     className={styles.ghostButton}
-                                                    disabled={campaignBlocksPublicUse(campaign)}
-                                                    onClick={() => recordAction(campaign, "schedule")}
-                                                    title={campaignBlocksPublicUse(campaign) ? publicUseBlockedLabel : undefined}
+                                                    disabled={campaignBlocksPublicUse(campaign, data?.workspace.agencyMode)}
+                                                    onClick={() => openScheduleCampaign(campaign)}
+                                                    title={campaignBlocksPublicUse(campaign, data?.workspace.agencyMode) ? publicUseBlockedLabel : undefined}
                                                     type="button"
                                                 >
                                                     <LuCalendarDays size={16} />
-                                                    Schedule task
-                                                </button>
-                                                <button className={styles.ghostButton} onClick={() => recordAction(campaign, "request_approval")} type="button">
-                                                    <LuUsers size={16} />
-                                                    Request approval
+                                                    Plan reminder
                                                 </button>
                                                 <button
                                                     className={styles.ghostButton}
-                                                    disabled={busyKey === `${campaign.id}:export:campaign` || campaignBlocksPublicUse(campaign)}
+                                                    disabled={!canRequestCampaignApproval(campaign) || isCampaignApprovalBusy(campaign.id)}
+                                                    onClick={() => recordAction(campaign, "request_approval")}
+                                                    type="button"
+                                                >
+                                                    <LuUsers size={16} />
+                                                    {campaignApprovalActionLabel(campaign)}
+                                                </button>
+                                                {dailyDesk.rhythm.reuseCandidate?.campaignId === campaign.id ? (
+                                                    <button
+                                                        className={styles.ghostButton}
+                                                        disabled={busyKey === `cue-reuse:${campaign.id}`}
+                                                        onClick={() => createCampaign(undefined, undefined, campaign.id)}
+                                                        type="button"
+                                                    >
+                                                        <LuRefreshCw size={16} />
+                                                        Reuse safely
+                                                    </button>
+                                                ) : null}
+                                                <button
+                                                    className={styles.ghostButton}
+                                                    disabled={busyKey === `${campaign.id}:export:campaign` || campaignBlocksPublicUse(campaign, data?.workspace.agencyMode)}
                                                     onClick={() => recordAction(campaign, "export")}
-                                                    title={campaignBlocksPublicUse(campaign) ? publicUseBlockedLabel : undefined}
+                                                    title={campaignBlocksPublicUse(campaign, data?.workspace.agencyMode) ? publicUseBlockedLabel : undefined}
                                                     type="button"
                                                 >
                                                     <LuDownload size={16} />
@@ -3906,15 +4811,15 @@ export default function CampaignCueWorkspaceApp() {
                                                 </button>
                                                 <button
                                                     className={styles.ghostButton}
-                                                    disabled={campaignBlocksPublicUse(campaign)}
+                                                    disabled={isCampaignActionBusy(campaign.id, "mark_used") || campaignBlocksPublicUse(campaign, data?.workspace.agencyMode)}
                                                     onClick={() => recordAction(campaign, "mark_used")}
-                                                    title={campaignBlocksPublicUse(campaign) ? publicUseBlockedLabel : undefined}
+                                                    title={campaignBlocksPublicUse(campaign, data?.workspace.agencyMode) ? publicUseBlockedLabel : undefined}
                                                     type="button"
                                                 >
                                                     <LuCheck size={16} />
                                                     Mark used
                                                 </button>
-                                                <button className={styles.ghostButton} onClick={() => recordAction(campaign, "record_outcome")} type="button">
+                                                <button className={styles.ghostButton} onClick={() => openResultCampaign(campaign)} type="button">
                                                     <LuCheckCircle2 size={16} />
                                                     Record result
                                                 </button>
@@ -4143,9 +5048,59 @@ export default function CampaignCueWorkspaceApp() {
                                     <h2>Search and profile readiness</h2>
                                     <p>Keep customer-facing updates current with saved facts, area, destination, approved images, and manual Google handoff.</p>
                                 </div>
-                                <button className={styles.ghostButton} onClick={() => createCampaign("cue_local_visibility_refresh")} type="button">
-                                    <LuSearch size={16} />
-                                    Create visibility pack
+                                <div className={styles.topActions}>
+                                    <button className={styles.ghostButton} disabled={busyKey === "business"} onClick={saveBusinessDetails} type="button">
+                                        <LuCheck size={16} />
+                                        Save destinations
+                                    </button>
+                                    <button className={styles.ghostButton} disabled={busyKey === "cue:cue_local_visibility_refresh"} onClick={() => createCampaign("cue_local_visibility_refresh")} type="button">
+                                        <LuSearch size={16} />
+                                        Create visibility pack
+                                    </button>
+                                </div>
+                            </div>
+                            <div className={styles.panel}>
+                                <div className={styles.formGrid}>
+                                    <div className={styles.field}>
+                                        <label htmlFor="presence-google-profile">Google Business Profile</label>
+                                        <input className={styles.input} id="presence-google-profile" onChange={(event) => setBusinessDraft((draft) => ({ ...draft, googleBusinessProfileUrl: event.target.value }))} placeholder="https://..." value={businessDraft.googleBusinessProfileUrl} />
+                                    </div>
+                                    <div className={styles.field}>
+                                        <label htmlFor="presence-google-review">Customer review destination</label>
+                                        <input className={styles.input} id="presence-google-review" onChange={(event) => setBusinessDraft((draft) => ({ ...draft, googleReviewUrl: event.target.value }))} placeholder="Verified review link" value={businessDraft.googleReviewUrl} />
+                                    </div>
+                                    <div className={styles.field}>
+                                        <label htmlFor="presence-apple">Apple Business Connect</label>
+                                        <input className={styles.input} id="presence-apple" onChange={(event) => setBusinessDraft((draft) => ({ ...draft, appleBusinessConnectUrl: event.target.value }))} placeholder="https://..." value={businessDraft.appleBusinessConnectUrl} />
+                                    </div>
+                                    <div className={styles.field}>
+                                        <label htmlFor="presence-whatsapp-catalog">WhatsApp catalog</label>
+                                        <input className={styles.input} id="presence-whatsapp-catalog" onChange={(event) => setBusinessDraft((draft) => ({ ...draft, whatsappCatalogUrl: event.target.value }))} placeholder="Owner-managed catalog link" value={businessDraft.whatsappCatalogUrl} />
+                                    </div>
+                                    <div className={styles.field}>
+                                        <label htmlFor="presence-instagram">Instagram</label>
+                                        <input className={styles.input} id="presence-instagram" onChange={(event) => setBusinessDraft((draft) => ({ ...draft, instagramUrl: event.target.value }))} placeholder="https://..." value={businessDraft.instagramUrl} />
+                                    </div>
+                                    <div className={styles.field}>
+                                        <label htmlFor="presence-facebook">Facebook</label>
+                                        <input className={styles.input} id="presence-facebook" onChange={(event) => setBusinessDraft((draft) => ({ ...draft, facebookUrl: event.target.value }))} placeholder="https://..." value={businessDraft.facebookUrl} />
+                                    </div>
+                                    <div className={styles.fieldWide}>
+                                        <div className={styles.noteBox}>
+                                            <strong>Manual presence passport</strong>
+                                            <p>CampaignCue checks and packages these destinations. It does not connect, update, publish to, or send through them.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className={styles.topActions}>
+                                <button className={styles.ghostButton} disabled={busyKey === "cue:cue_review_request"} onClick={() => createCampaign("cue_review_request")} type="button">
+                                    <LuClipboardCheck size={16} />
+                                    Prepare review request
+                                </button>
+                                <button className={styles.ghostButton} disabled={busyKey === "cue:cue_return_customer"} onClick={() => createCampaign("cue_return_customer")} type="button">
+                                    <LuUsers size={16} />
+                                    Prepare return-customer pack
                                 </button>
                             </div>
                             <div className={styles.stepGrid}>
@@ -4182,25 +5137,91 @@ export default function CampaignCueWorkspaceApp() {
                             <div className={styles.sectionHeader}>
                                 <div>
                                     <span className={styles.eyebrow}>Calendar</span>
-                                    <h2>Posting reminders</h2>
-                                    <p>{data.schedules.length ? "Manual posting reminders are ready." : "No reminders yet. Schedule a pack when you want to post it later."}</p>
+                                    <h2>Manual campaign reminders</h2>
+                                    <p>{data.schedules.length ? "Manual campaign reminders are ready." : "No reminders yet. Choose a pack and save a time when you plan to use it."}</p>
                                 </div>
-                                {latestCampaign ? (
+                                {scheduleCampaign ? (
                                     <button
                                         className={styles.button}
-                                        disabled={campaignBlocksPublicUse(latestCampaign)}
-                                        onClick={() => recordAction(latestCampaign, "schedule")}
-                                        title={campaignBlocksPublicUse(latestCampaign) ? publicUseBlockedLabel : undefined}
+                                        disabled={
+                                            !staffTaskDraft.scheduledAt
+                                            || isCampaignActionBusy(scheduleCampaign.id, "schedule")
+                                            || campaignBlocksPublicUse(scheduleCampaign, data?.workspace.agencyMode)
+                                        }
+                                        onClick={() => recordAction(scheduleCampaign, "schedule")}
+                                        title={campaignBlocksPublicUse(scheduleCampaign, data?.workspace.agencyMode) ? publicUseBlockedLabel : !staffTaskDraft.scheduledAt ? "Choose a local date and time first." : undefined}
                                         type="button"
                                     >
                                         <LuCalendarDays size={16} />
-                                        Schedule latest
+                                        Save reminder
                                     </button>
                                 ) : null}
+                            </div>
+                            <div className={styles.panel}>
+                                <div className={styles.row}>
+                                    <div className={styles.rowStart}>
+                                        <div className={styles.iconBox}><LuRefreshCw size={18} /></div>
+                                        <div className={styles.titleBlock}>
+                                            <h3>{dailyDesk.rhythm.title}</h3>
+                                            <p>{dailyDesk.rhythm.detail}</p>
+                                            <p>{dailyDesk.rhythm.followUp}</p>
+                                        </div>
+                                    </div>
+                                    <span className={styles.chip} data-tone={dailyDesk.rhythm.status === "approval_due" ? "red" : dailyDesk.rhythm.status === "result_due" || dailyDesk.rhythm.status === "task_due" ? "amber" : "green"}>
+                                        {displayLabel(dailyDesk.rhythm.status)}
+                                    </span>
+                                </div>
+                            </div>
+                            <div className={styles.panel}>
+                                <div className={styles.formGrid}>
+                                    <div className={styles.fieldWide}>
+                                        <div className={styles.noteBox}>
+                                            <strong>{scheduleCampaign ? `Scheduling: ${scheduleCampaign.title}` : "Choose a campaign pack"}</strong>
+                                            <p>This creates a manual reminder only. CampaignCue does not post or send automatically.</p>
+                                        </div>
+                                    </div>
+                                    <div className={styles.field}>
+                                        <label htmlFor="staff-task-scheduled-at">Local date and time</label>
+                                        <input
+                                            className={styles.input}
+                                            id="staff-task-scheduled-at"
+                                            onChange={(event) => setStaffTaskDraft((draft) => ({ ...draft, scheduledAt: event.target.value }))}
+                                            type="datetime-local"
+                                            value={staffTaskDraft.scheduledAt}
+                                        />
+                                    </div>
+                                    <div className={styles.field}>
+                                        <label htmlFor="staff-task-assignee">Owner or staff assignee</label>
+                                        <input className={styles.input} id="staff-task-assignee" onChange={(event) => setStaffTaskDraft((draft) => ({ ...draft, assigneeLabel: event.target.value }))} placeholder="Example: front desk, Rahul, owner" value={staffTaskDraft.assigneeLabel} />
+                                    </div>
+                                    <div className={styles.field}>
+                                        <label htmlFor="staff-task-type">Manual task</label>
+                                        <select className={styles.select} id="staff-task-type" onChange={(event) => setStaffTaskDraft((draft) => ({ ...draft, taskType: event.target.value }))} value={staffTaskDraft.taskType}>
+                                            <option value="post">Post or send</option>
+                                            <option value="print">Print and place</option>
+                                            <option value="staff_share">Share with staff</option>
+                                            <option value="follow_up">Customer follow-up</option>
+                                            <option value="result_check">Record result</option>
+                                        </select>
+                                    </div>
+                                </div>
                             </div>
                             <div className={styles.list}>
                                 {data.schedules.map((schedule) => {
                                     const scheduledLabel = formatCampaignCueDateTime(schedule.scheduledAt, formatter);
+                                    const scheduledDate = schedule.scheduledAt instanceof Date
+                                        ? schedule.scheduledAt
+                                        : typeof schedule.scheduledAt === "string" || typeof schedule.scheduledAt === "number"
+                                            ? new Date(schedule.scheduledAt)
+                                            : typeof (schedule.scheduledAt as { toDate?: unknown })?.toDate === "function"
+                                                ? (schedule.scheduledAt as { toDate: () => Date }).toDate()
+                                                : null;
+                                    const scheduleStatus = schedule.status === "scheduled"
+                                        && scheduledDate
+                                        && !Number.isNaN(scheduledDate.getTime())
+                                        && scheduledDate.getTime() <= Date.now()
+                                        ? "due"
+                                        : schedule.status;
                                     return (
                                         <div className={styles.scheduleRow} key={schedule.id}>
                                             <div className={styles.rowStart}>
@@ -4212,10 +5233,12 @@ export default function CampaignCueWorkspaceApp() {
                                                     <p>
                                                         {schedule.note}
                                                         {scheduledLabel ? ` · ${scheduledLabel}` : ""}
+                                                        {schedule.assigneeLabel ? ` · ${schedule.assigneeLabel}` : ""}
+                                                        {schedule.taskType ? ` · ${displayLabel(schedule.taskType)}` : ""}
                                                     </p>
                                                 </div>
                                             </div>
-                                            <span className={styles.chip}>{schedule.status}</span>
+                                            <span className={styles.chip} data-tone={scheduleStatus === "due" ? "amber" : scheduleStatus === "completed" ? "green" : undefined}>{scheduleStatus}</span>
                                         </div>
                                     );
                                 })}
@@ -4387,7 +5410,11 @@ export default function CampaignCueWorkspaceApp() {
                                 <div>
                                     <span className={styles.eyebrow}>Results</span>
                                     <h2>Usage summary</h2>
-                                    <p>Counts update when a pack is downloaded, exported, scheduled, approved, or marked used.</p>
+                                    <p>
+                                        {resultCampaign
+                                            ? `Recording for ${resultCampaign.title}. Choose what happened before saving.`
+                                            : "This summary uses campaign creation, exports, manual use, and owner-recorded result receipts."}
+                                    </p>
                                 </div>
                             </div>
                             <div className={styles.statusGrid}>
@@ -4401,7 +5428,7 @@ export default function CampaignCueWorkspaceApp() {
                                     <div className={styles.fieldWide}>
                                         <label htmlFor="outcome-note">Result note</label>
                                         <div className={styles.chips}>
-                                            {(data.dailyDesk.readyPack?.resultOptions || data.dailyDesk.resultPrompt?.resultOptions || data.dailyDesk.recipe.resultOptions).map((option) => {
+                                            {resultOptions.map((option) => {
                                                 const note = `${option.label}: ${option.note}`;
                                                 return (
                                                     <button
@@ -4422,14 +5449,63 @@ export default function CampaignCueWorkspaceApp() {
                                             className={styles.textarea}
                                             id="outcome-note"
                                             onChange={(event) => setOutcomeDraft(event.target.value)}
+                                            placeholder="Optional owner note"
                                             value={outcomeDraft}
                                         />
                                     </div>
                                     <div className={styles.field}>
+                                        <label htmlFor="result-used-at">Used at</label>
+                                        <input className={styles.input} id="result-used-at" onChange={(event) => setResultReceiptDraft((draft) => ({ ...draft, usedAt: event.target.value }))} type="datetime-local" value={resultReceiptDraft.usedAt} />
+                                    </div>
+                                    <div className={styles.field}>
+                                        <label htmlFor="result-experiment">One thing tested</label>
+                                        <select className={styles.select} id="result-experiment" onChange={(event) => setResultReceiptDraft((draft) => ({ ...draft, experimentVariable: event.target.value }))} value={resultReceiptDraft.experimentVariable}>
+                                            <option value="">Not recorded</option>
+                                            <option value="channel">Channel</option>
+                                            <option value="timing">Timing</option>
+                                            <option value="offer">Offer</option>
+                                            <option value="photo">Photo</option>
+                                            <option value="cta">Customer next step</option>
+                                            <option value="format">Format</option>
+                                        </select>
+                                    </div>
+                                    {([
+                                        ["replies", "Replies"],
+                                        ["calls", "Calls"],
+                                        ["bookings", "Bookings"],
+                                        ["orders", "Orders"],
+                                        ["walkIns", "Walk-ins"],
+                                        ["linkClicks", "Link clicks"],
+                                    ] as const).map(([key, label]) => (
+                                        <div className={styles.field} key={key}>
+                                            <label htmlFor={`result-${key}`}>{label}</label>
+                                            <input
+                                                className={styles.input}
+                                                id={`result-${key}`}
+                                                min="0"
+                                                onChange={(event) => setResultReceiptDraft((draft) => ({ ...draft, [key]: event.target.value }))}
+                                                placeholder="Optional"
+                                                step="1"
+                                                type="number"
+                                                value={resultReceiptDraft[key]}
+                                            />
+                                        </div>
+                                    ))}
+                                    {resultCampaign?.pack?.experiment ? (
+                                        <div className={styles.fieldWide}>
+                                            <div className={styles.noteBox}>
+                                                <strong>Change one thing next</strong>
+                                                <p>{resultCampaign.pack.experiment.instruction}</p>
+                                                <span className={styles.chip}>{displayLabel(resultCampaign.pack.experiment.variable)}</span>
+                                            </div>
+                                        </div>
+                                    ) : null}
+                                    <div className={styles.field}>
                                         <button
                                             className={styles.button}
-                                            disabled={!latestCampaign || busyKey === `${latestCampaign?.id}:record_outcome:campaign`}
-                                            onClick={() => latestCampaign && recordAction(latestCampaign, "record_outcome")}
+                                            disabled={!resultCampaign || !selectedOutcomeSignalId || isCampaignActionBusy(resultCampaign.id, "record_outcome")}
+                                            onClick={() => resultCampaign && recordAction(resultCampaign, "record_outcome")}
+                                            title={!selectedOutcomeSignalId ? "Choose a result first." : undefined}
                                             type="button"
                                         >
                                             <LuCheckCircle2 size={16} />
@@ -4459,9 +5535,14 @@ export default function CampaignCueWorkspaceApp() {
                                     <h2>Approvals and handoff</h2>
                                     <p>Send prepared packs for client or owner approval before they are used.</p>
                                 </div>
-                                <button className={styles.button} disabled={!latestCampaign} onClick={() => latestCampaign && recordAction(latestCampaign, "request_approval")} type="button">
+                                <button
+                                    className={styles.button}
+                                    disabled={!canRequestCampaignApproval(latestCampaign) || Boolean(latestCampaign && isCampaignApprovalBusy(latestCampaign.id))}
+                                    onClick={() => latestCampaign && recordAction(latestCampaign, "request_approval")}
+                                    type="button"
+                                >
                                     <LuUsers size={16} />
-                                    Request latest approval
+                                    {latestCampaign ? campaignApprovalActionLabel(latestCampaign) : "Request latest approval"}
                                 </button>
                             </div>
                             <div className={styles.statusGrid}>
@@ -4469,6 +5550,20 @@ export default function CampaignCueWorkspaceApp() {
                                 <StatCard label="Approval requests" value={data.analytics.approvalRequestCount} />
                                 <StatCard label="Campaigns" value={data.analytics.campaignCount} />
                                 <StatCard label="Provider actions" value="Off" />
+                            </div>
+                            <div className={styles.panel}>
+                                <div className={styles.fieldWide}>
+                                    <label htmlFor="approval-decision-note">Approval note</label>
+                                    <textarea
+                                        className={styles.textarea}
+                                        id="approval-decision-note"
+                                        maxLength={400}
+                                        onChange={(event) => setApprovalDecisionNote(event.target.value)}
+                                        placeholder="Required when rejecting. Keep the note short and specific."
+                                        value={approvalDecisionNote}
+                                    />
+                                    <p>Approval confirms review only. Trust, freshness, rights, and protected-fact checks still apply.</p>
+                                </div>
                             </div>
                             <div className={styles.list}>
                                 {data.campaigns.map((campaign) => (
@@ -4480,9 +5575,35 @@ export default function CampaignCueWorkspaceApp() {
                                                 <p>{displayLabel(campaign.ownerApprovalState)}</p>
                                             </div>
                                         </div>
-                                        <button className={styles.ghostButton} onClick={() => recordAction(campaign, "request_approval")} type="button">
-                                            Request approval
-                                        </button>
+                                        <div className={styles.chips}>
+                                            {campaign.ownerApprovalState === "requested" && canResolveCampaignApproval ? (
+                                                <>
+                                                    <button className={styles.button} disabled={isCampaignApprovalBusy(campaign.id)} onClick={() => recordAction(campaign, "approve")} type="button">
+                                                        <LuCheck size={16} />
+                                                        Approve
+                                                    </button>
+                                                    <button
+                                                        className={styles.ghostButton}
+                                                        disabled={!approvalDecisionNote.trim() || isCampaignApprovalBusy(campaign.id)}
+                                                        onClick={() => recordAction(campaign, "reject")}
+                                                        type="button"
+                                                    >
+                                                        <LuX size={16} />
+                                                        Reject
+                                                    </button>
+                                                </>
+                                            ) : campaign.ownerApprovalState === "requested" ? (
+                                                <span className={styles.chip} data-tone="amber">Reviewer access required</span>
+                                            ) : campaign.ownerApprovalState === "approved" ? (
+                                                <span className={styles.chip} data-tone="green">Approved</span>
+                                            ) : canRequestCampaignApproval(campaign) ? (
+                                                <button className={styles.ghostButton} disabled={isCampaignApprovalBusy(campaign.id)} onClick={() => recordAction(campaign, "request_approval")} type="button">
+                                                    Request approval
+                                                </button>
+                                            ) : (
+                                                <span className={styles.chip}>{campaignApprovalActionLabel(campaign)}</span>
+                                            )}
+                                        </div>
                                     </div>
                                 ))}
                                 {!data.campaigns.length ? <div className={styles.empty}><p>No campaign packs ready for approval.</p></div> : null}

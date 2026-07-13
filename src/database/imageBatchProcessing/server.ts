@@ -1,12 +1,33 @@
 import { BATCH_IMAGE_GENERATION_JOB_STATUS } from "@constant/AI";
 import { DB_COLLECTIONS } from "@constant/database";
 import {
+    buildImageBatchProjectJobKey,
     normalizeImageBatchJobId,
     normalizeImageBatchProjectId,
     normalizeImageBatchScopeDocumentId,
 } from "@lib/ai/imageBatchIdBoundary";
+import {
+    areImageBatchJsonValuesEquivalent,
+    getImageBatchItemExecutionKey,
+    getImageBatchOperationId,
+    IMAGE_BATCH_ITEM_LEASE_MS,
+    IMAGE_BATCH_ITEM_MAX_ATTEMPTS,
+    normalizeBatchGeneratedImages,
+    normalizeImageBatchAccountingInput,
+    normalizePersistedImageBatchJob,
+} from "@lib/ai/imageBatchServerBoundary";
+import {
+    isImageBatchGeneratedStorageAsset,
+    parseImageBatchStorageUrl,
+} from "@lib/ai/imageBatchStorageBoundary";
 import { admin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
-import { BatchImageGenerationJobType } from "@template/main-app/projects/types";
+import { sanitizeForFirestore } from "@lib/firestore/sanitizeForFirestore";
+import {
+    BatchImageAccountingInput,
+    BatchImageGenerationJobType,
+    BatchImageItemExecution,
+} from "@template/main-app/projects/types";
+import { randomUUID } from "crypto";
 import { Timestamp } from "firebase-admin/firestore";
 
 const COLLECTION = DB_COLLECTIONS.IMAGE_BATCH_PROCESSING_JOBS;
@@ -46,24 +67,7 @@ function getScopedJobRef(id: string, tenantId: string | number, storeId: string 
 }
 
 function removeUndefined(value: unknown): unknown {
-    if (value instanceof Timestamp) return value;
-    if (
-        value
-        && typeof value === 'object'
-        && typeof (value as { toMillis?: unknown }).toMillis === 'function'
-        && typeof (value as { toDate?: unknown }).toDate === 'function'
-    ) {
-        return value;
-    }
-    if (Array.isArray(value)) return value.map(removeUndefined);
-    if (value && typeof value === 'object') {
-        return Object.fromEntries(
-            Object.entries(value as Record<string, unknown>)
-                .filter(([, nestedValue]) => nestedValue !== undefined)
-                .map(([key, nestedValue]) => [key, removeUndefined(nestedValue)]),
-        );
-    }
-    return value;
+    return sanitizeForFirestore(value, { undefinedObjectValue: 'omit' });
 }
 
 function getImageBatchRetentionFields(status?: string) {
@@ -85,22 +89,83 @@ export async function getImageBatchProcessingJobByIdAdmin(
     const jobId = requireImageBatchJobId(id);
     const snap = await getScopedJobRef(jobId, scope.tId, scope.sId).get();
     if (!snap.exists) return null;
-    return { id: snap.id, ...snap.data() } as BatchImageGenerationJobType;
+    const job = normalizePersistedImageBatchJob(snap.data(), snap.id);
+    if (!job) throw new Error(`Image batch job ${snap.id} is invalid.`);
+    return job;
+}
+
+export async function prepareImageBatchProcessingJobForTriggerAdmin({
+    expectedGenerationConfig,
+    expectedItemIds,
+    jobId,
+    projectId,
+    serverNowIso = new Date().toISOString(),
+}: {
+    expectedGenerationConfig: unknown;
+    expectedItemIds: string[];
+    jobId: string;
+    projectId: string;
+    serverNowIso?: string;
+}): Promise<{ job: BatchImageGenerationJobType; ready: boolean }> {
+    const projectScope = requireImageBatchProjectScope(projectId);
+    const imageBatchJobId = requireImageBatchJobId(jobId);
+    const jobRef = getScopedJobRef(imageBatchJobId, projectScope.tId, projectScope.sId);
+
+    return firestoreAdmin.runTransaction(async (transaction) => {
+        const snap = await transaction.get(jobRef);
+        const job = requirePersistedJob(snap, { requireRequestedItems: true });
+        assertJobProject(job, projectScope.projectId);
+        const requestedItemIds = job.requestedItemIds || [];
+        const ready = job.status === BATCH_IMAGE_GENERATION_JOB_STATUS.QUEUED
+            && job.totalImages === expectedItemIds.length
+            && job.generatedCount === 0
+            && job.itemsList.length === 0
+            && requestedItemIds.length === expectedItemIds.length
+            && requestedItemIds.every((itemId, index) => itemId === expectedItemIds[index])
+            && areImageBatchJsonValuesEquivalent(job.generationConfig, expectedGenerationConfig);
+        if (!ready) return { job, ready: false };
+
+        const canonicalProjectJobKey = buildImageBatchProjectJobKey(
+            projectScope.projectId,
+            serverNowIso,
+            imageBatchJobId,
+        );
+        if (!canonicalProjectJobKey) throw new Error('Could not build the canonical image batch project key.');
+        if (job.projectJobKey !== canonicalProjectJobKey || snap.get('hasStagedResults') !== false) {
+            transaction.update(jobRef, {
+                hasStagedResults: false,
+                modifiedOn: admin.firestore.FieldValue.serverTimestamp(),
+                projectJobKey: canonicalProjectJobKey,
+            });
+        }
+        return {
+            job: { ...job, hasStagedResults: false, projectJobKey: canonicalProjectJobKey },
+            ready: true,
+        };
+    });
 }
 
 export async function updateImageBatchProcessingJobAdmin(
-    data: Partial<BatchImageGenerationJobType> & { id: string; incrementGeneratedCount?: boolean },
+    data: {
+        enqueueFailedItemIds?: string[];
+        error?: string;
+        failedItemIds?: string[];
+        id: string;
+        status?: BatchImageGenerationJobType['status'];
+        statusHistory?: BatchImageGenerationJobType['statusHistory'];
+    },
     projectId: string,
 ) {
     const projectScope = requireImageBatchProjectScope(projectId);
     const jobId = requireImageBatchJobId(data.id);
 
     const processedData: Record<string, unknown> = {
-        ...data,
-        id: jobId,
+        ...(data.enqueueFailedItemIds !== undefined ? { enqueueFailedItemIds: data.enqueueFailedItemIds } : {}),
+        ...(data.error !== undefined ? { error: data.error.slice(0, 500) } : {}),
+        ...(data.failedItemIds !== undefined ? { failedItemIds: data.failedItemIds } : {}),
+        ...(data.status !== undefined ? { status: data.status } : {}),
         ...getImageBatchRetentionFields(data.status),
     };
-    const specialFields: Record<string, unknown> = {};
     let latestStatusEntry: unknown;
 
     if (Array.isArray(data.statusHistory) && data.statusHistory.length > 0) {
@@ -108,42 +173,238 @@ export async function updateImageBatchProcessingJobAdmin(
         delete processedData.statusHistory;
     }
 
-    if ("generatedCount" in processedData || data.incrementGeneratedCount) {
-        delete processedData.generatedCount;
-        delete processedData.incrementGeneratedCount;
-        specialFields.generatedCount = admin.firestore.FieldValue.increment(1);
-    }
-
     const finalData: Record<string, unknown> = {
         ...(removeUndefined(processedData) as Record<string, unknown>),
-        ...specialFields,
         modifiedOn: admin.firestore.FieldValue.serverTimestamp(),
     };
 
     const jobRef = getScopedJobRef(jobId, projectScope.tId, projectScope.sId);
-    if (latestStatusEntry) {
-        await firestoreAdmin.runTransaction(async (transaction) => {
-            const snap = await transaction.get(jobRef);
-            const currentHistory = Array.isArray(snap.data()?.statusHistory) ? snap.data()?.statusHistory : [];
+    await firestoreAdmin.runTransaction(async (transaction) => {
+        const snap = await transaction.get(jobRef);
+        const currentJob = requirePersistedJob(snap);
+        assertJobProject(currentJob, projectScope.projectId);
+        if (latestStatusEntry) {
+            const currentHistory = currentJob.statusHistory;
             finalData.statusHistory = [...currentHistory, latestStatusEntry].slice(-MAX_STATUS_HISTORY_ENTRIES);
-            transaction.set(jobRef, {
-                ...finalData,
-            }, { merge: true });
-        });
-        return finalData;
-    }
-
-    await jobRef.set(finalData, { merge: true });
+        }
+        transaction.update(jobRef, finalData);
+    });
     return finalData;
 }
 
-export async function appendImageBatchItemResultAdmin({
+function requirePersistedJob(
+    snap: FirebaseFirestore.DocumentSnapshot,
+    options: { requireRequestedItems?: boolean } = {},
+): BatchImageGenerationJobType {
+    if (!snap.exists) throw new Error(`Image batch job ${snap.id} not found.`);
+    const job = normalizePersistedImageBatchJob(snap.data(), snap.id, options);
+    if (!job) throw new Error(`Image batch job ${snap.id} is invalid.`);
+    return job;
+}
+
+function assertJobProject(job: BatchImageGenerationJobType, projectId: string) {
+    if (job.projectId !== projectId) throw new Error('Image batch job project mismatch.');
+}
+
+function getProcessedItemCount(job: BatchImageGenerationJobType): number {
+    return job.itemsList.length + (job.failedItemIds?.length || 0);
+}
+
+function getExecution(
+    job: BatchImageGenerationJobType,
+    itemId: string,
+): { execution?: BatchImageItemExecution; key: string } {
+    const key = getImageBatchItemExecutionKey(itemId);
+    return { execution: job.itemExecutions?.[key], key };
+}
+
+function hasStagedImageBatchResults(itemExecutions: Record<string, BatchImageItemExecution>): boolean {
+    return Object.values(itemExecutions).some((execution) => Boolean(execution.stagedItem));
+}
+
+export type ImageBatchItemClaimResult =
+    | { state: 'claimed'; claimToken: string; execution: BatchImageItemExecution }
+    | { state: 'completed' | 'failed' | 'in_flight' | 'terminal' };
+
+export async function claimImageBatchItemAdmin({
+    itemId,
     jobId,
-    item,
+    nowMs = Date.now(),
     projectId,
 }: {
+    itemId: string;
     jobId: string;
+    nowMs?: number;
+    projectId: string;
+}): Promise<ImageBatchItemClaimResult> {
+    const projectScope = requireImageBatchProjectScope(projectId);
+    const imageBatchJobId = requireImageBatchJobId(jobId);
+    const jobRef = getScopedJobRef(imageBatchJobId, projectScope.tId, projectScope.sId);
+
+    return firestoreAdmin.runTransaction(async (transaction) => {
+        const snap = await transaction.get(jobRef);
+        const job = requirePersistedJob(snap, { requireRequestedItems: true });
+        assertJobProject(job, projectScope.projectId);
+        if (!job.requestedItemIds?.includes(itemId)) throw new Error('Image batch item is not registered on the job.');
+        if (job.itemsList.some((item) => item.id === itemId)) return { state: 'completed' } as const;
+        if (job.failedItemIds?.includes(itemId)) return { state: 'failed' } as const;
+        if (IMAGE_BATCH_TERMINAL_JOB_STATUS_VALUES.has(job.status)) return { state: 'terminal' } as const;
+
+        const { execution: existing, key } = getExecution(job, itemId);
+        if (
+            existing?.status === 'processing'
+            && typeof existing.leaseExpiresAtMs === 'number'
+            && existing.leaseExpiresAtMs > nowMs
+        ) {
+            return { state: 'in_flight' } as const;
+        }
+        if (
+            (existing?.attemptCount || 0) >= IMAGE_BATCH_ITEM_MAX_ATTEMPTS
+            && !existing?.stagedItem
+            && existing?.requiresFinalization !== true
+        ) {
+            const reason = `Image generation stopped after ${IMAGE_BATCH_ITEM_MAX_ATTEMPTS} attempts.`;
+            const failedItemIds = Array.from(new Set([...(job.failedItemIds || []), itemId]));
+            const nextJob = { ...job, failedItemIds };
+            const nextStatus = getProcessedItemCount(nextJob) >= job.totalImages
+                ? BATCH_IMAGE_GENERATION_JOB_STATUS.FAILED
+                : BATCH_IMAGE_GENERATION_JOB_STATUS.PROCESSING;
+            const itemExecutions = {
+                ...(job.itemExecutions || {}),
+                [key]: {
+                    attemptCount: existing?.attemptCount || IMAGE_BATCH_ITEM_MAX_ATTEMPTS,
+                    itemId,
+                    lastError: reason,
+                    operationId: existing?.operationId || getImageBatchOperationId(imageBatchJobId, itemId),
+                    status: 'failed' as const,
+                },
+            };
+            transaction.update(jobRef, {
+                error: reason,
+                failedItemIds,
+                hasStagedResults: hasStagedImageBatchResults(itemExecutions),
+                itemExecutions,
+                modifiedOn: admin.firestore.FieldValue.serverTimestamp(),
+                status: nextStatus,
+                statusHistory: [...job.statusHistory, removeUndefined({
+                    status: nextStatus,
+                    reason,
+                    createdOn: new Date(nowMs).toISOString(),
+                })].slice(-MAX_STATUS_HISTORY_ENTRIES),
+                ...getImageBatchRetentionFields(nextStatus),
+            });
+            return { state: 'failed' } as const;
+        }
+
+        const claimToken = randomUUID();
+        const nextExecution: BatchImageItemExecution = {
+            ...(existing || {}),
+            attemptCount: Math.min((existing?.attemptCount || 0) + 1, IMAGE_BATCH_ITEM_MAX_ATTEMPTS),
+            claimToken,
+            itemId,
+            leaseExpiresAtMs: nowMs + IMAGE_BATCH_ITEM_LEASE_MS,
+            operationId: existing?.operationId || getImageBatchOperationId(imageBatchJobId, itemId),
+            status: 'processing',
+        };
+        const itemExecutions = { ...(job.itemExecutions || {}), [key]: nextExecution };
+        const enteringProcessing = job.status !== BATCH_IMAGE_GENERATION_JOB_STATUS.PROCESSING;
+        transaction.update(jobRef, {
+            hasStagedResults: hasStagedImageBatchResults(itemExecutions),
+            itemExecutions,
+            modifiedOn: admin.firestore.FieldValue.serverTimestamp(),
+            status: BATCH_IMAGE_GENERATION_JOB_STATUS.PROCESSING,
+            ...(enteringProcessing ? {
+                statusHistory: [...job.statusHistory, {
+                    createdOn: new Date(nowMs).toISOString(),
+                    reason: 'Image generation started',
+                    status: BATCH_IMAGE_GENERATION_JOB_STATUS.PROCESSING,
+                }].slice(-MAX_STATUS_HISTORY_ENTRIES),
+            } : {}),
+        });
+        return { state: 'claimed', claimToken, execution: nextExecution } as const;
+    });
+}
+
+export async function stageImageBatchItemResultAdmin({
+    accountingInput,
+    claimToken,
+    item,
+    jobId,
+    projectId,
+    storagePaths,
+}: {
+    accountingInput: BatchImageAccountingInput;
+    claimToken: string;
     item: BatchImageGenerationJobType['itemsList'][number];
+    jobId: string;
+    projectId: string;
+    storagePaths: string[];
+}) {
+    const projectScope = requireImageBatchProjectScope(projectId);
+    const imageBatchJobId = requireImageBatchJobId(jobId);
+    const normalizedAccountingInput = normalizeImageBatchAccountingInput(accountingInput);
+    if (!normalizedAccountingInput || normalizedAccountingInput.projectId !== projectScope.projectId) {
+        throw new Error('Image batch staged accounting input is invalid or outside the project scope.');
+    }
+    const normalizedImages = normalizeBatchGeneratedImages(item.images, {
+        storeId: projectScope.storeId,
+        tenantId: projectScope.tenantId,
+    });
+    if (
+        typeof item.id !== 'string'
+        || typeof item.name !== 'string'
+        || item.name.length < 1
+        || item.name.length > 500
+        || !normalizedImages
+        || storagePaths.length !== normalizedImages.length
+        || storagePaths.some((storagePath, index) => (
+            parseImageBatchStorageUrl(normalizedImages[index].url)?.storagePath !== storagePath
+            || !isImageBatchGeneratedStorageAsset(normalizedImages[index].url, {
+                expectedStoragePath: storagePath,
+                storeId: projectScope.storeId,
+                tenantId: projectScope.tenantId,
+            })
+        ))
+    ) throw new Error('Image batch staged output is invalid or outside the project scope.');
+    const jobRef = getScopedJobRef(imageBatchJobId, projectScope.tId, projectScope.sId);
+    return firestoreAdmin.runTransaction(async (transaction) => {
+        const snap = await transaction.get(jobRef);
+        const job = requirePersistedJob(snap, { requireRequestedItems: true });
+        assertJobProject(job, projectScope.projectId);
+        if (IMAGE_BATCH_TERMINAL_JOB_STATUS_VALUES.has(job.status)) {
+            throw new Error('Image batch job is terminal and cannot stage output.');
+        }
+        const { execution, key } = getExecution(job, item.id);
+        if (!execution || execution.claimToken !== claimToken || execution.status !== 'processing') {
+            throw new Error('Image batch item claim is stale.');
+        }
+
+        const nextExecution = removeUndefined({
+            ...execution,
+            stagedAccountingInput: normalizedAccountingInput,
+            stagedItem: { id: item.id, images: normalizedImages, name: item.name },
+            stagedStoragePaths: storagePaths,
+            requiresFinalization: undefined,
+            status: 'staged',
+        }) as BatchImageItemExecution;
+        transaction.update(jobRef, {
+            hasStagedResults: true,
+            itemExecutions: { ...(job.itemExecutions || {}), [key]: nextExecution },
+            modifiedOn: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        return nextExecution;
+    });
+}
+
+export async function appendImageBatchItemResultAdmin({
+    claimToken,
+    itemId,
+    jobId,
+    projectId,
+}: {
+    claimToken: string;
+    itemId: string;
+    jobId: string;
     projectId: string;
 }) {
     const projectScope = requireImageBatchProjectScope(projectId);
@@ -152,62 +413,160 @@ export async function appendImageBatchItemResultAdmin({
     const jobRef = getScopedJobRef(imageBatchJobId, projectScope.tId, projectScope.sId);
     return firestoreAdmin.runTransaction(async (transaction) => {
         const snap = await transaction.get(jobRef);
-        if (!snap.exists) {
-            throw new Error(`Image batch job ${jobId} not found.`);
+        const currentJob = requirePersistedJob(snap, { requireRequestedItems: true });
+        assertJobProject(currentJob, projectScope.projectId);
+        if (IMAGE_BATCH_TERMINAL_JOB_STATUS_VALUES.has(currentJob.status)) {
+            throw new Error('Image batch job is terminal and cannot append output.');
+        }
+        const { execution, key } = getExecution(currentJob, itemId);
+        if (!execution || execution.claimToken !== claimToken || execution.status !== 'staged' || !execution.stagedItem) {
+            throw new Error('Image batch item claim is stale or has no staged result.');
         }
 
-        const currentJob = { id: snap.id, ...snap.data() } as BatchImageGenerationJobType;
-        const currentItems = Array.isArray(currentJob.itemsList) ? [...currentJob.itemsList] : [];
-        const existingIndex = currentItems.findIndex((existingItem) => existingItem.id === item.id);
-        const nextItem = removeUndefined(item) as BatchImageGenerationJobType['itemsList'][number];
+        const currentItems = [...currentJob.itemsList];
+        const existingIndex = currentItems.findIndex((existingItem) => existingItem.id === itemId);
+        if (existingIndex >= 0) currentItems[existingIndex] = execution.stagedItem;
+        else currentItems.push(execution.stagedItem);
 
-        const existingItemAlreadyGenerated = existingIndex >= 0
-            && Array.isArray(currentItems[existingIndex]?.images)
-            && currentItems[existingIndex].images.length > 0;
-
-        if (existingIndex >= 0) {
-            currentItems[existingIndex] = nextItem;
-        } else {
-            currentItems.push(nextItem);
-        }
-
-        const totalImages = Number(currentJob.totalImages || currentItems.length || 0);
-        const currentGeneratedCount = Number(currentJob.generatedCount || 0);
-        const nextGeneratedCount = existingItemAlreadyGenerated
-            ? currentGeneratedCount
-            : Math.min(currentGeneratedCount + 1, Math.max(totalImages, currentGeneratedCount + 1));
-        const nextStatus = totalImages > 0 && nextGeneratedCount >= totalImages
-            ? BATCH_IMAGE_GENERATION_JOB_STATUS.COMPLETED
+        const failedItemIds = (currentJob.failedItemIds || []).filter((failedItemId) => failedItemId !== itemId);
+        const nextGeneratedCount = currentItems.length;
+        const processedCount = nextGeneratedCount + failedItemIds.length;
+        const nextStatus = processedCount >= currentJob.totalImages
+            ? failedItemIds.length > 0
+                ? BATCH_IMAGE_GENERATION_JOB_STATUS.FAILED
+                : BATCH_IMAGE_GENERATION_JOB_STATUS.COMPLETED
             : BATCH_IMAGE_GENERATION_JOB_STATUS.PROCESSING;
-        const statusReason = totalImages > 0
-            ? existingItemAlreadyGenerated
-                ? `Item ${item.id} was already generated; kept progress at ${nextGeneratedCount} out of ${totalImages}`
-                : `Generated ${nextGeneratedCount} out of ${totalImages}`
-            : `Generated ${nextGeneratedCount} images`;
+        const statusReason = nextStatus === BATCH_IMAGE_GENERATION_JOB_STATUS.COMPLETED
+            ? `Generated ${nextGeneratedCount} out of ${currentJob.totalImages}`
+            : nextStatus === BATCH_IMAGE_GENERATION_JOB_STATUS.FAILED
+                ? `Generated ${nextGeneratedCount} of ${currentJob.totalImages}; ${failedItemIds.length} item(s) failed`
+                : `Generated ${nextGeneratedCount} out of ${currentJob.totalImages}`;
 
         const statusHistoryEntry = removeUndefined({
             status: nextStatus,
             reason: statusReason,
             createdOn: new Date().toISOString(),
         });
-        const currentStatusHistory = Array.isArray(currentJob.statusHistory) ? currentJob.statusHistory : [];
+        const completedExecution: BatchImageItemExecution = {
+            attemptCount: execution.attemptCount,
+            itemId,
+            operationId: execution.operationId,
+            status: 'completed',
+        };
 
+        const itemExecutions = { ...(currentJob.itemExecutions || {}), [key]: completedExecution };
         const updateData = {
+            ...(nextStatus === BATCH_IMAGE_GENERATION_JOB_STATUS.COMPLETED
+                ? { error: admin.firestore.FieldValue.delete() }
+                : {}),
+            failedItemIds,
             generatedCount: nextGeneratedCount,
+            hasStagedResults: hasStagedImageBatchResults(itemExecutions),
+            itemExecutions,
             itemsList: currentItems,
             modifiedOn: admin.firestore.FieldValue.serverTimestamp(),
             status: nextStatus,
-            statusHistory: [...currentStatusHistory, statusHistoryEntry].slice(-MAX_STATUS_HISTORY_ENTRIES),
+            statusHistory: [...currentJob.statusHistory, statusHistoryEntry].slice(-MAX_STATUS_HISTORY_ENTRIES),
+            ...getImageBatchRetentionFields(nextStatus),
         };
 
-        transaction.set(jobRef, updateData, { merge: true });
+        transaction.update(jobRef, updateData);
 
         return {
             generatedCount: nextGeneratedCount,
             itemCount: currentItems.length,
             status: nextStatus,
-            totalImages,
+            totalImages: currentJob.totalImages,
         };
+    });
+}
+
+export async function markImageBatchItemAttemptFailedAdmin({
+    claimToken,
+    itemId,
+    jobId,
+    preserveForRetry = false,
+    projectId,
+    reason,
+    retryable = true,
+}: {
+    claimToken: string;
+    itemId: string;
+    jobId: string;
+    preserveForRetry?: boolean;
+    projectId: string;
+    reason: string;
+    retryable?: boolean;
+}): Promise<{ cleanupStoragePaths: string[]; shouldRetry: boolean; stale: boolean; terminal: boolean }> {
+    const projectScope = requireImageBatchProjectScope(projectId);
+    const imageBatchJobId = requireImageBatchJobId(jobId);
+    const jobRef = getScopedJobRef(imageBatchJobId, projectScope.tId, projectScope.sId);
+    return firestoreAdmin.runTransaction(async (transaction) => {
+        const snap = await transaction.get(jobRef);
+        const job = requirePersistedJob(snap, { requireRequestedItems: true });
+        assertJobProject(job, projectScope.projectId);
+        if (IMAGE_BATCH_TERMINAL_JOB_STATUS_VALUES.has(job.status)) {
+            return { cleanupStoragePaths: [], shouldRetry: false, stale: false, terminal: true };
+        }
+        const { execution, key } = getExecution(job, itemId);
+        if (!execution || execution.claimToken !== claimToken || !['processing', 'staged'].includes(execution.status)) {
+            return { cleanupStoragePaths: [], shouldRetry: false, stale: true, terminal: false };
+        }
+        if (preserveForRetry && (!execution.stagedItem || !execution.stagedAccountingInput)) {
+            throw new Error('Image batch finalization retry requires a staged result.');
+        }
+
+        const shouldRetry = preserveForRetry
+            || (retryable && execution.attemptCount < IMAGE_BATCH_ITEM_MAX_ATTEMPTS);
+        const cleanupStoragePaths = shouldRetry ? [] : (execution.stagedStoragePaths || []);
+        const nextExecution: BatchImageItemExecution = shouldRetry
+            ? {
+                ...execution,
+                claimToken: undefined,
+                lastError: reason.slice(0, 240),
+                leaseExpiresAtMs: undefined,
+                ...(preserveForRetry ? { requiresFinalization: true } : {}),
+                status: execution.stagedItem ? 'staged' : 'retry_pending',
+            }
+            : {
+                attemptCount: execution.attemptCount,
+                itemId,
+                lastError: reason.slice(0, 240),
+                operationId: execution.operationId,
+                status: 'failed',
+            };
+
+        const failedItemIds = shouldRetry
+            ? (job.failedItemIds || [])
+            : Array.from(new Set([...(job.failedItemIds || []), itemId]));
+        const nextJob = { ...job, failedItemIds };
+        const processedCount = getProcessedItemCount(nextJob);
+        const nextStatus = processedCount >= job.totalImages && failedItemIds.length > 0
+            ? BATCH_IMAGE_GENERATION_JOB_STATUS.FAILED
+            : BATCH_IMAGE_GENERATION_JOB_STATUS.PROCESSING;
+        const statusHistory = shouldRetry
+            ? job.statusHistory
+            : [...job.statusHistory, removeUndefined({
+                status: nextStatus,
+                reason: reason.slice(0, 240),
+                createdOn: new Date().toISOString(),
+            })].slice(-MAX_STATUS_HISTORY_ENTRIES);
+
+        const itemExecutions = {
+            ...(job.itemExecutions || {}),
+            [key]: removeUndefined(nextExecution),
+        } as Record<string, BatchImageItemExecution>;
+        transaction.update(jobRef, {
+            error: reason.slice(0, 240),
+            failedItemIds,
+            hasStagedResults: hasStagedImageBatchResults(itemExecutions),
+            itemExecutions,
+            modifiedOn: admin.firestore.FieldValue.serverTimestamp(),
+            status: nextStatus,
+            statusHistory,
+            ...getImageBatchRetentionFields(nextStatus),
+        });
+        return { cleanupStoragePaths, shouldRetry, stale: false, terminal: false };
     });
 }
 

@@ -70,7 +70,7 @@ The spec promises a 4-layer stack: Owner → Campaign → Evergreen → Brand. B
 
 ### Why This Happened
 
-`getScreenDataByToken()` returns `screen`, `today`, `storeId`, and `storeInfo` — but NOT menu items. To generate evergreen slides, `page.tsx` would need to also fetch menu item data (categories, items with images, bestseller flags) from the projects collection.
+`getScreenDataByTokenServer()` returns `screen`, `today`, `storeId`, and `storeInfo` — but NOT menu items. The server page also fetches menu item data when the projection is unavailable.
 
 ### Recommended Fix
 
@@ -78,7 +78,7 @@ The spec promises a 4-layer stack: Owner → Campaign → Evergreen → Brand. B
 
 ```typescript
 // In page.tsx, after getting screenData:
-const menuItems = await getMenuItemsForScreen(screenData.storeId);
+const menuItems = await getMenuItemsForScreenServer(screenData.storeId, screenData.tenantId);
 // Then use generateScreenSlides() from slideGenerator.ts instead of inline logic
 const slides = generateScreenSlides({
   screenState: screenData.screen,
@@ -100,8 +100,8 @@ During the daily campaign sync (which already runs), compute top 3 menu items an
 
 **Went with Option A** (simpler, self-contained, doesn't touch campaign sync flow):
 
-- `page.tsx` — now calls `getMenuItemsForScreen()` then `generateScreenSlides()` from `slideGenerator.ts`
-- `database/campaigns/index.ts:602-683` — new `getMenuItemsForScreen(storeId, tenantId)` function
+- `page.tsx` — calls `getMenuItemsForScreenServer()` then `generateScreenSlides()` from `slideGenerator.ts`
+- `database/campaigns/serverScreen.ts` — server-only `getMenuItemsForScreenServer(storeId, tenantId)` function
 - `database/campaigns/index.ts:537` — `getScreenDataByToken` now returns `tenantId` from store doc
 - `slideGenerator.ts:34` — `MenuItemForSlide` interface now exported
 
@@ -357,7 +357,7 @@ const checkHealth = async () => {
 
 - Added `description`, `tags` to `MenuItemForSlide` (`slideGenerator.ts:42-43`)
 - Added `description`, `tags` to `ScreenSlide` (`campaigns.ts:402-403`)
-- Updated `getMenuItemsForScreen()` to extract description (primary language) and tags from `ExtractedDataItem` (`campaigns/index.ts:669-683`)
+- Updated `getMenuItemsForScreenServer()` to extract description (primary language) and tags from `ExtractedDataItem`
 - Updated `createCampaignSlide()` and `generateEvergreenSlides()` to pass through new fields
 
 **✅ Highlights Poster-Style Slides (ScreenDisplay.tsx):**
@@ -405,7 +405,7 @@ const checkHealth = async () => {
 **Data freshness:**
 
 - `MenuItemForSlide` now carries `categoryOrderIndex` and `orderIndex`.
-- `getMenuItemsForScreen()` and `getMenuItemsForScreenServer()` populate order metadata from extracted menu data.
+- `getMenuItemsForScreenServer()` populates order metadata from extracted menu data; the rules-incompatible browser duplicate has been removed.
 - `generateScreenSlides()` now enforces owner-only custom slide mode.
 - `touchDigitalScreenContentVersion()` links public client cache invalidation to screen content version for initialized screens only.
 - `/api/revalidate/menu` includes `screen-data` when invalidating a store.

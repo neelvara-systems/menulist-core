@@ -1,7 +1,8 @@
 # SignalDesk Outcome Bridge - Mobile Support
 
-**Status:** Initial mobile assessment
+**Status:** Enforced mobile read-only contract
 **Created:** June 23, 2026
+**Runtime reconciled:** July 13, 2026
 
 ## Decision
 

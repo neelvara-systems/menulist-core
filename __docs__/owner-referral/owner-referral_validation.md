@@ -2,7 +2,7 @@
 
 **Feature:** Owner Referral
 **Mode:** Implemented behind disabled feature flags
-**Validated:** July 10, 2026
+**Validated:** July 11, 2026
 **Runtime status:** Source complete; acquisition and settlement disabled
 
 ---
@@ -46,7 +46,7 @@ The archived ChatGPT feedback audit remains preserved but no longer governs rewa
 | Contract | Status | Evidence |
 | --- | --- | --- |
 | Rewards use existing Pack balance | Aligned | `src/types/razorpay.ts:92`; `src/lib/ai/capacityCheck.ts:136,159-215` |
-| Credits support generated images, descriptions, translations, and edits | Aligned | `src/data/PlatformPlansList.ts:116`; `src/components/templates/main-app/billing/ActiveSubscriptionCard.tsx:482-483` |
+| Credit amounts have exact owner-readable outcomes | Aligned | `src/data/shared/contentCreditPolicy.ts`; pricing, desktop, mobile, and invite surfaces derive examples from this source |
 | Existing businesses use regular subscription creation | Aligned | `src/app/api/razorpay/create-subscription/route.ts:188` |
 | New website onboarding creates tenant/store before provider subscription | Aligned | `src/app/api/onboarding/create-subscription/route.ts:283` |
 | Public Menu Entry has an atomic tenant/store transaction | Aligned | `src/app/api/public/create-menu/claim/route.ts:482` |
@@ -76,6 +76,19 @@ The archived ChatGPT feedback audit remains preserved but no longer governs rewa
 | A long referred-business name overlapped the next status row at 360x640. | Bounded the name to two lines and 44px, removed row wrapping, and kept the name column flexible with a fixed status tag. |
 | Clipboard fallback ran only when `navigator.clipboard` was absent. | Fall back to the existing hidden-textarea copy path when the modern clipboard API exists but rejects access. |
 | The desktop modal used Ant Design's deprecated `destroyOnClose` prop. | Replaced it with `destroyOnHidden` without changing modal persistence behavior. |
+| `Invite another business` was accurate but impersonal; `friend` would be warmer but false for peers, suppliers, groups, and forwarded links. | Standardized owner-facing copy on `Invite a business owner you know` and recipient copy on `A business owner you know invited you to MenuList.` Business-wallet reward language remains business-based. |
+| Reward panels showed abstract credit amounts, and the owner status model exposed a redundant `Both payments pending` state even though the owner API already requires the referrer to be paid. | Added exact generated-image/description-rewrite examples from the shared credit policy; reduced owner-visible statuses to `Their payment pending` and `Credits added` while preserving internal settlement states. |
+
+### July 11 Credit Transparency Cross-Check
+
+| Check | Result |
+| --- | --- |
+| Shared rate source | `src/data/shared/contentCreditPolicy.ts` defines public-safe operation rates; `src/constants/AI/unitCosts.ts` consumes the same values. |
+| Referral examples | 100 credits resolves to 20 generated images or 100 description rewrites; 50 resolves to 10 or 50. Runtime assertions cover both. |
+| Pack parity | Website pricing, desktop Billing, and mobile Billing show 250 credits and examples of 50 generated images or 250 description rewrites. |
+| Owner status | Protected API, parser, desktop, mobile, locales, tests, and docs expose only `Their payment pending` and `Credits added`. |
+| Source gates | Referral verifier, billing-entitlement verifier, AI-accounting verifier, emulator test, focused lint, full TypeScript, JSON parse, and diff check pass. |
+| Visual rerun | Prior referral UI QA remains recorded below. The July 11 browser rerun could not complete because the connected browser timed out on local navigation; production-host desktop/mobile evidence remains a release gate. |
 
 ### Implementation Evidence
 
@@ -87,6 +100,8 @@ The archived ChatGPT feedback audit remains preserved but no longer governs rewa
 | `npm run lint` | Passed with no warnings or errors |
 | `npm run verify:billing-entitlement-boundary` | Passed |
 | `npm run verify:pricing-integrity-boundary` | Passed |
+| July 11 owner-copy visual QA | Public invitation passed at 360x640; Mobile Share sheet passed at 360x640 with a two-line business name and compact pending tags; desktop modal passed at 1280x800. No horizontal overflow. Mobile evidence: [public invitation](./evidence/credit-clarity-mobile-invite-viewport.png) and [owner sheet](./evidence/credit-clarity-mobile-owner-sheet.png). |
+| July 11 repository-wide TypeScript rerun | Blocked outside Owner Referral by existing `UserDataType[]` mismatches in `EntityBlockSettings.tsx:97` and `platform/users/index.tsx:62`; referral verifier, full lint, focused lint, docs, locale, mobile-shell, billing, emulator, and scoped diff gates passed. |
 | `npm run verify:reseller-dashboard-boundary` | Passed |
 | `npm run verify:dependency-freeze` | Passed |
 | Local browser QA | Passed for valid and unavailable invitation states at 1280x800 and 390x844; fragment removal, payment/no-limit copy, privacy-before-CTA, real signed-token capture to `/create-menu`, image loading, button styling, and zero horizontal overflow were confirmed. The desktop owner modal and mobile sheet were exercised with all three statuses and a long business name. Mobile passed at 390x844 and compact 360x640 with 44px+ actions, bounded scrolling, no row overlap, and visible copy confirmation. Production-host desktop/mobile evidence remains a release gate. |
@@ -175,6 +190,6 @@ Engineering implementation was authorized immediately by the founder and is comp
 
 **Code implementation:** Complete behind disabled flags
 
-**Local verification:** Source verifier, emulator accounting/rules, TypeScript, lint, billing, pricing, reseller, and dependency checks passed
+**Local verification:** Owner Referral source verifier, emulator accounting/rules, lint, focused UI lint, billing, pricing, reseller, dependency, mobile-shell, locale, docs, and scoped diff checks passed. A current repository-wide TypeScript rerun is blocked only by the unrelated platform-user typing errors recorded above.
 
 **Current decision record:** [owner-referral_payment-only-policy-amendment-2026-07-10.md](./_archive/owner-referral_payment-only-policy-amendment-2026-07-10.md)

@@ -36,6 +36,7 @@ export const CAMPAIGNCUE_WORKSPACE_TABS = [
     { group: "Start", key: "delivery", label: "Exports", icon: LuDownload },
     { group: "Start", key: "settings", label: "Settings", icon: LuSettings },
     { group: "Campaigns", key: "cues", label: "Ideas", icon: LuSparkles },
+    { group: "Campaigns", key: "inspiration", label: "Examples", icon: LuVideo },
     { group: "Campaigns", key: "campaigns", label: "Packs", icon: LuMegaphone },
     { group: "Campaigns", key: "editor", label: "Editor", icon: LuLayers },
     { group: "Channels", key: "creative", label: "Social", icon: LuImage },

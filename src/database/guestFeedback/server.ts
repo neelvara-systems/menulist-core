@@ -4,19 +4,13 @@ import { admin, firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import type { GuestFeedback } from '@type/guestFeedback';
 import { getBoundedGuestFeedbackStringContext, logGuestFeedbackFailure } from './guestFeedbackDiagnostics';
 
-type SubmitGuestFeedbackAdminInput = Omit<
+type SubmitGuestFeedbackAdminInput = Pick<
     GuestFeedback,
-    'id' | 'createdOn' | 'createdBy' | 'expiresOn' | 'status' | 'needsAttention'
+    'customerEmail' | 'customerName' | 'customerPhone' | 'message' | 'projectId' | 'rating' | 'sId' | 'source' | 'tId'
 >;
 
 export type FeedbackEventType = 'FEEDBACK_SUBMITTED' | 'FEEDBACK_RESOLVED';
 const DAY_MS = 24 * 60 * 60 * 1000;
-
-function stripUndefined<T extends Record<string, unknown>>(data: T): Partial<T> {
-    return Object.fromEntries(
-        Object.entries(data).filter(([, value]) => value !== undefined),
-    ) as Partial<T>;
-}
 
 export async function submitGuestFeedbackAdmin(
     data: SubmitGuestFeedbackAdminInput,
@@ -27,11 +21,19 @@ export async function submitGuestFeedbackAdmin(
     );
 
     const feedbackData = {
-        ...stripUndefined(data as unknown as Record<string, unknown>),
-        status: 'new',
+        tId: data.tId,
+        sId: data.sId,
+        projectId: data.projectId,
+        rating: data.rating,
+        source: data.source,
+        ...(data.message !== undefined ? { message: data.message } : {}),
+        ...(data.customerName !== undefined ? { customerName: data.customerName } : {}),
+        ...(data.customerPhone !== undefined ? { customerPhone: data.customerPhone } : {}),
+        ...(data.customerEmail !== undefined ? { customerEmail: data.customerEmail } : {}),
+        status: 'new' as const,
         needsAttention: data.rating <= 3,
         createdOn: now,
-        createdBy: 'guest',
+        createdBy: 'guest' as const,
         expiresOn,
     };
 
@@ -42,7 +44,7 @@ export async function submitGuestFeedbackAdmin(
     return {
         id: docRef.id,
         ...feedbackData,
-    } as GuestFeedback;
+    };
 }
 
 export async function logFeedbackMOLEventAdmin(

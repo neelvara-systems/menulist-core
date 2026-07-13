@@ -6,6 +6,7 @@ import { ECOMSAI_PLATFORM_STORE_ID, ECOMSAI_PLATFORM_TENANT_ID, ECOMSAI_PLATFORM
 import { getOurChargePaise, getRealCostPaise, getUnitCost } from "@constant/AI/unitCosts";
 import { answerlatticeFirestoreAdmin } from "@lib/firebase/answerlatticeFirebaseAdmin";
 import { admin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
+import { sanitizeForFirestore as sanitizeFirestoreValue } from "@lib/firestore/sanitizeForFirestore";
 
 type JsonRecord = Record<string, any>;
 
@@ -37,25 +38,17 @@ export interface AiOperationLogInput extends JsonRecord {
     unitsConsumed?: number;
 }
 
+const AI_OPERATION_DOCUMENT_ID_PATTERN = /^[A-Za-z0-9_-]{8,120}$/;
+
 export function getGeminiUsageMetadata(response: any) {
     return response?.usageMetadata || response?.response?.usageMetadata || {};
 }
 
 function sanitizeForFirestore(value: any): any {
-    if (value === undefined) return null;
-    if (value === null) return null;
-    if (value instanceof Date) return admin.firestore.Timestamp.fromDate(value);
-    if (value && typeof value.toDate === "function" && typeof value.seconds === "number") return value;
-    if (Array.isArray(value)) return value.map((item) => sanitizeForFirestore(item));
-    if (typeof value === "object") {
-        const result: JsonRecord = {};
-        Object.entries(value).forEach(([key, nestedValue]) => {
-            if (typeof nestedValue === "function") return;
-            result[key] = sanitizeForFirestore(nestedValue);
-        });
-        return result;
-    }
-    return value;
+    return sanitizeFirestoreValue(value, {
+        dateTransform: (date) => admin.firestore.Timestamp.fromDate(date),
+        undefinedObjectValue: "omit",
+    });
 }
 
 function serializeGeminiResponse(response: any) {
@@ -203,17 +196,18 @@ export function buildAiOperationLog(input: AiOperationLogInput): AiOperationLogI
     };
 }
 
-export async function recordAiOperation(input: AiOperationLogInput): Promise<string> {
+export function normalizeAiOperationDocumentId(value: unknown): string | null {
+    return typeof value === 'string' && AI_OPERATION_DOCUMENT_ID_PATTERN.test(value) ? value : null;
+}
+
+export function buildAiOperationDocument(input: AiOperationLogInput) {
     const tId = String(input.tId ?? ECOMSAI_PLATFORM_TENANT_ID);
     const sId = String(input.sId ?? ECOMSAI_PLATFORM_STORE_ID);
     const now = admin.firestore.Timestamp.now();
     const detailed = shouldStoreDetailedAiOperation();
     const detailRetentionDays = Number(FEATURE_FLAGS.AI_OPERATION_DETAIL_RETENTION_DAYS || 14);
     const productId = String(input.pId || '').toUpperCase();
-    const shouldWriteAnswerlatticeOperation = productId === PRODUCT_IDS.ANSWERLATTICE
-        && answerlatticeFirestoreAdmin
-        && typeof (answerlatticeFirestoreAdmin as any).collection === 'function';
-    const data = sanitizeForFirestore({
+    return sanitizeForFirestore({
         ...buildAiOperationLog(input),
         ...(productId ? { pId: productId } : {}),
         tId: Number.isFinite(Number(tId)) ? Number(tId) : tId,
@@ -228,6 +222,28 @@ export async function recordAiOperation(input: AiOperationLogInput): Promise<str
         detailRetentionDays: detailed ? detailRetentionDays : 0,
         modifiedOn: now,
     });
+}
+
+export function getMenuListAiOperationRef(input: AiOperationLogInput, documentId: string) {
+    const normalizedDocumentId = normalizeAiOperationDocumentId(documentId);
+    if (!normalizedDocumentId) throw new Error('Invalid AI operation idempotency key.');
+    const tId = String(input.tId ?? ECOMSAI_PLATFORM_TENANT_ID);
+    const sId = String(input.sId ?? ECOMSAI_PLATFORM_STORE_ID);
+    return firestoreAdmin
+        .collection(DB_COLLECTIONS.MENULIST_AI_OPERATIONS)
+        .doc(tId)
+        .collection(sId)
+        .doc(normalizedDocumentId);
+}
+
+export async function recordAiOperation(input: AiOperationLogInput): Promise<string> {
+    const tId = String(input.tId ?? ECOMSAI_PLATFORM_TENANT_ID);
+    const sId = String(input.sId ?? ECOMSAI_PLATFORM_STORE_ID);
+    const productId = String(input.pId || '').toUpperCase();
+    const shouldWriteAnswerlatticeOperation = productId === PRODUCT_IDS.ANSWERLATTICE
+        && answerlatticeFirestoreAdmin
+        && typeof (answerlatticeFirestoreAdmin as any).collection === 'function';
+    const data = buildAiOperationDocument(input);
 
     const docRef = await (shouldWriteAnswerlatticeOperation ? answerlatticeFirestoreAdmin : firestoreAdmin)
         .collection(shouldWriteAnswerlatticeOperation

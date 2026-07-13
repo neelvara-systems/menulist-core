@@ -156,7 +156,7 @@ This appendix lists the source evidence used by [SMB data map](./smb-data-invent
 
 | Claim | Evidence |
 | --- | --- |
-| Compliance pages use an overrides-only data model and store only owner custom privacy/terms/refund override fields. | `src/database/compliance/index.ts:1-17`, `src/database/compliance/index.ts:19-78`, `src/database/compliance/server.ts:1-45`, `src/app/api/compliance/route.ts:1-12`, `src/app/api/compliance/route.ts:24-87`, `src/app/api/compliance/route.ts:95-130` |
+| Compliance pages use an overrides-only data model; public reads are allowed, while owner custom privacy/terms/refund override writes are server-owned behind the guarded API. | `src/database/compliance/server.ts`, `src/app/api/compliance/route.ts`, `firestore.rules`, `scripts/verification/test-compliance-pages-rules.ts` |
 | Review state endpoint reads only active boolean block/escalation state with expiry. | `src/app/api/reviews/states/route.ts:1-24`, `src/app/api/reviews/states/route.ts:46-77` |
 | Review/reputation docs include broader GBP ingestion plans, but current docs warn routes/components should not be marketed as live until GBP ingestion exists and UI is intentionally mounted. | `__docs__/reputation-protection/reputation-protection_impl.md:114-142` |
 | GBP integration DAL defines server-only token path and token/connection/sync-state shapes, but functions are placeholders awaiting API access. | `src/database/integrations/gbp.ts:1-13`, `src/database/integrations/gbp.ts:18-81`, `src/database/integrations/gbp.ts:83-160` |

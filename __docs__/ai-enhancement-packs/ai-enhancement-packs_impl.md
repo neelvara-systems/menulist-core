@@ -2,14 +2,16 @@
 
 **Feature:** AI Enhancement Packs (Outcome-Based AI Pricing & Usage Tracking)
 **Status:** Implemented and hardened
-**Last Updated:** July 1, 2026
+**Last Updated:** July 13, 2026
 **Audience:** Developers only
 
 > **Launch boundary:** Not current launch certification or deploy approval. This implementation document records source-gated AI Enhancement Pack and accounting behavior only. Current approval still requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md), `npm run verify:production-readiness-local`, `npm run verify:billing-entitlement-boundary`, `npm run verify:ai-accounting`, Razorpay sandbox subscription/top-up/reseller/webhook smoke, desktop/mobile Billing browser QA, target deploy evidence, and production-host smoke.
 
+> **July 11 credit transparency amendment:** The Content Credit Pack now shows `250 credits` and concrete generated-image/description-rewrite examples on website pricing, desktop Billing, and mobile Billing. Referral rewards show 100/50 credits with matching examples. `src/data/shared/contentCreditPolicy.ts` is the public-safe rate source; `src/constants/AI/unitCosts.ts` consumes those rates. Monthly included capacity, provider costs, margins, tax valuation, and overdraft remain private. Older outcome-only notes below are implementation history where they conflict with this amendment.
+
 ## June 2, 2026 Accounting Hardening Contract
 
-Billable AI route accounting is now centralized in `src/lib/ai/accounting.ts`. Successful provider calls finalize through `finalizeAiOperationAccounting()`, which writes the operation with the Admin SDK and then consumes paid capacity. Operation logging is best-effort, but credit consumption is mandatory for billable actions; a log failure must not skip deduction, and a credit-consumption failure fails the paid request instead of returning usable output for free.
+Billable AI route accounting is centralized in `src/lib/ai/accounting.ts` and `src/lib/ai/capacityCheck.ts`. Paid routes reserve exact positive-integer units transactionally before provider work, using the final operation ID as the idempotency key. Successful provider calls settle that hidden reservation through `finalizeAiOperationAccounting()`; terminal provider or route failure refunds the exact recurring/top-up buckets once. A paid non-idempotent finalization without a reservation fails closed instead of returning usable output for free. Zero-unit platform-absorbed actions remain unreserved.
 
 Browser/client access to full `menulistAiOperations/{tId}/{sId}` documents is disabled for owners. The old `addAiOperation()` client helper now throws immediately, Firestore rules deny all client writes, and full document reads are platform-only. Desktop and mobile owner transaction screens read through `GET /api/ai-operations`, which returns an owner-visible allowlisted activity shape; platform-role sessions can receive the full transaction payload for support/debug.
 
@@ -118,7 +120,7 @@ POST /api/razorpay/verify-topup                              [verify-topup/route
     → Return { success: true, newCreditBalance }
     ↓
 Webhook: /api/razorpay/webhook                               [webhook/route.ts]
-    → Signature verification → createPaymentTransaction() → writeLogEntry()
+    → Signature verification → writeProductPaymentTransactionAudit() → writeLogEntry()
     → Handles: order.paid, payment.failed, subscription.halted, etc.
 ```
 
@@ -255,13 +257,15 @@ SessionProvider: event listener
 
 June 29 response-parsing note: frontend AI services now call `syncBalanceFromResponse()` only after parsing successful API responses through bounded response readers. Text, translation, and business-copy clients use 1MB caps, batch image trigger uses a 64KB acknowledgement cap, and image generation/editing use 24MB caps for base64 image payloads. Malformed, oversized, empty, or non-object successful responses log stable AI service diagnostics and fall back through the existing owner-safe behavior without adding Firestore reads.
 
+July 12 billing-integrity note: description and translation actions are not trusted solely from browser payloads. Description generation upgrades `add_description` to `rewrite_description` when submitted validated items already contain copy. Translation retains explicit image/language actions and upgrades an underdeclared item action when the validated request covers multiple target languages or multiple menu entities. Business-copy and translation parse retries remain one owner operation, while internal usage/cost telemetry sums every successful provider call. Exact output validators run on both server and browser boundaries before generated data can merge into editor state.
+
 ### Monthly Credit Reset (Two-Layer)
 
 `monthlyCredits` resets to `monthlyCreditsAllowance` at the start of each billing month via two complementary mechanisms:
 
 **Layer 1 — Webhook (monthly plans):** `subscription.charged` event in `api/razorpay/webhook/route.ts` resets credits when Razorpay charges the next cycle.
 
-**Layer 2 — Lazy reset (yearly plans + safety net):** `checkAICapacity()` in `src/lib/ai/capacityCheck.ts` checks `creditsLastResetMonth` against the current billing period (YYYYMM key based on subscription anchor day, NOT calendar month). If different, it re-reads the subscription in a Firestore transaction, resets credits, and writes to Firestore (1 read + 1 write, first AI call of the billing month only). Anchor day is capped to days-in-month for month-end edge cases (e.g., anchor=31 in Feb→28). Race-safe — concurrent calls cannot overwrite a usage deduction during a reset.
+**Layer 2 — Lazy reset (yearly plans + safety net):** `checkAICapacity()` in `src/lib/ai/capacityCheck.ts` checks `creditsLastResetMonth` against the current UTC billing period (YYYYMM key based on subscription anchor day, NOT calendar month). If different, it re-reads the subscription in a Firestore transaction, resets credits, and writes to Firestore (1 read + 1 write, first AI call of the billing month only). Anchor day is capped to days-in-month for month-end edge cases (e.g. anchor=31 in February becomes the last day). `consumeAICapacity()` repeats period/balance validation inside its debit transaction and rechecks the configured overdraft ceiling against the current balance, so concurrent provider completions cannot clamp multiple unearned debits to zero. Malformed periods or balances fail closed rather than writing `NaN` or inventing a reset.
 
 Subscription document refs use `src/lib/billing/subscriptionDocumentIdBoundary.ts` before lazy reset and consumption. Malformed subscription IDs cannot reach Firestore refs; paid consumption fails closed through the shared AI accounting finalizer.
 
@@ -414,7 +418,7 @@ Changes from showing credit math to simple reassurance:
 | `src/app/api/razorpay/verify-topup/route.ts`                     | Verifies payment, adds credits to subscription                  | Keep writing to `subscription.topUpCredits`. Update labels, remove credit count from response |
 | `src/hooks/usePaymentHandler.ts`                                 | Client Razorpay checkout handler                                | Update product name label                                                                     |
 | `src/components/templates/main-app/billing/CreditsPackModal.tsx` | Pack selection modal                                            | Rename labels per doctrine                                                                    |
-| `src/components/templates/main-app/billing/CreditPackCard.tsx`   | Pack display card                                               | Remove credit amount, show outcome description                                                |
+| `src/components/templates/main-app/billing/CreditPackCard.tsx`   | Pack display card                                               | Show exact Pack amount and shared-policy outcome examples                                     |
 
 ### Files That Need To Be Created
 
@@ -574,10 +578,19 @@ export function getUnitCost(actionType: string): number {
 
 #### Task 1.2: Server-Side Accounting Finalization
 
-Current billable AI routes use `finalizeAiOperationAccounting()` after the provider succeeds. The helper records an operation through the Admin SDK and then consumes credits through `consumeAICapacity()`.
+Current billable AI routes call `reserveAiCapacity()` before provider work and pass that exact reservation to `finalizeAiOperationAccounting()` after a usable provider result. Finalization atomically replaces the hidden `reserved` shell with the normal `consumed` operation row. The route refunds an unsettled reservation in `finally`; durable batch workers retain it only while deterministic staged work can retry.
 
 ```typescript
+let capacityReservation = await reserveAiCapacity({
+  action,
+  operationId,
+  session,
+  subscription: capacityCheck.subscription,
+  unitsToReserve: capacityCheck.unitsRequired,
+});
+
 const accounting = await finalizeAiOperationAccounting({
+  capacityReservation,
   capacitySubscription: capacityCheck.subscription,
   context: { userId, projectId, action },
   input: transactionObject,
@@ -588,9 +601,10 @@ const accounting = await finalizeAiOperationAccounting({
 transactionObject.unitsConsumed = accounting.unitsConsumed;
 transactionObject.transactionId = accounting.transactionId;
 remainingBalance = accounting.remainingBalance;
+capacityReservation = null;
 ```
 
-For Cloud Task workers without a browser session, pass `tId` and `sId` in the operation input and omit `session`. Operation-log failure is best-effort and monitored; credit-consumption failure fails the paid response.
+For Cloud Task workers without a browser session, reserve with explicit validated `tId` and `sId`, then pass those fields in the operation input and omit `session`. The deterministic job/item operation ID lets redelivery replay the same reservation and settlement. Paid operation settlement is mandatory; local diagnostic logging remains best-effort and bounded.
 
 **Validation:**
 
@@ -891,7 +905,7 @@ Each paid AI route gets the same enforcement pattern:
 | `image-editing/route.ts`                     | `IMAGE_GENERATION`       | 1 per call                 |
 | `menu-card-export/design-advisor/route.ts`   | `MENU_CARD_EXPORT_DESIGN_ADVISOR` | 1 per call       |
 | `seo/route.ts`                               | `SEO_AEO_GENERATION`     | 1 per call                 |
-| `translations/route.ts`                      | `LANGUAGE_ADDITION`      | 1 per language             |
+| `translations/route.ts`                      | Server-derived `ITEM_TRANSLATION`, `LANGUAGE_ADDITION`, or `IMAGE_TRANSLATION` | Minimum safe action from requested action, target-language count, and menu-entity scope |
 | `new-item-metadata/route.ts`                 | `NEW_ITEM_METADATA`      | 0 (free) — allowed by free short-circuit |
 
 **Note:** Menu extraction (`IMAGE_PROCESSING`) is always free for owner-pack usage. Extraction jobs still keep internal token/cost audit telemetry, but they stamp `unitsConsumed: 0` and never call owner credit consumption.
@@ -1266,7 +1280,7 @@ AI_ADMIN_DASHBOARD: false,
 | Change "Unlimited" to "Included" in feature list    | 3    | ✅     | B2C + B2B features updated (Session 14b)                   |
 | Re-architect `ActiveSubscriptionCard` credit panel  | 4    | ✅     | AI Features status card, no credit numbers (Session 14)    |
 | Re-architect `CreditsPackModal` → single pack modal | 4    | ✅     | Already uses `aiEnhancementPacksList`, outcome labels      |
-| Re-architect `CreditPackCard` → pack card           | 4    | ✅     | Shows `description` instead of `creditAmount` (Session 14) |
+| Re-architect `CreditPackCard` → pack card           | 4    | ✅     | Shows 250 credits plus exact outcome examples from shared policy |
 | Re-architect `RemainingCreditNote`                  | 4    | ✅     | "Your remaining value transfers" — no credit math (S14)    |
 | Update `billing/index.tsx` billing history labels   | 4    | ✅     | "AI Enhancement Pack" in history (Session 14)              |
 | Update `billing/index.tsx` success messages         | 4    | ✅     | "AI enhancements are ready!" (Session 14)                  |
@@ -1276,7 +1290,7 @@ AI_ADMIN_DASHBOARD: false,
 | Security audit (all routes)                         | 5    | ✅     | See audit findings below (Session 14b)                     |
 | Update Firestore security rules                     | 5    | ✅     | Documented: field-level restriction not possible (S14b)    |
 | Update website `CreditPacksCtaSection`              | 4    | ✅     | AIEnhancementPack + doctrine-compliant labels (Session 14) |
-| Update website `CreditPackCard`                     | 4    | ✅     | AIEnhancementPack, shows description (Session 14)          |
+| Update website `CreditPackCard`                     | 4    | ✅     | AIEnhancementPack, amount and shared-policy outcome examples |
 | Update website `SubscriptionManagement`             | 4    | ✅     | AI Features status, no credit numbers (Session 14)         |
 | Update `MobileBillingScreen`                        | 4    | ✅     | AI Features status, doctrine-compliant labels (Session 14) |
 
@@ -1339,11 +1353,13 @@ The runtime credit contract is:
 1. `monthlyCreditsAllowance` is the plan allowance for the billing period.
 2. `monthlyCredits` is the current recurring balance and resets to `monthlyCreditsAllowance` at renewal.
 3. `topUpCredits` is purchased enhancement-pack balance and does not reset.
-4. Paid AI routes call `checkAICapacity()` before the provider request and `consumeAICapacity()` after a successful operation.
-5. Lazy monthly reset and `consumeAICapacity()` both use Firestore transactions so reset and usage writes cannot overwrite each other during concurrent AI calls.
-6. AI responses return `remainingBalance`; desktop and mobile owner UI listen through `syncBalanceFromResponse()` and update `activeSubscription` without an extra Firestore read.
-7. Campaign caption generation is included as `AI_ACTIONS_TYPES.CAMPAIGN_CAPTION` with a 1-unit cost and the same operation log/capacity path.
-8. Batch image generation worker calls are guarded by the Cloud Tasks project header before they run provider work.
+4. Paid AI routes call `checkAICapacity()` and then `reserveAiCapacity()` before the provider request. Admission alone is not a debit guarantee; the reservation transaction is the concurrency authority.
+5. A successful request calls `finalizeAiOperationAccounting()` with the exact reservation. Settlement promotes the reservation shell into the normal operation row without a second debit. A failed request calls the idempotent refund path, which restores the exact recurring/top-up buckets charged by that reservation.
+6. Lazy monthly reset, reservation, settlement, and refund use Firestore transactions so concurrent requests, renewal, retry, and compensation cannot overwrite each other.
+7. AI responses return `remainingBalance`; desktop and mobile owner UI listen through `syncBalanceFromResponse()` and update `activeSubscription` without an extra Firestore read.
+8. Campaign caption generation is included as `AI_ACTIONS_TYPES.CAMPAIGN_CAPTION` with a 1-unit cost and the same reservation/accounting path.
+9. Batch image generation worker calls are guarded by the Cloud Tasks project header before they run provider work. Their deterministic operation ID retains a durable reservation only while staged work remains retryable; terminal/max-attempt acknowledgement recovers an unsettled reservation.
+10. Batch image trigger admission fails closed with `503` and `Retry-After` when its rate-limit provider or strict helper fails; this happens before request-body parsing, permission/capacity reads, or Cloud Tasks fanout. Caller quota exhaustion remains `429`.
 
 ---
 

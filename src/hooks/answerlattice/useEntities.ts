@@ -8,7 +8,6 @@
  */
 
 import { FEATURE_FLAGS } from '@config/features';
-import { addAuditLog } from '@database/answerlattice/auditLogs';
 import {
     addEntity,
     addEntityRelation,
@@ -18,13 +17,11 @@ import {
     getEntityRelations,
     getEntitySearchIndex,
     mergeEntities,
-    syncAliasesToSearchIndex,
     updateEntity,
     upsertEntitySearchIndex,
 } from '@database/answerlattice/entities';
 import { AnswerlatticeEntity, AnswerlatticeEntityRelation, AnswerlatticeEntitySearchIndex } from '@type/answerlattice';
 import { message } from 'antd';
-import { Timestamp } from 'firebase/firestore';
 import { useCallback, useEffect, useState } from 'react';
 
 const ANSWERLATTICE_ENTITIES_LOAD_FAILED = 'Could not load entities';
@@ -93,16 +90,6 @@ export function useEntities(tId: number, sId: number): UseEntitiesReturn {
         try {
             const result = await addEntity(data);
             if (result) {
-                await addAuditLog({
-                    tId, sId,
-                    action: 'entity_created',
-                    entityType: 'entity',
-                    entityId: result.id,
-                    previousState: undefined,
-                    newState: { name: data.name, type: data.type },
-                    performedBy: 'admin',
-                    timestamp: Timestamp.now(),
-                });
                 message.success(`Entity "${data.name}" created`);
                 await refresh();
             }
@@ -116,16 +103,6 @@ export function useEntities(tId: number, sId: number): UseEntitiesReturn {
     const update = useCallback(async (data: Partial<AnswerlatticeEntity> & { id: string }) => {
         try {
             await updateEntity(data);
-            await addAuditLog({
-                tId, sId,
-                action: 'entity_updated',
-                entityType: 'entity',
-                entityId: data.id,
-                previousState: undefined,
-                newState: { fields: Object.keys(data).filter(k => k !== 'id') },
-                performedBy: 'admin',
-                timestamp: Timestamp.now(),
-            });
             message.success('Entity updated');
             await refresh();
         } catch {
@@ -150,17 +127,6 @@ export function useEntities(tId: number, sId: number): UseEntitiesReturn {
                 .filter(a => a.length >= 2);
             const unique = Array.from(new Set(cleaned)).slice(0, 20);
             await updateEntity({ id: entityId, aliases: unique });
-            await syncAliasesToSearchIndex(entityId, unique, tId, sId);
-            await addAuditLog({
-                tId, sId,
-                action: 'entity_aliases_updated',
-                entityType: 'entity',
-                entityId,
-                previousState: undefined,
-                newState: { aliases: unique },
-                performedBy: 'admin',
-                timestamp: Timestamp.now(),
-            });
             message.success('Aliases updated');
             await refresh();
         } catch {
@@ -172,7 +138,8 @@ export function useEntities(tId: number, sId: number): UseEntitiesReturn {
         try {
             const result = await mergeEntities(survivorId, mergedId, tId, sId);
             if (result?.success) {
-                message.success(`Entities merged. ${result.transferredRefs} reference(s) transferred.`);
+                const transferred = Number(result.transferredAnswers || 0) + Number(result.transferredRelations || 0);
+                message.success(`Entities merged. ${transferred} reference(s) transferred.`);
                 await refresh();
             }
         } catch {

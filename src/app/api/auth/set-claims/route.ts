@@ -10,11 +10,25 @@ import {
 import { DB_COLLECTIONS } from '@constant/database';
 import { ECOMSAI_PLATFORM_SUPPORT_USER_ROLE, ECOMSAI_PLATFORM_USER_ROLE } from '@constant/user';
 import { getBoundedAuthStringContext, logAuthDiagnostic, logAuthFailure } from '@lib/auth/authDiagnostics';
+import {
+    findAnswerlatticeRole,
+    normalizeAnswerlatticeRolesForStore,
+} from '@lib/answerlattice/accessControl';
+import {
+    getAnswerlatticeStaffClaimMembership,
+    getAnswerlatticeStaffClaimStoreIds,
+    hasAnswerlatticeTenantAdminClaim,
+    readActiveAnswerlatticeStaffClaimState,
+} from '@lib/answerlattice/staffClaimsContracts';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
-import { getAuthUserByEmail } from '@lib/auth/serverUserContext';
+import {
+    getAuthUserByEmail,
+    getUniqueAuthUserByEmailFromCollection,
+} from '@lib/auth/serverUserContext';
+import { resolveSetClaimsWorkspaceFromStore } from '@lib/auth/setClaimsWorkspace';
 import { shouldUseSharedAnswerlatticeFirebase } from '@lib/firebase/answerlatticeConfig';
 import { answerlatticeAdminApp, answerlatticeAuthAdmin, answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
-import { authAdmin } from '@lib/firebase/firebaseAdmin';
+import { authAdmin, firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { logger } from '@lib/monitoring/logger';
 import { normalizeStorePermissionScopeDocumentId, type StorePermissionScopeDocumentId } from '@lib/permissions/server';
 import { checkRateLimit } from '@lib/rateLimit';
@@ -102,12 +116,17 @@ async function createAnswerlatticeCustomTokenIfNeeded(
             throw error;
         }
 
-        const newAnswerlatticeUser = await answerlatticeAuthAdmin.createUser({
-            email,
-            emailVerified: true,
-            displayName: displayName || undefined,
-        });
-        answerlatticeUid = newAnswerlatticeUser.uid;
+        try {
+            const newAnswerlatticeUser = await answerlatticeAuthAdmin.createUser({
+                email,
+                emailVerified: true,
+                displayName: displayName || undefined,
+            });
+            answerlatticeUid = newAnswerlatticeUser.uid;
+        } catch (createError: any) {
+            if (createError?.code !== 'auth/email-already-exists') throw createError;
+            answerlatticeUid = (await answerlatticeAuthAdmin.getUserByEmail(email)).uid;
+        }
     }
 
     await answerlatticeAuthAdmin.setCustomUserClaims(answerlatticeUid, customClaims);
@@ -122,14 +141,10 @@ async function getAnswerlatticeAuthUserByEmail(email: string): Promise<any | nul
     const normalizedEmail = String(email || '').toLowerCase().trim();
     if (!normalizedEmail) return null;
 
-    const snapshot = await db.collection(DB_COLLECTIONS.USERS)
-        .where('email', '==', normalizedEmail)
-        .limit(1)
-        .get();
-
-    if (snapshot.empty) return null;
-    const doc = snapshot.docs[0];
-    return { id: doc.id, ...doc.data() };
+    return getUniqueAuthUserByEmailFromCollection(
+        db.collection(DB_COLLECTIONS.USERS),
+        normalizedEmail,
+    );
 }
 
 const getStoreIdsClaim = (dbUser: any): string[] => {
@@ -169,22 +184,11 @@ const buildAnswerlatticeScopedFallbackUser = (
     if (!fallbackDbUser || !scope) return fallbackDbUser;
 
     const role = scope.role || fallbackDbUser.role || DEFAULT_ANSWERLATTICE_ROLE_IDS.OWNER;
-    const existingStores = Array.isArray(fallbackDbUser.stores) ? fallbackDbUser.stores : [];
-    const scopedStore = existingStores.find((store: any) => Number(store?.storeId) === scope.storeId);
-    const stores = scopedStore
-        ? existingStores.map((store: any) => (
-            Number(store?.storeId) === scope.storeId
-                ? { ...store, role: store?.role || role }
-                : store
-        ))
-        : [
-            ...existingStores,
-            {
-                role,
-                storeId: scope.storeId,
-                tenantId: scope.tenantId,
-            },
-        ];
+    const stores = [{
+        role,
+        storeId: scope.storeId,
+        tenantId: scope.tenantId,
+    }];
 
     return {
         ...fallbackDbUser,
@@ -195,10 +199,7 @@ const buildAnswerlatticeScopedFallbackUser = (
         tId: scope.tenantId,
         storeId: scope.storeId,
         sId: scope.storeId,
-        storeIds: Array.from(new Set([
-            scope.storeId,
-            ...(Array.isArray(fallbackDbUser.storeIds) ? fallbackDbUser.storeIds : []),
-        ].map((storeId) => Number(storeId)).filter((storeId) => Number.isFinite(storeId) && storeId > 0))),
+        storeIds: [scope.storeId],
         stores,
     };
 };
@@ -214,15 +215,6 @@ const resolveClaimStoreScope = (dbUser: any, targetStoreId?: number): StorePermi
     return targetStoreScope;
 };
 
-const hasTenantAdminClaim = (role: unknown, platformRole: unknown): boolean => {
-    const normalizedRole = String(role || '').toLowerCase();
-    const normalizedPlatformRole = String(platformRole || '').toUpperCase();
-
-    return normalizedPlatformRole === 'PLATFORM'
-        || normalizedRole === 'platform'
-        || normalizedRole === 'owner';
-};
-
 const buildAnswerlatticePermissionClaims = (permissions: Partial<Record<AnswerlatticePermissionKey, boolean>>) => (
     ANSWERLATTICE_ALL_PERMISSIONS.reduce((acc, permission) => {
         acc[permission] = permissions[permission] === true;
@@ -230,15 +222,23 @@ const buildAnswerlatticePermissionClaims = (permissions: Partial<Record<Answerla
     }, {} as Record<AnswerlatticePermissionKey, boolean>)
 );
 
-const resolveAnswerlatticePermissionClaims = async (params: {
+const resolveAnswerlatticePermissionClaims = (params: {
     productId: ProductId;
+    rawRoles: unknown;
     roleId: unknown;
     storeScope: StorePermissionScopeDocumentId;
+    tenantId: number;
     platformRole: unknown;
 }) => {
     if (params.productId !== PRODUCT_IDS.ANSWERLATTICE) return {};
 
-    const normalizedRoleId = String(params.roleId || DEFAULT_ANSWERLATTICE_ROLE_IDS.STAFF).trim().toLowerCase();
+    const rawRoleId = typeof params.roleId === 'string'
+        ? params.roleId
+        : DEFAULT_ANSWERLATTICE_ROLE_IDS.STAFF;
+    const normalizedRoleId = rawRoleId.trim();
+    if (!normalizedRoleId || normalizedRoleId !== rawRoleId || normalizedRoleId.length > 120) {
+        return buildAnswerlatticePermissionClaims({});
+    }
     if (isPlatformSupportRole(params.platformRole) || normalizedRoleId === DEFAULT_ANSWERLATTICE_ROLE_IDS.OWNER) {
         return buildAnswerlatticePermissionClaims(DEFAULT_ANSWERLATTICE_ROLE_METADATA[DEFAULT_ANSWERLATTICE_ROLE_IDS.OWNER].permissions);
     }
@@ -247,16 +247,14 @@ const resolveAnswerlatticePermissionClaims = async (params: {
         .find(([roleId]) => roleId === normalizedRoleId)?.[1];
     let rolePermissions = defaultRole?.permissions || {};
 
-    const db = answerlatticeFirestoreAdmin as any;
-    if (db && typeof db.collection === 'function' && params.storeScope.numericId) {
-        const storeSnap = await db.collection(DB_COLLECTIONS.STORES).doc(params.storeScope.documentId).get();
-        const roles = Array.isArray(storeSnap.data()?.answerlatticeRoles) ? storeSnap.data()?.answerlatticeRoles : [];
-        const storeRole = roles.find((role: any) => String(role?.id || '').trim().toLowerCase() === normalizedRoleId);
-        if (storeRole?.active === false) {
-            rolePermissions = {};
-        } else if (storeRole?.permissions) {
-            rolePermissions = storeRole.permissions;
-        }
+    if (!defaultRole) {
+        const roles = normalizeAnswerlatticeRolesForStore(
+            params.rawRoles,
+            params.tenantId,
+            params.storeScope.numericId,
+            'system',
+        ).roles;
+        rolePermissions = findAnswerlatticeRole(roles, normalizedRoleId)?.permissions || {};
     }
 
     return buildAnswerlatticePermissionClaims(normalizeAnswerlatticeRolePermissions(rolePermissions));
@@ -364,11 +362,10 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         const answerlatticeDbUser = shouldUseAnswerlatticeUserContext
             ? await getAnswerlatticeAuthUserByEmail(session.user.email)
             : null;
-        if (shouldUseAnswerlatticeUserContext && answerlatticeDbUser && (
-            answerlatticeDbUser.active === false
-            || answerlatticeDbUser.deleted === true
-            || answerlatticeDbUser.authDisabled === true
-        )) {
+        const answerlatticeDbUserState = answerlatticeDbUser
+            ? readActiveAnswerlatticeStaffClaimState(answerlatticeDbUser)
+            : null;
+        if (shouldUseAnswerlatticeUserContext && answerlatticeDbUser && !answerlatticeDbUserState) {
             logAuthDiagnostic('set_claims_inactive_answerlattice_auth_profile_rejected', {
                 ...getSetClaimsEmailLogContext(session.user.email),
                 ...getSetClaimsUserLogContext(answerlatticeDbUser.id),
@@ -376,7 +373,8 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
         const answerlatticeUserMatchesRequestedStore = answerlatticeDbUser && (
-            !effectiveTargetStoreId || canAccessStore(answerlatticeDbUser, effectiveTargetStoreId)
+            !effectiveTargetStoreId
+            || Boolean(getAnswerlatticeStaffClaimMembership(answerlatticeDbUserState, effectiveTargetStoreId))
         );
         const scopedDefaultUser = shouldUseAnswerlatticeUserContext
             ? buildAnswerlatticeScopedFallbackUser(defaultDbUser, answerlatticeSessionScope)
@@ -415,19 +413,31 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             );
         }
 
-        if (effectiveTargetStoreId && !hasDefaultPlatformAccess && !canAccessStore(dbUser, effectiveTargetStoreId)) {
+        const answerlatticeClaimState = shouldUseAnswerlatticeUserContext
+            ? readActiveAnswerlatticeStaffClaimState(dbUser)
+            : null;
+        if (shouldUseAnswerlatticeUserContext && !answerlatticeClaimState) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
+        const resolvedTargetStoreId = effectiveTargetStoreId
+            || answerlatticeClaimState?.primaryMembership?.storeId;
+        const canAccessTargetStore = resolvedTargetStoreId
+            ? shouldUseAnswerlatticeUserContext
+                ? Boolean(getAnswerlatticeStaffClaimMembership(answerlatticeClaimState, resolvedTargetStoreId))
+                : canAccessStore(dbUser, resolvedTargetStoreId)
+            : false;
+        if (resolvedTargetStoreId && !hasDefaultPlatformAccess && !canAccessTargetStore) {
             logAuthDiagnostic('set_claims_store_switch_outside_user_stores_rejected', {
                 ...getSetClaimsEmailLogContext(session.user.email),
-                ...getSetClaimsStoreLogContext(effectiveTargetStoreId),
+                ...getSetClaimsStoreLogContext(resolvedTargetStoreId),
                 ...getSetClaimsUserLogContext(dbUser.id),
             });
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
-        const claimStoreScope = effectiveTargetStoreId && (hasDefaultPlatformAccess || canAccessStore(dbUser, effectiveTargetStoreId))
-            ? normalizeStorePermissionScopeDocumentId(effectiveTargetStoreId)
-            : resolveClaimStoreScope(dbUser, effectiveTargetStoreId);
-        const claimTenantScope = normalizeStorePermissionScopeDocumentId(dbUser.tenantId ?? dbUser.tId);
-        if (!claimStoreScope || !claimTenantScope) {
+        const claimStoreScope = resolvedTargetStoreId && (hasDefaultPlatformAccess || canAccessTargetStore)
+            ? normalizeStorePermissionScopeDocumentId(resolvedTargetStoreId)
+            : resolveClaimStoreScope(dbUser, resolvedTargetStoreId);
+        if (!claimStoreScope) {
             logAuthDiagnostic('set_claims_invalid_workspace_scope_rejected', {
                 ...getSetClaimsEmailLogContext(session.user.email),
                 ...getSetClaimsTenantLogContext(dbUser.tenantId ?? dbUser.tId),
@@ -436,32 +446,92 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             });
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
+        const claimsDb = shouldUseAnswerlatticeUserContext
+            ? answerlatticeFirestoreAdmin
+            : firestoreAdmin;
+        if (!claimsDb || typeof (claimsDb as any).collection !== 'function') {
+            logAuthDiagnostic('set_claims_product_firestore_unavailable', {
+                ...getSetClaimsEmailLogContext(session.user.email),
+                ...getBoundedAuthStringContext('productId', requestedProductId),
+            });
+            return NextResponse.json({ error: 'Authentication service is not available' }, { status: 503 });
+        }
+        const canonicalStoreSnapshot = await claimsDb
+            .collection(DB_COLLECTIONS.STORES)
+            .doc(claimStoreScope.documentId)
+            .get();
+        const canonicalWorkspace = canonicalStoreSnapshot.exists
+            ? resolveSetClaimsWorkspaceFromStore({
+                dbUserTenantId: dbUser.tenantId ?? dbUser.tId,
+                hasPlatformAccess: hasDefaultPlatformAccess,
+                storeData: canonicalStoreSnapshot.data(),
+                storeDocumentId: canonicalStoreSnapshot.id,
+            })
+            : null;
+        if (!canonicalWorkspace) {
+            logAuthDiagnostic('set_claims_canonical_workspace_rejected', {
+                ...getSetClaimsEmailLogContext(session.user.email),
+                ...getSetClaimsTenantLogContext(dbUser.tenantId ?? dbUser.tId),
+                ...getSetClaimsStoreLogContext(claimStoreScope.documentId),
+                ...getSetClaimsUserLogContext(dbUser.id),
+            });
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
+        const claimTenantScope = canonicalWorkspace.tenantScope;
 
         // Get user's current-store role. Older/platform records may still carry
         // a top-level role, so keep that as the compatibility fallback.
-        const storeRole = Array.isArray(dbUser.stores)
-            ? dbUser.stores.find((store: any) => Number(store.storeId) === claimStoreScope.numericId)?.role
-            : undefined;
+        const storeRole = shouldUseAnswerlatticeUserContext
+            ? getAnswerlatticeStaffClaimMembership(answerlatticeClaimState, claimStoreScope.numericId)?.role
+            : Array.isArray(dbUser.stores)
+                ? dbUser.stores.find((store: any) => (
+                    normalizeStorePermissionScopeDocumentId(store?.storeId)?.numericId === claimStoreScope.numericId
+                ))?.role
+                : undefined;
         const userRole = storeRole || dbUser.role;
-        const productId = normalizeProductId(dbUser.pId || dbUser.productId);
-        const answerlatticePermissionClaims = await resolveAnswerlatticePermissionClaims({
+        const productId = shouldUseAnswerlatticeUserContext
+            ? PRODUCT_IDS.ANSWERLATTICE
+            : normalizeProductId(dbUser.pId || dbUser.productId);
+        const answerlatticePermissionClaims = resolveAnswerlatticePermissionClaims({
             productId,
+            rawRoles: canonicalStoreSnapshot.data()?.answerlatticeRoles,
             roleId: userRole,
             storeScope: claimStoreScope,
+            tenantId: claimTenantScope.numericId,
             platformRole: dbUser.platformRole,
         });
 
         const customClaims = {
+            ...(productId === PRODUCT_IDS.ANSWERLATTICE ? {
+                accessRevision: answerlatticeClaimState?.accessRevision || 0,
+            } : {}),
             pId: productId,
             role: userRole || 'OWNER',
             platformRole: dbUser.platformRole || 'USER',
             tenantId: claimTenantScope.documentId,
             storeId: claimStoreScope.documentId,
             uId: dbUser.id,
-            admin: hasTenantAdminClaim(userRole, dbUser.platformRole),
-            storeIds: getStoreIdsClaim(dbUser),
+            admin: hasAnswerlatticeTenantAdminClaim(userRole, dbUser.platformRole),
+            storeIds: Array.from(new Set([
+                ...(answerlatticeClaimState
+                    ? getAnswerlatticeStaffClaimStoreIds(answerlatticeClaimState)
+                    : getStoreIdsClaim(dbUser)),
+                claimStoreScope.documentId,
+            ])),
             ...answerlatticePermissionClaims,
         };
+        let validatedDefaultFirebaseUser: Awaited<ReturnType<typeof authAdmin.getUser>> | null = null;
+        if (uid) {
+            validatedDefaultFirebaseUser = await authAdmin.getUser(uid);
+            if (normalizeEmail(validatedDefaultFirebaseUser.email) !== normalizeEmail(session.user.email)) {
+                logAuthDiagnostic('set_claims_uid_email_mismatch_rejected', {
+                    ...getSetClaimsEmailLogContext(session.user.email),
+                    ...getSetClaimsUidLogContext(uid),
+                });
+                return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+            }
+        }
+
         let answerlatticeCustomToken: string | null = null;
         if (shouldUseAnswerlatticeUserContext) {
             try {
@@ -490,15 +560,13 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
         // If UID provided, set claims on existing user
         if (uid) {
-            const firebaseUser = await authAdmin.getUser(uid);
-            if (normalizeEmail(firebaseUser.email) !== normalizeEmail(session.user.email)) {
-                logAuthDiagnostic('set_claims_uid_email_mismatch_rejected', {
+            if (!validatedDefaultFirebaseUser) {
+                logAuthDiagnostic('set_claims_uid_validation_state_missing', {
                     ...getSetClaimsEmailLogContext(session.user.email),
                     ...getSetClaimsUidLogContext(uid),
                 });
                 return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
             }
-
             await authAdmin.setCustomUserClaims(uid, customClaims);
             const customToken = await authAdmin.createCustomToken(uid, customClaims);
 
@@ -534,12 +602,17 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 throw error;
             }
 
-            const newUser = await authAdmin.createUser({
-                email: session.user.email,
-                emailVerified: true,
-                displayName: session.user.name || undefined,
-            });
-            uid = newUser.uid;
+            try {
+                const newUser = await authAdmin.createUser({
+                    email: session.user.email,
+                    emailVerified: true,
+                    displayName: session.user.name || undefined,
+                });
+                uid = newUser.uid;
+            } catch (createError: any) {
+                if (createError?.code !== 'auth/email-already-exists') throw createError;
+                uid = (await authAdmin.getUserByEmail(session.user.email)).uid;
+            }
             logAuthDiagnostic('firebase_auth_user_created_for_oauth_login', {
                 ...getSetClaimsEmailLogContext(session.user.email),
                 ...getSetClaimsUidLogContext(uid),

@@ -241,8 +241,8 @@ UTM map-key boundary: Menu and OBP analytics keep `utm_source`, `utm_medium`, `u
 | Debounce window    | 1 second   | Block rapid-fire     |
 | Menu view cooldown | 30 seconds | Prevent refresh spam |
 | Search dedupe      | 1 unique term / session | Prevent per-keystroke writes |
-| Public flush delay | 15 seconds | Coalesce customer analytics counters |
-| Public flush max | 20 queued events | Bound local queue size before flush |
+| Public flush delay | 30 seconds | Coalesce customer analytics counters |
+| Public flush max | 40 queued events | Bound local queue size before flush |
 
 ### Write Optimization
 

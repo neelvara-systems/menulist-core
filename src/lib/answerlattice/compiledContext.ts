@@ -37,6 +37,40 @@ export const EMPTY_BUNDLE_STATS: AnswerlatticeContextBundleStats = {
     privateBytesTotal: 0,
 };
 
+export const normalizeAnswerlatticeStoredBundleVersion = (value: unknown): number | null => {
+    if (typeof value === 'number') {
+        return Number.isSafeInteger(value) && value >= 0 ? value : null;
+    }
+    if (typeof value !== 'string' || !/^(0|[1-9]\d*)$/.test(value)) return null;
+    const normalized = Number(value);
+    return Number.isSafeInteger(normalized) ? normalized : null;
+};
+
+export const resolveAnswerlatticeExistingBundleVersion = (manifest: unknown): number | null => {
+    if (manifest === null || manifest === undefined) return 0;
+    if (typeof manifest !== 'object' || Array.isArray(manifest)) return null;
+    const record = manifest as Record<string, unknown>;
+    const candidates = [record.bundleVersion, record.activeVersion, record.lastReadyVersion]
+        .filter((value) => value !== undefined && value !== null)
+        .map(normalizeAnswerlatticeStoredBundleVersion)
+        .filter((value): value is number => value !== null);
+    return candidates.length > 0 ? Math.max(...candidates) : null;
+};
+
+export const getNextAnswerlatticeBundleVersion = (manifest: unknown): number | null => {
+    const current = resolveAnswerlatticeExistingBundleVersion(manifest);
+    return current === null || current >= Number.MAX_SAFE_INTEGER ? null : current + 1;
+};
+
+export const hasExactAnswerlatticeReadyBundleVersions = (manifest: Record<string, unknown>): boolean => (
+    typeof manifest.bundleVersion === 'number'
+    && normalizeAnswerlatticeStoredBundleVersion(manifest.bundleVersion) !== null
+    && typeof manifest.activeVersion === 'number'
+    && normalizeAnswerlatticeStoredBundleVersion(manifest.activeVersion) !== null
+    && typeof manifest.lastReadyVersion === 'number'
+    && normalizeAnswerlatticeStoredBundleVersion(manifest.lastReadyVersion) !== null
+);
+
 export const getAnswerlatticeSourceVersionsDocId = (tId: number, sId: number) =>
     `${ANSWERLATTICE_CONTEXT_SOURCE_VERSION_DOC_PREFIX}_${Number(tId)}_${Number(sId)}`;
 
@@ -55,27 +89,46 @@ export const getPublicBundlePath = (publicBundleId: string, bundleVersion: numbe
 export const getPrivateBundlePath = (tId: number, sId: number, bundleVersion: number, filePath: string) =>
     `${ANSWERLATTICE_CONTEXT_PRIVATE_ROOT}/${Number(tId)}/${Number(sId)}/v${Number(bundleVersion)}/${filePath.replace(/^\/+/, '')}`;
 
+const normalizeStoredSourceVersion = (value: unknown): number | null => {
+    if (value === undefined || value === null) return 0;
+    if (typeof value === 'number') return Number.isSafeInteger(value) && value >= 0 ? value : null;
+    if (typeof value !== 'string' || !/^(0|[1-9]\d*)$/.test(value)) return null;
+    const normalized = Number(value);
+    return Number.isSafeInteger(normalized) ? normalized : null;
+};
+
+export const areAnswerlatticeCompiledSourceVersionsValid = (value: unknown): boolean => {
+    if (value === null || value === undefined) return true;
+    if (typeof value !== 'object' || Array.isArray(value)) return false;
+    const record = value as Record<string, unknown>;
+    return [
+        'workspaceProfile', 'widgetConfig', 'kb', 'docsNav', 'entities', 'entityRelations',
+        'canonical', 'surfaces', 'releases', 'branding', 'mcpPolicy', 'predictiveTriggers',
+    ].every((key) => normalizeStoredSourceVersion(record[key]) !== null);
+};
+
 export const normalizeCompiledSourceVersions = (
     value: Partial<AnswerlatticeCompiledSourceVersions> | null | undefined,
 ): AnswerlatticeCompiledSourceVersions => ({
-    workspaceProfile: Number(value?.workspaceProfile || 0),
-    widgetConfig: Number(value?.widgetConfig || 0),
-    kb: Number(value?.kb || 0),
-    docsNav: Number(value?.docsNav || 0),
-    entities: Number(value?.entities || 0),
-    entityRelations: Number(value?.entityRelations || 0),
-    canonical: Number(value?.canonical || 0),
-    surfaces: Number(value?.surfaces || 0),
-    releases: Number(value?.releases || 0),
-    branding: Number(value?.branding || 0),
-    mcpPolicy: Number(value?.mcpPolicy || 0),
-    predictiveTriggers: Number(value?.predictiveTriggers || 0),
+    workspaceProfile: normalizeStoredSourceVersion(value?.workspaceProfile) ?? 0,
+    widgetConfig: normalizeStoredSourceVersion(value?.widgetConfig) ?? 0,
+    kb: normalizeStoredSourceVersion(value?.kb) ?? 0,
+    docsNav: normalizeStoredSourceVersion(value?.docsNav) ?? 0,
+    entities: normalizeStoredSourceVersion(value?.entities) ?? 0,
+    entityRelations: normalizeStoredSourceVersion(value?.entityRelations) ?? 0,
+    canonical: normalizeStoredSourceVersion(value?.canonical) ?? 0,
+    surfaces: normalizeStoredSourceVersion(value?.surfaces) ?? 0,
+    releases: normalizeStoredSourceVersion(value?.releases) ?? 0,
+    branding: normalizeStoredSourceVersion(value?.branding) ?? 0,
+    mcpPolicy: normalizeStoredSourceVersion(value?.mcpPolicy) ?? 0,
+    predictiveTriggers: normalizeStoredSourceVersion(value?.predictiveTriggers) ?? 0,
 });
 
 export const compiledSourceVersionsEqual = (
     left: Partial<AnswerlatticeCompiledSourceVersions> | null | undefined,
     right: Partial<AnswerlatticeCompiledSourceVersions> | null | undefined,
 ): boolean => {
+    if (!areAnswerlatticeCompiledSourceVersionsValid(left) || !areAnswerlatticeCompiledSourceVersionsValid(right)) return false;
     const a = normalizeCompiledSourceVersions(left);
     const b = normalizeCompiledSourceVersions(right);
     return [
@@ -91,7 +144,7 @@ export const compiledSourceVersionsEqual = (
         'branding',
         'mcpPolicy',
         'predictiveTriggers',
-    ].every((key) => Number(a[key as AnswerlatticeContextSourceKey] || 0) === Number(b[key as AnswerlatticeContextSourceKey] || 0));
+    ].every((key) => a[key as AnswerlatticeContextSourceKey] === b[key as AnswerlatticeContextSourceKey]);
 };
 
 export const normalizeAnswerlatticeRoutePath = (value: unknown): string => {

@@ -235,6 +235,11 @@ Canonical install contract:
 ${ANSWERLATTICE_CONTEXT_METHODS.map((method) => `  - ${ANSWERLATTICE_WIDGET_GLOBAL_NAME}.${method}(context)`).join('\n')}
 - Optional visitor method:
   - ${ANSWERLATTICE_WIDGET_GLOBAL_NAME}.identify({ id, name, email })
+- Optional server-verified visitor method:
+  - ${ANSWERLATTICE_WIDGET_GLOBAL_NAME}.identifySigned(token)
+  - ${ANSWERLATTICE_WIDGET_GLOBAL_NAME}.clearIdentity()
+- Optional support-safe evidence method:
+  - ${ANSWERLATTICE_WIDGET_GLOBAL_NAME}.setEvidenceLinks([{ label, url }])
 
 Implementation rules:
 1. Find the app root, global layout, document shell, or main client entry point.
@@ -246,13 +251,15 @@ Implementation rules:
 7. Pass only safe page context: path, title, feature, workflow, role, and locale.
 8. Do not put customer emails, phone numbers, internal account IDs, tenant IDs, store IDs, or private records in page context.
 9. If the product has a signed-in customer and the product owner wants requester tracking, call identify with only a support-safe customer id, display name, and email after auth state is known.
-10. Update AnswerLattice context after client-side route changes.
-11. Do not create app settings for allowed origins or blocked routes. AnswerLattice dashboard owns those values.
-12. If this repository has a central third-party-script guard, use the dashboard-saved blocked routes above to avoid mounting AnswerLattice on sensitive screens.
-13. Also avoid routes containing token, invite, reset-password, payment, secret, api-key, or webhook setup screens.
-14. Add a short code comment explaining that this is the AnswerLattice v1 widget contract.
-15. Run lint, typecheck, and build commands available in the repository.
-16. Report changed files, where the script was installed, how route context updates, visitor identity handling if added, test commands run, and assumptions.
+10. If support behavior depends on a trusted plan or role, use the Access & Security signing key only from server code and call identifySigned with a short-lived token. Never put the private key in browser code.
+11. Attach external diagnostic links only from dashboard-allowed HTTPS hosts, only when useful for the current question, and never treat them as answer truth.
+12. Update AnswerLattice context after client-side route changes.
+13. Do not create app settings for allowed origins or blocked routes. AnswerLattice dashboard owns those values.
+14. If this repository has a central third-party-script guard, use the dashboard-saved blocked routes above to avoid mounting AnswerLattice on sensitive screens.
+15. Also avoid routes containing token, invite, reset-password, payment, secret, api-key, or webhook setup screens.
+16. Add a short code comment explaining that this is the AnswerLattice v1 widget contract.
+17. Run lint, typecheck, and build commands available in the repository.
+18. Report changed files, where the script was installed, how route context updates, visitor identity handling if added, test commands run, and assumptions.
 
 Acceptance criteria:
 - The app builds.
@@ -807,6 +814,10 @@ export const ANSWERLATTICE_INSTALL_DOCS: AnswerlatticeInstallDoc[] = [
                     'al_* widget key format',
                     `${ANSWERLATTICE_WIDGET_GLOBAL_NAME} global`,
                     ...ANSWERLATTICE_CONTEXT_METHODS.map((method) => `${method}(context)`),
+                    'identify(visitor)',
+                    'identifySigned(token)',
+                    'clearIdentity()',
+                    'setEvidenceLinks(links)',
                     'safe context field names',
                     'blocked route behavior',
                     'install verification semantics',
@@ -935,7 +946,8 @@ export function renderAnswerlatticeLlmsTxt() {
 - [Pre-Onboarding Agent Guide](${ANSWERLATTICE_SITE_URL}/pre-onboarding/agent-guide.md): Operating rules for AI coding agents preparing AnswerLattice input packages.
 - [AnswerLattice Widget Contract v1](${ANSWERLATTICE_SITE_URL}/install/contracts.md): Stable script URL, browser API, safe context schema, and dashboard-owned route settings.
 - [Resources](${ANSWERLATTICE_SITE_URL}/resources): Launch setup, pre-onboarding, widget verification, support control, pricing, and runtime-safety guides.
-- [Developers](${ANSWERLATTICE_SITE_URL}/developers): Widget install, safe page context, verification, framework quickstarts, and agent install packets.
+- [Developers](${ANSWERLATTICE_SITE_URL}/developers): Widget install, safe page context, optional signed visitor context, bounded evidence links, verification, framework quickstarts, and agent install packets.
+- [Verified visitor context](${ANSWERLATTICE_SITE_URL}/developers/verified-visitor-context): Server-side signing, identity reset, evidence-host controls, and fail-open support availability.
 - [Comparisons](${ANSWERLATTICE_SITE_URL}/comparisons): Category comparisons with scoped claims and no unsupported vendor rankings.
 - [Manual install](${ANSWERLATTICE_SITE_URL}/install/manual.md): Human-readable script install.
 - [Next.js install](${ANSWERLATTICE_SITE_URL}/install/frameworks/nextjs.md): App Router and Pages Router instructions.
@@ -991,6 +1003,7 @@ export function renderAnswerlatticeLlmsFullTxt() {
 - ${ANSWERLATTICE_SITE_URL}/developers
 - ${ANSWERLATTICE_SITE_URL}/developers/safe-page-context
 - ${ANSWERLATTICE_SITE_URL}/developers/widget-verification
+- ${ANSWERLATTICE_SITE_URL}/developers/verified-visitor-context
 - ${ANSWERLATTICE_SITE_URL}/comparisons
 - ${ANSWERLATTICE_SITE_URL}/comparisons/answerlattice-vs-chatbots
 - ${ANSWERLATTICE_SITE_URL}/comparisons/answerlattice-vs-helpdesks
@@ -1068,6 +1081,14 @@ window.AnswerlatticeWidget?.identify?.({ id, name, email });
 \`\`\`
 
 Do not include tenant IDs, store IDs, private account records, billing IDs, tokens, or phone numbers in identify.
+
+For trusted plan, role, locale, or requester claims, create the short-lived EdDSA token on the host server and call:
+
+\`\`\`js
+window.AnswerlatticeWidget?.identifySigned?.(token);
+\`\`\`
+
+Keep the private signing key in server-only secret storage. Call \`clearIdentity()\` when the host user signs out. Configure exact evidence hosts in AnswerLattice before calling \`setEvidenceLinks([{ label, url }])\`.
 `),
         'answerlattice-verification-contract-v1.md': normalizeLines(`
 # AnswerLattice Verification Contract v1

@@ -3,12 +3,13 @@ import { FEATURE_FLAGS } from "@config/features";
 import { AI_ACTIONS_TYPES } from "@constant/common";
 import { LANGUAGE_CONSTANTS } from "@constant/languages";
 import GlobalLanguagesList from "@data/languages";
-import { assertProjectUpdateSucceeded, updateProject, updateProjectMetadata } from "@database/projects";
+import { appendImageBatchProjectSelections, assertProjectUpdateSucceeded, updateProject, updateProjectMetadata } from "@database/projects";
 import { useAppDispatch } from "@hook/useAppDispatch";
 import { useOfferingLabels } from "@hook/useOfferingLabels";
 import { getStoreContextName } from "@lib/businessIdentity/names";
 import { getSafeUiErrorMessage } from "@lib/errors/uiErrorMessages";
 import { getProjectDefaultLanguage } from "@lib/localization/projectContent";
+import { appendImageBatchSelectionsToProject } from "@lib/ai/imageBatchProjectSelection";
 import { resolveProjectForRender } from "@lib/multiOutlet";
 import { stripResolvedOutletProjectForSave } from "@lib/multiOutlet/outletProjectPersistence";
 import { triggerPosSyncDebounced } from "@lib/posSync/eventBuilder";
@@ -130,6 +131,7 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
     const splitterRefs = useRef<any>({});
     const [hasChanges, setHasChanges] = useState(false);
     const hasChangesRef = useRef(false);
+    const activeEditorSavePromiseRef = useRef<Promise<void> | null>(null);
     const lastAutoSaveRef = useRef<number | null>(null);
     const hasShownConfidenceNudgeRef = useRef(false);
     const [isSaving, setIsSaving] = useState(false);
@@ -532,6 +534,9 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
 
     const syncChanges = useCallback(
         async (updatedData: Project = projectData) => {
+            if (activeEditorSavePromiseRef.current) {
+                await activeEditorSavePromiseRef.current;
+            }
             const projectToSave = updatedData?.masterProjectId
                 ? stripResolvedOutletProjectForSave(updatedData, activeProject)
                 : updatedData;
@@ -542,11 +547,15 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
 
             setIsSaving(true);
             dispatch(startLoader("syncing changes"));
+            let saveCompletion: Promise<void> | null = null;
             try {
-                const updatedProject = await updateProject({
+                const saveRequest = updateProject({
                     ...projectToSave,
                     projectId: selectedProject.projectId,
                 });
+                saveCompletion = saveRequest.then(() => undefined, () => undefined);
+                activeEditorSavePromiseRef.current = saveCompletion;
+                const updatedProject = await saveRequest;
                 assertProjectUpdateSucceeded(
                     updatedProject,
                     selectedProject.projectId,
@@ -590,6 +599,9 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
                     isMasterLinked,
                 });
             } finally {
+                if (activeEditorSavePromiseRef.current === saveCompletion) {
+                    activeEditorSavePromiseRef.current = null;
+                }
                 dispatch(stopLoader("syncing changes"));
                 setIsSaving(false);
             }
@@ -1447,6 +1459,29 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
                         projectId: activeProject.projectId,
                     });
                     applyPersistedEditorProject(updatedProject, persistedProject || undefined);
+                }}
+                onBatchImagesPersist={async (selections) => {
+                    if (activeEditorSavePromiseRef.current) {
+                        await activeEditorSavePromiseRef.current;
+                    }
+                    if (hasChangesRef.current) {
+                        setHasChanges(false);
+                        hasChangesRef.current = false;
+                        try {
+                            await persistEditorProject(projectData);
+                        } catch (error) {
+                            setHasChanges(true);
+                            hasChangesRef.current = true;
+                            throw error;
+                        }
+                    }
+                    const persistedProject = await appendImageBatchProjectSelections({
+                        masterProjectId: projectData.masterProjectId,
+                        projectId: projectData.projectId || activeProject.projectId,
+                        selections,
+                    });
+                    const updatedDisplayProject = appendImageBatchSelectionsToProject(projectData, selections);
+                    applyPersistedEditorProject(updatedDisplayProject, persistedProject);
                 }}
                 itemToUpdate={isImageModalOpen.item}
                 onImageUpload={onImageUpload}

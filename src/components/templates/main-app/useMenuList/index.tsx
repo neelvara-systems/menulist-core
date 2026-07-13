@@ -330,7 +330,7 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
                 projectId: defaultProject.projectId || null,
                 projectName: resolveProjectName(defaultProject.name, labels.offeringTitle),
                 isDefaultProject: defaultProject.isDefault || false,
-                menuModifiedOn: defaultProject.modifiedOn || null,
+                menuModifiedOn: storeDetails.lastPublishedAt || null,
                 allProjects,
                 hasPosSync,
                 posSyncStatus: hasPosSync ? (posSync?.status || 'disabled') : null,

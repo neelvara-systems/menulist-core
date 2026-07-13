@@ -1,7 +1,7 @@
 # Feedback System — Product Specification
 
-> **Version:** 1.4.0
-> **Last Updated:** 2026-05-31
+> **Version:** 1.7.0
+> **Last Updated:** 2026-07-11
 > **Audience:** CEO, PM, Clients
 > **Source:** Codebase forensic audit (code is truth)
 
@@ -38,7 +38,7 @@ Collect structured Answerlattice help-center feedback from users about their pro
 
 - Unified API for likes/dislikes on articles and changelog entries
 - Detailed comment feedback with sentiment (like/dislike)
-- Transaction-based atomic operations
+- One transaction for each article/changelog counter plus its actor audit row
 - Extensible for future content types (FAQ, workflows)
 
 ### Out of Scope
@@ -70,8 +70,8 @@ Collect structured Answerlattice help-center feedback from users about their pro
 
 | Field           | Type                         | Required | Validation |
 | --------------- | ---------------------------- | :------: | ---------- |
-| Feature Issues  | Checkbox group (10 options)  |    ❌    | Optional   |
-| Feature Comment | Free text (TextArea, 4 rows) |    ❌    | Optional   |
+| Feature Issues  | Checkbox group (10 options)  |    ❌    | One issue or a comment is required |
+| Feature Comment | Free text (TextArea, 4 rows) |    ❌    | One comment or an issue is required |
 
 **Product-area issue options (hardcoded):**
 
@@ -123,15 +123,15 @@ Routes feedback operations to appropriate handlers by content type:
 
 | Content Type | Handler                     | Status                            |
 | ------------ | --------------------------- | --------------------------------- |
-| `article`    | `updateArticleFeedback()`   | ✅ Implemented                    |
-| `changelog`  | `updateChangelogFeedback()` | ✅ Implemented                    |
+| `article`    | `updateContentFeedbackWithAudit()` | ✅ Implemented              |
+| `changelog`  | `updateContentFeedbackWithAudit()` | ✅ Implemented              |
 | `faq`        | —                           | ❌ Not implemented (throws error) |
 | `workflow`   | —                           | ❌ Not implemented (throws error) |
 
 ### 3.2 Article Feedback
 
 - **Storage:** Directly on article document (`likes`, `dislikes` fields)
-- **Operation:** Read current → increment/decrement → write back (NOT atomic)
+- **Operation:** Transactionally validate/update counters and append the actor audit item; either both effects commit or neither commits
 - **Min value:** 0 (Math.max prevents negative)
 
 ### 3.3 Changelog Entry Feedback
@@ -139,11 +139,15 @@ Routes feedback operations to appropriate handlers by content type:
 - **Storage:** Within page document (likes/dislikes on entry within entries array)
 - **Operation:** Transaction-based (atomic read + update within page)
 
+For both source types, persisted counters must be non-negative safe integers. The client uses one in-flight mutation lock, so a rapid duplicate click cannot increment twice before local state settles. The audit list is exact-append only until 200 events; at the cap it becomes immutable while the aggregate counter remains available.
+
+Browser-local reaction acknowledgement is not authoritative. Its versioned key and envelope include Answerlattice tenant, store and user identity plus content type; entries are runtime-validated, capped at 500, stored in a null-prototype map, and evicted on malformed/cross-scope data. Switching content or workspace resets optimistic state before the scoped acknowledgement is loaded.
+
 ### 3.4 Detailed Comment Feedback (`contentFeedback`)
 
 - **Storage:** Separate collection `{type}_feedback/{tId}/{sId}/doc1_{entryId}`
 - **Fields:** comment (sanitized, max 500 chars), sentiment (like/dislike), timestamp, userId
-- **Operation:** Transaction-based (create or append to list array)
+- **Operation:** Part of the same source-counter transaction; create or exact append until the 200-event cap
 
 ---
 
@@ -153,8 +157,8 @@ Routes feedback operations to appropriate handlers by content type:
 
 ```typescript
 {
-  id?: string;
-  type: 'general' | 'feature_usage' | 'feature_requests' | 'feature_request';
+  id: string;
+  type: 'general' | 'feature_usage' | 'feature_requests';
   rating?: number;                    // 1-5 stars
   comment?: string;                   // General feedback text
   featureComment?: string;            // Feature-specific comment
@@ -173,13 +177,15 @@ Routes feedback operations to appropriate handlers by content type:
   pId: 'AL';
   sId: string | number;
   tId: string | number;
-  uId: string;
+  uId: string | number;
   createdOn: Timestamp;
-  sourceContext?: AnswerlatticeSourceContext;
+  sourceContext: AnswerlatticeSourceContext | null;
   traceId?: string;
   requestId?: string;
 }
 ```
+
+All three free-text inputs are capped at 1,000 normalized characters. Submission input is projected through `normalizeAnswerlatticeFeedbackSubmission()` before metadata composition, so caller-supplied scope, identity, timestamps, surface assignment, and unknown fields cannot reach the write. Reads pass through `normalizeAnswerlatticeFeedbackRecord()`; malformed rows are omitted rather than asserted into the UI type. Historical `feature_request` input is accepted only at the normalization boundary and canonicalized to `feature_requests`.
 
 ### Feedback Signal Event
 

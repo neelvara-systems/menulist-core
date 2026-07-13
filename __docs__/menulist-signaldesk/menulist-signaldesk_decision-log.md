@@ -2,7 +2,7 @@
 
 **Status:** Active log
 **Created:** June 23, 2026
-**Last Updated:** July 10, 2026
+**Last Updated:** July 11, 2026
 **Purpose:** Preserve decisions that should not be lost in chat.
 
 ## June 23, 2026 - Initial Documentation Set
@@ -567,6 +567,34 @@ No pod was activated, no budget was approved, no real source list or sender iden
 
 The scoped QA Firestore rules/index deployment was retried after all local gates passed. Firebase Rules API again returned HTTP 403 `The caller does not have permission`; no QA cloud resource changed.
 
+## July 11, 2026 - Measurable AI Shadow Review Implemented
+
+### Context
+
+The current AI sales, marketing, and distribution research supported shadow evaluation before broader autonomy. Code cross-check found that provider model-evaluation `sampleSize` accumulated while pass and rejected-fact rates were overwritten by the latest run and edit rate stayed zero, so SignalDesk could not measure the trial honestly.
+
+### Decisions
+
+1. Reuse `signaldeskAiWorkerRuns` and `signaldeskModelEvals`; do not add another review collection or generic agent layer.
+2. Split provider-backed AI assists from deterministic rules scores when loading the AI workspace.
+3. Accumulate provider pass, low-confidence, and rejected-fact sample counts transactionally and derive rates from those totals. Preserve the non-reconstructable pre-change rates as a legacy snapshot and start the exact `cumulative-v1` window with the first new provider result.
+4. Allow only founder admins with `signaldesk.configure` to accept, mark edited, reject, or hold provider-backed runs.
+5. Require a bounded reason for edit, reject, and hold; accept may use the fixed `Accepted unchanged.` reason.
+6. Record bounded founder-attention minutes and replace prior review counts/minutes on re-review so metrics remain idempotent.
+7. Update only the existing compact revenue attention summary; review does not move pipeline, send, publish, spend, propose, or promote autonomy.
+8. Keep all review controls blocked on mobile and retain the existing provider-send, auto-publish, paid-campaign, and MenuList-truth boundaries.
+
+### Local Proof
+
+- `npm run verify:signaldesk` passed 2,241 static contract checks.
+- `npx tsc --noEmit --pretty false` passed.
+- `npm run test:signaldesk:e2e:local` passed in the Firestore emulator.
+- E2E proves non-founder and rules-run denial, required exception reasons, review replacement without double counting, audit/timeline evidence, workspace separation, and no outbound export.
+
+### Boundaries
+
+No Firebase rule, index, Storage rule, Cloud Function, provider credential, channel, external account, public surface, or MenuList source of truth changed. No cloud deployment was required or attempted for this slice.
+
 ## July 10, 2026 - Revenue Authority Cross-Check Corrections
 
 ### Findings
@@ -631,8 +659,59 @@ After reviewing the exact social-channel market plan, the founder instructed Cod
 - Removed contact examples from the default manual-import rows.
 - Aligned experiment, partner-attempt, evidence, activation, and stop-rule defaults to the approved plan.
 - Changed the seeded Google Places and trust-partner trial controls to zero approval/spend.
+- Restricted source-policy activation, budget mutation, commercial pricing/envelope mutation, and trust-partner deal approval to the founder-admin `signaldesk.configure` path; corresponding UI actions disable without that permission.
 - Added `menulist-signaldesk_bengaluru-activation-trial-operating-pack-2026-07-10.md` with the 25-row board, evidence packet, draft-only scripts, preview checklist, tracking routes, and stop conditions.
 
 ### Remaining External Gates
 
 No business was contacted. The intended QA runtime still needs Firebase permission because the scoped rules/index deploy is blocked by HTTP 403. A real permissioned business or partner introduction, sender identity, physical-address policy, and first owner-approved activation proof also remain external inputs.
+
+## July 11, 2026 - Founder-Controlled AI Volume Mode Implemented
+
+### Context
+
+The founder confirmed that falling AI inference cost should be used to accelerate SignalDesk sales, marketing, and distribution work, then instructed implementation end to end. The accepted scope is heavier internal reasoning inside existing authority boundaries, not unbounded autonomous distribution.
+
+### Decisions
+
+1. Add a feature-flagged desktop AI Volume Mode for founder admins only.
+2. Bound each request to five targets, three approved internal tasks, three concurrent children, batch rate limiting, and USD 5 founder-estimated-cost authority.
+3. Use `gemini-2.5-flash-lite` for default generation and independent critique, with `gemini-2.5-flash` as the only executable stronger-model escalation.
+4. Require strict typed output from both generation and critic passes; any retained rejected fact forces low-confidence founder review.
+5. Reuse existing AI worker, model-eval, provider-spend, audit, timeline, daily-cost, and decision-snapshot records; add no collection, index, rule, scheduler, or MenuList write path.
+6. Hash founder-scoped idempotency keys so paid retries return the original parent instead of repeating calls.
+7. Preserve successful children on partial failure and persist stable failure codes rather than raw provider errors.
+8. Preflight aggregate provider daily/monthly budget and serialize volume work through one six-minute recovery lock so overlapping paid batches cannot consume the same budget snapshot and the 300-second route retains a one-minute shutdown margin.
+9. Keep OpenAI/Anthropic, sending, publishing, commercial mutation, consent/source decisions, suppression override, external spend, and autonomy graduation outside this implementation.
+10. Reconcile an expired running parent on idempotent retry by reconstructing bounded child evidence and finalizing without provider calls; release the lock only when it still names that parent.
+
+### Proof
+
+- `npm run verify:signaldesk` passed 2,302 checks after stale-parent and desktop retry coverage.
+- `npx tsc --noEmit --pretty false` passed.
+- `npm run test:signaldesk:e2e:local` passed on the disposable Firestore emulator.
+- Stale-parent E2E now proves partial reconstruction, no-child blocking, calls/cost restoration, stable interruption evidence, one-time recovery audit/timeline, retry idempotency, and owned-lock release.
+- Desktop contract checks prove bounded local payload validation, same-key retry until terminal state, locked retry scope, automatic terminal clearing, and explicit founder clearing.
+- `npm run test:signaldesk:rules` passed Firestore and Storage semantic tests.
+- `npm run docs:check-links` passed 2,340 files and 4,129 internal links with no broken links or naming violations.
+- `SIGNALDESK_SMOKE_BASE_URL=http://localhost:3014 node scripts/verification/smoke-signaldesk-routes.js` passed 45 private route, alias, authentication, and webhook checks after the final `/signaldesk/ai` recovery UI compiled locally.
+- Scoped diff and trailing-whitespace checks passed after the final documentation cleanup.
+
+### External State
+
+No real Gemini call, target contact, message export/send, content publish, provider purchase, external spend, Firebase deploy, Vercel deploy, or MenuList truth mutation occurred. Real use still requires the founder-controlled provider credentials, budget, source policy, and operating inputs already listed in the validation runbook.
+
+## July 11, 2026 - Activation Opportunity And Permission Hardening
+
+### Decisions
+
+1. Make activation opportunity, not lead, the founder-facing operating object.
+2. Keep 20-30 candidates as inventory but show no more than five Today decisions.
+3. Replace inferred recommended channel authority with a current source-policy-derived allowed route.
+4. Require a complete source-rights registry and treat legacy incomplete records as review required.
+5. Require owner-qualified intent, owner review, two distinct surfaces, evidence, and idempotency before a two-surface activation has authority.
+6. Accept MenuList outcomes only through manual owner-reviewed records or the HMAC-signed route-token bridge.
+7. Separate proof permission from activation and recheck revocation before content draft generation.
+8. Treat complaint, privacy, and legal replies as suppression plus circuit-breaker events.
+9. Keep five primary Ant Design destinations while preserving protected deep tools.
+10. Keep all implementation SignalDesk-local; do not modify MenuList runtime or enable provider send.

@@ -1,8 +1,10 @@
 # Public Menu Entry — Mobile Support Assessment
 
 **Version:** 1.0
-**Status:** ✅ IMPLEMENTED — Mobile-first public flow
-**Last Updated:** July 2, 2026
+**Status:** Source-backed mobile assessment — not current device or release certification
+**Last Updated:** July 10, 2026
+
+> **Launch boundary:** Not current launch certification or deploy approval. This document is source-gated Public Menu Entry evidence only. The `/create-menu` page is public, but source submission, acquisition, extraction, preview polling, claim, and publish require a signed-in owner. Current release approval still requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:menu-extraction-pipeline`, `npm run verify:public-business-truth`, `npm run verify:auth-security-failure-matrix`, signed-in desktop/mobile browser QA, physical-device camera/link/preview/claim QA, Gemini extraction provider smoke, Razorpay sandbox evidence where conversion is in scope, applicable target Firebase/Vercel deploy evidence, and production-host smoke.
 
 ---
 
@@ -49,7 +51,7 @@ This feature is primarily a mobile experience. The most common scenario: restaur
 This feature lives in the `(website)` route group, NOT in the mobile PWA shell. It uses the website layout (Header/Footer), not `MobileShell`. Therefore:
 
 - **No antd-mobile needed** — this is a public page, uses Tailwind CSS (consistent with website redesign direction)
-- **No MobileShell integration** — this is pre-auth, not part of the dashboard
+- **No MobileShell integration** — this is a public website route before dashboard entry; all source-processing controls remain owner-authenticated
 - **Responsive design** — same page for mobile and desktop, mobile-first CSS
 - **Camera capture** — `<input type="file" accept="image/jpeg,image/png,image/webp" capture="environment">` keeps the browser prompt aligned with the server image allowlist
 
@@ -84,7 +86,7 @@ This feature lives in the `(website)` route group, NOT in the mobile PWA shell. 
 
 ### Settings Inheritance
 
-- Not applicable — this is a pre-auth public page
+- Not applicable — this is a public website route with an auth gate before source processing, not a MobileShell screen
 - No theme/language/timezone settings (uses system defaults)
 - After claim + publish, user enters dashboard with full settings
 

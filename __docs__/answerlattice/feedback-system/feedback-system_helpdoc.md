@@ -1,7 +1,7 @@
 # Feedback System — Customer Help Documentation
 
-> **Version:** 1.4.0
-> **Last Updated:** 2026-05-31
+> **Version:** 1.7.0
+> **Last Updated:** 2026-07-11
 > **Audience:** Answerlattice Help Center users
 > **Tone:** Zero jargon, step-by-step, calm
 
@@ -27,7 +27,7 @@ The feedback form helps you share your experience, report issues with product ar
 
 ### Step 2 — Feature Issues
 - Check any product areas you've had trouble with
-- Add more details about what happened (optional)
+- Or add details about what happened; choose at least one area or write a comment
 - Click **Submit Feedback** to send this category, or **Next** to move to another category
 
 ### Step 3 — Feature Requests
@@ -58,5 +58,6 @@ You can also give quick feedback on individual items:
 ## Tips
 
 - **Be specific** — The more detail you provide, the more useful your feedback is
+- **Keep it focused** — Each comment or request can contain up to 1,000 characters
 - **Vote on requests** — Common requests help the team spot repeated support needs
 - **Check back** — Your previous feedback is always visible so you can see what you shared

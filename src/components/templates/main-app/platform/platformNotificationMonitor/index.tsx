@@ -24,6 +24,7 @@ import {
     hasRuntimeCopyFallback,
     logRuntimeFailure,
 } from '@lib/runtime/runtimeDiagnostics';
+import { createRuntimeId } from '@lib/runtime/randomId';
 import { formatDateTime, type IntlFormatter } from '@util/dateTime';
 import {
     Alert,
@@ -189,11 +190,13 @@ export default function PlatformNotificationMonitor() {
     const [snapshot, setSnapshot] = useState<PlatformNotificationSnapshot | null>(null);
     const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
     const [manualAlertOpen, setManualAlertOpen] = useState(false);
+    const [manualAlertActionId, setManualAlertActionId] = useState('');
     const [prefillModal, setPrefillModal] = useState<{
         channel: 'email' | 'whatsapp_web';
         destination: string;
         subject: string;
         body: string;
+        actionId: string;
     } | null>(null);
     const [manualForm] = Form.useForm();
 
@@ -299,6 +302,7 @@ export default function PlatformNotificationMonitor() {
             destination: '',
             subject: buildManualSubject(record),
             body: buildManualBody(record, formatter),
+            actionId: createRuntimeId('platform_handoff'),
         });
         void loadData(record.id);
     }, [formatter, loadData]);
@@ -499,7 +503,16 @@ export default function PlatformNotificationMonitor() {
                 </div>
                 <Space wrap>
                     <Button href="/ops">Ops Control Room</Button>
-                    <Button icon={<LuPlus />} type="primary" onClick={() => setManualAlertOpen(true)}>Manual Alert</Button>
+                    <Button
+                        icon={<LuPlus />}
+                        type="primary"
+                        onClick={() => {
+                            setManualAlertActionId(createRuntimeId('platform_alert'));
+                            setManualAlertOpen(true);
+                        }}
+                    >
+                        Manual Alert
+                    </Button>
                     <Button icon={<LuRefreshCw />} onClick={() => loadData(selectedEventId)} loading={loading}>Refresh</Button>
                 </Space>
             </div>
@@ -509,7 +522,7 @@ export default function PlatformNotificationMonitor() {
                 showIcon
                 style={{ marginBottom: 16 }}
                 message="Cost-bounded monitor"
-                description="Uses existing systemAlerts. Manual refresh only, no realtime listener, one bounded recent-alert scan, five aggregate counts, and one direct read only when a detail row is selected."
+                description="Uses existing systemAlerts. Manual refresh only, current persisted platform authorization, and one bounded recent-alert window for both rows and counts."
             />
 
             <Card size="small" style={{ marginBottom: 16 }}>
@@ -520,17 +533,17 @@ export default function PlatformNotificationMonitor() {
                         <Select showSearch value={triggerFilter} options={triggerOptions} style={{ width: 260 }} onChange={setTriggerFilter} />
                     </Space>
                     <Text type="secondary">
-                        Read cost: {snapshot?.cost.alertReads || 0} alerts / {snapshot?.cost.countQueries || 0} counts / scan {snapshot?.cost.scanLimit || 0}
+                        Read cost: {snapshot?.cost.authReads || 0} auth / {snapshot?.cost.alertReads || 0} alerts / {snapshot?.cost.countQueries || 0} counts / scan {snapshot?.cost.scanLimit || 0}
                     </Text>
                 </div>
             </Card>
 
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
-                <CountMetric label="Active" value={counts.active} tone={counts.active ? 'danger' : undefined} />
-                <CountMetric label="Acknowledged" value={counts.acknowledged} />
-                <CountMetric label="Critical" value={counts.critical} tone={counts.critical ? 'danger' : undefined} />
-                <CountMetric label="Warning" value={counts.warning} tone={counts.warning ? 'warning' : undefined} />
-                <CountMetric label="Info" value={counts.info} />
+                <CountMetric label="Recent active" value={counts.active} tone={counts.active ? 'danger' : undefined} />
+                <CountMetric label="Recent acknowledged" value={counts.acknowledged} />
+                <CountMetric label="Recent critical" value={counts.critical} tone={counts.critical ? 'danger' : undefined} />
+                <CountMetric label="Recent warning" value={counts.warning} tone={counts.warning ? 'warning' : undefined} />
+                <CountMetric label="Recent info" value={counts.info} />
             </div>
 
             <Card
@@ -653,6 +666,7 @@ export default function PlatformNotificationMonitor() {
                                 channel: prefillModal.channel,
                                 destination: prefillModal.destination || undefined,
                                 note: `Prepared from platform notification dashboard for ${selectedEvent.triggerType}`,
+                                actionId: prefillModal.actionId,
                             });
                             if (ok) setPrefillModal(null);
                         }}
@@ -709,15 +723,20 @@ export default function PlatformNotificationMonitor() {
                 title="Create Manual Platform Alert"
                 open={manualAlertOpen}
                 confirmLoading={actionLoading}
-                onCancel={() => setManualAlertOpen(false)}
+                onCancel={() => {
+                    setManualAlertActionId('');
+                    setManualAlertOpen(false);
+                }}
                 onOk={async () => {
                     const values = await manualForm.validateFields();
                     const ok = await runAction({
                         action: 'createManualAlert',
+                        actionId: manualAlertActionId,
                         ...values,
                     });
                     if (ok) {
                         manualForm.resetFields();
+                        setManualAlertActionId('');
                         setManualAlertOpen(false);
                     }
                 }}

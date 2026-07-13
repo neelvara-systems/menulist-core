@@ -44,7 +44,7 @@ Answerlattice stores data in six broad layers:
 | Knowledge Intake | Intake jobs, full source text after redaction, source excerpts, review items, usage ledger, AI extraction/accounting, and published KB/FAQ/surface/proposal outputs. |
 | Support operations | `supportTickets`, `chatSessions`, `feedback`, attachments in Answerlattice Storage, Support Board cards, signals, notifications, and dashboard summaries. |
 | Product surface context | Product surfaces, FAQs, context summaries, cache versions, compiled context bundles, hosted help domain registry, and public/private bundle objects in Storage. |
-| Scheduler and intelligence | Consolidated Answerlattice nightly scheduler, tenant leases/state docs in `platformSummary`, run logs, signal TTL cleanup, friction aggregation, predictive trigger sync, support board sync, and bundle repair. |
+| Scheduler and intelligence | Consolidated Answerlattice nightly scheduler, tenant leases/state docs in `platformSummary`, run logs, friction aggregation, predictive trigger sync, support board sync, and bundle repair. Signal retention is handled by Firestore TTL. |
 | Workflow integrations | Integration config in `platformSummary`, append-only integration events, delivery logs, rate-limit counters, and compact integration health docs. |
 | Notifications | Generic email notification logs plus newer owner-notification events, deliveries, and rate counters for Answerlattice triggers. |
 | Public buyer contact | Anonymous contact form submissions in `answerlattice_contactEnquiries`, including consent, contact details, message, user-agent/referrer, and hashed IP. |
@@ -55,7 +55,7 @@ Answerlattice stores data in six broad layers:
 - The largest growth surface is `aiSearchHistory`. It is written on instant-cache hits, canonical hits, FAQ hits, no-result paths, and RAG answer generation. It now gets a 90-day `expiresAt`, bounded references/payload fields, and scheduler cleanup for legacy rows.
 - `queryEmbeddings` now gets a 30-day `expiresAt`, Firestore TTL coverage, best-effort stale document deletion on cache read, and a fixed bounded diagnostic if stale cleanup fails.
 - Knowledge Intake redacts common secrets before storing source text and does not retain raw media after extraction, but it does keep source text, excerpts, hashes, review items, usage ledger rows, and published outputs until an explicit compaction/retention policy is implemented.
-- Signal events have an existing 12-month cleanup in the Answerlattice nightly scheduler. Friction daily stats have a 90-day cleanup. Integration events, delivery logs, and rate counters have `expiresAt` fields and Firestore TTL field overrides.
+- Signal events, integration events, delivery logs, and rate counters have `expiresAt` fields and Firestore TTL overrides. Signal writers use a 365-day retention window, while friction daily stats retain their bounded 90-day scheduler cleanup.
 - Scheduler run logs, generic notification logs, owner notification events/deliveries/rate counters, and public contact enquiries now get explicit Answerlattice `expiresAt` fields.
 - Chat session hard delete now deletes chat image Storage objects. Support ticket hard delete now deletes top-level ticket documents and message attachments after reading the persisted ticket.
 - Compiled context bundles already reduce public/runtime reads. The existing nightly scheduler now removes old public/private bundle versions, keeping active plus the previous two ready versions.

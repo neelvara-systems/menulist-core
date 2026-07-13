@@ -8,3 +8,5 @@ Do not publish this package, document it as an end-user install option, or inclu
 - public `al_*` widget key
 - `window.AnswerlatticeWidget`
 - `setContext(context)` and `page(context)`
+- optional `identify(visitor)`, `identifySigned(token)`, and `clearIdentity()`
+- optional `setEvidenceLinks([{ label, url }])` for dashboard-allowlisted HTTPS diagnostics

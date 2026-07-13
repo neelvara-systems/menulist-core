@@ -15,8 +15,7 @@ export const assertAnswerlatticePlatformCallable = (request: any, functionName: 
     if (!PLATFORM_ROLES.has(platformRole)) {
         logger.warn('[Answerlattice Callable] Unauthorized platform request blocked', {
             functionName,
-            uid: auth.uid,
-            email: token.email || undefined,
+            callerUidLength: auth.uid.length,
             platformRole: platformRole || undefined,
         });
         throw new HttpsError('permission-denied', 'Platform access is required.');
@@ -24,7 +23,6 @@ export const assertAnswerlatticePlatformCallable = (request: any, functionName: 
 
     return {
         uid: auth.uid,
-        email: token.email || undefined,
         platformRole,
     };
 };

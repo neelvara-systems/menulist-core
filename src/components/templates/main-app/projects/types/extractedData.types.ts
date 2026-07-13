@@ -36,6 +36,8 @@ export interface ExtractedDataCategory {
     images?: UserUploadedFileType[];
     timeSlots?: CategoryTimeSlot[]; // Time-based visibility with preset support
     orderIndex?: number; // Multi-store: Store can override category order
+    /** Runtime-only marker added to special-menu overlay projections. */
+    _isSpecialSection?: boolean;
 }
 
 export interface ExtractedDataAttribute {
@@ -130,6 +132,8 @@ export interface ExtractedDataItem {
         priceOutlierReviewedAt?: string;
         priceOutlierReviewedPrice?: string;
     };
+    /** Runtime-only marker added to special-menu overlay projections. */
+    _isSpecialSection?: boolean;
 }
 
 export interface ExtractedDataLanguage {

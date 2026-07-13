@@ -1,0 +1,135 @@
+#!/usr/bin/env ts-node
+
+import fs from 'fs';
+import path from 'path';
+import {
+    assertFails,
+    assertSucceeds,
+    initializeTestEnvironment,
+} from '@firebase/rules-unit-testing';
+import { addDoc, collection, doc, getDoc, setDoc, Timestamp, updateDoc } from 'firebase/firestore';
+
+const PROJECT_ID = process.env.GCLOUD_PROJECT || 'demo-guest-feedback-rules';
+const ROOT = path.resolve(__dirname, '..', '..');
+
+const feedback = (tId: number, sId: number, rating: 1 | 2 | 3 | 4 | 5) => ({
+    createdBy: 'guest',
+    createdOn: Timestamp.fromMillis(1_700_000_000_000),
+    expiresOn: Timestamp.fromMillis(1_707_776_000_000),
+    needsAttention: rating <= 3,
+    projectId: `project-${sId}`,
+    rating,
+    sId,
+    source: 'direct_link',
+    status: 'new',
+    tId,
+});
+
+async function run(): Promise<void> {
+    if (!process.env.FIRESTORE_EMULATOR_HOST) throw new Error('FIRESTORE_EMULATOR_HOST is required');
+
+    const testEnv = await initializeTestEnvironment({
+        projectId: PROJECT_ID,
+        firestore: { rules: fs.readFileSync(path.join(ROOT, 'firestore.rules'), 'utf8') },
+    });
+
+    try {
+        await testEnv.withSecurityRulesDisabled(async (context) => {
+            const db = context.firestore();
+            await Promise.all([
+                setDoc(doc(db, 'guestFeedback', 'store-101'), feedback(1, 101, 2)),
+                setDoc(doc(db, 'guestFeedback', 'store-102'), feedback(1, 102, 5)),
+                setDoc(doc(db, 'guestFeedback', 'tenant-2'), feedback(2, 201, 3)),
+            ]);
+        });
+
+        const storeOneDb = testEnv.authenticatedContext('store-one', {
+            tenantId: '1',
+            storeId: '101',
+            storeIds: ['101'],
+            role: 'MANAGER',
+        }).firestore();
+        const tenantOnlyDb = testEnv.authenticatedContext('tenant-only', {
+            tenantId: '1',
+            role: 'MANAGER',
+        }).firestore();
+        const multiStoreDb = testEnv.authenticatedContext('multi-store', {
+            tenantId: '1',
+            storeId: '101',
+            storeIds: ['101', '102'],
+            role: 'OWNER',
+        }).firestore();
+        const platformDb = testEnv.authenticatedContext('platform', {
+            platformRole: 'PLATFORM',
+        }).firestore();
+        const publicDb = testEnv.unauthenticatedContext().firestore();
+
+        await assertSucceeds(getDoc(doc(storeOneDb, 'guestFeedback', 'store-101')));
+        await assertFails(getDoc(doc(storeOneDb, 'guestFeedback', 'store-102')));
+        await assertFails(getDoc(doc(tenantOnlyDb, 'guestFeedback', 'store-101')));
+        await assertSucceeds(getDoc(doc(multiStoreDb, 'guestFeedback', 'store-101')));
+        await assertSucceeds(getDoc(doc(multiStoreDb, 'guestFeedback', 'store-102')));
+        await assertSucceeds(getDoc(doc(platformDb, 'guestFeedback', 'tenant-2')));
+
+        await assertSucceeds(updateDoc(doc(storeOneDb, 'guestFeedback', 'store-101'), {
+            modifiedBy: 'store-one',
+            modifiedOn: Timestamp.fromMillis(1_700_000_100_000),
+            needsAttention: false,
+            ownerNote: 'Resolved with the guest.',
+            status: 'resolved',
+        }));
+        await assertFails(updateDoc(doc(storeOneDb, 'guestFeedback', 'store-101'), {
+            modifiedBy: 'store-one',
+            modifiedOn: Timestamp.fromMillis(1_700_000_200_000),
+            needsAttention: true,
+            status: 'resolved',
+        }));
+        await assertFails(updateDoc(doc(storeOneDb, 'guestFeedback', 'store-101'), {
+            modifiedBy: 'store-one',
+            modifiedOn: Timestamp.fromMillis(1_700_000_200_000),
+            needsAttention: true,
+            ownerNote: 'x'.repeat(301),
+            status: 'new',
+        }));
+        await assertFails(updateDoc(doc(storeOneDb, 'guestFeedback', 'store-102'), {
+            modifiedBy: 'store-one',
+            modifiedOn: Timestamp.fromMillis(1_700_000_200_000),
+            needsAttention: false,
+            status: 'resolved',
+        }));
+        await assertFails(updateDoc(doc(tenantOnlyDb, 'guestFeedback', 'store-101'), {
+            modifiedBy: 'tenant-only',
+            modifiedOn: Timestamp.fromMillis(1_700_000_200_000),
+            needsAttention: false,
+            status: 'resolved',
+        }));
+        await assertFails(updateDoc(doc(storeOneDb, 'guestFeedback', 'store-101'), {
+            modifiedBy: 'another-user',
+            modifiedOn: Timestamp.fromMillis(1_700_000_200_000),
+            needsAttention: true,
+            status: 'new',
+        }));
+
+        const forgedEvent = {
+            eventType: 'FEEDBACK_SUBMITTED',
+            expiresAt: Timestamp.fromMillis(1_700_000_100_000),
+            projectId: 'other-tenant-project',
+            rating: 1,
+            sId: 999,
+            tId: 999,
+            timestamp: Timestamp.fromMillis(1_700_000_000_000),
+            type: 'feedback_event',
+        };
+        await assertFails(addDoc(collection(publicDb, 'feedbackEvents'), forgedEvent));
+        await assertFails(addDoc(collection(storeOneDb, 'feedbackEvents'), forgedEvent));
+    } finally {
+        await testEnv.cleanup();
+    }
+
+    process.stdout.write('Guest feedback Firestore rules tests passed.\n');
+}
+
+run().catch((error) => {
+    console.error(error);
+    process.exit(1);
+});

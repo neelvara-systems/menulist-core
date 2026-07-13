@@ -18,6 +18,20 @@ export type TimeSlotPreset = {
     color?: string; // Optional badge color for UI
 };
 
+export type StorePublicApiCredentialProductId = 'ML' | 'AL';
+export type StorePublicApiCredentialPurpose =
+    | 'menulist_public_api'
+    | 'answerlattice_public_api'
+    | 'answerlattice_widget';
+export type StorePublicApiCredentialScope =
+    | 'public:read'
+    | 'signals:write'
+    | 'widget:config'
+    | 'widget:content'
+    | 'widget:search'
+    | 'widget:feedback'
+    | 'widget:predictive';
+
 export type StoreDataType = {
     storeId: number;
     storeKey: string;
@@ -443,6 +457,7 @@ export type StoreDataType = {
         lastStatus: 'success' | 'failed' | 'never_sent';
         lastError: string;
         menuVersion: number;
+        lastCompletedMenuVersion?: number;
         consecutiveFailures?: number;
         instructionsSentCount: number;
         instructionsSentDate: string;
@@ -510,6 +525,7 @@ export type StoreDataType = {
         expiresAt: string;       // ISO 8601 string
         createdAt: string;       // ISO 8601 string
         createdBy?: string;      // userId who set the status
+        sourceProjectId?: string; // special-menu owner used for safe lifecycle cleanup
     };
 
     // ─────────────────────────────────────────────────────────────
@@ -519,7 +535,7 @@ export type StoreDataType = {
 
     /**
      * Public API configuration for external system access.
-     * Owner generates a read-only API key in Business Settings or an Answerlattice widget key.
+     * Owner generates a product-scoped public API key in Business Settings.
      * External systems use X-API-Key header to pull data.
      * Raw public API keys are legacy-only; new public API keys are stored as SHA-256 hashes and shown once.
      * Answerlattice widget keys use the dedicated `answerlatticeWidgetApi` manager below.
@@ -531,9 +547,9 @@ export type StoreDataType = {
         apiKeyHash?: string;    // SHA-256 hash used by current validation path
         keyPrefix?: string;     // Display-only prefix, e.g. al_1234
         createdAt?: string;     // ISO 8601
-        productId?: 'AL' | string;
-        purpose?: 'answerlattice_widget' | string;
-        scopes?: string[];
+        productId?: StorePublicApiCredentialProductId;
+        purpose?: StorePublicApiCredentialPurpose;
+        scopes?: StorePublicApiCredentialScope[];
     };
 
     /**

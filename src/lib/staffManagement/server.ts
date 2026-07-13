@@ -22,7 +22,7 @@ import { hashPublicRateLimitValue } from "src/middleware/publicApi";
 import type { StoreRoleDataType } from "@type/platform/roles";
 import type { StoreDataType } from "@type/platform/store";
 import type { UserStoreMappingType } from "@type/platform/user";
-import { randomBytes } from "crypto";
+import { randomBytes, randomUUID } from "crypto";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -41,6 +41,18 @@ import type {
     UpdateStaffInput,
 } from "./types";
 import { getBoundedStaffStringContext, logStaffDiagnostic } from "./diagnostics";
+import {
+    createStaffUserDocumentTransaction,
+    runStaffRoleMutationTransaction,
+    runStaffUserMutationTransaction,
+    StaffConcurrencyError,
+} from "./concurrencyBoundary";
+import {
+    isStaffUnknownRecord,
+    normalizePersistedStaffStoreMappings,
+    normalizeStaffScopeNumericId,
+    normalizeStaffStoreScopeDocumentId,
+} from "./scopeBoundary";
 
 const USERS_COLLECTION = DB_COLLECTIONS.USERS;
 const STORES_COLLECTION = DB_COLLECTIONS.STORES;
@@ -48,6 +60,7 @@ const STAFF_AUTH_MODE_EMAIL = "email";
 const STAFF_AUTH_MODE_OWNER_PASSCODE = "owner_passcode";
 const STAFF_LOGIN_ID_PREFIX = "88";
 const STAFF_MUTATION_MAX_BODY_BYTES = 16 * 1024;
+const STAFF_PASSCODE_RESET_LEASE_MS = 15 * 60 * 1000;
 const FIREBASE_AUTH_SEND_OOB_CODE_URL = "https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode";
 
 const optionalEmailSchema = z.string()
@@ -71,29 +84,15 @@ function normalizeStaffUserId(value: unknown): string | null {
         : null;
 }
 
-type StaffStoreScopeDocumentId = {
-    numericId: number;
-    documentId: string;
-};
-
-function normalizeStaffStoreScopeDocumentId(value: unknown): StaffStoreScopeDocumentId | null {
-    const raw = typeof value === "string" || typeof value === "number" ? String(value) : "";
-    const documentId = raw.trim();
-    if (documentId !== raw || !isValidFirestoreDocumentId(documentId)) return null;
-
-    const numericId = Number(documentId);
-    return Number.isSafeInteger(numericId) && numericId > 0 && String(numericId) === documentId
-        ? { numericId, documentId }
-        : null;
-}
-
 const StaffUserIdSchema = z.string()
     .min(1)
     .max(160)
     .refine((value) => normalizeStaffUserId(value) === value, "Invalid user ID");
 
+const StaffScopeIdSchema = z.number().int().positive().safe();
+
 const StoreMappingSchema = z.object({
-    storeId: z.number().int().positive(),
+    storeId: StaffScopeIdSchema,
     name: z.string().trim().max(160).optional(),
     role: z.string().trim().min(1).max(120).optional(),
 });
@@ -101,8 +100,8 @@ const StoreMappingSchema = z.object({
 export const CreateStaffSchema = z.object({
     email: optionalEmailSchema,
     name: optionalTrimmedStringSchema(160),
-    tenantId: z.number().int().positive(),
-    storeId: z.number().int().positive(),
+    tenantId: StaffScopeIdSchema,
+    storeId: StaffScopeIdSchema,
     storeName: optionalTrimmedStringSchema(160),
     role: optionalTrimmedStringSchema(120),
     countryCode: optionalTrimmedStringSchema(8),
@@ -112,10 +111,10 @@ export const CreateStaffSchema = z.object({
 
 export const UpdateStaffSchema = z.object({
     userId: StaffUserIdSchema,
-    tenantId: z.number().int().positive(),
+    tenantId: StaffScopeIdSchema,
     name: optionalTrimmedStringSchema(160),
     active: z.boolean().optional(),
-    storeId: z.number().int().positive().optional(),
+    storeId: StaffScopeIdSchema.optional(),
     stores: z.array(StoreMappingSchema).min(1).max(25).optional(),
     countryCode: optionalTrimmedStringSchema(8),
     dialCode: optionalTrimmedStringSchema(8),
@@ -129,14 +128,14 @@ export const UpdateStaffSchema = z.object({
 
 export const RemoveStaffSchema = z.object({
     userId: StaffUserIdSchema,
-    tenantId: z.number().int().positive(),
-    storeId: z.number().int().positive(),
+    tenantId: StaffScopeIdSchema,
+    storeId: StaffScopeIdSchema,
 });
 
 export const ResetStaffPasswordSchema = z.object({
     userId: StaffUserIdSchema,
-    tenantId: z.number().int().positive(),
-    storeId: z.number().int().positive(),
+    tenantId: StaffScopeIdSchema,
+    storeId: StaffScopeIdSchema,
 });
 
 export const ForceSignOutStaffSchema = ResetStaffPasswordSchema;
@@ -157,14 +156,14 @@ export const SaveRoleSchema = z.object({
         name: z.string().trim().min(1).max(80),
         permissions: RolePermissionsSchema,
     }),
-    storeId: z.number().int().positive(),
-    tenantId: z.number().int().positive(),
+    storeId: StaffScopeIdSchema,
+    tenantId: StaffScopeIdSchema,
 });
 
 export const DeleteRoleSchema = z.object({
     roleId: z.string().trim().min(1).max(120),
-    storeId: z.number().int().positive(),
-    tenantId: z.number().int().positive(),
+    storeId: StaffScopeIdSchema,
+    tenantId: StaffScopeIdSchema,
 });
 
 const isPlatformSession = (session: any) => (
@@ -178,11 +177,11 @@ const getRequestIp = (request: NextRequest) => (
     || "unknown"
 );
 
-const getSessionTenantId = (session: any) => Number(session?.tId ?? session?.user?.tenantId);
-const getSessionStoreId = (session: any) => Number(session?.sId ?? session?.user?.storeId);
+const getSessionTenantId = (session: any) => normalizeStaffScopeNumericId(session?.tId ?? session?.user?.tenantId);
+const getSessionStoreId = (session: any) => normalizeStaffScopeNumericId(session?.sId ?? session?.user?.storeId);
 
 const isPositiveId = (value: unknown): value is number => (
-    Number.isSafeInteger(Number(value)) && Number(value) > 0
+    typeof value === "number" && Number.isSafeInteger(value) && value > 0
 );
 
 const jsonError = (
@@ -190,6 +189,33 @@ const jsonError = (
     status: number,
     code?: string,
 ) => NextResponse.json({ error, code }, { status });
+
+const staffConcurrencyErrorResponse = (error: unknown): NextResponse | null => {
+    if (!(error instanceof StaffConcurrencyError)) return null;
+    switch (error.code) {
+        case "ALREADY_ASSIGNED":
+            return jsonError("This user is already assigned to this store", 409, error.code);
+        case "DUPLICATE_STORE_MAPPING":
+        case "ROLE_NOT_FOUND":
+            return jsonError("Invalid store or role", 400, error.code);
+        case "FORBIDDEN":
+            return jsonError("Forbidden", 403, error.code);
+        case "LAST_OWNER":
+            return jsonError("Add another Owner before removing this access.", 409, error.code);
+        case "ROLE_IN_USE":
+            return jsonError("This role is assigned to active staff. Reassign them before turning it off.", 409, error.code);
+        case "STORE_MAPPING_NOT_FOUND":
+            return jsonError("Staff member is not assigned to this store", 404, error.code);
+        case "STORE_NOT_FOUND":
+            return jsonError("Store not found", 404, error.code);
+        case "USER_NOT_FOUND":
+            return jsonError("Staff member not found", 404, error.code);
+        case "USER_ALREADY_EXISTS":
+            return jsonError("This staff account was already created. Refresh the staff list.", 409, "STAFF_ALREADY_CREATED");
+        default:
+            return null;
+    }
+};
 
 const readStaffMutationBody = (request: NextRequest) => readBoundedJsonBody(
     request,
@@ -406,6 +432,19 @@ const resolveStaffLoginDisplayId = (value?: string | null) => formatStaffLoginId
 
 const resolveStaffLoginUsername = (value?: string | null) => normalizeStaffLoginUsername(value);
 
+const getStaffTimestampMillis = (value: unknown): number => {
+    if (value instanceof Date) return value.getTime();
+    if (isStaffUnknownRecord(value) && typeof value.toMillis === "function") {
+        const millis = value.toMillis();
+        return Number.isFinite(millis) ? millis : 0;
+    }
+    return 0;
+};
+
+class StaffPasscodeResetInProgressError extends Error {}
+class StaffPasscodeResetScopeConflictError extends Error {}
+
+
 type StaffUserSanitizeOptions = {
     visibleStoreIds?: number[];
 };
@@ -416,27 +455,23 @@ const sanitizeStaffUser = (
     options: StaffUserSanitizeOptions = {},
 ): StaffUserSummary => {
     const visibleStoreIds = options.visibleStoreIds?.length
-        ? new Set(options.visibleStoreIds.map(Number).filter(isPositiveId))
+        ? new Set(options.visibleStoreIds.filter(isPositiveId))
         : null;
-    const canShowStore = (storeId: unknown) => (
-        !visibleStoreIds || visibleStoreIds.has(Number(storeId))
-    );
-    const rawStores = Array.isArray(data?.stores)
-        ? data.stores
-            .filter((store: any) => isPositiveId(store?.storeId))
-            .map((store: any) => ({
-                storeId: Number(store.storeId),
-                name: String(store.name || ""),
-                role: String(store.role || ""),
-            }))
-        : [];
+    const canShowStore = (storeId: unknown) => {
+        const normalizedStoreId = normalizeStaffScopeNumericId(storeId);
+        return normalizedStoreId !== null && (!visibleStoreIds || visibleStoreIds.has(normalizedStoreId));
+    };
+    const rawStores = normalizePersistedStaffStoreMappings(data?.stores);
     const stores = rawStores.filter((store) => canShowStore(store.storeId));
     const rawStoreIds = Array.isArray(data?.storeIds)
-        ? data.storeIds.filter(isPositiveId).map(Number)
+        ? data.storeIds
+            .map(normalizeStaffScopeNumericId)
+            .filter((storeId): storeId is number => storeId !== null)
         : rawStores.map((store) => store.storeId);
     const storeIds = rawStoreIds.filter(canShowStore);
-    const defaultStoreId = isPositiveId(data?.storeId) && canShowStore(data.storeId)
-        ? Number(data.storeId)
+    const normalizedDefaultStoreId = normalizeStaffScopeNumericId(data?.storeId);
+    const defaultStoreId = normalizedDefaultStoreId !== null && canShowStore(normalizedDefaultStoreId)
+        ? normalizedDefaultStoreId
         : stores[0]?.storeId || storeIds[0];
 
     return {
@@ -464,7 +499,7 @@ const sanitizeStaffUser = (
         storeId: defaultStoreId,
         storeIds,
         stores,
-        tenantId: Number(data?.tenantId),
+        tenantId: normalizeStaffScopeNumericId(data?.tenantId) || 0,
     };
 };
 
@@ -484,8 +519,8 @@ const sanitizeStoreOption = (store: StoreDataType): StaffStoreOption => ({
         id: role.id,
         name: role.name,
     })),
-    storeId: Number(store?.storeId),
-    tenantId: Number(store?.tenantId),
+    storeId: normalizeStaffScopeNumericId(store?.storeId) || 0,
+    tenantId: normalizeStaffScopeNumericId(store?.tenantId) || 0,
 });
 
 const fetchStoreById = async (storeId: number): Promise<StoreDataType | null> => {
@@ -501,7 +536,7 @@ const isEligibleStaffTargetStore = (
     tenantId: number,
 ): store is StoreDataType => (
     Boolean(store)
-    && Number(store?.tenantId) === tenantId
+    && normalizeStaffScopeNumericId(store?.tenantId) === tenantId
     && store?.active !== false
     && store?.deleted !== true
     && !isPlatformEntityBlocked(store)
@@ -556,7 +591,7 @@ const ensureDefaultRolesForStore = async (
     const missingDefaults = DEFAULT_ROLE_ID_VALUES.filter((roleId) => !existingRoleIds.has(roleId));
     if (!missingDefaults.length && !changed) return store;
 
-    const defaultRoles = createDefaultRoles(Number(store.storeId), actorEmail || "system")
+    const defaultRoles = createDefaultRoles(storeScope.numericId, actorEmail || "system")
         .filter((role) => missingDefaults.includes(role.id as typeof DEFAULT_ROLE_ID_VALUES[number]));
     const nextRoles = [...normalizedCurrentRoles, ...defaultRoles];
 
@@ -601,11 +636,13 @@ const getAuthority = async (session: any, tenantId: number, targetStoreIds: numb
         return null;
     }
 
-    const roleId = session?.user?.stores?.find((store: any) => Number(store?.storeId) === sessionStoreId)?.role
+    const roleId = session?.user?.stores?.find((store: any) => (
+        normalizeStaffScopeNumericId(store?.storeId) === sessionStoreId
+    ))?.role
         || session?.role
         || session?.user?.role;
 
-    const targetIsOwnStoreOnly = targetStoreIds.every((storeId) => Number(storeId) === sessionStoreId);
+    const targetIsOwnStoreOnly = targetStoreIds.every((storeId) => storeId === sessionStoreId);
     const isMaster = authorityStore.isMaster === true;
     if (!targetIsOwnStoreOnly && !isMaster) {
         return null;
@@ -678,7 +715,7 @@ const validateStoreMappings = async (
     tenantId: number,
 ) => {
     const normalized = mappings.map((mapping) => ({
-        storeId: Number(mapping.storeId),
+        storeId: mapping.storeId,
         name: mapping.name || "",
         role: mapping.role || DEFAULT_ROLE_IDS.STAFF,
     }));
@@ -709,7 +746,7 @@ const validateStoreMappings = async (
             throw createStaffStoreMappingError("ROLE_NOT_FOUND");
         }
 
-        mapping.name = mapping.name || store.name || `Store ${mapping.storeId}`;
+        mapping.name = store.name || `Store ${mapping.storeId}`;
     }
 
     return normalized as UserStoreMappingType[];
@@ -718,9 +755,10 @@ const validateStoreMappings = async (
 const roleOrStoreMappingsChanged = (currentStores: UserStoreMappingType[], nextStores: UserStoreMappingType[]) => {
     const normalize = (stores: UserStoreMappingType[]) => stores
         .map((store) => ({
-            storeId: Number(store.storeId),
+            storeId: normalizeStaffScopeNumericId(store.storeId),
             role: store.role || "",
         }))
+        .filter((store): store is { storeId: number; role: string } => store.storeId !== null)
         .sort((a, b) => a.storeId - b.storeId);
 
     return JSON.stringify(normalize(currentStores || [])) !== JSON.stringify(normalize(nextStores || []));
@@ -748,7 +786,7 @@ const getUsersForStore = async (tenantId: number, storeId: number) => {
 
     snapshots.forEach((snapshot) => {
         snapshot.docs.forEach((doc) => {
-            if (Number(doc.data()?.tenantId) === tenantId) {
+            if (normalizeStaffScopeNumericId(doc.data()?.tenantId) === tenantId) {
                 docsById.set(doc.id, doc);
             }
         });
@@ -757,41 +795,10 @@ const getUsersForStore = async (tenantId: number, storeId: number) => {
     return Array.from(docsById.values());
 };
 
-const ensureAnotherActiveOwner = async (
-    tenantId: number,
-    storeId: number,
-    targetUserId: string,
-) => {
-    const docs = await getUsersForStore(tenantId, storeId);
-    const hasOtherOwner = docs.some((doc) => {
-        if (doc.id === targetUserId) return false;
-        const data = doc.data();
-        if (data?.active === false || data?.deleted === true) return false;
-        return (Array.isArray(data?.stores) ? data.stores : []).some((store: any) => (
-            Number(store?.storeId) === storeId && store?.role === DEFAULT_ROLE_IDS.OWNER
-        ));
-    });
-
-    if (!hasOtherOwner) {
-        throw new Error("LAST_OWNER");
-    }
-};
-
 const ensureNotSelfDestructive = (session: any, targetUserId: string) => {
     if (!isPlatformSession(session) && targetUserId && session?.uId === targetUserId) {
         throw new Error("SELF_UPDATE_BLOCKED");
     }
-};
-
-const roleIsAssignedToActiveUser = async (tenantId: number, storeId: number, roleId: string) => {
-    const docs = await getUsersForStore(tenantId, storeId);
-    return docs.some((doc) => {
-        const data = doc.data();
-        if (data?.active === false || data?.deleted === true) return false;
-        return (Array.isArray(data?.stores) ? data.stores : []).some((store: any) => (
-            Number(store?.storeId) === storeId && store?.role === roleId
-        ));
-    });
 };
 
 const applyRateLimit = async (
@@ -869,10 +876,10 @@ export const listStaffUsers = async (
     const rateLimit = await applyRateLimit(request, session, "DATA_READ", "staff-read");
     if (rateLimit) return rateLimit;
 
-    const tenantId = Number(request.nextUrl.searchParams.get("tenantId"));
-    const storeId = Number(request.nextUrl.searchParams.get("storeId"));
+    const tenantId = normalizeStaffScopeNumericId(request.nextUrl.searchParams.get("tenantId"));
+    const storeId = normalizeStaffScopeNumericId(request.nextUrl.searchParams.get("storeId"));
 
-    if (!isPositiveId(tenantId) || !isPositiveId(storeId)) {
+    if (tenantId === null || storeId === null) {
         return jsonError("Invalid input", 400, "INVALID_INPUT");
     }
 
@@ -900,7 +907,7 @@ export const listStaffUsers = async (
     const users = docs
         .map((doc) => sanitizeStaffUserForAuthority(doc.id, doc.data(), authority))
         .filter((user) => user.deleted !== true)
-        .filter((user) => user.storeIds?.includes(storeId) || user.stores?.some((store) => Number(store.storeId) === storeId))
+        .filter((user) => user.storeIds?.includes(storeId) || user.stores?.some((store) => store.storeId === storeId))
         .sort((a, b) => (a.name || a.email).localeCompare(b.name || b.email));
 
     return NextResponse.json({ stores, users });
@@ -974,7 +981,7 @@ export const createStaffUser = async (
         const existingDoc = existingUserQuery.docs[0];
         const existingData = existingDoc.data();
 
-        if (Number(existingData.tenantId) !== input.tenantId) {
+        if (normalizeStaffScopeNumericId(existingData.tenantId) !== input.tenantId) {
             return jsonError(
                 "This email is registered with another business. Staff can only belong to one business.",
                 409,
@@ -985,44 +992,59 @@ export const createStaffUser = async (
             return jsonError("This staff member is blocked by MenuList support.", 403, "ACCOUNT_BLOCKED");
         }
 
-        const currentStores: UserStoreMappingType[] = Array.isArray(existingData.stores) ? existingData.stores : [];
-        const alreadyHasStore = currentStores.some((store) => Number(store.storeId) === input.storeId);
-        if (alreadyHasStore) {
-            return jsonError("This user is already assigned to this store", 409, "ALREADY_ASSIGNED");
+        const sessionRevocationFields = await revokeStaffSessions(
+            existingData,
+            session,
+            now,
+            "staff_store_mapping_added",
+            {
+                action: "staff-add-store",
+                tenantId: input.tenantId,
+                storeId: input.storeId,
+                userId: existingDoc.id,
+            },
+        );
+
+        let mutationResult;
+        try {
+            mutationResult = await runStaffUserMutationTransaction({
+                buildUpdate: ({ currentData, nextMappings }) => {
+                    const nextStoreIds = nextMappings.map(({ storeId }) => storeId);
+                    const currentDefaultStoreId = normalizeStaffScopeNumericId(currentData.storeId);
+                    return sanitizeFirestoreValue({
+                        active: true,
+                        authDisabled: false,
+                        deleted: false,
+                        deletedAt: null,
+                        modifiedBy: session?.user?.email,
+                        modifiedOn: now,
+                        storeId: currentDefaultStoreId && nextStoreIds.includes(currentDefaultStoreId)
+                            ? currentDefaultStoreId
+                            : input.storeId,
+                        storeIds: nextStoreIds,
+                        stores: nextMappings,
+                        ...sessionRevocationFields,
+                    });
+                },
+                db: firestoreAdmin,
+                mutation: { kind: "add", mapping: stores[0] },
+                tenantId: input.tenantId,
+                userId: existingDoc.id,
+            });
+        } catch (error) {
+            const response = staffConcurrencyErrorResponse(error);
+            if (response) return response;
+            throw error;
         }
 
-        const nextStores = [...currentStores, stores[0]];
-        const nextStoreIds = Array.from(new Set(nextStores.map((store) => Number(store.storeId))));
-
-        await syncStaffFirebaseAuthDisabledState(existingData, false, {
+        await syncStaffFirebaseAuthDisabledState(mutationResult.currentData, false, {
             action: "staff-reactivate-on-store-add",
             tenantId: input.tenantId,
             storeId: input.storeId,
             userId: existingDoc.id,
         });
 
-        await existingDoc.ref.update(sanitizeFirestoreValue({
-            active: true,
-            authDisabled: false,
-            deleted: false,
-            deletedAt: null,
-            modifiedBy: session?.user?.email,
-            modifiedOn: now,
-            storeId: existingData.storeId || input.storeId,
-            storeIds: nextStoreIds,
-            stores: nextStores,
-        }));
-
-        const updated = sanitizeStaffUserForAuthority(existingDoc.id, {
-            ...existingData,
-            active: true,
-            authDisabled: false,
-            deleted: false,
-            deletedAt: null,
-            storeId: existingData.storeId || input.storeId,
-            storeIds: nextStoreIds,
-            stores: nextStores,
-        }, authority);
+        const updated = sanitizeStaffUserForAuthority(existingDoc.id, mutationResult.updatedData, authority);
 
         logStaffDiagnostic("staff_existing_user_added_to_store", {
             ...getBoundedStaffStringContext("tenantId", input.tenantId),
@@ -1059,6 +1081,7 @@ export const createStaffUser = async (
     const displayName = input.name || normalizedPhone.phoneNumber || (hasStaffEmail ? String(input.email).split("@")[0] : `Staff ${staffLoginId.slice(-4)}`);
     const phoneUsername = normalizedPhone.phoneUsername;
     let firebaseUid: string;
+    let createdFirebaseAuthUser = false;
 
     try {
         const firebaseUser = await authAdmin.createUser({
@@ -1068,6 +1091,7 @@ export const createStaffUser = async (
             password: tempPassword,
         });
         firebaseUid = firebaseUser.uid;
+        createdFirebaseAuthUser = true;
     } catch (error: any) {
         if (error?.code === "auth/email-already-exists") {
             try {
@@ -1111,7 +1135,37 @@ export const createStaffUser = async (
         tenantId: input.tenantId,
     });
 
-    const docRef = await firestoreAdmin.collection(USERS_COLLECTION).add(newUserDoc);
+    const deterministicUserRef = firestoreAdmin.collection(USERS_COLLECTION).doc(firebaseUid);
+    let persistedNewUserDoc = newUserDoc;
+    let docRef: FirebaseFirestore.DocumentReference;
+    try {
+        persistedNewUserDoc = await createStaffUserDocumentTransaction({
+            data: newUserDoc,
+            db: firestoreAdmin,
+            mappings: stores,
+            tenantId: input.tenantId,
+            userId: firebaseUid,
+        });
+        docRef = deterministicUserRef;
+    } catch (error: any) {
+        const concurrencyResponse = staffConcurrencyErrorResponse(error);
+        if (concurrencyResponse && error instanceof StaffConcurrencyError && error.code === "USER_ALREADY_EXISTS") {
+            return concurrencyResponse;
+        }
+        if (createdFirebaseAuthUser) {
+            try {
+                await authAdmin.deleteUser(firebaseUid);
+            } catch {
+                logStaffDiagnostic("staff_create_auth_compensation_failed", {
+                    ...getBoundedStaffStringContext("tenantId", input.tenantId),
+                    ...getBoundedStaffStringContext("storeId", input.storeId),
+                    hasFirebaseUid: Boolean(firebaseUid),
+                });
+            }
+        }
+        if (concurrencyResponse) return concurrencyResponse;
+        throw error;
+    }
 
     let passwordResetEmail: { ok: boolean; error?: string } = { ok: false };
     if (hasStaffEmail) {
@@ -1151,7 +1205,7 @@ export const createStaffUser = async (
         staffAuthMode: authMode,
         staffLoginId,
         temporaryPasscode: tempPasscode || undefined,
-        user: sanitizeStaffUserForAuthority(docRef.id, newUserDoc, authority),
+        user: sanitizeStaffUserForAuthority(docRef.id, persistedNewUserDoc, authority),
         userId: docRef.id,
     };
 
@@ -1187,7 +1241,7 @@ export const updateStaffUser = async (
     }
 
     const existingData = targetDoc.data() || {};
-    if (Number(existingData.tenantId) !== input.tenantId) {
+    if (normalizeStaffScopeNumericId(existingData.tenantId) !== input.tenantId) {
         logSecurity("Authorization Failed - Staff Tenant Mismatch", session, request, {
             targetTenantId: existingData.tenantId,
             requestedTenantId: input.tenantId,
@@ -1196,7 +1250,7 @@ export const updateStaffUser = async (
         return jsonError("Forbidden", 403, "FORBIDDEN");
     }
 
-    const currentStores = Array.isArray(existingData.stores) ? existingData.stores : [];
+    const currentStores = normalizePersistedStaffStoreMappings(existingData.stores);
     let nextStores: UserStoreMappingType[];
     try {
         nextStores = input.stores
@@ -1212,17 +1266,21 @@ export const updateStaffUser = async (
         return jsonError("Invalid store or role", 400, code);
     }
 
-    if (input.storeId && !nextStores.some((store) => Number(store.storeId) === input.storeId)) {
+    if (input.storeId && !nextStores.some((store) => store.storeId === input.storeId)) {
         return jsonError("Default store must be assigned to this staff member", 400, "STORE_MAPPING_REQUIRED");
     }
 
     const targetStoreIds = Array.from(new Set([
-        ...(currentStores || []).map((store: any) => Number(store.storeId)).filter(isPositiveId),
-        ...(nextStores || []).map((store: any) => Number(store.storeId)).filter(isPositiveId),
+        ...currentStores.map((store) => store.storeId),
+        ...nextStores.map((store) => store.storeId),
         ...(input.storeId ? [input.storeId] : []),
     ]));
 
-    const authority = await getAuthority(session, input.tenantId, targetStoreIds.length ? targetStoreIds : [Number(existingData.storeId)]);
+    const existingDefaultStoreId = normalizeStaffScopeNumericId(existingData.storeId);
+    const authorityTargetStoreIds = targetStoreIds.length
+        ? targetStoreIds
+        : existingDefaultStoreId === null ? [] : [existingDefaultStoreId];
+    const authority = await getAuthority(session, input.tenantId, authorityTargetStoreIds);
     if (!authority?.canManageUsers) {
         logSecurity("Authorization Failed - Staff Update", session, request, {
             tenantId: input.tenantId,
@@ -1241,90 +1299,96 @@ export const updateStaffUser = async (
     }
 
     try {
-        if (input.active === false || mappingsChanged) {
+        if (input.active === false || input.stores !== undefined) {
             ensureNotSelfDestructive(session, targetUserId);
-        }
-
-        if (input.active === false || mappingsChanged) {
-            const currentOwnerStoreIds = currentStores
-                .filter((store: any) => store?.role === DEFAULT_ROLE_IDS.OWNER)
-                .map((store: any) => Number(store.storeId))
-                .filter(isPositiveId);
-            const nextOwnerStoreIds = nextStores
-                .filter((store: any) => store?.role === DEFAULT_ROLE_IDS.OWNER)
-                .map((store: any) => Number(store.storeId))
-                .filter(isPositiveId);
-
-            for (const storeId of currentOwnerStoreIds) {
-                if (input.active === false || !nextOwnerStoreIds.includes(storeId)) {
-                    await ensureAnotherActiveOwner(input.tenantId, storeId, targetUserId);
-                }
-            }
         }
     } catch (error: any) {
         if (error?.message === "SELF_UPDATE_BLOCKED") {
             return jsonError("You cannot remove or deactivate your own access.", 409, "SELF_UPDATE_BLOCKED");
         }
-        if (error?.message === "LAST_OWNER") {
-            return jsonError("Add another Owner before removing this access.", 409, "LAST_OWNER");
-        }
         throw error;
     }
 
-    const nextStoreIds = nextStores.map((store) => Number(store.storeId));
-    const nextDefaultStoreId = input.storeId && nextStoreIds.includes(input.storeId)
-        ? input.storeId
-        : nextStoreIds[0] || existingData.storeId;
-
     const now = admin.firestore.Timestamp.now();
-    const sessionRevocationFields = input.active === false
-        ? await revokeStaffSessions(existingData, session, now, "staff_deactivated", {
+    const shouldRevokeSessions = input.active === false || input.stores !== undefined;
+    const sessionRevocationFields = shouldRevokeSessions
+        ? await revokeStaffSessions(existingData, session, now, input.active === false ? "staff_deactivated" : "staff_store_mapping_changed", {
             action: "staff-active-toggle",
             tenantId: input.tenantId,
             userId: targetUserId,
         })
         : {};
-    const shouldNormalizePhone = input.phoneNumber !== undefined || input.dialCode !== undefined || input.countryCode !== undefined;
-    const normalizedPhone = shouldNormalizePhone
-        ? normalizePhoneNumberForStorage({
-            countryCode: input.countryCode ?? existingData.countryCode,
-            dialCode: input.dialCode ?? existingData.dialCode,
-            phoneNumber: input.phoneNumber ?? existingData.phoneNumber,
-        })
-        : null;
-    const updateData = sanitizeFirestoreValue({
-        active: input.active,
-        alternatePhoneNumber: input.alternatePhoneNumber,
-        authDisabled: input.active === undefined ? undefined : input.active === false || isPlatformEntityBlocked(existingData),
-        countryCode: normalizedPhone ? normalizedPhone.countryCode : input.countryCode,
-        dialCode: normalizedPhone ? normalizedPhone.dialCode : input.dialCode,
-        modifiedBy: session?.user?.email,
-        modifiedOn: now,
-        name: input.name,
-        phone: normalizedPhone ? normalizedPhone.phone : undefined,
-        phoneNumber: normalizedPhone ? normalizedPhone.phoneNumber : input.phoneNumber,
-        phoneUsername: normalizedPhone ? normalizedPhone.phoneUsername : undefined,
-        storeId: input.stores ? nextDefaultStoreId : input.storeId,
-        storeIds: input.stores ? nextStoreIds : undefined,
-        stores: input.stores ? nextStores : undefined,
-        ...sessionRevocationFields,
-    });
-
-    if (input.active !== undefined) {
-        await syncStaffFirebaseAuthDisabledState(existingData, input.active === false || isPlatformEntityBlocked(existingData), {
-            action: "staff-active-toggle",
+    let mutationResult;
+    try {
+        mutationResult = await runStaffUserMutationTransaction({
+            buildUpdate: ({ currentData, mappingsChanged: freshMappingsChanged, nextMappings }) => {
+                if (freshMappingsChanged && !authority.canAssignRoles) {
+                    throw new StaffConcurrencyError("FORBIDDEN");
+                }
+                const nextStoreIds = nextMappings.map(({ storeId }) => storeId);
+                const currentDefaultStoreId = normalizeStaffScopeNumericId(currentData.storeId);
+                const nextDefaultStoreId = input.storeId && nextStoreIds.includes(input.storeId)
+                    ? input.storeId
+                    : currentDefaultStoreId && nextStoreIds.includes(currentDefaultStoreId)
+                        ? currentDefaultStoreId
+                        : nextStoreIds[0];
+                const shouldNormalizePhone = input.phoneNumber !== undefined
+                    || input.dialCode !== undefined
+                    || input.countryCode !== undefined;
+                const normalizedPhone = shouldNormalizePhone
+                    ? normalizePhoneNumberForStorage({
+                        countryCode: input.countryCode ?? currentData.countryCode,
+                        dialCode: input.dialCode ?? currentData.dialCode,
+                        phoneNumber: input.phoneNumber ?? currentData.phoneNumber,
+                    })
+                    : null;
+                return sanitizeFirestoreValue({
+                    active: input.active,
+                    alternatePhoneNumber: input.alternatePhoneNumber,
+                    authDisabled: input.active === undefined
+                        ? undefined
+                        : input.active === false || isPlatformEntityBlocked(currentData),
+                    countryCode: normalizedPhone ? normalizedPhone.countryCode : input.countryCode,
+                    dialCode: normalizedPhone ? normalizedPhone.dialCode : input.dialCode,
+                    modifiedBy: session?.user?.email,
+                    modifiedOn: now,
+                    name: input.name,
+                    phone: normalizedPhone ? normalizedPhone.phone : undefined,
+                    phoneNumber: normalizedPhone ? normalizedPhone.phoneNumber : input.phoneNumber,
+                    phoneUsername: normalizedPhone ? normalizedPhone.phoneUsername : undefined,
+                    storeId: input.stores ? nextDefaultStoreId : input.storeId,
+                    storeIds: input.stores ? nextStoreIds : undefined,
+                    stores: input.stores ? nextMappings : undefined,
+                    ...sessionRevocationFields,
+                });
+            },
+            db: firestoreAdmin,
+            mutation: { active: input.active, kind: "replace", mappings: input.stores ? nextStores : undefined },
             tenantId: input.tenantId,
             userId: targetUserId,
         });
+    } catch (error) {
+        const response = staffConcurrencyErrorResponse(error);
+        if (response) return response;
+        throw error;
     }
 
-    await targetDoc.ref.update(updateData);
+    if (input.active !== undefined) {
+        await syncStaffFirebaseAuthDisabledState(
+            mutationResult.currentData,
+            input.active === false || isPlatformEntityBlocked(mutationResult.currentData),
+            {
+                action: "staff-active-toggle",
+                tenantId: input.tenantId,
+                userId: targetUserId,
+            },
+        );
+    }
 
-    targetDoc = await firestoreAdmin.collection(USERS_COLLECTION).doc(targetUserId).get();
     const response: StaffMutationResponse = {
         success: true,
         mode: "user_updated",
-        user: sanitizeStaffUserForAuthority(targetUserId, targetDoc.data(), authority),
+        user: sanitizeStaffUserForAuthority(targetUserId, mutationResult.updatedData, authority),
         userId: targetUserId,
     };
 
@@ -1339,8 +1403,8 @@ export const removeStaffFromStore = async (
     if (rateLimit) return rateLimit;
 
     const validation = validateAPIInput(RemoveStaffSchema, {
-        tenantId: Number(request.nextUrl.searchParams.get("tenantId")),
-        storeId: Number(request.nextUrl.searchParams.get("storeId")),
+        tenantId: normalizeStaffScopeNumericId(request.nextUrl.searchParams.get("tenantId")),
+        storeId: normalizeStaffScopeNumericId(request.nextUrl.searchParams.get("storeId")),
         userId: request.nextUrl.searchParams.get("userId"),
     });
 
@@ -1381,7 +1445,7 @@ export const removeStaffFromStore = async (
     }
 
     const existingData = targetDoc.data() || {};
-    if (Number(existingData.tenantId) !== input.tenantId) {
+    if (normalizeStaffScopeNumericId(existingData.tenantId) !== input.tenantId) {
         logSecurity("Authorization Failed - Staff Remove Tenant Mismatch", session, request, {
             requestedTenantId: input.tenantId,
             targetTenantId: existingData.tenantId,
@@ -1390,51 +1454,55 @@ export const removeStaffFromStore = async (
         return jsonError("Forbidden", 403, "FORBIDDEN");
     }
 
-    const currentStores: UserStoreMappingType[] = Array.isArray(existingData.stores) ? existingData.stores : [];
-    const currentMapping = currentStores.find((store) => Number(store.storeId) === input.storeId);
-    if (!currentMapping) {
-        return jsonError("Staff member is not assigned to this store", 404, "STORE_MAPPING_NOT_FOUND");
-    }
-
-    if (currentMapping.role === DEFAULT_ROLE_IDS.OWNER) {
-        try {
-            await ensureAnotherActiveOwner(input.tenantId, input.storeId, targetUserId);
-        } catch (error: any) {
-            if (error?.message === "LAST_OWNER") {
-                return jsonError("Add another Owner before removing this access.", 409, "LAST_OWNER");
-            }
-            throw error;
-        }
-    }
-
-    const nextStores = currentStores.filter((store) => Number(store.storeId) !== input.storeId);
-    const nextStoreIds = nextStores.map((store) => Number(store.storeId));
-    const shouldDeactivate = nextStores.length === 0;
     const now = admin.firestore.Timestamp.now();
-    const sessionRevocationFields = shouldDeactivate
-        ? await revokeStaffSessions(existingData, session, now, "staff_removed_from_last_store", {
-            action: "staff-remove-last-store",
-            tenantId: input.tenantId,
-            storeId: input.storeId,
-            userId: targetUserId,
-        })
-        : {};
-
-    const updateData = sanitizeFirestoreValue({
-        active: shouldDeactivate ? false : existingData.active,
-        authDisabled: shouldDeactivate ? true : existingData.authDisabled,
-        deleted: shouldDeactivate ? true : existingData.deleted === true ? false : existingData.deleted,
-        deletedAt: shouldDeactivate ? now : existingData.deletedAt ?? null,
-        modifiedBy: session?.user?.email,
-        modifiedOn: now,
-        storeId: shouldDeactivate ? input.storeId : (nextStoreIds.includes(Number(existingData.storeId)) ? existingData.storeId : nextStoreIds[0]),
-        storeIds: nextStoreIds,
-        stores: nextStores,
-        ...sessionRevocationFields,
+    await revokeStaffFirebaseRefreshTokens(existingData, {
+        action: "staff-remove-store",
+        reason: "staff_store_mapping_removed",
+        tenantId: input.tenantId,
+        storeId: input.storeId,
+        userId: targetUserId,
     });
 
-    if (shouldDeactivate) {
-        await syncStaffFirebaseAuthDisabledState(existingData, true, {
+    let mutationResult;
+    try {
+        mutationResult = await runStaffUserMutationTransaction({
+            buildUpdate: ({ currentData, nextMappings, shouldDeactivate }) => {
+                const nextStoreIds = nextMappings.map(({ storeId }) => storeId);
+                const currentDefaultStoreId = normalizeStaffScopeNumericId(currentData.storeId);
+                return sanitizeFirestoreValue({
+                    active: shouldDeactivate ? false : currentData.active,
+                    authDisabled: shouldDeactivate ? true : currentData.authDisabled,
+                    deleted: shouldDeactivate ? true : currentData.deleted === true ? false : currentData.deleted,
+                    deletedAt: shouldDeactivate ? now : currentData.deletedAt ?? null,
+                    modifiedBy: session?.user?.email,
+                    modifiedOn: now,
+                    storeId: shouldDeactivate
+                        ? input.storeId
+                        : currentDefaultStoreId && nextStoreIds.includes(currentDefaultStoreId)
+                            ? currentDefaultStoreId
+                            : nextStoreIds[0],
+                    storeIds: nextStoreIds,
+                    stores: nextMappings,
+                    ...buildSessionRevocationFields(
+                        session,
+                        now,
+                        shouldDeactivate ? "staff_removed_from_last_store" : "staff_store_mapping_removed",
+                    ),
+                });
+            },
+            db: firestoreAdmin,
+            mutation: { kind: "remove", storeId: input.storeId },
+            tenantId: input.tenantId,
+            userId: targetUserId,
+        });
+    } catch (error) {
+        const response = staffConcurrencyErrorResponse(error);
+        if (response) return response;
+        throw error;
+    }
+
+    if (mutationResult.shouldDeactivate) {
+        await syncStaffFirebaseAuthDisabledState(mutationResult.currentData, true, {
             action: "staff-remove-last-store",
             tenantId: input.tenantId,
             storeId: input.storeId,
@@ -1442,13 +1510,10 @@ export const removeStaffFromStore = async (
         });
     }
 
-    await targetDoc.ref.update(updateData);
-
-    const updatedSnapshot = await firestoreAdmin.collection(USERS_COLLECTION).doc(targetUserId).get();
     const response: StaffMutationResponse = {
         success: true,
-        mode: shouldDeactivate ? "user_deactivated" : "store_mapping_removed",
-        user: sanitizeStaffUserForAuthority(targetUserId, updatedSnapshot.data(), authority),
+        mode: mutationResult.shouldDeactivate ? "user_deactivated" : "store_mapping_removed",
+        user: sanitizeStaffUserForAuthority(targetUserId, mutationResult.updatedData, authority),
         userId: targetUserId,
     };
 
@@ -1494,7 +1559,7 @@ export const requestStaffPasswordReset = async (
     }
 
     const existingData = targetDoc.data() || {};
-    if (Number(existingData.tenantId) !== input.tenantId) {
+    if (normalizeStaffScopeNumericId(existingData.tenantId) !== input.tenantId) {
         logSecurity("Authorization Failed - Staff Password Reset Tenant Mismatch", session, request, {
             requestedTenantId: input.tenantId,
             targetTenantId: existingData.tenantId,
@@ -1503,8 +1568,8 @@ export const requestStaffPasswordReset = async (
         return jsonError("Forbidden", 403, "FORBIDDEN");
     }
 
-    const currentStores: UserStoreMappingType[] = Array.isArray(existingData.stores) ? existingData.stores : [];
-    const hasStoreAccess = currentStores.some((store) => Number(store.storeId) === input.storeId);
+    const currentStores = normalizePersistedStaffStoreMappings(existingData.stores);
+    const hasStoreAccess = currentStores.some((store) => store.storeId === input.storeId);
     if (!hasStoreAccess || existingData.deleted === true) {
         return jsonError("Staff member is not assigned to this store", 404, "STORE_MAPPING_NOT_FOUND");
     }
@@ -1537,12 +1602,75 @@ export const requestStaffPasswordReset = async (
     const loginId = resolveStaffLoginDisplayId(loginUsername);
     const temporaryPasscode = generateStaffPasscode();
     const now = admin.firestore.Timestamp.now();
-    await authAdmin.updateUser(firebaseUser.uid, {
-        disabled: false,
-        password: temporaryPasscode,
-    });
-    await authAdmin.revokeRefreshTokens(firebaseUser.uid);
-    await targetDoc.ref.update(sanitizeFirestoreValue({
+    const passcodeResetOperationId = randomUUID();
+    const passcodeResetLeaseExpiresAt = admin.firestore.Timestamp.fromMillis(now.toMillis() + STAFF_PASSCODE_RESET_LEASE_MS);
+    try {
+        await firestoreAdmin.runTransaction(async (transaction) => {
+            const freshTargetDoc = await transaction.get(targetDoc.ref);
+            if (!freshTargetDoc.exists) throw new StaffPasscodeResetScopeConflictError();
+            const freshData = freshTargetDoc.data() || {};
+            const freshMappings = normalizePersistedStaffStoreMappings(freshData.stores);
+            if (
+                normalizeStaffScopeNumericId(freshData.tenantId) !== input.tenantId
+                || !freshMappings.some((store) => store.storeId === input.storeId)
+                || freshData.deleted === true
+                || freshData.active === false
+                || isPlatformEntityBlocked(freshData)
+            ) {
+                throw new StaffPasscodeResetScopeConflictError();
+            }
+            const pending = isStaffUnknownRecord(freshData.passcodeResetPending)
+                ? freshData.passcodeResetPending
+                : null;
+            if (pending && getStaffTimestampMillis(pending.leaseExpiresAt) > now.toMillis()) {
+                throw new StaffPasscodeResetInProgressError();
+            }
+            transaction.update(targetDoc.ref, {
+                passcodeResetPending: {
+                    leaseExpiresAt: passcodeResetLeaseExpiresAt,
+                    operationId: passcodeResetOperationId,
+                    requestedAt: now,
+                    requestedBy: session?.uId || session?.user?.id || "system",
+                },
+            });
+        });
+    } catch (error) {
+        if (error instanceof StaffPasscodeResetInProgressError) {
+            return jsonError("A passcode reset is already in progress.", 409, "PASSCODE_RESET_IN_PROGRESS");
+        }
+        if (error instanceof StaffPasscodeResetScopeConflictError) {
+            return jsonError("Staff access changed. Refresh and try again.", 409, "STAFF_SCOPE_CHANGED");
+        }
+        throw error;
+    }
+    try {
+        await authAdmin.updateUser(firebaseUser.uid, {
+            disabled: false,
+            password: temporaryPasscode,
+        });
+        await authAdmin.revokeRefreshTokens(firebaseUser.uid);
+    } catch (error) {
+        try {
+            await firestoreAdmin.runTransaction(async (transaction) => {
+                const freshTargetDoc = await transaction.get(targetDoc.ref);
+                if (!freshTargetDoc.exists) return;
+                const pending = freshTargetDoc.data()?.passcodeResetPending;
+                if (!isStaffUnknownRecord(pending) || pending.operationId !== passcodeResetOperationId) return;
+                transaction.update(targetDoc.ref, {
+                    passcodeResetPending: admin.firestore.FieldValue.delete(),
+                });
+            });
+        } catch {
+            logStaffDiagnostic("staff_passcode_reset_pending_cleanup_failed", {
+                ...getBoundedStaffStringContext("tenantId", input.tenantId),
+                ...getBoundedStaffStringContext("storeId", input.storeId),
+                ...getBoundedStaffStringContext("userId", targetUserId),
+                hasOperationId: Boolean(passcodeResetOperationId),
+            });
+        }
+        throw error;
+    }
+    const finalizedResetData = sanitizeFirestoreValue({
         authDisabled: false,
         authTokensRevokedAt: now,
         isVerified: true,
@@ -1558,7 +1686,28 @@ export const requestStaffPasswordReset = async (
         sessionRevokedByEmail: session?.user?.email,
         sessionRevokedReason: "staff_passcode_reset",
         staffLoginId: loginId,
-    }));
+    });
+    finalizedResetData.passcodeResetPending = admin.firestore.FieldValue.delete();
+    let resetAuditFinalized = true;
+    try {
+        await firestoreAdmin.runTransaction(async (transaction) => {
+            const freshTargetDoc = await transaction.get(targetDoc.ref);
+            if (!freshTargetDoc.exists) throw new StaffPasscodeResetScopeConflictError();
+            const pending = freshTargetDoc.data()?.passcodeResetPending;
+            if (!isStaffUnknownRecord(pending) || pending.operationId !== passcodeResetOperationId) {
+                throw new StaffPasscodeResetScopeConflictError();
+            }
+            transaction.update(targetDoc.ref, finalizedResetData);
+        });
+    } catch {
+        resetAuditFinalized = false;
+        logStaffDiagnostic("staff_passcode_reset_audit_finalize_failed", {
+            ...getBoundedStaffStringContext("tenantId", input.tenantId),
+            ...getBoundedStaffStringContext("storeId", input.storeId),
+            ...getBoundedStaffStringContext("userId", targetUserId),
+            hasOperationId: Boolean(passcodeResetOperationId),
+        });
+    }
 
     logStaffDiagnostic("staff_owner_passcode_reset", {
         ...getBoundedStaffStringContext("tenantId", input.tenantId),
@@ -1566,7 +1715,17 @@ export const requestStaffPasswordReset = async (
         ...getBoundedStaffStringContext("userId", targetUserId),
     });
 
-    const updatedSnapshot = await targetDoc.ref.get();
+    const updatedSnapshot = resetAuditFinalized ? await targetDoc.ref.get() : null;
+    const updatedStaffData = updatedSnapshot?.data() || {
+        ...existingData,
+        ...finalizedResetData,
+        passcodeResetPending: {
+            leaseExpiresAt: passcodeResetLeaseExpiresAt,
+            operationId: passcodeResetOperationId,
+            requestedAt: now,
+            requestedBy: session?.uId || session?.user?.id || "system",
+        },
+    };
 
     return NextResponse.json({
         success: true,
@@ -1575,7 +1734,7 @@ export const requestStaffPasswordReset = async (
         staffAuthMode: getStaffAuthMode(existingData),
         staffLoginId: loginId,
         temporaryPasscode,
-        user: sanitizeStaffUserForAuthority(targetUserId, updatedSnapshot.data(), authority),
+        user: sanitizeStaffUserForAuthority(targetUserId, updatedStaffData, authority),
         userId: targetUserId,
     } satisfies StaffMutationResponse);
 };
@@ -1628,7 +1787,7 @@ export const forceSignOutStaffUser = async (
     }
 
     const existingData = targetDoc.data() || {};
-    if (Number(existingData.tenantId) !== input.tenantId) {
+    if (normalizeStaffScopeNumericId(existingData.tenantId) !== input.tenantId) {
         logSecurity("Authorization Failed - Staff Force Signout Tenant Mismatch", session, request, {
             requestedTenantId: input.tenantId,
             targetTenantId: existingData.tenantId,
@@ -1637,8 +1796,8 @@ export const forceSignOutStaffUser = async (
         return jsonError("Forbidden", 403, "FORBIDDEN");
     }
 
-    const currentStores: UserStoreMappingType[] = Array.isArray(existingData.stores) ? existingData.stores : [];
-    const hasStoreAccess = currentStores.some((store) => Number(store.storeId) === input.storeId);
+    const currentStores = normalizePersistedStaffStoreMappings(existingData.stores);
+    const hasStoreAccess = currentStores.some((store) => store.storeId === input.storeId);
     if (!hasStoreAccess || existingData.deleted === true) {
         return jsonError("Staff member is not assigned to this store", 404, "STORE_MAPPING_NOT_FOUND");
     }
@@ -1717,51 +1876,50 @@ export const saveRoleDefinition = async (
     const storeScope = normalizeStaffStoreScopeDocumentId(input.storeId);
     if (!storeScope) return jsonError("Invalid input", 400, "INVALID_INPUT");
 
-    const store = await fetchStoreById(input.storeId);
-    if (!isEligibleStaffTargetStore(store, input.tenantId)) {
-        return jsonError("Store not found", 404, "STORE_NOT_FOUND");
-    }
-
-    const roles = Array.isArray(store.roles) ? [...store.roles] : [];
-    const existingIndex = input.role.id ? roles.findIndex((role) => role.id === input.role.id) : -1;
-    const existingRole = existingIndex >= 0 ? roles[existingIndex] : null;
     const roleId = input.role.id || generateCustomRoleId();
 
     if (roleId === DEFAULT_ROLE_IDS.OWNER) {
         return jsonError("Owner role is locked", 409, "OWNER_ROLE_LOCKED");
     }
 
-    if (input.role.active === false && await roleIsAssignedToActiveUser(input.tenantId, input.storeId, roleId)) {
-        return jsonError("This role is assigned to active staff. Reassign them before turning it off.", 409, "ROLE_IN_USE");
-    }
-
+    const actorEmail = session?.user?.email || "system";
     const now = new Date().toISOString();
-    const nextRole: StoreRoleDataType = {
-        active: input.role.active ?? existingRole?.active ?? true,
-        createdBy: existingRole?.createdBy || session?.user?.email || "system",
-        createdOn: existingRole?.createdOn || now,
-        description: input.role.description || "",
-        id: roleId,
-        modifiedBy: session?.user?.email || "system",
-        modifiedOn: now,
-        name: input.role.name,
-        permissions: input.role.permissions as Record<PermissionKey, boolean>,
-    };
-
-    if (existingIndex >= 0) roles[existingIndex] = nextRole;
-    else roles.push(nextRole);
-
-    await firestoreAdmin.collection(STORES_COLLECTION).doc(storeScope.documentId).update(sanitizeFirestoreValue({
-        modifiedBy: session?.user?.email,
-        modifiedOn: admin.firestore.Timestamp.now(),
-        roles,
-    }));
-
-    const response: RoleMutationResponse = {
-        role: nextRole,
-        roles,
-        success: true,
-    };
+    let response: RoleMutationResponse;
+    try {
+        response = await runStaffRoleMutationTransaction({
+            actorEmail,
+            buildResult: (roles) => {
+                const existingIndex = input.role.id ? roles.findIndex((role) => role.id === input.role.id) : -1;
+                const existingRole = existingIndex >= 0 ? roles[existingIndex] : null;
+                const nextRole: StoreRoleDataType = {
+                    active: input.role.active ?? existingRole?.active ?? true,
+                    createdBy: existingRole?.createdBy || actorEmail,
+                    createdOn: existingRole?.createdOn || now,
+                    description: input.role.description || "",
+                    id: roleId,
+                    modifiedBy: actorEmail,
+                    modifiedOn: now,
+                    name: input.role.name,
+                    permissions: input.role.permissions as Record<PermissionKey, boolean>,
+                };
+                if (existingIndex >= 0) roles[existingIndex] = nextRole;
+                else roles.push(nextRole);
+                return {
+                    result: { role: nextRole, roles, success: true },
+                    roles,
+                };
+            },
+            db: firestoreAdmin,
+            deactivatingRoleId: input.role.active === false ? roleId : undefined,
+            modifiedOn: admin.firestore.Timestamp.now(),
+            storeId: input.storeId,
+            tenantId: input.tenantId,
+        });
+    } catch (error) {
+        const errorResponse = staffConcurrencyErrorResponse(error);
+        if (errorResponse) return errorResponse;
+        throw error;
+    }
 
     return NextResponse.json(response);
 };
@@ -1775,8 +1933,8 @@ export const deleteRoleDefinition = async (
 
     const validation = validateAPIInput(DeleteRoleSchema, {
         roleId: request.nextUrl.searchParams.get("roleId"),
-        storeId: Number(request.nextUrl.searchParams.get("storeId")),
-        tenantId: Number(request.nextUrl.searchParams.get("tenantId")),
+        storeId: normalizeStaffScopeNumericId(request.nextUrl.searchParams.get("storeId")),
+        tenantId: normalizeStaffScopeNumericId(request.nextUrl.searchParams.get("tenantId")),
     });
     if (!validation.success) {
         const validationError = (validation as { success: false; error: string }).error;
@@ -1795,31 +1953,36 @@ export const deleteRoleDefinition = async (
         return jsonError("Owner role is locked", 409, "OWNER_ROLE_LOCKED");
     }
 
-    if (await roleIsAssignedToActiveUser(input.tenantId, input.storeId, input.roleId)) {
-        return jsonError("This role is assigned to active staff. Reassign them before turning it off.", 409, "ROLE_IN_USE");
+    const actorEmail = session?.user?.email || "system";
+    const now = new Date().toISOString();
+    let roles: StoreRoleDataType[];
+    try {
+        roles = await runStaffRoleMutationTransaction({
+            actorEmail,
+            buildResult: (currentRoles) => {
+                const nextRoles = currentRoles.map((role) => (
+                    role.id === input.roleId
+                        ? {
+                            ...role,
+                            active: false,
+                            modifiedBy: actorEmail,
+                            modifiedOn: now,
+                        }
+                        : role
+                ));
+                return { result: nextRoles, roles: nextRoles };
+            },
+            db: firestoreAdmin,
+            deactivatingRoleId: input.roleId,
+            modifiedOn: admin.firestore.Timestamp.now(),
+            storeId: input.storeId,
+            tenantId: input.tenantId,
+        });
+    } catch (error) {
+        const errorResponse = staffConcurrencyErrorResponse(error);
+        if (errorResponse) return errorResponse;
+        throw error;
     }
-
-    const store = await fetchStoreById(input.storeId);
-    if (!isEligibleStaffTargetStore(store, input.tenantId)) {
-        return jsonError("Store not found", 404, "STORE_NOT_FOUND");
-    }
-
-    const roles = (store.roles || []).map((role) => (
-        role.id === input.roleId
-            ? {
-                ...role,
-                active: false,
-                modifiedBy: session?.user?.email || "system",
-                modifiedOn: new Date().toISOString(),
-            }
-            : role
-    ));
-
-    await firestoreAdmin.collection(STORES_COLLECTION).doc(storeScope.documentId).update(sanitizeFirestoreValue({
-        modifiedBy: session?.user?.email,
-        modifiedOn: admin.firestore.Timestamp.now(),
-        roles,
-    }));
 
     return NextResponse.json({
         roles,

@@ -1,7 +1,7 @@
 # Feedback System — Technical Implementation Blueprint
 
-> **Version:** 1.4.0
-> **Last Updated:** 2026-05-31
+> **Version:** 1.7.0
+> **Last Updated:** 2026-07-11
 > **Audience:** Developers
 > **Source:** Codebase forensic audit (code is truth)
 
@@ -38,7 +38,7 @@ The Feedback System is a **client-side DAL feature** with no API routes. Three s
 
 | Function | Reads | Writes | Notes |
 |----------|:-----:|:------:|-------|
-| `addFeedback(data)` | 0 | 1-2 | `answerlatticeRequestBodyComposer` + `addDoc` to Answerlattice `feedback`; emits one non-blocking `feedback` signal when `ENABLE_ANSWERLATTICE_SIGNAL_MUTATION` is true |
+| `addFeedback(data)` | 0 | 1-2 | `answerlatticeRequestBodyComposer` + `addDoc` to Answerlattice `feedback`; emits one non-blocking `feedback` signal only after exact `AL` product and numeric tenant/store admission when `ENABLE_ANSWERLATTICE_SIGNAL_MUTATION` is true; dynamic dispatch failures use a bounded fixed diagnostic |
 | `updateFeedbackSurfaceForWorkspace(feedbackId, input)` | 0 | 1 | Owner/support-control update that sets or clears `contextKey`, `surfaceId`, and `surfaceLabel` without changing the original submitter |
 | `getFeedbackForWorkspace(tId, sId)` | 1 bounded query | 0 | Owner review query: `tId + sId`, orderBy `createdOn desc`, limit 200 |
 | `getAllFeedback(maxResults)` | 1 bounded query | 0 | Platform-admin query ordered by newest, limit 200 |
@@ -48,32 +48,33 @@ The Feedback System is a **client-side DAL feature** with no API routes. Three s
 
 | Function | Purpose | Routes To |
 |----------|---------|-----------|
-| `updateContentFeedback(params)` | Unified router | article → `updateArticleFeedback`, changelog → `updateChangelogFeedback` |
+| `updateContentFeedback(params)` | Unified router | article/changelog → `updateContentFeedbackWithAudit`, FAQ → its scoped transaction |
 | `updateArticleFeedbackGeneric(...)` | Helper for articles | `updateContentFeedback({ contentType: 'article' })` |
 | `updateChangelogFeedbackGeneric(...)` | Helper for changelog | `updateContentFeedback({ contentType: 'changelog' })` |
 | `updateFaqFeedbackGeneric(...)` | Stub — throws "not implemented" | — |
 
-Content reaction tracking now keeps the existing aggregate counters and also writes a capped `list` activity log under `changelog_feedback/{tId}/{sId}/doc1_{entryId}` or `article_feedback/{tId}/{sId}/doc1_{entryId}`. Each event stores `sentiment`, `action`, sanitized comment text when present, `uId`, `userName`, `userEmail`, `userPhone`, and `sourceContext`. Existing records without actor snapshots remain readable and fall back to `uId`.
+Content reaction tracking updates the existing aggregate counter and its capped `list` activity log under `changelog_feedback/{tId}/{sId}/doc1_{entryId}` or `article_feedback/{tId}/{sId}/doc1_{entryId}` in one transaction. Each event stores `sentiment`, `action`, sanitized comment text when present, `uId`, `userName`, optional email/phone, and an exact-key `sourceContext`. Persisted items pass a runtime read normalizer before owner rendering.
 | `updateWorkflowFeedbackGeneric(...)` | Stub — throws "not implemented" | — |
 
-**Content Feedback DAL:** `src/database/contentFeedback/index.ts` (68 lines)
+**Content Feedback DAL:** `src/database/contentFeedback/index.ts`
 
 | Function | Reads | Writes | Notes |
 |----------|:-----:|:------:|-------|
-| `addContentFeedback(type, entryId, comment, sentiment)` | 1 | 1 | Transaction: read/create doc at `{type}_feedback/{tId}/{sId}/doc1_{entryId}`. Sanitizes comment (500 char max). Appends to `list` array via `arrayUnion`. |
+| `updateContentFeedbackWithAudit(input)` | 2 | 1-2 | One transaction reads source+audit, validates bounded counters/identity, updates source and creates/exact-appends one sanitized actor item. At 200 audit rows, only the source counter changes. |
 
 ### 2.3 Types
 
-**File:** `src/types/feedback.ts` (17 lines)
+**File:** `src/types/feedback.ts`
 
 ```typescript
 interface Feedback {
-    id?: string;
-    pId?: string;   // from answerlatticeRequestBodyComposer
-    sId: string | number;    // from requestBodyComposer
-    tId: string | number;    // from requestBodyComposer
-    uId: string;    // from requestBodyComposer
-    type: 'general' | 'feature_usage' | 'feature_requests' | 'feature_request';
+    id: string;
+    pId: 'AL';
+    sourceContext: SourceContext | null;
+    sId: string | number;
+    tId: string | number;
+    uId: string | number;
+    type: 'general' | 'feature_usage' | 'feature_requests';
     rating?: number;
     comment?: string;
     featureComment?: string;
@@ -85,7 +86,13 @@ interface Feedback {
     surfaceLabel?: string | null;
     surfaceAssignedBy?: string | null;
     surfaceAssignedAt?: Timestamp | null;
-    createdOn: Timestamp;   // from requestBodyComposer
+    traceId?: string;
+    requestId?: string;
+    role?: string;
+    modifiedBy?: string;
+    modifiedOn?: Timestamp;
+    createdBy?: string;
+    createdOn: Timestamp;
 }
 ```
 
@@ -104,6 +111,7 @@ ShareFeedbackView → Submit selected category
   → Build feedbackPayload using selected type: { type, rating, comment, featureComment, featureIssues, featureRequest, votedPopularRequests }
   → startLoader('send-feedback')
   → addFeedback(feedbackPayload) [DAL]
+  → normalizeAnswerlatticeFeedbackSubmission (exact type/field/list/text admission; unknown fields dropped)
   → answerlatticeRequestBodyComposer (adds pId='AL', tId, sId, uId, sourceContext, traceId, createdOn)
     → addDoc to feedback collection
     → emitAnswerlatticeSignal(type='feedback', entityId='unresolved') [non-blocking]
@@ -140,22 +148,23 @@ addFeedback()
 ### 3.4 Content Like/Dislike
 ```
 ChangelogPreview/ArticleView → click like/dislike
+  → Resolve Answerlattice tId+sId and load a versioned tenant/store/user/content-type local acknowledgement envelope
+  → mutationInFlightRef rejects a concurrent duplicate click
   → updateContentFeedback({ contentType, contentId, feedbackType, increment })
   → Switch on contentType:
-    → 'article' → updateArticleFeedback(contentId, feedbackType, increment)
-      → Read article doc → increment/decrement likes/dislikes → write back
-    → 'changelog' → updateChangelogFeedback(pageId, contentId, feedbackType, increment)
-      → Transaction: read page → find entry → update count → write page
+    → 'article'/'changelog' → updateContentFeedbackWithAudit(...)
+      → Transaction reads source document and audit document before writes
+      → Validates source scope, IDs, entries and non-negative safe-integer counters
+      → Updates counter and creates/exact-appends the sanitized actor audit item together
+      → If audit history already contains 200 rows, leaves it immutable and updates only the counter
 ```
 
 ### 3.5 Content Comment Feedback
 ```
-FeedbackSection → addContentFeedback('changelog'|'article', entryId, comment, sentiment)
+FeedbackSection dislike modal → updateContentFeedbackWithAudit({ comment, sentiment: 'dislike' })
   → sanitizeFeedbackComment(comment, 500)
-  → Transaction:
-    → Read doc at {type}_feedback/{tId}/{sId}/doc1_{entryId}
-    → If exists: arrayUnion new feedback to list
-    → If not exists: create doc with list: [feedback]
+  → Same source+audit transaction as the aggregate reaction
+  → Any audit-rule/write failure rolls back the source counter
 ```
 
 ---
@@ -170,8 +179,22 @@ FeedbackSection → addContentFeedback('changelog'|'article', entryId, comment, 
 | 4 | Submit flow saved every Help Center feedback row as `feature_requests` | High | `ShareFeedbackView.tsx` | Resolved by direct selected-category submit |
 | 5 | Feedback had no clean route into Support Board / Signal Queue | Medium | `database/feedback`, `useSupportBoard` | Resolved by `feedback` signal emission and actionable signal sync |
 | 6 | Unresolved feedback signals could become automatic mutation proposals | Medium | `signalMutation.ts`, `answerlatticeNightly.ts` | Resolved by skipping `entityId='unresolved'` in mutation clustering |
-| 7 | Article feedback is non-atomic (read-then-write) | Low | `articles.ts:154` | Could drift under concurrent writes |
+| 7 | Article counter and content audit could partially succeed | High | `useFeedback`, content/source DALs | Resolved with one source+audit transaction and removal of split writers |
 | 8 | FAQ/workflow feedback types throw errors | Low | `genericFeedback.ts:61-65` | Stubs exist but not implemented |
+| 9 | Help Center feedback accepted arbitrary/unbounded client fields | High | `feedbackBoundary.ts`, `database/feedback`, Answerlattice rules | Resolved with exact pre-composer normalization plus matching create rules |
+| 10 | Support-control feedback update could alter original content/identity | High | `firestore-answerlattice.rules` | Resolved with an affected-key allowlist limited to Product Surface assignment and modification metadata |
+| 11 | Feedback reads asserted raw Firestore data to `Feedback` | Medium | `database/feedback`, `types/feedback` | Resolved with runtime persisted-record normalization, canonical legacy type handling, and a reconciled persisted type |
+| 12 | Content audit rules allowed capped-list replacement and arbitrary items | High | `firestore-answerlattice.rules` | Resolved with exact item validation, one-item create, exact append, and immutable cap |
+| 13 | Rapid duplicate reaction could increment twice | Medium | `useFeedback`, `FeedbackSection` | Resolved with an in-flight lock plus disabled/loading controls |
+| 14 | Browser reaction state could survive a workspace switch and trusted arbitrary JSON/object keys | High | `contentFeedbackStorage`, `useFeedback` | Resolved with scoped keys/envelopes, exact entry normalization, null-prototype maps, invalid eviction, 500-entry cap and workspace reset |
+| 15 | Browser storage access failures were mislabeled as payload parse failures during the cache-boundary rewrite | Low | `contentFeedbackStorage` diagnostics | Resolved with separate fixed read and parse failure stages plus bounded invalid-eviction context |
+
+## 4.2 Runtime And Rules Contract
+
+- `normalizeAnswerlatticeFeedbackSubmission()` is the only submission admission boundary. It canonicalizes the historical singular type, admits only the fixed issue/request lists, rejects duplicates and empty category payloads, normalizes whitespace, and caps text at 1,000 characters.
+- `normalizeAnswerlatticeFeedbackRecord()` verifies document ID, scope/actor identity, source-context keys, timestamps, optional surface metadata, and category payload before returning the persisted `Feedback` type.
+- `firestore-answerlattice.rules` independently validates exact create keys and value kinds. Support-control update permission does not authorize content mutation; only surface assignment plus `modifiedBy`/`modifiedOn` may change.
+- `npm run verify:answerlattice-feedback-boundary` covers runtime/source contracts. `npm run test:answerlattice-feedback:rules` covers same/cross-workspace create/read, malformed/unknown/oversized payload denial, duplicate vote denial, and update-field confinement.
 
 ## 4.1 Widget Negative Feedback Surface Context
 

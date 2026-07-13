@@ -10,6 +10,7 @@ import {
     getActiveProductDomains,
     getProductDeploymentTarget,
 } from '@constant/deploymentTargets';
+import { normalizeRequestAuthority } from '@lib/routing/hostAuthority';
 
 export const ANSWERLATTICE_LOCAL_DEV_PATH_PREFIX = getProductDeploymentTarget('answerlattice', 'local').devPathPrefix;
 
@@ -59,7 +60,8 @@ const ACTIVE_ANSWERLATTICE_PRODUCT_DOMAIN_SET = new Set<string>(ACTIVE_ANSWERLAT
 const ANSWERLATTICE_DASHBOARD_ROUTE_ROOT_SET = new Set<string>(ANSWERLATTICE_DASHBOARD_ROUTE_ROOTS);
 
 export function isAnswerlatticeProductHostname(hostname?: string | null) {
-    return Boolean(hostname && ACTIVE_ANSWERLATTICE_PRODUCT_DOMAIN_SET.has(hostname.split(':')[0].toLowerCase()));
+    const normalizedHost = normalizeRequestAuthority(hostname)?.hostname;
+    return Boolean(normalizedHost && ACTIVE_ANSWERLATTICE_PRODUCT_DOMAIN_SET.has(normalizedHost));
 }
 
 export function getAnswerlatticeDashboardRewritePath(pathname: string): string | null {

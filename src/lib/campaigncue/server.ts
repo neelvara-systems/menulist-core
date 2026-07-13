@@ -37,6 +37,23 @@ import {
 } from "@lib/campaigncue/dailyDesk";
 import { buildCampaignCueDecisions, campaignCueRecipeById } from "@lib/campaigncue/decisionEngine";
 import {
+    buildCampaignCuePatternCueBrief,
+    buildCampaignCuePatternCueObservation,
+    getLatestCampaignCuePatternCueSource,
+    isCampaignCuePatternCueSourceInput,
+} from "@lib/campaigncue/patternCue";
+import {
+    buildCampaignCueExperimentSuggestion,
+    buildCampaignCuePackFreshness,
+    evaluateCampaignCuePackFreshness,
+    isCampaignCueDecisionSourceInput,
+    isCampaignCueOperatingPulseCurrent,
+    normalizeCampaignCueCommercialPolicy,
+    normalizeCampaignCueLanguagePolicy,
+    normalizeCampaignCueOperatingPulse,
+    normalizeCampaignCuePresenceProfile,
+} from "@lib/campaigncue/operatingLoop";
+import {
     admin,
     campaigncueFirestoreAdmin as firestoreAdmin,
     campaigncueStorageAdmin,
@@ -51,6 +68,7 @@ import type {
     CampaignCueBusinessBrain,
     CampaignCueCampaign,
     CampaignCueChannel,
+    CampaignCueCommercialGate,
     CampaignCueDeliveryPolicy,
     CampaignCueLaunchReadiness,
     CampaignCueLocation,
@@ -197,6 +215,18 @@ const stableHash = (value: unknown) => (
     createHash("sha256").update(JSON.stringify(value)).digest("hex").slice(0, 24)
 );
 
+const timestampToIsoString = (value: unknown) => {
+    if (!value) return "";
+    const date = value instanceof Date
+        ? value
+        : typeof value === "string" || typeof value === "number"
+            ? new Date(value)
+            : typeof (value as { toDate?: unknown }).toDate === "function"
+                ? (value as { toDate: () => Date }).toDate()
+                : null;
+    return date && !Number.isNaN(date.getTime()) ? date.toISOString() : "";
+};
+
 const buildId = (prefix: string) => createTimestampedRuntimeId(prefix, 8);
 
 const hasOwn = <T extends object, K extends PropertyKey>(value: T, key: K) => (
@@ -237,6 +267,11 @@ const brandPlaybookSourceRefs = (businessBrain: CampaignCueBusinessBrain) => (
 
 const isCampaignSourceInputRef = (sourceRef?: string) => Boolean(
     sourceRef && sourceRef !== "store_profile" && sourceRef !== "brand_playbook",
+);
+
+const isCampaignPatternRef = (sourceRef?: string) => Boolean(sourceRef?.startsWith("pattern:"));
+const isCampaignPatternSourceRef = (sourceRef?: string) => (
+    sourceRef === "cc_source_pattern_current" || isCampaignPatternRef(sourceRef)
 );
 
 const mergeBrandPlaybookPatch = (
@@ -451,6 +486,10 @@ function buildBusinessBrain(params: {
             })),
             services: [serviceFallback],
         },
+        operatingPulse: normalizeCampaignCueOperatingPulse(null),
+        commercialPolicy: normalizeCampaignCueCommercialPolicy(null),
+        presence: normalizeCampaignCuePresenceProfile(null),
+        languagePolicy: normalizeCampaignCueLanguagePolicy(null, compactString(storeData?.locale || CAMPAIGNCUE_DEFAULT_LOCALE)),
         sourceConfidence: publicMenuUrl || website || phone ? 0.72 : 0.54,
         readiness: {
             status: readinessStatus,
@@ -465,18 +504,21 @@ function buildSourceSnapshot(
     businessBrain: CampaignCueBusinessBrain,
     sourceInputs: CampaignCueSourceInput[] = [],
 ): CampaignCueSourceSnapshot {
-    const facts = buildSourceFacts(businessBrain, sourceInputs);
+    const facts = buildSourceFacts(businessBrain, sourceInputs).sort((a, b) => a.id.localeCompare(b.id));
     const missingFacts = buildMissingSourceFacts(businessBrain, sourceInputs);
     const verticalRisks = buildVerticalRisks(businessBrain);
+    const businessSourceInputs = sourceInputs.filter((input) => input.sourceType !== "inspiration_pattern");
+    const patternRefs = sourceInputs.flatMap((input) => input.sourceRefs.filter(isCampaignPatternRef)).sort();
     return {
         id: defaultSourceSnapshotId,
         workspaceId: businessBrain.workspaceId,
-        sourceType: sourceInputs.length ? "manual" : "menulist",
+        sourceType: businessSourceInputs.length ? "manual" : "menulist",
         sourceHash: stableHash(facts),
         sourceRefs: Array.from(new Set([
             "store_profile",
             ...brandPlaybookSourceRefs(businessBrain),
             ...sourceInputs.map((input) => input.id),
+            ...patternRefs,
         ])),
         confidence: businessBrain.sourceConfidence,
         freshness: missingFacts.length ? "unknown" : "fresh",
@@ -501,14 +543,20 @@ function buildSourceSnapshotFromExistingSnapshot(params: {
     [...baseFacts, ...previousInputFacts, ...nextFacts].forEach((fact) => {
         factsById.set(fact.id, fact);
     });
-    const facts = Array.from(factsById.values());
+    const facts = Array.from(factsById.values()).sort((a, b) => a.id.localeCompare(b.id));
     const sourceRefs = Array.from(new Set([
         "store_profile",
         ...brandPlaybookSourceRefs(params.businessBrain),
-        ...(params.existingSnapshot?.sourceRefs || []).filter(isCampaignSourceInputRef),
+        ...(params.existingSnapshot?.sourceRefs || []).filter((sourceRef) => (
+            isCampaignSourceInputRef(sourceRef)
+            && !(params.sourceInput?.sourceType === "inspiration_pattern" && isCampaignPatternRef(sourceRef))
+        )),
         params.sourceInput?.id,
+        ...(params.sourceInput?.sourceRefs || []).filter(isCampaignPatternRef),
     ].filter(Boolean) as string[]));
-    const hasManualSourceInput = sourceRefs.some(isCampaignSourceInputRef);
+    const hasManualSourceInput = sourceRefs.some((sourceRef) => (
+        isCampaignSourceInputRef(sourceRef) && !isCampaignPatternSourceRef(sourceRef)
+    ));
     const hasActiveSourceInput = facts.some((fact) => isCampaignSourceInputRef(fact.sourceRef) && fact.risk === "low");
     const missingFacts = buildMissingSourceFactsFromState(params.businessBrain, hasActiveSourceInput);
     const verticalRisks = buildVerticalRisks(params.businessBrain);
@@ -560,6 +608,9 @@ function sourceTypeToFactType(sourceType: CampaignCueSourceInput["sourceType"]):
 }
 
 function sourceInputToFacts(input: CampaignCueSourceInput): CampaignCueSourceFact[] {
+    if (input.sourceType === "inspiration_pattern") return [];
+    const ready = input.status === "active";
+    const expiry = timestampToIsoString(input.expiresAt);
     const fact = buildSourceFact({
         id: `${input.id}_fact`,
         label: input.label,
@@ -567,9 +618,20 @@ function sourceInputToFacts(input: CampaignCueSourceInput): CampaignCueSourceFac
         sourceRef: input.id,
         sourceType: sourceTypeToFactType(input.sourceType),
         confidence: input.confidence,
-        risk: input.status === "active" ? "low" : "needs_review",
+        freshness: ready ? "fresh" : "unknown",
+        risk: ready ? "low" : "needs_review",
     });
-    return fact ? [fact] : [];
+    const validityFact = expiry ? buildSourceFact({
+        id: `${input.id}_valid_until`,
+        label: `${input.label} valid until`,
+        value: expiry,
+        sourceRef: input.id,
+        sourceType: "policy",
+        confidence: input.confidence,
+        freshness: ready ? "fresh" : "unknown",
+        risk: ready ? "low" : "needs_review",
+    }) : null;
+    return [fact, validityFact].filter(Boolean) as CampaignCueSourceFact[];
 }
 
 function buildSourceFacts(
@@ -579,6 +641,10 @@ function buildSourceFacts(
     const item = businessBrain.catalog.items.find((entry) => entry.available) || businessBrain.catalog.items[0];
     const service = businessBrain.catalog.services.find((entry) => entry.available) || businessBrain.catalog.services[0];
     const playbook = businessBrain.brandKit.playbook;
+    const operatingPulse = normalizeCampaignCueOperatingPulse(businessBrain.operatingPulse);
+    const commercialPolicy = normalizeCampaignCueCommercialPolicy(businessBrain.commercialPolicy);
+    const presence = normalizeCampaignCuePresenceProfile(businessBrain.presence);
+    const languagePolicy = normalizeCampaignCueLanguagePolicy(businessBrain.languagePolicy, businessBrain.locale);
     const baseFacts = [
         buildSourceFact({
             id: "business_name",
@@ -685,10 +751,108 @@ function buildSourceFacts(
             sourceType: "business_profile",
             confidence: "manual",
         }),
+        buildSourceFact({
+            id: "operating_pulse",
+            label: "Owner operating pulse",
+            value: [
+                `business ${operatingPulse.businessState}`,
+                `capacity ${operatingPulse.capacityStatus}`,
+                `stock ${operatingPulse.stockStatus}`,
+                operatingPulse.localMoment,
+                operatingPulse.note,
+            ].filter(Boolean).join("; "),
+            sourceRef: "business_brain_operating_pulse",
+            sourceType: "policy",
+            confidence: "manual",
+            freshness: isCampaignCueOperatingPulseCurrent(operatingPulse) ? "fresh" : "stale",
+            risk: isCampaignCueOperatingPulseCurrent(operatingPulse) ? "low" : "needs_review",
+        }),
+        buildSourceFact({
+            id: "operating_pulse_valid_until",
+            label: "Owner pulse valid until",
+            value: timestampToIsoString(operatingPulse.validUntil),
+            sourceRef: "business_brain_operating_pulse",
+            sourceType: "policy",
+            confidence: "manual",
+            freshness: isCampaignCueOperatingPulseCurrent(operatingPulse) ? "fresh" : "stale",
+            risk: isCampaignCueOperatingPulseCurrent(operatingPulse) ? "low" : "needs_review",
+        }),
+        buildSourceFact({
+            id: "commercial_policy",
+            label: "Commercial safety policy",
+            value: [
+                commercialPolicy.promotionsAllowed ? "promotions allowed" : "promotions paused",
+                commercialPolicy.discountsAllowed ? "discounts allowed" : "discounts disabled",
+                commercialPolicy.discountApprovalRequired ? "discount approval required" : "discount approval not required",
+                commercialPolicy.maxDiscountPercent == null ? undefined : `maximum discount ${commercialPolicy.maxDiscountPercent}%`,
+                commercialPolicy.minimumPromotedPrice == null ? undefined : `minimum promoted price ${commercialPolicy.minimumPromotedPrice} ${commercialPolicy.currencyCode}`,
+                `currency ${commercialPolicy.currencyCode}`,
+                commercialPolicy.doNotPromote.length ? `do not promote: ${commercialPolicy.doNotPromote.join(", ")}` : undefined,
+            ].filter(Boolean).join("; "),
+            sourceRef: "business_brain_commercial_policy",
+            sourceType: "policy",
+            confidence: "manual",
+        }),
+        buildSourceFact({
+            id: "presence_google_profile",
+            label: "Google Business Profile",
+            value: presence.googleBusinessProfileUrl,
+            sourceRef: "business_brain_presence",
+            sourceType: "contact",
+            confidence: "manual",
+        }),
+        buildSourceFact({
+            id: "presence_google_review",
+            label: "Google review destination",
+            value: presence.googleReviewUrl,
+            sourceRef: "business_brain_presence",
+            sourceType: "contact",
+            confidence: "manual",
+        }),
+        buildSourceFact({
+            id: "presence_apple_profile",
+            label: "Apple Business Connect",
+            value: presence.appleBusinessConnectUrl,
+            sourceRef: "business_brain_presence",
+            sourceType: "contact",
+            confidence: "manual",
+        }),
+        buildSourceFact({
+            id: "presence_instagram",
+            label: "Instagram",
+            value: presence.instagramUrl,
+            sourceRef: "business_brain_presence",
+            sourceType: "contact",
+            confidence: "manual",
+        }),
+        buildSourceFact({
+            id: "presence_facebook",
+            label: "Facebook",
+            value: presence.facebookUrl,
+            sourceRef: "business_brain_presence",
+            sourceType: "contact",
+            confidence: "manual",
+        }),
+        buildSourceFact({
+            id: "presence_whatsapp_catalog",
+            label: "WhatsApp catalog",
+            value: presence.whatsappCatalogUrl,
+            sourceRef: "business_brain_presence",
+            sourceType: "contact",
+            confidence: "manual",
+        }),
+        buildSourceFact({
+            id: "language_policy",
+            label: "Campaign languages",
+            value: [languagePolicy.sourceLocale, ...languagePolicy.targetLocales].join(", "),
+            sourceRef: "business_brain_language_policy",
+            sourceType: "policy",
+            confidence: "manual",
+        }),
     ].filter(Boolean) as CampaignCueSourceFact[];
     return [
         ...baseFacts,
-        ...sourceInputs.flatMap(sourceInputToFacts),
+        ...sourceInputs.flatMap((sourceInput) => sourceInputToFacts(sourceInput)),
     ];
 }
 
@@ -708,7 +872,7 @@ function buildMissingSourceFacts(
 ): string[] {
     return buildMissingSourceFactsFromState(
         businessBrain,
-        sourceInputs.some((input) => input.status === "active"),
+        sourceInputs.some((input) => isCampaignCueDecisionSourceInput(input)),
     );
 }
 
@@ -846,6 +1010,10 @@ function normalizeCampaignCueBusinessBrain(businessBrain: CampaignCueBusinessBra
             items: businessBrain.catalog?.items || [],
             services: businessBrain.catalog?.services || [],
         },
+        operatingPulse: normalizeCampaignCueOperatingPulse(businessBrain.operatingPulse),
+        commercialPolicy: normalizeCampaignCueCommercialPolicy(businessBrain.commercialPolicy),
+        presence: normalizeCampaignCuePresenceProfile(businessBrain.presence),
+        languagePolicy: normalizeCampaignCueLanguagePolicy(businessBrain.languagePolicy, compactString(businessBrain.locale, CAMPAIGNCUE_DEFAULT_LOCALE)),
         readiness: businessBrain.readiness || {
             status: "limited",
             blockers: [],
@@ -948,13 +1116,17 @@ export function buildCampaignCueOpportunities(params: {
     const { analytics, assets = [], businessBrain, campaigns = [], locations = [], schedules = [], sourceInputs = [], workspaceId } = params;
     const primaryItem = businessBrain.catalog.items.find((item) => item.available) || businessBrain.catalog.items[0];
     const primaryService = businessBrain.catalog.services.find((service) => service.available) || businessBrain.catalog.services[0];
-    const now = new Date().toISOString();
-    const activeInputs = sourceInputs.filter((input) => input.status === "active");
+    const nowDate = new Date();
+    const now = nowDate.toISOString();
+    const businessSourceInputs = sourceInputs.filter((input) => input.sourceType !== "inspiration_pattern");
+    const activeInputs = businessSourceInputs.filter((input) => isCampaignCueDecisionSourceInput(input, nowDate));
     const sourceSnapshot = params.sourceSnapshot || buildSourceSnapshot(businessBrain, sourceInputs);
-    const snapshotSourceRefs = sourceInputs.length
+    const snapshotSourceRefs = businessSourceInputs.length
         ? []
-        : sourceSnapshot.sourceRefs.filter(isCampaignSourceInputRef);
-    const snapshotReadyFactCount = sourceInputs.length
+        : sourceSnapshot.sourceRefs.filter((sourceRef) => (
+            isCampaignSourceInputRef(sourceRef) && !isCampaignPatternSourceRef(sourceRef)
+        ));
+    const snapshotReadyFactCount = businessSourceInputs.length
         ? 0
         : sourceSnapshot.facts.filter((fact) => (
             isCampaignSourceInputRef(fact.sourceRef) && fact.risk === "low"
@@ -966,7 +1138,7 @@ export function buildCampaignCueOpportunities(params: {
             ? activeInputs.slice(0, 4).map((input) => input.id)
             : snapshotSourceRefs.slice(0, 4)),
     ];
-    const needsReviewInputs = sourceInputs.filter((input) => input.status === "needs_review");
+    const needsReviewInputs = businessSourceInputs.filter((input) => input.status === "needs_review");
     const restrictedAssets = assets.filter((asset) => asset.rights.status === "restricted");
     const reviewAssets = assets.filter((asset) => asset.rights.status === "needs_review");
     const activeLocations = locations.filter((location) => location.status === "active");
@@ -974,6 +1146,7 @@ export function buildCampaignCueOpportunities(params: {
     const usefulCampaign = campaigns.find((campaign) => Number(campaign.resultMemory?.usefulCount || 0) > 0);
     const notUsefulCampaign = campaigns.find((campaign) => Number(campaign.resultMemory?.notUsefulCount || 0) > 0);
     const hasGoogleOutput = campaigns.some((campaign) => campaign.outputs.some((output) => output.channel === "google_local"));
+    const presence = normalizeCampaignCuePresenceProfile(businessBrain.presence);
 
     const base: CampaignCueOpportunity[] = [];
     if (isServiceBusinessType(businessBrain.businessType)) {
@@ -1225,6 +1398,51 @@ export function buildCampaignCueOpportunities(params: {
         updatedAt: now,
     });
 
+    base.push(
+        {
+            id: "cue_review_request",
+            workspaceId,
+            businessBrainId: businessBrain.businessBrainId,
+            title: "Customer review request",
+            reason: presence.googleReviewUrl
+                ? "A verified review destination is ready for an owner-controlled customer follow-up."
+                : "Add and verify a review destination before asking recent customers for an honest review.",
+            type: "review_request",
+            priority: presence.googleReviewUrl ? 77 : 58,
+            channels: ["whatsapp", "google_local", "creative", "calendar"],
+            sourceReferences,
+            status: "open",
+            actionLabel: presence.googleReviewUrl ? "Create review pack" : "Add review link",
+            ownerBenefit: "Prepare a compliant review request, staff script, and counter handoff without storing customer contacts.",
+            evidence: [
+                presence.googleReviewUrl ? "Review destination verified" : "Review destination missing",
+                "Owner sends manually after a real customer visit or completed service",
+            ],
+            createdAt: now,
+            updatedAt: now,
+        },
+        {
+            id: "cue_return_customer",
+            workspaceId,
+            businessBrainId: businessBrain.businessBrainId,
+            title: "Return-customer reminder",
+            reason: "Prepare one current reason for past customers to return through an owner-managed channel.",
+            type: "retention",
+            priority: usefulCampaign ? 81 : readySourceCount ? 72 : 55,
+            channels: ["whatsapp", "creative", "google_local", "calendar"],
+            sourceReferences,
+            status: "open",
+            actionLabel: "Create return pack",
+            ownerBenefit: "Prepare reminder copy and staff follow-up without importing a CRM or customer contact list.",
+            evidence: [
+                readySourceCount ? `${readySourceCount} current input${readySourceCount === 1 ? "" : "s"}` : "Current reason to return needs input",
+                usefulCampaign?.resultMemory?.lastNote || "No prior positive result is required",
+            ],
+            createdAt: now,
+            updatedAt: now,
+        },
+    );
+
     if (dueSchedules.length) {
         base.push({
             id: "cue_scheduled_manual_post",
@@ -1271,6 +1489,15 @@ async function listSubcollection<T>(workspaceId: string, collection: string, lim
     return snap.docs.map((doc) => doc.data() as T);
 }
 
+const withCampaignCuePatternSource = (
+    workspace: CampaignCueWorkspace,
+    sourceInputs: CampaignCueSourceInput[],
+): CampaignCueSourceInput[] => {
+    const patternCueSource = FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_PATTERN_CUE ? workspace.patternCueSource : undefined;
+    if (!patternCueSource || !isCampaignCuePatternCueSourceInput(patternCueSource)) return sourceInputs;
+    return [patternCueSource, ...sourceInputs.filter((input) => input.id !== patternCueSource.id)];
+};
+
 async function readDashboardSummary(workspaceId: string): Promise<CampaignCueAnalyticsSummary> {
     const snap = await workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.ANALYTICS_SUMMARIES)
         .doc(CAMPAIGNCUE_DASHBOARD_SUMMARY_ID)
@@ -1300,7 +1527,8 @@ export async function listCampaignCueAssetsServer(scope: CampaignCueSessionScope
 
 export async function listCampaignCueSourceInputsServer(scope: CampaignCueSessionScope): Promise<CampaignCueSourceInput[]> {
     const workspace = await ensureCampaignCueWorkspaceOnlyServer(scope);
-    return listSubcollection<CampaignCueSourceInput>(workspace.workspaceId, CAMPAIGNCUE_COLLECTIONS.SOURCE_INPUTS);
+    const sourceInputs = await listSubcollection<CampaignCueSourceInput>(workspace.workspaceId, CAMPAIGNCUE_COLLECTIONS.SOURCE_INPUTS);
+    return withCampaignCuePatternSource(workspace, sourceInputs);
 }
 
 export async function listCampaignCueProviderConnectionsServer(scope: CampaignCueSessionScope) {
@@ -1382,7 +1610,7 @@ function buildLaunchReadiness(): CampaignCueLaunchReadiness {
 export async function loadCampaignCueOverviewServer(scope: CampaignCueSessionScope): Promise<CampaignCueOverview> {
     const { workspace, businessBrain } = await ensureCampaignCueWorkspaceServer(scope);
     const workspaceId = workspace.workspaceId;
-    const [sourceInputs, campaigns, assets, schedules, locations, analytics] = await Promise.all([
+    const [storedSourceInputs, campaigns, assets, schedules, locations, analytics] = await Promise.all([
         listSubcollection<CampaignCueSourceInput>(workspaceId, CAMPAIGNCUE_COLLECTIONS.SOURCE_INPUTS),
         listSubcollection<CampaignCueCampaign>(workspaceId, CAMPAIGNCUE_COLLECTIONS.CAMPAIGNS),
         listSubcollection<CampaignCueAsset>(workspaceId, CAMPAIGNCUE_COLLECTIONS.ASSETS),
@@ -1390,6 +1618,7 @@ export async function loadCampaignCueOverviewServer(scope: CampaignCueSessionSco
         listSubcollection<CampaignCueLocation>(workspaceId, CAMPAIGNCUE_COLLECTIONS.LOCATIONS),
         readDashboardSummary(workspaceId),
     ]);
+    const sourceInputs = withCampaignCuePatternSource(workspace, storedSourceInputs);
     const opportunities = buildCampaignCueOpportunities({
         analytics,
         assets,
@@ -1429,6 +1658,7 @@ export async function loadCampaignCueOverviewServer(scope: CampaignCueSessionSco
         deliveryPolicy: buildDeliveryPolicy(),
         dailyDesk,
         launchReadiness: buildLaunchReadiness(),
+        sourceHash: stableHash([...sourceFacts].sort((a, b) => a.id.localeCompare(b.id))),
         sourceFacts,
         cost: {
             readsPerLoad: 8,
@@ -1551,6 +1781,7 @@ function lineForChannel(params: {
     businessBrain: CampaignCueBusinessBrain;
     brief: string;
     channel: CampaignCueChannel;
+    patternCueSource?: CampaignCueSourceInput;
     title: string;
 }) {
     const { businessBrain, channel, title } = params;
@@ -1560,6 +1791,7 @@ function lineForChannel(params: {
     const ctaLine = cta ? `\n\nNext step: ${cta}` : "";
     const brandLine = brandPlaybookBriefLine(businessBrain);
     const brandDirection = brandLine ? `\n\nBrand direction: ${brandLine}` : "";
+    const patternBrief = buildCampaignCuePatternCueBrief(params.patternCueSource);
     if (channel === "whatsapp") {
         return `${businessBrain.name}: ${thing} is ready${location}. Reply here or open the link to check details.${ctaLine}`;
     }
@@ -1576,6 +1808,7 @@ function lineForChannel(params: {
             `Shot plan:\n${buildVideoShotPlan(businessBrain, thing)}`,
             `B-roll checklist: ${buildBrollChecklist(businessBrain, thing)}.`,
             `Product placement: ${productPlacementBrief(businessBrain, thing)}`,
+            patternBrief,
             "Boundary: this is a shoot/edit brief only, not a rendered video or provider upload.",
             ctaLine.trim(),
             brandDirection.trim(),
@@ -1588,6 +1821,7 @@ function lineForChannel(params: {
             `Camera plan: ${cameraPlanForChannel(channel, businessBrain)}.`,
             `Product placement: ${productPlacementBrief(businessBrain, thing)}`,
             `Dialogue/action beats:\n${buildUgcDialogueActionBrief(businessBrain, thing)}`,
+            patternBrief,
             "Disclosure: use a real owner, staff member, creator, or source-approved customer; do not present an AI avatar, stock person, or fictional customer as real experience.",
             ctaLine.trim(),
             brandDirection.trim(),
@@ -1622,6 +1856,7 @@ function outputFieldsForChannel(params: {
     businessBrain: CampaignCueBusinessBrain;
     brief: string;
     channel: CampaignCueChannel;
+    patternCueSource?: CampaignCueSourceInput;
     text: string;
     title: string;
 }): CampaignCueOutputFields {
@@ -1635,6 +1870,7 @@ function outputFieldsForChannel(params: {
         || businessBrain.contacts.website
         || "";
     const brandLine = brandPlaybookBriefLine(businessBrain);
+    const patternCue = params.patternCueSource?.patternCue;
     const brandBrief = brandLine ? ` Brand direction: ${brandLine}.` : "";
     const base = title.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
     const utm = destination ? `utm_source=campaigncue&utm_medium=${channel}&utm_campaign=${base || "manual_pack"}` : "";
@@ -1735,6 +1971,11 @@ function outputFieldsForChannel(params: {
         ],
         ugc: [
             handoffField({ id: "script", label: "Script", value: text }),
+            ...(patternCue ? [
+                handoffField({ id: "pattern_summary", label: "Example format", value: patternCue.summary, required: false }),
+                handoffField({ id: "original_hooks", label: "Original hook options", value: patternCue.candidateHooks.join("\n"), required: false }),
+                handoffField({ id: "originality_boundary", label: "Originality boundary", value: patternCue.adaptationGuardrails[0], required: false }),
+            ] : []),
             handoffField({ id: "persona", label: "Persona", value: creatorRoleForBusiness(businessBrain), required: false }),
             handoffField({
                 id: "creator_fit_check",
@@ -1770,6 +2011,11 @@ function outputFieldsForChannel(params: {
         ],
         video: [
             handoffField({ id: "shot_list", label: "Shot list", value: text }),
+            ...(patternCue ? [
+                handoffField({ id: "pattern_summary", label: "Example format", value: patternCue.summary, required: false }),
+                handoffField({ id: "original_hooks", label: "Original hook options", value: patternCue.candidateHooks.join("\n"), required: false }),
+                handoffField({ id: "originality_boundary", label: "Originality boundary", value: patternCue.adaptationGuardrails[0], required: false }),
+            ] : []),
             handoffField({ id: "camera_plan", label: "Camera plan", value: cameraPlanForChannel(channel, businessBrain), required: false }),
             handoffField({ id: "b_roll", label: "B-roll checklist", value: buildBrollChecklist(businessBrain, thing), required: false }),
             handoffField({ id: "product_placement", label: "Product placement", value: productPlacementBrief(businessBrain, thing), required: false }),
@@ -1794,6 +2040,7 @@ function outputFieldsForChannel(params: {
         channel === "ugc" ? "Creator audience fit is checked before spending or repeating the angle" : undefined,
         channel === "video" || channel === "ugc" ? "People, staff, or customer images have consent" : undefined,
         channel === "ugc" ? "Dialogue/action beats do not invent personal experience" : undefined,
+        channel === "video" || channel === "ugc" ? (patternCue ? "Example format is adapted without copying source wording, footage, music, or creator identity" : undefined) : undefined,
         channel === "ugc" ? "Paid or incentivized creator participation has disclosure guidance" : undefined,
         channel === "video" ? "Shot list remains a brief; no rendered video is implied" : undefined,
         brandLine ? "Brand direction and avoid list are checked" : undefined,
@@ -1837,6 +2084,7 @@ function buildOutputs(params: {
     businessBrain: CampaignCueBusinessBrain;
     brief: string;
     channels: CampaignCueChannel[];
+    patternCueSource?: CampaignCueSourceInput;
     sourceReferences: string[];
     title: string;
 }): CampaignCueOutput[] {
@@ -1845,25 +2093,41 @@ function buildOutputs(params: {
             businessBrain: params.businessBrain,
             brief: params.brief,
             channel,
+            patternCueSource: params.patternCueSource,
             title: params.title,
         });
+        const sourceReferences = uniqueCompactStrings([
+            ...params.sourceReferences,
+            params.patternCueSource && (channel === "video" || channel === "ugc") ? params.patternCueSource.id : undefined,
+        ], 8);
         return {
             id: `${channel}_draft`,
             channel,
             label: CAMPAIGNCUE_CHANNEL_LABELS[channel],
             mode: channel === "video" ? "brief" : channel === "ads" ? "manual_handoff" : "manual_export",
             text,
-            sourceReferences: params.sourceReferences,
+            sourceReferences,
             providerMode: providerModeForChannel(channel),
             trustGate: "warning",
             fields: outputFieldsForChannel({
                 businessBrain: params.businessBrain,
                 brief: params.brief,
                 channel,
+                patternCueSource: params.patternCueSource,
                 text,
                 title: params.title,
             }),
-            metadata: channel === "ads"
+            metadata: (channel === "video" || channel === "ugc") && params.patternCueSource?.patternCue
+                ? {
+                    patternCue: {
+                        sourceInputId: params.patternCueSource.id,
+                        sourceHash: params.patternCueSource.patternCue.sourceHash,
+                        platform: params.patternCueSource.patternCue.platform,
+                        rightsStatus: params.patternCueSource.patternCue.rightsStatus,
+                    },
+                    directMutationEnabled: false,
+                }
+                : channel === "ads"
                 ? { spendChanging: false, directMutationEnabled: false }
                 : channel === "google_local"
                     ? { productPostApiFallback: true, directPublishEnabled: false }
@@ -1875,6 +2139,7 @@ function buildOutputs(params: {
 function buildTrustReport(params: {
     businessBrain: CampaignCueBusinessBrain;
     campaignId: string;
+    commercialGate?: CampaignCueCommercialGate;
     outputs: CampaignCueOutput[];
     sourceFacts: CampaignCueSourceFact[];
     workspaceId: string;
@@ -1887,6 +2152,16 @@ function buildTrustReport(params: {
     const avoidTerms = params.businessBrain.brandKit.playbook.avoidList
         .map((term) => term.trim().toLowerCase())
         .filter((term) => term.length >= 3);
+    params.commercialGate?.findings.forEach((finding, index) => {
+        findings.push({
+            id: `commercial_policy_${index}`,
+            severity: params.commercialGate?.status === "blocked" ? "blocked" : "warning",
+            ruleId: "commercial_safety_policy",
+            message: finding,
+            recommendation: "Update the owner pulse, commercial policy, or current campaign input before public use.",
+            sourceReferences: ["business_brain_commercial_policy", "business_brain_operating_pulse"],
+        });
+    });
     for (const output of params.outputs) {
         const outputTrustText = [
             output.text,
@@ -1896,6 +2171,16 @@ function buildTrustReport(params: {
         ].join("\n").toLowerCase();
         const text = output.text.toLowerCase();
         const publicLikeOutput = output.channel === "whatsapp" || output.channel === "google_local" || output.channel === "ads";
+        if ((output.channel === "ugc" || output.channel === "video") && output.metadata?.patternCue) {
+            findings.push({
+                id: `${output.id}_pattern_cue_originality`,
+                severity: "info",
+                ruleId: "pattern_cue_originality",
+                message: `${output.label} uses an example as structural inspiration only.`,
+                recommendation: "Keep the new script, footage, music, creator identity, claims, and CTA original and source-backed.",
+                sourceReferences: output.sourceReferences,
+            });
+        }
         if (/(guaranteed|100%|cure|best in|#1)/.test(outputTrustText)) {
             findings.push({
                 id: `${output.id}_blocked_claim`,
@@ -1903,6 +2188,26 @@ function buildTrustReport(params: {
                 ruleId: "unsupported_absolute_claim",
                 message: `${output.label} includes an unsupported absolute or result claim.`,
                 recommendation: "Remove guarantee, medical/result, or ranking language before export or handoff.",
+                sourceReferences: output.sourceReferences,
+            });
+        }
+        if (/\breview\b/.test(outputTrustText) && /(five[- ]star|5[- ]star|positive review|reward for|discount for|only happy customers|fabricat)/.test(outputTrustText)) {
+            findings.push({
+                id: `${output.id}_review_manipulation`,
+                severity: "blocked",
+                ruleId: "review_manipulation",
+                message: `${output.label} contains incentivized, selective, or fabricated review language.`,
+                recommendation: "Ask real customers for an honest review without requiring a positive rating or offering a reward.",
+                sourceReferences: output.sourceReferences,
+            });
+        }
+        if (/(upload|import|store).{0,24}(customer|contact).{0,24}(list|phone|csv)/.test(outputTrustText)) {
+            findings.push({
+                id: `${output.id}_customer_list_boundary`,
+                severity: "needs_fix",
+                ruleId: "customer_contact_boundary",
+                message: `${output.label} suggests storing or importing a customer contact list.`,
+                recommendation: "Keep customer selection and sending in the owner's existing consented workflow. CampaignCue prepares the pack only.",
                 sourceReferences: output.sourceReferences,
             });
         }
@@ -2241,6 +2546,20 @@ function enqueueDashboardSummaryIncrement(batch: CampaignCueFirestoreBatch, para
     }), { merge: true });
 }
 
+const campaignCueResultMetricTotal = (campaign: CampaignCueCampaign) => (
+    Object.values(campaign.resultMemory?.lastReceipt?.metrics || {})
+        .reduce((total, value) => total + (typeof value === "number" ? value : 0), 0)
+);
+
+const campaignCueCanBeSafelyReused = (campaign: CampaignCueCampaign) => (
+    campaign.status !== "archived"
+    && campaign.trustGate !== "blocked"
+    && campaign.trustGate !== "needs_fix"
+    && Boolean(campaign.pack?.recipeId)
+    && Number(campaign.resultMemory?.usefulCount || 0) > Number(campaign.resultMemory?.notUsefulCount || 0)
+    && (Number(campaign.resultMemory?.usefulCount || 0) > 0 || campaignCueResultMetricTotal(campaign) > 0)
+);
+
 export async function createCampaignCueCampaignServer(params: {
     input: CampaignCueCreateCampaignInput;
     scope: CampaignCueSessionScope;
@@ -2271,7 +2590,7 @@ export async function createCampaignCueCampaignServer(params: {
         throw new CampaignCueIdempotencyConflictError("This campaign request already completed, but its result is unavailable.");
     }
 
-    const [sourceInputs, assets, locations, schedules, campaigns, analytics] = await Promise.all([
+    const [storedSourceInputs, assets, locations, schedules, campaigns, analytics] = await Promise.all([
         listSubcollection<CampaignCueSourceInput>(workspaceId, CAMPAIGNCUE_COLLECTIONS.SOURCE_INPUTS),
         listSubcollection<CampaignCueAsset>(workspaceId, CAMPAIGNCUE_COLLECTIONS.ASSETS),
         listSubcollection<CampaignCueLocation>(workspaceId, CAMPAIGNCUE_COLLECTIONS.LOCATIONS),
@@ -2279,28 +2598,7 @@ export async function createCampaignCueCampaignServer(params: {
         listSubcollection<CampaignCueCampaign>(workspaceId, CAMPAIGNCUE_COLLECTIONS.CAMPAIGNS),
         readDashboardSummary(workspaceId),
     ]);
-    const opportunity = resolveOpportunity({
-        analytics,
-        assets,
-        businessBrain,
-        campaigns,
-        input: params.input,
-        locations,
-        schedules,
-        sourceInputs,
-        workspaceId,
-    });
-    const title = compactString(params.input.title, opportunity.title);
-    const brief = compactString(params.input.brief, opportunity.reason);
-    const channels = (params.input.channels?.length ? params.input.channels : opportunity.channels) as CampaignCueChannel[];
-    const campaignId = buildId(CAMPAIGNCUE_CAMPAIGN_ID_PREFIX);
-    const outputsDraft = buildOutputs({
-        businessBrain,
-        brief,
-        channels,
-        sourceReferences: opportunity.sourceReferences,
-        title,
-    });
+    const sourceInputs = withCampaignCuePatternSource(workspace, storedSourceInputs);
     const sourceFacts = buildSourceFacts(businessBrain, sourceInputs);
     const decisionOpportunities = buildCampaignCueOpportunities({
         analytics,
@@ -2324,7 +2622,52 @@ export async function createCampaignCueCampaignServer(params: {
         sourceInputs,
         workspace,
     });
-    const selectedDecision = decisionCandidates.find((decision) => decision.opportunityId === opportunity.id) || decisionCandidates[0];
+    const reuseCampaign = params.input.reuseCampaignId
+        ? campaigns.find((campaign) => campaign.id === params.input.reuseCampaignId)
+        : undefined;
+    if (params.input.reuseCampaignId && (!reuseCampaign || !campaignCueCanBeSafelyReused(reuseCampaign))) {
+        const message = reuseCampaign
+            ? "This campaign does not have a useful, trust-safe result to reuse."
+            : "The campaign selected for reuse is unavailable.";
+        await completeIdempotency({
+            action: "create_campaign",
+            idempotencyKey: params.input.idempotencyKey,
+            responseError: message,
+            responseStatus: 409,
+            resultId: params.input.reuseCampaignId,
+            workspaceId,
+        });
+        throw new CampaignCueDecisionGateError(message);
+    }
+    const fallbackOpportunity = resolveOpportunity({
+        analytics,
+        assets,
+        businessBrain,
+        campaigns,
+        input: params.input,
+        locations,
+        schedules,
+        sourceInputs,
+        workspaceId,
+    });
+    const reuseDecision = reuseCampaign?.pack?.recipeId
+        ? decisionCandidates.find((decision) => decision.recipeId === reuseCampaign.pack?.recipeId)
+        : undefined;
+    if (reuseCampaign && !reuseDecision) {
+        const message = "This campaign recipe no longer matches the current business context.";
+        await completeIdempotency({
+            action: "create_campaign",
+            idempotencyKey: params.input.idempotencyKey,
+            responseError: message,
+            responseStatus: 409,
+            resultId: reuseCampaign.id,
+            workspaceId,
+        });
+        throw new CampaignCueDecisionGateError(message);
+    }
+    const selectedDecision = reuseDecision
+        || decisionCandidates.find((decision) => decision.opportunityId === fallbackOpportunity.id)
+        || decisionCandidates[0];
     if (selectedDecision && selectedDecision.decisionStatus !== "ready_to_prepare") {
         const firstMissingInput = selectedDecision.missingInputs.find((input) => input.required) || selectedDecision.missingInputs[0];
         const decisionGateMessage = firstMissingInput?.ownerQuestion
@@ -2341,17 +2684,48 @@ export async function createCampaignCueCampaignServer(params: {
         });
         throw new CampaignCueDecisionGateError(decisionGateMessage);
     }
+    const opportunity = decisionOpportunities.find((item) => item.id === selectedDecision?.opportunityId)
+        || fallbackOpportunity;
+    const recipe = selectedDecision ? campaignCueRecipeById(selectedDecision.recipeId) : dailyDeskRecipeForBusiness(businessBrain.businessType);
+    const title = compactString(
+        params.input.title,
+        reuseCampaign ? `${selectedDecision?.recommendationTitle || recipe.title} refresh` : opportunity.title,
+    );
+    const brief = compactString(params.input.brief, opportunity.reason);
+    const channels = (
+        params.input.channels?.length
+            ? params.input.channels
+            : reuseCampaign?.channels.length
+                ? reuseCampaign.channels
+                : opportunity.channels
+    ) as CampaignCueChannel[];
+    const currentPatternCueSource = FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_PATTERN_CUE
+        ? getLatestCampaignCuePatternCueSource(sourceInputs)
+        : undefined;
+    const patternCueSource = channels.some((channel) => channel === "video" || channel === "ugc")
+        ? currentPatternCueSource
+        : undefined;
+    const campaignId = buildId(CAMPAIGNCUE_CAMPAIGN_ID_PREFIX);
+    const outputsDraft = buildOutputs({
+        businessBrain,
+        brief,
+        channels,
+        patternCueSource,
+        sourceReferences: opportunity.sourceReferences,
+        title,
+    });
+    const sourceSnapshot = buildSourceSnapshot(businessBrain, sourceInputs);
+    const createdAt = new Date();
     const trustReport = buildTrustReport({
         businessBrain,
         campaignId,
+        commercialGate: selectedDecision?.commercialGate,
         outputs: outputsDraft,
         sourceFacts,
         workspaceId,
     });
     const outputs = applyTrustToOutputs(outputsDraft, trustReport);
-    const recipe = selectedDecision ? campaignCueRecipeById(selectedDecision.recipeId) : dailyDeskRecipeForBusiness(businessBrain.businessType);
-    const sourceSnapshot = buildSourceSnapshot(businessBrain, sourceInputs);
-    const now = nowTimestamp();
+    const now = admin.firestore.Timestamp.fromDate(createdAt);
     const campaign: CampaignCueCampaign = {
         id: campaignId,
         workspaceId,
@@ -2386,6 +2760,24 @@ export async function createCampaignCueCampaignServer(params: {
             ].slice(0, 12),
             deliveryCardIds: outputs.map((output) => `${campaignId}_${output.id}_handoff`),
             resultQuestion: recipe.resultQuestion,
+            patternCueSourceInputId: patternCueSource?.id,
+            patternCueSourceHash: patternCueSource?.patternCue?.sourceHash,
+            reusedFromCampaignId: reuseCampaign?.id,
+            reuseMode: reuseCampaign ? "rebuild_from_current_truth" : undefined,
+            freshness: buildCampaignCuePackFreshness({
+                businessBrain,
+                now: createdAt,
+                recipe,
+                sourceHash: sourceSnapshot.sourceHash,
+                sourceInputs,
+            }),
+            commercialGate: selectedDecision?.commercialGate || { status: "ready", findings: [] },
+            experiment: selectedDecision?.experiment || buildCampaignCueExperimentSuggestion({
+                assets,
+                businessBrain,
+                campaigns,
+                recipe,
+            }),
         },
         createdAt: now,
         updatedAt: now,
@@ -2425,6 +2817,162 @@ export async function createCampaignCueCampaignServer(params: {
     return { campaign, trustReport };
 }
 
+const CAMPAIGNCUE_APPROVAL_RESOLUTION_ROLES = new Set<CampaignCueWorkspace["defaultRole"]>([
+    "owner",
+    "admin",
+    "reviewer",
+    "local_manager",
+]);
+
+type CampaignCueApprovalAction = "request_approval" | "approve" | "reject";
+
+const campaignCueApprovalId = (campaignId: string) => `${CAMPAIGNCUE_APPROVAL_ID_PREFIX}_${campaignId}`;
+
+const campaignCueWorkspaceRole = (workspace: CampaignCueWorkspace, userId: string) => (
+    workspace.members?.[userId]?.role || workspace.defaultRole
+);
+
+async function recordCampaignCueApprovalActionTransactional(params: {
+    action: CampaignCueApprovalAction;
+    campaignId: string;
+    idempotencyKey?: string;
+    note?: string;
+    outputId?: string;
+    scope: CampaignCueSessionScope;
+    workspaceId: string;
+}): Promise<{
+    campaign?: CampaignCueCampaign;
+    error?: string;
+    replayed?: boolean;
+    status?: 404 | 409;
+}> {
+    const campaignRef = workspaceSubcollection(params.workspaceId, CAMPAIGNCUE_COLLECTIONS.CAMPAIGNS).doc(params.campaignId);
+    const approvalRef = workspaceSubcollection(params.workspaceId, CAMPAIGNCUE_COLLECTIONS.APPROVAL_REQUESTS)
+        .doc(campaignCueApprovalId(params.campaignId));
+    const eventRef = workspaceSubcollection(params.workspaceId, CAMPAIGNCUE_COLLECTIONS.EVENTS)
+        .doc(buildId(CAMPAIGNCUE_EVENT_ID_PREFIX));
+    const idempotencyRef = params.idempotencyKey
+        ? workspaceSubcollection(params.workspaceId, CAMPAIGNCUE_COLLECTIONS.IDEMPOTENCY_KEYS).doc(params.idempotencyKey)
+        : null;
+    const summaryRef = workspaceSubcollection(params.workspaceId, CAMPAIGNCUE_COLLECTIONS.ANALYTICS_SUMMARIES)
+        .doc(CAMPAIGNCUE_DASHBOARD_SUMMARY_ID);
+    const now = nowTimestamp();
+
+    const result = await firestoreAdmin.runTransaction(async (transaction) => {
+        const campaignSnap = await transaction.get(campaignRef);
+        if (!campaignSnap.exists) {
+            return { error: "Campaign not found", status: 404 as const };
+        }
+        const current = campaignSnap.data() as CampaignCueCampaign;
+        if (params.action === "request_approval" && (current.status === "used" || current.status === "archived")) {
+            return {
+                error: "Completed or archived campaign packs cannot start a new approval request.",
+                status: 409 as const,
+            };
+        }
+        if (params.action === "request_approval" && current.ownerApprovalState === "requested") {
+            if (idempotencyRef) {
+                transaction.set(idempotencyRef, sanitizeForAdminFirestore({
+                    action: params.action,
+                    resultId: current.id,
+                    status: "completed",
+                    updatedAt: now,
+                }), { merge: true });
+            }
+            return { campaign: current, replayed: true };
+        }
+        if (params.action === "request_approval" && current.ownerApprovalState === "approved") {
+            return {
+                error: "This campaign pack is already approved.",
+                status: 409 as const,
+            };
+        }
+        if (params.action !== "request_approval" && current.ownerApprovalState !== "requested") {
+            return {
+                error: "This approval request was already resolved or is no longer waiting.",
+                status: 409 as const,
+            };
+        }
+
+        const ownerApprovalState: CampaignCueCampaign["ownerApprovalState"] = params.action === "request_approval"
+            ? "requested"
+            : params.action === "approve" ? "approved" : "rejected";
+        const updates: Partial<CampaignCueCampaign> = {
+            actionCounts: {
+                ...(current.actionCounts || {}),
+                [params.action]: Number(current.actionCounts?.[params.action] || 0) + 1,
+            },
+            ownerApprovalState,
+            updatedAt: now,
+        };
+        transaction.set(campaignRef, sanitizeForAdminFirestore(updates), { merge: true });
+        transaction.set(approvalRef, sanitizeForAdminFirestore({
+            id: approvalRef.id,
+            workspaceId: params.workspaceId,
+            campaignId: current.id,
+            outputId: params.outputId,
+            status: ownerApprovalState,
+            requestedBy: params.action === "request_approval" ? params.scope.userId : undefined,
+            requestedAt: params.action === "request_approval" ? now : undefined,
+            decidedBy: params.action === "request_approval" ? null : params.scope.userId,
+            decidedAt: params.action === "request_approval" ? null : now,
+            decisionNote: params.action === "request_approval" ? null : params.note || null,
+            createdAt: params.action === "request_approval" && current.ownerApprovalState === "not_requested"
+                ? now
+                : undefined,
+            updatedAt: now,
+        }), { merge: true });
+        transaction.set(eventRef, sanitizeForAdminFirestore({
+            id: eventRef.id,
+            workspaceId: params.workspaceId,
+            actorId: params.scope.userId,
+            action: `campaign_${params.action}`,
+            campaignId: current.id,
+            outputId: params.outputId,
+            metadata: { approvalState: ownerApprovalState },
+            confidence: "observed",
+            createdAt: now,
+        }));
+        if (params.action === "request_approval") {
+            transaction.set(summaryRef, buildDashboardSummaryIncrement({
+                action: params.action,
+                updatedAt: now,
+                workspaceId: params.workspaceId,
+            }), { merge: true });
+        }
+        if (idempotencyRef) {
+            transaction.set(idempotencyRef, sanitizeForAdminFirestore({
+                action: params.action,
+                resultId: current.id,
+                status: "completed",
+                updatedAt: now,
+            }), { merge: true });
+        }
+        return {
+            campaign: {
+                ...current,
+                ...updates,
+                actionCounts: updates.actionCounts || current.actionCounts,
+                ownerApprovalState,
+                updatedAt: now,
+            },
+        };
+    });
+
+    if (result.error && params.idempotencyKey) {
+        await completeIdempotency({
+            action: params.action,
+            idempotencyKey: params.idempotencyKey,
+            responseError: result.error,
+            responseStatus: result.status,
+            resultId: params.campaignId,
+            updatedAt: now,
+            workspaceId: params.workspaceId,
+        });
+    }
+    return result;
+}
+
 const CAMPAIGNCUE_TRUST_GATED_ACTIONS = new Set<CampaignCueActionType>([
     "download",
     "export",
@@ -2432,12 +2980,33 @@ const CAMPAIGNCUE_TRUST_GATED_ACTIONS = new Set<CampaignCueActionType>([
     "schedule",
 ]);
 
-function assertCampaignActionAllowed(campaign: CampaignCueCampaign, action: CampaignCueActionType) {
+function assertCampaignActionAllowed(
+    campaign: CampaignCueCampaign,
+    action: CampaignCueActionType,
+    workspace: CampaignCueWorkspace,
+) {
     if ((campaign.trustGate === "blocked" || campaign.trustGate === "needs_fix") && CAMPAIGNCUE_TRUST_GATED_ACTIONS.has(action)) {
         return "This campaign has a blocking trust issue.";
     }
+    if (CAMPAIGNCUE_TRUST_GATED_ACTIONS.has(action)) {
+        if (campaign.ownerApprovalState === "requested") {
+            return "This campaign is waiting for approval before manual use.";
+        }
+        if (campaign.ownerApprovalState === "rejected") {
+            return "This campaign was rejected. Review it and request approval again before manual use.";
+        }
+        if (workspace.agencyMode && campaign.ownerApprovalState !== "approved") {
+            return "Owner or client approval is required before manual use in this agency workspace.";
+        }
+    }
     return null;
 }
+
+const CAMPAIGNCUE_APPROVAL_ACTIONS = new Set<CampaignCueActionType>([
+    "request_approval",
+    "approve",
+    "reject",
+]);
 
 export async function recordCampaignCueActionServer(params: {
     campaignId: string;
@@ -2446,6 +3015,46 @@ export async function recordCampaignCueActionServer(params: {
 }) {
     const workspace = await ensureCampaignCueWorkspaceOnlyServer(params.scope);
     const workspaceId = workspace.workspaceId;
+    if (CAMPAIGNCUE_APPROVAL_ACTIONS.has(params.input.action)) {
+        if (
+            (params.input.action === "approve" || params.input.action === "reject")
+            && !CAMPAIGNCUE_APPROVAL_RESOLUTION_ROLES.has(campaignCueWorkspaceRole(workspace, params.scope.userId))
+        ) {
+            return { error: "This workspace role cannot approve or reject campaign packs.", status: 403 as const };
+        }
+        const approvalReplay = await checkIdempotency({
+            action: params.input.action,
+            idempotencyKey: params.input.idempotencyKey,
+            scope: params.scope,
+            workspaceId,
+        });
+        if (approvalReplay?.resultId) {
+            if (approvalReplay.resultId !== params.campaignId) {
+                throw new CampaignCueIdempotencyConflictError("This idempotency key was already used for another campaign.");
+            }
+            if (approvalReplay.responseError) {
+                return {
+                    error: approvalReplay.responseError,
+                    replayed: true,
+                    status: approvalReplay.responseStatus === 404 ? 404 as const : 409 as const,
+                };
+            }
+            const replayCampaign = await readCampaign(workspaceId, params.campaignId);
+            return replayCampaign
+                ? { campaign: replayCampaign, replayed: true }
+                : { error: "Campaign not found", status: 404 as const };
+        }
+        return recordCampaignCueApprovalActionTransactional({
+            action: params.input.action as CampaignCueApprovalAction,
+            campaignId: params.campaignId,
+            idempotencyKey: params.input.idempotencyKey,
+            note: params.input.note,
+            outputId: params.input.outputId,
+            scope: params.scope,
+            workspaceId,
+        });
+    }
+
     const campaign = await readCampaign(workspaceId, params.campaignId);
     if (!campaign) {
         return { error: "Campaign not found", status: 404 as const };
@@ -2470,7 +3079,29 @@ export async function recordCampaignCueActionServer(params: {
         }
         return { campaign, replayed: true };
     }
-    const actionError = assertCampaignActionAllowed(campaign, params.input.action);
+    let actionError = assertCampaignActionAllowed(campaign, params.input.action, workspace);
+    if (!actionError && CAMPAIGNCUE_TRUST_GATED_ACTIONS.has(params.input.action) && campaign.pack?.patternCueSourceHash) {
+        const currentPatternHash = workspace.patternCueSource?.patternCue?.sourceHash;
+        if (!currentPatternHash || currentPatternHash !== campaign.pack.patternCueSourceHash) {
+            actionError = "The example format changed after this pack was created. Create a fresh pack before public use.";
+        }
+    }
+    if (!actionError && CAMPAIGNCUE_TRUST_GATED_ACTIONS.has(params.input.action) && campaign.pack?.freshness?.sourceHash) {
+        const currentSourceSnapshot = await readSourceSnapshot(workspaceId);
+        if (!currentSourceSnapshot?.sourceHash) {
+            actionError = "Campaign facts could not be rechecked. Refresh the workspace before public use.";
+        } else {
+            const freshness = evaluateCampaignCuePackFreshness({
+                currentSourceHash: currentSourceSnapshot.sourceHash,
+                freshness: campaign.pack.freshness,
+            });
+            if (freshness.status === "stale") {
+                actionError = "Business facts changed after this pack was created. Create a fresh pack before public use.";
+            } else if (freshness.status === "expired") {
+                actionError = "This pack has expired. Confirm current stock, slots, dates, and offers, then create a fresh pack.";
+            }
+        }
+    }
     if (actionError) {
         const blockedAt = nowTimestamp();
         const blockedBatch = firestoreAdmin.batch();
@@ -2510,7 +3141,8 @@ export async function recordCampaignCueActionServer(params: {
         const resultSignalId = params.input.resultSignalId;
         const isNotUseful = resultSignalId === "not_useful";
         const isNotUsed = resultSignalId === "not_used";
-        updates.status = "used";
+        const receipt = params.input.resultReceipt;
+        updates.status = isNotUsed ? campaign.status : "used";
         updates.resultMemory = {
             ...(campaign.resultMemory || {}),
             lastSignalId: resultSignalId,
@@ -2518,10 +3150,19 @@ export async function recordCampaignCueActionServer(params: {
             lastRecordedAt: now,
             usefulCount: Number(campaign.resultMemory?.usefulCount || 0) + (!isNotUseful && !isNotUsed ? 1 : 0),
             notUsefulCount: Number(campaign.resultMemory?.notUsefulCount || 0) + (isNotUseful ? 1 : 0),
+            lastReceipt: {
+                signalId: resultSignalId,
+                channel: params.input.channel,
+                usedAt: isNotUsed ? undefined : receipt?.usedAt || now,
+                metrics: isNotUsed ? {} : receipt?.metrics || {},
+                evidenceNote: receipt?.evidenceNote || params.input.note,
+                experimentVariable: receipt?.experimentVariable || campaign.pack?.experiment?.variable,
+                confidence: "owner_reported",
+                recordedAt: now,
+            },
         };
     }
     if (params.input.action === "schedule") updates.status = "scheduled";
-    if (params.input.action === "request_approval") updates.ownerApprovalState = "requested";
 
     const batch = firestoreAdmin.batch();
     const campaignRef = workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.CAMPAIGNS).doc(campaign.id);
@@ -2540,29 +3181,14 @@ export async function recordCampaignCueActionServer(params: {
             scheduledAt: params.input.scheduledAt || null,
             timezone: workspace.settings.timezone,
             note: params.input.note || "Manual CampaignCue task",
+            taskType: params.input.taskType || "post",
+            assigneeLabel: params.input.staffAssignee,
             createdAt: now,
             updatedAt: now,
         };
         batch.set(
             workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.SCHEDULES).doc(schedule.id),
             sanitizeForAdminFirestore(schedule),
-        );
-    }
-
-    if (params.input.action === "request_approval") {
-        const approvalId = buildId(CAMPAIGNCUE_APPROVAL_ID_PREFIX);
-        batch.set(
-            workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.APPROVAL_REQUESTS).doc(approvalId),
-            sanitizeForAdminFirestore({
-                id: approvalId,
-                workspaceId,
-                campaignId: campaign.id,
-                outputId: params.input.outputId,
-                status: "requested",
-                actorId: params.scope.userId,
-                createdAt: now,
-                updatedAt: now,
-            }),
         );
     }
 
@@ -2582,8 +3208,10 @@ export async function recordCampaignCueActionServer(params: {
             metadata: params.input.action === "record_outcome" ? {
                 note: params.input.note || "Owner reported a result.",
                 resultSignalId: params.input.resultSignalId,
+                metrics: updates.resultMemory?.lastReceipt?.metrics || {},
+                experimentVariable: updates.resultMemory?.lastReceipt?.experimentVariable,
             } : {},
-            confidence: "observed",
+            confidence: params.input.action === "record_outcome" ? "owner_reported" : "observed",
             createdAt: now,
         }),
     );
@@ -2720,17 +3348,34 @@ export async function createCampaignCueSourceInputServer(params: {
     const { businessBrain, workspace } = await ensureCampaignCueWorkspaceServer(params.scope);
     const workspaceId = workspace.workspaceId;
     const now = nowTimestamp();
-    const id = buildId("cc_source");
+    const id = params.input.sourceType === "inspiration_pattern"
+        ? "cc_source_pattern_current"
+        : buildId("cc_source");
+    if (params.input.sourceType === "inspiration_pattern" && !FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_PATTERN_CUE) {
+        throw new Error("Pattern Cue is disabled");
+    }
+    const patternCue = params.input.sourceType === "inspiration_pattern" && params.input.inspiration
+        ? buildCampaignCuePatternCueObservation({
+            businessBrain,
+            durationSeconds: params.input.inspiration.durationSeconds,
+            ownerTakeaway: params.input.inspiration.ownerTakeaway,
+            platform: params.input.inspiration.platform,
+            rightsStatus: params.input.inspiration.rightsStatus,
+            sourceUrl: params.input.inspiration.sourceUrl,
+            transcriptOrNotes: params.input.inspiration.transcriptOrNotes,
+        })
+        : undefined;
     const sourceInput: CampaignCueSourceInput = {
         id,
         workspaceId,
         sourceType: params.input.sourceType,
         label: params.input.label,
-        value: params.input.value,
+        value: patternCue?.summary || params.input.value,
         status: params.input.status,
-        confidence: params.input.status === "active" ? "manual" : "estimated",
-        sourceRefs: ["owner_input"],
+        confidence: patternCue ? "estimated" : params.input.status === "active" ? "manual" : "estimated",
+        sourceRefs: patternCue ? [`pattern:${patternCue.sourceHash}`] : ["owner_input"],
         facts: [],
+        patternCue,
         expiresAt: params.input.expiresAt
             ? admin.firestore.Timestamp.fromDate(new Date(params.input.expiresAt))
             : null,
@@ -2745,10 +3390,18 @@ export async function createCampaignCueSourceInputServer(params: {
         sourceInput,
     });
     const batch = firestoreAdmin.batch();
-    batch.set(
-        workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.SOURCE_INPUTS).doc(sourceInput.id),
-        sanitizeForAdminFirestore(sourceInput),
-    );
+    if (patternCue) {
+        batch.set(
+            workspaceRef(workspaceId),
+            sanitizeForAdminFirestore({ patternCueSource: sourceInput, updatedAt: now }),
+            { merge: true },
+        );
+    } else {
+        batch.set(
+            workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.SOURCE_INPUTS).doc(sourceInput.id),
+            sanitizeForAdminFirestore(sourceInput),
+        );
+    }
     batch.set(
         workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.SOURCE_SNAPSHOTS).doc(defaultSourceSnapshotId),
         sanitizeForAdminFirestore(sourceSnapshot),
@@ -2819,12 +3472,15 @@ export async function patchCampaignCueBusinessServer(params: {
 }): Promise<{
     businessBrain: CampaignCueBusinessBrain;
     opportunities: CampaignCueOpportunity[];
+    sourceHash: string;
     sourceFacts: CampaignCueSourceFact[];
     workspace: CampaignCueWorkspace;
 }> {
     const { workspace, businessBrain } = await ensureCampaignCueWorkspaceServer(params.scope);
     const workspaceId = workspace.workspaceId;
     const existingSnapshot = await readSourceSnapshot(workspaceId);
+    const updatedAt = nowTimestamp();
+    const nextLocale = params.input.locale ?? businessBrain.locale;
     const next: CampaignCueBusinessBrain = {
         ...businessBrain,
         businessType: params.input.businessType || businessBrain.businessType,
@@ -2845,9 +3501,26 @@ export async function patchCampaignCueBusinessServer(params: {
             voice: params.input.voice ?? businessBrain.brandKit.voice,
             playbook: mergeBrandPlaybookPatch(businessBrain.brandKit.playbook, params.input),
         },
-        locale: params.input.locale ?? businessBrain.locale,
+        locale: nextLocale,
         timezone: params.input.timezone ?? businessBrain.timezone,
-        updatedAt: nowTimestamp(),
+        operatingPulse: normalizeCampaignCueOperatingPulse({
+            ...businessBrain.operatingPulse,
+            ...(params.input.operatingPulse || {}),
+            updatedAt: params.input.operatingPulse ? updatedAt : businessBrain.operatingPulse?.updatedAt,
+        }),
+        commercialPolicy: normalizeCampaignCueCommercialPolicy({
+            ...businessBrain.commercialPolicy,
+            ...(params.input.commercialPolicy || {}),
+        }),
+        presence: normalizeCampaignCuePresenceProfile({
+            ...businessBrain.presence,
+            ...(params.input.presence || {}),
+        }),
+        languagePolicy: normalizeCampaignCueLanguagePolicy({
+            ...businessBrain.languagePolicy,
+            targetLocales: params.input.targetLocales ?? businessBrain.languagePolicy?.targetLocales,
+        }, nextLocale),
+        updatedAt,
     };
     const sourceSnapshot = buildSourceSnapshotFromExistingSnapshot({
         businessBrain: next,
@@ -2863,7 +3536,7 @@ export async function patchCampaignCueBusinessServer(params: {
             deliveryMode: CAMPAIGNCUE_DELIVERY_MODE,
             billingEnabled: Boolean(FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_BILLING),
         },
-        updatedAt: nowTimestamp(),
+        updatedAt,
     };
     const batch = firestoreAdmin.batch();
     batch.set(
@@ -2891,6 +3564,7 @@ export async function patchCampaignCueBusinessServer(params: {
     return {
         businessBrain: next,
         opportunities: buildCampaignCueOpportunities({ businessBrain: next, sourceSnapshot, workspaceId }),
+        sourceHash: sourceSnapshot.sourceHash,
         sourceFacts: sourceSnapshot.facts,
         workspace: updatedWorkspace,
     };

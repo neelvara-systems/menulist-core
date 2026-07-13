@@ -1,7 +1,10 @@
 'use client'
 
 import ArticleView from '@organisms/ArticleView';
-import { Badge, Button, Card, Flex, Space, Tag, Tooltip, Typography, theme } from 'antd';
+import { getArticleById } from '@database/knowledgeBase/articles';
+import type { ChatReference } from '@type/chatSession';
+import type { KnowledgeBaseArticleType } from '@type/knowledgeBase';
+import { Button, Card, Flex, Space, Tag, Tooltip, Typography, message, theme } from 'antd';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useState } from 'react';
 import { LuArrowRight, LuChevronDown, LuChevronUp, LuFileText, LuMaximize2 } from 'react-icons/lu';
@@ -9,8 +12,8 @@ import { LuArrowRight, LuChevronDown, LuChevronUp, LuFileText, LuMaximize2 } fro
 const { Text } = Typography;
 
 interface MessageReferencesProps {
-    references: any[];
-    onArticleModalOpen: (article: any) => void;
+    references: ChatReference[];
+    onArticleModalOpen: (article: ChatReference | KnowledgeBaseArticleType) => void;
     showConfidenceScores?: boolean; // Admin-only feature
     isMobile?: boolean;
 }
@@ -30,6 +33,8 @@ const getConfidenceInfo = (score?: number) => {
 const MessageReferences = ({ references, onArticleModalOpen, showConfidenceScores = false, isMobile = false }: MessageReferencesProps) => {
     const { token } = theme.useToken();
     const [expandedArticleId, setExpandedArticleId] = useState<string | null>(null);
+    const [loadingArticleId, setLoadingArticleId] = useState<string | null>(null);
+    const [resolvedArticles, setResolvedArticles] = useState<Record<string, KnowledgeBaseArticleType>>({});
 
     if (!references || references.length === 0) {
         return null;
@@ -42,6 +47,42 @@ const MessageReferences = ({ references, onArticleModalOpen, showConfidenceScore
         return scoreB - scoreA; // Descending order
     });
 
+    const resolveFullArticle = async (
+        reference: ChatReference,
+    ): Promise<ChatReference | KnowledgeBaseArticleType | null> => {
+        if (reference.content) return reference;
+        if (resolvedArticles[reference.id]) return resolvedArticles[reference.id];
+        setLoadingArticleId(reference.id);
+        try {
+            const article = await getArticleById(reference.id);
+            if (!article) {
+                message.warning('This help article is no longer available.');
+                return null;
+            }
+            setResolvedArticles((current) => ({ ...current, [reference.id]: article }));
+            return article;
+        } catch {
+            message.error('Unable to load this help article.');
+            return null;
+        } finally {
+            setLoadingArticleId((current) => current === reference.id ? null : current);
+        }
+    };
+
+    const togglePreview = async (reference: ChatReference) => {
+        if (expandedArticleId === reference.id) {
+            setExpandedArticleId(null);
+            return;
+        }
+        const article = await resolveFullArticle(reference);
+        if (article) setExpandedArticleId(reference.id);
+    };
+
+    const openFullArticle = async (reference: ChatReference) => {
+        const article = await resolveFullArticle(reference);
+        if (article) onArticleModalOpen(article);
+    };
+
     return (
         <div style={{ marginTop: 16, paddingTop: 16, borderTop: `1px solid ${token.colorBorder}` }}>
             <Text strong style={{ fontSize: 11, color: token.colorTextSecondary, display: 'block', marginBottom: 12, letterSpacing: 0.5 }}>
@@ -50,6 +91,8 @@ const MessageReferences = ({ references, onArticleModalOpen, showConfidenceScore
             <Space direction="vertical" size={8} style={{ width: '100%' }}>
                 {sortedReferences.map((ref) => {
                     const isExpanded = expandedArticleId === ref.id;
+                    const resolvedReference = resolvedArticles[ref.id] || ref;
+                    const isLoading = loadingArticleId === ref.id;
                     return (
                         <motion.div
                             key={ref.id}
@@ -79,7 +122,7 @@ const MessageReferences = ({ references, onArticleModalOpen, showConfidenceScore
                                                         color: token.colorPrimary,
                                                         lineHeight: 1.35,
                                                     }}
-                                                    onClick={() => setExpandedArticleId(isExpanded ? null : ref.id)}
+                                                    onClick={() => void togglePreview(ref)}
                                                 >
                                                     {ref.title}
                                                 </Text>
@@ -120,7 +163,8 @@ const MessageReferences = ({ references, onArticleModalOpen, showConfidenceScore
                                                         {isExpanded ? <LuChevronUp size={14} /> : <LuChevronDown size={14} />}
                                                     </motion.span>
                                                 }
-                                                onClick={() => setExpandedArticleId(isExpanded ? null : ref.id)}
+                                                loading={isLoading}
+                                                onClick={() => void togglePreview(ref)}
                                                 style={{ borderRadius: 8 }}
                                             >
                                                 {isMobile ? null : (isExpanded ? 'Hide' : 'Preview')}
@@ -131,7 +175,8 @@ const MessageReferences = ({ references, onArticleModalOpen, showConfidenceScore
                                                 type="text"
                                                 size="small"
                                                 icon={<LuMaximize2 size={14} />}
-                                                onClick={() => onArticleModalOpen(ref)}
+                                                loading={isLoading}
+                                                onClick={() => void openFullArticle(ref)}
                                                 style={{ borderRadius: 8 }}
                                             />
                                         </Tooltip>
@@ -141,7 +186,7 @@ const MessageReferences = ({ references, onArticleModalOpen, showConfidenceScore
 
                             {/* Expandable Article Preview - Backend returns full article */}
                             <AnimatePresence mode="wait">
-                                {isExpanded && ref.content && (
+                                {isExpanded && resolvedReference.content && (
                                     <motion.div
                                         key={`preview-${ref.id}`}
                                         initial={{ opacity: 0, height: 0, marginTop: 0 }}
@@ -172,7 +217,7 @@ const MessageReferences = ({ references, onArticleModalOpen, showConfidenceScore
                                         }}
                                     >
                                         <ArticleView
-                                            article={ref}
+                                            article={resolvedReference as KnowledgeBaseArticleType}
                                             mode="preview"
                                             showBreadcrumbs={false}
                                             showTags={false}
@@ -185,7 +230,7 @@ const MessageReferences = ({ references, onArticleModalOpen, showConfidenceScore
                                             <Button
                                                 icon={<LuArrowRight />}
                                                 type="text"
-                                                onClick={() => onArticleModalOpen(ref)}
+                                                onClick={() => void openFullArticle(ref)}
                                                 style={{ borderRadius: 8 }}
                                             >
                                                 View full article

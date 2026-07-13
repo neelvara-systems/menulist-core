@@ -4,6 +4,15 @@ import { isFeatureEnabled } from '@config/features';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { FirestoreSubscriptionDoc } from '@type/razorpay';
 import type { CancellationReasonCode } from '@lib/billing/cancellationReasons';
+import {
+    createCheckoutDismissedError,
+    createPaymentStatusError,
+    isPaymentCheckoutDismissedError,
+    isRazorpayPaymentResponse,
+    MAX_SUBSCRIPTION_QUANTITY,
+    normalizeSubscriptionQuantity,
+    type RazorpayPaymentResponse,
+} from '@lib/billing/paymentCheckoutBoundary';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { useSession } from 'next-auth/react';
 import { useCallback, useState } from 'react';
@@ -12,9 +21,26 @@ import useRazorpayScript from './useRazorpayScript';
 
 declare global {
     interface Window {
-        Razorpay: any;
+        Razorpay: new (options: RazorpayCheckoutOptions) => { open: () => void };
     }
 }
+
+type SubscriptionCheckoutResult = RazorpayPaymentResponse & {
+    subscriptionId: string;
+};
+
+type TopupCheckoutResult = RazorpayPaymentResponse & PaymentTopupVerifyResponse;
+
+type RazorpayCheckoutOptions = {
+    description: string;
+    handler: (response: unknown) => void;
+    key: string | undefined;
+    modal: { ondismiss: () => void };
+    name: string;
+    order_id?: string;
+    prefill: { email: string; name: string };
+    subscription_id?: string;
+};
 
 type PaymentHandlerOptions = {
     productId?: ProductId;
@@ -30,14 +56,18 @@ const PAYMENT_ROUTE_REQUEST_OPTIONS: Pick<RequestInit, 'cache' | 'credentials' |
     redirect: 'manual',
 };
 
-const createPaymentStatusError = (message: string, code: string, status?: number) => {
-    const error = new Error(message) as Error & { code?: string; status?: number };
-    error.code = code;
-    if (typeof status === 'number') {
-        error.status = status;
-    }
-    return error;
+const isBoundedProviderString = (value: unknown): value is string => (
+    typeof value === 'string' && value.length > 0 && value.length <= 512
+);
+
+const isScopeIdentifier = (value: unknown): value is string | number => {
+    const raw = typeof value === 'string' || typeof value === 'number' ? String(value) : '';
+    if (!/^[1-9]\d*$/.test(raw)) return false;
+    const numeric = Number(raw);
+    return Number.isSafeInteger(numeric) && String(numeric) === raw;
 };
+
+export { isPaymentCheckoutDismissedError } from '@lib/billing/paymentCheckoutBoundary';
 
 type PaymentSubscriptionActionResponse = {
     success: true;
@@ -159,89 +189,105 @@ const usePaymentHandler = (dispatcher: any, options: PaymentHandlerOptions = {})
         throw createPaymentStatusError(failureMessage, failureCode, response.status);
     }, [buildPaymentLogContext, readPaymentResponseJson]);
 
-    const createSubscription = async (plan: Plan, currency: Currency, user: any, quantity: number = 1) => {
-        return new Promise<void>(async (resolve, reject) => {
-            const subscriptionQuantity = Math.max(1, Number(quantity || 1));
-            try {
-                dispatcher(startLoader("Creating Subscription"));
-                const subResponse = await fetch('/api/razorpay/create-subscription', {
-                    ...PAYMENT_ROUTE_REQUEST_OPTIONS,
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        planId: plan.planId,
-                        productId,
-                        interval: plan.billingInterval,
-                        currency,
-                        userType: plan.type,
-                        quantity: subscriptionQuantity
-                        // ✅ Backend gets tenantId/storeId from session (secure)
-                    })
-                });
+    const createSubscription = async (
+        plan: Plan,
+        currency: Currency,
+        quantity: number = 1,
+    ): Promise<SubscriptionCheckoutResult> => {
+        const subscriptionQuantity = normalizeSubscriptionQuantity(quantity);
+        let subscriptionId: string;
 
-                if (!subResponse.ok) {
-                    await readPaymentResponseJson(subResponse, 'create_subscription_rejected', {
-                        ...getBoundedPaymentStringContext('planId', plan.planId),
-                        quantity: subscriptionQuantity,
-                    });
-                    dispatcher(stopLoader("Creating Subscription"));
-                    throw createPaymentStatusError(
-                        'Failed to create subscription.',
-                        'payment_subscription_create_rejected',
-                        subResponse.status,
-                    );
-                }
-                const subscriptionPayload = await readPaymentResponseJson<{ subscription?: { id?: string } }>(subResponse, 'create_subscription_response', {
+        dispatcher(startLoader("Creating Subscription"));
+        try {
+            const subResponse = await fetch('/api/razorpay/create-subscription', {
+                ...PAYMENT_ROUTE_REQUEST_OPTIONS,
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    planId: plan.planId,
+                    productId,
+                    interval: plan.billingInterval,
+                    currency,
+                    userType: plan.type,
+                    quantity: subscriptionQuantity
+                })
+            });
+
+            if (!subResponse.ok) {
+                await readPaymentResponseJson(subResponse, 'create_subscription_rejected', {
                     ...getBoundedPaymentStringContext('planId', plan.planId),
                     quantity: subscriptionQuantity,
                 });
-                const subscription = subscriptionPayload?.subscription;
-                if (!subscription?.id) {
-                    throw createPaymentStatusError(
-                        'Failed to create subscription.',
-                        'payment_subscription_create_response_invalid',
-                        subResponse.status,
-                    );
-                }
-                const options = {
-                    key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-                    subscription_id: subscription.id,
-                    name: subscriptionCheckoutName,
-                    description: subscriptionQuantity > 1
-                        ? `${plan.name} for ${subscriptionQuantity} locations`
-                        : plan.name,
-                    handler: function (response: any) {
-                        dispatcher(startLoader("Creating Subscription"));
-                        verifySubscriptionPaymentResponse(response).then(() => {
-                            dispatcher(stopLoader("Creating Subscription"));
-                            resolve({ ...response, subscriptionId: subscription.id });
+                throw createPaymentStatusError(
+                    'Failed to create subscription.',
+                    'payment_subscription_create_rejected',
+                    subResponse.status,
+                );
+            }
+            const subscriptionPayload = await readPaymentResponseJson<unknown>(subResponse, 'create_subscription_response', {
+                ...getBoundedPaymentStringContext('planId', plan.planId),
+                quantity: subscriptionQuantity,
+            });
+            const subscription = isRecord(subscriptionPayload) && isRecord(subscriptionPayload.subscription)
+                ? subscriptionPayload.subscription
+                : null;
+            if (!subscription || !isBoundedProviderString(subscription.id)) {
+                throw createPaymentStatusError(
+                    'Failed to create subscription.',
+                    'payment_subscription_create_response_invalid',
+                    subResponse.status,
+                );
+            }
+            subscriptionId = subscription.id;
+        } catch (error) {
+            logPaymentFailure('payment_subscription_create_failed', error, buildPaymentLogContext('create_subscription', {
+                ...getBoundedPaymentStringContext('planId', plan.planId),
+                quantity: subscriptionQuantity,
+            }));
+            throw error;
+        } finally {
+            dispatcher(stopLoader("Creating Subscription"));
+        }
+
+        return new Promise<SubscriptionCheckoutResult>((resolve, reject) => {
+            const options: RazorpayCheckoutOptions = {
+                key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+                subscription_id: subscriptionId,
+                name: subscriptionCheckoutName,
+                description: subscriptionQuantity > 1
+                    ? `${plan.name} for ${subscriptionQuantity} locations`
+                    : plan.name,
+                handler: (response: unknown) => {
+                    dispatcher(startLoader("Creating Subscription"));
+                    void verifySubscriptionPaymentResponse(response)
+                        .then((verifiedResponse) => {
+                            resolve({ ...verifiedResponse, subscriptionId });
                         })
-                            .catch((error) => {
-                                logPaymentFailure('payment_subscription_verify_failed', error, buildPaymentLogContext('create_subscription_handler', {
-                                    ...getBoundedPaymentStringContext('planId', plan.planId),
-                                    quantity: subscriptionQuantity,
-                                }));
-                                dispatcher(stopLoader("Creating Subscription"));
-                                reject(error);
-                            })
-                    },
-                    prefill: {
-                        name: session?.user?.name || '',
-                        email: session?.user?.email || '',
-                    },
-                };
-                dispatcher(stopLoader("Creating Subscription"));
-                const paymentObject = new window.Razorpay(options);
-                paymentObject.open();
+                        .catch((error) => {
+                            logPaymentFailure('payment_subscription_verify_failed', error, buildPaymentLogContext('create_subscription_handler', {
+                                ...getBoundedPaymentStringContext('planId', plan.planId),
+                                quantity: subscriptionQuantity,
+                            }));
+                            reject(error);
+                        })
+                        .finally(() => dispatcher(stopLoader("Creating Subscription")));
+                },
+                modal: { ondismiss: () => reject(createCheckoutDismissedError()) },
+                prefill: {
+                    name: session?.user?.name || '',
+                    email: session?.user?.email || '',
+                },
+            };
+
+            try {
+                new window.Razorpay(options).open();
             } catch (error) {
-                dispatcher(stopLoader("Creating Subscription"));
-                logPaymentFailure('payment_subscription_create_failed', error, buildPaymentLogContext('create_subscription', {
+                logPaymentFailure('payment_subscription_checkout_open_failed', error, buildPaymentLogContext('create_subscription_checkout', {
                     ...getBoundedPaymentStringContext('planId', plan.planId),
-                    quantity: subscriptionQuantity,
                 }));
                 reject(error);
             }
-        })
+        });
     }
 
     const onClickPaymentCard = async (plan: Plan, currency: Currency, onAuthRequired: () => void, quantity: number = 1) => {
@@ -251,20 +297,24 @@ const usePaymentHandler = (dispatcher: any, options: PaymentHandlerOptions = {})
             return;
         }
         if (!isScriptLoaded) {
-            return;
+            throw createPaymentStatusError(
+                'Razorpay checkout is not available.',
+                'payment_checkout_unavailable',
+            );
         }
-        return new Promise<void>(async (resolve, reject) => {
-            try {
-                const paymentResponse = await createSubscription(plan, currency, session?.user, quantity);
-                resolve(paymentResponse);
-            } catch (error) {
+        try {
+            return await createSubscription(plan, currency, quantity);
+        } catch (error) {
+            if (!isPaymentCheckoutDismissedError(error)) {
                 logPaymentFailure('payment_card_click_failed', error, buildPaymentLogContext('payment_card_click', {
                     ...getBoundedPaymentStringContext('planId', plan.planId),
-                    quantity: Math.max(1, Number(quantity || 1)),
+                    requestedQuantityValid: Number.isSafeInteger(quantity)
+                        && quantity >= 1
+                        && quantity <= MAX_SUBSCRIPTION_QUANTITY,
                 }));
-                reject(error);
             }
-        })
+            throw error;
+        }
     };
 
     const onCancelSubscription = async ({
@@ -390,72 +440,95 @@ const usePaymentHandler = (dispatcher: any, options: PaymentHandlerOptions = {})
 
     const onUpgradePlan = async (currentPlan: FirestoreSubscriptionDoc, newPlan: Plan, currency: Currency, quantity?: number) => {
         if (!isScriptLoaded) {
-            return;
+            throw createPaymentStatusError(
+                'Razorpay checkout is not available.',
+                'payment_checkout_unavailable',
+            );
         }
-        const targetQuantity = Math.max(1, Number(quantity || currentPlan.quantity || 1));
-        return new Promise<any>(async (resolve, reject) => {
-            try {
-                const paymentResponse: any = await createSubscription(newPlan, currency, session?.user, targetQuantity);
-                await handleUpgradeSubscription({ nSi: paymentResponse.subscriptionId, oSi: currentPlan.providerSubscriptionId });
-                resolve(paymentResponse);
-            } catch (error) {
+        const targetQuantity = normalizeSubscriptionQuantity(quantity ?? currentPlan.quantity ?? 1);
+        try {
+            const paymentResponse = await createSubscription(newPlan, currency, targetQuantity);
+            await handleUpgradeSubscription({ nSi: paymentResponse.subscriptionId, oSi: currentPlan.providerSubscriptionId });
+            return paymentResponse;
+        } catch (error) {
+            if (!isPaymentCheckoutDismissedError(error)) {
                 logPaymentFailure('payment_upgrade_failed', error, buildPaymentLogContext('upgrade_plan', {
                     ...getBoundedPaymentStringContext('newPlanId', newPlan.planId),
                     ...getBoundedPaymentStringContext('oldSubscriptionId', currentPlan.providerSubscriptionId),
                     quantity: targetQuantity,
                 }));
-                reject(error);
             }
-        })
+            throw error;
+        }
     };
 
-    const handleTopupPurchase = async (pack: AIEnhancementPack, currency: Currency) => {
-        return new Promise<any>(async (resolve, reject) => {
-            const loaderLabel = "Processing Topup Payment";
-            if (!isScriptLoaded) {
-                reject(new Error('Razorpay checkout is not available.'));
-                return;
-            }
-            try {
-                dispatcher(startLoader(loaderLabel));
-                const response = await fetch('/api/razorpay/create-topup-order', {
-                    ...PAYMENT_ROUTE_REQUEST_OPTIONS,
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ productId, packId: pack.packId, currency }),
-                });
+    const handleTopupPurchase = async (pack: AIEnhancementPack, currency: Currency): Promise<TopupCheckoutResult> => {
+        const loaderLabel = "Processing Topup Payment";
+        if (!isScriptLoaded) {
+            throw new Error('Razorpay checkout is not available.');
+        }
 
-                if (!response.ok) {
-                    await readPaymentResponseJson(response, 'topup_order_create_rejected', {
-                        ...getBoundedPaymentStringContext('packId', pack.packId),
-                    });
-                    dispatcher(stopLoader(loaderLabel));
-                    throw createPaymentStatusError(
-                        'Failed to create top-up order.',
-                        'payment_topup_order_create_rejected',
-                        response.status,
-                    );
-                }
+        let orderId: string;
+        dispatcher(startLoader(loaderLabel));
+        try {
+            const response = await fetch('/api/razorpay/create-topup-order', {
+                ...PAYMENT_ROUTE_REQUEST_OPTIONS,
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ productId, packId: pack.packId, currency }),
+            });
 
-                const topupOrderPayload = await readPaymentResponseJson<{ order?: { id?: string } }>(response, 'topup_order_create_response', {
+            if (!response.ok) {
+                await readPaymentResponseJson(response, 'topup_order_create_rejected', {
                     ...getBoundedPaymentStringContext('packId', pack.packId),
                 });
-                const order = topupOrderPayload?.order;
-                if (!order?.id) {
-                    throw createPaymentStatusError(
-                        'Failed to create top-up order.',
-                        'payment_topup_order_create_response_invalid',
-                        response.status,
-                    );
-                }
-                const options = {
-                    key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-                    order_id: order.id,
-                    name: topupCheckoutName,
-                    description: pack.name,
-                    handler: async function (response: any) {
-                        //this loader starts just after payment success
-                        dispatcher(startLoader(loaderLabel));
+                throw createPaymentStatusError(
+                    'Failed to create top-up order.',
+                    'payment_topup_order_create_rejected',
+                    response.status,
+                );
+            }
+
+            const topupOrderPayload = await readPaymentResponseJson<unknown>(response, 'topup_order_create_response', {
+                ...getBoundedPaymentStringContext('packId', pack.packId),
+            });
+            const order = isRecord(topupOrderPayload) && isRecord(topupOrderPayload.order)
+                ? topupOrderPayload.order
+                : null;
+            if (!order || !isBoundedProviderString(order.id)) {
+                throw createPaymentStatusError(
+                    'Failed to create top-up order.',
+                    'payment_topup_order_create_response_invalid',
+                    response.status,
+                );
+            }
+            orderId = order.id;
+        } catch (error) {
+            logPaymentFailure('payment_topup_failed', error, buildPaymentLogContext('topup_purchase', {
+                ...getBoundedPaymentStringContext('packId', pack.packId),
+            }));
+            throw error;
+        } finally {
+            dispatcher(stopLoader(loaderLabel));
+        }
+
+        return new Promise<TopupCheckoutResult>((resolve, reject) => {
+            const options: RazorpayCheckoutOptions = {
+                key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+                order_id: orderId,
+                name: topupCheckoutName,
+                description: pack.name,
+                handler: (response: unknown) => {
+                    if (!isRazorpayPaymentResponse(response, 'topup')) {
+                        reject(createPaymentStatusError(
+                            'Payment response is invalid.',
+                            'payment_topup_response_invalid',
+                        ));
+                        return;
+                    }
+
+                    dispatcher(startLoader(loaderLabel));
+                    void (async () => {
                         try {
                             const verificationResponse = await fetch('/api/razorpay/verify-topup', {
                                 ...PAYMENT_ROUTE_REQUEST_OPTIONS,
@@ -464,7 +537,7 @@ const usePaymentHandler = (dispatcher: any, options: PaymentHandlerOptions = {})
                                 body: JSON.stringify({
                                     razorpay_payment_id: response.razorpay_payment_id,
                                     productId,
-                                    razorpay_order_id: order.id,
+                                    razorpay_order_id: orderId,
                                     razorpay_signature: response.razorpay_signature,
                                 }),
                             });
@@ -476,9 +549,7 @@ const usePaymentHandler = (dispatcher: any, options: PaymentHandlerOptions = {})
                                 'payment_topup_verify_rejected',
                                 'payment_topup_verify_response_invalid',
                                 'Payment verification failed.',
-                                {
-                                    ...getBoundedPaymentStringContext('packId', pack.packId),
-                                },
+                                { ...getBoundedPaymentStringContext('packId', pack.packId) },
                             );
                             resolve({ ...response, ...result });
                         } catch (error) {
@@ -489,27 +560,29 @@ const usePaymentHandler = (dispatcher: any, options: PaymentHandlerOptions = {})
                         } finally {
                             dispatcher(stopLoader(loaderLabel));
                         }
-                    },
-                    prefill: {
-                        name: session?.user?.name || '',
-                        email: session?.user?.email || '',
-                    }
-                };
-                dispatcher(stopLoader(loaderLabel));//this loader stops just before opening the payment modal
-                const paymentObject = new window.Razorpay(options);
-                paymentObject.open();
+                    })();
+                },
+                modal: { ondismiss: () => reject(createCheckoutDismissedError()) },
+                prefill: {
+                    name: session?.user?.name || '',
+                    email: session?.user?.email || '',
+                }
+            };
+
+            try {
+                new window.Razorpay(options).open();
             } catch (error) {
-                logPaymentFailure('payment_topup_failed', error, buildPaymentLogContext('topup_purchase', {
+                logPaymentFailure('payment_topup_checkout_open_failed', error, buildPaymentLogContext('topup_checkout', {
                     ...getBoundedPaymentStringContext('packId', pack.packId),
                 }));
-                dispatcher(stopLoader(loaderLabel));
                 reject(error);
             }
-        })
+        });
     };
 
     const executePostOnboarding = useCallback(async (purchaseIntent: PurchaseIntent) => {
-        return new Promise<void>(async (resolve, reject) => {
+        return new Promise<SubscriptionCheckoutResult>((resolve, reject) => {
+            void (async () => {
             const purchaseIntentString = localStorage.getItem('purchaseIntent');
 
             if (!purchaseIntentString) {
@@ -568,21 +641,22 @@ const usePaymentHandler = (dispatcher: any, options: PaymentHandlerOptions = {})
                     );
                 }
 
-                const onboardingPayload = await readPaymentResponseJson<{
-                    subscription?: { id?: string };
-                    tenantId?: string;
-                    storeId?: string;
-                }>(response, 'post_onboarding_subscription_create_response', {
+                const onboardingPayload = await readPaymentResponseJson<unknown>(response, 'post_onboarding_subscription_create_response', {
                     ...getBoundedPaymentStringContext('planId', plan.planId),
                 });
-                const { subscription, tenantId, storeId } = onboardingPayload || {};
-                if (!subscription?.id || !tenantId || !storeId) {
+                const subscription = isRecord(onboardingPayload) && isRecord(onboardingPayload.subscription)
+                    ? onboardingPayload.subscription
+                    : null;
+                const tenantId = isRecord(onboardingPayload) ? onboardingPayload.tenantId : undefined;
+                const storeId = isRecord(onboardingPayload) ? onboardingPayload.storeId : undefined;
+                if (!subscription || !isBoundedProviderString(subscription.id) || !isScopeIdentifier(tenantId) || !isScopeIdentifier(storeId)) {
                     throw createPaymentStatusError(
                         'Onboarding failed.',
                         'payment_onboarding_subscription_create_response_invalid',
                         response.status,
                     );
                 }
+                const subscriptionId = subscription.id;
 
                 // Update NextAuth session with new IDs
                 await update({
@@ -595,16 +669,16 @@ const usePaymentHandler = (dispatcher: any, options: PaymentHandlerOptions = {})
                 dispatcher(stopLoader("Creating your account..."));
 
                 // Open Razorpay payment modal
-                const options = {
+                const options: RazorpayCheckoutOptions = {
                     key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-                    subscription_id: subscription.id,
+                    subscription_id: subscriptionId,
                     name: 'MenuList.ai Subscription',
                     description: plan.name,
-                    handler: function (response: any) {
+                    handler: (response: unknown) => {
                         dispatcher(startLoader("Verifying payment..."));
-                        verifySubscriptionPaymentResponse(response).then(() => {
+                        verifySubscriptionPaymentResponse(response).then((verifiedResponse) => {
                             dispatcher(stopLoader("Verifying payment..."));
-                            resolve({ ...response, subscriptionId: subscription.id });
+                            resolve({ ...verifiedResponse, subscriptionId });
                         })
                             .catch((error) => {
                                 logPaymentFailure('payment_onboarding_subscription_verify_failed', error, buildPaymentLogContext('post_onboarding_verify', {
@@ -618,6 +692,7 @@ const usePaymentHandler = (dispatcher: any, options: PaymentHandlerOptions = {})
                         name: session.user.name || '',
                         email: session.user.email || '',
                     },
+                    modal: { ondismiss: () => reject(createCheckoutDismissedError()) },
                 };
 
                 const paymentObject = new window.Razorpay(options);
@@ -628,46 +703,48 @@ const usePaymentHandler = (dispatcher: any, options: PaymentHandlerOptions = {})
                 logPaymentFailure('payment_post_onboarding_failed', error, buildPaymentLogContext('post_onboarding'));
                 reject(error);
             }
+            })().catch((error) => {
+                logPaymentFailure('payment_post_onboarding_executor_failed', error, buildPaymentLogContext('post_onboarding'));
+                reject(error);
+            });
         })
     }, [buildPaymentLogContext, dispatcher, session, update]); // Add dependencies used inside the function
 
-    const verifySubscriptionPaymentResponse = async (paymentResponse: any) => {
-        return new Promise<void>(async (resolve, reject) => {
-            if (Boolean(paymentResponse)) {
-                try {
-                    const verificationResponse = await fetch('/api/razorpay/verify-subscription', {
-                        ...PAYMENT_ROUTE_REQUEST_OPTIONS,
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            razorpay_payment_id: paymentResponse.razorpay_payment_id,
-                            productId,
-                            razorpay_subscription_id: paymentResponse.razorpay_subscription_id,
-                            razorpay_signature: paymentResponse.razorpay_signature,
-                        }),
-                    });
+    const verifySubscriptionPaymentResponse = async (paymentResponse: unknown): Promise<RazorpayPaymentResponse> => {
+        if (!isRazorpayPaymentResponse(paymentResponse, 'subscription')) {
+            logPaymentFailure('payment_subscription_response_invalid', undefined, buildPaymentLogContext('subscription_verify'));
+            throw createPaymentStatusError(
+                'Payment response is invalid.',
+                'payment_subscription_response_invalid',
+            );
+        }
 
-                    await readPaymentVerificationResponse<PaymentSubscriptionVerifyResponse>(
-                        verificationResponse,
-                        'subscription_verify_response',
-                        isPaymentSubscriptionVerifyResponse,
-                        'payment_subscription_verify_rejected',
-                        'payment_subscription_verify_response_invalid',
-                        'Payment verification failed.',
-                    );
-                    resolve(paymentResponse);
-                } catch (error) {
-                    logPaymentFailure('payment_subscription_verify_failed', error, buildPaymentLogContext('subscription_verify'));
-                    reject(error);
-                }
-            } else {
-                logPaymentFailure('payment_subscription_response_missing', undefined, buildPaymentLogContext('subscription_verify'));
-                reject(createPaymentStatusError(
-                    'Payment response is missing.',
-                    'payment_subscription_response_missing',
-                ));
-            }
-        })
+        try {
+            const verificationResponse = await fetch('/api/razorpay/verify-subscription', {
+                ...PAYMENT_ROUTE_REQUEST_OPTIONS,
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    razorpay_payment_id: paymentResponse.razorpay_payment_id,
+                    productId,
+                    razorpay_subscription_id: paymentResponse.razorpay_subscription_id,
+                    razorpay_signature: paymentResponse.razorpay_signature,
+                }),
+            });
+
+            await readPaymentVerificationResponse<PaymentSubscriptionVerifyResponse>(
+                verificationResponse,
+                'subscription_verify_response',
+                isPaymentSubscriptionVerifyResponse,
+                'payment_subscription_verify_rejected',
+                'payment_subscription_verify_response_invalid',
+                'Payment verification failed.',
+            );
+            return paymentResponse;
+        } catch (error) {
+            logPaymentFailure('payment_subscription_verify_failed', error, buildPaymentLogContext('subscription_verify'));
+            throw error;
+        }
     }
     return { onClickPaymentCard, handleTopupPurchase, pendingPlan, executePostOnboarding, isScriptLoaded, onUpgradePlan, onCancelSubscription, onPauseSubscription, onResumeSubscription };
 };

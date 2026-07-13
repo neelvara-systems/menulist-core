@@ -3,6 +3,7 @@
 import fs from 'fs';
 import path from 'path';
 import { FEATURE_FLAGS } from '../../src/config/features';
+import { getContentCreditOutcomeExamples } from '../../src/data/shared/contentCreditPolicy';
 import {
     isOwnerReferralAcquisitionEnabled,
     isOwnerReferralAcquisitionEnabledForStore,
@@ -15,6 +16,7 @@ import {
     getOwnerReferralRewardTransactionId,
     validateOwnerReferralToken,
 } from '../../src/lib/ownerReferral/ownerReferralTokenServer';
+import { isOwnerReferralOwnerResponse } from '../../src/lib/ownerReferral/ownerReferralClient';
 
 const ROOT = path.resolve(__dirname, '..', '..');
 
@@ -107,9 +109,88 @@ const verifyFeatureFlagRuntime = (): void => {
     }
 };
 
+const verifyContentCreditExamples = (): void => {
+    assert(
+        JSON.stringify(getContentCreditOutcomeExamples(100))
+            === JSON.stringify({ descriptionRewrites: 100, generatedMenuImages: 20 }),
+        '100 referral credits must retain exact public outcome examples',
+    );
+    assert(
+        JSON.stringify(getContentCreditOutcomeExamples(50))
+            === JSON.stringify({ descriptionRewrites: 50, generatedMenuImages: 10 }),
+        '50 referral credits must retain exact public outcome examples',
+    );
+    assert(
+        JSON.stringify(getContentCreditOutcomeExamples(250))
+            === JSON.stringify({ descriptionRewrites: 250, generatedMenuImages: 50 }),
+        '250 Pack credits must retain exact public outcome examples',
+    );
+    assert(
+        JSON.stringify(getContentCreditOutcomeExamples(Number.NaN))
+            === JSON.stringify({ descriptionRewrites: 0, generatedMenuImages: 0 }),
+        'Invalid credit inputs must fail closed to zero examples',
+    );
+};
+
+const verifyOwnerReferralResponseBoundary = (): void => {
+    const previousAppUrl = process.env.NEXT_PUBLIC_APP_URL;
+    process.env.NEXT_PUBLIC_APP_URL = 'https://menulist.example';
+    const valid = {
+        eligible: true,
+        inviteUrl: `https://menulist.example/invite#r=${'x'.repeat(32)}`,
+        policy: {
+            referrerCredits: 100,
+            referredCredits: 50,
+            paymentOnly: true,
+            rewardCap: null,
+        },
+        recent: [{
+            businessName: 'Green Table Cafe',
+            status: 'issued',
+            date: '2026-07-11T04:30:00.000Z',
+        }],
+    };
+    try {
+        assert(isOwnerReferralOwnerResponse(valid), 'Canonical owner referral response must pass');
+        assert(
+            !isOwnerReferralOwnerResponse({
+                ...valid,
+                inviteUrl: `https://phishing.example/invite#r=${'x'.repeat(32)}`,
+            }),
+            'Cross-origin invite URL must fail',
+        );
+        assert(
+            !isOwnerReferralOwnerResponse({
+                ...valid,
+                policy: { ...valid.policy, referredCredits: 500 },
+            }),
+            'Policy drift must fail',
+        );
+        assert(
+            !isOwnerReferralOwnerResponse({
+                ...valid,
+                recent: [{ ...valid.recent[0], date: 'July 11, 2026' }],
+            }),
+            'Non-canonical dates must fail',
+        );
+        assert(
+            !isOwnerReferralOwnerResponse({
+                ...valid,
+                recent: [{ ...valid.recent[0], businessName: '   ' }],
+            }),
+            'Blank business names must fail',
+        );
+    } finally {
+        if (previousAppUrl === undefined) delete process.env.NEXT_PUBLIC_APP_URL;
+        else process.env.NEXT_PUBLIC_APP_URL = previousAppUrl;
+    }
+};
+
 const verifyOwnerReferral = (): void => {
     const packageJson = JSON.parse(read('package.json'));
     const policy = read('src/data/shared/ownerReferralPolicy.ts');
+    const contentCreditPolicy = read('src/data/shared/contentCreditPolicy.ts');
+    const unitCosts = read('src/constants/AI/unitCosts.ts');
     const flags = read('src/config/features.ts');
     const featureBoundary = read('src/lib/ownerReferral/ownerReferralFeature.ts');
     const tokenServer = read('src/lib/ownerReferral/ownerReferralTokenServer.ts');
@@ -131,12 +212,15 @@ const verifyOwnerReferral = (): void => {
     const paymentTransactions = read('src/database/subscriptions/paymentTransactions.ts');
     const billingFormatter = read('src/lib/billing/billingHistoryFormatter.ts');
     const desktopBilling = read('src/components/templates/main-app/billing/BillingHistory.tsx');
+    const desktopCreditPackCard = read('src/components/templates/main-app/billing/CreditPackCard.tsx');
     const mobileBilling = read('src/components/mobile/screens/MobileBillingScreen.tsx');
     const desktopReferral = read('src/components/templates/main-app/useMenuList/OwnerReferralModal.tsx');
     const referralHook = read('src/hooks/useOwnerReferral.ts');
+    const referralClient = read('src/lib/ownerReferral/ownerReferralClient.ts');
     const desktopShare = read('src/components/templates/main-app/useMenuList/index.tsx');
     const mobileReferral = read('src/components/mobile/sheets/MobileOwnerReferralSheet.tsx');
     const mobileShare = read('src/components/mobile/screens/MobileShareScreen.tsx');
+    const creditPackCard = read('src/components/website/pricing-pages/CreditPackCard.tsx');
     const terms = read('src/components/website/legal/TermsOfServicePage.tsx');
     const privacy = read('src/components/website/legal/PrivacyPolicyPage.tsx');
     const envValidation = read('src/lib/env/validateEnv.ts');
@@ -169,6 +253,22 @@ const verifyOwnerReferral = (): void => {
     ['REWARD_CAP', 'DISTRIBUTION', 'RETENTION', 'QUALIFICATION_DEADLINE'].forEach((token) => (
         excludes(policy, token, 'owner referral policy')
     ));
+    includes(policy, "WAITING_FOR_PAYMENT: 'waiting_for_payment'", 'owner-visible pending status');
+    includes(policy, "ISSUED: 'issued'", 'owner-visible issued status');
+    excludes(policy, 'WAITING_FOR_BOTH_PAYMENTS', 'owner-visible status policy');
+
+    [
+        'DESCRIPTION_REWRITE: 1',
+        'GENERATED_MENU_IMAGE: 5',
+        'LANGUAGE_ADDITION: 3',
+        'ITEM_TRANSLATION: 1',
+        'IMAGE_TRANSLATION: 5',
+        'IMAGE_EDIT: 5',
+        'getContentCreditOutcomeExamples',
+    ].forEach((token) => includes(contentCreditPolicy, token, 'public content-credit policy'));
+    includes(unitCosts, 'CONTENT_CREDIT_OPERATION_COSTS', 'AI unit costs use public credit-rate SSOT');
+    includes(unitCosts, '[AI_ACTIONS_TYPES.REWRITE_DESCRIPTION]: CONTENT_CREDIT_OPERATION_COSTS.DESCRIPTION_REWRITE', 'description credit rate SSOT');
+    includes(unitCosts, '[AI_ACTIONS_TYPES.IMAGE_GENERATION]: CONTENT_CREDIT_OPERATION_COSTS.GENERATED_MENU_IMAGE', 'image credit rate SSOT');
 
     includes(flags, 'ENABLE_OWNER_REFERRAL: false', 'owner referral acquisition flag');
     includes(flags, 'ENABLE_OWNER_REFERRAL_REWARD_PROCESSING: false', 'owner referral settlement flag');
@@ -194,11 +294,14 @@ const verifyOwnerReferral = (): void => {
         'getDirectVerifiedPaidOwnerReferralWallet({ tenantId, storeId })',
         "'Cache-Control': 'private, no-store'",
     ].forEach((token) => includes(ownerApi, token, 'protected owner referral API'));
+    excludes(ownerApi, 'WAITING_FOR_BOTH_PAYMENTS', 'truthful owner referral status response');
 
     [
         'if (!isOwnerReferralAcquisitionEnabled()) return unavailable(404);',
         'isSameOriginBrowserRequest(request)',
         "getRateLimitForFeature('OWNER_REFERRAL_CAPTURE')",
+        "normalizeRequestAuthority(request.headers.get('host'))",
+        'const requestHostOrigin = getRequestHostOrigin(request);',
         "failClosedOnProviderError: process.env.NODE_ENV === 'production'",
         'readBoundedJsonBody(request, OWNER_REFERRAL_CAPTURE_MAX_BODY_BYTES',
         'OwnerReferralCaptureSchema.safeParse',
@@ -207,12 +310,21 @@ const verifyOwnerReferral = (): void => {
         'setOwnerReferralCookie(response, parsed.data.token)',
     ].forEach((token) => includes(captureApi, token, 'public referral capture API'));
     excludes(captureApi, 'firestoreAdmin', 'capture API zero-Firestore boundary');
+    excludes(captureApi, 'x-forwarded-host', 'capture API same-origin boundary must not trust forwarded host');
 
     order(invitePage, "window.location.hash", "window.history.replaceState", 'invite fragment removal');
     includes(invitePage, "onClick={() => void capture()}", 'explicit invite capture CTA');
     order(invitePage, "{t('privacy')}", "onClick={() => void capture()}", 'pre-capture privacy disclosure');
     order(invitePage, "fetch('/api/public/owner-referrals/capture'", "router.push('/create-menu')", 'capture-before-setup navigation');
+    includes(invitePage, 'readJsonResponseWithLimit<unknown>', 'public invite bounded capture response');
+    excludes(invitePage, 'response.json()', 'public invite direct response parsing');
     includes(invitePage, "href=\"/create-menu\"", 'normal non-referral setup path');
+    includes(referralClient, 'readJsonResponseWithLimit<unknown>', 'owner referral bounded response');
+    includes(referralClient, 'Record<string, unknown>', 'owner referral unknown runtime validation');
+    excludes(referralClient, 'response.json()', 'owner referral direct response parsing');
+    excludes(referralClient, 'Record<string, any>', 'owner referral unsafe response record');
+    includes(ownerApi, 'const timestampToIso = (value: unknown): string | null', 'owner referral timestamp boundary');
+    excludes(ownerApi, 'return new Date().toISOString()', 'owner referral invented malformed timestamp');
     [
         "title: 'Business owner invitation - MenuList'",
         "alternates: { canonical: '/create-menu' }",
@@ -264,7 +376,15 @@ const verifyOwnerReferral = (): void => {
     excludes(settlement, 'setInterval', 'event-driven settlement');
     includes(settlement, '{ skipDirectReferral: true }', 'paid-event direct settlement de-duplication');
 
-    assert(count(verifySubscriptionRoute, 'safelyRecordOwnerReferralPaymentAndRepair({') >= 2, 'Verify route must repair both callback paths');
+    includes(verifySubscriptionRoute, 'applyProductSubscriptionPayment(productId, {', 'Verify route transactional payment application');
+    includes(verifySubscriptionRoute, 'if (!paymentApplication.applied && !paymentApplication.duplicate)', 'Verify route accepts applied and replayed captured payments before repair');
+    assert(count(verifySubscriptionRoute, 'safelyRecordOwnerReferralPaymentAndRepair({') === 1, 'Verify route must use one replay-safe referral repair hook');
+    order(
+        verifySubscriptionRoute,
+        'applyProductSubscriptionPayment(productId, {',
+        'safelyRecordOwnerReferralPaymentAndRepair({',
+        'Verify route repairs referrals after transactional payment application',
+    );
     [webhookRoute, resellerOnboardRoute, resellerConfirmRoute, resellerRenewRoute].forEach((route, index) => (
         includes(route, 'safelyRecordOwnerReferralPaymentAndRepair({', `verified payment hook ${index + 1}`)
     ));
@@ -276,25 +396,59 @@ const verifyOwnerReferral = (): void => {
     includes(mobileBilling, "item.type === 'Referral reward'", 'mobile reward credit rendering');
 
     includes(desktopReferral, "useTranslations('OwnerReferral')", 'desktop owner referral localization');
+    includes(desktopReferral, "t('creditExample'", 'desktop owner referral credit examples');
+    excludes(desktopReferral, 'waiting_for_both_payments', 'desktop truthful pending status');
     includes(desktopReferral, 'destroyOnHidden={false}', 'desktop referral modal lifecycle boundary');
     excludes(desktopReferral, 'destroyOnClose=', 'desktop referral deprecated modal lifecycle');
     includes(mobileReferral, "useTranslations('OwnerReferral')", 'mobile owner referral localization');
+    includes(mobileReferral, "t('creditExample'", 'mobile owner referral credit examples');
+    excludes(mobileReferral, 'waiting_for_both_payments', 'mobile truthful pending status');
     includes(mobileReferral, "flex: '1 1 0'", 'mobile referral flexible long-name column');
     includes(mobileReferral, 'maxHeight: 44', 'mobile referral two-line height boundary');
     includes(mobileReferral, 'WebkitLineClamp: 2', 'mobile referral long-name boundary');
     includes(mobileReferral, 'title={item.businessName}', 'mobile referral full-name label');
     includes(referralHook, 'navigator.clipboard?.writeText', 'owner referral modern clipboard path');
     includes(referralHook, "document.execCommand('copy')", 'owner referral embedded-browser clipboard fallback');
+    includes(referralHook, 'getOwnerReferralShareTitle(locale)', 'localized owner referral share title');
+    includes(referralClient, 'I thought it could help your business too', 'trusted owner referral share message');
+    includes(referralClient, 'Invite a business owner you know to MenuList', 'trusted owner referral share title');
     includes(invitePage, 'ws-btn ws-btn--primary', 'invite primary action design-system class');
     includes(invitePage, 'ws-btn ws-btn--secondary', 'invite secondary action design-system class');
+    includes(invitePage, "t('creditExample'", 'public invite credit example');
     excludes(invitePage, 'ws-btn-primary', 'invite obsolete primary action class');
     excludes(invitePage, 'ws-btn-secondary', 'invite obsolete secondary action class');
     includes(mobileShare, "useTranslations('OwnerReferral')", 'mobile Share entry localization');
+    includes(creditPackCard, "t('creditPackAmount'", 'pricing card credit amount');
+    includes(creditPackCard, "t('creditPackExample'", 'pricing card outcome example');
+    includes(creditPackCard, 'pack.creditAmount', 'pricing card uses canonical pack amount');
+    includes(desktopCreditPackCard, "t('creditPackAmount'", 'desktop Billing Pack amount');
+    includes(desktopCreditPackCard, "t('creditPackExample'", 'desktop Billing Pack outcome example');
+    includes(mobileBilling, "t('creditPackAmount'", 'mobile Billing Pack amount');
+    includes(mobileBilling, "t('creditPackExample'", 'mobile Billing Pack outcome example');
     includes(desktopShare, 'isOwnerReferralAcquisitionEnabledForStore(storeDetails?.storeId)', 'desktop pilot entry boundary');
     includes(mobileShare, 'isOwnerReferralAcquisitionEnabledForStore(storeDetails?.storeId)', 'mobile pilot entry boundary');
     assert(english.OwnerReferral?.rewardRule.includes('both MenuList subscriptions are paid'), 'English reward rule must stay payment-only');
     assert(english.OwnerReferral?.rewardRule.includes('no referral limit or extra activity requirement'), 'English reward rule must stay uncapped and activity-free');
+    assert(english.OwnerReferral?.title === 'Invite a business owner you know', 'English owner label must stay trust-based');
+    assert(english.OwnerReferral?.creditExample === 'Up to {images} generated menu images or {descriptions} description rewrites.', 'English owner copy must quantify credit outcomes');
+    assert(english.OwnerReferral?.invite?.creditExample.includes('Your {credits} credits can cover'), 'English public invite must quantify invited credits');
+    assert(english.OwnerReferral?.status?.waitingForPayment === 'Their payment pending', 'English attributed status must identify the pending payment');
+    assert(!Object.prototype.hasOwnProperty.call(english.OwnerReferral?.status || {}, 'waitingForBothPayments'), 'English owner statuses must not expose an unreachable both-payments state');
+    assert(english.OwnerReferral?.invite?.title === 'A business owner you know invited you to MenuList.', 'English invite title must stay trust-based');
+    assert(english.OwnerReferral?.invite?.referrerReward.includes('Their business receives'), 'English reward copy must stay relational and business-based');
     assert(hindi.OwnerReferral?.rewardRule.includes('दोनों MenuList सब्सक्रिप्शन'), 'Hindi reward rule must stay payment-only');
+    assert(hindi.OwnerReferral?.title === 'अपने जानने वाले बिज़नेस मालिक को आमंत्रित करें', 'Hindi owner label must stay trust-based');
+    assert(hindi.OwnerReferral?.creditExample.includes('{images} मेन्यू इमेज'), 'Hindi owner copy must quantify credit outcomes');
+    assert(hindi.OwnerReferral?.invite?.creditExample.includes('{credits} क्रेडिट'), 'Hindi public invite must quantify invited credits');
+    assert(hindi.OwnerReferral?.status?.waitingForPayment === 'उनका भुगतान बाकी', 'Hindi attributed status must identify the pending payment');
+    assert(!Object.prototype.hasOwnProperty.call(hindi.OwnerReferral?.status || {}, 'waitingForBothPayments'), 'Hindi owner statuses must not expose an unreachable both-payments state');
+    assert(english.Website?.Pricing?.creditPackAmount === '{credits} credits', 'English pricing must show the pack credit amount');
+    assert(english.Website?.Pricing?.creditPackExample.includes('{images} generated menu images'), 'English pricing must explain pack outcomes');
+    assert(hindi.Website?.Pricing?.creditPackAmount === '{credits} क्रेडिट', 'Hindi pricing must show the pack credit amount');
+    assert(english.Billing?.creditPackAmount === english.Website?.Pricing?.creditPackAmount, 'English Billing and pricing Pack amounts must match');
+    assert(english.Billing?.creditPackExample === english.Website?.Pricing?.creditPackExample, 'English Billing and pricing Pack examples must match');
+    assert(hindi.Billing?.creditPackAmount === hindi.Website?.Pricing?.creditPackAmount, 'Hindi Billing and pricing Pack amounts must match');
+    assert(hindi.Billing?.creditPackExample === hindi.Website?.Pricing?.creditPackExample, 'Hindi Billing and pricing Pack examples must match');
     [
         'There is no referral-count limit or additional publishing, sharing, usage, distribution, or waiting requirement after payment',
         'The invitation must be attached before the invited business completes its first successful MenuList subscription payment',
@@ -329,6 +483,8 @@ const verifyOwnerReferral = (): void => {
 
     verifyTokenRuntime();
     verifyFeatureFlagRuntime();
+    verifyContentCreditExamples();
+    verifyOwnerReferralResponseBoundary();
 };
 
 verifyOwnerReferral();

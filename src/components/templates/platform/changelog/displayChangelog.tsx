@@ -11,6 +11,7 @@ import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { getTextFromTiptapJson } from '@lib/tiptap';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { ChangelogEntry, ChangelogPage } from '@type/changelog';
+import type { AnswerlatticeReadableChangelogEntry, AnswerlatticeReadableChangelogPage } from '@lib/answerlattice/publicContentBoundary';
 import { generateGradientFromHex } from '@util/utils';
 import { Badge, Button, Empty, Flex, Grid, Input, Layout, List, Popover, Typography, message, theme } from 'antd';
 import { motion } from 'framer-motion';
@@ -50,10 +51,12 @@ const { useToken } = theme;
 
 const LAST_VIEWED_KEY = 'changelog_last_viewed_at';
 
-function isNewEntry(entry: ChangelogEntry, lastViewedAt: number): boolean {
+function isNewEntry(entry: AnswerlatticeReadableChangelogEntry, lastViewedAt: number): boolean {
     if (!lastViewedAt) return false;
     try {
-        const entryDate = entry.releasedOn?.toDate ? entry.releasedOn.toDate().getTime() : new Date(entry.releasedOn as any).getTime();
+        const entryDate = typeof entry.releasedOn === 'string'
+            ? new Date(entry.releasedOn).getTime()
+            : entry.releasedOn.toDate().getTime();
         return entryDate > lastViewedAt;
     } catch { return false; }
 }
@@ -65,13 +68,13 @@ function DisplayChangelog({
     useInternalFallback = true,
 }: {
     initialEntryId?: string;
-    loadOlderPage?: (currentPageNumber: number) => Promise<ChangelogPage | null>;
-    pageData: ChangelogPage | null;
+    loadOlderPage?: (currentPageNumber: number) => Promise<AnswerlatticeReadableChangelogPage | null>;
+    pageData: AnswerlatticeReadableChangelogPage | null;
     useInternalFallback?: boolean;
 }) {
     const { getItem } = useChangelogCache();
-    const [changelogPage, setChangelogPage] = useState<ChangelogPage | null>(null);
-    const [entries, setEntries] = useState<ChangelogEntry[]>([]);
+    const [changelogPage, setChangelogPage] = useState<AnswerlatticeReadableChangelogPage | null>(null);
+    const [entries, setEntries] = useState<AnswerlatticeReadableChangelogEntry[]>([]);
     const [hasMore, setHasMore] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedTags, setSelectedTags] = useState<string[]>([]);

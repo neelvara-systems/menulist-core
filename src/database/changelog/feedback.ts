@@ -48,7 +48,7 @@ export const addChangelogFeedback = async (
             // First feedback for this entry, create the document
             const newFeedbackDoc = await answerlatticeRequestBodyComposer({
                 list: [feedbackPayload],
-            });
+            }, { isNew: true });
             tx.set(feedbackDocRef, newFeedbackDoc);
         } else {
             const currentList = Array.isArray(feedbackDoc.data()?.list)

@@ -1,9 +1,9 @@
 # Knowledge Intake Command Center — Firebase Cost & Operations Contract
 
 > **Status:** IMPLEMENTED — day-one cost-first contract
-> **Version:** 2.1.1
+> **Version:** 2.1.2
 > **Created:** 2026-05-31
-> **Last Updated:** 2026-06-20
+> **Last Updated:** 2026-07-11
 > **Audience:** Engineering / Firebase / Ops
 
 ---
@@ -27,6 +27,12 @@ Non-negotiable rules:
 - no per-source function trigger fanout for provider work
 - repeated reply import must stay inside the existing source/review/proposal path with no AI call, Storage upload, scheduler, new collection, or connector
 
+### Dedicated Functions identity and provider-file boundary
+
+The Answerlattice generation, publishing, embedding, task-dispatch and completion lifecycle admits only exact positive decimal safe-integer `tId`/`sId` values and exact `pId = AL`. Each transition re-reads the stored job/article scope before changing publication state. Coercible legacy values such as whitespace, leading-zero, decimal, exponent, boolean or object representations fail closed.
+
+Source files uploaded to the Gemini File API are tracked for the current generation attempt and deleted through the product-owned AI gateway in `finally` using bounded retry/key rotation. Cleanup failure does not replace the primary generation result, but the provider operation remains visible through the gateway diagnostics. No uploaded source file is intentionally retained as a cache.
+
 Firestore is for compact metadata, capped extracted source text, review decisions, summaries, usage-ledger rows, and live approved records. Browser-side file extraction and server-side media extraction avoid raw file Storage writes; Storage paths below are reserved for a future native-upload/retained-evidence path.
 
 Repeated reply import is an implemented low-cost subpath. It writes one existing source doc, then at most two review item docs during analysis: FAQ and canonical proposal. It does not create the default KB article draft for that source type.
@@ -44,7 +50,7 @@ The repeated-reply entity selector is search-gated. It does not load the ontolog
 | `answerlattice_knowledgeIntakeJobs` | One compact job doc per intake run. | Low, one per owner-triggered run. |
 | `answerlattice_knowledgeSources` | One compact source doc per selected source. | Bounded by plan/source caps. |
 | `answerlattice_intakeReviewItems` | One doc per owner decision, not per fact. | Capped per job; query paginated. |
-| `answerlattice_intakeUsageLedger` | Immutable support-credit reservation, settlement, and refund ledger for paid intake OCR/transcription. | Low/medium; one row per paid media extraction attempt. Client read-only; admin writes only. |
+| `answerlattice_intakeUsageLedger` | Workspace-bound support-credit reservation, settlement, and refund ledger for paid intake OCR/transcription, including billing-period and actual refunded/expired credit evidence. | Low/medium; one row per paid media extraction attempt. Client read-only; admin writes only. |
 | `answerlattice_aiOperations/{tId}/{sId}` | AI operation accounting rows for media extraction and publish-time embedding. | Low/medium; one row per provider-backed intake call. Owner reads are through the billing usage page. |
 
 ### Existing Destination Collections
@@ -159,7 +165,9 @@ Knowledge Intake route ID admission is cost-neutral for valid traffic and fail-c
 
 Paid media extraction now writes both ledgers:
 
-- `answerlattice_intakeUsageLedger` remains the support-credit reservation, settlement, and refund source of truth, including monthly-vs-top-up debit source, before/after balances, token counts, and token count source.
+Reservation failure recovery attempts to move the claimed media source to its failed state before returning the primary error. If that marker write also fails, a bounded `answerlattice_intake_media_reservation_recovery_failed` diagnostic is emitted. This changes no normal-path operation count; it makes the already-attempted recovery failure visible so lease/claim expiry or manual retry can be investigated.
+
+- `answerlattice_intakeUsageLedger` remains the support-credit reservation, settlement, and refund source of truth, including monthly-vs-top-up debit source, reservation/refund billing periods, actual refunded versus expired monthly credits, before/after balances, token counts, and token count source. Finalize/refund are transaction-serialized and reject a ledger whose workspace does not match the supplied scope.
 - `answerlattice_aiOperations/{tId}/{sId}` records action, model, processing time, units, support-credit debit breakdown, provider/estimated token counts, and token count source for billing visibility and ops cost tracking.
 
 Publish-time embedding logs a zero-unit internal `answerlattice_intake_embedding` operation with token metadata. It does not charge support credits separately.

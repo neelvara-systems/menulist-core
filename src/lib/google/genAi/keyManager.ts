@@ -63,17 +63,14 @@ const RATE_LIMIT_COOLDOWN_MS = 60_000;
 const MAX_COOLDOWN_MS = 5 * 60_000;
 
 /** Env var names for API keys (in order) */
-const KEY_ENV_VAR_CANDIDATES = [
+export type GeminiKeyEnvVarCandidates = readonly (readonly string[])[];
+
+const KEY_ENV_VAR_CANDIDATES: GeminiKeyEnvVarCandidates = [
     ['GEMINI_AI_KEY', 'GEMINI_API_KEY'],
     ['GEMINI_AI_KEY_2'],
     ['GEMINI_AI_KEY_3'],
     ['GEMINI_AI_KEY_4'],
 ] as const;
-
-const TOTAL_KEY_ENV_VAR_CANDIDATES = KEY_ENV_VAR_CANDIDATES.reduce(
-    (total, candidates) => total + candidates.length,
-    0
-);
 
 const getKeyManagerSlotContext = (slotIndex: number, candidateEnvVarCount = 1) => ({
     keySlot: slotIndex + 1,
@@ -96,8 +93,15 @@ export class AIProviderConfigMissingError extends Error {
 export class KeyManager {
     private keys: KeyEntry[] = [];
     private currentIndex: number = 0;
+    private readonly keyEnvVarCandidates: GeminiKeyEnvVarCandidates;
+    private readonly totalKeyEnvVarCandidates: number;
 
-    constructor() {
+    constructor(keyEnvVarCandidates: GeminiKeyEnvVarCandidates = KEY_ENV_VAR_CANDIDATES) {
+        this.keyEnvVarCandidates = keyEnvVarCandidates;
+        this.totalKeyEnvVarCandidates = keyEnvVarCandidates.reduce(
+            (total, candidates) => total + candidates.length,
+            0,
+        );
         this.discoverKeys();
     }
 
@@ -106,8 +110,8 @@ export class KeyManager {
      * Creates a GoogleGenAI client for each valid key.
      */
     private discoverKeys(): void {
-        for (let i = 0; i < KEY_ENV_VAR_CANDIDATES.length; i++) {
-            const candidates = KEY_ENV_VAR_CANDIDATES[i];
+        for (let i = 0; i < this.keyEnvVarCandidates.length; i++) {
+            const candidates = this.keyEnvVarCandidates[i];
             const matchedEnvVar = candidates.find((envVar) => {
                 const value = process.env[envVar];
                 return typeof value === 'string' && value.trim().length > 0;
@@ -134,8 +138,8 @@ export class KeyManager {
         if (this.keys.length === 0) {
             logger.warn('[KeyManager] No Gemini API key found', {
                 configuredKeyCount: 0,
-                candidateSlotCount: KEY_ENV_VAR_CANDIDATES.length,
-                candidateEnvVarCount: TOTAL_KEY_ENV_VAR_CANDIDATES,
+                candidateSlotCount: this.keyEnvVarCandidates.length,
+                candidateEnvVarCount: this.totalKeyEnvVarCandidates,
             });
         } else {
             logger.info('[KeyManager] Initialized', {
@@ -275,10 +279,3 @@ export class KeyManager {
         };
     }
 }
-
-// ═══════════════════════════════════════════════════════════════
-// SINGLETON
-// ═══════════════════════════════════════════════════════════════
-
-/** Singleton Key Manager instance for the frontend */
-export const keyManager = new KeyManager();

@@ -1,12 +1,25 @@
 import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
+import { PRODUCT_IDS } from '@constant/product';
 import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentComposer';
+import {
+    getAnswerlatticeScopeLogContext,
+    logAnswerlatticeDiagnostic,
+    logAnswerlatticeFailure,
+} from '@lib/answerlattice/diagnostics';
+import {
+    normalizeAnswerlatticeFeedbackDocumentId,
+    normalizeAnswerlatticeFeedbackRecord,
+    normalizeAnswerlatticeFeedbackSubmission,
+} from '@lib/answerlattice/feedbackBoundary';
+import { normalizeExactAnswerlatticeSignalScopeId } from '@lib/answerlattice/signalIdentity';
+import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { apiCallComposer } from '@lib/apiHelper/apiCallComposer';
 import getActiveSession from '@lib/auth/getActiveSession';
 import { answerlatticeFirebaseClient } from '@lib/firebase/answerlatticeFirebaseClient';
 import { ANSWERLATTICE_SIGNAL_TYPE } from '@type/answerlattice';
 import { Feedback } from '@type/feedback';
-import { addDoc, collection, doc, getDocs, limit, orderBy, query, Timestamp, updateDoc, where } from 'firebase/firestore';
+import { addDoc, collection, doc, getDocs, limit, orderBy, query, runTransaction, Timestamp, where } from 'firebase/firestore';
 
 const COLLECTION = DB_COLLECTIONS.FEEDBACK;
 const MAX_FEEDBACK_RESULTS = 200;
@@ -38,9 +51,17 @@ const toSignalList = (value: unknown, maxItems = 8) => (
 const toSignalVotes = (value: unknown) => (
     Array.isArray(value)
         ? value
-            .map((item: any) => ({
-                feature: toSignalText(item?.feature, 160),
-                interested: item?.interested === true,
+            .map((item) => ({
+                feature: toSignalText(
+                    item && typeof item === 'object' && !Array.isArray(item)
+                        ? (item as Record<string, unknown>).feature
+                        : undefined,
+                    160,
+                ),
+                interested: Boolean(
+                    item && typeof item === 'object' && !Array.isArray(item)
+                    && (item as Record<string, unknown>).interested === true,
+                ),
             }))
             .filter((item) => item.feature)
             .slice(0, 8)
@@ -59,7 +80,17 @@ const clampFeedbackLimit = (value: unknown) => {
     return Math.min(Math.floor(parsed), MAX_FEEDBACK_RESULTS);
 };
 
-const getFeedbackContextKeys = (feedback: Partial<Feedback> & Record<string, any>) => {
+const getActiveFeedbackScope = async (expected?: { tId: number; sId: number }) => {
+    const session = await getActiveSession();
+    const scope = resolveAnswerlatticeSessionScope(session);
+    if (!scope) throw new Error('Answerlattice workspace scope is required');
+    if (expected && (scope.tenantId !== expected.tId || scope.storeId !== expected.sId)) {
+        throw new Error('Answerlattice workspace scope does not match the active session');
+    }
+    return { session, tId: scope.tenantId, sId: scope.storeId };
+};
+
+const getFeedbackContextKeys = (feedback: Partial<Feedback> & Record<string, unknown>) => {
     const contextKey = cleanNullableText(feedback.contextKey, 140);
     const featureIssues = toSignalList(feedback.featureIssues);
     return Array.from(new Set([
@@ -68,7 +99,7 @@ const getFeedbackContextKeys = (feedback: Partial<Feedback> & Record<string, any
     ].filter(Boolean) as string[]));
 };
 
-const buildFeedbackSignalMetadata = (feedback: Partial<Feedback> & Record<string, any>, feedbackId: string) => {
+const buildFeedbackSignalMetadata = (feedback: Partial<Feedback> & Record<string, unknown>, feedbackId: string) => {
     const feedbackType = String(feedback.type || 'general');
     const rating = Number(feedback.rating);
     const commentPreview = toSignalText(feedback.comment);
@@ -107,12 +138,18 @@ const buildFeedbackSignalMetadata = (feedback: Partial<Feedback> & Record<string
     };
 };
 
-const emitFeedbackSignal = async (feedback: Partial<Feedback> & Record<string, any>, feedbackId: string) => {
+const emitFeedbackSignal = async (feedback: Partial<Feedback> & Record<string, unknown>, feedbackId: string) => {
     if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_SIGNAL_MUTATION) return;
 
-    const tId = Number(feedback.tId);
-    const sId = Number(feedback.sId);
-    if (!Number.isFinite(tId) || !Number.isFinite(sId) || tId <= 0 || sId <= 0) return;
+    const tId = normalizeExactAnswerlatticeSignalScopeId(feedback.tId);
+    const sId = normalizeExactAnswerlatticeSignalScopeId(feedback.sId);
+    if (feedback.pId !== PRODUCT_IDS.ANSWERLATTICE || tId === null || sId === null) {
+        logAnswerlatticeDiagnostic('answerlattice_feedback_signal_invalid_scope_skipped', {
+            ...getAnswerlatticeScopeLogContext({ tId: feedback.tId, sId: feedback.sId }),
+            hasAnswerlatticeProduct: feedback.pId === PRODUCT_IDS.ANSWERLATTICE,
+        });
+        return;
+    }
 
     const { emitAnswerlatticeSignal } = await import('@lib/answerlattice/signalEmitter');
     await emitAnswerlatticeSignal({
@@ -124,12 +161,20 @@ const emitFeedbackSignal = async (feedback: Partial<Feedback> & Record<string, a
     });
 };
 
-export const addFeedback = async (data: Partial<Feedback>) => {
+export const addFeedback = async (data: unknown) => {
     return await apiCallComposer(
         async () => {
-            const submitData = await answerlatticeRequestBodyComposer(data);
+            const normalized = normalizeAnswerlatticeFeedbackSubmission(data);
+            if (!normalized) throw new Error('Invalid feedback submission');
+            const submitData = await answerlatticeRequestBodyComposer(normalized, { isNew: true });
             const docRef = await addDoc(getCollectionRef(), submitData);
-            void emitFeedbackSignal(submitData as Partial<Feedback> & Record<string, any>, docRef.id);
+            void emitFeedbackSignal(submitData as Partial<Feedback> & Record<string, unknown>, docRef.id)
+                .catch((error) => logAnswerlatticeFailure('answerlattice_feedback_signal_dispatch_failed', error, {
+                    ...getAnswerlatticeScopeLogContext({
+                        tId: (submitData as Record<string, unknown>).tId,
+                        sId: (submitData as Record<string, unknown>).sId,
+                    }),
+                }));
             return { ...submitData, id: docRef.id };
         },
         data,
@@ -145,8 +190,10 @@ export const updateFeedbackSurfaceForWorkspace = async (
 ) => {
     return await apiCallComposer(
         async () => {
-            const session = await getActiveSession();
-            const actorId = String((session as any)?.uId || session?.user?.id || '');
+            const normalizedFeedbackId = normalizeAnswerlatticeFeedbackDocumentId(feedbackId);
+            if (!normalizedFeedbackId) throw new Error('Invalid feedback document ID');
+            const { session, tId, sId } = await getActiveFeedbackScope();
+            const actorId = String(session?.uId || session?.user?.id || '');
             const actorName = String(session?.user?.name || session?.user?.email || actorId || 'Team member');
             const contextKey = cleanNullableText(input.contextKey, 140);
             const surfaceId = cleanNullableText(input.surfaceId, 180);
@@ -162,8 +209,21 @@ export const updateFeedbackSurfaceForWorkspace = async (
                 modifiedOn: Timestamp.now(),
             };
 
-            await updateDoc(doc(answerlatticeFirebaseClient, COLLECTION, feedbackId), patch);
-            return { id: feedbackId, ...patch };
+            const feedbackRef = doc(answerlatticeFirebaseClient, COLLECTION, normalizedFeedbackId);
+            await runTransaction(answerlatticeFirebaseClient, async (transaction) => {
+                const snapshot = await transaction.get(feedbackRef);
+                const persisted = snapshot.exists()
+                    ? normalizeAnswerlatticeFeedbackRecord(snapshot.data(), snapshot.id)
+                    : null;
+                if (!persisted
+                    || persisted.pId !== PRODUCT_IDS.ANSWERLATTICE
+                    || Number(persisted.tId) !== tId
+                    || Number(persisted.sId) !== sId) {
+                    throw new Error('Feedback was not found in the active Answerlattice workspace');
+                }
+                transaction.update(feedbackRef, patch);
+            });
+            return { id: normalizedFeedbackId, ...patch };
         },
         { feedbackId, input },
         'updateFeedbackSurfaceForWorkspace'
@@ -179,15 +239,14 @@ export const getAllFeedback = async (maxResults: number = 200) => {
         async () => {
             const q = query(
                 getCollectionRef(),
+                where('pId', '==', PRODUCT_IDS.ANSWERLATTICE),
                 orderBy('createdOn', 'desc'),
                 limit(clampFeedbackLimit(maxResults))
             );
             const querySnapshot = await getDocs(q);
-            const list: Feedback[] = [];
-            querySnapshot.forEach((doc) => {
-                list.push({ id: doc.id, ...doc.data() } as Feedback);
-            });
-            return list;
+            return querySnapshot.docs
+                .map(document => normalizeAnswerlatticeFeedbackRecord(document.data(), document.id))
+                .filter((item): item is Feedback => Boolean(item));
         },
         'getAllFeedback'
     );
@@ -200,19 +259,19 @@ export const getAllFeedback = async (maxResults: number = 200) => {
 export const getFeedbackForWorkspace = async (tId: number, sId: number, maxResults: number = 200) => {
     return await apiCallComposer(
         async () => {
+            const scope = await getActiveFeedbackScope({ tId, sId });
             const q = query(
                 getCollectionRef(),
-                where('tId', '==', tId),
-                where('sId', '==', sId),
+                where('pId', '==', PRODUCT_IDS.ANSWERLATTICE),
+                where('tId', '==', scope.tId),
+                where('sId', '==', scope.sId),
                 orderBy('createdOn', 'desc'),
                 limit(clampFeedbackLimit(maxResults))
             );
             const querySnapshot = await getDocs(q);
-            const list: Feedback[] = [];
-            querySnapshot.forEach((doc) => {
-                list.push({ id: doc.id, ...doc.data() } as Feedback);
-            });
-            return list;
+            return querySnapshot.docs
+                .map(document => normalizeAnswerlatticeFeedbackRecord(document.data(), document.id))
+                .filter((item): item is Feedback => Boolean(item));
         },
         'getFeedbackForWorkspace'
     );
@@ -221,24 +280,22 @@ export const getFeedbackForWorkspace = async (tId: number, sId: number, maxResul
 export const getLatestFeedbackForUser = async () => {
     return await apiCallComposer(
         async () => {
-            const session = await getActiveSession();
+            const { session, tId, sId } = await getActiveFeedbackScope();
             if (!session?.uId) return null;
 
             const q = query(
                 getCollectionRef(),
+                where('pId', '==', PRODUCT_IDS.ANSWERLATTICE),
                 where('uId', '==', session.uId),
-                where('tId', '==', session.tId),
-                where('sId', '==', session.sId),
+                where('tId', '==', tId),
+                where('sId', '==', sId),
                 orderBy('createdOn', 'desc'),
                 limit(1)
             );
 
             const querySnapshot = await getDocs(q);
-            if (!querySnapshot.empty) {
-                const doc = querySnapshot.docs[0];
-                return { id: doc.id, ...doc.data() } as Feedback;
-            }
-            return null;
+            const document = querySnapshot.docs[0];
+            return document ? normalizeAnswerlatticeFeedbackRecord(document.data(), document.id) : null;
         },
         'getLatestFeedbackForUser'
     );

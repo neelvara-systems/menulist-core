@@ -163,6 +163,8 @@ Sources:
 
 #### A. Pilot Proof And Retention Review
 
+Operating artifact: `menulist-marketing-distribution_pilot-proof-and-owner-learning-pack.md`.
+
 Use the maintained ten-business board to record:
 
 - acquisition source class;
@@ -197,6 +199,8 @@ Start after three activated businesses. Keep it founder-led, monthly, invitation
 #### F. Publisher And AI Distribution Readiness Dossier
 
 Document Google/Apple/API eligibility, delegation, consent, revocation, reporting, support, and data-authority requirements. Keep actual provider integrations gated behind cohort proof and an approved provider path.
+
+Prepared artifact: `menulist-marketing-distribution_publisher-ai-distribution-readiness.md`.
 
 #### G. Fair Migration And Comparison Pages
 

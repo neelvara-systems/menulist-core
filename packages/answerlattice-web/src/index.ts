@@ -38,8 +38,27 @@ export type AnswerlatticeWidgetRuntime = {
   hide?: () => void;
   show?: () => void;
   clearHistory?: () => void;
+  clearIdentity?: () => void;
+  identify?: (visitor: AnswerlatticeVisitorIdentity | null) => void;
+  identifySigned?: (token: string) => void;
+  setEvidenceLinks?: (links: AnswerlatticeEvidenceLink[]) => void;
   on?: (eventName: string, callback: (payload?: unknown) => void) => void;
   off?: (eventName: string, callback: (payload?: unknown) => void) => void;
+};
+
+type AnswerlatticeRuntimeWindow = Window & {
+  AnswerlatticeWidget?: AnswerlatticeWidgetRuntime;
+};
+
+export type AnswerlatticeVisitorIdentity = {
+  id: string;
+  name?: string;
+  email?: string;
+};
+
+export type AnswerlatticeEvidenceLink = {
+  url: string;
+  label?: string;
 };
 
 export type AnswerlatticeInitOptions = {
@@ -65,16 +84,14 @@ export type AnswerlatticeWebClient = {
   hide: () => void;
   show: () => void;
   clearHistory: () => void;
+  clearIdentity: () => void;
+  identify: (visitor: AnswerlatticeVisitorIdentity) => void;
+  identifySigned: (token: string) => void;
+  setEvidenceLinks: (links: AnswerlatticeEvidenceLink[]) => void;
   on: (eventName: AnswerlatticeWidgetEventName, callback: (payload?: unknown) => void) => () => void;
   off: (eventName: AnswerlatticeWidgetEventName, callback: (payload?: unknown) => void) => void;
   getRuntime: () => AnswerlatticeWidgetRuntime | null;
 };
-
-declare global {
-  interface Window {
-    AnswerlatticeWidget?: AnswerlatticeWidgetRuntime;
-  }
-}
 
 const DEFAULT_SCRIPT_SRC = 'https://answerlattice.com/widget/v1/answerlattice-widget.js';
 const CONTEXT_STRING_KEYS: AnswerlatticeContextKey[] = ['contextKey', 'feature', 'page', 'workflow', 'userRole', 'plan'];
@@ -196,7 +213,7 @@ export function validateAnswerlatticePageContext(input: AnswerlatticePageContext
 export const validateAnswerlatticeContext = validateAnswerlatticePageContext;
 
 function getRuntime(): AnswerlatticeWidgetRuntime | null {
-  return isBrowser() ? window.AnswerlatticeWidget || null : null;
+  return isBrowser() ? (window as AnswerlatticeRuntimeWindow).AnswerlatticeWidget || null : null;
 }
 
 function setAttribute(script: HTMLScriptElement, name: string, value: string | number | boolean | undefined | null) {
@@ -309,6 +326,18 @@ export function createAnswerlatticeWebClient(initialOptions: AnswerlatticeInitOp
     },
     clearHistory() {
       getRuntime()?.clearHistory?.();
+    },
+    clearIdentity() {
+      getRuntime()?.clearIdentity?.();
+    },
+    identify(visitor) {
+      getRuntime()?.identify?.(visitor);
+    },
+    identifySigned(token) {
+      getRuntime()?.identifySigned?.(token);
+    },
+    setEvidenceLinks(links) {
+      getRuntime()?.setEvidenceLinks?.(links);
     },
     on(eventName, callback) {
       getRuntime()?.on?.(eventName, callback);

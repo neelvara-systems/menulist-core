@@ -5,7 +5,7 @@ import { ANSWERLATTICE_PLAN_TIER_ORDER, getBillingPlansForProduct, getCreditPack
 import { ANSWERLATTICE_ROUTES, toAnswerlatticeDashboardRoute } from '@constant/answerlattice/navigations';
 import { getAnswerlatticeActiveSubscriptionForStore, getAnswerlatticeBillingHistoryForStore } from '@database/answerlattice/billing';
 import { useAppDispatch } from '@hook/useAppDispatch';
-import usePaymentHandler from '@hook/usePaymentHandler';
+import usePaymentHandler, { isPaymentCheckoutDismissedError } from '@hook/usePaymentHandler';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { formatBillingHistoryEvents } from '@lib/billing/billingHistoryFormatter';
 import { logger } from '@lib/monitoring/logger';
@@ -103,6 +103,7 @@ export default function AnswerlatticeBilling() {
             await refetchActiveSubscription();
             return paymentResponse;
         } catch (error) {
+            if (isPaymentCheckoutDismissedError(error)) return;
             logger.error('Answerlattice payment flow failed', error);
             message.error('Payment failed. Please try again.');
         } finally {
@@ -126,6 +127,7 @@ export default function AnswerlatticeBilling() {
                 : previous);
             message.success('Support credits added.');
         } catch (error) {
+            if (isPaymentCheckoutDismissedError(error)) return;
             logger.error('Answerlattice credit pack purchase failed', error);
             message.error('Credit purchase failed.');
         } finally {

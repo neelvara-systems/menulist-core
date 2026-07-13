@@ -156,7 +156,9 @@ export function requireAnyStorePermissionForStoreData(
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const roleId = session?.user?.stores?.find((store: any) => Number(store?.storeId) === storeScope.numericId)?.role
+    const roleId = session?.user?.stores?.find((store: any) => (
+        normalizeStorePermissionScopeDocumentId(store?.storeId)?.numericId === storeScope.numericId
+    ))?.role
         || session?.role
         || session?.user?.role;
     const effectivePermissions = getPermissionsForRole(roleId, (storeData?.roles || []) as StoreRoleDataType[]);

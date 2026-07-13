@@ -7,6 +7,7 @@ import {
     getMyCodexRelativeSourcePath,
     resolveMyCodexDocument,
 } from '@lib/mycodex/docs';
+import { isMyCodexLocalDevelopmentHost } from '@lib/mycodex/requestHost';
 
 // Disable Next.js routing cache so filesystem modifications show up in real-time.
 export const revalidate = 0;
@@ -21,7 +22,7 @@ interface PageProps {
 export default async function MyCodexPage({ params }: PageProps) {
     const slug = params.slug || [];
     const host = headers().get('host') || '';
-    const isLocalDev = host.includes('localhost') || host.includes('127.0.0.1');
+    const isLocalDev = isMyCodexLocalDevelopmentHost(host);
     const docsTree = await getMyCodexDocsTree();
     const { markdown, resolvedFilePath } = await resolveMyCodexDocument(slug);
     const headings = extractMyCodexHeadings(markdown);

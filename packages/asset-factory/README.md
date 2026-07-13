@@ -72,6 +72,12 @@ These skills do not override AssetOS. The manifest, slot file, brand context, so
 8. Run `npm run assets:fingerprint -- --slot <slot-id>` only after a generated/approved asset and its watched sources are intentionally accepted. Use all-slot `npm run assets:fingerprint` only when every non-missing asset in the manifest has been reviewed against current sources.
 9. Do not add Firebase, Vercel deploys, public routes, or scheduled jobs for this package.
 10. If a better asset workflow requires a repo-rule change, update the AssetOS docs and skill instructions rather than leaving the decision only in chat.
+11. Every tracked public website media file must be owned by a manifest slot. A disconnected public file is an audit error, not informational inventory.
+12. Generated and approved entries must declare their slot destination and every required output role. Orphan manifest entries and files claimed by multiple slots are audit errors.
+13. Every declared source path must exist, and fingerprint comparison must detect changed, added, and removed watched files.
+14. Generated/approved media must have its own existing slot-named brief. Missing, mismatched, or multiply owned brief paths are audit failures.
+15. `status: approved` requires an approved review; approved decisions require passing performance and 1-10 scores for strategic fit, brand fit, and narrative clarity.
+16. Files assigned to declared output roles must use the slot's required format extension.
 
 ## Motion Asset Path
 

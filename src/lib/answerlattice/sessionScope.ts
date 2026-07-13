@@ -5,6 +5,7 @@ import {
 } from '@constant/user';
 import { isAnswerlatticeProductHostname } from '@constant/answerlattice/domains';
 import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
+import { isPlatformEntityBlocked } from '@lib/platform/entityBlock';
 
 export type AnswerlatticeProductAccount = {
     tenantId: number;
@@ -16,6 +17,12 @@ export type AnswerlatticeProductAccount = {
 
 export const ANSWERLATTICE_PRODUCT_ACCOUNT_KEY = PRODUCT_IDS.ANSWERLATTICE;
 const ANSWERLATTICE_SCOPE_DOCUMENT_ID_PATTERN = /^[1-9]\d*$/;
+
+const allSuppliedScopeIdsMatch = (values: unknown[], expected: number): boolean => {
+    const suppliedValues = values.filter((value) => value !== undefined);
+    return suppliedValues.length > 0
+        && suppliedValues.every((value) => normalizeAnswerlatticeScopeDocumentId(value) === expected);
+};
 
 export function normalizeAnswerlatticeScopeDocumentId(value: unknown): number | null {
     const raw = typeof value === 'string' || typeof value === 'number' ? String(value) : '';
@@ -34,11 +41,65 @@ export function normalizeAnswerlatticeScopeDocumentId(value: unknown): number | 
         : null;
 }
 
+export function isAnswerlatticeStoreInScope(
+    value: unknown,
+    scope: { tenantId: unknown; storeId: unknown },
+    documentId?: unknown,
+): boolean {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+    const store = value as Record<string, unknown>;
+    const tenantId = normalizeAnswerlatticeScopeDocumentId(scope.tenantId);
+    const storeId = normalizeAnswerlatticeScopeDocumentId(scope.storeId);
+    if (!tenantId || !storeId) return false;
+
+    const productIds = [store.pId, store.productId]
+        .filter((productId) => productId !== undefined);
+    const hasConsistentProductIdentity = productIds.length > 0
+        && productIds.every((productId) => productId === PRODUCT_IDS.ANSWERLATTICE);
+
+    return hasConsistentProductIdentity
+        && allSuppliedScopeIdsMatch([store.tenantId, store.tId], tenantId)
+        && allSuppliedScopeIdsMatch([store.storeId, store.sId, store.id, documentId], storeId);
+}
+
+export function isAnswerlatticeActiveStoreInScope(
+    value: unknown,
+    scope: { tenantId: unknown; storeId: unknown },
+    documentId?: unknown,
+): boolean {
+    if (!isAnswerlatticeStoreInScope(value, scope, documentId)) return false;
+    const store = value as Record<string, unknown>;
+    return store.active !== false
+        && store.deleted !== true
+        && store.authDisabled !== true
+        && !isPlatformEntityBlocked(store);
+}
+
 const normalizeProductId = (value: unknown): ProductId | null => {
     if (typeof value !== 'string') return null;
     const normalized = value.trim().toUpperCase();
     return Object.values(PRODUCT_IDS).includes(normalized as ProductId)
         ? normalized as ProductId
+        : null;
+};
+
+const normalizeConsistentProductIds = (values: unknown[]): ProductId | null => {
+    const suppliedValues = values.filter((value) => value !== undefined);
+    if (suppliedValues.length === 0) return null;
+    const normalizedValues = suppliedValues.map(normalizeProductId);
+    const firstValue = normalizedValues[0];
+    return firstValue && normalizedValues.every((value) => value === firstValue)
+        ? firstValue
+        : null;
+};
+
+export const normalizeConsistentAnswerlatticeScopeDocumentIds = (values: unknown[]): number | null => {
+    const suppliedValues = values.filter((value) => value !== undefined);
+    if (suppliedValues.length === 0) return null;
+    const normalizedValues = suppliedValues.map(normalizeAnswerlatticeScopeDocumentId);
+    const firstValue = normalizedValues[0];
+    return firstValue && normalizedValues.every((value) => value === firstValue)
+        ? firstValue
         : null;
 };
 
@@ -71,8 +132,8 @@ export function getAnswerlatticeProductAccount(sessionOrUser: any): Answerlattic
     if (!account || typeof account !== 'object') return null;
     if (account.active === false || account.deleted === true || account.authDisabled === true) return null;
 
-    const tenantId = normalizeAnswerlatticeScopeDocumentId(account.tenantId ?? account.tId);
-    const storeId = normalizeAnswerlatticeScopeDocumentId(account.storeId ?? account.sId);
+    const tenantId = normalizeConsistentAnswerlatticeScopeDocumentIds([account.tenantId, account.tId]);
+    const storeId = normalizeConsistentAnswerlatticeScopeDocumentIds([account.storeId, account.sId]);
     if (!tenantId || !storeId) return null;
 
     return {
@@ -94,14 +155,26 @@ export function resolveAnswerlatticeSessionScope(sessionOrUser: any): { tenantId
         };
     }
 
-    const productId = normalizeProductId(sessionOrUser?.pId)
-        || normalizeProductId(sessionOrUser?.productId)
-        || normalizeProductId(sessionOrUser?.user?.pId)
-        || normalizeProductId(sessionOrUser?.user?.productId);
+    const productId = normalizeConsistentProductIds([
+        sessionOrUser?.pId,
+        sessionOrUser?.productId,
+        sessionOrUser?.user?.pId,
+        sessionOrUser?.user?.productId,
+    ]);
     if (productId !== PRODUCT_IDS.ANSWERLATTICE) return null;
 
-    const tenantId = normalizeAnswerlatticeScopeDocumentId(sessionOrUser?.tId ?? sessionOrUser?.tenantId ?? sessionOrUser?.user?.tenantId);
-    const storeId = normalizeAnswerlatticeScopeDocumentId(sessionOrUser?.sId ?? sessionOrUser?.storeId ?? sessionOrUser?.user?.storeId);
+    const tenantId = normalizeConsistentAnswerlatticeScopeDocumentIds([
+        sessionOrUser?.tId,
+        sessionOrUser?.tenantId,
+        sessionOrUser?.user?.tId,
+        sessionOrUser?.user?.tenantId,
+    ]);
+    const storeId = normalizeConsistentAnswerlatticeScopeDocumentIds([
+        sessionOrUser?.sId,
+        sessionOrUser?.storeId,
+        sessionOrUser?.user?.sId,
+        sessionOrUser?.user?.storeId,
+    ]);
     if (!tenantId || !storeId) return null;
 
     return {

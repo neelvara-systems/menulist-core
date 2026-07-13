@@ -43,6 +43,7 @@ import {
     LuDatabase,
     LuExternalLink,
     LuLayers,
+    LuListChecks,
     LuMail,
     LuRadioTower,
     LuRefreshCw,
@@ -287,6 +288,13 @@ export default function AnswerlatticeActivationCommandCenter() {
                         style={{ minHeight: 44 }}
                     >
                         Refresh
+                    </Button>
+                    <Button
+                        icon={<LuListChecks />}
+                        onClick={() => openRoute(ANSWERLATTICE_ROUTES.SUPPORT_ASSISTANT)}
+                        style={{ minHeight: 44 }}
+                    >
+                        Today&apos;s Brief
                     </Button>
                     {nextStep?.route && (
                         <Button

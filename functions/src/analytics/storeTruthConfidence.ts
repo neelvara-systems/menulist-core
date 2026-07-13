@@ -27,6 +27,11 @@
 import * as admin from 'firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { DB_COLLECTIONS } from '../constants/database';
+import {
+    normalizeStoreSummaryDate,
+    parsePlatformStoreSummary,
+    type PlatformStoreSummaryData,
+} from '../sharedData/storeSummaryBoundary';
 import { analyticsLogger, getAnalyticsErrorContext } from './analyticsDiagnostics';
 
 // ================================================================
@@ -72,29 +77,31 @@ function computeFreshnessScore(lastPublishedAt: Date | null): number {
     return 10;
 }
 
-function computeCompletenessScore(storeInfo: any): number {
+function computeCompletenessScore(storeInfo: PlatformStoreSummaryData): number {
     // Use storesSummary data which has basic counts
     // Fields available: tId, businessType, businessCategory, active, name, projectCount, lastPublishedAt
     let score = 50; // Base score — store exists
 
-    if (storeInfo.projectCount > 0) score += 20;
-    if (storeInfo.name) score += 10;              // Store has a name
-    if (storeInfo.businessCategory) score += 10;   // Has business category
-    if (storeInfo.businessType) score += 10;       // Has business type
+    if (typeof storeInfo.projectCount === 'number' && Number.isFinite(storeInfo.projectCount) && storeInfo.projectCount > 0) score += 20;
+    if (typeof storeInfo.name === 'string' && storeInfo.name.trim()) score += 10;
+    if (typeof storeInfo.businessCategory === 'string' && storeInfo.businessCategory.trim()) score += 10;
+    if (typeof storeInfo.businessType === 'string' && storeInfo.businessType.trim()) score += 10;
 
     return Math.min(100, score);
 }
 
-function computeStabilityScore(storeInfo: any): number {
+function computeStabilityScore(): number {
     // Without per-item drift data in storesSummary, use a conservative default.
     // The nightly menu drift task runs separately; we just check if it flagged issues.
     // For now, assume stable unless we have data.
     return 70; // Conservative default — will be refined when drift data is integrated
 }
 
-function computeExtractionScore(globalCorrectionRate: number): number {
+function computeExtractionScore(globalCorrectionRate: number | null): number {
     // Based on global correction rate from extractionLearning
     let score = 80; // Default — assume decent extraction
+
+    if (globalCorrectionRate === null) return score;
 
     if (globalCorrectionRate > 0.20) score -= 30;
     else if (globalCorrectionRate > 0.10) score -= 15;
@@ -103,7 +110,7 @@ function computeExtractionScore(globalCorrectionRate: number): number {
     return Math.max(0, Math.min(100, score));
 }
 
-function computeEngagementScore(storeInfo: any, lastPublishedAt: Date | null): number {
+function computeEngagementScore(lastPublishedAt: Date | null): number {
     // Best proxy for engagement: when was the menu last modified?
     // lastPublishedAt is enriched by the nightly scheduler from project modifiedOn
     if (lastPublishedAt) {
@@ -152,13 +159,21 @@ export async function computeStoreTruthConfidenceForAllStores(): Promise<StoreTr
         const storesSummaryDoc = await db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc('storesSummary').get();
         result.readsCount++;
 
-        const storesSummary = storesSummaryDoc.exists ? storesSummaryDoc.data()?.stores || {} : {};
+        const storesSummary = parsePlatformStoreSummary(storesSummaryDoc.exists ? storesSummaryDoc.data() : undefined);
         const storeIds = Object.keys(storesSummary);
 
         // Read extraction learning data (1 read)
         const learningDoc = await db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc('extractionLearning').get();
         result.readsCount++;
-        const globalCorrectionRate = learningDoc.exists ? (learningDoc.data()?.correctionRate || 0) : 0;
+        const learningData = learningDoc.exists ? learningDoc.data() : undefined;
+        const storedCorrectionRate = learningData?.correctionRate;
+        const globalCorrectionRate = learningData?.correctionRateStatus === 'measured'
+            && typeof storedCorrectionRate === 'number'
+            && Number.isFinite(storedCorrectionRate)
+            && storedCorrectionRate >= 0
+            && storedCorrectionRate <= 1
+            ? storedCorrectionRate
+            : null;
 
         const storeScores: Record<string, StoreScoreEntry> = {};
         let totalScore = 0;
@@ -167,22 +182,17 @@ export async function computeStoreTruthConfidenceForAllStores(): Promise<StoreTr
             const storeInfo = storesSummary[sId];
             if (storeInfo.active === false) continue;
 
-            const tId = storeInfo.tId != null ? String(storeInfo.tId) : '';
-            if (!tId) continue;
+            const tId = storeInfo.tId;
 
             // Compute component scores
             // lastPublishedAt may be a Firestore Timestamp or a Date string/number
-            let lastPublishedAt: Date | null = null;
-            if (storeInfo.lastPublishedAt) {
-                const raw = storeInfo.lastPublishedAt;
-                lastPublishedAt = raw?.toDate?.() ?? new Date(raw._seconds ? raw._seconds * 1000 : raw);
-            }
+            const lastPublishedAt = normalizeStoreSummaryDate(storeInfo.lastPublishedAt);
 
             const freshness = computeFreshnessScore(lastPublishedAt);
             const completeness = computeCompletenessScore(storeInfo);
-            const stability = computeStabilityScore(storeInfo);
+            const stability = computeStabilityScore();
             const extraction = computeExtractionScore(globalCorrectionRate);
-            const engagement = computeEngagementScore(storeInfo, lastPublishedAt);
+            const engagement = computeEngagementScore(lastPublishedAt);
 
             // Weighted composite
             const score = Math.round(

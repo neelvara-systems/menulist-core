@@ -1,12 +1,21 @@
 import countryData from "@atoms/phoneNumberInput/countryData";
-import { FALLBACK_BUSINESS_TYPE, resolveStoreBusinessCategory } from "@data/shared/businessTypes";
+import {
+  FALLBACK_BUSINESS_TYPE,
+  getBusinessTypeConfig,
+  resolveStoreBusinessCategory,
+} from "@data/shared/businessTypes";
 import { DB_COLLECTIONS } from "@constant/database";
 import { DEFAULT_PRODUCT_ID } from "@constant/product";
 import { getGeneratedEmail, getMenuUrl, SIGNIN_URL } from "@constant/urls";
 import { getOwnerRoleId } from "@data/defaultRoles";
 import { getSuggestionValue } from "@data/shared/extractedBusinessProfile";
 import { getPhoneLookupCandidates } from "@lib/auth/loginIdentifiers";
-import { admin } from "@lib/firebase/firebaseAdmin";
+import {
+  getMessagingOwnerDocumentId,
+  MessagingOwnerClaimConflictError,
+  readMessagingOwnerClaimInTransaction,
+} from "@lib/messaging-onboarding/messagingOwnerClaim";
+import { admin, storageAdmin } from "@lib/firebase/firebaseAdmin";
 import { CANONICAL_SOURCE_LANGUAGE, normalizeProjectLanguages } from "@lib/localization/languagePolicy";
 import { getMenuDesignPresetPatch, getRecommendedMenuDesignPresets } from "@lib/menu/menuDesignPresets";
 import { getBusinessAttributesWithMenuDefaults } from "@lib/obp/inferBusinessAttributesFromMenu";
@@ -23,6 +32,14 @@ import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { revalidateTag } from "next/cache";
 import { sanitizeMessagingOnboardingEventMetadata } from "./eventMetadata";
 import { normalizeMessagingPreviewSessionId } from "./previewRouteBoundary";
+import {
+  buildMessagingPublishDeliveryState,
+  buildMessagingPublishUploadCleanupState,
+  getMessagingPublishSourceFingerprint,
+  normalizeMessagingPublishSession,
+  type MessagingPublishSession,
+} from "./publishSessionBoundary";
+import { drainMessagingPendingUploadCleanupServer } from "./uploadCleanup";
 
 const db = admin.firestore();
 
@@ -31,7 +48,7 @@ export interface MessagingOnboardingPublishParams {
   businessType: string;
   phone: string;
   address: string;
-  sessionData: any;
+  sessionData: unknown;
 }
 
 export interface MessagingOnboardingPublishResult {
@@ -42,19 +59,34 @@ export interface MessagingOnboardingPublishResult {
   dashboardUrl: string;
 }
 
-const getCanonicalExtractionLanguages = (languages: any): string[] => normalizeProjectLanguages(
+const isRecord = (value: unknown): value is Record<string, unknown> => (
+  Boolean(value) && typeof value === "object" && !Array.isArray(value)
+);
+
+const asRecord = (value: unknown): Record<string, unknown> | null => (
+  isRecord(value) ? value : null
+);
+
+const getLanguageCode = (value: unknown): string | null => {
+  if (typeof value === "string") return value;
+  const source = asRecord(value);
+  return typeof source?.code === "string" ? source.code : null;
+};
+
+const getCanonicalExtractionLanguages = (languages: unknown): string[] => normalizeProjectLanguages(
   Array.isArray(languages)
-    ? languages.map((language) => typeof language === "string" ? language : language?.code)
+    ? languages.map(getLanguageCode).filter((code): code is string => Boolean(code))
     : [],
 );
 
-const getDetectedDefaultLanguage = (languages: any): string => {
+const getDetectedDefaultLanguage = (languages: unknown): string => {
   if (Array.isArray(languages)) {
-    const primary = languages.find((language) => language?.isPrimary)?.code;
-    if (primary) return String(primary).trim().toLowerCase();
+    const primary = languages.find((language) => asRecord(language)?.isPrimary === true);
+    const primaryCode = getLanguageCode(primary);
+    if (primaryCode) return primaryCode.trim().toLowerCase();
 
-    const firstCode = typeof languages[0] === "string" ? languages[0] : languages[0]?.code;
-    if (firstCode) return String(firstCode).trim().toLowerCase();
+    const firstCode = getLanguageCode(languages[0]);
+    if (firstCode) return firstCode.trim().toLowerCase();
   }
   return CANONICAL_SOURCE_LANGUAGE;
 };
@@ -75,13 +107,29 @@ export async function executeMessagingOnboardingPublish(
     throw new Error("Invalid messaging preview session");
   }
 
-  const { businessName, address, phone, sessionData } = params;
+  const expectedBucket = storageAdmin.bucket().name;
+  const sessionData = normalizeMessagingPublishSession(
+    params.sessionData,
+    normalizedSessionId,
+    expectedBucket,
+  );
+  if (!sessionData) throw new Error("Invalid messaging publish source");
+  const sourceFingerprint = getMessagingPublishSourceFingerprint(sessionData);
+  const businessName = typeof params.businessName === "string" ? params.businessName.trim() : "";
+  const address = typeof params.address === "string" ? params.address.trim() : "";
+  const phone = typeof params.phone === "string" ? params.phone.trim() : "";
+  if (!businessName || businessName.length > 100 || address.length > 200 || phone.length > 20) {
+    throw new Error("Invalid messaging publish input");
+  }
   const menuData = sessionData.extractedMenuData;
-  const extractedProfile = sessionData.extractedBusinessProfile || menuData?.extractedBusinessProfile || null;
-  const businessType = params.businessType ||
+  const extractedProfile = sessionData.extractedBusinessProfile;
+  const requestedBusinessType = typeof params.businessType === "string" ? params.businessType.trim() : "";
+  const businessTypeCandidate = requestedBusinessType ||
     sessionData.detectedBusinessType ||
     getSuggestionValue(extractedProfile?.identity?.businessType, "medium") ||
     FALLBACK_BUSINESS_TYPE;
+  const businessType = getBusinessTypeConfig(businessTypeCandidate)?.value
+    || FALLBACK_BUSINESS_TYPE;
 
   logPublishEvent(normalizedSessionId, sessionData, "PUBLISH_STARTED", "PUBLISHING", {
     businessName,
@@ -90,6 +138,9 @@ export async function executeMessagingOnboardingPublish(
 
   const sourcePhone = phone || sessionData.providerDisplayId || "";
   const normalizedPhone = normalizePhoneNumberForStorage({ phoneNumber: sourcePhone });
+  if (!normalizedPhone.phone || !normalizedPhone.phoneUsername) {
+    throw new Error("Invalid messaging publish phone");
+  }
 
   // Infer country/currency from phone (uses frontend countryData.ts — 252 countries)
   const countryInfo = inferCountryFromPhone(normalizedPhone.phone || sourcePhone);
@@ -155,28 +206,30 @@ export async function executeMessagingOnboardingPublish(
   // Story 3B: Check if user with this phone already exists (spec §Story 3B)
   // Query BEFORE transaction — if exists, we UPDATE instead of CREATE
   const phoneUsername = normalizedPhone.phoneUsername;
-  let existingUserDoc: FirebaseFirestore.QueryDocumentSnapshot | null = null;
+  const existingUserDocs = new Map<string, FirebaseFirestore.QueryDocumentSnapshot>();
   for (const [field, candidates] of [
     ["phoneUsername", phoneUsername ? [phoneUsername] : []],
     ["phone", getPhoneLookupCandidates(normalizedPhone.phone || sourcePhone)],
   ] as Array<[string, string[]]>) {
-    for (const candidate of candidates) {
+    for (const candidate of Array.from(new Set(candidates))) {
       const existingUserQuery = await db
         .collection(DB_COLLECTIONS.USERS)
         .where(field, "==", candidate)
-        .limit(1)
+        .limit(2)
         .get();
-      if (!existingUserQuery.empty) {
-        existingUserDoc = existingUserQuery.docs[0];
-        break;
-      }
+      if (existingUserQuery.size > 1) throw new MessagingOwnerClaimConflictError();
+      for (const doc of existingUserQuery.docs) existingUserDocs.set(doc.id, doc);
+      if (existingUserDocs.size > 1) throw new MessagingOwnerClaimConflictError();
     }
-    if (existingUserDoc) break;
   }
+  const existingUserDoc = Array.from(existingUserDocs.values())[0] || null;
 
   // Pre-check subdomain uniqueness (must be outside transaction)
   const preCheckedSubdomain = await preCheckSubdomain(db, businessName);
   const sessionRef = db.collection(DB_COLLECTIONS.MESSAGING_ONBOARDING_SESSIONS).doc(normalizedSessionId);
+  const newOwnerDocumentId = getMessagingOwnerDocumentId(normalizedPhone.phone || phoneUsername);
+  const ownerUserId = existingUserDoc?.id || newOwnerDocumentId;
+  if (!ownerUserId) throw new MessagingOwnerClaimConflictError();
 
   // Atomic transaction
   const result = await db.runTransaction(async (transaction) => {
@@ -185,7 +238,12 @@ export async function executeMessagingOnboardingPublish(
       throw new Error("Session not found");
     }
 
-    const currentSession = sessionSnapshot.data() || {};
+    const currentSession = normalizeMessagingPublishSession(
+      sessionSnapshot.data(),
+      normalizedSessionId,
+      expectedBucket,
+    );
+    if (!currentSession) throw new Error("Invalid messaging publish session state");
     if (currentSession.state === "LIVE" && currentSession.publishedResult) {
       return {
         tenantId: currentSession.publishedResult.tenantId,
@@ -201,6 +259,18 @@ export async function executeMessagingOnboardingPublish(
     if (currentSession.state !== "PUBLISHING") {
       throw new Error(`Cannot publish: session state is ${currentSession.state}`);
     }
+    if (getMessagingPublishSourceFingerprint(currentSession) !== sourceFingerprint) {
+      throw new Error("Messaging publish source changed");
+    }
+
+    const ownerClaim = await readMessagingOwnerClaimInTransaction({
+      db,
+      existingUserExpected: Boolean(existingUserDoc),
+      expectedPhone: normalizedPhone.phone,
+      expectedPhoneUsername: phoneUsername,
+      transaction,
+      userId: ownerUserId,
+    });
 
     // Centralized tenant + store creation
     const core = await createTenantStoreInTransaction(transaction, db, {
@@ -211,6 +281,7 @@ export async function executeMessagingOnboardingPublish(
       onboardingSource: "MESSAGING_ONBOARDING",
       subdomain: { preChecked: preCheckedSubdomain },
       includeTimeSlotPresets: true,
+      timeZone: currency.timezone,
       storeExtra: {
         activationDeadline: Timestamp.fromMillis(Date.now() + STARTER_ACTIVATION_MS),
         starterActivationStatus: STARTER_ACTIVATION_STATUS.STARTER_ACTIVE,
@@ -225,7 +296,6 @@ export async function executeMessagingOnboardingPublish(
         country,
         currencyCode: currency.code,
         currencySymbol: currency.symbol,
-        timeZone: currency.timezone,
         logo: "",
         ...(initialBusinessAttributes ? { businessAttributes: initialBusinessAttributes } : {}),
       },
@@ -235,7 +305,7 @@ export async function executeMessagingOnboardingPublish(
     let claimToken: string | null = null;
     let userRef;
     if (existingUserDoc) {
-      userRef = existingUserDoc.ref;
+      userRef = ownerClaim.ref;
       transaction.update(userRef, {
         tenantId: core.tenantId,
         storeId: core.storeId,
@@ -246,8 +316,7 @@ export async function executeMessagingOnboardingPublish(
         dialCode: normalizedPhone.dialCode,
         phone: normalizedPhone.phone,
         phoneNumber: normalizedPhone.phoneNumber,
-        phoneUsername: phoneUsername || undefined,
-        phoneLoginEnabled: phoneUsername ? true : undefined,
+        ...(phoneUsername ? { phoneUsername, phoneLoginEnabled: true } : {}),
         onboardingSource: "MESSAGING_ONBOARDING",
         modifiedOn: core.now,
       });
@@ -255,8 +324,8 @@ export async function executeMessagingOnboardingPublish(
       claimToken = crypto.randomBytes(32).toString("base64url");
       const claimTokenExpiresAt = Timestamp.fromMillis(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
-      userRef = db.collection(DB_COLLECTIONS.USERS).doc();
-      transaction.set(userRef, {
+      userRef = ownerClaim.ref;
+      transaction.create(userRef, {
         countryCode: normalizedPhone.countryCode,
         dialCode: normalizedPhone.dialCode,
         phone: normalizedPhone.phone,
@@ -266,7 +335,7 @@ export async function executeMessagingOnboardingPublish(
         isVerified: true,
         active: true,
         platformRole: "OWNER",
-        phoneUsername: phoneUsername || undefined,
+        ...(phoneUsername ? { phoneUsername } : {}),
         tenantId: core.tenantId,
         storeId: core.storeId,
         stores: [{ storeId: core.storeId, name: core.storeName, role: getOwnerRoleId() }],
@@ -286,37 +355,7 @@ export async function executeMessagingOnboardingPublish(
     // Path: projects/{tId}/{sId}/{projectId} — matches database/projects/index.ts DAL pattern
     const projectId = `${core.tenantId}-default-${core.storeId}`;
     const projectRef = db.collection(`projects/${core.tenantId}/${core.storeId}`).doc(projectId);
-    const validUploads = (sessionData.uploads || []).filter(
-      (u: any) => (sessionData.validMenuFiles || []).includes(u.id),
-    );
-    const projectFiles = (
-      Array.isArray(sessionData.extractedProjectFiles) && sessionData.extractedProjectFiles.length > 0
-        ? sessionData.extractedProjectFiles
-        : validUploads.map((upload: any, index: number) => ({
-          uid: upload.id,
-          name: upload.fileName || upload.id,
-          size: upload.fileSize,
-          type: upload.mimeType,
-          url: upload.storageUrl,
-          active: true,
-          deleted: false,
-          index,
-          // CRITICAL: Must wrap in { data: ... } to match ExtractedData schema.
-          // Dashboard editor reads extractedData.data.categories / extractedData.data.items.
-          extractedData: index === 0 ? { data: menuData } : null,
-        }))
-    ).map((file: any, index: number) => ({
-      uid: file.uid,
-      name: file.name || file.uid,
-      size: Number(file.size || 0),
-      type: file.type || "",
-      url: file.url || "",
-      active: file.active !== false,
-      deleted: file.deleted === true,
-      index: typeof file.index === "number" ? file.index : index,
-      extractedData: file.extractedData ?? null,
-      ...(file.qualityScore != null ? { qualityScore: file.qualityScore } : {}),
-    }));
+    const projectFiles = sessionData.extractedProjectFiles;
     const projectDescription = `Digital menu for ${businessName}`;
 
     transaction.set(projectRef, {
@@ -387,7 +426,8 @@ export async function executeMessagingOnboardingPublish(
         dashboardUrl,
       },
       extractedProjectFiles: FieldValue.delete(),
-      confirmationPending: true,
+      ...buildMessagingPublishDeliveryState(),
+      ...buildMessagingPublishUploadCleanupState(currentSession),
       publishedAt: core.now,
       updatedAt: core.now,
     });
@@ -404,12 +444,51 @@ export async function executeMessagingOnboardingPublish(
     };
   });
 
+  const uploadCleanup = await drainMessagingPendingUploadCleanupServer({
+    sessionId: normalizedSessionId,
+  });
+  if (uploadCleanup.status === "invalid") {
+    logRuntimeFailure(
+      "messaging_onboarding_upload_cleanup_failed",
+      new Error("MESSAGING_UPLOAD_CLEANUP_STATE_INVALID"),
+      {
+        ...getBoundedRuntimeStringContext("sessionId", normalizedSessionId),
+        cleanupPathCount: 0,
+        operation: "cleanup_state_validation",
+      },
+    );
+  }
+
   try {
     revalidateTag(`menu-store-${result.storeId}`);
     revalidateTag(`store-${result.storeId}`);
     revalidateTag("client-stores");
     revalidateTag("screen-data");
+  } catch (cacheError) {
+    logRuntimeFailure("messaging_onboarding_publish_cache_revalidation_failed", cacheError, {
+      ...getBoundedRuntimeStringContext("tenantId", result.tenantId),
+      ...getBoundedRuntimeStringContext("storeId", result.storeId),
+      ...getBoundedRuntimeStringContext("projectId", result.projectId),
+      ...getBoundedRuntimeStringContext("userId", result.userId),
+      operation: "next_cache_tags",
+      tagCount: 4,
+    });
+  }
+
+  try {
     await touchDigitalScreenContentVersionForStoreServer(result.storeId, "messagingOnboardingPublish");
+  } catch (cacheError) {
+    logRuntimeFailure("messaging_onboarding_publish_cache_revalidation_failed", cacheError, {
+      ...getBoundedRuntimeStringContext("tenantId", result.tenantId),
+      ...getBoundedRuntimeStringContext("storeId", result.storeId),
+      ...getBoundedRuntimeStringContext("projectId", result.projectId),
+      ...getBoundedRuntimeStringContext("userId", result.userId),
+      operation: "digital_screen_content_version",
+      tagCount: 0,
+    });
+  }
+
+  try {
     await invalidateOwnerBusinessAssistantPacketCache({
       tId: result.tenantId,
       sId: result.storeId,
@@ -421,8 +500,8 @@ export async function executeMessagingOnboardingPublish(
       ...getBoundedRuntimeStringContext("storeId", result.storeId),
       ...getBoundedRuntimeStringContext("projectId", result.projectId),
       ...getBoundedRuntimeStringContext("userId", result.userId),
-      tagCount: 4,
-      ownerAssistantPacketCacheInvalidated: true,
+      operation: "owner_business_assistant_packet",
+      tagCount: 0,
     });
   }
 
@@ -443,14 +522,16 @@ export async function executeMessagingOnboardingPublish(
 
 function logPublishEvent(
   sessionId: string,
-  sessionData: any,
+  sessionData: MessagingPublishSession,
   eventType: "PUBLISH_STARTED" | "PUBLISH_COMPLETED",
   sessionState: "PUBLISHING" | "LIVE",
-  metadata: Record<string, any>,
+  metadata: Record<string, unknown>,
 ): void {
+  const eventId = crypto.randomUUID();
   db.collection(DB_COLLECTIONS.MESSAGING_ONBOARDING_EVENTS)
-    .add({
-      eventId: crypto.randomUUID(),
+    .doc(eventId)
+    .set({
+      eventId,
       sessionId,
       provider: sessionData.provider,
       eventType,
@@ -459,9 +540,7 @@ function logPublishEvent(
       metadata: sanitizeMessagingOnboardingEventMetadata(metadata),
       timestamp: Timestamp.now(),
       expiresAt: Timestamp.fromMillis(Date.now() + 30 * 24 * 60 * 60 * 1000),
-      sessionAgeMs: sessionData.createdAt
-        ? Date.now() - sessionData.createdAt.toMillis()
-        : 0,
+      sessionAgeMs: Math.max(0, Date.now() - sessionData.createdAtMillis),
     })
     .catch((error) => {
       logRuntimeFailure("messaging_onboarding_publish_event_write_failed", error, {

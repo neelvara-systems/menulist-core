@@ -168,6 +168,8 @@ forbidToken(designPresets, "MenuLayout.TABS,", 'Owner selectable design preset h
   "const showTabsBar = !isDesktop && showCategoryTabs;",
   "const enableScrollSpy = isDesktop || isTablet || showCategoryTabs;",
   "const reserveItemImageSlot = shouldShowItemImages && !!itemImageUrl && itemIndex < layoutConfig.maxImagesPerCategory;",
+  "data-image-fallback={item.id}",
+  "fallback.style.opacity = '0.28'",
   "{showItemPrices && !item.attributes?.length && hasDisplayPrice(item.price) && (",
   "formatMenuPrice(item.price, currencySymbol, { fractionDigits: 2 })",
 ].forEach((token) => requireToken(publicMenu, token, 'Public B2C menu output'));

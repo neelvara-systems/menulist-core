@@ -18,6 +18,7 @@ Video Reel Studio creates short-form video campaign plans and, where configured,
 | Reel pack default | Output includes hook, shot list, caption, overlays, CTA, and timing. |
 | Manual-first fallback | If video rendering is unavailable, the owner still gets a complete shoot/edit brief. |
 | Phone-camera structure | Brief-mode output includes camera plan, product/service placement, B-roll checklist, and final-frame CTA guidance. |
+| Pattern Cue | Owner may submit one public example plus format notes. The reel brief receives an abstract structure and original hooks while source wording, media, music, and identity remain excluded. |
 | Proof deck reference | Campaign Pack Output may summarize reel direction in the Campaign Proof Deck as a review reference only. |
 | Source lock | Product/service facts, offers, location, pricing, and dates remain locked. |
 | Channel fit | Instagram Reel, TikTok-style short, YouTube Short, story, and ad video use separate rules. |
@@ -31,6 +32,7 @@ Video Reel Studio creates short-form video campaign plans and, where configured,
 - It does not treat a proof deck or shot list as rendered video output.
 - It does not create fake customer reactions, fake staff claims, or unverifiable results.
 - It does not present AI avatars, stock people, or fictional customers as real customer experiences.
+- It does not monitor creator accounts, copy viral videos, or guarantee reach.
 
 ## Risks
 

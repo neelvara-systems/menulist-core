@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2026-07-10",
+  "updatedAt": "2026-07-12",
   "productBoundary": {
     "publicRuntime": false,
     "publicMarketing": false,
@@ -19,13 +19,13 @@
       "brief": "packages/asset-factory/briefs/menulist.home.hero.official-source.md",
       "sourceFingerprint": {
         "files": {
-          "packages/asset-factory/slots/menulist.asset-slots.ts": "9e5fa3d56cfb20a4a592457a7690b5bbb5bf99b6ceb663168bcc312134befc2e",
+          "packages/asset-factory/slots/menulist.asset-slots.ts": "7e5cb75d6292ac5a0a903925da6afed14851ccddaca7f61ef7f3c4933895ba5f",
           "packages/asset-factory/brand/menulist.asset-context.md": "71f8f8195b97ab291d110a6c67743275e08c98dbea04f0486c3e230f29e05b09",
-          "__docs__/main-website/main-website_image-assets.md": "c4dc0fe13c88f6ceb1a3d8a43a91c7dd58b2bce98efe801178f3816fb1f558d3",
+          "__docs__/main-website/main-website_image-assets.md": "f8a7b7ffa36dfd785e3a0f8d68d4c2ef552652ec439877c7537d32be1d5a7ca9",
           "scripts/website-assets/generate-stage6-assets.mjs": "3a571dc2f7e39e9b27df70c649f47ae01ffefa41fb8cbe38138907f1f96446e8",
-          "src/styles/website.css": "4c89799ecf917fc23ee693519ec18293224507854e0c9d5f42f7fb19a64bcf14"
+          "src/styles/website.css": "8d99924b9026f75d3da2ae01d6717d9750a63d75b46155e46f4a3c8689d2905c"
         },
-        "notes": "Locked by assets:fingerprint on 2026-07-10."
+        "notes": "Locked by assets:fingerprint on 2026-07-11."
       },
       "review": {
         "decision": "approved",
@@ -50,10 +50,10 @@
       "brief": "packages/asset-factory/briefs/menulist.home.og.official-source.md",
       "sourceFingerprint": {
         "files": {
-          "packages/asset-factory/slots/menulist.asset-slots.ts": "9e5fa3d56cfb20a4a592457a7690b5bbb5bf99b6ceb663168bcc312134befc2e",
+          "packages/asset-factory/slots/menulist.asset-slots.ts": "7e5cb75d6292ac5a0a903925da6afed14851ccddaca7f61ef7f3c4933895ba5f",
           "packages/asset-factory/brand/menulist.asset-context.md": "71f8f8195b97ab291d110a6c67743275e08c98dbea04f0486c3e230f29e05b09",
-          "__docs__/main-website/main-website_image-assets.md": "c4dc0fe13c88f6ceb1a3d8a43a91c7dd58b2bce98efe801178f3816fb1f558d3",
-          "__docs__/main-website/asset-production/launch-pack-2026-07/menulist-launch-pack.md": "1bec008da0b36650c2f2836df919013f75c7ebde80168e7ef42f974eb95479b1",
+          "__docs__/main-website/main-website_image-assets.md": "f8a7b7ffa36dfd785e3a0f8d68d4c2ef552652ec439877c7537d32be1d5a7ca9",
+          "__docs__/main-website/asset-production/launch-pack-2026-07/menulist-launch-pack.md": "4eab7eaff29a8b775c94e8d8666ac2c93ac745f96dffac59648938312c392f9f",
           "scripts/website-assets/generate-stage6-assets.mjs": "3a571dc2f7e39e9b27df70c649f47ae01ffefa41fb8cbe38138907f1f96446e8",
           "public/images/website/menulist-hero-official-source.webp": "141a1cdbfe99ee340cfe142a99c73eb92b8d31d16c82d8fd8f8eaac17df60935"
         },
@@ -81,13 +81,14 @@
       "brief": "packages/asset-factory/briefs/menulist.home.customer-browse.mobile-menu.md",
       "sourceFingerprint": {
         "files": {
-          "packages/asset-factory/slots/menulist.asset-slots.ts": "9e5fa3d56cfb20a4a592457a7690b5bbb5bf99b6ceb663168bcc312134befc2e",
+          "packages/asset-factory/slots/menulist.asset-slots.ts": "7e5cb75d6292ac5a0a903925da6afed14851ccddaca7f61ef7f3c4933895ba5f",
           "packages/asset-factory/brand/menulist.asset-context.md": "71f8f8195b97ab291d110a6c67743275e08c98dbea04f0486c3e230f29e05b09",
-          "__docs__/main-website/main-website_image-assets.md": "c4dc0fe13c88f6ceb1a3d8a43a91c7dd58b2bce98efe801178f3816fb1f558d3",
+          "__docs__/main-website/main-website_image-assets.md": "f8a7b7ffa36dfd785e3a0f8d68d4c2ef552652ec439877c7537d32be1d5a7ca9",
           "src/components/website/home/CustomerBrowseSection.tsx": "7ab8ae0aa69344d1394ae9b9741d7df0975e9dad398780309b288ab6494e87ad",
-          "src/app/client/[[...slug]]/page.tsx": "76628e3d2911865cd097564a727d081c2073eae884a9216e665eec55dc329f78"
+          "src/components/website/features/FeatureScreenshotProofGallery.tsx": "758fc3df406e61cf983da835e42fe889199d4cc06b5bb661e47b8c4d84ecb85f",
+          "src/app/client/[[...slug]]/page.tsx": "e39e73bc6880ddc4a46d33313657dcf9463b59d9e8db5259dd0fbce2e3653f70"
         },
-        "notes": "Locked by assets:fingerprint on 2026-07-10."
+        "notes": "Locked by assets:fingerprint on 2026-07-12."
       },
       "review": {
         "decision": "approved",
@@ -111,11 +112,11 @@
       "brief": "packages/asset-factory/briefs/menulist.home.public-presence.obp-browser.md",
       "sourceFingerprint": {
         "files": {
-          "packages/asset-factory/slots/menulist.asset-slots.ts": "9e5fa3d56cfb20a4a592457a7690b5bbb5bf99b6ceb663168bcc312134befc2e",
+          "packages/asset-factory/slots/menulist.asset-slots.ts": "7e5cb75d6292ac5a0a903925da6afed14851ccddaca7f61ef7f3c4933895ba5f",
           "packages/asset-factory/brand/menulist.asset-context.md": "71f8f8195b97ab291d110a6c67743275e08c98dbea04f0486c3e230f29e05b09",
-          "__docs__/main-website/main-website_image-assets.md": "c4dc0fe13c88f6ceb1a3d8a43a91c7dd58b2bce98efe801178f3816fb1f558d3",
+          "__docs__/main-website/main-website_image-assets.md": "f8a7b7ffa36dfd785e3a0f8d68d4c2ef552652ec439877c7537d32be1d5a7ca9",
           "src/components/website/home/BusinessSection.tsx": "774610c9373c5bd239f89e310e5f2e01621faaee981e16d78b33faea8d542ff4",
-          "src/app/client/obp/OBPContent.tsx": "ec3489a802b9ec1d35fd7150e8a006f030041be46ad44cebf10aec20871479f1"
+          "src/app/client/obp/OBPContent.tsx": "3d7d54d661226ed9f29dd05aae9eeb21cd1ca64f673e33bef68045790a56d11e"
         },
         "notes": "Locked by assets:fingerprint on 2026-07-10."
       },
@@ -141,9 +142,9 @@
       "brief": "packages/asset-factory/briefs/menulist.home.setup-relief.workflow.md",
       "sourceFingerprint": {
         "files": {
-          "packages/asset-factory/slots/menulist.asset-slots.ts": "9e5fa3d56cfb20a4a592457a7690b5bbb5bf99b6ceb663168bcc312134befc2e",
+          "packages/asset-factory/slots/menulist.asset-slots.ts": "7e5cb75d6292ac5a0a903925da6afed14851ccddaca7f61ef7f3c4933895ba5f",
           "packages/asset-factory/brand/menulist.asset-context.md": "71f8f8195b97ab291d110a6c67743275e08c98dbea04f0486c3e230f29e05b09",
-          "__docs__/main-website/main-website_image-assets.md": "c4dc0fe13c88f6ceb1a3d8a43a91c7dd58b2bce98efe801178f3816fb1f558d3",
+          "__docs__/main-website/main-website_image-assets.md": "f8a7b7ffa36dfd785e3a0f8d68d4c2ef552652ec439877c7537d32be1d5a7ca9",
           "src/components/website/home/SetupReliefSection.tsx": "78d32d10f3c5c78f047181663b28d3b1f9a108b89b279d902b16d6a7e41a7af3",
           "src/components/templates/main-app/projects/jobScreens/ExtractionJobReviewScreen.tsx": "cdbec01be05ff987ec40a8513f1a0c39033a990fe19d239a2060bb4dc3181fc8"
         },
@@ -171,12 +172,12 @@
       "brief": "packages/asset-factory/briefs/menulist.home.public-surfaces.matrix.md",
       "sourceFingerprint": {
         "files": {
-          "packages/asset-factory/slots/menulist.asset-slots.ts": "9e5fa3d56cfb20a4a592457a7690b5bbb5bf99b6ceb663168bcc312134befc2e",
+          "packages/asset-factory/slots/menulist.asset-slots.ts": "7e5cb75d6292ac5a0a903925da6afed14851ccddaca7f61ef7f3c4933895ba5f",
           "packages/asset-factory/brand/menulist.asset-context.md": "71f8f8195b97ab291d110a6c67743275e08c98dbea04f0486c3e230f29e05b09",
-          "__docs__/main-website/main-website_image-assets.md": "c4dc0fe13c88f6ceb1a3d8a43a91c7dd58b2bce98efe801178f3816fb1f558d3",
+          "__docs__/main-website/main-website_image-assets.md": "f8a7b7ffa36dfd785e3a0f8d68d4c2ef552652ec439877c7537d32be1d5a7ca9",
           "src/components/website/home/SurfacesSection.tsx": "d80291c94e3d90a8898291e6303c936439a65e5d94a548006edc65534ec236a9",
-          "src/components/mobile/screens/MobileShareScreen.tsx": "015d006a6cf6273c91bb80003ecf2901b85029efa3f427428bdb7ecee6df5707",
-          "src/app/client/obp/OBPContent.tsx": "ec3489a802b9ec1d35fd7150e8a006f030041be46ad44cebf10aec20871479f1"
+          "src/components/mobile/screens/MobileShareScreen.tsx": "67b8ce15a4113e635395330ba9e0b39c0ec7653f0037caff6d5cc3b685da59c4",
+          "src/app/client/obp/OBPContent.tsx": "3d7d54d661226ed9f29dd05aae9eeb21cd1ca64f673e33bef68045790a56d11e"
         },
         "notes": "Locked by assets:fingerprint on 2026-07-10."
       },
@@ -202,9 +203,9 @@
       "brief": "packages/asset-factory/briefs/menulist.home.analytics.status-proof.md",
       "sourceFingerprint": {
         "files": {
-          "packages/asset-factory/slots/menulist.asset-slots.ts": "9e5fa3d56cfb20a4a592457a7690b5bbb5bf99b6ceb663168bcc312134befc2e",
+          "packages/asset-factory/slots/menulist.asset-slots.ts": "7e5cb75d6292ac5a0a903925da6afed14851ccddaca7f61ef7f3c4933895ba5f",
           "packages/asset-factory/brand/menulist.asset-context.md": "71f8f8195b97ab291d110a6c67743275e08c98dbea04f0486c3e230f29e05b09",
-          "__docs__/main-website/main-website_image-assets.md": "c4dc0fe13c88f6ceb1a3d8a43a91c7dd58b2bce98efe801178f3816fb1f558d3",
+          "__docs__/main-website/main-website_image-assets.md": "f8a7b7ffa36dfd785e3a0f8d68d4c2ef552652ec439877c7537d32be1d5a7ca9",
           "src/components/website/home/AnalyticsInsightsSection.tsx": "8ad7d8b55138eb96e5cbbf05aab02b79d046ce1dcb920c8f7d2acc6240717549",
           "src/components/templates/main-app/dashboard/OwnerDashboard/index.tsx": "1d4ad638019b7e377bc0a05a568a826a82ca71124684a1b601cd13ced3d68928"
         },
@@ -232,10 +233,10 @@
       "brief": "packages/asset-factory/briefs/menulist.launch.social.square.md",
       "sourceFingerprint": {
         "files": {
-          "packages/asset-factory/slots/menulist.asset-slots.ts": "9e5fa3d56cfb20a4a592457a7690b5bbb5bf99b6ceb663168bcc312134befc2e",
+          "packages/asset-factory/slots/menulist.asset-slots.ts": "7e5cb75d6292ac5a0a903925da6afed14851ccddaca7f61ef7f3c4933895ba5f",
           "packages/asset-factory/brand/menulist.asset-context.md": "71f8f8195b97ab291d110a6c67743275e08c98dbea04f0486c3e230f29e05b09",
-          "__docs__/main-website/main-website_image-assets.md": "c4dc0fe13c88f6ceb1a3d8a43a91c7dd58b2bce98efe801178f3816fb1f558d3",
-          "__docs__/main-website/asset-production/launch-pack-2026-07/menulist-launch-pack.md": "1bec008da0b36650c2f2836df919013f75c7ebde80168e7ef42f974eb95479b1",
+          "__docs__/main-website/main-website_image-assets.md": "f8a7b7ffa36dfd785e3a0f8d68d4c2ef552652ec439877c7537d32be1d5a7ca9",
+          "__docs__/main-website/asset-production/launch-pack-2026-07/menulist-launch-pack.md": "4eab7eaff29a8b775c94e8d8666ac2c93ac745f96dffac59648938312c392f9f",
           "scripts/website-assets/generate-stage6-assets.mjs": "3a571dc2f7e39e9b27df70c649f47ae01ffefa41fb8cbe38138907f1f96446e8"
         },
         "notes": "Locked by assets:fingerprint on 2026-07-10."
@@ -262,10 +263,10 @@
       "brief": "packages/asset-factory/briefs/menulist.launch.social.linkedin.md",
       "sourceFingerprint": {
         "files": {
-          "packages/asset-factory/slots/menulist.asset-slots.ts": "9e5fa3d56cfb20a4a592457a7690b5bbb5bf99b6ceb663168bcc312134befc2e",
+          "packages/asset-factory/slots/menulist.asset-slots.ts": "7e5cb75d6292ac5a0a903925da6afed14851ccddaca7f61ef7f3c4933895ba5f",
           "packages/asset-factory/brand/menulist.asset-context.md": "71f8f8195b97ab291d110a6c67743275e08c98dbea04f0486c3e230f29e05b09",
-          "__docs__/main-website/main-website_image-assets.md": "c4dc0fe13c88f6ceb1a3d8a43a91c7dd58b2bce98efe801178f3816fb1f558d3",
-          "__docs__/main-website/asset-production/launch-pack-2026-07/menulist-launch-pack.md": "1bec008da0b36650c2f2836df919013f75c7ebde80168e7ef42f974eb95479b1",
+          "__docs__/main-website/main-website_image-assets.md": "f8a7b7ffa36dfd785e3a0f8d68d4c2ef552652ec439877c7537d32be1d5a7ca9",
+          "__docs__/main-website/asset-production/launch-pack-2026-07/menulist-launch-pack.md": "4eab7eaff29a8b775c94e8d8666ac2c93ac745f96dffac59648938312c392f9f",
           "scripts/website-assets/generate-stage6-assets.mjs": "3a571dc2f7e39e9b27df70c649f47ae01ffefa41fb8cbe38138907f1f96446e8"
         },
         "notes": "Locked by assets:fingerprint on 2026-07-10."
@@ -294,9 +295,9 @@
       "brief": "packages/asset-factory/briefs/menulist.home.hero.business-truth-loop.md",
       "sourceFingerprint": {
         "files": {
-          "packages/asset-factory/slots/menulist.asset-slots.ts": "9e5fa3d56cfb20a4a592457a7690b5bbb5bf99b6ceb663168bcc312134befc2e",
+          "packages/asset-factory/slots/menulist.asset-slots.ts": "7e5cb75d6292ac5a0a903925da6afed14851ccddaca7f61ef7f3c4933895ba5f",
           "packages/asset-factory/brand/menulist.asset-context.md": "71f8f8195b97ab291d110a6c67743275e08c98dbea04f0486c3e230f29e05b09",
-          "__docs__/main-website/main-website_image-assets.md": "c4dc0fe13c88f6ceb1a3d8a43a91c7dd58b2bce98efe801178f3816fb1f558d3",
+          "__docs__/main-website/main-website_image-assets.md": "f8a7b7ffa36dfd785e3a0f8d68d4c2ef552652ec439877c7537d32be1d5a7ca9",
           "scripts/website-assets/generate-assetos-motion-compositions.mjs": "f3e2f5542ee1998edfacdb403fe720cbd8e0b9d3da2559e8d8348f06c957b6ee",
           "scripts/website-assets/transcode-assetos-motion-assets.mjs": "05e839c246cd0b460d0a8239a98e5c2b89d83d3ecc400adab7df8727063f028a",
           "__docs__/videos/hyperframes/menulist-business-truth-loop/index.html": "ab0a1b7d92d8df39ef038a4f346fd883d09665f5541f077aed987a9cc9fc9946",
@@ -304,9 +305,9 @@
           "public/icons/icon-512x512.png": "2ef92365aadbc02eeaf609c077a17523eba7f2815eecca24f3d6c8d6a04dd380",
           "src/components/website/home/HeroSection.tsx": "2914232d4649d1761ef91015300f9bce173b6010a4b74a00ca0f6a859fe262c9",
           "src/components/website/home/SurfacesSection.tsx": "d80291c94e3d90a8898291e6303c936439a65e5d94a548006edc65534ec236a9",
-          "src/styles/website.css": "4c89799ecf917fc23ee693519ec18293224507854e0c9d5f42f7fb19a64bcf14"
+          "src/styles/website.css": "8d99924b9026f75d3da2ae01d6717d9750a63d75b46155e46f4a3c8689d2905c"
         },
-        "notes": "Locked by assets:fingerprint on 2026-07-10."
+        "notes": "Locked by assets:fingerprint on 2026-07-11."
       },
       "review": {
         "decision": "approved",
@@ -340,13 +341,13 @@
       },
       "sourceFingerprint": {
         "files": {
-          "packages/asset-factory/slots/menulist.asset-slots.ts": "9e5fa3d56cfb20a4a592457a7690b5bbb5bf99b6ceb663168bcc312134befc2e",
+          "packages/asset-factory/slots/menulist.asset-slots.ts": "7e5cb75d6292ac5a0a903925da6afed14851ccddaca7f61ef7f3c4933895ba5f",
           "packages/asset-factory/brand/menulist.asset-context.md": "71f8f8195b97ab291d110a6c67743275e08c98dbea04f0486c3e230f29e05b09",
-          "__docs__/main-website/main-website_image-assets.md": "c4dc0fe13c88f6ceb1a3d8a43a91c7dd58b2bce98efe801178f3816fb1f558d3",
+          "__docs__/main-website/main-website_image-assets.md": "f8a7b7ffa36dfd785e3a0f8d68d4c2ef552652ec439877c7537d32be1d5a7ca9",
           "__docs__/main-website/asset-production/stage-08-product-proof/stage-08-product-proof-demo-assets.md": "cc924202e4cb8a4227d038e1ba959569d86f7694f081c18bb751d4bb4899aaca",
-          "__docs__/main-website/asset-production/launch-pack-2026-07/menulist-launch-pack.md": "1bec008da0b36650c2f2836df919013f75c7ebde80168e7ef42f974eb95479b1",
+          "__docs__/main-website/asset-production/launch-pack-2026-07/menulist-launch-pack.md": "4eab7eaff29a8b775c94e8d8666ac2c93ac745f96dffac59648938312c392f9f",
           "scripts/website-assets/generate-product-proof-assets.mjs": "09983e57d291280d38ce78ab28d27c8ad625c2125efdc36a5910b2509a295b03",
-          "src/components/website/features/FeatureScreenshotProofGallery.tsx": "e59cdec577bf4d91c5d1029b8cc191a53545b77c90c425c7c625f8c5196c20fc",
+          "src/components/website/features/FeatureScreenshotProofGallery.tsx": "758fc3df406e61cf983da835e42fe889199d4cc06b5bb661e47b8c4d84ecb85f",
           "src/components/mobile/MobileShell.tsx": "eb455d856da06b3ec932869ec13d1c23194d935328afbff196e9afe6c5650741"
         },
         "notes": "Locked by assets:fingerprint on 2026-07-10."
@@ -373,11 +374,11 @@
       },
       "sourceFingerprint": {
         "files": {
-          "packages/asset-factory/slots/menulist.asset-slots.ts": "9e5fa3d56cfb20a4a592457a7690b5bbb5bf99b6ceb663168bcc312134befc2e",
+          "packages/asset-factory/slots/menulist.asset-slots.ts": "7e5cb75d6292ac5a0a903925da6afed14851ccddaca7f61ef7f3c4933895ba5f",
           "packages/asset-factory/brand/menulist.asset-context.md": "71f8f8195b97ab291d110a6c67743275e08c98dbea04f0486c3e230f29e05b09",
-          "__docs__/main-website/main-website_image-assets.md": "c4dc0fe13c88f6ceb1a3d8a43a91c7dd58b2bce98efe801178f3816fb1f558d3",
-          "__docs__/main-website/asset-production/launch-pack-2026-07/menulist-launch-pack.md": "1bec008da0b36650c2f2836df919013f75c7ebde80168e7ef42f974eb95479b1",
-          "scripts/website-assets/extract-menulist-launch-frames.mjs": "27109f26a88e4fdd4a7f338cf98b51707e8799f688cc35e002418bd88cc68d15",
+          "__docs__/main-website/main-website_image-assets.md": "f8a7b7ffa36dfd785e3a0f8d68d4c2ef552652ec439877c7537d32be1d5a7ca9",
+          "__docs__/main-website/asset-production/launch-pack-2026-07/menulist-launch-pack.md": "4eab7eaff29a8b775c94e8d8666ac2c93ac745f96dffac59648938312c392f9f",
+          "scripts/website-assets/extract-menulist-launch-frames.mjs": "804f072f7169d8030ca661100350394fd05a77711455a59341e0667216ed8370",
           "public/images/website/menulist-business-truth-loop.mp4": "4343607be5ea5d4c6f735a7b4436dd6690faefdabf2ada354870fdb7dfa4f216",
           "__docs__/videos/hyperframes/menulist-business-truth-loop/shot-plan.json": "1131fc48c4b20ad8a8c142c4ee01748b9be538a845d13eb6ea46be02e8201ca0"
         },
@@ -405,11 +406,11 @@
       },
       "sourceFingerprint": {
         "files": {
-          "packages/asset-factory/slots/menulist.asset-slots.ts": "9e5fa3d56cfb20a4a592457a7690b5bbb5bf99b6ceb663168bcc312134befc2e",
+          "packages/asset-factory/slots/menulist.asset-slots.ts": "7e5cb75d6292ac5a0a903925da6afed14851ccddaca7f61ef7f3c4933895ba5f",
           "packages/asset-factory/brand/menulist.asset-context.md": "71f8f8195b97ab291d110a6c67743275e08c98dbea04f0486c3e230f29e05b09",
-          "__docs__/main-website/main-website_image-assets.md": "c4dc0fe13c88f6ceb1a3d8a43a91c7dd58b2bce98efe801178f3816fb1f558d3",
-          "__docs__/main-website/asset-production/launch-pack-2026-07/menulist-launch-pack.md": "1bec008da0b36650c2f2836df919013f75c7ebde80168e7ef42f974eb95479b1",
-          "scripts/website-assets/extract-menulist-launch-frames.mjs": "27109f26a88e4fdd4a7f338cf98b51707e8799f688cc35e002418bd88cc68d15",
+          "__docs__/main-website/main-website_image-assets.md": "f8a7b7ffa36dfd785e3a0f8d68d4c2ef552652ec439877c7537d32be1d5a7ca9",
+          "__docs__/main-website/asset-production/launch-pack-2026-07/menulist-launch-pack.md": "4eab7eaff29a8b775c94e8d8666ac2c93ac745f96dffac59648938312c392f9f",
+          "scripts/website-assets/extract-menulist-launch-frames.mjs": "804f072f7169d8030ca661100350394fd05a77711455a59341e0667216ed8370",
           "public/images/website/menulist-business-truth-loop.mp4": "4343607be5ea5d4c6f735a7b4436dd6690faefdabf2ada354870fdb7dfa4f216",
           "__docs__/videos/hyperframes/menulist-business-truth-loop/shot-plan.json": "1131fc48c4b20ad8a8c142c4ee01748b9be538a845d13eb6ea46be02e8201ca0"
         },
@@ -437,11 +438,11 @@
       },
       "sourceFingerprint": {
         "files": {
-          "packages/asset-factory/slots/menulist.asset-slots.ts": "9e5fa3d56cfb20a4a592457a7690b5bbb5bf99b6ceb663168bcc312134befc2e",
+          "packages/asset-factory/slots/menulist.asset-slots.ts": "7e5cb75d6292ac5a0a903925da6afed14851ccddaca7f61ef7f3c4933895ba5f",
           "packages/asset-factory/brand/menulist.asset-context.md": "71f8f8195b97ab291d110a6c67743275e08c98dbea04f0486c3e230f29e05b09",
-          "__docs__/main-website/main-website_image-assets.md": "c4dc0fe13c88f6ceb1a3d8a43a91c7dd58b2bce98efe801178f3816fb1f558d3",
-          "__docs__/main-website/asset-production/launch-pack-2026-07/menulist-launch-pack.md": "1bec008da0b36650c2f2836df919013f75c7ebde80168e7ef42f974eb95479b1",
-          "scripts/website-assets/extract-menulist-launch-frames.mjs": "27109f26a88e4fdd4a7f338cf98b51707e8799f688cc35e002418bd88cc68d15",
+          "__docs__/main-website/main-website_image-assets.md": "f8a7b7ffa36dfd785e3a0f8d68d4c2ef552652ec439877c7537d32be1d5a7ca9",
+          "__docs__/main-website/asset-production/launch-pack-2026-07/menulist-launch-pack.md": "4eab7eaff29a8b775c94e8d8666ac2c93ac745f96dffac59648938312c392f9f",
+          "scripts/website-assets/extract-menulist-launch-frames.mjs": "804f072f7169d8030ca661100350394fd05a77711455a59341e0667216ed8370",
           "public/images/website/menulist-business-truth-loop.mp4": "4343607be5ea5d4c6f735a7b4436dd6690faefdabf2ada354870fdb7dfa4f216",
           "__docs__/videos/hyperframes/menulist-business-truth-loop/shot-plan.json": "1131fc48c4b20ad8a8c142c4ee01748b9be538a845d13eb6ea46be02e8201ca0"
         },
@@ -451,7 +452,7 @@
     "menulist.launch.video.frame.final-proof": {
       "status": "approved",
       "brand": "menulist",
-      "version": 1,
+      "version": 2,
       "slot": "menulist.launch.video.frame.final-proof",
       "files": {
         "primary": "packages/asset-factory/published/menulist/launch-video-frames/04-final-proof.png"
@@ -465,19 +466,375 @@
         "performance": "pass",
         "reviewer": "asset-factory-v1",
         "reviewedAt": "2026-07-10",
-        "notes": "Deterministic closing frame extracted from the approved local MenuList business-truth motion loop."
+        "notes": "Deterministic closing frame extracted at the clean 5.40-second proof state from the approved local MenuList business-truth motion loop; replaces the occluded 4.90-second capture."
       },
       "sourceFingerprint": {
         "files": {
-          "packages/asset-factory/slots/menulist.asset-slots.ts": "9e5fa3d56cfb20a4a592457a7690b5bbb5bf99b6ceb663168bcc312134befc2e",
+          "packages/asset-factory/slots/menulist.asset-slots.ts": "7e5cb75d6292ac5a0a903925da6afed14851ccddaca7f61ef7f3c4933895ba5f",
           "packages/asset-factory/brand/menulist.asset-context.md": "71f8f8195b97ab291d110a6c67743275e08c98dbea04f0486c3e230f29e05b09",
-          "__docs__/main-website/main-website_image-assets.md": "c4dc0fe13c88f6ceb1a3d8a43a91c7dd58b2bce98efe801178f3816fb1f558d3",
-          "__docs__/main-website/asset-production/launch-pack-2026-07/menulist-launch-pack.md": "1bec008da0b36650c2f2836df919013f75c7ebde80168e7ef42f974eb95479b1",
-          "scripts/website-assets/extract-menulist-launch-frames.mjs": "27109f26a88e4fdd4a7f338cf98b51707e8799f688cc35e002418bd88cc68d15",
+          "__docs__/main-website/main-website_image-assets.md": "f8a7b7ffa36dfd785e3a0f8d68d4c2ef552652ec439877c7537d32be1d5a7ca9",
+          "__docs__/main-website/asset-production/launch-pack-2026-07/menulist-launch-pack.md": "4eab7eaff29a8b775c94e8d8666ac2c93ac745f96dffac59648938312c392f9f",
+          "scripts/website-assets/extract-menulist-launch-frames.mjs": "804f072f7169d8030ca661100350394fd05a77711455a59341e0667216ed8370",
           "public/images/website/menulist-business-truth-loop.mp4": "4343607be5ea5d4c6f735a7b4436dd6690faefdabf2ada354870fdb7dfa4f216",
           "__docs__/videos/hyperframes/menulist-business-truth-loop/shot-plan.json": "1131fc48c4b20ad8a8c142c4ee01748b9be538a845d13eb6ea46be02e8201ca0"
         },
         "notes": "Locked by assets:fingerprint on 2026-07-10."
+      }
+    },
+    "menulist.industry.salons-spas.demo-placeholder": {
+      "status": "approved",
+      "brand": "menulist",
+      "version": 1,
+      "slot": "menulist.industry.salons-spas.demo-placeholder",
+      "files": {
+        "primary": "public/images/website/demo-placeholders/glow-blade-service-list-placeholder.svg"
+      },
+      "brief": "packages/asset-factory/briefs/menulist.industry.salons-spas.demo-placeholder.md",
+      "sourceFingerprint": {
+        "files": {
+          "packages/asset-factory/slots/menulist.asset-slots.ts": "7e5cb75d6292ac5a0a903925da6afed14851ccddaca7f61ef7f3c4933895ba5f",
+          "packages/asset-factory/brand/menulist.asset-context.md": "71f8f8195b97ab291d110a6c67743275e08c98dbea04f0486c3e230f29e05b09",
+          "__docs__/menulist-marketing-distribution/menulist-marketing-distribution_demo-placeholder-assets.md": "613c95915ad76407117d7cd08b1789f5a53a7229b2b946df5a1c4013e1ce7263",
+          "src/content/websiteIndustries.ts": "9eb9f085889a221dbac3bf3f41f5fbe34fecc02afcfbc86ea9bf7b8a09040d1b"
+        },
+        "notes": "Locked by assets:fingerprint on 2026-07-10."
+      },
+      "review": {
+        "decision": "approved",
+        "strategicFit": 7,
+        "brandFit": 8,
+        "narrativeClarity": 8,
+        "performance": "pass",
+        "reviewer": "asset-factory-v1",
+        "reviewedAt": "2026-07-10",
+        "notes": "Approved only as a temporary, labelled fictional demo placeholder on /industries/salons-spas. Not customer proof, Product Hunt proof, paid media, or final campaign creative."
+      }
+    },
+    "menulist.marketing.launch-video.poster-placeholder": {
+      "status": "approved",
+      "brand": "menulist",
+      "version": 1,
+      "slot": "menulist.marketing.launch-video.poster-placeholder",
+      "files": {
+        "primary": "public/images/website/demo-placeholders/launch-video-poster-placeholder.svg"
+      },
+      "brief": "packages/asset-factory/briefs/menulist.marketing.launch-video.poster-placeholder.md",
+      "sourceFingerprint": {
+        "files": {
+          "packages/asset-factory/slots/menulist.asset-slots.ts": "7e5cb75d6292ac5a0a903925da6afed14851ccddaca7f61ef7f3c4933895ba5f",
+          "packages/asset-factory/brand/menulist.asset-context.md": "71f8f8195b97ab291d110a6c67743275e08c98dbea04f0486c3e230f29e05b09",
+          "__docs__/menulist-marketing-distribution/menulist-marketing-distribution_demo-placeholder-assets.md": "613c95915ad76407117d7cd08b1789f5a53a7229b2b946df5a1c4013e1ce7263"
+        },
+        "notes": "Locked by assets:fingerprint on 2026-07-10."
+      },
+      "review": {
+        "decision": "approved",
+        "strategicFit": 6,
+        "brandFit": 7,
+        "narrativeClarity": 8,
+        "performance": "pass",
+        "reviewer": "asset-factory-v1",
+        "reviewedAt": "2026-07-10",
+        "notes": "Approved only as an unmounted planning placeholder retained in public media. It is not an approved walkthrough poster and must not be mounted, published, or distributed."
+      }
+    },
+    "menulist.industry.service-list-businesses.proof-placeholder": {
+      "status": "approved",
+      "brand": "menulist",
+      "version": 1,
+      "slot": "menulist.industry.service-list-businesses.proof-placeholder",
+      "files": {
+        "primary": "public/images/website/demo-placeholders/service-list-proof-grid-placeholder.svg"
+      },
+      "brief": "packages/asset-factory/briefs/menulist.industry.service-list-businesses.proof-placeholder.md",
+      "sourceFingerprint": {
+        "files": {
+          "packages/asset-factory/slots/menulist.asset-slots.ts": "7e5cb75d6292ac5a0a903925da6afed14851ccddaca7f61ef7f3c4933895ba5f",
+          "packages/asset-factory/brand/menulist.asset-context.md": "71f8f8195b97ab291d110a6c67743275e08c98dbea04f0486c3e230f29e05b09",
+          "__docs__/menulist-marketing-distribution/menulist-marketing-distribution_demo-placeholder-assets.md": "613c95915ad76407117d7cd08b1789f5a53a7229b2b946df5a1c4013e1ce7263",
+          "src/content/websiteIndustries.ts": "9eb9f085889a221dbac3bf3f41f5fbe34fecc02afcfbc86ea9bf7b8a09040d1b"
+        },
+        "notes": "Locked by assets:fingerprint on 2026-07-10."
+      },
+      "review": {
+        "decision": "approved",
+        "strategicFit": 7,
+        "brandFit": 8,
+        "narrativeClarity": 8,
+        "performance": "pass",
+        "reviewer": "asset-factory-v1",
+        "reviewedAt": "2026-07-10",
+        "notes": "Approved only as a temporary, labelled fictional demo placeholder on /industries/service-list-businesses. Not customer proof, Product Hunt proof, paid media, or final campaign creative."
+      }
+    },
+    "menulist.industry.local-service-businesses.demo-placeholder": {
+      "status": "approved",
+      "brand": "menulist",
+      "version": 1,
+      "slot": "menulist.industry.local-service-businesses.demo-placeholder",
+      "files": {
+        "primary": "public/images/website/demo-placeholders/spark-detailing-rate-card-placeholder.svg"
+      },
+      "brief": "packages/asset-factory/briefs/menulist.industry.local-service-businesses.demo-placeholder.md",
+      "sourceFingerprint": {
+        "files": {
+          "packages/asset-factory/slots/menulist.asset-slots.ts": "7e5cb75d6292ac5a0a903925da6afed14851ccddaca7f61ef7f3c4933895ba5f",
+          "packages/asset-factory/brand/menulist.asset-context.md": "71f8f8195b97ab291d110a6c67743275e08c98dbea04f0486c3e230f29e05b09",
+          "__docs__/menulist-marketing-distribution/menulist-marketing-distribution_demo-placeholder-assets.md": "613c95915ad76407117d7cd08b1789f5a53a7229b2b946df5a1c4013e1ce7263",
+          "src/content/websiteIndustries.ts": "9eb9f085889a221dbac3bf3f41f5fbe34fecc02afcfbc86ea9bf7b8a09040d1b"
+        },
+        "notes": "Locked by assets:fingerprint on 2026-07-10."
+      },
+      "review": {
+        "decision": "approved",
+        "strategicFit": 7,
+        "brandFit": 8,
+        "narrativeClarity": 8,
+        "performance": "pass",
+        "reviewer": "asset-factory-v1",
+        "reviewedAt": "2026-07-10",
+        "notes": "Approved only as a temporary, labelled fictional demo placeholder on /industries/local-service-businesses. Not customer proof, Product Hunt proof, paid media, or final campaign creative."
+      }
+    },
+    "menulist.feature.customer-feedback-loop.public-form": {
+      "status": "approved",
+      "brand": "menulist",
+      "version": 1,
+      "slot": "menulist.feature.customer-feedback-loop.public-form",
+      "files": {
+        "primary": "public/images/website/features/customer-feedback-loop/public-feedback-form.webp"
+      },
+      "brief": "packages/asset-factory/briefs/menulist.feature.customer-feedback-loop.public-form.md",
+      "sourceFingerprint": {
+        "files": {
+          "packages/asset-factory/slots/menulist.asset-slots.ts": "7e5cb75d6292ac5a0a903925da6afed14851ccddaca7f61ef7f3c4933895ba5f",
+          "packages/asset-factory/brand/menulist.asset-context.md": "71f8f8195b97ab291d110a6c67743275e08c98dbea04f0486c3e230f29e05b09",
+          "__docs__/main-website/main-website_image-assets.md": "f8a7b7ffa36dfd785e3a0f8d68d4c2ef552652ec439877c7537d32be1d5a7ca9",
+          "src/components/website/features/FeatureScreenshotProofGallery.tsx": "758fc3df406e61cf983da835e42fe889199d4cc06b5bb661e47b8c4d84ecb85f"
+        },
+        "notes": "Locked by assets:fingerprint on 2026-07-10."
+      },
+      "review": {
+        "decision": "approved",
+        "strategicFit": 9,
+        "brandFit": 9,
+        "narrativeClarity": 8,
+        "performance": "pass",
+        "reviewer": "asset-factory-v1",
+        "reviewedAt": "2026-07-10",
+        "notes": "Approved public feedback-form proof showing the bounded customer report workflow without private owner data."
+      }
+    },
+    "menulist.feature.menu-import.source-link": {
+      "status": "approved",
+      "brand": "menulist",
+      "version": 1,
+      "slot": "menulist.feature.menu-import.source-link",
+      "files": {
+        "primary": "public/images/website/features/menu-import/source-menu-link.webp"
+      },
+      "brief": "packages/asset-factory/briefs/menulist.feature.menu-import.source-link.md",
+      "sourceFingerprint": {
+        "files": {
+          "packages/asset-factory/slots/menulist.asset-slots.ts": "7e5cb75d6292ac5a0a903925da6afed14851ccddaca7f61ef7f3c4933895ba5f",
+          "packages/asset-factory/brand/menulist.asset-context.md": "71f8f8195b97ab291d110a6c67743275e08c98dbea04f0486c3e230f29e05b09",
+          "__docs__/main-website/main-website_image-assets.md": "f8a7b7ffa36dfd785e3a0f8d68d4c2ef552652ec439877c7537d32be1d5a7ca9",
+          "src/components/website/features/FeatureScreenshotProofGallery.tsx": "758fc3df406e61cf983da835e42fe889199d4cc06b5bb661e47b8c4d84ecb85f"
+        },
+        "notes": "Locked by assets:fingerprint on 2026-07-10."
+      },
+      "review": {
+        "decision": "approved",
+        "strategicFit": 9,
+        "brandFit": 9,
+        "narrativeClarity": 8,
+        "performance": "pass",
+        "reviewer": "asset-factory-v1",
+        "reviewedAt": "2026-07-10",
+        "notes": "Approved cropped source-link import proof with no owner identity, tenant ID, or private source URL exposed."
+      }
+    },
+    "menulist.feature.public-discovery.presence-checklist": {
+      "status": "approved",
+      "brand": "menulist",
+      "version": 1,
+      "slot": "menulist.feature.public-discovery.presence-checklist",
+      "files": {
+        "primary": "public/images/website/features/public-discovery/presence-checklist.webp"
+      },
+      "brief": "packages/asset-factory/briefs/menulist.feature.public-discovery.presence-checklist.md",
+      "sourceFingerprint": {
+        "files": {
+          "packages/asset-factory/slots/menulist.asset-slots.ts": "7e5cb75d6292ac5a0a903925da6afed14851ccddaca7f61ef7f3c4933895ba5f",
+          "packages/asset-factory/brand/menulist.asset-context.md": "71f8f8195b97ab291d110a6c67743275e08c98dbea04f0486c3e230f29e05b09",
+          "__docs__/main-website/main-website_image-assets.md": "f8a7b7ffa36dfd785e3a0f8d68d4c2ef552652ec439877c7537d32be1d5a7ca9",
+          "src/components/website/features/FeatureScreenshotProofGallery.tsx": "758fc3df406e61cf983da835e42fe889199d4cc06b5bb661e47b8c4d84ecb85f"
+        },
+        "notes": "Locked by assets:fingerprint on 2026-07-10."
+      },
+      "review": {
+        "decision": "approved",
+        "strategicFit": 9,
+        "brandFit": 9,
+        "narrativeClarity": 9,
+        "performance": "pass",
+        "reviewer": "asset-factory-v1",
+        "reviewedAt": "2026-07-10",
+        "notes": "Approved public placement/source checklist proof; it does not imply automatic third-party distribution or synchronization."
+      }
+    },
+    "menulist.feature.qr-menu-links.share-kit": {
+      "status": "approved",
+      "brand": "menulist",
+      "version": 1,
+      "slot": "menulist.feature.qr-menu-links.share-kit",
+      "files": {
+        "primary": "public/images/website/features/qr-menu-links/share-kit.webp"
+      },
+      "brief": "packages/asset-factory/briefs/menulist.feature.qr-menu-links.share-kit.md",
+      "sourceFingerprint": {
+        "files": {
+          "packages/asset-factory/slots/menulist.asset-slots.ts": "7e5cb75d6292ac5a0a903925da6afed14851ccddaca7f61ef7f3c4933895ba5f",
+          "packages/asset-factory/brand/menulist.asset-context.md": "71f8f8195b97ab291d110a6c67743275e08c98dbea04f0486c3e230f29e05b09",
+          "__docs__/main-website/main-website_image-assets.md": "f8a7b7ffa36dfd785e3a0f8d68d4c2ef552652ec439877c7537d32be1d5a7ca9",
+          "src/components/website/features/FeatureScreenshotProofGallery.tsx": "758fc3df406e61cf983da835e42fe889199d4cc06b5bb661e47b8c4d84ecb85f",
+          "src/components/mobile/screens/MobileShareScreen.tsx": "67b8ce15a4113e635395330ba9e0b39c0ec7653f0037caff6d5cc3b685da59c4"
+        },
+        "notes": "Locked by assets:fingerprint on 2026-07-10."
+      },
+      "review": {
+        "decision": "approved",
+        "strategicFit": 9,
+        "brandFit": 9,
+        "narrativeClarity": 9,
+        "performance": "pass",
+        "reviewer": "asset-factory-v1",
+        "reviewedAt": "2026-07-10",
+        "notes": "Approved owner share and QR kit proof; owner placement remains explicit and no automatic external sync is implied."
+      }
+    },
+    "menulist.feature.print-ready-kit.dashboard": {
+      "status": "approved",
+      "brand": "menulist",
+      "version": 1,
+      "slot": "menulist.feature.print-ready-kit.dashboard",
+      "files": {
+        "primary": "public/images/website/print-ready-kit/print-assets-dashboard.jpg"
+      },
+      "brief": "packages/asset-factory/briefs/menulist.feature.print-ready-kit.dashboard.md",
+      "sourceFingerprint": {
+        "files": {
+          "packages/asset-factory/slots/menulist.asset-slots.ts": "7e5cb75d6292ac5a0a903925da6afed14851ccddaca7f61ef7f3c4933895ba5f",
+          "packages/asset-factory/brand/menulist.asset-context.md": "71f8f8195b97ab291d110a6c67743275e08c98dbea04f0486c3e230f29e05b09",
+          "__docs__/main-website/main-website_image-assets.md": "f8a7b7ffa36dfd785e3a0f8d68d4c2ef552652ec439877c7537d32be1d5a7ca9",
+          "src/components/website/features/PrintReadyKitProofGallery.tsx": "b36f9a7daba5ac4f395492f48c768518eb104309a2504b38d1fbfd2b0b7f6d32",
+          "src/components/templates/main-app/printableAssetTemplates/PrintableAssetTemplatesRoute.tsx": "869aaa738b32f37e2947e038c1d37f7fd142c6a90cab9be7c4ba5463e3749abd"
+        },
+        "notes": "Locked by assets:fingerprint on 2026-07-10."
+      },
+      "review": {
+        "decision": "approved",
+        "strategicFit": 9,
+        "brandFit": 9,
+        "narrativeClarity": 8,
+        "performance": "pass",
+        "reviewer": "asset-factory-v1",
+        "reviewedAt": "2026-07-10",
+        "notes": "Approved cropped print-assets dashboard capture with account-header details removed."
+      }
+    },
+    "menulist.feature.print-ready-kit.editor": {
+      "status": "approved",
+      "brand": "menulist",
+      "version": 1,
+      "slot": "menulist.feature.print-ready-kit.editor",
+      "files": {
+        "primary": "public/images/website/print-ready-kit/print-assets-editor.jpg"
+      },
+      "brief": "packages/asset-factory/briefs/menulist.feature.print-ready-kit.editor.md",
+      "sourceFingerprint": {
+        "files": {
+          "packages/asset-factory/slots/menulist.asset-slots.ts": "7e5cb75d6292ac5a0a903925da6afed14851ccddaca7f61ef7f3c4933895ba5f",
+          "packages/asset-factory/brand/menulist.asset-context.md": "71f8f8195b97ab291d110a6c67743275e08c98dbea04f0486c3e230f29e05b09",
+          "__docs__/main-website/main-website_image-assets.md": "f8a7b7ffa36dfd785e3a0f8d68d4c2ef552652ec439877c7537d32be1d5a7ca9",
+          "src/components/website/features/PrintReadyKitProofGallery.tsx": "b36f9a7daba5ac4f395492f48c768518eb104309a2504b38d1fbfd2b0b7f6d32",
+          "src/components/templates/main-app/printableAssetTemplates/PrintableAssetTemplatesRoute.tsx": "869aaa738b32f37e2947e038c1d37f7fd142c6a90cab9be7c4ba5463e3749abd"
+        },
+        "notes": "Locked by assets:fingerprint on 2026-07-10."
+      },
+      "review": {
+        "decision": "approved",
+        "strategicFit": 9,
+        "brandFit": 9,
+        "narrativeClarity": 8,
+        "performance": "pass",
+        "reviewer": "asset-factory-v1",
+        "reviewedAt": "2026-07-10",
+        "notes": "Approved print asset editor capture for the dedicated Print-ready Kit feature page."
+      }
+    },
+    "menulist.home.owner-proof.ai-menu-manager": {
+      "status": "approved",
+      "brand": "menulist",
+      "version": 1,
+      "slot": "menulist.home.owner-proof.ai-menu-manager",
+      "files": {
+        "primary": "public/images/website/product-proof/ai-menu-manager-approval-card.webp"
+      },
+      "brief": "packages/asset-factory/briefs/menulist.home.owner-proof.ai-menu-manager.md",
+      "sourceFingerprint": {
+        "files": {
+          "packages/asset-factory/slots/menulist.asset-slots.ts": "7e5cb75d6292ac5a0a903925da6afed14851ccddaca7f61ef7f3c4933895ba5f",
+          "packages/asset-factory/brand/menulist.asset-context.md": "71f8f8195b97ab291d110a6c67743275e08c98dbea04f0486c3e230f29e05b09",
+          "__docs__/main-website/main-website_image-assets.md": "f8a7b7ffa36dfd785e3a0f8d68d4c2ef552652ec439877c7537d32be1d5a7ca9",
+          "__docs__/main-website/asset-production/stage-08-product-proof/stage-08-product-proof-demo-assets.md": "cc924202e4cb8a4227d038e1ba959569d86f7694f081c18bb751d4bb4899aaca",
+          "scripts/website-assets/generate-product-proof-assets.mjs": "09983e57d291280d38ce78ab28d27c8ad625c2125efdc36a5910b2509a295b03",
+          "src/components/website/home/OwnerProofSection.tsx": "7e13d1e8913510c57ca1cbec51e181a4f987542f34f7e65ca601faa76b5b3f43",
+          "src/components/website/ai-menu-manager/AiMenuManagerPage.tsx": "7c20fc3f8e13ca61578afc532bfc077526b236f3b7f1384a26a4b1e8389e9fca"
+        },
+        "notes": "Locked by assets:fingerprint on 2026-07-10."
+      },
+      "review": {
+        "decision": "approved",
+        "strategicFit": 9,
+        "brandFit": 9,
+        "narrativeClarity": 9,
+        "performance": "pass",
+        "reviewer": "asset-factory-v1",
+        "reviewedAt": "2026-07-10",
+        "notes": "Approved fictional product proof that keeps the prepared suggestion separate from explicit owner approval."
+      }
+    },
+    "menulist.home.owner-proof.business-health": {
+      "status": "approved",
+      "brand": "menulist",
+      "version": 1,
+      "slot": "menulist.home.owner-proof.business-health",
+      "files": {
+        "primary": "public/images/website/product-proof/business-health-stable-check.webp"
+      },
+      "brief": "packages/asset-factory/briefs/menulist.home.owner-proof.business-health.md",
+      "sourceFingerprint": {
+        "files": {
+          "packages/asset-factory/slots/menulist.asset-slots.ts": "7e5cb75d6292ac5a0a903925da6afed14851ccddaca7f61ef7f3c4933895ba5f",
+          "packages/asset-factory/brand/menulist.asset-context.md": "71f8f8195b97ab291d110a6c67743275e08c98dbea04f0486c3e230f29e05b09",
+          "__docs__/main-website/main-website_image-assets.md": "f8a7b7ffa36dfd785e3a0f8d68d4c2ef552652ec439877c7537d32be1d5a7ca9",
+          "__docs__/main-website/asset-production/stage-08-product-proof/stage-08-product-proof-demo-assets.md": "cc924202e4cb8a4227d038e1ba959569d86f7694f081c18bb751d4bb4899aaca",
+          "scripts/website-assets/generate-product-proof-assets.mjs": "09983e57d291280d38ce78ab28d27c8ad625c2125efdc36a5910b2509a295b03",
+          "src/components/website/home/OwnerProofSection.tsx": "7e13d1e8913510c57ca1cbec51e181a4f987542f34f7e65ca601faa76b5b3f43",
+          "src/components/website/features/BusinessHealthFeaturePage.tsx": "1a7662ecead75fae796e49bb0d0f23125d7ae4b3218cac8eb42fdcf077271657"
+        },
+        "notes": "Locked by assets:fingerprint on 2026-07-10."
+      },
+      "review": {
+        "decision": "approved",
+        "strategicFit": 9,
+        "brandFit": 9,
+        "narrativeClarity": 9,
+        "performance": "pass",
+        "reviewer": "asset-factory-v1",
+        "reviewedAt": "2026-07-10",
+        "notes": "Approved fictional stable-check proof using a no-action-needed state and no invented performance metrics."
       }
     },
     "answerlattice.home.og.main": {
@@ -494,14 +851,14 @@
         "files": {
           "packages/asset-factory/slots/answerlattice.asset-slots.ts": "8fe054a2ded94fa0a562745aec6dc8b7f31ef09f3e773f5ef93c2e4c623f2a07",
           "packages/asset-factory/brand/answerlattice.asset-context.md": "6add72848d3381fdf42ede55ee1f2b9d05083ae44e212e67610640d0901870a3",
-          "__docs__/answerlattice/answerlattice-website/README.md": "51d831c1c55cc708ae8c1d262adfdba3f73aa7ee02655c97bd7d05fd96b1fd5c",
+          "__docs__/answerlattice/answerlattice-website/README.md": "1870154ffacd69c58d9cd2183f487829eb5a8e47a37dcca9eba94e80b6e6d980",
           "src/app/sites/answerlattice/layout.tsx": "cca8c11056e74a61bf4d176357da48dc15955fbab1cd2b72b6161ae46e9b2cd0",
           "src/app/sites/answerlattice/components/HeroSection.tsx": "cdc3265663faedf159d474d57db96dd0df8dfdf474e33fd2411652b6d85ceccd",
           "public/answerlattice-logo.svg": "679e6710fba3148e04ce57cdceaec87e97b52d04df4ff62c7a415e29314a33e3",
           "public/answerlattice-og-image.svg": "6d87b8311a3ab171fe622619454e88f90e9a2e6f20afc5aa6cf419ff287408be",
           "scripts/website-assets/generate-answerlattice-logo-assets.js": "b3907d442ac609f228ccfc7b2b7c198784a61296ba43252897338446ddf1b617"
         },
-        "notes": "Locked by assets:fingerprint on 2026-07-10."
+        "notes": "Locked by assets:fingerprint on 2026-07-11."
       },
       "review": {
         "decision": "approved",
@@ -529,13 +886,13 @@
         "files": {
           "packages/asset-factory/slots/answerlattice.asset-slots.ts": "8fe054a2ded94fa0a562745aec6dc8b7f31ef09f3e773f5ef93c2e4c623f2a07",
           "packages/asset-factory/brand/answerlattice.asset-context.md": "6add72848d3381fdf42ede55ee1f2b9d05083ae44e212e67610640d0901870a3",
-          "__docs__/answerlattice/answerlattice-website/README.md": "51d831c1c55cc708ae8c1d262adfdba3f73aa7ee02655c97bd7d05fd96b1fd5c",
+          "__docs__/answerlattice/answerlattice-website/README.md": "1870154ffacd69c58d9cd2183f487829eb5a8e47a37dcca9eba94e80b6e6d980",
           "src/app/sites/answerlattice/components/AnswerlatticeLogoMark.tsx": "468a5ea5c35b9541ce36dece7ae49d2e6e661e4eaaf655e2fe97358163747f11",
           "src/components/atoms/answerlatticeLogoMark/index.tsx": "ea682765e062ad7281cee8b094f431c6fe7471939223069e34f16a39f885e874",
           "public/answerlattice-logo.svg": "679e6710fba3148e04ce57cdceaec87e97b52d04df4ff62c7a415e29314a33e3",
           "scripts/website-assets/generate-answerlattice-logo-assets.js": "b3907d442ac609f228ccfc7b2b7c198784a61296ba43252897338446ddf1b617"
         },
-        "notes": "Locked by assets:fingerprint on 2026-07-10."
+        "notes": "Locked by assets:fingerprint on 2026-07-11."
       },
       "review": {
         "decision": "approved",
@@ -574,12 +931,12 @@
         "files": {
           "packages/asset-factory/slots/answerlattice.asset-slots.ts": "8fe054a2ded94fa0a562745aec6dc8b7f31ef09f3e773f5ef93c2e4c623f2a07",
           "packages/asset-factory/brand/answerlattice.asset-context.md": "6add72848d3381fdf42ede55ee1f2b9d05083ae44e212e67610640d0901870a3",
-          "__docs__/answerlattice/answerlattice-website/README.md": "51d831c1c55cc708ae8c1d262adfdba3f73aa7ee02655c97bd7d05fd96b1fd5c",
+          "__docs__/answerlattice/answerlattice-website/README.md": "1870154ffacd69c58d9cd2183f487829eb5a8e47a37dcca9eba94e80b6e6d980",
           "public/answerlattice.webmanifest": "9c618743467ec186695689fc8668ec01ace9b0864eb26839179669a8c2ac868e",
           "public/answerlattice-logo.svg": "679e6710fba3148e04ce57cdceaec87e97b52d04df4ff62c7a415e29314a33e3",
           "scripts/website-assets/generate-answerlattice-logo-assets.js": "b3907d442ac609f228ccfc7b2b7c198784a61296ba43252897338446ddf1b617"
         },
-        "notes": "Locked by assets:fingerprint on 2026-07-10."
+        "notes": "Locked by assets:fingerprint on 2026-07-11."
       },
       "review": {
         "decision": "approved",
@@ -613,14 +970,14 @@
         "files": {
           "packages/asset-factory/slots/answerlattice.asset-slots.ts": "8fe054a2ded94fa0a562745aec6dc8b7f31ef09f3e773f5ef93c2e4c623f2a07",
           "packages/asset-factory/brand/answerlattice.asset-context.md": "6add72848d3381fdf42ede55ee1f2b9d05083ae44e212e67610640d0901870a3",
-          "__docs__/answerlattice/answerlattice-website/README.md": "51d831c1c55cc708ae8c1d262adfdba3f73aa7ee02655c97bd7d05fd96b1fd5c",
+          "__docs__/answerlattice/answerlattice-website/README.md": "1870154ffacd69c58d9cd2183f487829eb5a8e47a37dcca9eba94e80b6e6d980",
           "src/lib/answerlattice/pwaAssets.ts": "9d7275dd3027b1da0a6c0a74759dc721031a7f87b45aa72e99004e6db53161ec",
           "public/answerlattice-logo.svg": "679e6710fba3148e04ce57cdceaec87e97b52d04df4ff62c7a415e29314a33e3",
           "public/answerlattice-logo-mark-wide.png": "10c034f0e177bc9af1a9f51df876d27568fe9e8a46c7e2c8fee2baaebe729ff5",
           "scripts/website-assets/generate-answerlattice-logo-assets.js": "b3907d442ac609f228ccfc7b2b7c198784a61296ba43252897338446ddf1b617",
           "scripts/website-assets/generate-answerlattice-splash.js": "321c92eb6a134d5ef45f020a9da048e0edf5df8396b06e444f2575a132a3a794"
         },
-        "notes": "Locked by assets:fingerprint on 2026-07-10."
+        "notes": "Locked by assets:fingerprint on 2026-07-11."
       },
       "review": {
         "decision": "approved",
@@ -648,20 +1005,20 @@
         "files": {
           "packages/asset-factory/slots/answerlattice.asset-slots.ts": "8fe054a2ded94fa0a562745aec6dc8b7f31ef09f3e773f5ef93c2e4c623f2a07",
           "packages/asset-factory/brand/answerlattice.asset-context.md": "6add72848d3381fdf42ede55ee1f2b9d05083ae44e212e67610640d0901870a3",
-          "__docs__/answerlattice/answerlattice-website/README.md": "51d831c1c55cc708ae8c1d262adfdba3f73aa7ee02655c97bd7d05fd96b1fd5c",
+          "__docs__/answerlattice/answerlattice-website/README.md": "1870154ffacd69c58d9cd2183f487829eb5a8e47a37dcca9eba94e80b6e6d980",
           "scripts/website-assets/generate-assetos-motion-compositions.mjs": "f3e2f5542ee1998edfacdb403fe720cbd8e0b9d3da2559e8d8348f06c957b6ee",
           "scripts/website-assets/transcode-assetos-motion-assets.mjs": "05e839c246cd0b460d0a8239a98e5c2b89d83d3ecc400adab7df8727063f028a",
           "__docs__/videos/hyperframes/answerlattice-support-control-motion/index.html": "b72d46a51287b4622df5f7bf03f2bf9454442dd3e8056e16235f2779fbe83902",
           "__docs__/videos/hyperframes/answerlattice-support-control-motion/shot-plan.json": "222b35cd47ea6f7492520c65af7dce330ce91930edba529d77b0ca26b8a4e660",
           "public/answerlattice-logo.svg": "679e6710fba3148e04ce57cdceaec87e97b52d04df4ff62c7a415e29314a33e3",
-          "src/app/sites/answerlattice/page.tsx": "14a3d1ac134e3abc961fd3360f4ad6c24268fdf6b81623539da4cd703cb6360b",
+          "src/app/sites/answerlattice/page.tsx": "fb93bb67cc7b4d4abe2f6b6539bdb2d147679b73de004a4bc26c79c4e4b2735d",
           "src/app/sites/answerlattice/answerlatticeWebsiteAssets.ts": "c2cf2447522fee9ac8125c6b3a458bb45fcbc223d6d4369243aa2aaf59bd3ac8",
           "src/app/sites/answerlattice/components/AnswerlatticeMotionAsset.tsx": "daeed7a0f1f01b0cf45697fc0af89fcd9d0a1818dc4f1775f2b4ee3bfeb8a6a5",
           "src/app/sites/answerlattice/components/HeroSection.tsx": "cdc3265663faedf159d474d57db96dd0df8dfdf474e33fd2411652b6d85ceccd",
           "src/app/sites/answerlattice/components/AnswerlatticeFlowDiagram.tsx": "6ba22e4f9b677426a70efff0af4079ff8c4f202dc70c9fc7240583e0b9a07c20",
           "src/app/sites/answerlattice/styles.css": "a4caed81ba09baf1b570012e1e4138009130f18e4d72caff5a083ffd0c4fb32a"
         },
-        "notes": "Locked by assets:fingerprint on 2026-07-10."
+        "notes": "Locked by assets:fingerprint on 2026-07-11."
       },
       "review": {
         "decision": "approved",
@@ -689,20 +1046,20 @@
         "files": {
           "packages/asset-factory/slots/answerlattice.asset-slots.ts": "8fe054a2ded94fa0a562745aec6dc8b7f31ef09f3e773f5ef93c2e4c623f2a07",
           "packages/asset-factory/brand/answerlattice.asset-context.md": "6add72848d3381fdf42ede55ee1f2b9d05083ae44e212e67610640d0901870a3",
-          "__docs__/answerlattice/answerlattice-website/README.md": "51d831c1c55cc708ae8c1d262adfdba3f73aa7ee02655c97bd7d05fd96b1fd5c",
+          "__docs__/answerlattice/answerlattice-website/README.md": "1870154ffacd69c58d9cd2183f487829eb5a8e47a37dcca9eba94e80b6e6d980",
           "scripts/website-assets/generate-assetos-motion-compositions.mjs": "f3e2f5542ee1998edfacdb403fe720cbd8e0b9d3da2559e8d8348f06c957b6ee",
           "scripts/website-assets/transcode-assetos-motion-assets.mjs": "05e839c246cd0b460d0a8239a98e5c2b89d83d3ecc400adab7df8727063f028a",
           "__docs__/videos/hyperframes/answerlattice-authority-transfer/index.html": "a8e3af8d3945558fd124a4734a1979691c9ac02d9346af1475746c99fd79549c",
           "__docs__/videos/hyperframes/answerlattice-authority-transfer/shot-plan.json": "1a9fc38f1d66791ecfaf800a3e1a3dfd084761f6846f0d394befad8edf5bb4ad",
           "public/answerlattice-logo.svg": "679e6710fba3148e04ce57cdceaec87e97b52d04df4ff62c7a415e29314a33e3",
-          "src/app/sites/answerlattice/page.tsx": "14a3d1ac134e3abc961fd3360f4ad6c24268fdf6b81623539da4cd703cb6360b",
+          "src/app/sites/answerlattice/page.tsx": "fb93bb67cc7b4d4abe2f6b6539bdb2d147679b73de004a4bc26c79c4e4b2735d",
           "src/app/sites/answerlattice/answerlatticeWebsiteAssets.ts": "c2cf2447522fee9ac8125c6b3a458bb45fcbc223d6d4369243aa2aaf59bd3ac8",
           "src/app/sites/answerlattice/components/AnswerlatticeMotionAsset.tsx": "daeed7a0f1f01b0cf45697fc0af89fcd9d0a1818dc4f1775f2b4ee3bfeb8a6a5",
           "src/app/sites/answerlattice/components/ClosedLoopSection.tsx": "e013fc33debfb49f8d2d83fda5b5f0cf3bae71a16c439e589f8c54b1d477b86f",
           "src/app/sites/answerlattice/components/AnswerlatticeProofBlocks.tsx": "9753da1be4073b932070f15c4259b45d5cf3e2cfe57e0c14e2ab5b4c219ac79d",
           "src/app/sites/answerlattice/styles.css": "a4caed81ba09baf1b570012e1e4138009130f18e4d72caff5a083ffd0c4fb32a"
         },
-        "notes": "Locked by assets:fingerprint on 2026-07-10."
+        "notes": "Locked by assets:fingerprint on 2026-07-11."
       },
       "review": {
         "decision": "approved",
@@ -730,7 +1087,7 @@
         "files": {
           "packages/asset-factory/slots/answerlattice.asset-slots.ts": "8fe054a2ded94fa0a562745aec6dc8b7f31ef09f3e773f5ef93c2e4c623f2a07",
           "packages/asset-factory/brand/answerlattice.asset-context.md": "6add72848d3381fdf42ede55ee1f2b9d05083ae44e212e67610640d0901870a3",
-          "__docs__/answerlattice/answerlattice-website/README.md": "51d831c1c55cc708ae8c1d262adfdba3f73aa7ee02655c97bd7d05fd96b1fd5c",
+          "__docs__/answerlattice/answerlattice-website/README.md": "1870154ffacd69c58d9cd2183f487829eb5a8e47a37dcca9eba94e80b6e6d980",
           "scripts/website-assets/generate-assetos-motion-compositions.mjs": "f3e2f5542ee1998edfacdb403fe720cbd8e0b9d3da2559e8d8348f06c957b6ee",
           "scripts/website-assets/transcode-assetos-motion-assets.mjs": "05e839c246cd0b460d0a8239a98e5c2b89d83d3ecc400adab7df8727063f028a",
           "__docs__/videos/hyperframes/answerlattice-page-aware-widget-clip/index.html": "0f1b824aa0c88092f474bf25e258958b533dcb4fab95310b2d211f250d8d657f",
@@ -743,7 +1100,7 @@
           "src/app/sites/answerlattice/components/HomePageAwareDemoSection.tsx": "85600675be36e3b8ddd6affd5b5fbbea2a8228f07ca74bef3c87b65b3780b28d",
           "src/app/sites/answerlattice/styles.css": "a4caed81ba09baf1b570012e1e4138009130f18e4d72caff5a083ffd0c4fb32a"
         },
-        "notes": "Locked by assets:fingerprint on 2026-07-10."
+        "notes": "Locked by assets:fingerprint on 2026-07-11."
       },
       "review": {
         "decision": "approved",

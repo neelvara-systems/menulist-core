@@ -122,9 +122,15 @@ MENULIST_SIGNALDESK_FIREBASE_PROJECT_ID=menulist-signaldesk-qa
 MENULIST_SIGNALDESK_FIREBASE_CLIENT_EMAIL=...
 MENULIST_SIGNALDESK_FIREBASE_PRIVATE_KEY=...
 MENULIST_SIGNALDESK_FIRESTORE_DATABASE_ID=
+MENULIST_SIGNALDESK_GEMINI_AI_KEY=...
+MENULIST_SIGNALDESK_GEMINI_AI_KEY_2=
+MENULIST_SIGNALDESK_GEMINI_AI_KEY_3=
+MENULIST_SIGNALDESK_GEMINI_AI_KEY_4=
+MENULIST_SIGNALDESK_AI_MODEL=
 ```
 
 Do not introduce shorthand prefixes such as `SD_*` or `MLSD_*`.
+SignalDesk AI provider calls must not fall back to MenuList `GEMINI_AI_KEY*` or Answerlattice credentials. The app creates a SignalDesk-scoped key manager while reusing the shared retry gateway implementation.
 
 ## Firebase Optimization Contract
 

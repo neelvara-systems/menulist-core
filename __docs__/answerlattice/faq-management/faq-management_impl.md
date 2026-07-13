@@ -22,7 +22,7 @@ During review, `ArticleModal` exposes a small FAQ editor only in the import revi
 - removes transient `generatedFaqs` from published article docs,
 - bumps the KB cache version.
 
-When an existing KB article changes, `src/database/knowledgeBase/articles.ts` marks linked FAQs for review in the background. When an article is deleted, it archives linked FAQs in the background. Those maintenance calls stay non-blocking for article save/delete, but failures now log `answerlattice_article_faq_review_marker_failed` or `answerlattice_article_faq_archive_failed` with bounded tenant/store/article metadata only. The FAQ DAL prefers explicit article `tId/sId`; if an older caller omits them and session-scope fallback cannot resolve, it logs `answerlattice_faq_article_review_scope_resolve_failed` or `answerlattice_faq_article_archive_scope_resolve_failed` before returning the existing zero-update result.
+When an existing KB article title/content changes, `src/database/knowledgeBase/articles.ts` reads the bounded active linked-FAQ set and the article's `faqIds` mirror, then rechecks product/workspace/article ownership and writes `needs_review` FAQ state in the same transaction as the article update. Article deletion performs the equivalent bounded recheck and archives linked FAQs in the same transaction as the article delete. A partial article/FAQ truth transition cannot be acknowledged.
 
 Answerlattice FAQ article reference ID boundary: `src/lib/answerlattice/faqRetrieval.ts` normalizes linked `faq.articleId` values through the KB article ID boundary before returning a related article reference or reading the full article document. Malformed linked article IDs are skipped before Firestore refs are built.
 
@@ -40,7 +40,7 @@ Tabs:
 - Connections: article, product surfaces, entities, tags.
 - Review: likes, dislikes, last reviewed.
 
-Saving a FAQ updates the FAQ doc, keeps the linked article `faqIds` mirror in sync, and updates the owner screen locally instead of refetching every screen dependency.
+Saving a FAQ validates the stored FAQ scope and every previous/next linked article, then updates the FAQ and existing article `faqIds` mirrors in one transaction. Missing or cross-workspace article links fail; the DAL never creates a skeletal article from a FAQ mirror update. The owner screen updates locally only after the acknowledged transaction.
 
 FAQ save/archive now return explicit acknowledgement envelopes from `src/database/answerlattice/faqs.ts`. `AnswerlatticeFaqManagement` must call `assertAnswerlatticeFaqWriteSucceeded()` or `assertAnswerlatticeFaqArchiveSucceeded()` before updating local FAQ state, rebuilding product-surface summaries, or showing success copy. This prevents `apiCallComposer` fallback results from being treated as completed owner-reviewed answer changes.
 
@@ -61,6 +61,8 @@ The article embedding refresh now uses the full saved article payload after edit
 ## Public UI
 
 `Help Center > Read FAQ` loads published FAQs through `getPublishedFaqsForSession()` with a hard cap.
+
+Public FAQ projection and the server-side search fallback both require exact `pId='AL'`, numeric tenant/store ownership, published/active state, a valid Firestore FAQ ID, bounded question/answer/article fields, exact enum values, and bounded deduplicated context/tag/entity lists before a row can reach cache or scoring. `attemptFaqAnswerRetrieval()` also rejects nonnumeric, fractional, unsafe, or otherwise malformed runtime scope/source-version values before cache-key construction or Firestore queries. Firestore result rows and product-surface related FAQ summaries pass the same retrieval normalizer; TypeScript types do not substitute for runtime admission.
 
 Each FAQ can show:
 

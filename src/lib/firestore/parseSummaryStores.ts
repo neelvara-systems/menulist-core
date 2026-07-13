@@ -6,47 +6,18 @@
  * and flat dot-notation writes:
  *   { "stores.1.name": "Main Store" }
  */
-export function parseSummaryStores(data: any): Record<string, any> {
-    if (!data || typeof data !== "object") return {};
+import { parseSummaryMap, type SummaryMapData } from './summaryMapParser';
 
-    const result: Record<string, any> = {};
+export type SummaryStoreData = SummaryMapData;
+export type SummaryStoreWithId = SummaryStoreData & { storeId: string };
 
-    if (data.stores && typeof data.stores === "object") {
-        for (const [storeId, storeData] of Object.entries(data.stores)) {
-            if (storeData && typeof storeData === "object") {
-                result[storeId] = { ...(storeData as Record<string, any>) };
-            }
-        }
-    }
+export function withAuthoritativeSummaryStoreId(
+    storeId: string,
+    data: SummaryStoreData,
+): SummaryStoreWithId {
+    return { ...data, storeId };
+}
 
-    for (const [key, value] of Object.entries(data)) {
-        if (!key.startsWith("stores.")) continue;
-
-        const rest = key.slice("stores.".length);
-        if (!rest) continue;
-
-        const [storeId, ...fieldPath] = rest.split(".");
-        if (!storeId) continue;
-
-        if (!result[storeId]) result[storeId] = {};
-
-        if (fieldPath.length === 0) {
-            if (value && typeof value === "object") {
-                result[storeId] = { ...result[storeId], ...(value as Record<string, any>) };
-            }
-            continue;
-        }
-
-        let target: Record<string, any> = result[storeId];
-        for (let i = 0; i < fieldPath.length - 1; i++) {
-            const segment = fieldPath[i];
-            if (!target[segment] || typeof target[segment] !== "object") {
-                target[segment] = {};
-            }
-            target = target[segment];
-        }
-        target[fieldPath[fieldPath.length - 1]] = value;
-    }
-
-    return result;
+export function parseSummaryStores(data: unknown): Record<string, SummaryStoreData> {
+    return parseSummaryMap(data, 'stores');
 }

@@ -3,7 +3,7 @@ import { getOurChargePaise, getRealCostPaise, getUnitCost } from "@constant/AI/u
 import { AI_ACTIONS_TYPES, CHARGE_PER_CREDIT, TOKENS_PER_CREDIT } from "@constant/common";
 import { PERMISSIONS } from "@constant/permissions";
 import { finalizeAiOperationAccounting } from "@lib/ai/accounting";
-import { checkAICapacity } from "@lib/ai/capacityCheck";
+import { checkAICapacity, refundAiCapacityReservationSafely, reserveAiCapacity } from "@lib/ai/capacityCheck";
 import { summarizeImageProviderResponse } from "@lib/ai/imageOperationLogging";
 import { genAIClient } from "@lib/google/genAi";
 import { getAIGatewayDiagnostics, getAIRouteLogContext, getAIRouteSecurityContext, logAIRouteFailure } from "@lib/google/genAi/diagnostics";
@@ -18,10 +18,11 @@ import { GenerateImageViaApiPayloadType } from "@template/main-app/projects/type
 import { writeErrorLogEntry, writeLogEntry, writeMissingParamsLogEntry } from 'logs/utils';
 import { NextResponse } from 'next/server';
 import { withAuth } from "../../../middleware/auth";
-import { AI_MODEL_TYPE, runImageGenerationPrompts } from "./generators";
+import { AI_MODEL_TYPE, IMAGE_AI_MODELS, runImageGenerationPrompts } from "./generators";
 import { getImagePrompts } from "./prompt";
 
 const AI_MODEL: AI_MODEL_TYPE = "GEMINI";
+const AI_MODEL_ID = IMAGE_AI_MODELS[AI_MODEL];
 const ACTION = AI_ACTIONS_TYPES.IMAGE_GENERATION;
 const LOG_FILE = "image-generation.log"
 const IMAGE_GENERATION_AI_MAX_BODY_BYTES = 16 * 1024 * 1024;
@@ -67,6 +68,7 @@ export const POST = withAuth(async (request, session) => {
     const requestId = crypto.randomUUID();
     let projectIdForLog: string | undefined;
     let fileIdForLog: string | undefined;
+    let capacityReservation: Awaited<ReturnType<typeof reserveAiCapacity>> | null = null;
 
     try {
 
@@ -177,6 +179,16 @@ export const POST = withAuth(async (request, session) => {
                 code: capacityCheck.reason,
             }, { status: 402 });
         }
+        capacityReservation = await reserveAiCapacity({
+            action: ACTION,
+            pId: session.pId ?? session.user?.pId ?? session.user?.productId,
+            sId: session.sId,
+            source: '/api/image-generation',
+            subscription: capacityCheck.subscription!,
+            tId: session.tId,
+            uId: session.uId ?? session.user?.id,
+            unitsToReserve: capacityCheck.unitsRequired,
+        });
 
         const startTime = new Date().getTime();
 
@@ -258,7 +270,7 @@ export const POST = withAuth(async (request, session) => {
                 promptCount: promptRun.promptCount,
                 processingTime,
                 clientResponse: genratedImages.map((image: { base64: string; mimeType: string }) => image.mimeType),
-                model: AI_MODEL,
+                model: AI_MODEL_ID,
                 geminiResponse: generatedImagesResponse.map(summarizeImageProviderResponse),
                 tokenPerCredit: TOKENS_PER_CREDIT,
                 chargePerCredit: CHARGE_PER_CREDIT,
@@ -270,17 +282,16 @@ export const POST = withAuth(async (request, session) => {
 
             // Add the operation to the database
             try {
-                transactionObject.unitsConsumed = Math.max(
-                    capacityCheck.unitsRequired,
-                    getUnitCost(transactionObject.action) * Math.max(genratedImages.length, promptRun.promptCount, 1),
-                );
+                transactionObject.unitsConsumed = capacityReservation.unitsReserved;
                 const accounting = await finalizeAiOperationAccounting({
+                    capacityReservation,
                     capacitySubscription: capacityCheck.subscription,
                     context: { userId, projectId, fileId, action: transactionObject.action },
                     input: transactionObject,
                     logLabel: 'Image generation',
                     session,
                 });
+                capacityReservation = null;
                 transactionObject.unitsConsumed = accounting.unitsConsumed;
                 transactionObject.transactionId = accounting.transactionId;
                 remainingBalance = accounting.remainingBalance;
@@ -290,7 +301,7 @@ export const POST = withAuth(async (request, session) => {
                     failedPromptCount: promptRun.failedPromptCount,
                     fileId,
                     imageCount: genratedImages.length,
-                    model: AI_MODEL,
+                    model: AI_MODEL_ID,
                     projectId,
                     promptCount: promptRun.promptCount,
                     requestId,
@@ -308,7 +319,7 @@ export const POST = withAuth(async (request, session) => {
             failedPromptCount: transactionObject.failedPromptCount || 0,
             fileId: transactionObject.fileId || fileId,
             imageCount: transactionObject.imageCount || genratedImages.length,
-            model: transactionObject.model || AI_MODEL,
+            model: transactionObject.model || AI_MODEL_ID,
             processingTime: transactionObject.processingTime || processingTime,
             projectId: transactionObject.projectId || projectId,
             promptCount: transactionObject.promptCount || promptRun.promptCount,
@@ -356,7 +367,7 @@ export const POST = withAuth(async (request, session) => {
                 action: ACTION,
                 fileId: fileIdForLog,
                 gatewayDiagnostics: getAIGatewayDiagnostics(genAIClient),
-                model: AI_MODEL,
+                model: AI_MODEL_ID,
                 projectId: projectIdForLog,
                 requestId,
                 userId,
@@ -364,5 +375,10 @@ export const POST = withAuth(async (request, session) => {
         }
         await writeErrorLogEntry(LOG_FILE, error);
         return NextResponse.json({ error: 'Image generation failed' }, { status: 500 });
+    } finally {
+        await refundAiCapacityReservationSafely(capacityReservation, 'image_generation_request_did_not_settle', {
+            endpoint: '/api/image-generation',
+            requestId,
+        });
     }
 });

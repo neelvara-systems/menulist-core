@@ -25,11 +25,14 @@ import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl
 import { recordAnswerlatticeAiOperation } from '@lib/answerlattice/aiAccounting';
 import { bumpAnswerlatticeCacheVersionAdmin } from '@lib/answerlattice/cacheVersionAdmin';
 import { ANSWERLATTICE_CACHE_SOURCES } from '@lib/answerlattice/cacheVersionManifest';
-import { normalizeAnswerlatticeKbArticleId } from '@lib/answerlattice/kbArticleIdBoundary';
+import { answerlatticeGenAIClient } from '@lib/answerlattice/genAiClient';
+import {
+    ANSWERLATTICE_KB_ARTICLE_ID_MAX_LENGTH,
+    normalizeAnswerlatticeKbArticleId,
+} from '@lib/answerlattice/kbArticleIdBoundary';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
 import { normalizeAnswerlatticeScopeDocumentId, resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
-import { genAIClient } from '@lib/google/genAi';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
@@ -41,9 +44,10 @@ import { z } from 'zod';
 import { withAuth } from '../../../../middleware/auth';
 
 const TranslateRequestSchema = z.object({
-    articleId: z.string().trim().max(160).refine((value) => normalizeAnswerlatticeKbArticleId(value) === value),
+    articleId: z.string().trim().max(ANSWERLATTICE_KB_ARTICLE_ID_MAX_LENGTH)
+        .refine((value) => normalizeAnswerlatticeKbArticleId(value) === value),
     targetLocale: z.enum(ANSWERLATTICE_SUPPORTED_LOCALES as unknown as [string, ...string[]]),
-});
+}).strict();
 const TRANSLATE_ARTICLE_MAX_BODY_BYTES = 4 * 1024;
 const MAX_TRANSLATION_TEXT_FOR_PROMPT = 8000;
 const MAX_TRANSLATED_CONTENT_CHARS = 12000;
@@ -247,7 +251,7 @@ Respond in this exact JSON format:
 }`;
 
         const operationStart = Date.now();
-        const response = await genAIClient.models.generateContent({
+        const response = await answerlatticeGenAIClient.models.generateContent({
             model: ANSWERLATTICE_TEXT_MODEL,
             contents: prompt,
         });

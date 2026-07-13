@@ -29,15 +29,27 @@ const normalizePositiveId = (value: string | number): OnboardingCompensationScop
     return { documentId, numericId };
 };
 
-const removeStoreFromList = (stores: unknown, storeId: number) => (
+const normalizePersistedOnboardingScopeId = (value: unknown): number | null => {
+    const raw = typeof value === "string" || typeof value === "number" ? String(value) : "";
+    if (!ONBOARDING_COMPENSATION_SCOPE_DOCUMENT_ID_PATTERN.test(raw)) return null;
+    const numericId = Number(raw);
+    return Number.isSafeInteger(numericId) && String(numericId) === raw ? numericId : null;
+};
+
+export const removeCompensatedStoreFromMappings = (stores: unknown, storeId: number) => (
     Array.isArray(stores)
-        ? stores.filter((store) => Number((store as any)?.storeId) !== storeId)
+        ? stores.filter((store) => (
+            !store
+            || typeof store !== "object"
+            || Array.isArray(store)
+            || normalizePersistedOnboardingScopeId((store as Record<string, unknown>).storeId) !== storeId
+        ))
         : []
 );
 
-const removeStoreIdFromList = (storeIds: unknown, storeId: number) => (
+export const removeCompensatedStoreId = (storeIds: unknown, storeId: number) => (
     Array.isArray(storeIds)
-        ? storeIds.filter((id) => Number(id) !== storeId)
+        ? storeIds.filter((id) => normalizePersistedOnboardingScopeId(id) !== storeId)
         : []
 );
 
@@ -64,8 +76,8 @@ export async function compensateFailedTenantStoreOnboarding(params: {
         const userRef = params.db.collection(DB_COLLECTIONS.USERS).doc(userId);
         const userSnap = await transaction.get(userRef);
         const userData = userSnap.exists ? userSnap.data() || {} : {};
-        const remainingStores = removeStoreFromList(userData.stores, storeId);
-        const remainingStoreIds = removeStoreIdFromList(userData.storeIds, storeId);
+        const remainingStores = removeCompensatedStoreFromMappings(userData.stores, storeId);
+        const remainingStoreIds = removeCompensatedStoreId(userData.storeIds, storeId);
         const userUpdate: Record<string, unknown> = {
             modifiedOn: now,
             onboardingCompensatedAt: now,
@@ -76,10 +88,10 @@ export async function compensateFailedTenantStoreOnboarding(params: {
             stores: remainingStores,
         };
 
-        if (Number(userData.storeId) === storeId) {
+        if (normalizePersistedOnboardingScopeId(userData.storeId) === storeId) {
             userUpdate.storeId = null;
         }
-        if (Number(userData.tenantId) === tenantId) {
+        if (normalizePersistedOnboardingScopeId(userData.tenantId) === tenantId) {
             userUpdate.tenantId = null;
         }
 

@@ -18,6 +18,7 @@ export const dynamic = 'force-dynamic';
 import { FEATURE_FLAGS } from '@config/features';
 import { PRODUCT_IDS } from '@constant/product';
 import { evaluateTriggers } from '@lib/answerlattice/predictiveEngine';
+import { normalizeAnswerlatticeScopeDocumentId } from '@lib/answerlattice/sessionScope';
 import { AnswerlatticeContextSchema } from '@lib/validation/contextSchema';
 import { handlePublicApiCorsPreflight, hashApiKey, hasPublicApiCredentialScope, isRequestOriginAllowed, validatePublicApiKey, withPublicApiCors } from '@lib/publicApi/auth';
 import { checkRateLimit } from '@lib/rateLimit';
@@ -38,7 +39,7 @@ const PredictiveHelpRequestSchema = z.object({
     userRole: z.string().trim().max(80).optional(),
     entityHints: z.array(z.string().trim().min(1).max(120)).max(5).optional(),
     userId: z.string().trim().max(160).optional(),
-});
+}).strict();
 const WIDGET_AUTH_CACHE_TTL_MS = 15_000;
 
 const emptyCorsResponse = (request: NextRequest, init?: ResponseInit): NextResponse => (
@@ -112,9 +113,9 @@ export async function POST(request: NextRequest) {
 
         // Extract tenant context from authenticated API key (never trust body for tId/sId)
         const { storeData, storeId } = authResult;
-        const tId = Number(storeData.tenantId || storeData.tId);
-        const sId = Number(storeData.id || storeId);
-        if (!Number.isFinite(tId) || !Number.isFinite(sId) || tId <= 0 || sId <= 0) {
+        const tId = normalizeAnswerlatticeScopeDocumentId(storeData.tenantId ?? storeData.tId);
+        const sId = normalizeAnswerlatticeScopeDocumentId(storeData.id ?? storeId);
+        if (!tId || !sId) {
             logRuntimeFailure('answerlattice_predictive_help_invalid_workspace_context', undefined, {
                 ...getBoundedRuntimeStringContext('storeId', storeId),
             });

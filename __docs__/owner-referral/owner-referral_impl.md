@@ -5,7 +5,7 @@
 **Acquisition flag:** `ENABLE_OWNER_REFERRAL` (implemented, default `false`)
 **Pilot allowlist:** `OWNER_REFERRAL_PILOT_STORE_IDS` (implemented, default `[]`)
 **Settlement flag:** `ENABLE_OWNER_REFERRAL_REWARD_PROCESSING` (implemented, default `false`)
-**Last updated:** July 10, 2026
+**Last updated:** July 11, 2026
 **Audience:** Engineering, security, billing, QA
 
 ---
@@ -49,7 +49,7 @@ The founder amendment is [owner-referral_payment-only-policy-amendment-2026-07-1
 
 ```text
 Paid MenuList business
-  -> opens Invite another business
+  -> opens Invite a business owner you know
   -> receives stateless encrypted 30-day link
   -> shares through native Share / WhatsApp / Copy
 
@@ -283,7 +283,7 @@ interface OwnerReferralOwnerResponse {
   };
   recent: Array<{
     businessName: string;
-    status: 'waiting_for_payment' | 'waiting_for_both_payments' | 'issued';
+    status: 'waiting_for_payment' | 'issued';
     date: string;
   }>;
 }
@@ -442,10 +442,12 @@ Load the API only when the owner opens the referral panel. Do not add dashboard 
 
 ### Desktop
 
-Add `Invite another business` to `src/components/templates/main-app/useMenuList/index.tsx` after customer-link sharing. The panel contains:
+Add `Invite a business owner you know` to `src/components/templates/main-app/useMenuList/index.tsx` after customer-link sharing. The panel contains:
 
 - `Your business: 100 credits`;
+- `Up to 20 generated menu images or 100 description rewrites`;
 - `Invited business: 50 credits`;
+- `Up to 10 generated menu images or 50 description rewrites`;
 - `Credits are added when both MenuList subscriptions are paid`;
 - `No referral limit`;
 - native Share, WhatsApp, and Copy link;
@@ -481,13 +483,13 @@ Add English and Hindi strings to the existing MenuList locale files.
 
 Required concepts:
 
-- Invite another business
+- Invite a business owner you know
 - Your business receives 100 credits
 - Invited business receives 50 credits
+- Exact examples from `src/data/shared/contentCreditPolicy.ts`
 - Credits are added after both subscriptions are paid
 - No referral limit
-- Waiting for payment
-- Waiting for both payments
+- Their payment pending
 - Credits added
 - Referrer can see business name and general status
 
@@ -543,6 +545,7 @@ Do not send token, tenant/store/user/subscription/payment IDs, business names, c
 | Path | Purpose |
 | --- | --- |
 | `src/data/shared/ownerReferralPolicy.ts` | Reward/status constants |
+| `src/data/shared/contentCreditPolicy.ts` | Public-safe credit rates and outcome examples |
 | `src/lib/ownerReferral/ownerReferralTypes.ts` | Server referral/token types |
 | `src/lib/ownerReferral/ownerReferralFeature.ts` | Acquisition, settlement dependency, and pilot-store boundary |
 | `src/lib/ownerReferral/ownerReferralTokenServer.ts` | Token encryption and validation |
@@ -628,7 +631,7 @@ No referral Cloud Function, scheduler task, Functions policy mirror, starter-act
 
 - [x] Add desktop and mobile Share entries.
 - [x] Add payment-only reward copy and no-limit statement.
-- [x] Add recent waiting/issued statuses.
+- [x] Add recent `Their payment pending`/`Credits added` statuses.
 - [x] Add short noindex invite page and privacy disclosure.
 - [x] Add English/Hindi and Terms/help copy.
 

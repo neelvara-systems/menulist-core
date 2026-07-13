@@ -1,0 +1,111 @@
+import { createHash } from 'crypto';
+
+export const ANSWERLATTICE_ONBOARDING_STATUS = {
+    PAYMENT_PENDING: 'payment_pending',
+    PAYMENT_PROVIDER_FAILED: 'payment_provider_failed',
+    PROVISIONING: 'provisioning',
+} as const;
+
+export type AnswerlatticeOnboardingStatus = (
+    typeof ANSWERLATTICE_ONBOARDING_STATUS[keyof typeof ANSWERLATTICE_ONBOARDING_STATUS]
+);
+
+export type AnswerlatticeOnboardingRequestIdentity = {
+    billingModel: 'subscription' | 'usage' | 'one_time' | 'not_sure';
+    businessDayEndTime: string;
+    companyName: string;
+    currency: 'INR' | 'USD';
+    interval: 'MONTH';
+    planId: string;
+    primarySurfaces: string[];
+    productName: string;
+    productUrl: string;
+    supportEmail: string;
+    timeZone: string;
+};
+
+export type AnswerlatticeProviderSubscriptionCandidate = {
+    created_at?: number;
+    id?: string;
+    notes?: Record<string, unknown> | unknown[] | null;
+    plan_id?: string;
+    short_url?: string | null;
+    status?: string;
+    total_count?: number;
+};
+
+const normalizeString = (value: unknown) => String(value || '').trim();
+
+export function buildAnswerlatticeOnboardingRequestFingerprint(
+    input: AnswerlatticeOnboardingRequestIdentity,
+): string {
+    const normalized: AnswerlatticeOnboardingRequestIdentity = {
+        billingModel: input.billingModel,
+        businessDayEndTime: normalizeString(input.businessDayEndTime),
+        companyName: normalizeString(input.companyName),
+        currency: input.currency,
+        interval: input.interval,
+        planId: normalizeString(input.planId),
+        primarySurfaces: Array.from(new Set(input.primarySurfaces.map(normalizeString).filter(Boolean))).sort(),
+        productName: normalizeString(input.productName),
+        productUrl: normalizeString(input.productUrl),
+        supportEmail: normalizeString(input.supportEmail).toLowerCase(),
+        timeZone: normalizeString(input.timeZone),
+    };
+
+    return createHash('sha256').update(JSON.stringify(normalized)).digest('hex');
+}
+
+export function getAnswerlatticeOnboardingTimestampMillis(value: unknown): number {
+    if (!value) return 0;
+    if (value instanceof Date) return value.getTime();
+    if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+    if (typeof value === 'string') {
+        const parsed = Date.parse(value);
+        return Number.isFinite(parsed) ? parsed : 0;
+    }
+    if (typeof value !== 'object' || Array.isArray(value)) return 0;
+
+    const timestamp = value as {
+        _nanoseconds?: unknown;
+        _seconds?: unknown;
+        nanoseconds?: unknown;
+        seconds?: unknown;
+        toMillis?: unknown;
+    };
+    if (typeof timestamp.toMillis === 'function') {
+        const millis = Number(timestamp.toMillis.call(value));
+        return Number.isFinite(millis) ? millis : 0;
+    }
+
+    const seconds = Number(timestamp.seconds ?? timestamp._seconds);
+    const nanoseconds = Number(timestamp.nanoseconds ?? timestamp._nanoseconds ?? 0);
+    if (!Number.isFinite(seconds) || !Number.isFinite(nanoseconds)) return 0;
+    return (seconds * 1000) + Math.floor(nanoseconds / 1_000_000);
+}
+
+export function findAnswerlatticeProviderSubscriptionForAttempt(params: {
+    attemptId: string;
+    candidates: AnswerlatticeProviderSubscriptionCandidate[];
+    planId: string;
+    providerPlanId: string;
+    storeId: number;
+    tenantId: number;
+}): AnswerlatticeProviderSubscriptionCandidate | null {
+    const attemptId = normalizeString(params.attemptId);
+    if (!attemptId) return null;
+
+    const matches = params.candidates.filter((candidate) => {
+        if (!candidate || normalizeString(candidate.plan_id) !== params.providerPlanId) return false;
+        if (!candidate.notes || Array.isArray(candidate.notes) || typeof candidate.notes !== 'object') return false;
+        const notes = candidate.notes as Record<string, unknown>;
+        return normalizeString(notes.onboardingAttemptId) === attemptId
+            && normalizeString(notes.productId) === 'AL'
+            && normalizeString(notes.planId) === params.planId
+            && Number(notes.tenantId) === params.tenantId
+            && Number(notes.storeId) === params.storeId;
+    });
+
+    matches.sort((left, right) => Number(right.created_at || 0) - Number(left.created_at || 0));
+    return matches[0] || null;
+}

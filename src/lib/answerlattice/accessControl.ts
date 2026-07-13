@@ -7,6 +7,7 @@ import {
     createDefaultAnswerlatticeRoles,
     DEFAULT_ANSWERLATTICE_ROLE_IDS,
     DEFAULT_ANSWERLATTICE_ROLE_METADATA,
+    isDefaultAnswerlatticeRoleId,
     normalizeAnswerlatticeRolePermissions,
 } from '@constant/answerlattice/permissions';
 import { DB_COLLECTIONS } from '@constant/database';
@@ -21,11 +22,19 @@ import {
     getBoundedAnswerlatticeStringContext,
 } from '@lib/answerlattice/diagnostics';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
-import { admin } from '@lib/firebase/firebaseAdmin';
 import { logger } from '@lib/monitoring/logger';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { normalizeAnswerlatticeScopeDocumentId, resolveAnswerlatticeSessionScope } from './sessionScope';
+import {
+    isAnswerlatticeActiveStoreInScope,
+    normalizeConsistentAnswerlatticeScopeDocumentIds,
+    normalizeAnswerlatticeScopeDocumentId,
+    resolveAnswerlatticeSessionScope,
+} from './sessionScope';
+import {
+    getAnswerlatticeStaffMembership,
+    readAnswerlatticeStaffAccessState,
+} from './staffAccessContracts';
 
 export type AnswerlatticeAccessContext = {
     canUseManagement: boolean;
@@ -64,21 +73,94 @@ const isPlatformAdminSession = (session: any) => {
 
 const normalizeEmail = (value: unknown) => String(value || '').toLowerCase().trim();
 
-const normalizeScopeIdList = (values: unknown[]): number[] => (
-    values
-        .map((value) => normalizeAnswerlatticeScopeDocumentId(value))
-        .filter((value): value is number => value !== null)
-);
+const normalizeScopeIdList = (values: unknown[]): number[] => {
+    const normalized = values.map((value) => normalizeAnswerlatticeScopeDocumentId(value));
+    if (normalized.some((value) => value === null)) return [];
+    const storeIds = normalized as number[];
+    return new Set(storeIds).size === storeIds.length ? storeIds : [];
+};
+
+const hasCompatibleAnswerlatticeProductIdentity = (userData: Record<string, any>): boolean => {
+    const productIds = [userData.pId, userData.productId]
+        .filter((productId) => productId !== undefined);
+    return productIds.length === 0
+        || productIds.every((productId) => productId === PRODUCT_IDS.ANSWERLATTICE);
+};
 
 const getUserStoreIds = (userData: Record<string, any>): number[] => {
+    if (Array.isArray(userData.stores)) {
+        const accessState = readAnswerlatticeStaffAccessState(userData);
+        return accessState ? accessState.memberships.map(({ storeId }) => storeId) : [];
+    }
     if (Array.isArray(userData.storeIds)) {
         return normalizeScopeIdList(userData.storeIds);
     }
-    if (Array.isArray(userData.stores)) {
-        return normalizeScopeIdList(userData.stores.map((store: any) => store?.storeId ?? store?.sId));
-    }
-    const storeId = normalizeAnswerlatticeScopeDocumentId(userData.storeId ?? userData.sId);
+    const storeId = normalizeConsistentAnswerlatticeScopeDocumentIds([userData.storeId, userData.sId]);
     return storeId ? [storeId] : [];
+};
+
+type AnswerlatticeAccessUserCandidate = {
+    data: Record<string, any>;
+    id: string;
+    ref?: FirebaseFirestore.DocumentReference;
+};
+
+export const selectAnswerlatticeAccessUserCandidate = (
+    candidates: AnswerlatticeAccessUserCandidate[],
+    tenantId: number,
+    storeId: number,
+): AnswerlatticeAccessUserCandidate | null => {
+    const matching = candidates.filter((candidate) => {
+        const data = candidate.data || {};
+        return hasCompatibleAnswerlatticeProductIdentity(data)
+            && normalizeConsistentAnswerlatticeScopeDocumentIds([data.tenantId, data.tId]) === tenantId
+            && getUserStoreIds(data).includes(storeId);
+    });
+
+    // Duplicate scoped identities are an integrity error. Failing closed avoids
+    // choosing an arbitrary role or store membership from a non-unique result.
+    return matching.length === 1 ? matching[0] : null;
+};
+
+const findAnswerlatticeAccessUser = async (
+    db: FirebaseFirestore.Firestore,
+    email: string,
+    tenantId: number,
+    storeId: number,
+): Promise<AnswerlatticeAccessUserCandidate | null> => {
+    const readCandidates = (snapshot: FirebaseFirestore.QuerySnapshot) => (
+        snapshot.docs.map((document) => ({
+            data: document.data() || {},
+            id: document.id,
+            ref: document.ref,
+        }))
+    );
+
+    const canonicalSnapshot = await db.collection(DB_COLLECTIONS.USERS)
+        .where('tenantId', '==', tenantId)
+        .where('email', '==', email)
+        .limit(2)
+        .get();
+    if (!canonicalSnapshot.empty) {
+        return selectAnswerlatticeAccessUserCandidate(
+            readCandidates(canonicalSnapshot),
+            tenantId,
+            storeId,
+        );
+    }
+
+    // Migration-safe fallback for records written before tenantId became the
+    // canonical user scope field. It runs only when the canonical query misses.
+    const legacySnapshot = await db.collection(DB_COLLECTIONS.USERS)
+        .where('tId', '==', tenantId)
+        .where('email', '==', email)
+        .limit(2)
+        .get();
+    return selectAnswerlatticeAccessUserCandidate(
+        readCandidates(legacySnapshot),
+        tenantId,
+        storeId,
+    );
 };
 
 const serializeRole = (
@@ -106,6 +188,12 @@ const serializeRole = (
     if (role?.modifiedBy) {
         normalizedRole.modifiedBy = String(role.modifiedBy);
     }
+    if (typeof role?.creationRequestFingerprint === 'string') {
+        normalizedRole.creationRequestFingerprint = role.creationRequestFingerprint;
+    }
+    if (typeof role?.creationRequestId === 'string') {
+        normalizedRole.creationRequestId = role.creationRequestId;
+    }
 
     return normalizedRole;
 };
@@ -113,7 +201,18 @@ const serializeRole = (
 const getFallbackRole = (roleId: string, tId: number, sId: number): AnswerlatticeRoleDefinition => {
     const createdBy = 'system';
     const defaults = createDefaultAnswerlatticeRoles({ tId, sId, createdBy });
-    return defaults.find((role) => role.id === roleId) || defaults[2];
+    return defaults.find((role) => role.id === roleId) || {
+        active: false,
+        createdBy,
+        createdOn: new Date(0).toISOString(),
+        description: '',
+        id: roleId,
+        name: roleId,
+        pId: PRODUCT_IDS.ANSWERLATTICE,
+        permissions: normalizeAnswerlatticeRolePermissions({}),
+        sId,
+        tId,
+    };
 };
 
 export const normalizeAnswerlatticeRolesForStore = (
@@ -124,20 +223,55 @@ export const normalizeAnswerlatticeRolesForStore = (
 ) => {
     const defaultRoles = createDefaultAnswerlatticeRoles({ tId, sId, createdBy: actorEmail });
     const rolesById = new Map<string, AnswerlatticeRoleDefinition>();
+    const seenRawRoleIds = new Set<string>();
     let changed = false;
 
     defaultRoles.forEach((role) => rolesById.set(role.id, role));
 
     if (Array.isArray(rawRoles)) {
         rawRoles.forEach((rawRole) => {
-            const roleId = String(rawRole?.id || '').trim();
-            if (!roleId) {
+            const rawRoleId = typeof rawRole?.id === 'string' ? rawRole.id : '';
+            const roleId = rawRoleId.trim();
+            if (!roleId || roleId !== rawRoleId || roleId.length > 120) {
                 changed = true;
+                return;
+            }
+
+            if (seenRawRoleIds.has(roleId)) {
+                changed = true;
+                if (!isDefaultAnswerlatticeRoleId(roleId)) {
+                    const existingRole = rolesById.get(roleId);
+                    rolesById.set(roleId, {
+                        ...getFallbackRole(roleId, tId, sId),
+                        active: false,
+                        name: existingRole?.name || roleId,
+                        permissions: normalizeAnswerlatticeRolePermissions({}),
+                    });
+                }
+                return;
+            }
+            seenRawRoleIds.add(roleId);
+
+            if (isDefaultAnswerlatticeRoleId(roleId)) {
+                const defaultRole = defaultRoles.find((role) => role.id === roleId)!;
+                if (
+                    rawRole?.active !== true
+                    || rawRole?.name !== defaultRole.name
+                    || rawRole?.description !== defaultRole.description
+                    || JSON.stringify(normalizeAnswerlatticeRolePermissions(rawRole?.permissions))
+                        !== JSON.stringify(defaultRole.permissions)
+                ) {
+                    changed = true;
+                }
                 return;
             }
 
             const defaultRole = defaultRoles.find((role) => role.id === roleId) || getFallbackRole(roleId, tId, sId);
             const normalized = serializeRole(rawRole, defaultRole, tId, sId);
+            if (!isDefaultAnswerlatticeRoleId(roleId) && rawRole?.active !== true) {
+                normalized.active = false;
+                changed = true;
+            }
             const before = JSON.stringify(rawRole?.permissions || {});
             const after = JSON.stringify(normalized.permissions);
             if (
@@ -175,38 +309,13 @@ export const normalizeAnswerlatticeRolesForStore = (
     };
 };
 
-export const ensureAnswerlatticeRolesForStore = async (
-    storeRef: FirebaseFirestore.DocumentReference,
-    storeData: Record<string, any>,
-    actorEmail?: string,
-) => {
-    const tId = normalizeAnswerlatticeScopeDocumentId(storeData?.tenantId ?? storeData?.tId);
-    const sId = normalizeAnswerlatticeScopeDocumentId(storeData?.storeId ?? storeData?.sId ?? storeRef.id);
-    if (!tId || !sId) {
-        throw new Error('answerlattice_store_scope_invalid');
-    }
-    const normalized = normalizeAnswerlatticeRolesForStore(storeData?.answerlatticeRoles, tId, sId, actorEmail);
-
-    if (normalized.changed) {
-        await storeRef.set({
-            answerlatticeRoles: normalized.roles,
-            pId: PRODUCT_IDS.ANSWERLATTICE,
-            productId: PRODUCT_IDS.ANSWERLATTICE,
-            modifiedOn: admin.firestore.FieldValue.serverTimestamp(),
-        }, { merge: true });
-    }
-
-    return normalized.roles;
-};
-
 export const findAnswerlatticeRole = (
     roles: AnswerlatticeRoleDefinition[],
     roleId?: string,
 ) => {
-    const normalizedRoleId = String(roleId || DEFAULT_ANSWERLATTICE_ROLE_IDS.STAFF).trim();
-    return roles.find((role) => role.id === normalizedRoleId && role.active !== false)
-        || roles.find((role) => role.id === DEFAULT_ANSWERLATTICE_ROLE_IDS.STAFF)
-        || roles[0];
+    const normalizedRoleId = typeof roleId === 'string' ? roleId.trim() : '';
+    if (!normalizedRoleId) return undefined;
+    return roles.find((role) => role.id === normalizedRoleId && role.active !== false);
 };
 
 export const hasAnswerlatticePermission = (
@@ -241,32 +350,35 @@ export async function getAnswerlatticeAccessContext(session: any): Promise<Answe
     if (!storeSnap.exists) return null;
 
     const storeData = storeSnap.data() || {};
-    const storeTenantId = normalizeAnswerlatticeScopeDocumentId(storeData.tenantId ?? storeData.tId);
-    if (storeTenantId !== scope.tenantId) return null;
+    if (!isAnswerlatticeActiveStoreInScope(storeData, scope, storeSnap.id)) return null;
 
-    const sessionEmail = normalizeEmail(session?.user?.email);
-    const userSnapshot = sessionEmail
-        ? await db.collection(DB_COLLECTIONS.USERS)
-            .where('email', '==', sessionEmail)
-            .limit(1)
-            .get()
-        : null;
-    const userDoc = userSnapshot && !userSnapshot.empty ? userSnapshot.docs[0] : null;
-    const userData = userDoc?.data() || {};
     const isPlatformAdmin = isPlatformAdminSession(session);
+    const sessionEmail = normalizeEmail(session?.user?.email);
+    const userDoc = !isPlatformAdmin && sessionEmail
+        ? await findAnswerlatticeAccessUser(db, sessionEmail, scope.tenantId, scope.storeId)
+        : null;
+    const userData = userDoc?.data || {};
 
     if (!isPlatformAdmin) {
         if (!userDoc) return null;
         if (userData.active === false || userData.deleted === true || userData.authDisabled === true) return null;
-        if (normalizeAnswerlatticeScopeDocumentId(userData.tenantId ?? userData.tId) !== scope.tenantId) return null;
+        if (!hasCompatibleAnswerlatticeProductIdentity(userData)) return null;
+        if (normalizeConsistentAnswerlatticeScopeDocumentIds([userData.tenantId, userData.tId]) !== scope.tenantId) return null;
         const userStoreIds = getUserStoreIds(userData);
         if (!userStoreIds.includes(scope.storeId)) return null;
     }
 
-    const roles = await ensureAnswerlatticeRolesForStore(storeRef, storeData, sessionEmail || 'system');
-    const storeRole = Array.isArray(userData.stores)
-        ? userData.stores.find((store: any) => normalizeAnswerlatticeScopeDocumentId(store?.storeId ?? store?.sId) === scope.storeId)?.role
+    const roles = normalizeAnswerlatticeRolesForStore(
+        storeData.answerlatticeRoles,
+        scope.tenantId,
+        scope.storeId,
+        sessionEmail || 'system',
+    ).roles;
+    const userAccessState = readAnswerlatticeStaffAccessState(userData);
+    const storeRole = userAccessState
+        ? getAnswerlatticeStaffMembership(userAccessState, scope.storeId)?.role
         : undefined;
+    if (!isPlatformAdmin && !storeRole) return null;
     const currentRoleId = isPlatformAdmin
         ? DEFAULT_ANSWERLATTICE_ROLE_IDS.OWNER
         : String(storeRole || userData.role || scope.role || DEFAULT_ANSWERLATTICE_ROLE_IDS.STAFF);

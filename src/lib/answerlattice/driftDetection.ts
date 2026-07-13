@@ -25,10 +25,9 @@
  */
 
 import { FEATURE_FLAGS } from "@config/features";
-import { addAuditLog } from "@database/answerlattice/auditLogs";
-import { getCanonicalAnswers, updateAnswerGovernance } from "@database/answerlattice/canonicalAnswers";
+import { getCanonicalAnswers, recordCanonicalAnswerDrift } from "@database/answerlattice/canonicalAnswers";
 import { getEntities } from "@database/answerlattice/entities";
-import { getBatchSignalCounts, type BatchSignalCounts } from "@database/answerlattice/signalEvents";
+import { getRecentSignalEvents } from "@database/answerlattice/signalEvents";
 import {
     ANSWERLATTICE_DRIFT_CLASS,
     ANSWERLATTICE_ENTITY_STATUS,
@@ -36,16 +35,38 @@ import {
     AnswerlatticeDriftClass,
     AnswerlatticeEntity
 } from "@type/answerlattice";
-import { Timestamp } from "firebase/firestore";
 
 // ═══════════════════════════════════════════════════════════════
 // DRIFT THRESHOLDS (Policy-level, not schema-level)
 // ═══════════════════════════════════════════════════════════════
 
 const SIGNAL_DRIFT_THRESHOLDS = {
-    negativeFeedbackRate: 0.08,   // 8% negative feedback rate triggers drift
+    negativeFeedbackCount: 5,     // 5 post-validation negative events trigger drift
     ticketSpikeMultiplier: 2.0,   // 2x baseline ticket count triggers drift
     minSignalCount: 5,            // Minimum signals before evaluating rate
+};
+
+const normalizeScopeIds = (value: unknown): string[] => (
+    Array.isArray(value)
+        ? Array.from(new Set(value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)))
+        : []
+);
+
+const listOverlaps = (left: unknown, right: unknown): boolean => {
+    const leftIds = normalizeScopeIds(left);
+    const rightIds = normalizeScopeIds(right);
+    return leftIds.length === 0 || rightIds.length === 0 || leftIds.some(id => rightIds.includes(id));
+};
+
+const timestampToMillis = (value: unknown): number => {
+    if (!value || typeof value !== 'object') return 0;
+    const candidate = value as { toMillis?: () => number; seconds?: unknown };
+    if (typeof candidate.toMillis === 'function') {
+        const millis = candidate.toMillis();
+        return Number.isFinite(millis) ? millis : 0;
+    }
+    const seconds = Number(candidate.seconds);
+    return Number.isFinite(seconds) && seconds > 0 ? seconds * 1_000 : 0;
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -88,25 +109,18 @@ function evaluateVersionDrift(
  * Uses rolling 14-day window signal counts.
  */
 function evaluateSignalDrift(
-    answer: AnswerlatticeCanonicalAnswer,
     signalCounts: { ticket: number; chat_negative: number; escalation: number; total: number }
 ): { drifted: boolean; reason?: string } {
-    const { linkedChatCount, negativeFeedbackCount } = answer.signalMetrics;
-
     // Need minimum signals to evaluate
     if (signalCounts.total < SIGNAL_DRIFT_THRESHOLDS.minSignalCount) {
         return { drifted: false };
     }
 
-    // Check negative feedback rate
-    if (linkedChatCount > 0) {
-        const feedbackRate = negativeFeedbackCount / linkedChatCount;
-        if (feedbackRate > SIGNAL_DRIFT_THRESHOLDS.negativeFeedbackRate) {
-            return {
-                drifted: true,
-                reason: `Negative feedback rate ${(feedbackRate * 100).toFixed(1)}% exceeds ${SIGNAL_DRIFT_THRESHOLDS.negativeFeedbackRate * 100}% threshold`,
-            };
-        }
+    if (signalCounts.chat_negative >= SIGNAL_DRIFT_THRESHOLDS.negativeFeedbackCount) {
+        return {
+            drifted: true,
+            reason: `${signalCounts.chat_negative} negative feedback events occurred after the last validation`,
+        };
     }
 
     // Check ticket spike (signal events vs historical)
@@ -153,12 +167,11 @@ function evaluateScopeConflict(
         if (!versionOverlap) continue;
 
         // Check scope overlap (plan/role/state)
-        const planOverlap = !answer.scope.planIds?.length || !other.scope.planIds?.length ||
-            answer.scope.planIds.some(p => other.scope.planIds!.includes(p));
-        const roleOverlap = !answer.scope.roleIds?.length || !other.scope.roleIds?.length ||
-            answer.scope.roleIds.some(r => other.scope.roleIds!.includes(r));
+        const planOverlap = listOverlaps(answer.scope.planIds, other.scope.planIds);
+        const roleOverlap = listOverlaps(answer.scope.roleIds, other.scope.roleIds);
+        const stateOverlap = listOverlaps(answer.scope.stateIds, other.scope.stateIds);
 
-        if (planOverlap && roleOverlap) {
+        if (planOverlap && roleOverlap && stateOverlap) {
             return {
                 drifted: true,
                 reason: `Scope conflict with answer "${other.id}" — overlapping entity+version+scope`,
@@ -242,17 +255,16 @@ export async function evaluateDriftForTenant(
 
     const activeAnswers = answers.filter(a => a.status === 'active');
 
-    // Phase 4 (3.3): Batch signal counts for ALL entities at once
-    // Collects all unique entityIds from active answers, fetches in one batched query
-    const allEntityIds = new Set<string>();
-    for (const answer of activeAnswers) {
-        for (const eid of answer.scope.entityIds) {
-            allEntityIds.add(eid);
-        }
+    // One bounded workspace query is cheaper than one `in` query per 30
+    // entities. Drift only considers friction events after each answer's latest
+    // human validation, so resolved historical feedback cannot immediately
+    // re-open the same drift finding.
+    const recentSignals = (await getRecentSignalEvents(tId, sId, 14, 500)) ?? [];
+    const signalsByEntity = new Map<string, typeof recentSignals>();
+    for (const signal of recentSignals) {
+        if (!signalsByEntity.has(signal.entityId)) signalsByEntity.set(signal.entityId, []);
+        signalsByEntity.get(signal.entityId)!.push(signal);
     }
-    const batchedSignalCounts: BatchSignalCounts = allEntityIds.size > 0
-        ? (await getBatchSignalCounts(tId, sId, Array.from(allEntityIds), 14)) ?? {}
-        : {};
 
     for (const answer of activeAnswers) {
         const driftReasons: { driftClass: AnswerlatticeDriftClass; reason: string }[] = [];
@@ -272,9 +284,18 @@ export async function evaluateDriftForTenant(
         // Class B: Signal Drift (uses pre-loaded batched counts)
         const primaryEntityId = answer.scope.entityIds[0];
         if (primaryEntityId) {
-            const signalCounts = batchedSignalCounts[primaryEntityId];
-            if (signalCounts) {
-                const signalResult = evaluateSignalDrift(answer, signalCounts);
+            const validationMillis = timestampToMillis(answer.validation?.lastValidatedOn);
+            const signalCounts = { ticket: 0, chat_negative: 0, escalation: 0, total: 0 };
+            for (const signal of signalsByEntity.get(primaryEntityId) || []) {
+                if (timestampToMillis(signal.timestamp) <= validationMillis) continue;
+                if (signal.type === 'ticket') signalCounts.ticket++;
+                else if (signal.type === 'chat_negative') signalCounts.chat_negative++;
+                else if (signal.type === 'escalation') signalCounts.escalation++;
+                else continue;
+                signalCounts.total++;
+            }
+            if (signalCounts.total > 0) {
+                const signalResult = evaluateSignalDrift(signalCounts);
                 if (signalResult.drifted) {
                     driftReasons.push({
                         driftClass: ANSWERLATTICE_DRIFT_CLASS.SIGNAL_ANOMALY,
@@ -305,38 +326,19 @@ export async function evaluateDriftForTenant(
         }
 
         // Compute new drift state (DERIVED, not toggled)
-        const newDriftFlag = driftReasons.length > 0;
-        const newDriftReason = driftReasons.map(r => `[${r.driftClass}] ${r.reason}`).join('; ');
-        const changed = newDriftFlag !== previousDriftFlag ||
-            (newDriftFlag && answer.governance.driftReason !== newDriftReason);
+        const detectedDrift = driftReasons.length > 0;
+        // A clean recompute never clears a previously detected drift flag.
+        // Clearing requires an explicit validation event through Governance.
+        const newDriftFlag = previousDriftFlag || detectedDrift;
+        const newDriftReason = detectedDrift
+            ? driftReasons.map(r => `[${r.driftClass}] ${r.reason}`).join('; ')
+            : answer.governance.driftReason;
+        const changed = detectedDrift
+            && (!previousDriftFlag || answer.governance.driftReason !== newDriftReason);
 
         // Update governance flags if changed
         if (changed) {
-            await updateAnswerGovernance(answer.id, {
-                driftFlag: newDriftFlag,
-                driftReason: newDriftFlag ? newDriftReason : undefined,
-                reviewRequired: newDriftFlag,
-            });
-
-            // Log drift event to audit trail
-            await addAuditLog({
-                tId,
-                sId,
-                action: newDriftFlag ? 'drift_detected' : 'drift_cleared',
-                entityType: 'canonicalAnswer',
-                entityId: answer.id,
-                previousState: {
-                    driftFlag: previousDriftFlag,
-                    driftReason: answer.governance.driftReason,
-                },
-                newState: {
-                    driftFlag: newDriftFlag,
-                    driftReason: newDriftFlag ? newDriftReason : null,
-                    driftClasses: driftReasons.map(r => r.driftClass),
-                },
-                performedBy: 'system:drift_engine',
-                timestamp: Timestamp.now(),
-            });
+            await recordCanonicalAnswerDrift(answer.id, newDriftReason || 'Drift review required');
         }
 
         results.push({

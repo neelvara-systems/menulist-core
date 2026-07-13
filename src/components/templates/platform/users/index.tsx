@@ -4,7 +4,7 @@ import Saperator from '@atoms/Saperator';
 import { CRAFT_BUILDER_MAINTAINER_USER_ROLE, ECOMSAI_PLATFORM_SUPPORT_USER_ROLE, ECOMSAI_PLATFORM_TENANT_ID, ECOMSAI_PLATFORM_USER_ROLE } from '@constant/user';
 import { getAllStoresByTenantId } from '@database/stores';
 import { getAllTenants } from '@database/tenants';
-import { assertUserUpdateSucceeded, getUserByTenantId, updatePlatformUser } from '@database/users';
+import { assertUserUpdateSucceeded, getUserByTenantId, updatePlatformUser, type PlatformUserRecord } from '@database/users';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { getBoundedRuntimeStringContext, logRuntimeDiagnostic, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import {
@@ -16,7 +16,6 @@ import {
 import { showErrorToast, showSuccessToast, showWarningToast } from '@reduxSlices/toast';
 import { StoreDataType } from '@type/platform/store';
 import { TenantDataType } from '@type/platform/tenant';
-import { UserDataType } from '@type/platform/user';
 import { getObjectDifferance } from '@util/deepMerge';
 import { removeObjRef } from '@util/utils';
 import { Button, Card, Flex, Select, Switch, Table, Tag, Typography } from 'antd'; // Import Ant Design components
@@ -26,14 +25,14 @@ const { Text, Title } = Typography
 
 function PlatformUsers() {
 
-    const [usersList, setUsersList] = useState([]);
-    const [userModal, setUserModal] = useState<UserDataType>(null)
+    const [usersList, setUsersList] = useState<PlatformUserRecord[]>([]);
+    const [userModal, setUserModal] = useState<PlatformUserRecord | null>(null)
     const [tenantsList, setTenantsList] = useState<TenantDataType[]>([]);
     const dispatch = useAppDispatch()
     // Filter states
     const [filterTenant, setFilterTenant] = useState<string | any>(null);
     const [filterStore, setFilterStore] = useState<string | any>(null);
-    const [allTenantUsers, setAllTenantUsers] = useState<UserDataType[]>([]);
+    const [allTenantUsers, setAllTenantUsers] = useState<PlatformUserRecord[]>([]);
     const [filterStoresList, setFilterStoresList] = useState<StoreDataType[]>([]);
 
     useEffect(() => {
@@ -204,7 +203,7 @@ function PlatformUsers() {
     }
 
     const onChangeValue = (from: string, value: any) => {
-        const userCopy: UserDataType = removeObjRef(userModal);
+        const userCopy: PlatformUserRecord = removeObjRef(userModal);
         userCopy[from] = value;
         if (from == "tenantId") {
             userCopy.stores = [];
@@ -219,7 +218,7 @@ function PlatformUsers() {
     }
 
     const onChangeStoreValue = (index: number, from: string, value: any) => {
-        const userCopy: UserDataType = removeObjRef(userModal);
+        const userCopy: PlatformUserRecord = removeObjRef(userModal);
         userCopy.stores[index][from] = value;
         if (from == "storeId") {
             const storeDetails = tenantsList.find((t) => t.tenantId == userCopy?.tenantId)?.storesList.find((s) => s.storeId == value);
@@ -230,14 +229,14 @@ function PlatformUsers() {
     }
 
     const onClickAddStore = () => {
-        const userCopy: UserDataType = removeObjRef(userModal);
+        const userCopy: PlatformUserRecord = removeObjRef(userModal);
         if (!userCopy.stores) userCopy.stores = [];
         userCopy.stores.push({ storeId: null, name: "", role: '' });  // Single role per store
         setUserModal(userCopy)
     }
 
     const onClickDeleteStore = (index: number) => {
-        const userCopy: UserDataType = removeObjRef(userModal);
+        const userCopy: PlatformUserRecord = removeObjRef(userModal);
         userCopy.stores.splice(index, 1);
         userCopy.storeIds = Boolean(userCopy.stores?.length) ? userCopy.stores.map((s) => s.storeId) : [];
         setUserModal(userCopy)
@@ -295,7 +294,7 @@ function PlatformUsers() {
             </Card>
             <Flex style={{ overflowX: 'auto' }}>
                 <Table
-                    rowKey={(record: UserDataType) => record.id || record.email}
+                    rowKey={(record: PlatformUserRecord) => record.id}
                     pagination={false}
                     dataSource={usersList}
                     columns={columns}

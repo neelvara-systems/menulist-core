@@ -4,7 +4,7 @@
  * Caches resolved canonical answers in Upstash Redis for sub-10ms responses.
  * Only deterministic canonical answers are cached (not RAG responses).
  * 
- * Cache key: canon:{tId}:{sId}:e:{entityId}:v{version}:p:{plan}:r:{role}
+ * Cache key: canon:v2:{tId}:{sId}:e:{entityId}:v{version}:p:{plan}:r:{role}:s:{state}
  * Invalidation: Version-based (automatic). TTL: 24 hours.
  * 
  * Reuses existing Upstash instance (same as rate limiting in src/lib/rateLimit.ts).
@@ -41,6 +41,7 @@ const getInstantCacheLogContext = (params: {
     matchedEntityCount?: number;
     planId?: unknown;
     roleId?: unknown;
+    stateId?: unknown;
     sId?: unknown;
     tId?: unknown;
     topEntityId?: unknown;
@@ -49,6 +50,7 @@ const getInstantCacheLogContext = (params: {
     ...getBoundedRuntimeStringContext('answerVersion', params.answerVersion),
     ...getBoundedRuntimeStringContext('planId', params.planId),
     ...getBoundedRuntimeStringContext('roleId', params.roleId),
+    ...getBoundedRuntimeStringContext('stateId', params.stateId),
     ...getBoundedRuntimeStringContext('storeId', params.sId),
     ...getBoundedRuntimeStringContext('tenantId', params.tId),
     ...getBoundedRuntimeStringContext('topEntityId', params.topEntityId),
@@ -65,11 +67,13 @@ export function buildCacheKey(
     topEntityId: string,
     answerVersion: number,
     planId?: string,
-    roleId?: string
+    roleId?: string,
+    stateId?: string,
 ): string {
     const plan = planId || '_';
     const role = roleId || '_';
-    return `canon:${tId}:${sId}:e:${topEntityId}:v${answerVersion}:p:${plan}:r:${role}`;
+    const state = stateId || '_';
+    return `canon:v2:${tId}:${sId}:e:${topEntityId}:v${answerVersion}:p:${plan}:r:${role}:s:${state}`;
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -83,12 +87,13 @@ export async function instantCacheLookup(
     answerVersion: number,
     planId?: string,
     roleId?: string,
+    stateId?: string,
     currentSourceVersions?: AnswerlatticeCacheSourceVersions,
 ): Promise<CachedCanonicalAnswer | null> {
     if (!redis || !FEATURE_FLAGS.ENABLE_ANSWERLATTICE_INSTANT_CACHE) return null;
 
     try {
-        const key = buildCacheKey(tId, sId, topEntityId, answerVersion, planId, roleId);
+        const key = buildCacheKey(tId, sId, topEntityId, answerVersion, planId, roleId, stateId);
         
         // Race against timeout
         const result = await Promise.race([
@@ -117,6 +122,7 @@ export async function instantCacheLookup(
                     answerVersion,
                     planId,
                     roleId,
+                    stateId,
                     sId,
                     tId,
                     topEntityId,
@@ -131,6 +137,7 @@ export async function instantCacheLookup(
             answerVersion,
             planId,
             roleId,
+            stateId,
             sId,
             tId,
             topEntityId,
@@ -152,6 +159,7 @@ export async function instantCacheWrite(
     matchedEntityIds: string[],
     planId?: string,
     roleId?: string,
+    stateId?: string,
     sourceVersions?: AnswerlatticeCacheSourceVersions,
 ): Promise<void> {
     if (!redis || !FEATURE_FLAGS.ENABLE_ANSWERLATTICE_INSTANT_CACHE) return;
@@ -161,7 +169,7 @@ export async function instantCacheWrite(
 
     try {
         const answerVersion = answer.productBinding.lastValidatedInVersion;
-        const key = buildCacheKey(tId, sId, topEntityId, answerVersion, planId, roleId);
+        const key = buildCacheKey(tId, sId, topEntityId, answerVersion, planId, roleId, stateId);
 
         const payload: CachedCanonicalAnswer = {
             craftedAnswer: answer.content.detailedExplanation || answer.content.structuredSummary,
@@ -188,6 +196,7 @@ export async function instantCacheWrite(
                 matchedEntityCount: matchedEntityIds.length,
                 planId,
                 roleId,
+                stateId,
                 sId,
                 tId,
                 topEntityId,
@@ -199,6 +208,7 @@ export async function instantCacheWrite(
             matchedEntityCount: matchedEntityIds.length,
             planId,
             roleId,
+            stateId,
             sId,
             tId,
             topEntityId,

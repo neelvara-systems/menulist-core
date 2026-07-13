@@ -134,7 +134,8 @@ Billing mutation failure paths on desktop and mobile now use the monitored logge
 | `CreditsPackModal` — uses new pack list          | ✅     | Line 30 — `aiEnhancementPacksList`                                     |
 | `CreditPackCard` — uses `AIEnhancementPack` type | ✅     | `src/components/templates/main-app/billing/CreditPackCard.tsx:12`      |
 | `CreditPackCard` — enhancement pack style        | ✅     | Lines 29-36 — blue theme for "enhancement" packId                      |
-| `CreditPackCard` — no credit/unit language       | ✅     | Lines 109-110 — shows `pack.name` + `pack.description`                 |
+| Website `CreditPackCard` — transparent Pack value | ✅     | Shows `pack.creditAmount` plus shared-policy generated-image and description examples |
+| Desktop/mobile Billing Pack cards — transparent Pack value | ✅ | Show the same amount and examples through localized Billing copy |
 
 ---
 
@@ -146,7 +147,7 @@ Billing mutation failure paths on desktop and mobile now use the monitored logge
 | Tenant isolation preserved          | ✅     | `checkAICapacity` uses session.tId/session.sId |
 | Rate limiting preserved             | ✅     | Pre-existing — runs before capacity check      |
 | Zod validation preserved            | ✅     | Pre-existing — runs before capacity check      |
-| No internal units exposed to client | ✅     | 402 responses use outcome language only        |
+| No provider economics or monthly capacity exposed to client | ✅ | Public Pack rates are allowed; provider costs, margins, monthly capacity, and overdraft remain private |
 | Kill switch accessible to founder   | ✅     | Simple boolean in `features.ts`                |
 
 ---

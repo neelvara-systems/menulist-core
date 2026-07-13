@@ -85,6 +85,10 @@ ScreenDisplay.tsx / MenuBoardDisplay.tsx → onSnapshot(doc(firebaseClient, 'pla
 
 June 30 mutation acknowledgement hardening is Firebase-cost neutral. `updateScreenSettings()`, `addPinnedSlide()`, `removePinnedSlide()`, and `updatePinnedSlideCaption()` still perform the same canonical `platformSummary/campaigns_{sId}` write plus public-safe `platformSummary/screen_{sId}` mirror sync, but now return a typed acknowledgement that desktop/mobile callers must assert before local state or success copy changes. `uploadScreenSlide()` also asserts the internal `addPinnedSlide()` acknowledgement and the outer upload result before returning the uploaded slide, so `apiCallComposer()` fallback values cannot show false upload success. This adds no reads/writes/deletes beyond existing screen mutation attempts, no Storage operations beyond existing slide uploads, no rules, no indexes, no Cloud Functions, no API routes, no owner settings, no Firebase deploy requirement, and no Vercel deploy action.
 
+July 10 owner-mutation integrity hardening preserves the same successful read/write counts but commits the canonical `campaigns_{sId}.screen` document and public `screen_{sId}` mirror in one Firestore transaction. Concurrent settings/slide/version changes retry against current state instead of overwriting each other. No-op retries do not bump `contentVersion`; caption updates fail when the slide is absent; concurrent adds enforce the three-slide limit and deduplicate the same slide ID.
+
+Prepared `digitalScreenSlide` uploads keep a variant URL ledger. If one variant upload fails, already uploaded siblings are deleted before the error returns. If the later add-slide transaction fails, all newly uploaded variant URLs are deleted; failed cleanup is visible through a bounded diagnostic. Successful upload cost is unchanged. Failure recovery can add up to two Storage deletes (the profile's `desktop` and `full` variants), preventing unreferenced owner media from accumulating.
+
 **Public-read hardening:** The listener document contains only `storeId`, `screenToken`, `enabled`, `contentVersion`, `lastContentChangeAt`, and `updatedAt`. Firestore rules no longer allow unauthenticated reads of `platformSummary/campaigns_{storeId}`, which also contains Today, campaign, staff-prompt, and physical-surface owner data.
 
 ---
@@ -156,7 +160,7 @@ June 30 mutation acknowledgement hardening is Firebase-cost neutral. `updateScre
 
 > **June 28, 2026 Functions invalidation note:** server-side Functions cache revalidation can request the same screen-version touch after cache tags are cleared. This is used for first-extraction project saves, scheduled special-menu activation/deactivation, and subscription entitlement attribution changes. The Functions helper does not build `screen.menuProjection`; it only reads the existing screen state and writes the canonical content version plus the public-safe listener mirror, so stale projections are rejected by the public resolver and fall back to project reads when needed.
 
-> **June 11, 2026 listener-isolation note:** public display clients listen to `platformSummary/screen_{storeId}`. Owner/session DAL writes and public cache invalidation update that mirror after the canonical `campaigns_{storeId}.screen` change. This adds one tiny write per screen-content mutation, but it removes unauthenticated access to internal campaign summary fields.
+> **June 11, 2026 listener-isolation note; July 10 atomic update:** public display clients listen to `platformSummary/screen_{storeId}`. Owner/session DAL mutations now update that mirror in the same transaction as canonical `campaigns_{storeId}.screen`; cache invalidation helpers retain their existing synchronized paths. The one tiny mirror write removes unauthenticated access to internal campaign summary fields without allowing canonical/mirror partial commits on owner mutations.
 
 > **June 27, 2026 seen-signal note:** `/api/screen/seen` now checks a 1 KB declared-size cap, applies the shared `SCREEN_SEEN_SIGNAL` IP rate limit, and reads the JSON body through the shared bounded-body helper. This adds no Firestore operations and keeps invalid, oversized, chunked, or abusive anonymous requests away from Firestore lookup/write paths.
 
@@ -190,7 +194,7 @@ Menu Board mode adds **zero additional Firebase operations**. Here's why:
 v1.0 (Highlights only):                v2.0 (Menu Board + Highlights):
 
 page.tsx                               page.tsx
-  ↓ getScreenDataByToken() [2-3 reads]   ↓ getScreenDataByToken() [2-3 reads]   ← SAME
+  ↓ getScreenDataByTokenServer() [2-3 reads]   ↓ getScreenDataByTokenServer() [2-3 reads]   ← SAME
   ↓ projection [0] or fallback [1+ read] ↓ projection [0] or fallback [1+ read] ← SAME
   ↓ generateScreenSlides()               ↓ IF highlights: generateScreenSlides()
   ↓ <ScreenDisplay />                    ↓ ELSE: group by category
@@ -203,7 +207,7 @@ page.tsx                               page.tsx
 
 | Operation                 | v1.0 (Highlights) | v2.0 (Menu Board) | v2.0 (Highlights) | Delta     |
 | ------------------------- | ----------------- | ----------------- | ----------------- | --------- |
-| `getScreenDataByToken()`  | 2-3 reads         | 2-3 reads         | 2-3 reads         | $0        |
+| `getScreenDataByTokenServer()` | 2-3 reads, plus a cached tenant-block lookup only when denormalized state is absent | Same | Same | ₹0 mode delta |
 | Projection/fallback menu data | 0-1+ reads   | 0-1+ reads        | 0-1+ reads        | $0        |
 | onSnapshot listener       | 1 read/connect    | 1 read/connect    | 1 read/connect    | $0        |
 | Daily seen signal         | 1-2 reads + 1 write | 1-2 reads + 1 write | 1-2 reads + 1 write | $0        |

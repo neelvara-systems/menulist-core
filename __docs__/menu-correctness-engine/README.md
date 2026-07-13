@@ -13,7 +13,7 @@ Supported surfaces read from the same Firestore project document through their e
 | Surface                | How MCE Protects It                               |
 | ---------------------- | ------------------------------------------------- |
 | 🌐 **QR/Web Menu**     | Validated project data served via Firestore       |
-| 📺 **Digital Screens** | Same validated data via `getMenuItemsForScreen()` |
+| 📺 **Digital Screens** | Same validated data via server-only `getMenuItemsForScreenServer()` |
 | 📄 **PDF Menu**        | Generated on-demand from validated project data   |
 | 🤖 **Staff Prompt**    | Same Firestore project document (live read)       |
 | 🔗 **POS Webhook**     | Same project data via webhook sync                |

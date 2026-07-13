@@ -11,14 +11,12 @@ import { FEATURE_FLAGS } from '@config/features';
 import {
     getCanonicalAnswers,
     getCanonicalAnswerById,
-    addCanonicalAnswer,
-    updateCanonicalAnswer,
     getDriftedAnswers,
+    proposeCanonicalAnswerCreate,
+    proposeCanonicalAnswerUpdate,
 } from '@database/answerlattice/canonicalAnswers';
-import { addAuditLog } from '@database/answerlattice/auditLogs';
 import { AnswerlatticeCanonicalAnswer } from '@type/answerlattice';
 import { message } from 'antd';
-import { Timestamp } from 'firebase/firestore';
 import { useCallback, useEffect, useState } from 'react';
 
 const ANSWERLATTICE_CANONICAL_ANSWERS_LOAD_FAILED = 'Could not load canonical answers';
@@ -32,8 +30,8 @@ interface UseCanonicalAnswersReturn {
     error: string | null;
     selectedAnswer: AnswerlatticeCanonicalAnswer | null;
     setSelectedAnswer: (answer: AnswerlatticeCanonicalAnswer | null) => void;
-    create: (data: Omit<AnswerlatticeCanonicalAnswer, 'id'>) => Promise<AnswerlatticeCanonicalAnswer | null>;
-    update: (data: Partial<AnswerlatticeCanonicalAnswer> & { id: string }) => Promise<void>;
+    create: (data: Omit<AnswerlatticeCanonicalAnswer, 'id'>) => Promise<boolean>;
+    update: (data: Partial<AnswerlatticeCanonicalAnswer> & { id: string }) => Promise<boolean>;
     refresh: () => Promise<void>;
     loadAnswer: (answerId: string) => Promise<AnswerlatticeCanonicalAnswer | null>;
 }
@@ -68,49 +66,38 @@ export function useCanonicalAnswers(tId: number, sId: number): UseCanonicalAnswe
         refresh();
     }, [refresh]);
 
-    const create = useCallback(async (data: Omit<AnswerlatticeCanonicalAnswer, 'id'>): Promise<AnswerlatticeCanonicalAnswer | null> => {
+    const create = useCallback(async (data: Omit<AnswerlatticeCanonicalAnswer, 'id'>): Promise<boolean> => {
         try {
-            const result = await addCanonicalAnswer(data);
-            if (result) {
-                await addAuditLog({
-                    tId, sId,
-                    action: 'canonical_answer_created',
-                    entityType: 'canonicalAnswer',
-                    entityId: result.id,
-                    previousState: undefined,
-                    newState: { title: data.title, entityIds: data.scope?.entityIds },
-                    performedBy: 'admin',
-                    timestamp: Timestamp.now(),
-                });
-                message.success('Canonical answer created');
-                await refresh();
-            }
-            return result;
+            await proposeCanonicalAnswerCreate(data);
+            message.success('New answer sent to Governance review');
+            return true;
         } catch {
             message.error(ANSWERLATTICE_CANONICAL_ANSWER_CREATE_FAILED);
-            return null;
+            return false;
         }
-    }, [tId, sId, refresh]);
+    }, []);
 
     const update = useCallback(async (data: Partial<AnswerlatticeCanonicalAnswer> & { id: string }) => {
         try {
-            await updateCanonicalAnswer(data);
-            await addAuditLog({
-                tId, sId,
-                action: 'canonical_answer_updated',
-                entityType: 'canonicalAnswer',
-                entityId: data.id,
-                previousState: undefined,
-                newState: { fields: Object.keys(data).filter(k => k !== 'id') },
-                performedBy: 'admin',
-                timestamp: Timestamp.now(),
+            const previous = await getCanonicalAnswerById(data.id);
+            if (!previous || Number(previous.tId) !== Number(tId) || Number(previous.sId) !== Number(sId)) {
+                throw new Error('Canonical answer is not available in this workspace.');
+            }
+            await proposeCanonicalAnswerUpdate({
+                ...previous,
+                ...data,
+                answerType: data.answerType ?? previous.answerType,
+                content: data.content ?? previous.content,
+                scope: data.scope ?? previous.scope,
+                productBinding: data.productBinding ?? previous.productBinding,
             });
-            message.success('Answer updated');
-            await refresh();
+            message.success('Answer update sent to Governance review');
+            return true;
         } catch {
             message.error(ANSWERLATTICE_CANONICAL_ANSWER_UPDATE_FAILED);
+            return false;
         }
-    }, [tId, sId, refresh]);
+    }, [tId, sId]);
 
     const loadAnswer = useCallback(async (answerId: string): Promise<AnswerlatticeCanonicalAnswer | null> => {
         try {

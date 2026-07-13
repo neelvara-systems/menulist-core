@@ -143,7 +143,7 @@ Signal emitter fires 'ticket' signal with resolution metadata
     ↓
 [EXISTING] Founder Review Queue → Approve/Reject/Edit
     ↓
-[EXISTING] approveDraftAsCanonicalAnswer() → Canonical Answer + Search Index
+[EXISTING] Server governance approval → Canonical Answer + Proposal Decision + Audit/Invalidation
 ```
 
 ---

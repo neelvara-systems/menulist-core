@@ -38,7 +38,7 @@ const accountCards = [
     {
         icon: LuGift,
         title: 'Owner referral credits',
-        desc: 'Eligible MenuList businesses may invite another business using the referral link provided inside MenuList.',
+        desc: 'Eligible MenuList businesses may invite a business owner they know using the referral link provided inside MenuList.',
         points: [
             'The invitation must be attached before the invited business completes its first successful MenuList subscription payment',
             'The referring business receives 100 credits and the invited business receives 50 credits when both distinct direct MenuList subscription wallets are verified paid',

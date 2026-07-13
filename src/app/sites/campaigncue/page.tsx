@@ -42,6 +42,8 @@ import {
 import CampaignCueAiSummary from './components/CampaignCueAiSummary';
 import CampaignCueMobileNavigation from './components/CampaignCueMobileNavigation';
 
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
     title: CAMPAIGNCUE_SITE_TITLE,
     description: CAMPAIGNCUE_SITE_DESCRIPTION,
@@ -165,7 +167,7 @@ const PRODUCT_MEGA_MENU_GROUPS: MegaMenuGroup[] = [
         links: [
             {
                 label: 'Daily Campaign Desk',
-                detail: 'One useful cue from current facts.',
+                detail: 'One useful cue and the next manual campaign task.',
                 href: CAMPAIGNCUE_WEBSITE_FEATURE_PATHS.dailyCampaignDesk,
                 icon: LuRadar,
             },
@@ -304,7 +306,7 @@ const FLOW_MAP_STEPS: WorkflowStep[] = [
     {
         label: 'Check',
         title: 'Visible review',
-        detail: 'Source facts, claims, rights, consent, spend gates, and avoid-list wording stay visible.',
+        detail: 'Source facts, claims, rights, approval, pack readiness, and avoid-list wording stay visible.',
         icon: LuShieldCheck,
     },
     {
@@ -316,7 +318,7 @@ const FLOW_MAP_STEPS: WorkflowStep[] = [
     {
         label: 'Memory',
         title: 'Result memory',
-        detail: 'Used, skipped, booked, sold, and follow-up notes shape the next useful cue.',
+        detail: 'Used, skipped, booked, sold, and follow-up notes shape the next cue and can nominate safe reuse.',
         icon: LuBarChart3,
     },
 ];
@@ -385,10 +387,10 @@ const POWERHOUSE_FEATURES: PowerhouseFeature[] = [
     {
         label: 'Video',
         title: 'Reel and local creator briefs',
-        description: 'Create hooks, shot lists, creator-fit notes, and safe caption notes without rendering spend.',
+        description: 'Use one public example to prepare original hooks, shot lists, creator-fit notes, and safe caption guidance without monitoring accounts or rendering spend.',
         icon: LuVideo,
         tone: 'pink',
-        artifacts: ['Local creator brief', 'Shot list', 'Caption'],
+        artifacts: ['Use an example', 'Local creator brief', 'Shot list'],
     },
     {
         label: 'Check',
@@ -522,6 +524,10 @@ const FAQ_ITEMS = [
     {
         question: 'Do packs include a review record?',
         answer: 'Yes. Campaign packs can include a proof deck with brand direction, source trace, trust checks, UGC or reel references, and manual delivery notes so an owner, agency, or client can review before use.',
+    },
+    {
+        question: 'Can CampaignCue reuse a campaign that worked before?',
+        answer: 'Yes, after the owner records a useful result. CampaignCue rebuilds the same recipe from current checked facts and starts new trust, approval, and export state instead of copying the old pack.',
     },
 ];
 
@@ -694,8 +700,8 @@ function CampaignCueFlowMap() {
                 <span>Workflow map</span>
                 <h2>One daily loop from fact to checked pack.</h2>
                 <p>
-                    CampaignCue is easiest to understand as a loop: source facts come in, one cue is chosen,
-                    the pack is prepared, the risky parts stay visible, and the result is remembered.
+                    CampaignCue is easiest to understand as a loop: source facts and the owner pulse come in, one safe cue is chosen,
+                    the pack is prepared, current truth and commercial limits stay visible, and the result improves the next decision or safe reuse choice.
                 </p>
             </div>
             <div className="campaigncue-flow-map-diagram">
@@ -733,7 +739,7 @@ function CampaignPackRoom() {
                 <h2>One place for the pack, proof, and manual handoff.</h2>
                 <p>
                     The owner should not hunt across files, prompts, chats, and dashboards. One pack room
-                    shows the work, the source checks, and the next manual action before anything leaves CampaignCue.
+                    shows the work, the source and freshness checks, owner-managed destinations, staff handoff, and the next manual action before anything leaves CampaignCue.
                 </p>
             </div>
             <CampaignCueProductProofFigure
@@ -1077,7 +1083,7 @@ export default function CampaignCueHomePage() {
                     <span className="campaigncue-eyebrow">Daily campaign desk for local businesses</span>
                     <h1>CampaignCue</h1>
                     <p>
-                        Know what to promote today. Get copy, creative, print notes, and review checks ready to copy or download.
+                        Know what is safe and useful to promote today. Get the checked pack, staff handoff, and owner-controlled files ready to use.
                     </p>
                     <div className="campaigncue-actions">
                         <a className="campaigncue-primary-action" href={withBasePath(basePath, '/app')}>

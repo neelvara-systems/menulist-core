@@ -1,11 +1,11 @@
-import LoginUserType from "@type/loginUser";
-import { getAnswerlatticeScopedSession, isAnswerlatticeRuntimeRoute } from "@lib/answerlattice/sessionScope";
+import { getClientSessionScopeForCurrentStore } from "@lib/auth/getActiveSession";
+import { normalizeLoginUserSession } from "@lib/auth/loginSessionBoundary";
 import { useSession } from "next-auth/react";
 import { usePathname } from "next/navigation";
 
 //used only for pure react components
 export function useClientAuthSession() {
-    const { data, status }: any = useSession();
+    const { data, status } = useSession();
     const pathname = usePathname();
     
     // Return null while loading to prevent using undefined session
@@ -13,11 +13,14 @@ export function useClientAuthSession() {
         return null;
     }
     
-    const hostname = typeof window === 'undefined' ? undefined : window.location.hostname;
-    const sessionWithType: LoginUserType = isAnswerlatticeRuntimeRoute(pathname, hostname)
-        ? getAnswerlatticeScopedSession(data)
-        : data;
-    return sessionWithType;
+    const session = normalizeLoginUserSession(data);
+    if (!session || typeof window === 'undefined') return session;
+
+    return getClientSessionScopeForCurrentStore(
+        session,
+        pathname,
+        window.location.hostname,
+    );
 }
 
 // useSession() == {

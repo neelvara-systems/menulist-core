@@ -82,6 +82,26 @@ const notFoundHtml = `<!doctype html>
       color: var(--text);
       font-family: "Neelvara Akshar", "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
+    .skip-link {
+      position: fixed;
+      top: 10px;
+      left: 50%;
+      z-index: 10;
+      min-height: 44px;
+      padding: 11px 18px;
+      border: 2px solid var(--blue);
+      border-radius: 12px;
+      background: #fff;
+      color: var(--text);
+      font-weight: 700;
+      text-decoration: none;
+      transform: translate(-50%, calc(-100% - 20px));
+    }
+    .skip-link:focus {
+      outline: 3px solid var(--clear);
+      outline-offset: 3px;
+      transform: translate(-50%, 0);
+    }
     body::before,
     body::after {
       position: fixed;
@@ -175,6 +195,10 @@ const notFoundHtml = `<!doctype html>
       text-decoration: none;
       font-weight: 700;
     }
+    a:focus-visible {
+      outline: 3px solid var(--clear);
+      outline-offset: 3px;
+    }
     a:first-child {
       border-color: var(--blue);
       background: linear-gradient(135deg, var(--clear), var(--frost), var(--indigo), var(--lavender));
@@ -191,7 +215,7 @@ const notFoundHtml = `<!doctype html>
       font-size: 1.3rem;
     }
     .product-link {
-      min-height: 42px;
+      min-height: 44px;
       border-radius: 999px;
       font-size: 0.92rem;
     }
@@ -266,7 +290,8 @@ const notFoundHtml = `<!doctype html>
   </style>
 </head>
 <body>
-  <main>
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  <main id="main-content" tabindex="-1">
     <section class="glass">
       <div>
         <img class="brand-mark" src="/neelvara-logo.svg" alt="" aria-hidden="true" />

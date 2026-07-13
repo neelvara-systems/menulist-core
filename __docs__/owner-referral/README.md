@@ -6,18 +6,18 @@
 >
 > **Settlement:** `ENABLE_OWNER_REFERRAL_REWARD_PROCESSING` (implemented, off)
 >
-> **Last updated:** July 10, 2026
+> **Last updated:** July 11, 2026
 
 When the pilot list is populated, desktop, mobile, owner API, capture, and attribution all enforce it. An empty list represents broad rollout and must not be used until the pilot release decision is complete.
 
 ## What It Is
 
-Owner Referral lets a paid MenuList business privately invite another business. When both businesses have verified paid MenuList subscription wallets, MenuList adds:
+Owner Referral lets a paid MenuList business privately invite a business owner they know. When both businesses have verified paid MenuList subscription wallets, MenuList adds:
 
 - **100 credits** to the referring business;
 - **50 credits** to the referred business.
 
-Credits are added once to existing `topUpCredits` Pack balances and can be used for generated menu images, descriptions, translations, and edits.
+Credits are added once to existing `topUpCredits` Pack balances. At current rates, 100 credits can cover up to 20 generated menu images or 100 description rewrites; 50 credits can cover up to 10 generated menu images or 50 description rewrites.
 
 ## Payment-Only Rule
 
@@ -55,7 +55,7 @@ These controls remain:
 
 | Decision | Contract |
 | --- | --- |
-| Owner label | `Invite another business` |
+| Owner label | `Invite a business owner you know` |
 | Referrer reward | 100 one-time credits |
 | Referred reward | 50 one-time credits |
 | Reward trigger | Both distinct MenuList subscription wallets are verified paid |
@@ -66,7 +66,8 @@ These controls remain:
 | Attribution deadline after binding | None |
 | Invite token/cookie security window | 30 days |
 | Sharing | Native Share, WhatsApp, Copy link |
-| Statuses | Waiting for payment, Waiting for both payments, Credits added |
+| Statuses | Their payment pending, Credits added |
+| Credit-rate source | `src/data/shared/contentCreditPolicy.ts` |
 | Privacy | Referrer sees business display name and general status only after pre-capture disclosure |
 
 ## Documentation

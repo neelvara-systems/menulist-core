@@ -30,6 +30,21 @@
    - Similar recipe receives repetition/not-useful penalty.
    - Opportunity Engine can recommend adjustment.
 
+7. Expired owner pulse/source input:
+   - Expired pulse creates a required refresh input.
+   - Expired source input is excluded from active decision evidence.
+   - Pack expiry cannot extend beyond a current pulse or dated source input.
+
+8. Honest review request:
+   - Verified HTTP(S) review destination is required.
+   - A non-identifying completed-interaction note is required.
+   - Incentivized, selective, or fabricated review language is blocked.
+
+9. Return-customer reminder:
+   - A non-identifying owner-managed audience description is required.
+   - Pasted customer emails, phone numbers, CSV/import instructions, or contact payloads are rejected.
+   - No direct send or contact storage path is created.
+
 ## Safety Cases
 
 - Decision engine must not contain `fetch(`.
@@ -39,3 +54,5 @@
 - Owner UI must not say AI decided the campaign.
 - Owner UI must not enable pack creation for `needs_owner_input`, `safe_evergreen_only`, or `blocked` decisions.
 - Server campaign creation must reject non-ready decisions before campaign, trust report, event, or analytics writes.
+- Owner-managed destination fields must reject non-HTTP(S) protocols.
+- `not_used` must preserve campaign status and omit the use time.

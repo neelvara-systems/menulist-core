@@ -2,34 +2,56 @@ export const dynamic = 'force-dynamic';
 import { BATCH_IMAGE_GENERATION_JOB_STATUS } from "@constant/AI";
 import { getOurChargePaise, getRealCostPaise, getUnitCost } from "@constant/AI/unitCosts";
 import { AI_ACTIONS_TYPES, CHARGE_PER_CREDIT, TOKENS_PER_CREDIT } from "@constant/common";
-import { appendImageBatchItemResultAdmin, getImageBatchProcessingJobByIdAdmin, updateImageBatchProcessingJobAdmin } from "@database/imageBatchProcessing/server";
-import { uploadBase64MediaImageAdmin } from "@database/storage/uploadBase64MediaImageAdmin";
+import {
+    appendImageBatchItemResultAdmin,
+    claimImageBatchItemAdmin,
+    getImageBatchProcessingJobByIdAdmin,
+    markImageBatchItemAttemptFailedAdmin,
+    stageImageBatchItemResultAdmin,
+} from "@database/imageBatchProcessing/server";
+import { uploadBase64MediaImageAdminWithMetadata } from "@database/storage/uploadBase64MediaImageAdmin";
 import { finalizeAiOperationAccounting } from "@lib/ai/accounting";
-import { checkAICapacity } from "@lib/ai/capacityCheck";
+import {
+    checkAICapacity,
+    refundDurableAiCapacityReservationByIdSafely,
+    refundAiCapacityReservationSafely,
+    reserveAiCapacity,
+} from "@lib/ai/capacityCheck";
 import { normalizeImageBatchJobId, normalizeImageBatchProjectId } from "@lib/ai/imageBatchIdBoundary";
+import {
+    areImageBatchJsonValuesEquivalent,
+    getImageBatchOperationId,
+    imageBatchExecutionNeedsAccounting,
+    normalizeImageBatchStoredMediaMetadata,
+} from "@lib/ai/imageBatchServerBoundary";
+import { isImageBatchGeneratedStorageAsset } from "@lib/ai/imageBatchStorageBoundary";
 import { copyCachedImagePromptToStore, isImagePromptCacheEligible, writeImagePromptCacheSource } from "@lib/ai/imageGenerationPromptCache";
-import { summarizeImageProviderResponse } from "@lib/ai/imageOperationLogging";
 import { mapWithConcurrency } from "@lib/async/boundedConcurrency";
 import { logger } from "@lib/monitoring/logger";
 import { checkRateLimit } from "@lib/rateLimit";
 import { getRateLimitForFeature } from "@lib/rateLimit/configs";
-import { createUppercaseRandomIdSegment } from "@lib/runtime/randomId";
 import { getBoundedRuntimeStringContext, logRuntimeDiagnostic, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
 import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
-import { BatchImageGenerationJobType, GenerateImageViaApiPayloadBatchType, GenerateImageViaApiPayloadItemDetailsType } from "@template/main-app/projects/types";
-import { getBase64Length } from "@util/utils";
+import {
+    type BatchImageAccountingInput,
+    BatchImageGenerationJobType,
+    GenerateImageViaApiPayloadBatchType,
+    GenerateImageViaApiPayloadItemDetailsType,
+} from "@template/main-app/projects/types";
 import { writeErrorLogEntry, writeLogEntry, writeMissingParamsLogEntry } from 'logs/utils';
 import { NextResponse } from 'next/server';
 import { timingSafeEqual } from "crypto";
-import { AI_MODEL_TYPE, GeneratedImagePayload, runImageGenerationPrompts } from "../generators";
+import { AI_MODEL_TYPE, GeneratedImagePayload, IMAGE_AI_MODELS, runImageGenerationPrompts } from "../generators";
 import { getImagePrompts } from "../prompt";
 import { validateAPIInput } from "@lib/security/inputValidation";
 import { BatchImageGenerationWorkerRequestSchema } from "@lib/validation/apiSchemas";
 import { hashPublicRateLimitValue } from "../../../../middleware/publicApi";
+import { storageAdmin } from '@lib/firebase/firebaseAdmin';
 
 const AI_MODEL: AI_MODEL_TYPE = "GEMINI";
+const AI_MODEL_ID = IMAGE_AI_MODELS[AI_MODEL];
 const LOG_FILE = "batch-image-generation.log"
-const BATCH_IMAGE_WORKER_MAX_BODY_BYTES = 16 * 1024 * 1024;
+const BATCH_IMAGE_WORKER_MAX_BODY_BYTES = 256 * 1024;
 const BATCH_IMAGE_WORKER_RATE_LIMIT_KEY = 'batch-image-worker';
 const IMAGE_UPLOAD_CONCURRENCY = 3;
 const IMAGE_BATCH_WORKER_JOB_NOT_FOUND = 'image_batch_worker_job_not_found';
@@ -40,6 +62,13 @@ const TERMINAL_JOB_STATUSES = new Set([
     BATCH_IMAGE_GENERATION_JOB_STATUS.FINISHED,
     BATCH_IMAGE_GENERATION_JOB_STATUS.DISCARDED,
 ]);
+
+class NonRetryableBatchImageError extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = 'NonRetryableBatchImageError';
+    }
+}
 
 type BatchWorkerLogContext = Record<string, boolean | number | string | null | undefined>;
 
@@ -115,37 +144,58 @@ function summarizeBatchGenerationConfig(config: Record<string, any> | undefined 
 async function uploadGeneratedImages({
     aspectRatio,
     images,
-    itemDetails,
+    operationId,
     sId,
     tId,
 }: {
     aspectRatio?: string | null;
     images: GeneratedImagePayload[];
-    itemDetails: GenerateImageViaApiPayloadItemDetailsType & { id: string; name: string };
+    operationId: string;
     sId: string;
     tId: string;
 }) {
     return mapWithConcurrency(images, IMAGE_UPLOAD_CONCURRENCY, async (imageData, index) => {
-        if (!imageData.base64 || imageData.uploadedUrl) return imageData;
+        if (imageData.uploadedUrl) {
+            if (!imageData.storagePath || !isImageBatchGeneratedStorageAsset(imageData.uploadedUrl, {
+                expectedBucket: storageAdmin.bucket().name,
+                expectedStoragePath: imageData.storagePath,
+                storeId: sId,
+                tenantId: tId,
+            })) {
+                throw new NonRetryableBatchImageError('Generated image storage metadata is invalid.');
+            }
+            return imageData;
+        }
+        if (!imageData.base64) throw new NonRetryableBatchImageError('Generated image data is missing.');
 
-        const randomStr = createUppercaseRandomIdSegment(6);
         let base64Url = imageData.base64;
         if (!base64Url.startsWith('data:')) {
             base64Url = `data:${imageData.mimeType};base64,${base64Url}`;
         }
 
-        const uploadedUrl = await uploadBase64MediaImageAdmin({
+        const uploaded = await uploadBase64MediaImageAdminWithMetadata({
             aspectRatio,
             dataUrl: base64Url,
-            entityId: `${itemDetails.id}-${index}-${randomStr}`,
+            entityId: operationId,
+            mediaId: `${operationId}_${index}`,
             profile: 'menuItem',
             storeId: sId,
             tenantId: tId,
         });
+        if (!isImageBatchGeneratedStorageAsset(uploaded.url, {
+            expectedBucket: storageAdmin.bucket().name,
+            expectedStoragePath: uploaded.path,
+            storeId: sId,
+            tenantId: tId,
+        })) throw new Error('Uploaded image storage metadata is invalid.');
+        const storedMetadata = normalizeImageBatchStoredMediaMetadata(uploaded);
+        if (!storedMetadata) throw new Error('Uploaded image content metadata is invalid.');
 
         return {
             ...imageData,
-            uploadedUrl,
+            ...storedMetadata,
+            storagePath: uploaded.path,
+            uploadedUrl: uploaded.url,
         };
     });
 }
@@ -173,6 +223,7 @@ async function applyBatchImageWorkerRateLimit({
     const tenantRateLimitHash = hashPublicRateLimitValue(tId);
     const storeRateLimitHash = hashPublicRateLimitValue(sId);
     const rateLimit = await checkRateLimit({
+        failClosedOnProviderError: true,
         key: `${BATCH_IMAGE_WORKER_RATE_LIMIT_KEY}:${tenantRateLimitHash}:${storeRateLimitHash}`,
         ...rateLimitConfig,
     });
@@ -186,10 +237,11 @@ async function applyBatchImageWorkerRateLimit({
         ...getBatchWorkerLogContext({ jobId, sId, tId }),
     }, 'medium');
 
+    const providerUnavailable = rateLimit.reason === 'provider_unavailable';
     return NextResponse.json(
         { error: 'Too many requests. Please try again later.', retryAfter: waitSeconds },
         {
-            status: 429,
+            status: providerUnavailable ? 503 : 429,
             headers: {
                 'Retry-After': String(waitSeconds),
                 'X-RateLimit-Limit': String(rateLimitConfig.limit),
@@ -209,8 +261,9 @@ export async function POST(request: Request) {
     } catch (safeModeError) {
         logRuntimeFailure('image_batch_worker_safe_mode_check_failed', safeModeError, {
             endpoint: '/api/image-generation/batch-generation',
-            failOpen: true,
+            failOpen: false,
         });
+        return NextResponse.json({ error: 'Image generation is temporarily unavailable.' }, { status: 503 });
     }
 
     const expectedProjectId = process.env.FIREBASE_PROJECT_ID;
@@ -278,7 +331,44 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: true, message: 'Task acknowledged because job no longer exists.' }, { status: 200 });
     }
 
+    if (currentJobData.projectId !== projectId) {
+        logger.security('Batch image generation task/project mismatch', {
+            endpoint: '/api/image-generation/batch-generation',
+            ...workerLogContext,
+            ...getBoundedRuntimeStringContext('jobProjectId', currentJobData.projectId),
+        }, 'critical');
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    if (!areImageBatchJsonValuesEquivalent(currentJobData.generationConfig, generationConfig)) {
+        logger.security('Batch image generation task/config mismatch', {
+            endpoint: '/api/image-generation/batch-generation',
+            ...workerLogContext,
+        }, 'critical');
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    if (!Array.isArray(currentJobData.requestedItemIds)
+        || currentJobData.requestedItemIds.length !== currentJobData.totalImages
+        || !currentJobData.requestedItemIds.includes(String(itemDetails.id))) {
+        logger.security('Batch image generation item not registered on job', {
+            endpoint: '/api/image-generation/batch-generation',
+            ...workerLogContext,
+            requestedItemCount: currentJobData.requestedItemIds?.length || 0,
+        }, 'critical');
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const operationId = getImageBatchOperationId(jobId, String(itemDetails.id));
     if (TERMINAL_JOB_STATUSES.has(currentJobData.status)) {
+        await refundDurableAiCapacityReservationByIdSafely({
+            action: AI_ACTIONS_TYPES.BATCH_IMAGE_GENERATION,
+            context: { endpoint: '/api/image-generation/batch-generation', jobId },
+            operationId,
+            reason: 'image_batch_job_terminal_before_settlement',
+            sId,
+            tId,
+        });
         logger.info(`Task skipped`, {
             ...workerLogContext,
             jobStatus: currentJobData.status,
@@ -298,85 +388,163 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: true, message: `Task skipped due to job ${currentJobData.status}.` }, { status: 200 });
     }
 
-    if (currentJobData.projectId !== projectId) {
-        logger.security('Batch image generation task/project mismatch', {
-            endpoint: '/api/image-generation/batch-generation',
-            ...workerLogContext,
-            ...getBoundedRuntimeStringContext('jobProjectId', currentJobData.projectId),
-        }, 'critical');
-        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
-    if (Array.isArray(currentJobData.requestedItemIds)
-        && currentJobData.requestedItemIds.length > 0
-        && !currentJobData.requestedItemIds.includes(String(itemDetails.id))) {
-        logger.security('Batch image generation item not registered on job', {
-            endpoint: '/api/image-generation/batch-generation',
-            ...workerLogContext,
-            requestedItemCount: currentJobData.requestedItemIds.length,
-        }, 'critical');
-        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
-    const existingItem = (currentJobData.itemsList || []).find((item) => item.id === itemDetails.id);
-    if (existingItem?.images?.length) {
-        logger.info('Batch image generation task skipped - item already has generated images', {
-            ...workerLogContext,
-            existingImageCount: existingItem.images.length,
-        });
-        return NextResponse.json({ success: true, message: 'Task skipped because item already has generated images.' }, { status: 200 });
-    }
-
-    const promptsToExecute = getImagePrompts({ generationConfig, projectId, itemDetails, businessType }, AI_MODEL);
-    if (!promptsToExecute.length) {
-        return NextResponse.json({ error: 'Image generation needs a prompt or item details.' }, { status: 400 });
-    }
-
-    const estimatedImageQuantity = Math.max(
-        promptsToExecute.length,
-        Number(generationConfig?.numberOfImages || 1),
-        1,
-    );
-
-    let promptCacheImage: GeneratedImagePayload | null = null;
-    if (isImagePromptCacheEligible({ generationConfig, prompts: promptsToExecute })) {
-        promptCacheImage = await copyCachedImagePromptToStore({
-            aiModel: AI_MODEL,
-            entityId: `${itemDetails.id}-cache-${createUppercaseRandomIdSegment(6)}`,
-            generationConfig,
-            prompt: promptsToExecute[0],
-            sId,
-            tId,
-        });
-    }
-
-    // 🔋 AI CAPACITY CHECK: Verify store has sufficient capacity (uses tId/sId from projectId)
-    let capacityCheck: Awaited<ReturnType<typeof checkAICapacity>> | null = null;
-    if (!promptCacheImage) {
-        capacityCheck = await checkAICapacity(
-            Number(tId),
-            Number(sId),
-            AI_ACTIONS_TYPES.BATCH_IMAGE_GENERATION,
-            estimatedImageQuantity,
+    const claim = await claimImageBatchItemAdmin({
+        itemId: String(itemDetails.id),
+        jobId,
+        projectId,
+    });
+    if (claim.state === 'in_flight') {
+        return NextResponse.json(
+            { error: 'Image generation is already processing this item.' },
+            { status: 503, headers: { 'Retry-After': '30' } },
         );
-        if (!capacityCheck.allowed) {
-            logger.info('Batch image generation blocked - insufficient capacity', {
-                ...workerLogContext,
-                capacityReason: capacityCheck.reason,
-                estimatedImageQuantity,
-            });
-            return NextResponse.json({
-                error: capacityCheck.reason === 'maintenance'
-                    ? 'AI enhancements are temporarily unavailable.'
-                    : 'Additional AI enhancements needed for your menu.',
-                code: capacityCheck.reason,
-            }, { status: 402 });
-        }
     }
+    if (claim.state !== 'claimed') {
+        if (claim.state === 'failed' || claim.state === 'terminal') {
+            await refundDurableAiCapacityReservationByIdSafely({
+                action: AI_ACTIONS_TYPES.BATCH_IMAGE_GENERATION,
+                context: { endpoint: '/api/image-generation/batch-generation', jobId },
+                operationId,
+                reason: `image_batch_item_${claim.state}_before_settlement`,
+                sId,
+                tId,
+            });
+        }
+        return NextResponse.json({ success: true, message: `Task acknowledged because item is ${claim.state}.` }, { status: 200 });
+    }
+    const { claimToken, execution } = claim;
+    let accountingFinalized = execution.requiresFinalization === true;
+    let stagedResultPersisted = Boolean(execution.stagedItem && execution.stagedAccountingInput);
+    let retainCapacityReservationForRetry = false;
+    let uploadedStoragePaths: string[] = [];
+    let capacityReservation: Awaited<ReturnType<typeof reserveAiCapacity>> | null = null;
 
     try {
-        const startTime = new Date().getTime();
+        const promptsToExecute = getImagePrompts({ generationConfig, projectId, itemDetails, businessType }, AI_MODEL);
+        if (!promptsToExecute.length) {
+            throw new NonRetryableBatchImageError('Image generation needs a prompt or item details.');
+        }
 
+        const estimatedImageQuantity = Math.max(
+            promptsToExecute.length,
+            Number(generationConfig?.numberOfImages || 1),
+            1,
+        );
+        let capacityCheck: Awaited<ReturnType<typeof checkAICapacity>> | null = null;
+
+        if (execution.stagedItem && execution.stagedAccountingInput) {
+            if (imageBatchExecutionNeedsAccounting(execution)) {
+                const stagedUnits = execution.stagedAccountingInput.unitsConsumed;
+                if (stagedUnits > 0) {
+                    const unitCost = Math.max(getUnitCost(execution.stagedAccountingInput.action), 1);
+                    capacityCheck = await checkAICapacity(
+                        Number(tId),
+                        Number(sId),
+                        execution.stagedAccountingInput.action,
+                        Math.max(1, Math.ceil(stagedUnits / unitCost)),
+                    );
+                    if (capacityCheck.subscription) {
+                        try {
+                            capacityReservation = await reserveAiCapacity({
+                                action: execution.stagedAccountingInput.action,
+                                idempotencyKey: execution.operationId,
+                                recoveryMode: 'durable_retry',
+                                sId,
+                                source: 'image_batch_generation',
+                                subscription: capacityCheck.subscription,
+                                tId,
+                                uId: userIdForLog === 'N/A' ? undefined : userIdForLog,
+                                unitsToReserve: stagedUnits,
+                            });
+                        } catch (reservationError) {
+                            if (!capacityCheck.allowed && capacityCheck.reason !== 'maintenance') {
+                                throw new NonRetryableBatchImageError('Additional AI enhancements are needed for your menu.');
+                            }
+                            throw reservationError;
+                        }
+                    }
+                }
+
+                try {
+                    await finalizeAiOperationAccounting({
+                        capacityReservation: capacityReservation || undefined,
+                        capacitySubscription: capacityCheck?.allowed ? capacityCheck.subscription : undefined,
+                        context: { jobId, projectId, itemId: itemDetails.id, resumed: true, tId, sId },
+                        idempotencyKey: execution.operationId,
+                        input: execution.stagedAccountingInput,
+                        logLabel: 'Batch image generation resumed accounting',
+                    });
+                    capacityReservation = null;
+                    accountingFinalized = true;
+                } catch (accountingError) {
+                    if (capacityCheck && !capacityCheck.allowed && capacityCheck.reason !== 'maintenance') {
+                        throw new NonRetryableBatchImageError('Additional AI enhancements are needed for your menu.');
+                    }
+                    throw accountingError;
+                }
+            }
+
+            const updatedJobSummary = await appendImageBatchItemResultAdmin({
+                claimToken,
+                itemId: String(itemDetails.id),
+                jobId,
+                projectId,
+            });
+            await writeLogEntry({
+                logFileName: LOG_FILE,
+                userId: userIdForLog,
+                projectId,
+                logType: 'BATCH_GENERATION_JOB_UPDATED',
+                data: { jobId, resumedFromStagedResult: true, ...updatedJobSummary },
+            });
+            return NextResponse.json({ success: true, message: 'Image generation completed for this item.' }, { status: 200 });
+        }
+
+        let promptCacheImage: GeneratedImagePayload | null = null;
+        if (isImagePromptCacheEligible({ generationConfig, prompts: promptsToExecute })) {
+            promptCacheImage = await copyCachedImagePromptToStore({
+                aiModel: AI_MODEL,
+                destinationMediaId: `${execution.operationId}_cache`,
+                entityId: execution.operationId,
+                generationConfig,
+                prompt: promptsToExecute[0],
+                sId,
+                tId,
+            });
+        }
+
+        if (!promptCacheImage) {
+            capacityCheck = await checkAICapacity(
+                Number(tId),
+                Number(sId),
+                AI_ACTIONS_TYPES.BATCH_IMAGE_GENERATION,
+                estimatedImageQuantity,
+            );
+            if (!capacityCheck.allowed) {
+                logger.info('Batch image generation blocked - insufficient capacity', {
+                    ...workerLogContext,
+                    capacityReason: capacityCheck.reason,
+                    estimatedImageQuantity,
+                });
+                if (capacityCheck.reason === 'maintenance') {
+                    throw new Error('AI enhancements are temporarily unavailable.');
+                }
+                throw new NonRetryableBatchImageError('Additional AI enhancements are needed for your menu.');
+            }
+            capacityReservation = await reserveAiCapacity({
+                action: AI_ACTIONS_TYPES.BATCH_IMAGE_GENERATION,
+                idempotencyKey: execution.operationId,
+                recoveryMode: 'durable_retry',
+                sId,
+                source: 'image_batch_generation',
+                subscription: capacityCheck.subscription!,
+                tId,
+                uId: userIdForLog === 'N/A' ? undefined : userIdForLog,
+                unitsToReserve: capacityCheck.unitsRequired,
+            });
+        }
+
+        const startTime = Date.now();
         await writeLogEntry({
             logFileName: LOG_FILE,
             userId: userIdForLog,
@@ -404,146 +572,121 @@ export async function POST(request: Request) {
                 prompts: promptsToExecute,
                 referenceImageStorageScope: { sId, tId },
             });
-        let genratedImages = promptRun.images;
+        let generatedImages = promptRun.images;
         const generatedImagesResponse = promptRun.responses;
 
-        if (!promptCacheImage && isImagePromptCacheEligible({ generationConfig, prompts: promptsToExecute }) && genratedImages[0]) {
+        if (!promptCacheImage && isImagePromptCacheEligible({ generationConfig, prompts: promptsToExecute }) && generatedImages[0]) {
             await writeImagePromptCacheSource({
                 aiModel: AI_MODEL,
                 generationConfig,
-                image: genratedImages[0],
+                image: generatedImages[0],
                 prompt: promptsToExecute[0],
             });
         }
 
-        genratedImages = await uploadGeneratedImages({
+        generatedImages = await uploadGeneratedImages({
             aspectRatio: generationConfig?.aspectRatio,
-            images: genratedImages,
-            itemDetails,
+            images: generatedImages,
+            operationId: execution.operationId,
             sId,
             tId,
         });
-        if (!genratedImages?.length) {
-            throw new Error('Image generation produced no image.');
+        if (!generatedImages.length || generatedImages.some((image) => (
+            !image.storagePath
+            || !isImageBatchGeneratedStorageAsset(image.uploadedUrl, {
+                expectedBucket: storageAdmin.bucket().name,
+                expectedStoragePath: image.storagePath,
+                storeId: sId,
+                tenantId: tId,
+            })
+        ))) {
+            throw new Error('Image generation produced no durable image.');
         }
-        const endTime = new Date().getTime();
-        const processingTime = endTime - startTime;
+        uploadedStoragePaths = generatedImages.map((image) => image.storagePath as string);
+        const processingTime = Date.now() - startTime;
 
-        // Initialize transaction object outside the if block
-        let transactionObject: any = {
-            totalCharge: 0,
-            totalCredits: 0,
-            totalTokenCount: 0,
-            candidatesTokenCount: 0,
-            promptTokenCount: 0,
-            transactionId: null
+        const tokenTotals = generatedImagesResponse.reduce((totals, response) => {
+            const usageMetadata = response.usageMetadata;
+            return {
+                candidatesTokenCount: totals.candidatesTokenCount + Number(usageMetadata?.candidatesTokenCount || 0),
+                promptTokenCount: totals.promptTokenCount + Number(usageMetadata?.promptTokenCount || 0),
+                totalTokenCount: totals.totalTokenCount + Number(usageMetadata?.totalTokenCount || 0),
+            };
+        }, { candidatesTokenCount: 0, promptTokenCount: 0, totalTokenCount: 0 });
+        const outputQuantity = Math.max(generatedImages.length, promptRun.promptCount, 1);
+        const totalCredits = tokenTotals.totalTokenCount / TOKENS_PER_CREDIT;
+        const accountingInput: BatchImageAccountingInput = {
+            action: AI_ACTIONS_TYPES.BATCH_IMAGE_GENERATION,
+            billingMode: promptCacheImage ? 'free' as const : 'billable' as const,
+            candidatesTokenCount: tokenTotals.candidatesTokenCount,
+            chargePerCredit: CHARGE_PER_CREDIT,
+            clientResponse: {
+                generatedImageCount: generatedImages.length,
+                responseSummaryKind: 'batch_image_generation' as const,
+            },
+            failedPromptCount: promptRun.failedPromptCount,
+            imageCount: generatedImages.length,
+            marginPaise: promptCacheImage
+                ? 0
+                : (getOurChargePaise(AI_ACTIONS_TYPES.BATCH_IMAGE_GENERATION) - getRealCostPaise(AI_ACTIONS_TYPES.BATCH_IMAGE_GENERATION)) * outputQuantity,
+            model: AI_MODEL_ID,
+            ourChargePaise: promptCacheImage ? 0 : getOurChargePaise(AI_ACTIONS_TYPES.BATCH_IMAGE_GENERATION) * outputQuantity,
+            processingTime,
+            projectId,
+            promptCacheHitCount: generatedImages.filter((image) => image.cacheHit).length,
+            promptCount: promptRun.promptCount,
+            promptTokenCount: tokenTotals.promptTokenCount,
+            realCostPaise: promptCacheImage ? 0 : getRealCostPaise(AI_ACTIONS_TYPES.BATCH_IMAGE_GENERATION) * outputQuantity,
+            sId: Number(sId),
+            source: promptCacheImage
+                ? 'ai_image_prompt_cache' as const
+                : 'gemini_image_generation' as const,
+            tId: Number(tId),
+            tokenPerCredit: TOKENS_PER_CREDIT,
+            totalCharge: CHARGE_PER_CREDIT * totalCredits,
+            totalCredits,
+            totalTokenCount: tokenTotals.totalTokenCount,
+            uId: userIdForLog === 'N/A' ? undefined : userIdForLog,
+            unitsConsumed: promptCacheImage
+                ? 0
+                : capacityReservation!.unitsReserved,
+        };
+        const updatedItem = {
+            id: String(itemDetails.id),
+            name: itemDetails.name,
+            images: generatedImages.map((image, index) => {
+                if (!Number.isSafeInteger(image.sizeBytes) || Number(image.sizeBytes) <= 0) {
+                    throw new NonRetryableBatchImageError('Generated image storage size is invalid.');
+                }
+                return {
+                    name: itemDetails.name,
+                    size: Number(image.sizeBytes),
+                    type: image.mimeType,
+                    uid: `${itemDetails.id}_${index}_${execution.operationId.slice(-12)}`,
+                    url: image.uploadedUrl,
+                };
+            }),
         };
 
-        if (promptCacheImage) {
-            transactionObject = {
-                ...transactionObject,
-                action: AI_ACTIONS_TYPES.BATCH_IMAGE_GENERATION,
-                billingMode: 'free',
-                failedPromptCount: 0,
-                imageCount: genratedImages.length,
-                itemSummary: summarizeBatchItem(itemDetails),
-                promptCacheHitCount: genratedImages.filter((image) => image.cacheHit).length,
-                promptCount: promptRun.promptCount,
-                generationConfigSummary: summarizeBatchGenerationConfig(generationConfig as Record<string, any>),
-                projectId,
-                processingTime,
-                clientResponse: genratedImages.map((image: { mimeType: string }) => image.mimeType),
-                model: AI_MODEL,
-                geminiResponse: [],
-                tokenPerCredit: TOKENS_PER_CREDIT,
-                chargePerCredit: CHARGE_PER_CREDIT,
-                realCostPaise: 0,
-                ourChargePaise: 0,
-                marginPaise: 0,
-                sId: Number(sId),
-                source: 'ai_image_prompt_cache',
-                tId: Number(tId),
-                totalCharge: 0,
-                totalCredits: 0,
-                totalTokenCount: 0,
-                uId: userIdForLog === 'N/A' ? undefined : userIdForLog,
-                unitsConsumed: 0,
-            };
-            const accounting = await finalizeAiOperationAccounting({
-                context: { jobId, projectId, itemId: itemDetails.id, action: transactionObject.action, tId, sId, cacheHit: true },
-                input: transactionObject,
-                logLabel: 'Batch image generation cache hit',
-            });
-            transactionObject.transactionId = accounting.transactionId;
-            transactionObject.unitsConsumed = accounting.unitsConsumed;
-        } else if (generatedImagesResponse?.length > 0 && capacityCheck) {
-            generatedImagesResponse.forEach((response) => {
-                const usageMetadata = response.usageMetadata;
-                if (usageMetadata) {
-                    transactionObject.promptTokenCount += usageMetadata.promptTokenCount || 0;
-                    transactionObject.candidatesTokenCount += usageMetadata.candidatesTokenCount || 0;
-                    transactionObject.totalTokenCount += usageMetadata.totalTokenCount || 0;
-                }
-            });
-
-            // Calculate total credits and charge based on cumulative Gemini tokens.
-            transactionObject.totalCredits = transactionObject.totalTokenCount / TOKENS_PER_CREDIT;
-            transactionObject.totalCharge = CHARGE_PER_CREDIT * transactionObject.totalCredits; // in paise
-
-            // Update the transaction object with calculated values and other details
-            transactionObject = {
-                ...transactionObject,
-                action: AI_ACTIONS_TYPES.BATCH_IMAGE_GENERATION,
-                failedPromptCount: promptRun.failedPromptCount,
-                imageCount: genratedImages.length,
-                itemSummary: summarizeBatchItem(itemDetails),
-                promptCount: promptRun.promptCount,
-                generationConfigSummary: summarizeBatchGenerationConfig(generationConfig as Record<string, any>),
-                projectId,
-                processingTime,
-                clientResponse: genratedImages.map((image: { base64: string; mimeType: string }) => image.mimeType),
-                model: AI_MODEL,
-                geminiResponse: generatedImagesResponse.map(summarizeImageProviderResponse),
-                tokenPerCredit: TOKENS_PER_CREDIT,
-                chargePerCredit: CHARGE_PER_CREDIT,
-                // Deep tracking: real Google cost vs our charge vs margin (all in paise)
-                realCostPaise: getRealCostPaise(AI_ACTIONS_TYPES.BATCH_IMAGE_GENERATION) * Math.max(genratedImages.length, promptRun.promptCount, 1),
-                ourChargePaise: getOurChargePaise(AI_ACTIONS_TYPES.BATCH_IMAGE_GENERATION) * Math.max(genratedImages.length, promptRun.promptCount, 1),
-                marginPaise: (getOurChargePaise(AI_ACTIONS_TYPES.BATCH_IMAGE_GENERATION) - getRealCostPaise(AI_ACTIONS_TYPES.BATCH_IMAGE_GENERATION)) * Math.max(genratedImages.length, promptRun.promptCount, 1),
-                sId: Number(sId),
-                tId: Number(tId),
-                uId: userIdForLog === 'N/A' ? undefined : userIdForLog,
-            };
-
-            transactionObject.unitsConsumed = Math.max(
-                capacityCheck.unitsRequired,
-                getUnitCost(transactionObject.action) * Math.max(genratedImages.length, promptRun.promptCount, 1),
-            );
-            const accounting = await finalizeAiOperationAccounting({
-                capacitySubscription: capacityCheck.subscription,
-                context: { jobId, projectId, itemId: itemDetails.id, action: transactionObject.action, tId, sId },
-                input: transactionObject,
-                logLabel: 'Batch image generation',
-            });
-            transactionObject.unitsConsumed = accounting.unitsConsumed;
-            transactionObject.transactionId = accounting.transactionId;
-        }
-
-        const randomStr = createUppercaseRandomIdSegment(6);
-        const updatedItem = {
-            id: itemDetails.id,
-            name: itemDetails.name,
-            images: genratedImages.map((image: { base64: string; mimeType: string; uploadedUrl?: string }, index) => {
-                const imageData = {
-                    name: `${itemDetails.name}`,
-                    size: getBase64Length(image.base64),
-                    type: image.mimeType,
-                    url: image.uploadedUrl,
-                    uid: `${itemDetails.id}_${index}_${randomStr}`,
-                }
-                return imageData;
-            }),
-        }
+        const stagedExecution = await stageImageBatchItemResultAdmin({
+            accountingInput,
+            claimToken,
+            item: updatedItem,
+            jobId,
+            projectId,
+            storagePaths: uploadedStoragePaths,
+        });
+        stagedResultPersisted = true;
+        await finalizeAiOperationAccounting({
+            capacityReservation: capacityReservation || undefined,
+            capacitySubscription: capacityCheck?.subscription,
+            context: { jobId, projectId, itemId: itemDetails.id, tId, sId, cacheHit: Boolean(promptCacheImage) },
+            idempotencyKey: execution.operationId,
+            input: stagedExecution.stagedAccountingInput!,
+            logLabel: promptCacheImage ? 'Batch image generation cache hit' : 'Batch image generation',
+        });
+        capacityReservation = null;
+        accountingFinalized = true;
 
         await writeLogEntry({
             logFileName: LOG_FILE,
@@ -552,66 +695,81 @@ export async function POST(request: Request) {
             logType: 'BATCH_GENERATION_IMAGE_GEN_SUCCESS',
             data: {
                 imageCount: updatedItem.images.length,
-                images: summarizeUploadedGeneratedImages(genratedImages),
+                images: summarizeUploadedGeneratedImages(generatedImages),
                 item: summarizeBatchItem(itemDetails),
                 jobId,
             },
         });
 
         const updatedJobSummary = await appendImageBatchItemResultAdmin({
-            item: updatedItem,
+            claimToken,
+            itemId: String(itemDetails.id),
             jobId,
             projectId,
         });
-
         await writeLogEntry({
             logFileName: LOG_FILE,
             userId: userIdForLog,
             projectId,
             logType: 'BATCH_GENERATION_JOB_UPDATED',
-            data: {
-                jobId,
-                ...updatedJobSummary,
-            },
+            data: { jobId, ...updatedJobSummary },
         });
-        // Task succeeded, return 200 OK to Cloud Tasks
         return NextResponse.json({ success: true, message: 'Image generation completed for this item.' }, { status: 200 });
-
     } catch (error) {
         logRuntimeFailure('image_batch_worker_generation_failed', error, workerLogContext);
         await writeErrorLogEntry(LOG_FILE, error);
-        const ownerSafeError = 'Image generation failed for this item.';
         const ownerSafeReason = 'Image generation failed for this item.';
-        // Update job with error for this specific item if possible, or general job error
         try {
-
-            const latestJobData = await getImageBatchProcessingJobByIdAdmin(jobId, { tId, sId });
-            const failedAttemptCount = (latestJobData?.generatedCount || currentJobData.generatedCount || 0) + 1;
-            const nextStatus = failedAttemptCount >= (latestJobData?.totalImages || currentJobData.totalImages)
-                ? BATCH_IMAGE_GENERATION_JOB_STATUS.FAILED
-                : BATCH_IMAGE_GENERATION_JOB_STATUS.PROCESSING;
-
-            await updateImageBatchProcessingJobAdmin({
-                error: ownerSafeError,
-                id: jobId,
-                generatedCount: failedAttemptCount,
-                status: nextStatus,
-                statusHistory: [
-                    ...(latestJobData?.statusHistory || currentJobData.statusHistory),
-                    {
-                        status: BATCH_IMAGE_GENERATION_JOB_STATUS.FAILED,
-                        reason: ownerSafeReason,
-                        createdOn: new Date().toISOString(),
-                    },
-                ],
-            }, projectId);
+            const failure = await markImageBatchItemAttemptFailedAdmin({
+                claimToken,
+                itemId: String(itemDetails.id),
+                jobId,
+                preserveForRetry: accountingFinalized,
+                projectId,
+                reason: ownerSafeReason,
+                retryable: !(error instanceof NonRetryableBatchImageError),
+            });
+            const cleanupStoragePaths = failure.stale
+                ? []
+                : Array.from(new Set([
+                    ...failure.cleanupStoragePaths,
+                    ...(!stagedResultPersisted ? uploadedStoragePaths : []),
+                ]));
+            if (cleanupStoragePaths.length > 0) {
+                await Promise.allSettled(
+                    cleanupStoragePaths.map((storagePath) => storageAdmin.bucket().file(storagePath).delete({ ignoreNotFound: true })),
+                );
+            }
+            if (failure.stale) {
+                retainCapacityReservationForRetry = stagedResultPersisted;
+                return NextResponse.json({ success: true, message: 'Task acknowledged because the item was already finalized.' }, { status: 200 });
+            }
+            if (failure.terminal) {
+                return NextResponse.json({ success: true, message: 'Task acknowledged because the job is no longer active.' }, { status: 200 });
+            }
+            if (failure.shouldRetry) {
+                retainCapacityReservationForRetry = stagedResultPersisted;
+                return NextResponse.json(
+                    { error: ownerSafeReason },
+                    { status: 503, headers: { 'Retry-After': '30' } },
+                );
+            }
         } catch (updateError) {
+            retainCapacityReservationForRetry = stagedResultPersisted;
             await writeErrorLogEntry(LOG_FILE, updateError);
             logRuntimeFailure('image_batch_worker_failure_status_update_failed', updateError, workerLogContext);
+            return NextResponse.json(
+                { error: ownerSafeReason },
+                { status: 503, headers: { 'Retry-After': '30' } },
+            );
         }
-        // For Cloud Tasks, if you return an error status (5xx), it might retry.
-        // If the error is non-recoverable for this item, return 200 to stop retries for THIS task.
-        // The job itself is marked as having an error.
         return NextResponse.json({ error: ownerSafeReason }, { status: 200 });
+    } finally {
+        if (!retainCapacityReservationForRetry) {
+            await refundAiCapacityReservationSafely(capacityReservation, 'image_batch_provider_work_did_not_stage', {
+                endpoint: '/api/image-generation/batch-generation',
+                jobId,
+            });
+        }
     }
 }

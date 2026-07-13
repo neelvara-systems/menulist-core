@@ -46,6 +46,16 @@ const screenshotPath = path.join(outputDir, `mobile-owner-menu-${projectId}.png`
 const bulkSheetScreenshotPath = path.join(outputDir, `mobile-owner-menu-bulk-${projectId}.png`);
 const visibilitySheetScreenshotPath = path.join(outputDir, `mobile-owner-menu-visibility-${projectId}.png`);
 const textCaseSheetScreenshotPath = path.join(outputDir, `mobile-owner-menu-text-case-${projectId}.png`);
+const MOBILE_REQUIRED_NAV_TABS = [
+  { key: 'today', label: 'Today' },
+  { key: 'share', label: 'Share' },
+  { key: 'more', label: 'More' },
+  { key: 'menu', label: 'Menu' },
+];
+const mobileTabScreenshotPaths = Object.fromEntries(MOBILE_REQUIRED_NAV_TABS.map(({ key }) => [
+  key,
+  key === 'menu' ? screenshotPath : path.join(outputDir, `mobile-owner-${key}-${projectId}.png`),
+]));
 
 if (!process.env.NEXTAUTH_SECRET) {
   throw new Error('NEXTAUTH_SECRET is required in .env for authenticated mobile QA.');
@@ -252,6 +262,107 @@ async function clickByText(client, sessionId, text, exact = false) {
   `);
 }
 
+async function inspectMobileNavigationTab(client, sessionId, expectedTab) {
+  return evaluate(client, sessionId, `(() => {
+    const expectedTab = ${JSON.stringify(expectedTab)};
+    const shellScroll = document.querySelector('[data-mobile-shell-scroll="true"]');
+    const navigation = document.querySelector('[role="navigation"][aria-label="Primary mobile navigation"]');
+    const navButtons = navigation
+      ? Array.from(navigation.querySelectorAll('button[aria-label][aria-pressed]'))
+      : [];
+    const activeButton = navButtons.find((button) => button.getAttribute('aria-pressed') === 'true');
+    const navTouchTargets = navButtons.map((button) => {
+      const rect = button.getBoundingClientRect();
+      return {
+        label: button.getAttribute('aria-label') || '',
+        width: Math.round(rect.width * 10) / 10,
+        height: Math.round(rect.height * 10) / 10,
+      };
+    });
+    const isInsideHorizontalScroller = (element) => {
+      let parent = element.parentElement;
+      while (parent && parent !== shellScroll) {
+        const style = getComputedStyle(parent);
+        if (
+          parent.scrollWidth > parent.clientWidth + 1
+          && (style.overflowX === 'auto' || style.overflowX === 'scroll')
+        ) return true;
+        parent = parent.parentElement;
+      }
+      return false;
+    };
+    const clippedInteractiveLabels = shellScroll
+      ? Array.from(shellScroll.querySelectorAll('button, a, [role="button"]'))
+          .filter((element) => {
+            const rect = element.getBoundingClientRect();
+            const style = getComputedStyle(element);
+            const visible = rect.width > 0
+              && rect.height > 0
+              && rect.bottom > 0
+              && rect.top < innerHeight
+              && style.display !== 'none'
+              && style.visibility !== 'hidden';
+            return visible
+              && !isInsideHorizontalScroller(element)
+              && (rect.left < -1 || rect.right > innerWidth + 1);
+          })
+          .map((element) => (element.getAttribute('aria-label') || element.textContent || '').replace(/\\s+/g, ' ').trim().slice(0, 120))
+          .filter(Boolean)
+          .slice(0, 10)
+      : [];
+    const documentWidth = Math.max(
+      document.documentElement?.scrollWidth || 0,
+      document.body?.scrollWidth || 0,
+    );
+    const text = (shellScroll?.innerText || '').replace(/\\s+/g, ' ').trim();
+    return {
+      expectedTab,
+      hash: location.hash,
+      activeTab: activeButton?.getAttribute('aria-label') || '',
+      hasExpectedActiveTab: activeButton?.getAttribute('aria-label')?.toLowerCase() === expectedTab,
+      hasPrimaryNavigationLandmark: Boolean(navigation),
+      hasMobileShellScroll: Boolean(shellScroll),
+      hasMeaningfulScreenContent: text.length > 0,
+      hasRuntimeError: /application error|internal server error|something went wrong|this page could not be found/i.test(text),
+      viewportWidth: innerWidth,
+      documentWidth,
+      hasPageOverflow: documentWidth > innerWidth + 1,
+      clippedInteractiveLabels,
+      navTouchTargets,
+      navTouchTargetsMeetMinimum: navTouchTargets.length >= 4
+        && navTouchTargets.every((target) => target.width >= 44 && target.height >= 44),
+      text: text.slice(0, 1200),
+    };
+  })()`);
+}
+
+async function exerciseMobileNavigationTab(client, sessionId, tab, label, screenshot) {
+  const selector = `[role="navigation"][aria-label="Primary mobile navigation"] button[aria-label="${label}"]`;
+  const clicked = await evaluate(client, sessionId, `(() => {
+    const button = document.querySelector(${JSON.stringify(selector)});
+    if (!button) return false;
+    button.click();
+    return true;
+  })()`);
+  let navigationError = '';
+  if (clicked) {
+    try {
+      await waitForExpression(
+        client,
+        sessionId,
+        `location.hash === ${JSON.stringify(`#mobile/${tab}`)}`,
+        10000,
+      );
+    } catch (error) {
+      navigationError = error instanceof Error ? error.message : String(error);
+    }
+  }
+  await delay(1200);
+  const state = await inspectMobileNavigationTab(client, sessionId, tab);
+  await captureScreenshot(client, sessionId, screenshot);
+  return { ...state, clicked, navigationError, screenshot };
+}
+
 function isIgnorablePageError(message) {
   return /Failed to load resource: net::ERR_CONNECTION_RESET/i.test(message)
     || /webpack-hmr/i.test(message);
@@ -422,6 +533,17 @@ async function main() {
 
     await captureScreenshot(client, sessionId, screenshotPath);
 
+    const navigationStates = {};
+    for (const { key, label } of MOBILE_REQUIRED_NAV_TABS) {
+      navigationStates[key] = await exerciseMobileNavigationTab(
+        client,
+        sessionId,
+        key,
+        label,
+        mobileTabScreenshotPaths[key],
+      );
+    }
+
     const clickedFloatingActions = await evaluate(client, sessionId, `
       (() => {
         const button = document.querySelector('.ant-float-btn') || document.querySelector('[aria-label*="actions" i]');
@@ -515,6 +637,22 @@ async function main() {
     if (!(mainState.categoryCount > 0)) failures.push('Expected a positive category count to be visible.');
     if (!mainState.hasMissingImagesSignal) failures.push('Expected a missing images signal to be visible.');
     if (!mainState.hasNoCategoryIconWarning) failures.push('Category-icon warning was visible even though extracted categories have icons.');
+    for (const { key, label } of MOBILE_REQUIRED_NAV_TABS) {
+      const state = navigationStates[key];
+      if (!state.clicked) failures.push(`${label} bottom-navigation target was not found or could not be clicked.`);
+      if (state.navigationError) failures.push(`${label} navigation did not settle: ${state.navigationError}`);
+      if (state.hash !== `#mobile/${key}`) failures.push(`${label} navigation produced unexpected hash ${state.hash || '(empty)'}.`);
+      if (!state.hasExpectedActiveTab) failures.push(`${label} navigation did not expose the expected active tab state.`);
+      if (!state.hasPrimaryNavigationLandmark) failures.push(`${label} rendered without the primary navigation landmark.`);
+      if (!state.hasMobileShellScroll) failures.push(`${label} rendered outside the MobileShell scroll container.`);
+      if (!state.hasMeaningfulScreenContent) failures.push(`${label} rendered without screen content.`);
+      if (state.hasRuntimeError) failures.push(`${label} rendered a runtime error state.`);
+      if (state.hasPageOverflow) failures.push(`${label} created page-level horizontal overflow (${state.documentWidth}px > ${state.viewportWidth}px).`);
+      if (state.clippedInteractiveLabels.length) {
+        failures.push(`${label} has clipped interactive controls: ${state.clippedInteractiveLabels.join(' | ')}`);
+      }
+      if (!state.navTouchTargetsMeetMinimum) failures.push(`${label} bottom navigation has a target smaller than 44x44px.`);
+    }
     if (bulkState.clickedMoreActions && bulkState.hasBottomGapRisk) failures.push('Bulk sheet left a visible bottom gap.');
     if (!visibilityState.clickedVisibility || !visibilityState.hasVisibilitySheet) failures.push('Visibility bulk sheet did not open.');
     if (visibilityState.hasBottomGapRisk) failures.push('Visibility sheet left a visible bottom gap.');
@@ -526,11 +664,15 @@ async function main() {
       ok: failures.length === 0,
       failures,
       mainState,
+      navigationStates,
       bulkState,
       visibilityState,
       textCaseState,
       screenshots: {
         menu: screenshotPath,
+        today: mobileTabScreenshotPaths.today,
+        share: mobileTabScreenshotPaths.share,
+        more: mobileTabScreenshotPaths.more,
         bulk: bulkSheetScreenshotPath,
         visibility: visibilitySheetScreenshotPath,
         textCase: textCaseSheetScreenshotPath,

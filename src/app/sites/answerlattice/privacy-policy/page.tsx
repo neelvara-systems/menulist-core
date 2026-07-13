@@ -2,6 +2,7 @@ import { Metadata } from 'next';
 import { headers } from 'next/headers';
 import AnswerlatticeFooter from '../components/Footer';
 import AnswerlatticeHeader from '../components/Header';
+import AnswerlatticeLink from '../components/AnswerlatticeLink';
 import AnswerlatticePageStructuredData from '../components/PageStructuredData';
 import PageProofStrip from '../components/PageProofStrip';
 
@@ -42,7 +43,8 @@ const SECTIONS = [
     {
         title: 'Service Providers',
         body: [
-            'AnswerLattice may use trusted infrastructure providers for hosting, authentication, storage, databases, email, analytics, and AI-assisted drafting. These providers are used only to operate the service.',
+            'The current operational provider map includes Vercel for application hosting, Google Firebase and Google Cloud for database, authentication, storage, and functions, Google Gemini for configured AI-assisted processing, Razorpay for billing, a configured SMTP service for email, Upstash Redis when configured for cache or rate limiting, and consent-gated Plausible or Google Analytics for the public website.',
+            'The public Trust and Data Handling page describes how each provider category is used. It is factual product documentation, not a contractual subprocessor schedule.',
             'AnswerLattice does not sell customer support content or widget conversation data.',
         ],
     },
@@ -65,6 +67,7 @@ const SECTIONS = [
         title: 'Retention and Security',
         body: [
             'AnswerLattice keeps data for as long as it is needed to provide the service, support the customer workspace, meet operational needs, or satisfy legal requirements.',
+            'Implemented windows include 30 days for query embedding cache, 90 days for raw answer/search history and selected operational logs, 2 days for notification rate-limit counters, 365 days for public contact enquiries, 12 months for raw signal events, and 90 days for friction daily statistics.',
             'Imported source metadata and capped extracted text stay with the intake job so owners can review drafts and lineage. Raw file retention is not required for day-one browser-extracted intake.',
             'Access controls, tenant separation, validation, and bounded payload handling are used to reduce accidental exposure and protect support data.',
         ],
@@ -89,7 +92,7 @@ export default function AnswerlatticePrivacyPolicyPage() {
                     <div className="mx-auto max-w-3xl text-center">
                         <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Privacy Policy</p>
                         <h1 className="mb-4 text-4xl font-bold sm:text-5xl">Privacy Policy</h1>
-                        <p className="mb-2 text-sm text-[#6b6b8a]">Last updated: June 26, 2026</p>
+                        <p className="mb-2 text-sm text-[#6b6b8a]">Last updated: July 11, 2026</p>
                         <p className="mt-6 text-lg leading-relaxed text-[#a0a0c0]">
                             This policy explains how AnswerLattice handles information for its public website, product dashboard,
                             help widget, and support knowledge features.
@@ -119,6 +122,15 @@ export default function AnswerlatticePrivacyPolicyPage() {
                                 </div>
                             </article>
                         ))}
+                        <div className="rounded-xl border border-teal-300/20 bg-teal-400/[0.05] p-6 text-center">
+                            <h2 className="text-xl font-semibold text-white">Review current operational facts</h2>
+                            <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-[#a0a0c0]">
+                                The Trust and Data Handling page lists current provider categories, implemented retention windows, and the compliance or contractual claims AnswerLattice does not currently make.
+                            </p>
+                            <AnswerlatticeLink basePath={basePath} href="/trust" className="mt-5 inline-flex min-h-11 items-center justify-center rounded-xl border border-white/[0.12] px-5 py-3 text-sm font-semibold text-[#d6d6ef] transition hover:border-white/[0.24] hover:text-white">
+                                Open trust facts
+                            </AnswerlatticeLink>
+                        </div>
                     </div>
                 </section>
             </main>

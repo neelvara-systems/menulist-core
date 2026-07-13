@@ -51,7 +51,7 @@ If a visitor submits the follow-up form, MenuList stores one existing public con
 
 Direct follow-up submissions store `sourceContext.reportGeneratedAt` only when it is the canonical ISO timestamp shape produced by source tools. Invalid or malformed values are stored as `null` and returned as `null` by Report Leads.
 
-Report Leads at `/ops/report-leads` reads those existing enquiries for platform-admin triage. It is not public, not an owner surface, and not a report history system.
+Report Leads at `/ops/report-leads` reads those existing enquiries for platform-admin triage. Before that PII read, the API re-reads the exact current platform-user document and rejects stale, downgraded, disabled, blocked, deleted, identity-mismatched, or revoked sessions. It is not public, not an owner surface, and not a report history system.
 
 ---
 

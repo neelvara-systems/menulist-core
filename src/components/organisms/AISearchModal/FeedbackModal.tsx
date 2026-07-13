@@ -6,7 +6,7 @@ import { useState } from 'react';
 interface FeedbackModalProps {
     visible: boolean;
     onClose: () => void;
-    onSubmit: (values: { reasons: any[], comments: string }) => Promise<void>;
+    onSubmit: (values: { reasons: string[], comments: string }) => Promise<void>;
     feedbackData: {
         isGood: boolean;
         reasons: string[];
@@ -27,7 +27,7 @@ export default function FeedbackModal({ visible, onClose, onSubmit, feedbackData
     const [form] = Form.useForm();
     const [loading, setLoading] = useState(false);
 
-    const handleFinish = async (values: { reasons: any[], comments: string }) => {
+    const handleFinish = async (values: { reasons: string[], comments: string }) => {
         setLoading(true);
         try {
             await onSubmit(values);

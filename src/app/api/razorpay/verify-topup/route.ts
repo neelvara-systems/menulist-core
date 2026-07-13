@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { DB_COLLECTIONS } from "@constant/database";
-import { canManageBillingMutation } from "@lib/billing/billingAccess";
+import { canManageAnswerlatticeBillingMutation, canManageBillingMutation } from "@lib/billing/billingAccess";
 import {
     getActiveProductSubscriptionForStore,
     getBillingFirestoreAdminForProduct,
@@ -14,7 +14,8 @@ import {
     getRazorpayFailureLogData,
     logRazorpayNonBlockingFailure,
 } from "@lib/billing/razorpayDiagnostics";
-import { getCreditPacksForProduct, isAnswerlatticeBillingProduct, normalizeBillingProductId } from "@lib/billing/productBillingPlans";
+import { isAnswerlatticeBillingProduct, normalizeBillingProductId, resolveProviderBillingProductId } from "@lib/billing/productBillingPlans";
+import { resolveVerifiedTopupSettlement } from '@lib/billing/topupSettlement';
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { logger } from "@lib/monitoring/logger";
 import { checkRateLimit } from "@lib/rateLimit";
@@ -59,13 +60,15 @@ const mirrorAnswerlatticeCreditSummary = async (
     if (!subscription) return;
     const serverNow = admin.firestore.FieldValue.serverTimestamp();
     await billingDb.collection(DB_COLLECTIONS.STORES).doc(storeDocumentId).set({
-        'answerlatticeSubscription.id': subscription.id || subscription.providerSubscriptionId || null,
-        'answerlatticeSubscription.providerSubscriptionId': subscription.providerSubscriptionId || subscription.id || null,
-        'answerlatticeSubscription.monthlyCreditsAllowance': Number(subscription.monthlyCreditsAllowance ?? 0),
-        'answerlatticeSubscription.monthlyCredits': Number(subscription.monthlyCredits ?? 0),
-        'answerlatticeSubscription.topUpCredits': Number(topUpCredits ?? subscription.topUpCredits ?? 0),
-        'answerlatticeSubscription.creditsLastResetMonth': Number(subscription.creditsLastResetMonth ?? 0) || null,
-        'answerlatticeSubscription.updatedAt': serverNow,
+        answerlatticeSubscription: {
+            id: subscription.id || subscription.providerSubscriptionId || null,
+            providerSubscriptionId: subscription.providerSubscriptionId || subscription.id || null,
+            monthlyCreditsAllowance: Number(subscription.monthlyCreditsAllowance ?? 0),
+            monthlyCredits: Number(subscription.monthlyCredits ?? 0),
+            topUpCredits: Number(topUpCredits ?? subscription.topUpCredits ?? 0),
+            creditsLastResetMonth: Number(subscription.creditsLastResetMonth ?? 0) || null,
+            updatedAt: serverNow,
+        },
         answerlatticeBillingUpdatedAt: serverNow,
     }, { merge: true });
 };
@@ -156,12 +159,34 @@ export const POST = withAuth(async (request, session) => {
             );
         }
 
+        const requestedProductId = normalizeBillingProductId(validation.data.productId);
+        if (isAnswerlatticeBillingProduct(requestedProductId) && !(await canManageAnswerlatticeBillingMutation(session, request))) {
+            return NextResponse.json(
+                { error: 'Forbidden - Access denied' },
+                { status: 403 }
+            );
+        }
+
         // Step 3. --- SERVER-SIDE VERIFICATION ---
         // This is the crucial security step. We ask Razorpay's servers for the truth.
 
         // Step A: Fetch the full order details from Razorpay before capture.
         const order = await razorpayClient.orders.fetch(razorpay_order_id);
-        const productId = normalizeBillingProductId(validation.data.productId || order.notes?.productId);
+        const productId = resolveProviderBillingProductId(
+            validation.data.productId,
+            order.notes?.productId ?? order.notes?.pId,
+        );
+        if (!productId) {
+            logger.security('Topup Verification Product Mismatch', {
+                ...getBoundedRazorpaySecurityContext(session, request),
+                endpoint: '/api/razorpay/verify-topup',
+                error: 'Provider order product does not match request product',
+                ...getBoundedRazorpayStringContext('requestProductId', validation.data.productId),
+                ...getBoundedRazorpayStringContext('providerProductId', order.notes?.productId ?? order.notes?.pId),
+                ...getBoundedRazorpayStringContext('orderId', razorpay_order_id),
+            }, 'critical');
+            return NextResponse.json({ error: 'Forbidden - payment mismatch' }, { status: 403 });
+        }
         const isAnswerlatticeProduct = isAnswerlatticeBillingProduct(productId);
         const scope = resolveBillingScopeFromSession(session, productId);
         if (!scope) {
@@ -250,6 +275,28 @@ export const POST = withAuth(async (request, session) => {
             );
         }
 
+        const storedSettlement = resolveVerifiedTopupSettlement({
+            expectedOrderId: razorpay_order_id,
+            expectedPaymentId: razorpay_payment_id,
+            expectedProductId: productId,
+            expectedStoreId: storeId,
+            expectedTenantId: tenantId,
+            order,
+            topupSnapshot: existingTopup,
+        });
+        if (!storedSettlement) {
+            logger.security('Topup Settlement Snapshot Mismatch', {
+                ...getBoundedRazorpaySecurityContext(session, request),
+                endpoint: '/api/razorpay/verify-topup',
+                error: 'Provider order does not match the pending topup snapshot',
+                ...getBoundedRazorpayStringContext('orderId', razorpay_order_id),
+                ...getBoundedRazorpayStringContext('productId', productId),
+                ...getBoundedRazorpayStringContext('tenantId', tenantId),
+                ...getBoundedRazorpayStringContext('storeId', storeId),
+            }, 'critical');
+            return NextResponse.json({ error: 'Payment order could not be matched.' }, { status: 409 });
+        }
+
         if (existingTopup?.status === 'paid') {
             if (existingTopup.providerPaymentId && existingTopup.providerPaymentId !== razorpay_payment_id) {
                 logger.security('Topup Order Payment Mismatch', {
@@ -285,14 +332,7 @@ export const POST = withAuth(async (request, session) => {
             });
         }
 
-        const packId = order.notes?.packId;
-        if (!packId) {
-            logger.error('Order missing packId', undefined, {
-                ...getBoundedRazorpayStringContext('orderId', razorpay_order_id),
-                notesPresent: Boolean(order.notes),
-            });
-            return NextResponse.json({ success: false, error: "Order details are missing." }, { status: 400 });
-        }
+        const packId = storedSettlement.packId;
 
         // Step B: Fetch the payment from Razorpay to verify its status is 'captured'
         // --- NEW LOGIC: PROGRAMMATIC CAPTURE ---
@@ -366,17 +406,8 @@ export const POST = withAuth(async (request, session) => {
             );
         }
 
-        // Step E: Find the credit pack details from our constants to get the credit amount
-        const selectedPack = getCreditPacksForProduct(productId).find((p) => p.packId === packId);
-        if (!selectedPack) {
-            logger.error('Invalid credit pack', undefined, {
-                ...getBoundedRazorpayStringContext('productId', productId),
-                ...getBoundedRazorpayStringContext('packId', packId),
-                ...getBoundedRazorpayStringContext('orderId', razorpay_order_id),
-            });
-            return NextResponse.json({ success: false, error: "Invalid credit pack." }, { status: 400 });
-        }
-        const creditsToAdd = selectedPack.creditAmount;
+        // Settle the immutable order-creation snapshot, not mutable live pack constants.
+        const creditsToAdd = storedSettlement.creditsToAdd;
 
         // Step F: --- ATOMIC UPDATE ---
         // The payment is verified. We can now confidently update the user's credit balance.
@@ -421,8 +452,27 @@ export const POST = withAuth(async (request, session) => {
                 };
             }
 
+            const transactionSettlement = resolveVerifiedTopupSettlement({
+                expectedOrderId: razorpay_order_id,
+                expectedPaymentId: razorpay_payment_id,
+                expectedProductId: productId,
+                expectedStoreId: storeId,
+                expectedTenantId: tenantId,
+                order,
+                payment: capturedPayment,
+                topupSnapshot: topupData,
+            });
+            if (!transactionSettlement) {
+                return {
+                    alreadyVerified: false,
+                    invalidSettlement: true,
+                    newBalance: subscriptionData?.topUpCredits ?? internalSub.topUpCredits ?? 0,
+                    paymentMismatch: false,
+                };
+            }
+
             const currentTopUpCredits = Number(subscriptionData?.topUpCredits ?? internalSub.topUpCredits ?? 0);
-            const newBalance = currentTopUpCredits + creditsToAdd;
+            const newBalance = currentTopUpCredits + transactionSettlement.creditsToAdd;
             const monthlyCredits = Number(subscriptionData?.monthlyCredits ?? internalSub.monthlyCredits ?? 0);
             const monthlyCreditsAllowance = Number(subscriptionData?.monthlyCreditsAllowance ?? internalSub.monthlyCreditsAllowance ?? 0);
             const creditsLastResetMonth = Number(subscriptionData?.creditsLastResetMonth ?? internalSub.creditsLastResetMonth ?? 0) || null;
@@ -442,9 +492,9 @@ export const POST = withAuth(async (request, session) => {
                 paymentProvider: 'razorpay',
                 providerOrderId: topupDocumentId,
                 providerPaymentId: razorpay_payment_id,
-                creditsAdded: creditsToAdd,
-                amount: order.amount,
-                currency: (order.currency || capturedPayment.currency || 'INR').toUpperCase(),
+                creditsAdded: transactionSettlement.creditsToAdd,
+                amount: transactionSettlement.amount,
+                currency: transactionSettlement.currency,
                 status: 'paid',
                 userId: session.user.id,
                 tenantId,
@@ -456,7 +506,7 @@ export const POST = withAuth(async (request, session) => {
                 uId: session.user.id,
                 packId,
                 type: isAnswerlatticeProduct ? 'answerlattice_credit_pack' : 'ai_enhancement_pack',
-                packName: selectedPack.name,
+                packName: transactionSettlement.packName,
                 paidAt: serverNow,
                 updatedOn: serverNow,
                 createdOn: topupData?.createdOn || existingTopup?.createdOn || serverNow,
@@ -464,13 +514,15 @@ export const POST = withAuth(async (request, session) => {
 
             if (answerlatticeStoreRef) {
                 tx.set(answerlatticeStoreRef, {
-                    'answerlatticeSubscription.id': internalSub.id || internalSub.providerSubscriptionId || null,
-                    'answerlatticeSubscription.providerSubscriptionId': internalSub.providerSubscriptionId || internalSub.id || null,
-                    'answerlatticeSubscription.monthlyCreditsAllowance': monthlyCreditsAllowance,
-                    'answerlatticeSubscription.monthlyCredits': monthlyCredits,
-                    'answerlatticeSubscription.topUpCredits': newBalance,
-                    'answerlatticeSubscription.creditsLastResetMonth': creditsLastResetMonth,
-                    'answerlatticeSubscription.updatedAt': serverNow,
+                    answerlatticeSubscription: {
+                        id: internalSub.id || internalSub.providerSubscriptionId || null,
+                        providerSubscriptionId: internalSub.providerSubscriptionId || internalSub.id || null,
+                        monthlyCreditsAllowance,
+                        monthlyCredits,
+                        topUpCredits: newBalance,
+                        creditsLastResetMonth,
+                        updatedAt: serverNow,
+                    },
                     answerlatticeBillingUpdatedAt: serverNow,
                 }, { merge: true });
             }
@@ -488,6 +540,17 @@ export const POST = withAuth(async (request, session) => {
             }, 'critical');
 
             return NextResponse.json({ error: 'Forbidden - payment mismatch' }, { status: 403 });
+        }
+
+        if (transactionResult.invalidSettlement) {
+            logger.security('Topup Settlement Transaction Mismatch', {
+                ...getBoundedRazorpaySecurityContext(session, request),
+                endpoint: '/api/razorpay/verify-topup',
+                error: 'Topup snapshot changed or did not match captured payment',
+                ...getBoundedRazorpayStringContext('orderId', razorpay_order_id),
+                ...getBoundedRazorpayStringContext('paymentId', razorpay_payment_id),
+            }, 'critical');
+            return NextResponse.json({ error: 'Payment order could not be matched.' }, { status: 409 });
         }
 
         if (transactionResult.alreadyVerified) {
@@ -513,8 +576,8 @@ export const POST = withAuth(async (request, session) => {
 
         const newBalance = transactionResult.newBalance;
         await recordFounderRevenueMovement({
-            amountPaise: Number(order.amount || capturedPayment.amount || 0),
-            currency: capturedPayment.currency || order.currency || 'INR',
+            amountPaise: storedSettlement.amount,
+            currency: storedSettlement.currency,
             description: 'Razorpay credit top-up payment verified.',
             eventName: 'order.paid',
             id: buildFounderTopupMovementId(razorpay_payment_id),
@@ -540,8 +603,8 @@ export const POST = withAuth(async (request, session) => {
                     metadata: {
                         creditsAdded: creditsToAdd,
                         newBalance,
-                        amount: order.amount ? (Number(order.amount) / 100) : 0,
-                        currency: (order.currency || 'INR').toUpperCase(),
+                        amount: storedSettlement.amount / 100,
+                        currency: storedSettlement.currency,
                     },
                 }).catch((notificationError) => {
                     logRazorpayNonBlockingFailure('razorpay_verify_topup_lifecycle_message_failed', notificationError, {
@@ -577,8 +640,8 @@ export const POST = withAuth(async (request, session) => {
                         storeName: internalSub.name || '',
                         creditsAdded: creditsToAdd,
                         newBalance,
-                        amount: order.amount ? (Number(order.amount) / 100) : 0,
-                        currency: (order.currency || 'INR').toUpperCase(),
+                        amount: storedSettlement.amount / 100,
+                        currency: storedSettlement.currency,
                         storeId: String(storeId),
                         tenantId: String(tenantId),
                     },

@@ -1,16 +1,16 @@
 export const dynamic = 'force-dynamic';
-import { canManageBillingMutation } from "@lib/billing/billingAccess";
+import { canManageAnswerlatticeBillingMutation, canManageBillingMutation } from "@lib/billing/billingAccess";
 import {
     CANCELLATION_REASON,
     normalizeCancellationReasonCode,
     sanitizeCancellationReasonDetail,
 } from "@lib/billing/cancellationReasons";
 import {
+    applyProductSubscriptionStatusTransition,
     getDirectActiveProductSubscriptionForStore,
     getProductSubscriptionById,
     resolveBillingScopeFromSession,
     safeSyncProductSubscriptionEntitlementFromSubscription,
-    updateProductSubscription,
 } from "@lib/billing/productBillingServer";
 import {
     getBoundedRazorpaySecurityContext,
@@ -82,6 +82,13 @@ export const POST = withAuth(async (request, session) => {
             return NextResponse.json({ error: "Missing tenant/store data" }, { status: 400 });
         }
         const { tenantId, storeId } = scope;
+
+        if (isAnswerlatticeBillingProduct(productId) && !(await canManageAnswerlatticeBillingMutation(session, request))) {
+            return NextResponse.json(
+                { error: 'Forbidden - Access denied' },
+                { status: 403 }
+            );
+        }
 
         if (!isAnswerlatticeBillingProduct(productId) && !verifyTenantAccess(session, tenantId, storeId, request)) {
             return NextResponse.json(
@@ -179,48 +186,54 @@ export const POST = withAuth(async (request, session) => {
             if (!validateTransition(internalSub.status, targetStatus, 'api:cancel-subscription:provider-status')) {
                 return NextResponse.json({ error: "Subscription state changed while cancelling. Please refresh and try again." }, { status: 409 });
             }
-            await updateProductSubscription(productId, internalSub.id, {
-                cancellation: {
-                    reasonCode: cancellationReasonCode,
-                    ...(cancellationReasonDetail ? { detail: cancellationReasonDetail } : {}),
-                    requestedAt: Timestamp.now(),
-                    source: 'owner',
+            const statusApplication = await applyProductSubscriptionStatusTransition(productId, {
+                nextStatus: targetStatus,
+                statusEntry: {
+                    status: targetStatus,
+                    timestamp: Timestamp.now(),
+                    amount: internalSub.amount,
+                    currency: internalSub.currency,
+                    remark: targetStatus === 'completed'
+                        ? "Subscription was already completed at payment gateway"
+                        : `Cancelled by owner, reason code: ${cancellationReasonCode}, consent: ${consent ? "Yes" : "No"}`,
                 },
-                status: targetStatus,
-                cycleEndDate: internalSub.cycleEndDate,
-                subscriptionEndDate: internalSub.cycleEndDate,
-                statuses: [
-                    ...internalSub.statuses,
-                    {
-                        status: targetStatus,
-                        timestamp: Timestamp.now(),
-                        amount: internalSub.amount,
-                        currency: internalSub.currency,
-                        remark: targetStatus === 'completed'
-                            ? "Subscription was already completed at payment gateway"
-                            : `Cancelled by owner, reason code: ${cancellationReasonCode}, consent: ${consent ? "Yes" : "No"}`,
+                subscriptionId: internalSub.id,
+                update: {
+                    cancellation: {
+                        reasonCode: cancellationReasonCode,
+                        ...(cancellationReasonDetail ? { detail: cancellationReasonDetail } : {}),
+                        requestedAt: Timestamp.now(),
+                        source: 'owner',
                     },
-                ],
+                    cycleEndDate: internalSub.cycleEndDate,
+                    subscriptionEndDate: internalSub.cycleEndDate,
+                },
             });
+            if (!statusApplication || (!statusApplication.applied && !statusApplication.duplicate)) {
+                return NextResponse.json({ error: "Subscription state changed while cancelling. Please refresh and try again." }, { status: 409 });
+            }
+            const transitionedSubscription = statusApplication.subscription;
             await safeSyncProductSubscriptionEntitlementFromSubscription(
                 productId,
-                { ...internalSub, status: targetStatus },
+                transitionedSubscription,
                 'api:cancel-subscription',
             );
-            await recordFounderSubscriptionChurn({
-                cancellationReasonCode,
-                productId,
-                source: 'api:cancel-subscription',
-                subscription: { ...internalSub, status: targetStatus },
-                occurredAt: Date.now(),
-            });
+            if (statusApplication.applied) {
+                await recordFounderSubscriptionChurn({
+                    cancellationReasonCode,
+                    productId,
+                    source: 'api:cancel-subscription',
+                    subscription: transitionedSubscription,
+                    occurredAt: Date.now(),
+                });
+            }
             await writeLogEntry({
                 logFileName: LOG_FILE,
                 logType: 'RAZORPAY_CANCEL_SUBSCRIPTION_FLOW_SUCCESS',
-                data: getRazorpaySubscriptionMutationLogContext({ ...internalSub, status: targetStatus }),
+                data: getRazorpaySubscriptionMutationLogContext(transitionedSubscription),
             });
 
-            if (!isAnswerlatticeBillingProduct(productId) && targetStatus === 'cancelled') {
+            if (!isAnswerlatticeBillingProduct(productId) && targetStatus === 'cancelled' && statusApplication.applied) {
                 try {
                     const { sendLifecycleMessage } = await import('@lib/messaging');
                     sendLifecycleMessage({

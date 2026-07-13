@@ -7,6 +7,7 @@
  * @see __docs__/answerlattice/workflow-integrations/workflow-integrations_impl.md §5.2
  */
 
+import { createHash } from 'crypto';
 import { Timestamp } from 'firebase-admin/firestore';
 import * as logger from 'firebase-functions/logger';
 import { DB_COLLECTIONS } from '../constants/database';
@@ -16,9 +17,11 @@ import {
     DeliveryLogEntry,
     DeliveryResult,
     IntegrationEventType,
+    IntegrationEvent,
     INTEGRATION_LIMITS,
 } from './types';
 import { sanitizeDeliveryError } from './safety';
+import { isClaimableIntegrationEventDocument, isOwnedProcessingIntegrationEventDocument } from './eventDeliveryState';
 
 function buildExpiry(days: number): Timestamp {
     return Timestamp.fromMillis(Date.now() + days * 24 * 60 * 60 * 1000);
@@ -26,6 +29,16 @@ function buildExpiry(days: number): Timestamp {
 
 function getHealthDocId(tId: number, sId: number): string {
     return `integrationHealth_${tId}_${sId}`;
+}
+
+function getDeliveryLogDocId(eventId: string, adapter: AdapterType, attempt: number): string {
+    const digest = createHash('sha256').update(eventId).digest('hex').slice(0, 24);
+    return `delivery_${digest}_${adapter}_${attempt}`;
+}
+
+function isAlreadyExistsError(error: unknown): boolean {
+    const code = (error as { code?: unknown } | null)?.code;
+    return code === 6 || code === 'already-exists';
 }
 
 function boundedDeliveryStringContext(label: string, value: unknown): Record<string, number | boolean> {
@@ -82,15 +95,18 @@ export async function logDeliveryAttempt(params: {
             expiresAt: buildExpiry(INTEGRATION_LIMITS.DELIVERY_LOG_TTL_DAYS),
         };
 
-        await db.collection(DB_COLLECTIONS.ANSWERLATTICE_INTEGRATION_DELIVERY_LOGS).add(entry);
+        await db.collection(DB_COLLECTIONS.ANSWERLATTICE_INTEGRATION_DELIVERY_LOGS)
+            .doc(getDeliveryLogDocId(params.eventId, params.adapter, params.attempt))
+            .create(entry);
     } catch (error) {
+        if (isAlreadyExistsError(error)) return;
         logger.warn('[Answerlattice Integration] Failed to log delivery attempt', {
             failureCode: 'answerlattice_integration_delivery_log_write_failed',
             ...boundedDeliveryStringContext('eventId', params.eventId),
             adapter: params.adapter,
             attempt: params.attempt,
-            hasTenantScope: Number.isFinite(params.tId),
-            hasStoreScope: Number.isFinite(params.sId),
+            hasTenantScope: Number.isSafeInteger(params.tId) && params.tId > 0,
+            hasStoreScope: Number.isSafeInteger(params.sId) && params.sId > 0,
             resultSuccess: params.result.success,
             statusCode: params.result.statusCode ?? null,
             ...getDeliveryLoggerErrorContext(error),
@@ -101,12 +117,55 @@ export async function logDeliveryAttempt(params: {
 /**
  * Update integration event status (pending → delivered/failed).
  */
+export async function claimIntegrationEvent(
+    eventId: string,
+    event: IntegrationEvent,
+): Promise<boolean> {
+    const eventRef = db.collection(DB_COLLECTIONS.ANSWERLATTICE_INTEGRATION_EVENTS).doc(eventId);
+    return db.runTransaction(async transaction => {
+        const current = await transaction.get(eventRef);
+        if (!current.exists || !isClaimableIntegrationEventDocument(current.data(), event)) return false;
+        const currentAttempts = Number(current.data()?.processingAttemptCount || 0);
+        transaction.update(eventRef, {
+            status: 'processing',
+            processingStartedAt: Timestamp.now(),
+            processingAttemptCount: Number.isSafeInteger(currentAttempts) ? Math.min(currentAttempts + 1, 1000) : 1,
+        });
+        return true;
+    });
+}
+
+export async function rejectInvalidIntegrationEvent(eventId: string): Promise<void> {
+    const eventRef = db.collection(DB_COLLECTIONS.ANSWERLATTICE_INTEGRATION_EVENTS).doc(eventId);
+    await db.runTransaction(async transaction => {
+        const current = await transaction.get(eventRef);
+        if (!current.exists || current.data()?.status !== 'pending') return;
+        transaction.update(eventRef, {
+            status: 'failed',
+            failureCode: 'invalid_event_contract',
+            completedAt: Timestamp.now(),
+        });
+    });
+}
+
 export async function updateEventStatus(
     eventId: string,
     status: 'processing' | 'delivered' | 'failed',
-): Promise<void> {
+    event: IntegrationEvent,
+): Promise<boolean> {
     try {
-        await db.collection(DB_COLLECTIONS.ANSWERLATTICE_INTEGRATION_EVENTS).doc(eventId).update({ status });
+        const eventRef = db.collection(DB_COLLECTIONS.ANSWERLATTICE_INTEGRATION_EVENTS).doc(eventId);
+        await db.runTransaction(async transaction => {
+            const current = await transaction.get(eventRef);
+            if (!current.exists || !isOwnedProcessingIntegrationEventDocument(current.data(), event)) {
+                throw new Error('Answerlattice integration event ownership or lifecycle mismatch');
+            }
+            transaction.update(eventRef, {
+                status,
+                completedAt: status === 'processing' ? null : Timestamp.now(),
+            });
+        });
+        return true;
     } catch (error) {
         logger.warn('[Answerlattice Integration] Failed to update event status', {
             failureCode: 'answerlattice_integration_event_status_update_failed',
@@ -114,6 +173,7 @@ export async function updateEventStatus(
             status,
             ...getDeliveryLoggerErrorContext(error),
         });
+        return false;
     }
 }
 
@@ -132,7 +192,7 @@ export async function updateIntegrationHealth(params: {
 }): Promise<void> {
     try {
         const now = Timestamp.now();
-        const update: Record<string, any> = {
+        const update: Record<string, unknown> = {
             pId: 'AL',
             tId: params.tId,
             sId: params.sId,
@@ -159,8 +219,8 @@ export async function updateIntegrationHealth(params: {
         logger.warn('[Answerlattice Integration] Failed to update integration health', {
             failureCode: 'answerlattice_integration_health_update_failed',
             ...boundedDeliveryStringContext('eventId', params.eventId),
-            hasTenantScope: Number.isFinite(params.tId),
-            hasStoreScope: Number.isFinite(params.sId),
+            hasTenantScope: Number.isSafeInteger(params.tId) && params.tId > 0,
+            hasStoreScope: Number.isSafeInteger(params.sId) && params.sId > 0,
             adapter: params.adapter,
             status: params.status,
             resultSuccess: params.result.success,

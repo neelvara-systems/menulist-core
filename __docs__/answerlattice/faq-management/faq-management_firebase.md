@@ -32,6 +32,7 @@ Public FAQ tab:
 - Browser calls `/api/answerlattice/public-content?type=faqs`.
 - Server route reads published FAQs through `unstable_cache` with tenant/store cache tags.
 - Cache miss performs the published FAQ query, ordered by `sortOrder asc, modifiedOn desc`, limit 80.
+- Every Admin result rechecks tenant/store/publication and projects the exact seven-field public FAQ DTO; the browser independently validates required/unknown fields and the 80-row cap before state changes.
 - FAQ save/archive and article-driven FAQ status changes invalidate `answerlattice-public-faqs-{tId}-{sId}` and shared Answerlattice public tags.
 - No realtime listener.
 
@@ -43,7 +44,9 @@ Product Surface summary rebuild:
 Widget/search runtime:
 
 - Uses compact `platformSummary/contextContent_{tId}_{sId}`.
-- No FAQ collection scan per search.
+- Related compact FAQ candidates and any capped FAQ collection fallback are normalized through the same exact product/workspace/published DTO before scoring.
+- Runtime scope and source version are admitted before cache-key/query construction; numeric strings, fractions, unsafe values and malformed stored rows do not enter the cache.
+- A fallback FAQ collection miss can read at most 80 ordered published/active rows; the 60-second in-memory cache is partitioned by exact tenant, store and admitted source version.
 
 ## Writes
 
@@ -101,6 +104,12 @@ FAQ regeneration is not automatic on every article save. Article saves mark link
 
 FAQ generation completion breadcrumbs, route failures, and best-effort AI-operation log failures use fixed-code bounded diagnostics with tenant/store/article presence and length metadata only. This adds no Firestore reads/writes and does not change the owner-triggered generation cost shape.
 
-FAQ session and article-maintenance scope hardening is cost-neutral. Owner FAQ reads/writes now resolve session scope through the shared Answerlattice exact positive numeric Firestore document-ID scope helper, and article-driven FAQ review/archive maintenance normalizes explicit article `tId/sId` before querying `answerlattice_faqs`. Valid FAQ queries, save/archive writes, article mirror updates, cache-version bumps, and public-cache invalidation keep the same operation counts. Malformed tenant/store scope fails before FAQ Firestore filters or falls back only to a valid scoped session for legacy maintenance callers.
+FAQ generation uses the app-side Answerlattice Gemini gateway and the `ANSWERLATTICE_GEMINI_AI_KEY*` pool only. It does not import the default MenuList Gemini client or fall back to `GEMINI_AI_KEY*`; missing Answerlattice provider configuration fails before provider work and FAQ writes.
+
+FAQ/article consistency hardening intentionally adds transaction reads. FAQ save/archive reads the stored FAQ and linked article documents, proves exact `AL` tenant/store ownership, and changes the FAQ plus existing `faqIds` mirrors atomically. Article title/content update or delete reads the bounded linked FAQ set (maximum 25), rechecks those rows and the article in one transaction, and moves active FAQs to `needs_review` or `archived` with the article mutation. This prevents acknowledged stale public FAQs and prevents missing article links from creating skeletal `kb_articles` documents.
 
 FAQ-from-article route scope hardening is cost-neutral. The protected FAQ generation route now compares persisted article scope to the authenticated Answerlattice route scope only after both pass the shared exact positive numeric Firestore document-ID scope helper. Valid FAQ suggestion generation keeps the same one article read, existing linked-FAQ cap query, provider call, batch write shape, AI accounting, and cache behavior; malformed article scope returns the existing not-found response before provider work.
+
+FAQ public projection hardening is also cost-neutral. It adds no reads or writes: `src/lib/answerlattice/faqContent.ts` validates and allowlists the already-read row, and `publicContentClient.ts` validates the already-returned JSON. Rejected-row diagnostics contain bounded scope metadata and a count, not FAQ content or actor identifiers.
+
+FAQ retrieval admission is cost-neutral for valid traffic. It rechecks the already-returned documents before the existing cache/scoring work and fails malformed runtime scope before Firestore. It does not add queries, writes, listeners, indexes, or provider calls; rejected stored rows reduce the candidate set and require authorized data reconciliation.

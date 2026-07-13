@@ -15,7 +15,14 @@ import {
     getStoreByCustomDomain,
     getStoreBySubdomain,
 } from "@lib/firestore/clientStoreLookup";
-import { parseSummaryProjects } from "@lib/firestore/parseSummaryProjects";
+import {
+    isActiveRegularSummaryProject,
+    isCurrentActiveSpecialSummaryProject,
+    isDefaultSummaryProject,
+    normalizeSummaryProjectLocalizedText,
+    parseSummaryProjects,
+    withAuthoritativeSummaryProjectId,
+} from "@lib/firestore/parseSummaryProjects";
 import { resolveStorePublicLanguage } from "@lib/localization/publicRenderLanguage";
 import { getTenantFromHeaders as sharedGetTenantFromHeaders } from "@lib/multiTenant/getTenantFromHeaders";
 import { isStarterPublicSurfaceExpired } from "@lib/onboarding/starterActivation";
@@ -92,23 +99,16 @@ const getObpMenuInfo = unstable_cache(
                 .get();
             if (!summarySnap.exists) return empty;
             const raw = parseSummaryProjects(summarySnap.data());
-            const entries = Object.entries(raw).map(([projectId, data]: [string, any]) => ({ projectId, ...data }));
-            const activeRegular = entries.filter(
-                (project: any) => project.active !== false && project.deleted !== true && !project.isSpecialMenu,
-            );
+            const entries = Object.entries(raw)
+                .map(([projectId, data]) => withAuthoritativeSummaryProjectId(projectId, data));
+            const activeRegular = entries.filter(isActiveRegularSummaryProject);
             if (activeRegular.length === 0) return empty;
 
-            const defaultProj: any = activeRegular.find((project: any) => project.isDefault === true) || activeRegular[0];
+            const defaultProj = activeRegular.find(isDefaultSummaryProject) || activeRegular[0];
             const activeSpecial = activeSpecialMenuId
-                ? entries.find((project: any) => {
-                    if (project.projectId !== activeSpecialMenuId) return false;
-                    if (project.active === false || project.deleted === true || project.isSpecialMenu !== true) return false;
-                    if (project.specialMenuStatus !== 'active') return false;
-                    const endsAtMs = project.specialMenuEndsAt ? new Date(project.specialMenuEndsAt).getTime() : null;
-                    return !endsAtMs || endsAtMs > Date.now();
-                })
+                ? entries.find((project) => isCurrentActiveSpecialSummaryProject(project, activeSpecialMenuId, Date.now()))
                 : null;
-            const others = activeRegular.filter((project: any) => project !== defaultProj);
+            const others = activeRegular.filter((project) => project !== defaultProj);
             const ordered = [
                 ...(activeSpecial ? [activeSpecial] : []),
                 defaultProj,
@@ -116,22 +116,30 @@ const getObpMenuInfo = unstable_cache(
             ];
 
             const projects = ordered
-                .map((project: any) => {
+                .flatMap((project) => {
                     const projectSlug = normalizePublicProjectSlug(project.slug);
-                    return {
+                    const name = normalizeSummaryProjectLocalizedText(
+                        project.isSpecialMenu ? (project.specialMenuDisplayName || project.name) : project.name,
+                    );
+                    if (!name) return [];
+                    return [{
                         projectId: project.projectId,
                         slug: projectSlug || '',
-                        name: project.isSpecialMenu ? (project.specialMenuDisplayName || project.name) : project.name,
+                        name,
                         isDefault: !project.isSpecialMenu && project === defaultProj,
-                        projectImage: (project.projectImage as string) || null,
+                        projectImage: typeof project.projectImage === 'string' && project.projectImage.trim()
+                            ? project.projectImage
+                            : null,
                         isSpecialMenu: project.isSpecialMenu === true,
-                        specialMenuBaseProjectId: project.specialMenuBaseProjectId,
-                        specialMenuDisplayName: project.specialMenuDisplayName,
-                    };
+                        specialMenuBaseProjectId: typeof project.specialMenuBaseProjectId === 'string'
+                            ? project.specialMenuBaseProjectId
+                            : undefined,
+                        specialMenuDisplayName: normalizeSummaryProjectLocalizedText(project.specialMenuDisplayName) || undefined,
+                    }];
                 })
                 .map((project) => {
                     if (!project.isSpecialMenu) return project;
-                    const baseProject = activeRegular.find((candidate: any) => candidate.projectId === project.specialMenuBaseProjectId) || defaultProj;
+                    const baseProject = activeRegular.find((candidate) => candidate.projectId === project.specialMenuBaseProjectId) || defaultProj;
                     const baseProjectSlug = normalizePublicProjectSlug(baseProject?.slug);
                     return {
                         ...project,
@@ -161,15 +169,12 @@ const getObpMenuInfo = unstable_cache(
 const countActiveStoresForTenant = unstable_cache(
     async (tenantId: number): Promise<number> => {
         try {
-            const summarySnap = await firestoreAdmin
-                .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
-                .doc("storesSummary")
+            const storesSnap = await firestoreAdmin
+                .collection(DB_COLLECTIONS.STORES)
+                .where("tenantId", "==", tenantId)
+                .where("active", "==", true)
                 .get();
-            if (!summarySnap.exists) return 1;
-            const stores = summarySnap.data()?.stores || {};
-            return Object.values(stores).filter(
-                (store: any) => store.tId === tenantId && store.active !== false && !isPlatformEntityBlocked(store),
-            ).length;
+            return storesSnap.docs.filter((storeDoc) => !isPlatformEntityBlocked(storeDoc.data())).length;
         } catch (error) {
             logObpServerResolutionFailure('public_obp_store_count_lookup_failed', error, {
                 tenantId,

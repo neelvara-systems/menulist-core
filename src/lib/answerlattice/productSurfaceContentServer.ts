@@ -21,6 +21,9 @@ import {
     buildPublicRelatedContent,
     getContextContentSummaryDocId,
     mergeSurfaceContext,
+    normalizeAnswerlatticeSurfaceContentSummary,
+    normalizeStoredAnswerlatticeProductSurface,
+    requireAnswerlatticeProductSurfaceScope,
     resolveSurfaceContentForContext,
     scoreContentForSurface,
 } from './productSurfaceContent';
@@ -76,7 +79,7 @@ const compactChangelog = (entry: ChangelogEntry, pageId: string): AnswerlatticeR
     pageId,
     title: entry.title,
     version: entry.version || null,
-    releasedOn: entry.releasedOn || null,
+    releasedOn: getTimestampMillis(entry.releasedOn) || null,
     tags: Array.isArray(entry.tags) ? entry.tags.slice(0, 8) : [],
 });
 
@@ -106,7 +109,8 @@ async function loadActiveSurfaces(tId: number, sId: number): Promise<Answerlatti
         .get();
 
     return snapshot.docs
-        .map(doc => ({ ...doc.data(), id: doc.id } as AnswerlatticeProductSurface))
+        .map(doc => normalizeStoredAnswerlatticeProductSurface({ ...doc.data(), id: doc.id }, { tId, sId }, doc.id))
+        .filter((surface): surface is AnswerlatticeProductSurface => Boolean(surface))
         .filter(surface => surface.active !== false)
         .sort((a, b) => Number(b.priority || 0) - Number(a.priority || 0));
 }
@@ -176,11 +180,7 @@ export async function rebuildProductSurfaceContentSummaryServer(params: {
     sId: number;
     reason?: string;
 }): Promise<AnswerlatticeSurfaceContentSummary> {
-    const tId = Number(params.tId);
-    const sId = Number(params.sId);
-    if (!Number.isFinite(tId) || !Number.isFinite(sId) || tId <= 0 || sId <= 0) {
-        throw new Error('Invalid Answerlattice tenant scope.');
-    }
+    const { tId, sId } = requireAnswerlatticeProductSurfaceScope(params);
 
     const [surfaces, articles, faqs, changelogEntries, tickets] = await Promise.all([
         loadActiveSurfaces(tId, sId),
@@ -268,24 +268,27 @@ export async function rebuildProductSurfaceContentSummaryServer(params: {
         .doc(docId)
         .set(summary, { merge: true });
 
-    rememberSummary(`${tId}:${sId}`, { ...summary, id: docId });
-    return { ...summary, id: docId };
+    const persistedSummary = normalizeAnswerlatticeSurfaceContentSummary({ ...summary, id: docId }, { tId, sId }, docId);
+    if (!persistedSummary) throw new Error('Generated Answerlattice product surface summary failed validation.');
+    rememberSummary(`${tId}:${sId}`, persistedSummary);
+    return persistedSummary;
 }
 
 export async function getProductSurfaceContentSummaryServer(tId: number, sId: number): Promise<AnswerlatticeSurfaceContentSummary | null> {
-    const cacheKey = `${Number(tId)}:${Number(sId)}`;
+    const scope = requireAnswerlatticeProductSurfaceScope({ tId, sId });
+    const cacheKey = `${scope.tId}:${scope.sId}`;
     const cached = summaryCache.get(cacheKey);
     if (cached && cached.expiresAt > Date.now()) return cached.summary;
     if (cached) summaryCache.delete(cacheKey);
 
-    const docId = getContextContentSummaryDocId(tId, sId);
+    const docId = getContextContentSummaryDocId(scope.tId, scope.sId);
     const snap = await getAnswerlatticeDb()
         .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
         .doc(docId)
         .get();
 
     const summary = snap.exists
-        ? ({ ...snap.data(), id: snap.id } as AnswerlatticeSurfaceContentSummary)
+        ? normalizeAnswerlatticeSurfaceContentSummary({ ...snap.data(), id: snap.id }, scope, snap.id)
         : null;
     rememberSummary(cacheKey, summary);
     return summary;

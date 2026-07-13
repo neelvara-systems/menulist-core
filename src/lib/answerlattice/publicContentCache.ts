@@ -1,10 +1,18 @@
 import { DB_COLLECTIONS } from '@constant/database';
 import { getAnswerlatticePublicCacheTags } from '@lib/actions/revalidateAnswerlatticePublicCache';
 import { normalizeAnswerlatticeKbArticleId } from '@lib/answerlattice/kbArticleIdBoundary';
+import { projectAnswerlatticePublicFaq } from '@lib/answerlattice/faqContent';
+import {
+    normalizeAnswerlatticePublicCategories,
+    projectAnswerlatticePublicArticle,
+    projectAnswerlatticePublicChangelogPage,
+    type AnswerlatticePublicArticle,
+    type AnswerlatticePublicChangelogPage,
+} from '@lib/answerlattice/publicContentBoundary';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
-import type { ChangelogEntry, ChangelogPage } from '@type/changelog';
-import { ANSWERLATTICE_FAQ_STATUS, type AnswerlatticeFaq } from '@type/answerlattice';
-import { ARTICLE_STATUS, type KnowledgeBaseArticleType, type KnowledgeBaseCategoriesType } from '@type/knowledgeBase';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import { ANSWERLATTICE_FAQ_STATUS, type AnswerlatticePublicFaq } from '@type/answerlattice';
+import type { KnowledgeBaseCategoriesType } from '@type/knowledgeBase';
 import { unstable_cache } from 'next/cache';
 
 const PUBLIC_CACHE_REVALIDATE_SECONDS = 60;
@@ -24,48 +32,7 @@ const getAnswerlatticeDb = () => {
     return answerlatticeFirestoreAdmin;
 };
 
-const getTimestampMillis = (value: any): number => {
-    if (!value) return 0;
-    if (typeof value.toMillis === 'function') return value.toMillis();
-    if (typeof value.seconds === 'number') return value.seconds * 1000;
-    if (typeof value._seconds === 'number') return value._seconds * 1000;
-    const parsed = Date.parse(String(value));
-    return Number.isFinite(parsed) ? parsed : 0;
-};
-
 const getKnowledgeBaseCategoriesDocId = (scope: Scope) => `categories_${scope.tId}_${scope.sId}`;
-
-const sortFaqs = (faqs: AnswerlatticeFaq[]) => [...faqs].sort((left, right) => (
-    Number(left.sortOrder || 0) - Number(right.sortOrder || 0)
-    || getTimestampMillis(right.modifiedOn) - getTimestampMillis(left.modifiedOn)
-    || left.question.localeCompare(right.question)
-));
-
-const isPublishedArticle = (article: Partial<KnowledgeBaseArticleType>) => (
-    article.active !== false
-    && (!article.status || article.status === ARTICLE_STATUS.PUBLISHED)
-);
-
-const isScopedArticle = (article: Partial<KnowledgeBaseArticleType>, scope: Scope) => (
-    Number(article.tId) === scope.tId
-    && Number(article.sId) === scope.sId
-);
-
-const compactPublicArticle = (article: KnowledgeBaseArticleType): KnowledgeBaseArticleType => {
-    const {
-        embedding: _embedding,
-        generatedFaqs: _generatedFaqs,
-        similarityScore: _similarityScore,
-        reconciliation: _reconciliation,
-        ...publicArticle
-    } = article;
-
-    return {
-        ...publicArticle,
-        embedding: null,
-        sources: Array.isArray(publicArticle.sources) ? publicArticle.sources.slice(0, 10) : publicArticle.sources,
-    } as KnowledgeBaseArticleType;
-};
 
 const filterPublicCategories = (data: KnowledgeBaseCategoriesType | null): KnowledgeBaseCategoriesType | null => {
     if (!data?.categories || typeof data.categories !== 'object') {
@@ -76,12 +43,7 @@ const filterPublicCategories = (data: KnowledgeBaseCategoriesType | null): Knowl
         Object.entries(data.categories)
             .filter(([, category]) => category?.active !== false)
             .map(([categoryId, category]) => {
-                const sections = (category.sections || [])
-                    .filter(section => section.active !== false)
-                    .map(section => ({
-                        ...section,
-                        articles: (section.articles || []).filter(article => article.active !== false).slice(0, PUBLIC_ARTICLE_LIMIT),
-                    }));
+                const sections = (category.sections || []).filter(section => section.active !== false);
 
                 return [categoryId, {
                     ...category,
@@ -91,22 +53,10 @@ const filterPublicCategories = (data: KnowledgeBaseCategoriesType | null): Knowl
             }),
     );
 
-    return { categories };
+    return normalizeAnswerlatticePublicCategories({ categories });
 };
 
-const filterPublishedChangelogEntries = (page: ChangelogPage): ChangelogPage => {
-    const entries = (page.entries || [])
-        .filter(entry => entry.published !== false)
-        .sort((a, b) => getTimestampMillis(b.releasedOn) - getTimestampMillis(a.releasedOn));
-
-    return {
-        ...page,
-        entries,
-        entryIds: entries.map(entry => entry.id),
-    };
-};
-
-const fetchPublishedFaqs = async (scope: Scope, maxResults: number): Promise<AnswerlatticeFaq[]> => {
+const fetchPublishedFaqs = async (scope: Scope, maxResults: number): Promise<AnswerlatticePublicFaq[]> => {
     const snapshot = await getAnswerlatticeDb()
         .collection(DB_COLLECTIONS.ANSWERLATTICE_FAQS)
         .where('tId', '==', scope.tId)
@@ -118,7 +68,16 @@ const fetchPublishedFaqs = async (scope: Scope, maxResults: number): Promise<Ans
         .limit(Math.min(Math.max(maxResults, 1), PUBLIC_FAQ_LIMIT))
         .get();
 
-    return sortFaqs(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as AnswerlatticeFaq)));
+    const projected = snapshot.docs.map(doc => projectAnswerlatticePublicFaq(doc.data(), doc.id, scope));
+    const faqs = projected.filter((faq): faq is AnswerlatticePublicFaq => faq !== null);
+    if (faqs.length !== projected.length) {
+        logRuntimeFailure('answerlattice_public_faq_record_rejected', undefined, {
+            ...getBoundedRuntimeStringContext('tenantId', scope.tId),
+            ...getBoundedRuntimeStringContext('storeId', scope.sId),
+            rejectedCount: projected.length - faqs.length,
+        });
+    }
+    return faqs;
 };
 
 const fetchCategories = async (scope: Scope): Promise<KnowledgeBaseCategoriesType | null> => {
@@ -134,7 +93,7 @@ const fetchCategories = async (scope: Scope): Promise<KnowledgeBaseCategoriesTyp
     return filterPublicCategories(scopedDoc.data() as KnowledgeBaseCategoriesType);
 };
 
-const fetchArticle = async (scope: Scope, articleId: string): Promise<KnowledgeBaseArticleType | null> => {
+const fetchArticle = async (scope: Scope, articleId: string): Promise<AnswerlatticePublicArticle | null> => {
     const snapshot = await getAnswerlatticeDb()
         .collection(DB_COLLECTIONS.KB_ARTICLES)
         .doc(articleId)
@@ -144,15 +103,10 @@ const fetchArticle = async (scope: Scope, articleId: string): Promise<KnowledgeB
         return null;
     }
 
-    const article = { ...snapshot.data(), id: snapshot.id } as KnowledgeBaseArticleType;
-    if (!isScopedArticle(article, scope) || !isPublishedArticle(article)) {
-        return null;
-    }
-
-    return compactPublicArticle(article);
+    return projectAnswerlatticePublicArticle(snapshot.data(), snapshot.id, scope);
 };
 
-const fetchLatestChangelogPage = async (scope: Scope): Promise<ChangelogPage | null> => {
+const fetchLatestChangelogPage = async (scope: Scope): Promise<AnswerlatticePublicChangelogPage | null> => {
     const snapshot = await getAnswerlatticeDb()
         .collection(`${DB_COLLECTIONS.CHANGELOG}/${scope.tId}/${scope.sId}`)
         .orderBy('pageNumber', 'desc')
@@ -164,10 +118,10 @@ const fetchLatestChangelogPage = async (scope: Scope): Promise<ChangelogPage | n
     }
 
     const doc = snapshot.docs[0];
-    return filterPublishedChangelogEntries({ ...doc.data(), id: doc.id } as ChangelogPage);
+    return projectAnswerlatticePublicChangelogPage(doc.data(), doc.id);
 };
 
-const fetchOlderChangelogPage = async (scope: Scope, beforePageNumber: number): Promise<ChangelogPage | null> => {
+const fetchOlderChangelogPage = async (scope: Scope, beforePageNumber: number): Promise<AnswerlatticePublicChangelogPage | null> => {
     const snapshot = await getAnswerlatticeDb()
         .collection(`${DB_COLLECTIONS.CHANGELOG}/${scope.tId}/${scope.sId}`)
         .where('pageNumber', '<', beforePageNumber)
@@ -180,13 +134,13 @@ const fetchOlderChangelogPage = async (scope: Scope, beforePageNumber: number): 
     }
 
     const doc = snapshot.docs[0];
-    return filterPublishedChangelogEntries({ ...doc.data(), id: doc.id } as ChangelogPage);
+    return projectAnswerlatticePublicChangelogPage(doc.data(), doc.id);
 };
 
 export const getCachedPublishedFaqs = async (
     scope: Scope,
     maxResults = PUBLIC_FAQ_LIMIT,
-): Promise<AnswerlatticeFaq[]> => {
+): Promise<AnswerlatticePublicFaq[]> => {
     const cached = unstable_cache(
         () => fetchPublishedFaqs(scope, maxResults),
         ['answerlattice-public-faqs', String(scope.tId), String(scope.sId), String(maxResults)],
@@ -217,7 +171,7 @@ export const getCachedKnowledgeBaseCategories = async (
 export const getCachedKnowledgeBaseArticle = async (
     scope: Scope,
     articleId: string,
-): Promise<KnowledgeBaseArticleType | null> => {
+): Promise<AnswerlatticePublicArticle | null> => {
     const normalizedArticleId = normalizeAnswerlatticeKbArticleId(articleId);
     if (!normalizedArticleId) return null;
 
@@ -235,7 +189,7 @@ export const getCachedKnowledgeBaseArticle = async (
 
 export const getCachedLatestChangelogPage = async (
     scope: Scope,
-): Promise<ChangelogPage | null> => {
+): Promise<AnswerlatticePublicChangelogPage | null> => {
     const cached = unstable_cache(
         () => fetchLatestChangelogPage(scope),
         ['answerlattice-public-changelog-latest', String(scope.tId), String(scope.sId)],
@@ -251,7 +205,7 @@ export const getCachedLatestChangelogPage = async (
 export const getCachedOlderChangelogPage = async (
     scope: Scope,
     beforePageNumber: number,
-): Promise<ChangelogPage | null> => {
+): Promise<AnswerlatticePublicChangelogPage | null> => {
     const normalizedPageNumber = Number(beforePageNumber);
     if (!Number.isFinite(normalizedPageNumber) || normalizedPageNumber <= 1) return null;
 

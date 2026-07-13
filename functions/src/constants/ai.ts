@@ -11,6 +11,7 @@
 
 import { HarmBlockThreshold, HarmCategory } from "@google/genai";
 import { DB_COLLECTIONS } from "./database";
+import { ANSWERLATTICE_ACTIVE_EMBEDDING_CONFIG } from "../sharedData/answerlatticeEmbedding";
 
 // ═══════════════════════════════════════════════════════════════
 // MODEL CONFIGURATION
@@ -20,6 +21,12 @@ export const AI_MODEL = "gemini-2.5-flash";
 export const OWNER_ANALYTICS_AI_MODEL = "gemini-2.5-flash-lite";
 export const AI_ADVANCED_MODEL = "gemini-2.5-pro";
 export const AI_EMBEDDING_MODEL = "text-embedding-004";
+export const ANSWERLATTICE_TEXT_MODEL = 'gemini-2.5-flash';
+export const ANSWERLATTICE_EMBEDDING_MODEL = ANSWERLATTICE_ACTIVE_EMBEDDING_CONFIG.model;
+export const ANSWERLATTICE_EMBEDDING_OUTPUT_DIMENSIONALITY =
+    ANSWERLATTICE_ACTIVE_EMBEDDING_CONFIG.outputDimensionality;
+export const ANSWERLATTICE_EMBEDDING_CACHE_VERSION = ANSWERLATTICE_ACTIVE_EMBEDDING_CONFIG.cacheVersion;
+export const ANSWERLATTICE_EMBEDDING_VECTOR_FIELD = ANSWERLATTICE_ACTIVE_EMBEDDING_CONFIG.vectorField;
 // Maps grounding stays flag-off until provider smoke confirms this pinned GenAI path.
 export const MAPS_PLACE_CHECK_MODEL = "gemini-3.5-flash";
 

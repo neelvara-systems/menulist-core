@@ -19,24 +19,6 @@ import { useTranslations } from 'next-intl';
 import { LuDownload, LuEye, LuRocket, LuSmartphone, LuStar } from 'react-icons/lu';
 import { Card, DotLoading, Flex, Text, Title } from '../../antd';
 
-type DailyShape = {
-    date: string;
-    totalInstalled?: number;
-    totalAppOpens?: number;
-    shortcutClicks?: Record<string, number>;
-};
-
-type SummaryShape = {
-    lifetimeTotalPromptShown?: number;
-    lifetimeTotalInstalled?: number;
-    lifetimeUniqueInstalls?: number;
-    lifetimeTotalAppOpens?: number;
-    shortcutClicks?: Record<string, number>;
-    installsByPlatform?: Record<string, number>;
-    installsBySource?: Record<string, number>;
-    appOpensByPlatform?: Record<string, number>;
-};
-
 type DashboardTranslator = (key: string, values?: Record<string, string | number>) => string;
 
 function shortcutLabel(key: string, t: DashboardTranslator): string {
@@ -82,8 +64,8 @@ export default function MobileCustomerAppMetrics() {
 
     if (!FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA) return null;
 
-    const summary = (data?.summary ?? null) as SummaryShape | null;
-    const daily = (data?.daily30d ?? []) as DailyShape[];
+    const summary = data?.summary ?? null;
+    const daily = data?.daily30d ?? [];
 
     const installedCustomers = summary?.lifetimeUniqueInstalls ?? summary?.lifetimeTotalInstalled ?? 0;
     const appOpens30d = daily.reduce((sum, day) => sum + (day.totalAppOpens || 0), 0);

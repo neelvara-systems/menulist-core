@@ -3,6 +3,7 @@
 **Date:** February 19, 2026  
 **Audience:** Potential Customers (PUBLIC)  
 **Pillar:** 4 of 6
+**Publication status:** Not approved. No current runtime or public route delivers this feature; the copy below is a future concept and must not be published while the flag, scheduler, and UI remain inactive.
 
 ---
 
@@ -46,4 +47,4 @@ A: Absolutely. We only look at aggregate numbers — no individual tracking what
 
 ---
 
-**Last Updated:** February 19, 2026
+**Last Updated:** July 13, 2026

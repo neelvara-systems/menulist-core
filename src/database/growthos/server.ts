@@ -1,6 +1,7 @@
 import { DB_COLLECTIONS } from "@constant/database";
 import { GROWTHOS_SUMMARY_DOC_PREFIX } from "@constant/growthos";
 import { admin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
+import { sanitizeForFirestore } from "@lib/firestore/sanitizeForFirestore";
 import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
 import type {
     GrowthOSExportMethod,
@@ -37,17 +38,16 @@ function requireGrowthOSScopeDocumentId(value: unknown, label: string): string {
 }
 
 const sanitizeForAdminFirestore = (value: any): any => {
-    if (value === undefined) return null;
-    if (value === null) return null;
-    if (typeof value !== "object") return value;
-    if (value instanceof Date) return admin.firestore.Timestamp.fromDate(value);
-    if (typeof value?.toDate === "function" && typeof value?.seconds === "number") {
-        return admin.firestore.Timestamp.fromDate(value.toDate());
-    }
-    if (Array.isArray(value)) return value.map(sanitizeForAdminFirestore);
-    return Object.fromEntries(
-        Object.entries(value).map(([key, nested]) => [key, sanitizeForAdminFirestore(nested)]),
-    );
+    return sanitizeForFirestore(value, {
+        dateTransform: (date) => admin.firestore.Timestamp.fromDate(date),
+        atomicTransform: (atomicValue) => (
+            typeof (atomicValue as { toDate?: unknown }).toDate === "function"
+            && typeof (atomicValue as { seconds?: unknown }).seconds === "number"
+        ) ? {
+            handled: true,
+            value: admin.firestore.Timestamp.fromDate((atomicValue as { toDate: () => Date }).toDate()),
+        } : { handled: false },
+    });
 };
 
 export const toGrowthOSAdminTimestamp = (date: Date) => admin.firestore.Timestamp.fromDate(date);

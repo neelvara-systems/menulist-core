@@ -6,7 +6,6 @@ import { getAnalyticsErrorContext, getAnalyticsIdContext } from './analytics/ana
 import { processAuthorityMaturationForAllStores } from './analytics/authorityMaturation';
 import { processGuestFeedbackRetention } from './analytics/guestFeedbackRetention';
 import { processMenuDriftMetricsForAllStores } from './analytics/menuDriftMetrics';
-import { reconcileSubscriptions } from './billing/reconcileSubscriptions';
 import { FUNCTION_MAX_INSTANCES, SECRET_GROUPS, SECRETS } from './config/secrets';
 import { DB_COLLECTIONS, getMenuIntelligenceDocId } from './constants/database';
 import { FUNCTION_FLAGS, FUNCTION_RETENTION_CONFIG } from './constants/features';
@@ -19,14 +18,13 @@ import { AggregatedAnalytics, fetch7DayAnalytics } from './intelligence/shared/a
 import { extractActiveItems } from './intelligence/shared/itemExtractor';
 import { DEFAULT_DURATIONS, normalize, QUICK_PICK_THRESHOLDS, WEIGHTS } from './intelligence/shared/scoreNormalizer';
 import { revalidatePublicClientCacheForStore } from './logic/publicCacheRevalidation';
+import { transitionScheduledSpecialMenu } from './schedulers/specialMenuLifecycle';
 import { resolveBusinessCategoryOrFallback } from './sharedData/businessTypes';
+import { parsePlatformStoreSummary, type PlatformStoreSummaryData } from './sharedData/storeSummaryBoundary';
 import { addDaysToAnalyticsDateKey, getAnalyticsDateRange } from './utils/analyticsDate';
 import { getBusinessAnalyticsDateKey, isAnalyticsSettlementDue, resolveBusinessDayEndTime } from './utils/businessDay';
 import type { OwnerBusinessHealthBuildResult } from './ownerBusinessAssistant/types';
 
-const FEEDBACK_INTELLIGENCE_TASK_FAILED = 'FEEDBACK_INTELLIGENCE_TASK_FAILED';
-const KB_QUALITY_TASK_FAILED = 'KB_QUALITY_TASK_FAILED';
-const WEEKLY_NARRATIVE_TASK_FAILED = 'WEEKLY_NARRATIVE_TASK_FAILED';
 const GUEST_FEEDBACK_RETENTION_TASK_FAILED = 'GUEST_FEEDBACK_RETENTION_TASK_FAILED';
 const SCHEDULER_TASK_FAILED_MESSAGE = 'Scheduler task failed';
 const SCHEDULER_ANALYTICS_SETTLEMENT_FAILED = 'SCHEDULER_ANALYTICS_SETTLEMENT_FAILED';
@@ -37,7 +35,6 @@ const SCHEDULER_STORE_RECOVERY_FAILED = 'SCHEDULER_STORE_RECOVERY_FAILED';
 const SCHEDULER_STORE_SUMMARY_ENRICHMENT_FAILED = 'SCHEDULER_STORE_SUMMARY_ENRICHMENT_FAILED';
 const SCHEDULER_AUTHORITY_MATURATION_FAILED = 'SCHEDULER_AUTHORITY_MATURATION_FAILED';
 const SCHEDULER_MENU_DRIFT_FAILED = 'SCHEDULER_MENU_DRIFT_FAILED';
-const SCHEDULER_SUBSCRIPTION_RECONCILIATION_FAILED = 'SCHEDULER_SUBSCRIPTION_RECONCILIATION_FAILED';
 const SCHEDULER_LIFECYCLE_MESSAGING_FAILED = 'SCHEDULER_LIFECYCLE_MESSAGING_FAILED';
 const SCHEDULER_SPECIAL_MENU_ACTIVATE_FAILED = 'SCHEDULER_SPECIAL_MENU_ACTIVATE_FAILED';
 const SCHEDULER_SPECIAL_MENU_DEACTIVATE_FAILED = 'SCHEDULER_SPECIAL_MENU_DEACTIVATE_FAILED';
@@ -46,7 +43,6 @@ const SCHEDULER_SPECIAL_MENU_TASK_FAILED = 'SCHEDULER_SPECIAL_MENU_TASK_FAILED';
 const SCHEDULER_EXTRACTION_LEARNING_FAILED = 'SCHEDULER_EXTRACTION_LEARNING_FAILED';
 const SCHEDULER_STORE_TRUTH_CONFIDENCE_FAILED = 'SCHEDULER_STORE_TRUTH_CONFIDENCE_FAILED';
 const SCHEDULER_STALENESS_CHECK_FAILED = 'SCHEDULER_STALENESS_CHECK_FAILED';
-const SCHEDULER_HEALTH_SIGNALS_FAILED = 'SCHEDULER_HEALTH_SIGNALS_FAILED';
 const SCHEDULER_KB_GENERATION_WATCHDOG_FAILED = 'SCHEDULER_KB_GENERATION_WATCHDOG_FAILED';
 const SCHEDULER_RUN_LOG_PERSIST_FAILED = 'SCHEDULER_RUN_LOG_PERSIST_FAILED';
 const SCHEDULER_NO_STORES_RUN_LOG_PERSIST_FAILED = 'SCHEDULER_NO_STORES_RUN_LOG_PERSIST_FAILED';
@@ -92,6 +88,18 @@ const MANUAL_STORE_TENANT_MISMATCH_MESSAGE = 'Store does not match the requested
  */
 
 // Types
+function getStoreSummaryString(storeInfo: PlatformStoreSummaryData, field: string): string | undefined {
+    const value = storeInfo[field];
+    return typeof value === 'string' && value.trim() ? value : undefined;
+}
+
+function getStoreSummarySchedulerHour(storeInfo: PlatformStoreSummaryData): number | undefined {
+    const value = storeInfo.schedulerHour;
+    return typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= 23
+        ? value
+        : undefined;
+}
+
 interface ItemStats {
     itemId: string;
     itemName: string;
@@ -212,35 +220,63 @@ function getProjectCollectionRef(
     return db.collection(DB_COLLECTIONS.PROJECTS).doc(tId).collection(sId);
 }
 
-function parseSummaryProjects(data: any): Record<string, any> {
-    if (!data || typeof data !== 'object') return {};
+const UNSAFE_SUMMARY_PATH_SEGMENTS = new Set(['__proto__', 'constructor', 'prototype']);
 
-    const result: Record<string, any> = {};
-    if (data.projects && typeof data.projects === 'object' && !Array.isArray(data.projects)) {
-        Object.assign(result, data.projects);
+function isSummaryRecord(value: unknown): value is Record<string, unknown> {
+    return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isSafeSummaryPathSegment(value: string): boolean {
+    return value.length > 0 && !UNSAFE_SUMMARY_PATH_SEGMENTS.has(value);
+}
+
+function createSafeSummaryRecord(source?: Record<string, unknown>): Record<string, unknown> {
+    const result = Object.create(null) as Record<string, unknown>;
+    if (!source) return result;
+    for (const [key, value] of Object.entries(source)) {
+        if (isSafeSummaryPathSegment(key)) result[key] = value;
+    }
+    return result;
+}
+
+function parseSummaryProjects(data: unknown): Record<string, Record<string, unknown>> {
+    if (!isSummaryRecord(data)) return Object.create(null) as Record<string, Record<string, unknown>>;
+
+    const result = Object.create(null) as Record<string, Record<string, unknown>>;
+    if (isSummaryRecord(data.projects)) {
+        for (const [projectId, projectData] of Object.entries(data.projects)) {
+            if (isSafeSummaryPathSegment(projectId) && isSummaryRecord(projectData)) {
+                result[projectId] = createSafeSummaryRecord(projectData);
+            }
+        }
     }
 
     for (const [key, value] of Object.entries(data)) {
         if (!key.startsWith('projects.')) continue;
         const rest = key.slice('projects.'.length);
         const [projectId, ...fieldPath] = rest.split('.');
-        if (!projectId) continue;
+        if (![projectId, ...fieldPath].every(isSafeSummaryPathSegment)) continue;
 
-        if (!result[projectId]) result[projectId] = {};
+        if (!result[projectId]) result[projectId] = createSafeSummaryRecord();
         if (fieldPath.length === 0) {
-            if (value && typeof value === 'object') {
-                result[projectId] = { ...result[projectId], ...(value as Record<string, any>) };
+            if (isSummaryRecord(value)) {
+                result[projectId] = Object.assign(
+                    createSafeSummaryRecord(),
+                    result[projectId],
+                    createSafeSummaryRecord(value),
+                );
             }
             continue;
         }
 
-        let target = result[projectId] as Record<string, any>;
+        let target = result[projectId];
         for (let i = 0; i < fieldPath.length - 1; i++) {
             const segment = fieldPath[i];
-            if (!target[segment] || typeof target[segment] !== 'object') {
-                target[segment] = {};
-            }
-            target = target[segment];
+            const next = isSummaryRecord(target[segment])
+                ? createSafeSummaryRecord(target[segment])
+                : createSafeSummaryRecord();
+            target[segment] = next;
+            target = next;
         }
         target[fieldPath[fieldPath.length - 1]] = value;
     }
@@ -257,8 +293,7 @@ async function loadActiveProjectsForScheduler(
     const summaryProjects = summarySnap.exists ? parseSummaryProjects(summarySnap.data()) : {};
     const activeProjectIds = Object.entries(summaryProjects)
         .filter(([, project]) => {
-            const projectData = project as Record<string, any>;
-            return projectData?.active !== false && projectData?.deleted !== true;
+            return project.active !== false && project.deleted !== true;
         })
         .map(([projectId]) => projectId);
 
@@ -270,7 +305,7 @@ async function loadActiveProjectsForScheduler(
             .map((snap) => {
                 const data = snap.data() || {};
                 return {
-                    projectId: String(data.projectId || snap.id),
+                    projectId: snap.id,
                     data,
                 };
             })
@@ -285,7 +320,7 @@ async function loadActiveProjectsForScheduler(
         .map((doc) => {
             const data = doc.data();
             return {
-                projectId: String(data.projectId || doc.id),
+                projectId: doc.id,
                 data,
             };
         })
@@ -1338,8 +1373,6 @@ export const computeDecisionBlocksScores = onSchedule({
         SECRETS.GEMINI_AI_KEY_2,
         SECRETS.GEMINI_AI_KEY_3,
         SECRETS.GEMINI_AI_KEY_4,
-        SECRETS.RAZORPAY_KEY_ID,
-        SECRETS.RAZORPAY_KEY_SECRET,
         SECRETS.SENTRY_DSN,
         ...SECRET_GROUPS.PLATFORM_ALERT_DELIVERY,
     ],
@@ -1370,7 +1403,7 @@ export const computeDecisionBlocksScores = onSchedule({
         // COST OPTIMIZATION: Use storesSummary instead of fetching all store documents
         // This reduces N reads to 1 read. See: __docs__/patterns/summary-document-pattern.md
         const storesSummaryDoc = await db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc('storesSummary').get();
-        const storesSummary = storesSummaryDoc.exists ? storesSummaryDoc.data()?.stores || {} : {};
+        const storesSummary = parsePlatformStoreSummary(storesSummaryDoc.exists ? storesSummaryDoc.data() : undefined);
         const allStoreIds = Object.keys(storesSummary);
 
         // DST-safe business-day scheduling. Owners configure "Business day ends at";
@@ -1382,20 +1415,24 @@ export const computeDecisionBlocksScores = onSchedule({
 
         const storeIds = allStoreIds.filter(sId => {
             const storeInfo = storesSummary[sId];
-            const businessDayEndTime = resolveBusinessDayEndTime(storeInfo.businessType, storeInfo.businessDayEndTime, storeInfo.businessCategory);
+            const businessType = getStoreSummaryString(storeInfo, 'businessType');
+            const businessCategory = getStoreSummaryString(storeInfo, 'businessCategory');
+            const configuredDayEnd = getStoreSummaryString(storeInfo, 'businessDayEndTime');
+            const timeZone = getStoreSummaryString(storeInfo, 'timeZone');
+            const businessDayEndTime = resolveBusinessDayEndTime(businessType, configuredDayEnd, businessCategory);
 
             // Primary: runtime settlement computation. Missing/invalid timezone
             // safely falls back to UTC inside isAnalyticsSettlementDue.
-            if (storeInfo.timeZone || storeInfo.businessDayEndTime || storeInfo.businessType) {
+            if (timeZone || configuredDayEnd || businessType) {
                 try {
-                    return isAnalyticsSettlementDue(now, storeInfo.timeZone, businessDayEndTime);
+                    return isAnalyticsSettlementDue(now, timeZone, businessDayEndTime);
                 } catch {
                     // Fall through to legacy schedulerHour fallback.
                 }
             }
 
             // Fallback: stored schedulerHour (for stores without timeZone)
-            const storeHour = storeInfo.schedulerHour ?? DEFAULT_SCHEDULER_HOUR;
+            const storeHour = getStoreSummarySchedulerHour(storeInfo) ?? DEFAULT_SCHEDULER_HOUR;
             return storeHour === currentUTCHour;
         });
 
@@ -1469,9 +1506,13 @@ export const computeDecisionBlocksScores = onSchedule({
 
         for (const sId of storeIds) {
             const storeInfo = storesSummary[sId];
-            const tId = storeInfo.tId != null ? String(storeInfo.tId) : '';
-            const businessDayEndTime = resolveBusinessDayEndTime(storeInfo.businessType, storeInfo.businessDayEndTime, storeInfo.businessCategory);
-            const businessCategory = resolveBusinessCategoryOrFallback(storeInfo.businessType, storeInfo.businessCategory);
+            const tId = storeInfo.tId;
+            const businessType = getStoreSummaryString(storeInfo, 'businessType');
+            const configuredBusinessCategory = getStoreSummaryString(storeInfo, 'businessCategory');
+            const configuredDayEnd = getStoreSummaryString(storeInfo, 'businessDayEndTime');
+            const timeZone = getStoreSummaryString(storeInfo, 'timeZone');
+            const businessDayEndTime = resolveBusinessDayEndTime(businessType, configuredDayEnd, configuredBusinessCategory);
+            const businessCategory = resolveBusinessCategoryOrFallback(businessType, configuredBusinessCategory);
 
             // Skip inactive stores
             if (storeInfo.active === false) {
@@ -1529,7 +1570,7 @@ export const computeDecisionBlocksScores = onSchedule({
 
                 analyticsResults.storesAttempted++;
                 try {
-                    const settlementDates = await getPendingSettlementDates(db, tId, sId, analyticsRunAt, storeInfo.timeZone, businessDayEndTime);
+                    const settlementDates = await getPendingSettlementDates(db, tId, sId, analyticsRunAt, timeZone, businessDayEndTime);
                     const knownAnalyticsProjectIds = Array.from(new Set([...activeProjectIds, 'customerApp']));
                     const projectCatalogById = Object.fromEntries(
                         projectEntries.map((entry) => [entry.projectId, entry.data]),
@@ -1680,7 +1721,7 @@ export const computeDecisionBlocksScores = onSchedule({
                         // intelligence snapshot once, reuse for both DI + CMI.
                         // Missing/stale snapshots are visible in ops and score
                         // as empty for the run instead of opening daily reads.
-                        const analytics = await fetch7DayAnalytics(db, tId, sId, projectId, storeInfo.timeZone, businessDayEndTime);
+                        const analytics = await fetch7DayAnalytics(db, tId, sId, projectId, timeZone, businessDayEndTime);
                         if (analytics.source === 'missing_or_stale') {
                             analyticsResults.intelligenceSnapshotMissing++;
                             logSchedulerWarn(logger, '[NightlyAnalytics] Missing or stale intelligence snapshot; scoring without analytics', {
@@ -1691,7 +1732,7 @@ export const computeDecisionBlocksScores = onSchedule({
                                 operation: 'fetch_analytics_snapshot',
                                 source: analytics.source,
                                 metrics: {
-                                    expectedLocalDate: addDaysToAnalyticsDateKey(getBusinessAnalyticsDateKey(analyticsRunAt, storeInfo.timeZone, businessDayEndTime), -1),
+                                    expectedLocalDate: addDaysToAnalyticsDateKey(getBusinessAnalyticsDateKey(analyticsRunAt, timeZone, businessDayEndTime), -1),
                                     lastSettledLocalDate: analytics.lastSettledLocalDate || null,
                                 },
                             });
@@ -1705,7 +1746,7 @@ export const computeDecisionBlocksScores = onSchedule({
                             projectData,
                             businessCategory,
                             analytics,
-                            storeInfo.timeZone,
+                            timeZone,
                             businessDayEndTime,
                         );
 
@@ -1974,28 +2015,6 @@ export const computeDecisionBlocksScores = onSchedule({
             taskResults.push({ name: 'guest_feedback_retention', status: 'skipped' });
         }
 
-        // Subscription Reconciliation (Razorpay ↔ Firestore sync)
-        // Safety net for webhook failures — syncs status, cycle dates, paid count
-        // @see __docs__/razorpay/active-subscription-flow.md
-        if (FUNCTION_FLAGS.ENABLE_SUBSCRIPTION_RECONCILIATION) {
-            try {
-                const taskStart = Date.now();
-                logger.info('=== Starting Subscription Reconciliation ===');
-                const reconcileResult = await reconcileSubscriptions();
-                logger.info(`Subscription Reconciliation: ${reconcileResult.processed} checked, ${reconcileResult.synced} synced, ${reconcileResult.errors} errors (${reconcileResult.durationMs}ms)`);
-                taskResults.push({ name: 'subscription_reconciliation', status: 'success', durationMs: Date.now() - taskStart, details: { processed: reconcileResult.processed, synced: reconcileResult.synced, errors: reconcileResult.errors } });
-            } catch (reconcileError: any) {
-                // Non-blocking - log but continue
-                logSchedulerFailure(logger, 'Subscription Reconciliation failed', SCHEDULER_SUBSCRIPTION_RECONCILIATION_FAILED, reconcileError, {
-                    phase: 'subscription_reconciliation',
-                    operation: 'reconcile_subscriptions',
-                });
-                taskResults.push({ name: 'subscription_reconciliation', status: 'failed', error: SCHEDULER_TASK_FAILED_MESSAGE });
-            }
-        } else {
-            taskResults.push({ name: 'subscription_reconciliation', status: 'skipped' });
-        }
-
         // Lifecycle Messaging — Renewal Reminders + Suspension Warnings
         // Scans subscriptions renewing in 3 days and past-due 7+ days
         // @see __docs__/lifecycle-messaging/lifecycle-messaging_impl.md
@@ -2057,13 +2076,15 @@ export const computeDecisionBlocksScores = onSchedule({
             try {
                 const taskStart = Date.now();
                 logger.info('=== Starting Special Menu Switching Check ===');
-                const smResult = { activated: 0, deactivated: 0, checked: 0, errors: 0 };
+                const smResult = { activated: 0, blocked: 0, deactivated: 0, checked: 0, errors: 0 };
                 const now = new Date();
 
                 for (const sId of storeIds) {
                     const storeInfo = storesSummary[sId];
                     if (storeInfo.active === false) continue;
-                    const specialMenuTId = storeInfo.tId != null ? String(storeInfo.tId) : '';
+                    const specialMenuTId = typeof storeInfo.tId === 'number' || typeof storeInfo.tId === 'string'
+                        ? String(storeInfo.tId)
+                        : '';
 
                     try {
                         // Read projectsSummary for this store
@@ -2071,117 +2092,88 @@ export const computeDecisionBlocksScores = onSchedule({
                             .doc(`projects_${sId}`).get();
                         if (!summaryDoc.exists) continue;
 
-                        const projects = summaryDoc.data()?.projects || {};
-                        for (const [projectId, projData] of Object.entries(projects) as [string, any][]) {
-                            if (!projData.isSpecialMenu) continue;
-                            smResult.checked++;
+                        const specialMenus = Object.entries(parseSummaryProjects(summaryDoc.data()))
+                            .filter(([, project]) => project.isSpecialMenu === true)
+                            .map(([projectId, project]) => ({
+                                projectId,
+                                startsAt: typeof project.specialMenuStartsAt === 'string'
+                                    ? Date.parse(project.specialMenuStartsAt)
+                                    : Number.NaN,
+                                endsAt: typeof project.specialMenuEndsAt === 'string'
+                                    ? Date.parse(project.specialMenuEndsAt)
+                                    : Number.NaN,
+                                status: project.specialMenuStatus,
+                            }));
+                        smResult.checked += specialMenus.length;
 
-                            const status = projData.specialMenuStatus;
-                            const startsAt = projData.specialMenuStartsAt ? new Date(projData.specialMenuStartsAt) : null;
-                            const endsAt = projData.specialMenuEndsAt ? new Date(projData.specialMenuEndsAt) : null;
+                        const transitions = [
+                            ...specialMenus
+                                .filter((menu) => (
+                                    (menu.status === 'active' || menu.status === 'scheduled')
+                                    && Number.isFinite(menu.endsAt)
+                                    && menu.endsAt <= now.getTime()
+                                ))
+                                .sort((a, b) => a.endsAt - b.endsAt)
+                                .map((menu) => ({ action: 'expire' as const, ...menu })),
+                            ...specialMenus
+                                .filter((menu) => (
+                                    menu.status === 'scheduled'
+                                    && Number.isFinite(menu.startsAt)
+                                    && Number.isFinite(menu.endsAt)
+                                    && menu.startsAt <= now.getTime()
+                                    && menu.endsAt > now.getTime()
+                                ))
+                                .sort((a, b) => a.startsAt - b.startsAt || a.projectId.localeCompare(b.projectId))
+                                .map((menu) => ({ action: 'activate' as const, ...menu })),
+                        ];
 
-                            // Activate: scheduled menu whose startsAt has passed
-                            if (status === 'scheduled' && startsAt && startsAt <= now) {
-                                try {
-                                    const projectRef = db.collection(DB_COLLECTIONS.PROJECTS)
-                                        .doc(specialMenuTId).collection(sId).doc(projectId);
-                                    await projectRef.update({
-                                        '_specialMenu.status': 'active',
-                                        '_specialMenu.activatedAt': now.toISOString(),
-                                    });
-
-                                    const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(sId);
-                                    const storeUpdate: Record<string, any> = {
-                                        activeSpecialMenuId: projectId,
-                                    };
-                                    // Auto-set temp status banner
-                                    if (FUNCTION_FLAGS.ENABLE_TEMP_STATUS) {
-                                        storeUpdate.tempStatus = {
-                                            type: 'special_menu',
-                                            message: projData.specialMenuDisplayName || projData.name,
-                                            expiresAt: projData.specialMenuEndsAt,
-                                            createdAt: now.toISOString(),
-                                        };
-                                    }
-                                    await storeRef.update(storeUpdate);
-
-                                    // Update summary status
-                                    await summaryDoc.ref.set({
-                                        [`projects.${projectId}.specialMenuStatus`]: 'active',
-                                    }, { merge: true });
-                                    await revalidatePublicClientCacheForStore(sId, 'specialMenuSwitching:activate', {
-                                        touchDigitalScreen: true,
-                                    });
-
-                                    logSchedulerInfo(logger, '[SpecialMenuSwitching] Activated special menu', {
-                                        tId: specialMenuTId,
-                                        sId,
-                                        projectId,
-                                        phase: 'special_menu_switching',
-                                        operation: 'activate_special_menu',
-                                        specialMenuDisplayName: projData.specialMenuDisplayName,
-                                    });
-                                    smResult.activated++;
-                                } catch (e: any) {
-                                    logSchedulerFailure(logger, '[SpecialMenuSwitching] Activate failed', SCHEDULER_SPECIAL_MENU_ACTIVATE_FAILED, e, {
-                                        tId: specialMenuTId,
-                                        sId,
-                                        projectId,
-                                        phase: 'special_menu_switching',
-                                        operation: 'activate_special_menu',
-                                    });
-                                    smResult.errors++;
+                        for (const transition of transitions) {
+                            try {
+                                const result = await transitionScheduledSpecialMenu({
+                                    action: transition.action,
+                                    db,
+                                    enableTempStatus: FUNCTION_FLAGS.ENABLE_TEMP_STATUS,
+                                    now,
+                                    projectId: transition.projectId,
+                                    sId,
+                                    tId: specialMenuTId,
+                                });
+                                if (result.outcome === 'blocked') {
+                                    smResult.blocked++;
+                                    continue;
                                 }
-                            }
+                                if (result.outcome === 'noop' || result.outcome === 'repaired') continue;
 
-                            // Deactivate: active menu whose endsAt has passed
-                            if (status === 'active' && endsAt && endsAt <= now) {
-                                try {
-                                    const projectRef = db.collection(DB_COLLECTIONS.PROJECTS)
-                                        .doc(specialMenuTId).collection(sId).doc(projectId);
-                                    await projectRef.update({
-                                        '_specialMenu.status': 'expired',
-                                        '_specialMenu.deactivatedAt': now.toISOString(),
-                                    });
-
-                                    const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(sId);
-                                    const storeUpdate: Record<string, any> = {
-                                        activeSpecialMenuId: FieldValue.delete(),
-                                    };
-                                    // Clear temp status if it was special_menu type
-                                    const storeSnap = await storeRef.get();
-                                    if (storeSnap.data()?.tempStatus?.type === 'special_menu') {
-                                        storeUpdate.tempStatus = FieldValue.delete();
-                                    }
-                                    await storeRef.update(storeUpdate);
-
-                                    // Update summary status
-                                    await summaryDoc.ref.set({
-                                        [`projects.${projectId}.specialMenuStatus`]: 'expired',
-                                    }, { merge: true });
-                                    await revalidatePublicClientCacheForStore(sId, 'specialMenuSwitching:deactivate', {
-                                        touchDigitalScreen: true,
-                                    });
-
-                                    logSchedulerInfo(logger, '[SpecialMenuSwitching] Deactivated special menu', {
-                                        tId: specialMenuTId,
-                                        sId,
-                                        projectId,
-                                        phase: 'special_menu_switching',
-                                        operation: 'deactivate_special_menu',
-                                        specialMenuDisplayName: projData.specialMenuDisplayName,
-                                    });
-                                    smResult.deactivated++;
-                                } catch (e: any) {
-                                    logSchedulerFailure(logger, '[SpecialMenuSwitching] Deactivate failed', SCHEDULER_SPECIAL_MENU_DEACTIVATE_FAILED, e, {
-                                        tId: specialMenuTId,
-                                        sId,
-                                        projectId,
-                                        phase: 'special_menu_switching',
-                                        operation: 'deactivate_special_menu',
-                                    });
-                                    smResult.errors++;
-                                }
+                                await revalidatePublicClientCacheForStore(
+                                    sId,
+                                    `specialMenuSwitching:${result.outcome}`,
+                                    { touchDigitalScreen: true },
+                                );
+                                if (result.outcome === 'activated') smResult.activated++;
+                                if (result.outcome === 'expired') smResult.deactivated++;
+                                logSchedulerInfo(logger, '[SpecialMenuSwitching] Lifecycle transition completed', {
+                                    tId: specialMenuTId,
+                                    sId,
+                                    projectId: transition.projectId,
+                                    phase: 'special_menu_switching',
+                                    operation: result.outcome === 'activated'
+                                        ? 'activate_special_menu'
+                                        : 'expire_special_menu',
+                                });
+                            } catch (error: any) {
+                                const failureCode = transition.action === 'activate'
+                                    ? SCHEDULER_SPECIAL_MENU_ACTIVATE_FAILED
+                                    : SCHEDULER_SPECIAL_MENU_DEACTIVATE_FAILED;
+                                logSchedulerFailure(logger, '[SpecialMenuSwitching] Lifecycle transition failed', failureCode, error, {
+                                    tId: specialMenuTId,
+                                    sId,
+                                    projectId: transition.projectId,
+                                    phase: 'special_menu_switching',
+                                    operation: transition.action === 'activate'
+                                        ? 'activate_special_menu'
+                                        : 'expire_special_menu',
+                                });
+                                smResult.errors++;
                             }
                         }
                     } catch (e: any) {
@@ -2276,84 +2268,17 @@ export const computeDecisionBlocksScores = onSchedule({
         }
 
         // ═══════════════════════════════════════════════════════════════
-        // AI INSIGHTS (Migrated from masterScheduler.ts)
-        // Previously ran as separate CF at 2:00 AM UTC.
-        // Now unified here to save 1 cold start + consistent run logging.
+        // Help-center intelligence moved to the isolated Answerlattice project.
+        // Keep explicit task records so old run-log consumers do not interpret
+        // the absence of these names as an interrupted MenuList scheduler run.
         // ═══════════════════════════════════════════════════════════════
-
-        // Feedback Intelligence — AI analysis of owner feedback patterns
-        try {
-            const taskStart = Date.now();
-            logger.info('=== Starting Feedback Intelligence ===');
-            const { processFeedbackIntelligenceForAllStores } = await import('./analytics/feedbackIntelligence');
-            await processFeedbackIntelligenceForAllStores();
-            logger.info('Feedback Intelligence completed');
-            taskResults.push({ name: 'feedback_intelligence', status: 'success', durationMs: Date.now() - taskStart });
-        } catch (fiError: unknown) {
-            logger.error('Feedback Intelligence failed', {
-                failureCode: FEEDBACK_INTELLIGENCE_TASK_FAILED,
-                error: getAnalyticsErrorContext(fiError),
+        ['feedback_intelligence', 'kb_quality', 'weekly_narrative', 'health_signals'].forEach((name) => {
+            taskResults.push({
+                name,
+                status: 'skipped',
+                details: { reason: 'moved_to_answerlattice_runtime' },
             });
-            taskResults.push({ name: 'feedback_intelligence', status: 'failed', error: FEEDBACK_INTELLIGENCE_TASK_FAILED });
-        }
-
-        // KB Quality Analysis — Score article quality across all stores
-        try {
-            const taskStart = Date.now();
-            logger.info('=== Starting KB Quality Analysis ===');
-            const { processKBQualityForAllStores } = await import('./analytics/kbQuality');
-            await processKBQualityForAllStores();
-            logger.info('KB Quality Analysis completed');
-            taskResults.push({ name: 'kb_quality', status: 'success', durationMs: Date.now() - taskStart });
-        } catch (kbError: unknown) {
-            logger.error('KB Quality Analysis failed', {
-                failureCode: KB_QUALITY_TASK_FAILED,
-                error: getAnalyticsErrorContext(kbError),
-            });
-            taskResults.push({ name: 'kb_quality', status: 'failed', error: KB_QUALITY_TASK_FAILED });
-        }
-
-        // Weekly Narrative — AI digest (Sundays only)
-        try {
-            const today = new Date();
-            if (today.getDay() === 0) { // Sunday
-                const taskStart = Date.now();
-                logger.info('=== Starting Weekly Narrative Generation ===');
-                const { processWeeklyNarrativeForAllStores } = await import('./analytics/weeklyNarrative');
-                await processWeeklyNarrativeForAllStores();
-                logger.info('Weekly Narrative completed');
-                taskResults.push({ name: 'weekly_narrative', status: 'success', durationMs: Date.now() - taskStart });
-            } else {
-                taskResults.push({ name: 'weekly_narrative', status: 'skipped', details: { reason: 'not_sunday' } });
-            }
-        } catch (wnError: unknown) {
-            logger.error('Weekly Narrative failed', {
-                failureCode: WEEKLY_NARRATIVE_TASK_FAILED,
-                error: getAnalyticsErrorContext(wnError),
-            });
-            taskResults.push({ name: 'weekly_narrative', status: 'failed', error: WEEKLY_NARRATIVE_TASK_FAILED });
-        }
-
-        // Health Signals — Trust/Loyalty/Risk computation (Sundays only)
-        try {
-            const today = new Date();
-            if (today.getDay() === 0) { // Sunday
-                const taskStart = Date.now();
-                logger.info('=== Starting Health Signals Computation ===');
-                const { processHealthSignalsForAllStores } = await import('./analytics/healthSignalsComputation');
-                await processHealthSignalsForAllStores();
-                logger.info('Health Signals completed');
-                taskResults.push({ name: 'health_signals', status: 'success', durationMs: Date.now() - taskStart });
-            } else {
-                taskResults.push({ name: 'health_signals', status: 'skipped', details: { reason: 'not_sunday' } });
-            }
-        } catch (hsError: any) {
-            logSchedulerFailure(logger, 'Health Signals failed', SCHEDULER_HEALTH_SIGNALS_FAILED, hsError, {
-                phase: 'health_signals',
-                operation: 'process_health_signals',
-            });
-            taskResults.push({ name: 'health_signals', status: 'failed', error: SCHEDULER_TASK_FAILED_MESSAGE });
-        }
+        });
 
         // ═══════════════════════════════════════════════════════════════
         // KB GENERATION — Job Timeout Watchdog
@@ -2528,8 +2453,6 @@ export const triggerStoreNightlyScheduler = onCall({
         SECRETS.GEMINI_AI_KEY_2,
         SECRETS.GEMINI_AI_KEY_3,
         SECRETS.GEMINI_AI_KEY_4,
-        SECRETS.RAZORPAY_KEY_ID,
-        SECRETS.RAZORPAY_KEY_SECRET,
         SECRETS.SENTRY_DSN,
         ...SECRET_GROUPS.PLATFORM_ALERT_DELIVERY,
     ],
@@ -2598,7 +2521,8 @@ export const triggerStoreNightlyScheduler = onCall({
         });
 
         const storesSummaryDoc = await db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc('storesSummary').get();
-        const storeInfo = storesSummaryDoc.exists ? storesSummaryDoc.data()?.stores?.[sId] : null;
+        const storesSummary = parsePlatformStoreSummary(storesSummaryDoc.exists ? storesSummaryDoc.data() : undefined);
+        const storeInfo = storesSummary[sId] || null;
 
         if (!storeInfo) {
             const diagnostic = buildSchedulerFailureDiagnostic(createSchedulerTaskError(SCHEDULER_MANUAL_STORE_NOT_FOUND), {
@@ -2618,13 +2542,13 @@ export const triggerStoreNightlyScheduler = onCall({
             throw new HttpsError('not-found', MANUAL_STORE_NOT_FOUND_MESSAGE, { runLogId, diagnostic });
         }
 
-        if (String(storeInfo.tId || '') !== tId) {
+        if (storeInfo.tId !== tId) {
             const diagnostic = buildSchedulerFailureDiagnostic(createSchedulerTaskError(SCHEDULER_MANUAL_STORE_TENANT_MISMATCH), {
                 tId,
                 sId,
                 phase: 'stores_summary_validation',
                 operation: 'validate_store_tenant_match',
-                details: { storesSummaryTenantId: String(storeInfo.tId || '') },
+                details: { storesSummaryTenantId: storeInfo.tId },
             });
             await writeRunLog({
                 completedAt: Timestamp.now(),
@@ -2831,8 +2755,6 @@ export const triggerDecisionBlocksScoring = onCall({
         SECRETS.GEMINI_AI_KEY_2,
         SECRETS.GEMINI_AI_KEY_3,
         SECRETS.GEMINI_AI_KEY_4,
-        SECRETS.RAZORPAY_KEY_ID,
-        SECRETS.RAZORPAY_KEY_SECRET,
         SECRETS.SENTRY_DSN,
         ...SECRET_GROUPS.PLATFORM_ALERT_DELIVERY,
     ],

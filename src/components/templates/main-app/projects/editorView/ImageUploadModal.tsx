@@ -1,7 +1,9 @@
 import { BATCH_IMAGE_GENERATION_JOB_STATUS } from '@constant/AI';
 import { APP_THEME_COLOR } from '@constant/common';
 import { FEATURE_FLAGS } from '@config/features';
-import { addImageBatchProcessingJob, assertImageBatchJobCreateSucceeded, assertImageBatchJobUpdateSucceeded, updateImageBatchProcessingJob } from '@database/imageBatchProcessing';
+import { addImageBatchProcessingJob, assertImageBatchJobCreateSucceeded } from '@database/imageBatchProcessing';
+import { normalizeImageBatchGenerationConfig } from '@lib/ai/imageBatchClientBoundary';
+import type { ImageBatchProjectSelection } from '@lib/ai/imageBatchProjectSelection';
 import { applyProjectImagePreferencesToGenerationConfig, extractImagePreferencePatch, mergeProjectAIPreferences } from '@lib/ai/projectAIPreferences';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import useDeviceType from '@hook/useDeviceType';
@@ -20,7 +22,7 @@ import { getISOStringDate } from '@util/dateTime';
 import { removeObjRef } from '@util/utils';
 import type { UploadProps } from 'antd';
 import { Button, Flex, message, Modal, Select, Tabs, theme, Typography, Upload } from 'antd';
-import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { LuArrowLeft, LuSave, LuSparkles, LuUploadCloud, LuX } from 'react-icons/lu';
 import ItemPhotoCaptureAssist from '../../../../shared/media/ItemPhotoCaptureAssist';
 import { NavBar, Popup } from '../../../../mobile/antd';
@@ -46,6 +48,7 @@ interface ImageUploadModalProps {
     onClose: () => void;
     projectData: Project;
     onProjectDataUpdate?: (updatedProject: Project) => Promise<void> | void;
+    onBatchImagesPersist: (selections: ImageBatchProjectSelection[]) => Promise<void>;
     itemToUpdate: ExtractedDataItem | null;
     onImageUpload: (item: ItemForDropdown, imagesToUse?: UserUploadedFileType[]) => Promise<void>;
     from: string;
@@ -112,6 +115,7 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
     onClose,
     projectData,
     onProjectDataUpdate,
+    onBatchImagesPersist,
     itemToUpdate,
     onImageUpload,
     from,
@@ -135,6 +139,7 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
     const { activeProject, activeBatchImageJob, setActiveBatchImageJob } = useContext<ProjectsDataProviderType>(ProjectsDataContext);
     const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext)
     const [batchGenerationConfig, setBatchGenerationConfig] = useState<GenerateImageViaApiPayloadGenerationConfiType>(DefaultGenerationConfig);
+    const batchStartInFlightRef = useRef(false);
     const dispatch = useAppDispatch()
     const initialBatchItemIds = initialBatchItemIdsProp ?? EMPTY_INITIAL_BATCH_ITEM_IDS;
     const initialBatchItemIdsKey = useMemo(() => initialBatchItemIds.join('|'), [initialBatchItemIds]);
@@ -356,121 +361,121 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
         }
     };
 
-    const onStartBatchGeneration = async (): Promise<void> => {
+    const createAndTriggerBatchGeneration = async (
+        requestedItemIds: string[],
+        config: GenerateImageViaApiPayloadGenerationConfiType,
+        source: 'new' | 'retry',
+    ): Promise<void> => {
+        if (batchStartInFlightRef.current) {
+            message.info('Image generation is already starting.');
+            return;
+        }
+
+        batchStartInFlightRef.current = true;
         let createdJobId: string | null = null;
-        let createdJobSnapshot: BatchImageGenerationJobType | null = null;
         try {
             dispatch(startLoader("Starting batch image generation"));
+            const projectId = activeProject?.projectId;
+            if (!projectId) throw new Error('image_upload_batch_project_missing');
+            const uniqueItemIds = Array.from(new Set(requestedItemIds));
+            if (!uniqueItemIds.length || uniqueItemIds.length > 50) {
+                throw new Error('image_upload_batch_item_count_invalid');
+            }
+            const canonicalConfig = normalizeImageBatchGenerationConfig(config);
+            if (!canonicalConfig) throw new Error('image_upload_batch_generation_config_invalid');
+            const payloadItems = uniqueItemIds.map((id) => {
+                const item = items.find((candidate) => candidate.id === id);
+                if (!item) throw new Error('image_upload_batch_item_missing');
+                return {
+                    attributes: item.attributesList,
+                    category: item.categoryName,
+                    description: item.descriptionLine,
+                    id: item.id,
+                    name: item.itemName,
+                } satisfies GenerateImageViaApiPayloadItemDetailsType;
+            });
 
-            const newJob: Omit<BatchImageGenerationJobType, 'id'> = {
+            const newJob: BatchImageGenerationJobType = {
+                enqueueFailedItemIds: [],
+                failedItemIds: [],
+                generatedCount: 0,
+                generationConfig: canonicalConfig,
+                itemExecutions: {},
+                itemsList: [],
+                projectId,
+                requestedItemIds: uniqueItemIds,
                 status: BATCH_IMAGE_GENERATION_JOB_STATUS.QUEUED,
                 statusHistory: [
                     {
                         status: BATCH_IMAGE_GENERATION_JOB_STATUS.QUEUED,
-                        reason: 'Job Created Successfully',
+                        reason: source === 'retry' ? 'Retry created as a new job' : 'Job created successfully',
                         createdOn: getISOStringDate(),
                     },
                 ],
-                totalImages: selectedItemsForBatch.length,
-                generatedCount: 0,
-                generationConfig: batchGenerationConfig,
-                projectId: activeProject?.projectId || '',
-                itemsList: []//initially its empty and whene image is generated via task queue it will be pushed to this array on by one
+                totalImages: uniqueItemIds.length,
             };
             const jobId = await addImageBatchProcessingJob(newJob);
             assertImageBatchJobCreateSucceeded(jobId, 'image_upload_batch_job_create_rejected');
             createdJobId = jobId;
-            createdJobSnapshot = {
+            const createdJobSnapshot: BatchImageGenerationJobType = {
                 ...newJob,
                 id: jobId,
-            } as BatchImageGenerationJobType;
+            };
             setActiveBatchImageJob?.(createdJobSnapshot);
 
             const payload: GenerateImageViaApiPayloadBatchType = {
-                generationConfig: batchGenerationConfig,
-                projectId: activeProject?.projectId || '',
+                generationConfig: canonicalConfig,
+                projectId,
                 businessType: storeDetails?.businessType || '',
-                itemsList: selectedItemsForBatch.map(id => items.find(item => item.id === id)).map(item => {
-                    if (item) {
-                        const itemData: GenerateImageViaApiPayloadItemDetailsType = {
-                            id: item.id,
-                            name: item.itemName,
-                            category: item.categoryName,
-                            description: item.descriptionLine,
-                            attributes: item.attributesList,
-                        }
-                        return itemData;
-                    }
-                }).filter(item => item !== undefined),
-                jobId: jobId
-            }
+                itemsList: payloadItems,
+                jobId,
+            };
 
-            await triggerBatchImageGenerationApi(payload);
+            const triggerResult = await triggerBatchImageGenerationApi(payload);
             if (storeDetails?.tenantId && storeDetails?.storeId) {
-                saveImageGenPreferences(storeDetails.tenantId, storeDetails.storeId, batchGenerationConfig);
+                saveImageGenPreferences(storeDetails.tenantId, storeDetails.storeId, canonicalConfig);
             }
-            await persistProjectImagePreferences(batchGenerationConfig);
-            message.success('Batch image generation started successfully');
+            await persistProjectImagePreferences(canonicalConfig);
+            if (triggerResult.partial) {
+                message.warning(`${triggerResult.failedItemIds.length} item${triggerResult.failedItemIds.length === 1 ? '' : 's'} could not start. The remaining images are being generated.`);
+            } else {
+                message.success(source === 'retry' ? 'A new retry job has started.' : 'Batch image generation started successfully');
+            }
 
-        } catch (error: any) {
-            if (createdJobId && activeProject?.projectId) {
-                const failureReason = error instanceof AICapacityError
-                    ? "Additional AI enhancements needed for this batch."
-                    : "Batch image generation could not start.";
-                const failedStatusEntry = {
-                    status: BATCH_IMAGE_GENERATION_JOB_STATUS.FAILED,
-                    reason: failureReason,
-                    createdOn: getISOStringDate(),
-                };
-                try {
-                    const failedJobUpdate = await updateImageBatchProcessingJob({
-                        error: failureReason,
-                        id: createdJobId,
-                        status: BATCH_IMAGE_GENERATION_JOB_STATUS.FAILED,
-                        statusHistory: [
-                            failedStatusEntry,
-                        ],
-                    }, activeProject.projectId);
-                    assertImageBatchJobUpdateSucceeded(
-                        failedJobUpdate,
-                        createdJobId,
-                        BATCH_IMAGE_GENERATION_JOB_STATUS.FAILED,
-                        'image_upload_batch_job_mark_failed_rejected',
-                    );
-                } catch (updateError) {
-                    logMenuEditorFailure('menu_editor_batch_image_job_mark_failed', updateError, {
-                        ...getMenuEditorProjectLogContext(activeProject.projectId, activeProject.masterProjectId),
-                        ...getBoundedMenuEditorStringContext('jobId', createdJobId),
-                    });
-                }
-                if (createdJobSnapshot) {
-                    setActiveBatchImageJob?.({
-                        ...createdJobSnapshot,
-                        error: failureReason,
-                        status: BATCH_IMAGE_GENERATION_JOB_STATUS.FAILED,
-                        statusHistory: [
-                            ...(createdJobSnapshot.statusHistory || []),
-                            failedStatusEntry,
-                        ],
-                    });
-                }
-            }
+        } catch (error: unknown) {
             if (error instanceof AICapacityError) {
                 message.info('Get more enhancements to continue. Visit Billing to add an enhancement pack.');
             } else {
                 logMenuEditorFailure('menu_editor_batch_image_generation_start_failed', error, {
                     ...getMenuEditorProjectLogContext(activeProject?.projectId, activeProject?.masterProjectId),
                     ...getBoundedMenuEditorStringContext('jobId', createdJobId),
-                    batchItemCount: selectedItemsForBatch.length,
-                    hasExistingJobSnapshot: Boolean(createdJobSnapshot),
+                    batchItemCount: requestedItemIds.length,
+                    source,
                 });
-                message.error('Image generation could not start. Please try again.');
+                message.error('We could not confirm that image generation started. Check this job before trying again.');
             }
+            throw error;
         } finally {
+            batchStartInFlightRef.current = false;
             dispatch(stopLoader("Starting batch image generation"));
             dispatch(stopLoader("Triggering batch image generation"));
         }
-    }
+    };
+
+    const onStartBatchGeneration = async (): Promise<void> => {
+        try {
+            await createAndTriggerBatchGeneration(selectedItemsForBatch, batchGenerationConfig, 'new');
+        } catch {
+            // Owner-safe messaging and diagnostics are handled by the shared boundary.
+        }
+    };
+
+    const onRetryBatchGeneration = async (failedJob: BatchImageGenerationJobType): Promise<void> => {
+        const retryItemIds = failedJob.failedItemIds?.length
+            ? failedJob.failedItemIds
+            : failedJob.requestedItemIds || [];
+        await createAndTriggerBatchGeneration(retryItemIds, failedJob.generationConfig, 'retry');
+    };
 
     const addPreparedUploadFile = useCallback(async (
         file: File & { uid?: string },
@@ -741,8 +746,9 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
         <BatchImageGenerationResultView
             activeBatchImageJob={activeBatchImageJob}
             projectData={projectData}
-            onProjectDataUpdate={onProjectDataUpdate}
+            onBatchImagesPersist={onBatchImagesPersist}
             onComplete={onClose}
+            onRetry={onRetryBatchGeneration}
         />
     )
 

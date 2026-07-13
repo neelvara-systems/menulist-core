@@ -1,21 +1,24 @@
 # Videos - Founder Review
 
-**Status:** Approved for production planning, blocked before public publishing
+**Status:** Approved for conversion-first production and organic baseline preparation; blocked before paid scale and final public release
 **Created:** July 7, 2026
 **Reviewer:** Codex acting as founder/product-strategy reviewer for MenuList
 **Scope:** Founder review of the MenuList launch video system, AI-era market layer, 12 individual production handoffs, campaign calendar, and future AI-search concept.
 
+**Current founder-approved production authority:** [MenuList Founder-Approved Video Production Standard](./videos_founder-approved-production-standard.md). It records the permanent creative and execution defaults established after the iterative Owner Ease V4 reviews.
+
 ## Review Verdict
 
-The MenuList video system is approved for production planning.
+The MenuList video system is approved for conversion-first production planning.
 
 It is not yet approved for public publishing because final production assets, demo data, UI captures, founder voice/talking-head decision, CTA destination, tracking plan, and final claim review are still pending.
 
 Founder-level decision:
 
 ```text
-Proceed to production preparation.
-Do not publish or run paid distribution until the production gates in this review pass.
+Proceed one conversion asset at a time.
+Approve the native versions and establish an organic baseline before expanding production.
+Do not run paid distribution until the measurement gates in this review pass.
 ```
 
 ## What Is Approved
@@ -132,6 +135,18 @@ The first launch must teach the core MenuList workflow before adding the broader
 
 The future video can be produced after the 12 launch videos are complete and the search/AI wording has passed final review.
 
+### 8. Conversion-First Workflow
+
+Approved.
+
+Every distributable version must use:
+
+- [launch-video conversion research](./videos_launch-video-conversion-research.md);
+- [conversion brief template](./videos_conversion-brief-template.md);
+- [campaign measurement ledger](./videos_campaign-measurement-ledger.md).
+
+Views are diagnostic. The intended business result is an owner-approved customer link from a qualified video-referred session. Paid eligibility must remain blocked until the product journey can distinguish CTA clicks from private-preview, claim, and approved-publish progress.
+
 ## What Is Not Approved
 
 Do not use these claims or visuals:
@@ -213,7 +228,36 @@ The docs are ready, but public video publishing is not ready until the team has:
 - final claim-boundary review;
 - campaign tracking decision.
 
+### Finding 6 - Production Order Must Follow Learning, Not Asset Size
+
+Severity: high if ignored.
+
+The earlier hero-first order has been replaced. The current Owner Ease V4 already tests the strongest conversion objection: non-technical owners do not want to retype or configure another system.
+
+Required sequence:
+
+```text
+Approve one 30-second conversion bridge
+-> create its native 9:16 version
+-> test one alternate hook
+-> produce setup and approval proof reels
+-> expand the approved language and motion system into hero and demo assets
+```
+
+This avoids producing twelve polished assets before the first owner-response signal exists.
+
 ## Required Production Gates
+
+### Gate 0 - Conversion Contract
+
+Before script or animation work:
+
+- complete `conversion.md` from the shared template;
+- assign a unique asset id and `utm_content` value;
+- lock one audience, problem, belief change, proof moment, display close, linked action, and destination;
+- select the deepest reliable primary metric and one guard metric;
+- add the asset to the campaign measurement ledger;
+- mark paid eligibility as eligible or blocked with a reason.
 
 ### Gate 1 - Script Freeze
 
@@ -276,26 +320,40 @@ Before launch sequence:
 - confirm who responds to inbound leads;
 - confirm launch-day owner/founder availability.
 
+### Gate 7 - Measurement And Learning
+
+Before scale or the next major asset batch:
+
+- record publish URL/date, retention, linked action, and available product progress;
+- separate organic, paid, website embed, and WhatsApp sales traffic with UTM identity;
+- keep missing values as `Not available`;
+- review owner misunderstandings and support questions;
+- decide `keep`, `iterate one variable`, `scale`, or `retire`;
+- reject variants that improve clicks while lowering private-preview, claim, or approved-publish quality.
+
 ## Approved Production Order
 
 Produce in this order:
 
-1. 75-sec Product Launch / Hero Film.
-2. 2-3 min Product Demo Walkthrough.
-3. 30-sec Launch Announcement Cut.
-4. Old PDF Problem Reel.
-5. QR Stale Page Reel.
-6. Photo/PDF to Customer Link Reel.
-7. Owner Approval / Review Before Publishing Reel.
-8. One Link Everywhere Reel.
-9. AI Menu Manager Reel.
-10. Official Business Page Reel.
-11. Multi-location Reel.
-12. Founder / Brand POV Video.
+1. Approve the current 30-sec Owner Ease V4 conversion bridge.
+2. Produce native 9:16 Owner Ease V4.
+3. Produce the single alternate-hook Owner Ease variant.
+4. Photo/PDF to Customer Link Reel.
+5. Owner Approval / Review Before Publishing Reel.
+6. 75-sec Product Launch / Hero Film.
+7. 2-3 min Product Demo Walkthrough.
+8. 30-sec Launch Announcement Cut.
+9. Old PDF Problem Reel.
+10. QR Stale Page Reel.
+11. One Link Everywhere Reel.
+12. AI Menu Manager Reel.
+13. Official Business Page Reel.
+14. Multi-location Reel.
+15. Founder / Brand POV Video.
 
 Rationale:
 
-The first two assets create the product truth. The launch cut and reels then repeat the same truth in shorter forms. Founder POV comes after product proof unless founder footage is already ready.
+The current conversion bridge validates the lowest-friction owner message before the production system expands. The setup and approval reels then isolate the two most important proofs. The hero and demo inherit the approved language, motion, audio, and objections instead of guessing them at larger scope.
 
 ## Founder Notes To The Team
 
@@ -313,7 +371,8 @@ If a frame does not show product truth or real owner/customer context, cut it.
 
 ```text
 Approved for production preparation.
-Not approved for public publishing until production gates pass.
+Approved for organic baseline preparation after final asset review.
+Not approved for paid scale until conversion measurement gates pass.
 ```
 
-The next operational step is to create the production tracker and assign each video to asset capture, edit, review, export, and publish states.
+The production tracker now exists as [videos_campaign-measurement-ledger.md](./videos_campaign-measurement-ledger.md). The next operational asset is the native 9:16 Owner Ease V4, followed by one hook-only variant.

@@ -1,7 +1,9 @@
 'use client';
 
 import { ANSWERLATTICE_ROUTES, toAnswerlatticeDashboardRoute } from '@constant/answerlattice/routes';
+import { getAnswerlatticePlans } from '@data/answerlattice/plans';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
+import { normalizeRazorpaySubscriptionCheckoutUrl } from '@lib/razorpay/checkoutUrl';
 import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { trackPlausibleEvent } from '@lib/website/plausible';
@@ -11,17 +13,29 @@ import { useEffect, useMemo, useState } from 'react';
 
 type OnboardingStep = 'auth' | 'details' | 'creating' | 'done';
 type BillingModel = 'subscription' | 'usage' | 'one_time' | 'not_sure';
+type BillingCurrency = 'INR' | 'USD';
 
 interface OnboardResult {
-    tenantId: number;
-    storeId: number;
-    apiKey: string;
+    apiKey: string | null;
+    billing: {
+        amount: number;
+        currency: BillingCurrency;
+        interval: 'MONTH';
+    };
+    recovered: boolean;
     subscription?: {
         id: string;
         shortUrl?: string | null;
         status?: string | null;
     } | null;
     plan: { id: string; name: string; isBeta: boolean };
+    widgetKeyNeedsRotation: boolean;
+    workspaceCreated: true;
+}
+
+interface OnboardErrorResult {
+    code: string;
+    error?: string;
 }
 
 type AnswerlatticeAnalyticsWindow = Window & {
@@ -36,6 +50,10 @@ const SURFACE_OPTIONS = [
     { key: 'integrations', label: 'Connected apps' },
     { key: 'release_notes', label: 'Release notes' },
 ];
+const ONBOARDING_PLANS = getAnswerlatticePlans()
+    .filter((plan) => plan.billingInterval === 'MONTH')
+    .sort((left, right) => left.priceINR.price - right.priceINR.price);
+const ONBOARDING_PLAN_IDS = new Set(ONBOARDING_PLANS.map((plan) => plan.planId));
 const ANSWERLATTICE_ONBOARDING_FAILED_MESSAGE = 'Could not create the workspace right now. Please try again.';
 const ANSWERLATTICE_ONBOARD_RESPONSE_JSON_MAX_BYTES = 16 * 1024;
 
@@ -51,20 +69,33 @@ const isNonEmptyString = (value: unknown): value is string => (
 
 const isOnboardResult = (value: unknown): value is OnboardResult => {
     if (!isPlainRecord(value)) return false;
-    if (!Number.isFinite(value.tenantId) || !Number.isFinite(value.storeId)) return false;
-    if (!isNonEmptyString(value.apiKey)) return false;
+    if (value.workspaceCreated !== true) return false;
+    if (value.apiKey !== null && !isNonEmptyString(value.apiKey)) return false;
+    if (typeof value.recovered !== 'boolean' || typeof value.widgetKeyNeedsRotation !== 'boolean') return false;
+    if (!isPlainRecord(value.billing)) return false;
+    if (!Number.isFinite(value.billing.amount) || Number(value.billing.amount) <= 0) return false;
+    if (!['INR', 'USD'].includes(String(value.billing.currency))) return false;
+    if (value.billing.interval !== 'MONTH') return false;
     if (!isPlainRecord(value.plan)) return false;
     if (!isNonEmptyString(value.plan.id) || !isNonEmptyString(value.plan.name) || typeof value.plan.isBeta !== 'boolean') return false;
 
     if (value.subscription !== undefined && value.subscription !== null) {
         if (!isPlainRecord(value.subscription)) return false;
         if (!isNonEmptyString(value.subscription.id)) return false;
-        if (value.subscription.shortUrl !== undefined && value.subscription.shortUrl !== null && typeof value.subscription.shortUrl !== 'string') return false;
+        if (
+            value.subscription.shortUrl !== undefined
+            && value.subscription.shortUrl !== null
+            && normalizeRazorpaySubscriptionCheckoutUrl(value.subscription.shortUrl) === null
+        ) return false;
         if (value.subscription.status !== undefined && value.subscription.status !== null && typeof value.subscription.status !== 'string') return false;
     }
 
     return true;
 };
+
+const isOnboardErrorResult = (value: unknown): value is OnboardErrorResult => (
+    isPlainRecord(value) && isNonEmptyString(value.code)
+);
 
 const readAnswerlatticeOnboardResponseJson = async (
     response: Response,
@@ -99,25 +130,44 @@ const colors = {
     danger: 'var(--al-danger)',
 } as const;
 
-export default function OnboardingForm() {
+interface OnboardingFormProps {
+    initialCurrency?: BillingCurrency;
+    initialPlanId?: string;
+}
+
+export default function OnboardingForm({
+    initialCurrency = 'INR',
+    initialPlanId = 'answerlattice_starter',
+}: OnboardingFormProps) {
     return (
         <SessionProvider>
-            <OnboardingFormInner />
+            <OnboardingFormInner initialCurrency={initialCurrency} initialPlanId={initialPlanId} />
         </SessionProvider>
     );
 }
 
-function OnboardingFormInner() {
+function OnboardingFormInner({ initialCurrency, initialPlanId }: Required<OnboardingFormProps>) {
     const { data: session, status, update } = useSession();
     const [step, setStep] = useState<OnboardingStep>(status === 'authenticated' ? 'details' : 'auth');
     const [companyName, setCompanyName] = useState('');
     const [productName, setProductName] = useState('');
     const [productUrl, setProductUrl] = useState('');
     const [supportEmail, setSupportEmail] = useState('');
+    const [currency, setCurrency] = useState<BillingCurrency>(initialCurrency);
+    const [planId, setPlanId] = useState(
+        ONBOARDING_PLAN_IDS.has(initialPlanId) ? initialPlanId : 'answerlattice_starter',
+    );
     const [billingModel, setBillingModel] = useState<BillingModel>('subscription');
     const [primarySurfaces, setPrimarySurfaces] = useState<string[]>(['billing', 'onboarding', 'settings']);
     const [error, setError] = useState<string | null>(null);
     const [result, setResult] = useState<OnboardResult | null>(null);
+    const selectedPlan = useMemo(
+        () => ONBOARDING_PLANS.find((plan) => plan.planId === planId) || ONBOARDING_PLANS[0],
+        [planId],
+    );
+    const selectedPlanPrice = currency === 'USD'
+        ? `US$${Math.round(selectedPlan.priceUSD.price / 100).toLocaleString('en-US')}`
+        : `₹${Math.round(selectedPlan.priceINR.price / 100).toLocaleString('en-IN')}`;
     const existingAnswerlatticeScope = useMemo(() => resolveAnswerlatticeSessionScope(session), [session]);
     const mainDashboardHref = useMemo(() => {
         const hostname = typeof window === 'undefined' ? undefined : window.location.hostname;
@@ -196,6 +246,8 @@ function OnboardingFormInner() {
             hasSupportEmail: Boolean(trimmedSupportEmail),
             supportEmailLength: trimmedSupportEmail.length,
             billingModel,
+            currency,
+            planId,
             primarySurfaceCount: primarySurfaces.length,
         };
 
@@ -213,20 +265,40 @@ function OnboardingFormInner() {
                     supportEmail: trimmedSupportEmail || undefined,
                     billingModel,
                     primarySurfaces,
-                    planId: 'answerlattice_starter',
+                    planId,
                     interval: 'MONTH',
+                    currency,
                 }),
             });
 
             const data = await readAnswerlatticeOnboardResponseJson(res, responseLogContext);
 
-            if (!res.ok || !isOnboardResult(data)) {
-                if (res.ok) {
-                    logRuntimeFailure('answerlattice_onboard_response_invalid', new Error('answerlattice_onboard_response_invalid'), {
-                        ...responseLogContext,
-                        responseStatus: res.status,
-                    });
+            if (!res.ok) {
+                if (isOnboardErrorResult(data)) {
+                    if (data.code === 'ANSWERLATTICE_SETUP_IN_PROGRESS') {
+                        setError('Workspace setup is already running. Wait a moment, then try again.');
+                        setStep('details');
+                        return;
+                    }
+                    if (data.code === 'ANSWERLATTICE_SETUP_REQUEST_CHANGED') {
+                        setError('A setup attempt is already running with different details. Wait a moment, then refresh.');
+                        setStep('details');
+                        return;
+                    }
+                    if (data.code === 'ANSWERLATTICE_ACCOUNT_EXISTS') {
+                        await update();
+                        setError('This Google account already has an AnswerLattice workspace. Refresh to open it.');
+                        setStep('details');
+                        return;
+                    }
                 }
+                throw new Error(ANSWERLATTICE_ONBOARDING_FAILED_MESSAGE);
+            }
+            if (!isOnboardResult(data)) {
+                logRuntimeFailure('answerlattice_onboard_response_invalid', new Error('answerlattice_onboard_response_invalid'), {
+                    ...responseLogContext,
+                    responseStatus: res.status,
+                });
                 throw new Error(ANSWERLATTICE_ONBOARDING_FAILED_MESSAGE);
             }
 
@@ -409,6 +481,39 @@ function OnboardingFormInner() {
                     </div>
 
                     <div style={styles.fieldGroup}>
+                        <label htmlFor="answerlattice-plan" style={styles.label}>Plan</label>
+                        <select
+                            id="answerlattice-plan"
+                            value={planId}
+                            onChange={(event) => setPlanId(event.target.value)}
+                            style={styles.select}
+                        >
+                            {ONBOARDING_PLANS.map((plan) => (
+                                <option key={plan.planId} value={plan.planId}>{plan.name}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <fieldset style={styles.fieldset}>
+                        <legend style={styles.label}>Checkout currency</legend>
+                        <div style={styles.currencyGrid}>
+                            {(['INR', 'USD'] as BillingCurrency[]).map((option) => (
+                                <label key={option} style={styles.currencyOption}>
+                                    <input
+                                        type="radio"
+                                        name="answerlattice-currency"
+                                        value={option}
+                                        checked={currency === option}
+                                        onChange={() => setCurrency(option)}
+                                        style={styles.checkboxInput}
+                                    />
+                                    {option}
+                                </label>
+                            ))}
+                        </div>
+                    </fieldset>
+
+                    <div style={styles.fieldGroup}>
                         <label style={styles.label}>Main product pages</label>
                         <div style={styles.checkboxGrid}>
                             {SURFACE_OPTIONS.map((surface) => (
@@ -426,9 +531,9 @@ function OnboardingFormInner() {
                     </div>
 
                     <div style={styles.planBadge}>
-                        <span style={styles.planLabel}>Starter plan</span>
-                        <span style={styles.planPrice}>Paid monthly setup</span>
-                        <span style={styles.planDesc}>Creates the workspace, product account bridge, pending paid subscription, product surfaces, and one-time widget key.</span>
+                        <span style={styles.planLabel}>{selectedPlan.name} plan</span>
+                        <span style={styles.planPrice}>{selectedPlanPrice} / month</span>
+                        <span style={styles.planDesc}>{selectedPlan.priceINR.monthlyCredits} support credits each month. Workspace setup creates a pending paid subscription and a one-time widget key.</span>
                     </div>
 
                     {error && <p style={styles.error}>{error}</p>}
@@ -437,7 +542,7 @@ function OnboardingFormInner() {
                         onClick={handleCreateAccount}
                         style={styles.primaryBtn}
                         data-answerlattice-event="onboarding_create_clicked"
-                        data-answerlattice-label="starter_workspace"
+                        data-answerlattice-label={`${planId}_${currency.toLowerCase()}`}
                     >
                         Create workspace
                     </button>
@@ -465,10 +570,27 @@ function OnboardingFormInner() {
                             <span style={styles.detailLabel}>Plan</span>
                             <span style={styles.detailValue}>{result.plan.name}</span>
                         </div>
-                        <div style={{ ...styles.detailItem, gridColumn: '1 / -1' }}>
-                            <span style={styles.detailLabel}>Widget key</span>
-                            <code style={styles.apiKey}>{result.apiKey}</code>
+                        <div style={styles.detailItem}>
+                            <span style={styles.detailLabel}>Pending subscription</span>
+                            <span style={styles.detailValue}>
+                                {result.billing.currency === 'USD'
+                                    ? `US$${Math.round(result.billing.amount / 100).toLocaleString('en-US')}`
+                                    : `₹${Math.round(result.billing.amount / 100).toLocaleString('en-IN')}`} / month
+                            </span>
                         </div>
+                        {result.apiKey ? (
+                            <div style={{ ...styles.detailItem, gridColumn: '1 / -1' }}>
+                                <span style={styles.detailLabel}>Widget key</span>
+                                <code style={styles.apiKey}>{result.apiKey}</code>
+                            </div>
+                        ) : (
+                            <div style={{ ...styles.detailItem, gridColumn: '1 / -1' }}>
+                                <span style={styles.detailLabel}>Widget key</span>
+                                <span style={styles.detailValue}>
+                                    The workspace was recovered safely. Create a new widget key from the dashboard before installation.
+                                </span>
+                            </div>
+                        )}
                     </div>
 
                     <div style={styles.nextSteps}>
@@ -487,7 +609,8 @@ function OnboardingFormInner() {
                             href={result.subscription.shortUrl}
                             style={styles.primaryBtn}
                             data-answerlattice-event="onboarding_payment_clicked"
-                            data-answerlattice-label="starter_checkout"
+                            data-answerlattice-label={`${result.plan.id}_${result.billing.currency.toLowerCase()}`}
+                            rel="noopener noreferrer"
                         >
                             Complete payment
                         </a>
@@ -523,7 +646,7 @@ const styles: Record<string, CSSProperties> = {
     googleBtn: {
         display: 'flex', alignItems: 'center', gap: 10, padding: '12px 24px',
         borderRadius: 8, border: `1px solid ${colors.borderStrong}`, background: colors.surface,
-        color: colors.textPrimary, fontSize: 14, fontWeight: 500, cursor: 'pointer', width: '100%', justifyContent: 'center',
+        color: colors.textPrimary, fontSize: 14, fontWeight: 500, cursor: 'pointer', width: '100%', minHeight: 44, justifyContent: 'center',
     },
     terms: { fontSize: 11, color: colors.textMuted, marginTop: 16, textAlign: 'center' },
     signedInBox: {
@@ -545,7 +668,7 @@ const styles: Record<string, CSSProperties> = {
     signedInEmail: { fontSize: 13, fontWeight: 600, color: colors.textPrimary, overflowWrap: 'anywhere' },
     switchAccountBtn: {
         flexShrink: 0,
-        minHeight: 36,
+        minHeight: 44,
         padding: '8px 10px',
         borderRadius: 8,
         border: `1px solid ${colors.primaryLight}`,
@@ -556,24 +679,31 @@ const styles: Record<string, CSSProperties> = {
         cursor: 'pointer',
     },
     fieldGroup: { width: '100%', marginBottom: 16 },
+    fieldset: { width: '100%', margin: '0 0 16px 0', padding: 0, border: 0 },
     label: { display: 'block', fontSize: 13, fontWeight: 500, color: colors.textSecondary, marginBottom: 6 },
     input: {
-        width: '100%', padding: '10px 14px', borderRadius: 8,
+        width: '100%', minHeight: 44, padding: '10px 14px', borderRadius: 8,
         border: `1px solid ${colors.borderStrong}`, background: colors.fieldBackground,
         color: colors.textPrimary, fontSize: 14, outline: 'none', boxSizing: 'border-box',
     },
     select: {
-        width: '100%', padding: '10px 14px', borderRadius: 8,
+        width: '100%', minHeight: 44, padding: '10px 14px', borderRadius: 8,
         border: `1px solid ${colors.borderStrong}`, background: colors.fieldBackground,
         color: colors.textPrimary, fontSize: 14, outline: 'none', boxSizing: 'border-box',
     },
     checkboxGrid: { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8, width: '100%' },
     checkboxOption: {
-        minHeight: 40, borderRadius: 8, border: `1px solid ${colors.border}`,
+        minHeight: 44, borderRadius: 8, border: `1px solid ${colors.border}`,
         background: colors.surfaceRaised, color: colors.textBody, fontSize: 13,
         display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', boxSizing: 'border-box',
     },
     checkboxInput: { width: 16, height: 16, accentColor: colors.primary },
+    currencyGrid: { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8, width: '100%' },
+    currencyOption: {
+        minHeight: 44, borderRadius: 8, border: `1px solid ${colors.border}`,
+        background: colors.surfaceRaised, color: colors.textBody, fontSize: 13, fontWeight: 600,
+        display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', boxSizing: 'border-box',
+    },
     planBadge: {
         width: '100%', padding: '12px 16px', borderRadius: 8,
         border: '1px solid rgb(var(--al-primary-rgb) / 0.3)', background: 'rgb(var(--al-primary-rgb) / 0.08)',

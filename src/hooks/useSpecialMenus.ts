@@ -17,9 +17,11 @@ import {
     getSpecialMenus,
     updateSpecialMenuProject as dalUpdate,
 } from "@database/projects";
+import { getLocalizedText, getPrimaryLocalizedLanguage } from "@lib/localization/text";
+import { PlatformGlobalDataContext, type PlatformGlobalDataProviderType } from "@providers/platformProviders/platformGlobalDataProvider";
 import { getBoundedHookStringContext, logHookFailure } from "./hookDiagnostics";
 import type { SpecialMenuMode, SpecialMenuStatus } from "@template/main-app/projects/types";
-import { useCallback } from "react";
+import { useCallback, useContext } from "react";
 import useSWR from "swr";
 
 export interface SpecialMenuListItem {
@@ -155,9 +157,12 @@ export interface UseSpecialMenusReturn {
 
 export function useSpecialMenus(): UseSpecialMenusReturn {
     const enabled = FEATURE_FLAGS.ENABLE_SPECIAL_MENU_SWITCHING;
+    const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
+    const tId = storeDetails?.tenantId ? String(storeDetails.tenantId) : null;
+    const sId = storeDetails?.storeId ? String(storeDetails.storeId) : null;
 
     const { data, error, isLoading, mutate } = useSWR<SpecialMenuListResponse>(
-        enabled ? "special-menus-list" : null,
+        enabled && tId && sId ? ["special-menus-list", tId, sId] : null,
         () => getSpecialMenus(),
         {
             revalidateOnFocus: false,
@@ -206,9 +211,15 @@ export function useSpecialMenus(): UseSpecialMenusReturn {
                 const result = await dalCreate(data);
                 assertSpecialMenuCreateSucceeded(result);
                 const nextStatus = (result.summaryData.specialMenuStatus || "scheduled") as SpecialMenuStatus;
+                const persistedDisplayName = result.summaryData.specialMenuDisplayName;
                 const nextMenu: SpecialMenuListItem = {
                     projectId: result.projectId,
-                    displayName: result.summaryData.specialMenuDisplayName || data.displayName,
+                    displayName: getLocalizedText(
+                        persistedDisplayName,
+                        undefined,
+                        getPrimaryLocalizedLanguage(persistedDisplayName, 'en'),
+                        data.displayName,
+                    ),
                     description: typeof result.summaryData.description === "string"
                         ? result.summaryData.description
                         : undefined,

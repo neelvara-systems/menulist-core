@@ -250,11 +250,12 @@ interface DerivedItemMetrics {
   availabilityToggleCount30d: number;
 
   // Computed values
-  daysSinceLastPriceChange: number;
-  daysSinceLastAvailabilityChange: number;
+  daysSinceLastPriceChange: number | null;
+  daysSinceLastAvailabilityChange: number | null;
 
   // Internal flags (NEVER exposed to UI)
-  _priceStale: boolean; // daysSinceLastPriceChange > 180
+  _priceStale: boolean | null;
+  _priceStaleStatus: 'measured' | 'unavailable_outside_rolling_window';
   _availabilityChurn: boolean; // toggleCount30d > 10
   _highVolatility: boolean; // priceChangeCount30d > 5
 
@@ -489,6 +490,8 @@ getAllItemStates(projectId: string): Promise<MenuItemState[]>
 
 **Schedule**: Nightly at 3 AM UTC (after other analytics)
 
+**Current runtime correction (July 13, 2026):** Project documents are read from `projects/{tId}/{sId}/{projectId}`; the top-level `projects` documents are tenant containers and are not queried as projects. The task reads each active store's 30-day MOL window once in 500-document timestamp/document-ID pages with a 50,000-document per-store/run budget, consumes detailed events and bounded `MENU_REVISION_SUMMARY.itemDriftChanges`, partitions contributions by the authoritative project document ID, and writes per-item metrics in batches of 400. Existing derived metrics are paged and removed when their contribution leaves the rolling window, so an old count cannot remain current. The 30-day source window cannot prove a 180-day price-staleness claim; `_priceStale` is therefore `null` with `unavailable_outside_rolling_window` unless the available timestamp can answer the threshold. This removes the former project-count multiplier and false non-stale defaults. Default revision summaries and publish events are not replacement-debounced; pathological compact-summary overflow is retained through detailed price/availability events.
+
 **Logic**:
 
 ```typescript
@@ -500,12 +503,11 @@ export const computeMenuDriftMetrics = onSchedule(
     memory: "256MiB",
   },
   async () => {
-    // 1. Get all active projects (query projects collection)
-    // 2. For each project:
-    //    a. Query menuChangeLog for last 30 days
-    //    b. Compute per-item metrics
-    //    c. Write to derivedItemMetrics
-    // 3. Log telemetry
+    // 1. Read active projects from projects/{tId}/{sId}
+    // 2. Read the store's menuChangeLog window once with stable pagination
+    // 3. Partition validated detailed/summary contributions by project and item
+    // 4. Write per-item metrics in bounded batches
+    // 5. Log telemetry
   }
 );
 ```
@@ -514,12 +516,18 @@ export const computeMenuDriftMetrics = onSchedule(
 
 ```typescript
 function computeFlags(metrics: Partial<DerivedItemMetrics>): {
-  _priceStale: boolean;
+  _priceStale: boolean | null;
+  _priceStaleStatus: 'measured' | 'unavailable_outside_rolling_window';
   _availabilityChurn: boolean;
   _highVolatility: boolean;
 } {
+  const priceStale = getPriceStaleAssessment(
+    metrics.daysSinceLastPriceChange ?? null,
+    180,
+  );
   return {
-    _priceStale: (metrics.daysSinceLastPriceChange || 0) > 180,
+    _priceStale: priceStale.value,
+    _priceStaleStatus: priceStale.status,
     _availabilityChurn: (metrics.availabilityToggleCount30d || 0) > 10,
     _highVolatility: (metrics.priceChangeCount30d || 0) > 5,
   };
@@ -651,8 +659,8 @@ function computeFlags(metrics: Partial<DerivedItemMetrics>): {
 | 1    | Trigger Cloud Function manually             | Function executes         | ⬜     |
 | 2    | Check `derivedItemMetrics` collection       | Metrics documents created | ⬜     |
 | 3    | Verify `priceChangeCount30d`                | Matches actual changes    | ⬜     |
-| 4    | Verify `daysSinceLastPriceChange`           | Calculated correctly      | ⬜     |
-| 5    | Verify internal flags (`_priceStale`, etc.) | Computed but not exposed  | ⬜     |
+| 4    | Verify `daysSinceLastPriceChange`           | Timestamp inside the rolling window, otherwise `null` | ⬜     |
+| 5    | Verify internal flags (`_priceStale`, etc.) | Measured value or explicit unavailable status; never exposed | ⬜     |
 | 6    | Check telemetry logs                        | Function health logged    | ⬜     |
 | 7    | Verify no UI exposure of metrics            | Nothing visible to users  | ⬜     |
 
@@ -702,7 +710,7 @@ This section exists only to show the eventual direction. **None of this is for n
 
 After 6 months of observation data:
 
-- Detect items with `_priceStale = true` for 1+ year
+- Detect items with measured `_priceStale = true` only after an authoritative lifecycle baseline exists
 - Detect items with `_availabilityChurn = true` consistently
 - Consider ONE silent intervention (e.g., flag in internal system)
 
@@ -823,7 +831,7 @@ try {
 }
 ```
 
-Flush helpers keep the same non-blocking contract: debounced writes and `flushPendingChanges()` use explicit `void` handoffs, and flush-time session lookup failures log `menu_change_log_flush_session_failed` with bounded entry context.
+Flush helpers preserve the non-blocking owner-work contract while keeping tenant identity immutable: each pending entry snapshots its validated tenant/store scope when queued, timer handoffs use that stored scope, and `flushPendingChanges()` awaits the drained queued writes without re-resolving a possibly switched active session. Firestore failures remain visible through bounded `menu_change_log_write_failed` diagnostics.
 
 ### D.4.2 Collection Reference Pattern
 

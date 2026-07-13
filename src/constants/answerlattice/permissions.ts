@@ -30,6 +30,8 @@ export type AnswerlatticeRoleDefinition = {
     sId: number;
     createdOn: string;
     createdBy: string;
+    creationRequestFingerprint?: string;
+    creationRequestId?: string;
     modifiedOn?: string;
     modifiedBy?: string;
 };
@@ -41,6 +43,11 @@ export const DEFAULT_ANSWERLATTICE_ROLE_IDS = {
 } as const;
 
 export type DefaultAnswerlatticeRoleId = typeof DEFAULT_ANSWERLATTICE_ROLE_IDS[keyof typeof DEFAULT_ANSWERLATTICE_ROLE_IDS];
+
+export function isDefaultAnswerlatticeRoleId(value: unknown): value is DefaultAnswerlatticeRoleId {
+    return typeof value === 'string'
+        && Object.values(DEFAULT_ANSWERLATTICE_ROLE_IDS).includes(value as DefaultAnswerlatticeRoleId);
+}
 
 export const ANSWERLATTICE_ALL_PERMISSIONS: AnswerlatticePermissionKey[] = Object.values(ANSWERLATTICE_PERMISSION_KEYS);
 
@@ -170,6 +177,8 @@ export const DEFAULT_ANSWERLATTICE_ROLE_METADATA = {
     },
 } as const;
 
+const DEFAULT_ANSWERLATTICE_ROLE_CREATED_ON = new Date(0).toISOString();
+
 export const ANSWERLATTICE_ROUTE_PERMISSION_REQUIREMENTS: Partial<Record<string, AnswerlatticePermissionKey>> = {
     [ANSWERLATTICE_ROUTES.ACTIVATION]: ANSWERLATTICE_PERMISSION_KEYS.VIEW_READINESS,
     [ANSWERLATTICE_ROUTES.INSTALL_CENTER]: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_WIDGET,
@@ -178,6 +187,9 @@ export const ANSWERLATTICE_ROUTE_PERMISSION_REQUIREMENTS: Partial<Record<string,
     [ANSWERLATTICE_ROUTES.TEAM]: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_TEAM,
     [ANSWERLATTICE_ROUTES.KNOWLEDGE_INTAKE]: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_KNOWLEDGE,
     [ANSWERLATTICE_ROUTES.KB_GENERATION]: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_KNOWLEDGE,
+    [ANSWERLATTICE_ROUTES.ANSWER_TESTS]: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_GOVERNANCE,
+    [ANSWERLATTICE_ROUTES.KNOWN_ISSUES]: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_GOVERNANCE,
+    [ANSWERLATTICE_ROUTES.SUPPORT_ASSISTANT]: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_SUPPORT,
     [ANSWERLATTICE_ROUTES.PRODUCT_SURFACES]: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_KNOWLEDGE,
     [ANSWERLATTICE_ROUTES.KNOWLEDGE_BASE]: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_KNOWLEDGE,
     [ANSWERLATTICE_ROUTES.FAQS]: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_KNOWLEDGE,
@@ -198,7 +210,6 @@ export function createDefaultAnswerlatticeRoles(params: {
     sId: number;
     createdBy: string;
 }): AnswerlatticeRoleDefinition[] {
-    const now = new Date().toISOString();
     return Object.entries(DEFAULT_ANSWERLATTICE_ROLE_METADATA).map(([roleId, metadata]) => ({
         id: roleId,
         name: metadata.name,
@@ -208,8 +219,8 @@ export function createDefaultAnswerlatticeRoles(params: {
         pId: PRODUCT_IDS.ANSWERLATTICE,
         tId: params.tId,
         sId: params.sId,
-        createdOn: now,
-        createdBy: params.createdBy || 'system',
+        createdOn: DEFAULT_ANSWERLATTICE_ROLE_CREATED_ON,
+        createdBy: 'system',
     }));
 }
 

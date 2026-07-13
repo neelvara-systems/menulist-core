@@ -11,9 +11,8 @@ import { recordAnswerlatticeAiOperation } from '@lib/answerlattice/aiAccounting'
 import { DRAFT_PROMPT_VERSION, DRAFT_SYSTEM_PROMPT, buildDraftUserPrompt, parseDraftResponse } from '@lib/answerlattice/draftPrompt';
 import { normalizeAnswerlatticeMutationProposalId, normalizeAnswerlatticeResolvedEntityId } from '@lib/answerlattice/governanceIdBoundary';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
-import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
+import { normalizeAnswerlatticeScopeDocumentId, resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
-import { admin } from '@lib/firebase/firebaseAdmin';
 import { logger } from '@lib/monitoring/logger';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
@@ -21,15 +20,55 @@ import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/
 import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { getSafeZodValidationDetails } from '@lib/security/inputValidation';
 import { callGeminiChatWithMetadata } from '@lib/vectorEmbeddings';
+import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { withAuth } from '../../../../../middleware/auth';
 
 const RequestSchema = z.object({
     proposalId: z.string().trim().refine((value) => normalizeAnswerlatticeMutationProposalId(value) === value),
-    regeneratedBy: z.string().trim().max(160).optional(),
-});
+    requestId: z.string().trim().min(8).max(80).regex(/^[A-Za-z0-9_-]+$/),
+}).strict();
 const DRAFT_REGENERATE_MAX_BODY_BYTES = 4 * 1024;
+const DRAFT_REGENERATE_LEASE_MS = 15 * 60 * 1000;
+
+const timestampToMillis = (value: unknown): number => {
+    if (!value || typeof value !== 'object') return 0;
+    const candidate = value as { toMillis?: () => number; seconds?: unknown };
+    if (typeof candidate.toMillis === 'function') {
+        const millis = candidate.toMillis();
+        return Number.isFinite(millis) ? millis : 0;
+    }
+    const seconds = candidate.seconds;
+    return typeof seconds === 'number' && Number.isSafeInteger(seconds) && seconds > 0
+        ? seconds * 1_000
+        : 0;
+};
+
+async function markManualDraftClaimFailed(
+    proposalRef: FirebaseFirestore.DocumentReference,
+    requestId: string,
+    actor: string,
+): Promise<void> {
+    await answerlatticeFirestoreAdmin.runTransaction(async transaction => {
+        const currentSnap = await transaction.get(proposalRef);
+        const current = currentSnap.data() || {};
+        if (
+            !currentSnap.exists
+            || current.status !== 'pending_review'
+            || current.suggestedChange?.draftProcessingRun?.id !== requestId
+        ) return;
+        transaction.set(proposalRef, {
+            suggestedChange: {
+                ...(current.suggestedChange || {}),
+                draftStatus: 'failed',
+                draftProcessingRun: null,
+            },
+            modifiedBy: actor,
+            modifiedOn: FieldValue.serverTimestamp(),
+        }, { merge: true });
+    });
+}
 
 function extractSignalText(metadata?: Record<string, any>): string | null {
     if (!metadata) return null;
@@ -55,7 +94,7 @@ async function gatherSignalExamples(tId: number, sId: number, entityId: string):
             .where('tId', '==', tId)
             .where('sId', '==', sId)
             .where('entityId', '==', entityId)
-            .where('timestamp', '>=', admin.firestore.Timestamp.fromDate(windowStart))
+            .where('timestamp', '>=', Timestamp.fromDate(windowStart))
             .orderBy('timestamp', 'desc')
             .limit(200)
             .get();
@@ -109,6 +148,9 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     let storeIdForLog: number | string | undefined;
     const userIdForLog = session.uId || session.user?.id;
     let proposalIdForLog: string | undefined;
+    let requestIdForLog: string | undefined;
+    let claimedProposalRef: FirebaseFirestore.DocumentReference | null = null;
+    let claimedActor = 'answerlattice_owner';
 
     try {
         const scope = resolveAnswerlatticeSessionScope(session);
@@ -181,11 +223,13 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             );
         }
 
-        const { proposalId, regeneratedBy } = validation.data;
+        const { proposalId, requestId } = validation.data;
         proposalIdForLog = proposalId;
-        const actor = regeneratedBy || session.user?.email || session.user?.name || String(userId);
-        const tenantId = Number(scope.tenantId);
-        const storeId = Number(scope.storeId);
+        requestIdForLog = requestId;
+        const actor = session.user?.email || session.user?.name || String(userId);
+        claimedActor = actor;
+        const tenantId = scope.tenantId;
+        const storeId = scope.storeId;
         const proposalRef = answerlatticeFirestoreAdmin
             .collection(DB_COLLECTIONS.ANSWERLATTICE_MUTATION_PROPOSALS)
             .doc(proposalId);
@@ -196,11 +240,18 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         }
 
         const proposal = proposalSnap.data() || {};
-        if (Number(proposal.tId) !== tenantId || Number(proposal.sId) !== storeId) {
+        if (
+            proposal.pId !== PRODUCT_IDS.ANSWERLATTICE
+            || normalizeAnswerlatticeScopeDocumentId(proposal.tId) !== tenantId
+            || normalizeAnswerlatticeScopeDocumentId(proposal.sId) !== storeId
+        ) {
             return NextResponse.json({ error: 'Proposal is outside the current Answerlattice workspace' }, { status: 403 });
         }
-        if (proposal.mutationType !== 'new_answer_required') {
-            return NextResponse.json({ error: 'Draft generation only supports new answer proposals' }, { status: 422 });
+        if (proposal.status !== 'pending_review') {
+            return NextResponse.json({ error: 'Only pending proposals can generate a draft' }, { status: 409 });
+        }
+        if (proposal.mutationType !== 'new_answer_required' && proposal.mutationType !== 'content_refinement') {
+            return NextResponse.json({ error: 'This proposal type does not support draft generation' }, { status: 422 });
         }
 
         const entityId = Array.isArray(proposal.relatedEntityIds) ? normalizeAnswerlatticeResolvedEntityId(proposal.relatedEntityIds[0]) : null;
@@ -217,9 +268,57 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         }
 
         const entity = entitySnap.data() || {};
-        if (Number(entity.tId) !== tenantId || Number(entity.sId) !== storeId) {
+        if (
+            entity.pId !== PRODUCT_IDS.ANSWERLATTICE
+            || normalizeAnswerlatticeScopeDocumentId(entity.tId) !== tenantId
+            || normalizeAnswerlatticeScopeDocumentId(entity.sId) !== storeId
+            || entity.status === 'deprecated'
+        ) {
             return NextResponse.json({ error: 'Related entity is outside the current Answerlattice workspace' }, { status: 403 });
         }
+
+        const claimResult = await answerlatticeFirestoreAdmin.runTransaction(async transaction => {
+            const currentSnap = await transaction.get(proposalRef);
+            const current = currentSnap.data() || {};
+            if (
+                !currentSnap.exists
+                || current.pId !== PRODUCT_IDS.ANSWERLATTICE
+                || normalizeAnswerlatticeScopeDocumentId(current.tId) !== tenantId
+                || normalizeAnswerlatticeScopeDocumentId(current.sId) !== storeId
+                || current.status !== 'pending_review'
+            ) return 'changed' as const;
+            if (
+                current.suggestedChange?.lastDraftRequestId === requestId
+                && current.suggestedChange?.draftStatus === 'generated'
+            ) return 'replayed' as const;
+            const activeLease = timestampToMillis(current.suggestedChange?.draftProcessingRun?.leaseExpiresAt) > Date.now();
+            if (activeLease) return 'busy' as const;
+            const now = Timestamp.now();
+            transaction.set(proposalRef, {
+                suggestedChange: {
+                    ...(current.suggestedChange || {}),
+                    draftStatus: 'pending',
+                    draftProcessingRun: {
+                        id: requestId,
+                        startedAt: now,
+                        leaseExpiresAt: Timestamp.fromMillis(Date.now() + DRAFT_REGENERATE_LEASE_MS),
+                    },
+                },
+                modifiedBy: actor,
+                modifiedOn: FieldValue.serverTimestamp(),
+            }, { merge: true });
+            return 'claimed' as const;
+        });
+        if (claimResult === 'replayed') {
+            return NextResponse.json({ ok: true, success: true, replayed: true });
+        }
+        if (claimResult === 'busy') {
+            return NextResponse.json({ error: 'Draft generation is already in progress' }, { status: 409 });
+        }
+        if (claimResult !== 'claimed') {
+            return NextResponse.json({ error: 'Proposal changed before draft generation started' }, { status: 409 });
+        }
+        claimedProposalRef = proposalRef;
 
         const [signalExamples, existingAnswerSummaries] = await Promise.all([
             gatherSignalExamples(tenantId, storeId, entityId),
@@ -231,6 +330,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             entityType: String(entity.type || 'feature'),
             signalExamples,
             existingAnswerSummaries,
+            mode: proposal.mutationType === 'content_refinement' ? 'refine_existing' : 'new_answer',
         });
         const combinedPrompt = `${DRAFT_SYSTEM_PROMPT}\n\n${userPrompt}`;
         const startedAt = Date.now();
@@ -262,67 +362,119 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
         const parsed = parseDraftResponse(geminiResult.text);
         if (!parsed) {
-            await proposalRef.set({
-                suggestedChange: {
-                    ...(proposal.suggestedChange || {}),
-                    draftStatus: 'failed',
-                },
-                modifiedBy: actor,
-                modifiedOn: admin.firestore.FieldValue.serverTimestamp(),
-            }, { merge: true });
+            await answerlatticeFirestoreAdmin.runTransaction(async transaction => {
+                const currentSnap = await transaction.get(proposalRef);
+                const current = currentSnap.data() || {};
+                if (
+                    !currentSnap.exists
+                    || current.status !== 'pending_review'
+                    || current.suggestedChange?.draftProcessingRun?.id !== requestId
+                ) return;
+                transaction.set(proposalRef, {
+                    suggestedChange: {
+                        ...(current.suggestedChange || {}),
+                        draftStatus: 'failed',
+                        draftProcessingRun: null,
+                    },
+                    modifiedBy: actor,
+                    modifiedOn: FieldValue.serverTimestamp(),
+                }, { merge: true });
+            });
             return NextResponse.json({ error: 'Failed to parse AI response' }, { status: 422 });
         }
 
-        await proposalRef.set({
-            suggestedChange: {
-                ...(proposal.suggestedChange || {}),
-                draftTitle: parsed.title,
+        const auditRef = answerlatticeFirestoreAdmin.collection(DB_COLLECTIONS.ANSWERLATTICE_AUDIT_LOGS).doc();
+        const committed = await answerlatticeFirestoreAdmin.runTransaction(async transaction => {
+            const currentSnap = await transaction.get(proposalRef);
+            const current = currentSnap.data() || {};
+            if (
+                !currentSnap.exists
+                || current.pId !== PRODUCT_IDS.ANSWERLATTICE
+                || normalizeAnswerlatticeScopeDocumentId(current.tId) !== tenantId
+                || normalizeAnswerlatticeScopeDocumentId(current.sId) !== storeId
+                || current.status !== 'pending_review'
+                || current.suggestedChange?.draftProcessingRun?.id !== requestId
+            ) return false;
+            const proposedContent = {
                 structuredSummary: parsed.structuredSummary,
                 detailedExplanation: parsed.detailedExplanation,
-                edgeCases: parsed.edgeCases,
-                constraints: parsed.constraints,
-                procedure: parsed.procedure,
-                draftStatus: 'generated',
-                draftSource: 'signal_cluster',
-                draftGeneratedAt: admin.firestore.Timestamp.now(),
-                draftSignalExamples: signalExamples.slice(0, 5),
-                draftEntityContext: `${entity.name || ''}: ${entity.description || ''}`.substring(0, 500),
-                draftPromptVersion: DRAFT_PROMPT_VERSION,
-            },
-            modifiedBy: actor,
-            modifiedOn: admin.firestore.FieldValue.serverTimestamp(),
-        }, { merge: true });
-
-        await answerlatticeFirestoreAdmin.collection(DB_COLLECTIONS.ANSWERLATTICE_AUDIT_LOGS).add({
-            action: 'draft_regenerated',
-            createdBy: actor,
-            createdOn: admin.firestore.FieldValue.serverTimestamp(),
-            entityId: proposalId,
-            entityType: 'mutationProposal',
-            modifiedBy: actor,
-            modifiedOn: admin.firestore.FieldValue.serverTimestamp(),
-            newState: {
-                draftSource: 'signal_cluster',
-                draftTitle: parsed.title,
-                promptVersion: DRAFT_PROMPT_VERSION,
-            },
-            pId: PRODUCT_IDS.ANSWERLATTICE,
-            performedBy: actor,
-            previousState: {
-                draftStatus: proposal.suggestedChange?.draftStatus || 'none',
-            },
-            sId: storeId,
-            tId: tenantId,
-            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+                ...(parsed.edgeCases ? { edgeCases: parsed.edgeCases } : {}),
+                ...(parsed.constraints ? { constraints: parsed.constraints } : {}),
+                ...(parsed.procedure ? { procedure: parsed.procedure } : {}),
+            };
+            transaction.set(proposalRef, {
+                suggestedChange: {
+                    ...(current.suggestedChange || {}),
+                    draftTitle: parsed.title,
+                    structuredSummary: parsed.structuredSummary,
+                    detailedExplanation: parsed.detailedExplanation,
+                    edgeCases: parsed.edgeCases,
+                    constraints: parsed.constraints,
+                    procedure: parsed.procedure,
+                    ...(current.mutationType === 'content_refinement' ? { proposedContent } : {}),
+                    draftStatus: 'generated',
+                    draftSource: 'signal_cluster',
+                    draftGeneratedAt: Timestamp.now(),
+                    draftSignalExamples: signalExamples.slice(0, 5),
+                    draftEntityContext: `${entity.name || ''}: ${entity.description || ''}`.substring(0, 500),
+                    draftPromptVersion: DRAFT_PROMPT_VERSION,
+                    draftProcessingRun: null,
+                    lastDraftRequestId: requestId,
+                },
+                modifiedBy: actor,
+                modifiedOn: FieldValue.serverTimestamp(),
+            }, { merge: true });
+            transaction.create(auditRef, {
+                action: 'draft_regenerated',
+                createdBy: actor,
+                createdOn: FieldValue.serverTimestamp(),
+                entityId: proposalId,
+                entityType: 'mutationProposal',
+                modifiedBy: actor,
+                modifiedOn: FieldValue.serverTimestamp(),
+                newState: {
+                    draftSource: 'signal_cluster',
+                    draftTitle: parsed.title,
+                    mutationType: current.mutationType,
+                    promptVersion: DRAFT_PROMPT_VERSION,
+                },
+                pId: PRODUCT_IDS.ANSWERLATTICE,
+                performedBy: actor,
+                previousState: {
+                    draftStatus: current.suggestedChange?.draftStatus || 'none',
+                },
+                sId: storeId,
+                tId: tenantId,
+                timestamp: FieldValue.serverTimestamp(),
+            });
+            return true;
         });
+
+        if (!committed) {
+            return NextResponse.json({ error: 'Proposal changed while the draft was being generated' }, { status: 409 });
+        }
+        claimedProposalRef = null;
 
         return NextResponse.json({ ok: true, success: true });
     } catch (error) {
+        if (claimedProposalRef && requestIdForLog) {
+            try {
+                await markManualDraftClaimFailed(claimedProposalRef, requestIdForLog, claimedActor);
+            } catch (recoveryError) {
+                logRuntimeFailure('answerlattice_draft_regeneration_claim_recovery_failed', recoveryError, {
+                    ...getBoundedRuntimeStringContext('tenantId', tenantIdForLog),
+                    ...getBoundedRuntimeStringContext('storeId', storeIdForLog),
+                    ...getBoundedRuntimeStringContext('proposalId', proposalIdForLog),
+                    ...getBoundedRuntimeStringContext('requestId', requestIdForLog),
+                });
+            }
+        }
         logRuntimeFailure('answerlattice_draft_regeneration_failed', error, {
             ...getBoundedRuntimeStringContext('tenantId', tenantIdForLog),
             ...getBoundedRuntimeStringContext('storeId', storeIdForLog),
             ...getBoundedRuntimeStringContext('userId', userIdForLog),
             ...getBoundedRuntimeStringContext('proposalId', proposalIdForLog),
+            ...getBoundedRuntimeStringContext('requestId', requestIdForLog),
         });
         return NextResponse.json({ error: 'Could not generate draft' }, { status: 500 });
     }

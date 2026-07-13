@@ -13,10 +13,15 @@ import * as logger from 'firebase-functions/logger';
 import * as fs from 'fs';
 import * as path from 'path';
 import { getFirestore } from 'firebase-admin/firestore';
+import {
+    isAnswerlatticeEmulatorProjectId,
+    normalizeAnswerlatticeFirebaseBoundaryMode,
+    resolveAnswerlatticeFirebaseBoundary,
+    type AnswerlatticeFirebaseBoundaryStage,
+} from './sharedData/answerlatticeFirebaseBoundary';
 
 type CredentialPrefix = 'FIREBASE' | 'ANSWERLATTICE_FIREBASE';
 
-const normalizeMode = (value?: string) => value?.trim().toLowerCase();
 const normalizePrivateKey = (privateKey: string) => privateKey.replace(/\\n/g, '\n').trim();
 
 function getBoundedFunctionsAdminStringContext(label: string, value: unknown): Record<string, number | boolean> {
@@ -58,13 +63,24 @@ function getAnswerlatticeStorageBucket(): string | undefined {
 }
 
 function getShouldUseSharedFirebase(): boolean {
-    return ['shared', 'same', 'default'].includes(normalizeMode(process.env.ANSWERLATTICE_FIREBASE_MODE) || '') ||
-        Boolean(
-            process.env.FIREBASE_PROJECT_ID &&
-            process.env.ANSWERLATTICE_FIREBASE_PROJECT_ID &&
-            process.env.FIREBASE_PROJECT_ID === process.env.ANSWERLATTICE_FIREBASE_PROJECT_ID
-        );
+    return normalizeAnswerlatticeFirebaseBoundaryMode(process.env.ANSWERLATTICE_FIREBASE_MODE) === 'shared';
 }
+
+const isAnswerlatticeEmulator = process.env.FUNCTIONS_EMULATOR === 'true'
+    || Boolean(process.env.FIRESTORE_EMULATOR_HOST);
+const configuredAnswerlatticeProjectId = getAnswerlatticeProjectId();
+const answerlatticeFunctionsStage: AnswerlatticeFirebaseBoundaryStage = isAnswerlatticeEmulator
+    ? 'local'
+    : configuredAnswerlatticeProjectId === 'answerlattice'
+        ? 'production'
+        : 'preview';
+const answerlatticeFunctionsBoundary = resolveAnswerlatticeFirebaseBoundary({
+    allowEmulatorProject: isAnswerlatticeEmulator,
+    allowShared: isAnswerlatticeEmulator,
+    configuredProjectId: configuredAnswerlatticeProjectId,
+    modeValue: process.env.ANSWERLATTICE_FIREBASE_MODE,
+    stage: answerlatticeFunctionsStage,
+});
 
 function getCredential(prefix: CredentialPrefix): admin.credential.Credential | null {
     const projectId = process.env[`${prefix}_PROJECT_ID`];
@@ -72,6 +88,18 @@ function getCredential(prefix: CredentialPrefix): admin.credential.Credential | 
     const clientEmail = process.env[`${prefix}_CLIENT_EMAIL`];
 
     if (!projectId || !privateKey || !clientEmail) return null;
+    if (
+        prefix === 'ANSWERLATTICE_FIREBASE'
+        && !getShouldUseSharedFirebase()
+        && projectId !== answerlatticeFunctionsBoundary.expectedProjectId
+        && !(isAnswerlatticeEmulator && isAnswerlatticeEmulatorProjectId(projectId))
+    ) {
+        logger.error('[Answerlattice Firebase Admin] Rejected mismatched Answerlattice service-account project.', {
+            failureCode: 'answerlattice_functions_admin_env_project_mismatch',
+            projectMatchesExpected: false,
+        });
+        return null;
+    }
 
     try {
         return admin.credential.cert({
@@ -106,6 +134,13 @@ function getAnswerlatticeServiceAccountFileCredential(): admin.credential.Creden
         if (!projectId || !privateKey || !clientEmail) {
             throw new Error('Missing project_id, private_key, or client_email in Answerlattice service-account file.');
         }
+        if (
+            !getShouldUseSharedFirebase()
+            && projectId !== answerlatticeFunctionsBoundary.expectedProjectId
+            && !(isAnswerlatticeEmulator && isAnswerlatticeEmulatorProjectId(projectId))
+        ) {
+            throw new Error('Answerlattice service-account project does not match the active deployment stage.');
+        }
 
         return admin.credential.cert({
             projectId,
@@ -120,6 +155,10 @@ function getAnswerlatticeServiceAccountFileCredential(): admin.credential.Creden
         });
         return null;
     }
+}
+
+if (!answerlatticeFunctionsBoundary.valid) {
+    throw new Error(`Answerlattice Firebase project boundary rejected runtime configuration: ${answerlatticeFunctionsBoundary.errorCode}`);
 }
 
 if (!admin.apps.length) {

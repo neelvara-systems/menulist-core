@@ -1,19 +1,21 @@
 import { BATCH_IMAGE_GENERATION_JOB_STATUS, type BatchImageGenerationJobStatusType } from '@constant/AI';
 import { assertImageBatchJobUpdateSucceeded, updateImageBatchProcessingJob } from '@database/imageBatchProcessing';
-import { assertProjectUpdateSucceeded, updateProject } from '@database/projects';
 import { deleteFileByUrl } from '@database/storage/deleteFromStorage';
 import useDeviceType from '@hook/useDeviceType';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
-import { ProjectsDataContext, ProjectsDataProviderType } from '@providers/projectsDataProvider';
+import { mergeImageBatchSelectionState } from '@lib/ai/imageBatchClientBoundary';
+import {
+    normalizeImageBatchProjectSelections,
+    type ImageBatchProjectSelection,
+} from '@lib/ai/imageBatchProjectSelection';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { BatchImageGenerationJobType, Project } from '@template/main-app/projects/types';
 import { UserUploadedFileType } from '@type/common';
-import { getISOStringDate } from '@util/dateTime';
+import { getISOStringDate, toDate, type DateLike } from '@util/dateTime';
 import { useDateFormatters } from '@util/formatters';
-import { removeObjRef } from '@util/utils';
 import { Alert, Button, Card, Checkbox, Divider, Flex, Image, message, Modal, Result, Spin, Tag, theme, Typography } from 'antd';
-import { FC, Fragment, useContext, useEffect, useMemo, useState } from 'react';
+import { FC, Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { LuAlertCircle, LuCheck, LuEye, LuLoader, LuRefreshCcw, LuTrash, LuUploadCloud, LuX } from 'react-icons/lu';
 import styles from './BatchImageGenerationResultView.module.scss';
 
@@ -23,28 +25,42 @@ const IMAGE_BATCH_RESULT_CANCEL_FAILED = 'image_batch_result_cancel_failed';
 const IMAGE_BATCH_RESULT_UPLOAD_FAILED = 'image_batch_result_upload_failed';
 const IMAGE_BATCH_RESULT_DISCARD_FAILED = 'image_batch_result_discard_failed';
 const IMAGE_BATCH_RESULT_RETRY_FAILED = 'image_batch_result_retry_failed';
+const IMAGE_BATCH_RESULT_STORAGE_CLEANUP_FAILED = 'image_batch_result_storage_cleanup_failed';
 const IMAGE_BATCH_JOB_FAILED_OWNER_COPY = 'Image generation could not finish. Try again with fewer items or start a new batch.';
 
-function normalizeItemImages(images: unknown): UserUploadedFileType[] {
-    return Array.isArray(images) ? images : [];
+function getImageUrl(image: UserUploadedFileType): string | null {
+    return typeof image.url === 'string' && image.url.trim() ? image.url.trim() : null;
 }
 
 interface BatchImageGenerationResultViewProps {
     activeBatchImageJob: BatchImageGenerationJobType;
     projectData: Project;
-    onProjectDataUpdate?: (updatedProject: Project) => Promise<void> | void;
+    onBatchImagesPersist: (selections: ImageBatchProjectSelection[]) => Promise<void>;
     onComplete: () => void;
+    onRetry: (failedJob: BatchImageGenerationJobType) => Promise<void>;
 }
 
-const BatchImageGenerationResultView: FC<BatchImageGenerationResultViewProps> = ({ activeBatchImageJob: initialActiveBatchImageJob, projectData, onProjectDataUpdate, onComplete }) => {
+const BatchImageGenerationResultView: FC<BatchImageGenerationResultViewProps> = ({ activeBatchImageJob: initialActiveBatchImageJob, projectData, onBatchImagesPersist, onComplete, onRetry }) => {
     const [isDiscardModalVisible, setIsDiscardModalVisible] = useState(false);
     const [isCancelModalVisible, setIsCancelModalVisible] = useState(false);
     const { token } = theme.useToken();
     const { isMobile } = useDeviceType();
-    const { setActiveProject } = useContext<ProjectsDataProviderType>(ProjectsDataContext)
     const dispatch = useAppDispatch()
     const { formatTimeOnly } = useDateFormatters()
     const [activeJobData, setActiveJobData] = useState<BatchImageGenerationJobType | null>(null);
+    const ownerActionInFlightRef = useRef(false);
+    const beginOwnerAction = (): boolean => {
+        if (ownerActionInFlightRef.current) {
+            message.info('This batch action is already in progress.');
+            return false;
+        }
+        ownerActionInFlightRef.current = true;
+        return true;
+    };
+    const formatJobTime = (value: unknown, fallback = 'N/A') => {
+        const date = toDate(value as DateLike);
+        return Number.isNaN(date.getTime()) ? fallback : formatTimeOnly(date);
+    };
 
     const totalGeneratedImages = useMemo(() => {
         if (!activeJobData?.itemsList) return 0;
@@ -73,10 +89,11 @@ const BatchImageGenerationResultView: FC<BatchImageGenerationResultViewProps> = 
         ...getBoundedRuntimeStringContext('projectId', activeJobData?.projectId || projectData?.projectId),
     });
 
-    const handleSelectAllImages = (selectAll: boolean, jobData: BatchImageGenerationJobType = activeJobData!) => {
+    const handleSelectAllImages = (selectAll: boolean) => {
+        if (!activeJobData) return;
         const updatedJobData = {
-            ...jobData,
-            itemsList: jobData.itemsList.map(item => ({
+            ...activeJobData,
+            itemsList: activeJobData.itemsList.map(item => ({
                 ...item,
                 images: item.images.map(img => ({ ...img, isSelected: selectAll }))
             }))
@@ -86,7 +103,9 @@ const BatchImageGenerationResultView: FC<BatchImageGenerationResultViewProps> = 
 
     useEffect(() => {
         if (initialActiveBatchImageJob) {
-            handleSelectAllImages(true, initialActiveBatchImageJob)
+            setActiveJobData((previousJob) => (
+                mergeImageBatchSelectionState(previousJob, initialActiveBatchImageJob)
+            ));
         }
     }, [initialActiveBatchImageJob]);
 
@@ -109,70 +128,59 @@ const BatchImageGenerationResultView: FC<BatchImageGenerationResultViewProps> = 
         });
     };
 
-    const uploadImages = () => {
-        return new Promise<void>(async (resolve, reject) => {
+    const cleanupGeneratedImages = async (
+        images: UserUploadedFileType[],
+        action: string,
+    ): Promise<void> => {
+        const urls = Array.from(new Set(images.map(getImageUrl).filter((url): url is string => Boolean(url))));
+        if (!urls.length) return;
+        const results = await Promise.allSettled(urls.map((url) => deleteFileByUrl(url)));
+        const failedCount = results.filter((result) => (
+            result.status === 'rejected' || result.value.success !== true
+        )).length;
+        if (failedCount > 0) {
+            logRuntimeFailure(
+                IMAGE_BATCH_RESULT_STORAGE_CLEANUP_FAILED,
+                new Error(IMAGE_BATCH_RESULT_STORAGE_CLEANUP_FAILED),
+                {
+                    ...getBatchResultLogContext(action),
+                    cleanupAttemptCount: urls.length,
+                    cleanupFailedCount: failedCount,
+                },
+            );
+        }
+    };
 
-            const updatedProjectData: Project = removeObjRef(projectData);
-            let savedProjectForCache: Project | null = null;
-            updatedProjectData.files.map(file => {
-                file.extractedData?.data?.items.map(item => {
-                    const jobItem = activeJobData?.itemsList.find(jobItm => jobItm.id === item.id);
-                    const updatedImages = jobItem?.images.filter(img => img.isSelected);
-                    if (updatedImages && updatedImages.length > 0 && jobItem) {
-                        item.images = [...normalizeItemImages(item.images), ...updatedImages];
-                    }
-                })
-            })
-            if (onProjectDataUpdate) {
-                await onProjectDataUpdate({ ...updatedProjectData, projectId: projectData.projectId });
-            } else {
-                const savedProject = await updateProject({ ...updatedProjectData, projectId: projectData.projectId });
-                assertProjectUpdateSucceeded(
-                    savedProject,
-                    projectData.projectId,
-                    'image_batch_result_upload_project_update_rejected',
-                );
-                savedProjectForCache = savedProject as Project;
-            }
-
-            let unselectedImages: UserUploadedFileType[] = [];
-            activeJobData?.itemsList?.forEach(item => {
-                unselectedImages = [...unselectedImages, ...(item.images?.filter(img => !img.isSelected) || [])]
-            })
-            if (unselectedImages?.length > 0) {
-                unselectedImages?.forEach(async image => {
-                    await deleteFileByUrl(image.url)
-                })
-            }
-
-            if (!onProjectDataUpdate) {
-                setActiveProject(removeObjRef(savedProjectForCache || updatedProjectData)); // Update global context if needed
-            }
-            resolve()
-        })
-    }
+    const uploadImages = async (): Promise<UserUploadedFileType[]> => {
+        const rawSelections = (activeJobData?.itemsList || [])
+            .map((item) => ({
+                itemId: item.id,
+                images: item.images.filter((image) => image.isSelected),
+            }))
+            .filter((selection) => selection.images.length > 0);
+        const selections = normalizeImageBatchProjectSelections(rawSelections, projectData.projectId);
+        if (!selections) throw new Error('image_batch_result_selected_image_invalid');
+        await onBatchImagesPersist(selections);
+        return activeJobData?.itemsList.flatMap(item => item.images?.filter(img => !img.isSelected) || []) || [];
+    };
 
     const handleCancelJob = async (action: "cancel" | "upload") => {
+        if (!beginOwnerAction()) return;
         dispatch(startLoader("cancelling batch job"))
         try {
+            if (!activeJobData) throw new Error('image_batch_result_job_missing');
+            let imagesToCleanup: UserUploadedFileType[] = [];
             if (Boolean(activeJobData?.itemsList?.length)) {
                 if (action === "upload") {
-                    await uploadImages()
+                    imagesToCleanup = await uploadImages();
                 } else {
-                    let unselectedImages: UserUploadedFileType[] = [];
-                    activeJobData?.itemsList?.forEach(item => {
-                        unselectedImages = [...unselectedImages, ...(item.images?.filter(img => img.url) || [])]
-                    })
-                    if (unselectedImages?.length > 0) {
-                        unselectedImages?.forEach(async image => {
-                            await deleteFileByUrl(image.url)
-                        })
-                    }
+                    imagesToCleanup = activeJobData.itemsList.flatMap(item => item.images || []);
                 }
             }
             const cancelResult = await updateImageBatchProcessingJob({
                 id: activeJobData.id,
                 status: BATCH_IMAGE_GENERATION_JOB_STATUS.CANCELLED,
+                selectedImagesPersisted: action === "upload",
                 statusHistory: [
                     ...activeJobData.statusHistory,
                     {
@@ -188,24 +196,29 @@ const BatchImageGenerationResultView: FC<BatchImageGenerationResultViewProps> = 
                 BATCH_IMAGE_GENERATION_JOB_STATUS.CANCELLED,
                 'image_batch_result_cancel_update_rejected',
             );
+            await cleanupGeneratedImages(imagesToCleanup, action === 'upload' ? 'cancel_with_upload' : 'cancel');
             message.success('Batch job cancelled successfully');
-            dispatch(stopLoader("cancelling batch job"))
             onComplete()
         } catch (error) {
             logRuntimeFailure(IMAGE_BATCH_RESULT_CANCEL_FAILED, error, getBatchResultLogContext(action, BATCH_IMAGE_GENERATION_JOB_STATUS.CANCELLED));
             message.error('Failed to cancel batch job');
+        } finally {
+            ownerActionInFlightRef.current = false;
             dispatch(stopLoader("cancelling batch job"))
         }
     };
 
     const onUploadGeneratedImages = async () => {
+        if (!beginOwnerAction()) return;
         dispatch(startLoader("associating image"))
 
         try {
-            await uploadImages()
+            if (!activeJobData) throw new Error('image_batch_result_job_missing');
+            const imagesToCleanup = await uploadImages();
             const uploadResult = await updateImageBatchProcessingJob({
                 id: activeJobData.id,
                 status: BATCH_IMAGE_GENERATION_JOB_STATUS.FINISHED,
+                selectedImagesPersisted: true,
                 statusHistory: [
                     ...activeJobData.statusHistory,
                     {
@@ -221,29 +234,28 @@ const BatchImageGenerationResultView: FC<BatchImageGenerationResultViewProps> = 
                 BATCH_IMAGE_GENERATION_JOB_STATUS.FINISHED,
                 'image_batch_result_upload_update_rejected',
             );
-            dispatch(stopLoader("associating image"))
+            await cleanupGeneratedImages(imagesToCleanup, 'upload');
             message.success('Images uploaded successfully');
             onComplete()
-        } catch (error: any) {
+        } catch (error: unknown) {
             logRuntimeFailure(IMAGE_BATCH_RESULT_UPLOAD_FAILED, error, getBatchResultLogContext('upload', BATCH_IMAGE_GENERATION_JOB_STATUS.FINISHED));
             message.error('Failed to update batch job status');
+        } finally {
+            ownerActionInFlightRef.current = false;
             dispatch(stopLoader("associating image"))
         }
     }
 
     const onDiscardGeneratedImages = async () => {
+        if (!beginOwnerAction()) return;
         try {
             dispatch(startLoader("discarding image batch job"))
-            activeJobData.itemsList.forEach(item => {
-                if (Boolean(item.images)) {
-                    item.images.forEach(async img => {
-                        await deleteFileByUrl(img.url)
-                    })
-                }
-            })
+            if (!activeJobData) throw new Error('image_batch_result_job_missing');
+            const imagesToCleanup = activeJobData.itemsList.flatMap(item => item.images || []);
             const discardResult = await updateImageBatchProcessingJob({
                 id: activeJobData.id,
                 status: BATCH_IMAGE_GENERATION_JOB_STATUS.DISCARDED,
+                selectedImagesPersisted: false,
                 statusHistory: [
                     ...activeJobData.statusHistory,
                     {
@@ -259,44 +271,63 @@ const BatchImageGenerationResultView: FC<BatchImageGenerationResultViewProps> = 
                 BATCH_IMAGE_GENERATION_JOB_STATUS.DISCARDED,
                 'image_batch_result_discard_update_rejected',
             );
+            await cleanupGeneratedImages(imagesToCleanup, 'discard');
             message.success('Images discarded successfully');
             setIsDiscardModalVisible(false);
-            dispatch(stopLoader("discarding image batch job"))
             onComplete()
-        } catch (error: any) {
+        } catch (error: unknown) {
             logRuntimeFailure(IMAGE_BATCH_RESULT_DISCARD_FAILED, error, getBatchResultLogContext('discard', BATCH_IMAGE_GENERATION_JOB_STATUS.DISCARDED));
             message.error('Failed to update batch job status');
+        } finally {
+            ownerActionInFlightRef.current = false;
             dispatch(stopLoader("discarding image batch job"))
         }
     }
 
     const onRetryJob = async () => {
+        if (!beginOwnerAction()) return;
+        let retryHandoffStarted = false;
         try {
             dispatch(startLoader("retrying image batch job"))
-            const retryResult = await updateImageBatchProcessingJob({
+            if (!activeJobData) throw new Error('image_batch_result_job_missing');
+            const hasSelectedImages = activeJobData.itemsList.some((item) => item.images.some((image) => image.isSelected));
+            const imagesToCleanup = hasSelectedImages
+                ? await uploadImages()
+                : activeJobData.itemsList.flatMap((item) => item.images || []);
+            const resolvedStatus = hasSelectedImages
+                ? BATCH_IMAGE_GENERATION_JOB_STATUS.FINISHED
+                : BATCH_IMAGE_GENERATION_JOB_STATUS.DISCARDED;
+            const resolvedResult = await updateImageBatchProcessingJob({
                 id: activeJobData.id,
-                status: BATCH_IMAGE_GENERATION_JOB_STATUS.QUEUED,
+                selectedImagesPersisted: hasSelectedImages,
+                status: resolvedStatus,
                 statusHistory: [
                     ...activeJobData.statusHistory,
                     {
-                        status: BATCH_IMAGE_GENERATION_JOB_STATUS.QUEUED,
-                        reason: "User Retried",
                         createdOn: getISOStringDate(),
+                        reason: hasSelectedImages
+                            ? 'Saved available images before retry'
+                            : 'Closed failed job before retry',
+                        status: resolvedStatus,
                     },
                 ],
             }, activeJobData.projectId);
             assertImageBatchJobUpdateSucceeded(
-                retryResult,
+                resolvedResult,
                 activeJobData.id,
-                BATCH_IMAGE_GENERATION_JOB_STATUS.QUEUED,
-                'image_batch_result_retry_update_rejected',
+                resolvedStatus,
+                'image_batch_result_retry_resolution_rejected',
             );
-            message.success('Image batch job retried successfully');
-            dispatch(stopLoader("retrying image batch job"))
-            onComplete()
-        } catch (error: any) {
+            await cleanupGeneratedImages(imagesToCleanup, 'retry');
+            retryHandoffStarted = true;
+            await onRetry(activeJobData);
+        } catch (error: unknown) {
             logRuntimeFailure(IMAGE_BATCH_RESULT_RETRY_FAILED, error, getBatchResultLogContext('retry', BATCH_IMAGE_GENERATION_JOB_STATUS.QUEUED));
-            message.error('Failed to update batch job status');
+            if (!retryHandoffStarted) {
+                message.error('Could not prepare this retry. Your available images were not removed.');
+            }
+        } finally {
+            ownerActionInFlightRef.current = false;
             dispatch(stopLoader("retrying image batch job"))
         }
     }
@@ -384,7 +415,7 @@ const BatchImageGenerationResultView: FC<BatchImageGenerationResultViewProps> = 
                                     status="success"
                                     title={<Flex align="center" gap={8} vertical>
                                         <Text strong style={{ fontSize: 20 }}>Batch Job Completed Successfully!</Text>
-                                        <Text>{`Generated ${activeJobData.generatedCount} of ${activeJobData.totalImages} images. Completed on ${activeJobData.modifiedOn ? formatTimeOnly(new Date(activeJobData.modifiedOn)) : 'N/A'}.`}</Text>
+                                        <Text>{`Generated ${activeJobData.generatedCount} of ${activeJobData.totalImages} images. Completed on ${formatJobTime(activeJobData.modifiedOn)}.`}</Text>
                                     </Flex>}
                                 />
                             )}
@@ -395,7 +426,7 @@ const BatchImageGenerationResultView: FC<BatchImageGenerationResultViewProps> = 
                                     status="error"
                                     title={<Flex align="center" gap={8} vertical>
                                         <Text strong style={{ fontSize: 20, color: "black" }}>Batch Job Failed</Text>
-                                        <Text style={{ fontSize: 14, color: "black" }}>{`The job failed on ${activeJobData.modifiedOn ? formatTimeOnly(new Date(activeJobData.modifiedOn)) : 'N/A'}. ${IMAGE_BATCH_JOB_FAILED_OWNER_COPY}`}</Text>
+                                        <Text style={{ fontSize: 14, color: "black" }}>{`The job failed on ${formatJobTime(activeJobData.modifiedOn)}. ${IMAGE_BATCH_JOB_FAILED_OWNER_COPY}`}</Text>
                                     </Flex>}
                                 />
                             )}
@@ -416,8 +447,8 @@ const BatchImageGenerationResultView: FC<BatchImageGenerationResultViewProps> = 
                                     )}
                                 </Flex>
                                 <Flex justify="space-between" align="center">
-                                    <Text type='secondary'>Started On: <Text strong>{activeJobData.createdOn ? formatTimeOnly(new Date(activeJobData.createdOn)) : ""}</Text></Text>
-                                    <Text type='secondary'>{activeJobData.status === BATCH_IMAGE_GENERATION_JOB_STATUS.PROCESSING ? "Last Updated On" : "Completed On"}: <Text strong>{activeJobData.modifiedOn ? formatTimeOnly(new Date(activeJobData.modifiedOn)) : ""}</Text></Text>
+                                    <Text type='secondary'>Started On: <Text strong>{formatJobTime(activeJobData.createdOn, '')}</Text></Text>
+                                    <Text type='secondary'>{activeJobData.status === BATCH_IMAGE_GENERATION_JOB_STATUS.PROCESSING ? "Last Updated On" : "Completed On"}: <Text strong>{formatJobTime(activeJobData.modifiedOn, '')}</Text></Text>
                                 </Flex>
                             </Flex>
                         </Card>
@@ -472,7 +503,9 @@ const BatchImageGenerationResultView: FC<BatchImageGenerationResultViewProps> = 
                     {(activeJobData?.status === BATCH_IMAGE_GENERATION_JOB_STATUS.FAILED) &&
                         <>
                             <Button danger icon={<LuX />} onClick={() => handleCancelJob("cancel")}>Cancel Job</Button>
-                            <Button type="primary" ghost icon={<LuRefreshCcw />} onClick={onRetryJob}>Retry Job</Button>
+                            <Button type="primary" ghost icon={<LuRefreshCcw />} onClick={onRetryJob}>
+                                {totalGeneratedImages > 0 ? 'Save Available & Retry' : 'Retry Job'}
+                            </Button>
                         </>}
                     {activeJobData?.status === BATCH_IMAGE_GENERATION_JOB_STATUS.COMPLETED && (
                         <Flex gap={8}>

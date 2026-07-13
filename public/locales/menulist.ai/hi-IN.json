@@ -115,6 +115,7 @@
         "delivery": "एक्सपोर्ट",
         "settings": "सेटिंग्स",
         "cues": "आइडिया",
+        "inspiration": "उदाहरण",
         "campaigns": "पैक",
         "editor": "एडिटर",
         "creative": "सोशल",
@@ -927,6 +928,8 @@
     "viewPlans": "View Plans",
     "subscriptionPayment": "Subscription Payment",
     "aiEnhancementPack": "Enhancement Pack",
+    "creditPackAmount": "{credits} क्रेडिट",
+    "creditPackExample": "अधिकतम {images} मेन्यू इमेज बनाना या {descriptions} विवरण दोबारा लिखना।",
     "failedToLoadSubscription": "Failed to load subscription data",
     "upgradeSuccess": "Your subscription has been upgraded successfully.",
     "paymentFailed": "Payment Processing Failed, If your money gets deducted, please contact support or try again",
@@ -4964,7 +4967,7 @@
         "eyebrow": "Correction loop",
         "title": "Customers issues report कर सकते हैं, owner control रखता है.",
         "highlight": "owner control",
-        "subtitle": "Feedback तभी useful है जब वह approved source को correct करने में मदद करे. ये captures public report path और private owner review surface दिखाते हैं.",
+        "subtitle": "Feedback तभी useful है जब वह approved source को correct करने में मदद करे. यह capture public report path दिखाता है. Private owner review surface clean ready-state screenshot approve होने तक held back है.",
         "publicForm": {
           "kicker": "Public report",
           "title": "Customer public side से issue flag करता है",
@@ -5296,6 +5299,8 @@
       "creditTitle": "AI enhancements credits से controlled हैं",
       "creditSubtitle": "Generated images, descriptions, translations और edits के लिए credits use करें जहाँ आपका plan allow करता है। Core public menu, QR और link generation usage से अलग रहते हैं।",
       "creditNote": "Credit-based usage. कभी भी top up करें।",
+      "creditPackAmount": "{credits} क्रेडिट",
+      "creditPackExample": "अधिकतम {images} मेन्यू इमेज बनाना या {descriptions} विवरण दोबारा लिखना।",
       "setupTitle": "Current menu से official customer link तक",
       "setupHighlight": "live menu",
       "setupStep0Title": "Setup review के लिए upload करें",
@@ -6010,13 +6015,13 @@
     },
     "WhatsAppOnboardingPage": {
       "eyebrow": "WhatsApp onboarding",
-      "heroTitleStart": "Apni current list WhatsApp पर भेजें। ",
-      "heroTitleHighlight": "Ek official customer link पाएं।",
+      "heroTitleStart": "WhatsApp onboarding तैयार किया जा रहा है। ",
+      "heroTitleHighlight": "अभी एक official customer link से शुरू करें।",
       "heroTitleEnd": "",
-      "heroSubtitle": "MenuList आपके menu, service list, rate card, package list, catalog, photo, PDF या message को owner-approved public page, link और QR में बदलता है। उसी list से शुरू करें जो आप customers को already भेजते हैं।",
-      "primaryCta": "WhatsApp पर list भेजें",
+      "heroSubtitle": "अभी photo upload करें या public menu link इस्तेमाल करें। MenuList आपकी current list से owner-reviewed public page, link और QR तैयार करता है।",
+      "availability": "WhatsApp intake अभी शुरू नहीं हुआ है। अभी photo या public menu link से शुरू करें।",
+      "primaryCta": "Photo या link से शुरू करें",
       "secondaryCta": "Import flow देखें",
-      "whatsAppPrefillMessage": "Hi MenuList, main apne business ke liye official customer link banana chahta hoon. Main apna current menu, service list, rate card, catalog, package list, ya price list bhej raha hoon.",
       "trust0": "Publish से पहले owner approval",
       "trust1": "Photos, PDFs, screenshots और text",
       "trust2": "Menus और service lists के लिए बना",
@@ -6074,12 +6079,12 @@
       "boundary2": "Official WhatsApp या Meta partnership claim नहीं करनी जब तक approval सच में न हो।",
       "boundary3": "Automatic WhatsApp catalog sync claim नहीं करना जब तक real catalog sync ship न हो।",
       "boundary4": "Scraped-number bulk blasting नहीं। Onboarding owner-initiated contact या permission-based outreach से शुरू होनी चाहिए।",
-      "boundary5": "Current website CTA configured test WhatsApp onboarding number use करता है। Production launch से पहले final public number और response owner तय होना चाहिए।",
+      "boundary5": "WhatsApp intake अभी शुरू नहीं हुआ है। Current website action test number की जगह signed-in photo या public-link intake इस्तेमाल करता है।",
       "finalEyebrow": "Campaign hook",
       "finalTitle": "Forward it. Make it official.",
       "finalHighlight": "Make it official",
       "finalSubtitle": "Us menu, service list, rate card, package PDF, catalog या screenshot से शुरू करें jo business already भेजता है। MenuList public version prepare करता है और approval owner के पास रहता है।",
-      "finalCta": "WhatsApp पर list भेजें",
+      "finalCta": "Photo या link से शुरू करें",
       "finalLink": "Plans देखें"
     },
     "PublicTruthCheckPage": {
@@ -10010,13 +10015,14 @@
     "off": "Off"
   },
   "OwnerReferral": {
-    "title": "किसी अन्य बिज़नेस को आमंत्रित करें",
+    "title": "अपने जानने वाले बिज़नेस मालिक को आमंत्रित करें",
     "preparing": "आपका आमंत्रण तैयार हो रहा है...",
     "unavailable": "आमंत्रण भुगतान किए गए MenuList सब्सक्रिप्शन वाले बिज़नेस के लिए उपलब्ध हैं।",
     "tryAgain": "फिर कोशिश करें",
     "yourBusiness": "आपका बिज़नेस",
-    "invitedBusiness": "आमंत्रित बिज़नेस",
+    "invitedBusiness": "आपके द्वारा आमंत्रित बिज़नेस",
     "credits": "क्रेडिट",
+    "creditExample": "अधिकतम {images} मेन्यू इमेज बनाना या {descriptions} विवरण दोबारा लिखना।",
     "rewardRule": "दोनों MenuList सब्सक्रिप्शन का भुगतान होने पर क्रेडिट जोड़े जाते हैं। रेफरल की कोई सीमा या अतिरिक्त गतिविधि की शर्त नहीं है।",
     "share": "शेयर करें",
     "shareInvitation": "आमंत्रण शेयर करें",
@@ -10026,21 +10032,21 @@
     "copyFailed": "आमंत्रण कॉपी नहीं हो सका",
     "shareFailed": "आमंत्रण शेयर नहीं हो सका",
     "recentInvitations": "हाल के आमंत्रण",
-    "noRecentInvitations": "अभी तक आपके आमंत्रण से कोई बिज़नेस शुरू नहीं हुआ है।",
+    "noRecentInvitations": "अभी तक आपके किसी जानने वाले बिज़नेस मालिक ने इस आमंत्रण से शुरुआत नहीं की है।",
     "status": {
       "issued": "क्रेडिट जोड़े गए",
-      "waitingForBothPayments": "दोनों भुगतानों का इंतज़ार",
-      "waitingForPayment": "भुगतान का इंतज़ार"
+      "waitingForPayment": "उनका भुगतान बाकी"
     },
     "invite": {
       "unavailableTitle": "यह आमंत्रण उपलब्ध नहीं है",
-      "unavailableBody": "जिस बिज़नेस ने आपको आमंत्रित किया है उससे नया लिंक माँगें, या सामान्य MenuList सेटअप जारी रखें।",
+      "unavailableBody": "जिस बिज़नेस मालिक ने आपको आमंत्रित किया है उनसे नया लिंक माँगें, या सामान्य MenuList सेटअप जारी रखें।",
       "createLink": "अपना कस्टमर लिंक बनाएँ",
       "eyebrow": "बिज़नेस मालिक का आमंत्रण",
-      "title": "एक अन्य बिज़नेस मालिक ने आपको MenuList पर आमंत्रित किया है।",
+      "title": "आपके जानने वाले एक बिज़नेस मालिक ने आपको MenuList पर आमंत्रित किया है।",
       "body": "अपनी मेन्यू और सार्वजनिक बिज़नेस जानकारी को एक जगह से अपडेट रखें, ऐसे एक कस्टमर लिंक के साथ जो हमेशा वर्तमान रहे।",
-      "referredReward": "आपके बिज़नेस को <strong>50 क्रेडिट</strong> मिलते हैं।",
-      "referrerReward": "आमंत्रित करने वाले बिज़नेस को <strong>100 क्रेडिट</strong> मिलते हैं।",
+      "referredReward": "आपके बिज़नेस को <strong>{credits} क्रेडिट</strong> मिलते हैं।",
+      "referrerReward": "उनके बिज़नेस को <strong>{credits} क्रेडिट</strong> मिलते हैं।",
+      "creditExample": "आपके {credits} क्रेडिट से अधिकतम {images} मेन्यू इमेज बनाई जा सकती हैं या {descriptions} विवरण दोबारा लिखे जा सकते हैं।",
       "rewardRule": "दोनों MenuList सब्सक्रिप्शन का भुगतान होने पर क्रेडिट जोड़े जाते हैं। रेफरल की कोई सीमा या अतिरिक्त गतिविधि की शर्त नहीं है।",
       "preparing": "सेटअप तैयार हो रहा है...",
       "continueWithoutReferral": "रेफरल के बिना जारी रखें",
@@ -10054,7 +10060,7 @@
         "publishTitle": "एक लिंक प्रकाशित करें",
         "publishBody": "QR, WhatsApp, Google और सोशल प्रोफाइल पर उसी वर्तमान लिंक का उपयोग करें।"
       },
-      "privacy": "आमंत्रित करने वाला बिज़नेस आपके बिज़नेस का नाम और सामान्य रेफरल स्थिति देख सकता है। वह आपका प्लान, कीमत, भुगतान विधि, संपर्क जानकारी या अकाउंट गतिविधि नहीं देख सकता।"
+      "privacy": "जिस बिज़नेस मालिक ने आपको आमंत्रित किया है, वे आपके बिज़नेस का नाम और सामान्य रेफरल स्थिति देख सकते हैं। वे आपका प्लान, कीमत, भुगतान विधि, संपर्क जानकारी या अकाउंट गतिविधि नहीं देख सकते।"
     }
   }
 }

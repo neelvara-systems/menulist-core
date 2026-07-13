@@ -15,12 +15,14 @@ interface PaginatedResponse {
     data: any[];
     lastVisibleDoc: { id?: string } | null;
     hasMore: boolean;
+    requiresManualContinuation: boolean;
 }
 
 const EMPTY_PAGINATED_RESPONSE: PaginatedResponse = {
     data: [],
     lastVisibleDoc: null,
     hasMore: false,
+    requiresManualContinuation: false,
 };
 const AI_OPERATIONS_RESPONSE_JSON_MAX_BYTES = 512 * 1024;
 const AI_OPERATIONS_RESPONSE_PARSE_FAILED = 'ai_operations_client_response_parse_failed';
@@ -42,6 +44,7 @@ const isPaginatedResponse = (response: unknown): response is PaginatedResponse =
     && Array.isArray(response.data)
     && typeof response.hasMore === 'boolean'
     && isValidCursor(response.lastVisibleDoc)
+    && typeof response.requiresManualContinuation === 'boolean'
 );
 
 const getAiOperationsResponseLogContext = (response: Response, options: PaginationOptions) => ({
@@ -95,6 +98,7 @@ const normalizePaginatedResponse = (response: unknown): PaginatedResponse => {
             data: (response as PaginatedResponse).data,
             lastVisibleDoc: (response as PaginatedResponse).lastVisibleDoc || null,
             hasMore: Boolean((response as PaginatedResponse).hasMore),
+            requiresManualContinuation: Boolean((response as PaginatedResponse).requiresManualContinuation),
         };
     }
 

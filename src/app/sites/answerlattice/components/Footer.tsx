@@ -54,6 +54,7 @@ const FOOTER_LINKS = {
     Trust: [
         { label: 'Updates', href: '/updates' },
         { label: 'FAQ', href: '/faq' },
+        { label: 'Trust and Data Handling', href: '/trust' },
         { label: 'Security', href: '/security' },
         { label: 'Security One-Pager', href: '/security-one-pager' },
         { label: 'About', href: '/about' },

@@ -2,13 +2,16 @@ import {
     assertChatSessionDeleteSucceeded,
     assertChatSessionSaveSucceeded,
     assertChatSessionUpdateSucceeded,
+    appendChatSessionMessages,
     deleteChatSession,
     getUserChatSessions,
+    replaceChatSessionMessageBranch,
     saveChatSession,
     updateChatSession,
     uploadChatImage,
 } from '@database/chatSessions';
 import { buildAnswerlatticeActorSnapshot } from '@lib/answerlattice/customerIdentity';
+import { createRuntimeId } from '@lib/runtime/randomId';
 import {
     copyAnswerlatticeSupportTextToClipboard,
     hasAnswerlatticeSupportClipboardWrite,
@@ -174,7 +177,7 @@ export function useChatHandlers({
             if (isExplicitEscalation) {
                 // Build a synthetic escalation message and trigger ticket creation
                 const syntheticMessage: ChatMessage = {
-                    id: `msg-${Date.now()}-escalation`,
+                    id: createRuntimeId('msg_escalation'),
                     role: 'assistant',
                     createdOn: Timestamp.now(),
                         escalation: {
@@ -225,7 +228,7 @@ export function useChatHandlers({
                 }
 
                 const newUserMessage: ChatMessage = {
-                    id: `msg-${Date.now()}-user`,
+                    id: createRuntimeId('msg_user'),
                     role: 'user',
                     content,
                     createdOn: Timestamp.now(),
@@ -291,7 +294,7 @@ export function useChatHandlers({
 
                     // Create AI message
                     const aiMessage: ChatMessage = {
-                        id: `msg-${Date.now()}-ai`,
+                        id: createRuntimeId('msg_ai'),
                         role: 'assistant',
                         createdOn: Timestamp.now(),
                         craftedAnswer: result.craftedAnswer,
@@ -314,32 +317,6 @@ export function useChatHandlers({
                                     ? [...session.messages, aiMessage]
                                     : [...session.messages, newUserMessage, aiMessage]);
 
-                                // Persist to Firestore
-                                if (activeSession.id) {
-                                    const isModeTransition = activeSession.mode === 'qna' && effectiveMode === 'assistant';
-                                    const updateData: any = {
-                                        messages: updatedMessages,
-                                        modifiedOn: Timestamp.now()
-                                    };
-                                    if (isModeTransition) {
-                                        updateData.mode = 'assistant';
-                                    }
-                                    updateChatSession(activeSession.id, updateData).then((result) => {
-                                        assertChatSessionUpdateSucceeded(
-                                            result,
-                                            activeSession.id,
-                                            'help_chat_message_append_session_update_rejected',
-                                        );
-                                    }).catch((error) => {
-                                        logChatSessionPersistFailure(
-                                            error,
-                                            isModeTransition ? 'message_append_mode_transition' : 'message_append',
-                                            activeSession.id,
-                                            updatedMessages.length
-                                        );
-                                    });
-                                }
-
                                 return {
                                     ...session,
                                     messages: updatedMessages,
@@ -349,6 +326,29 @@ export function useChatHandlers({
                             }
                             return session;
                         }));
+                        if (activeSession.id) {
+                            const isModeTransition = activeSession.mode === 'qna' && effectiveMode === 'assistant';
+                            try {
+                                const updateResult = await appendChatSessionMessages(
+                                    activeSession.id,
+                                    [newUserMessage, aiMessage],
+                                    isModeTransition ? { mode: 'assistant' } : undefined,
+                                );
+                                assertChatSessionUpdateSucceeded(
+                                    updateResult,
+                                    activeSession.id,
+                                    'help_chat_message_append_session_update_rejected',
+                                );
+                            } catch (error) {
+                                logChatSessionPersistFailure(
+                                    error,
+                                    isModeTransition ? 'message_append_mode_transition' : 'message_append',
+                                    activeSession.id,
+                                    activeSession.messages.length + 2,
+                                );
+                                antMessage.warning('Answer received, but this chat could not be added to history.');
+                            }
+                        }
                     } else {
                         // New session: save to Firestore
                         // Truncate title to 150 chars (industry standard, prevents DB bloat from long pastes)
@@ -430,7 +430,7 @@ export function useChatHandlers({
                 : 1;
 
             const aiMessage: ChatMessage = {
-                id: `msg-${Date.now()}-ai`,
+                id: createRuntimeId('msg_ai'),
                 role: 'assistant',
                 createdOn: Timestamp.now(),
                 craftedAnswer: result.craftedAnswer,
@@ -471,9 +471,9 @@ export function useChatHandlers({
 
                 if (activeSession.id) {
                     try {
-                        const updateResult = await updateChatSession(activeSession.id, {
-                            messages: updatedSession.messages
-                        });
+                        const updateResult = replacedMessageId
+                            ? await replaceChatSessionMessageBranch(activeSession.id, replacedMessageId, aiMessage)
+                            : await appendChatSessionMessages(activeSession.id, [aiMessage]);
                         assertChatSessionUpdateSucceeded(
                             updateResult,
                             activeSession.id,
@@ -750,7 +750,11 @@ export function useChatHandlers({
 
         try {
             const ticketsDal: typeof import('@database/tickets/index') = await import('@database/tickets/index');
-            const { SUPPORT_TICKET_PRIORITY, SUPPORT_TICKET_CATEGORY } = await import('@type/supportTicket');
+            const {
+                SUPPORT_TICKET_CATEGORY,
+                SUPPORT_TICKET_PRIORITY,
+                SUPPORT_TICKET_STATUS,
+            } = await import('@type/supportTicket');
 
             const escalationContext = {
                 ...message.escalation.context,
@@ -762,12 +766,21 @@ export function useChatHandlers({
                 category: SUPPORT_TICKET_CATEGORY.GENERAL_QUESTION,
                 priority: SUPPORT_TICKET_PRIORITY.NORMAL,
                 message: escalationContext.query || '',
-                status: 'Open',
+                status: SUPPORT_TICKET_STATUS.OPEN,
                 documents: [],
                 platformNotes: '',
                 platformTags: [],
                 contextKeys: message.relatedContent?.key ? [message.relatedContent.key] : [],
-                statuses: [],
+                statuses: [{
+                    status: SUPPORT_TICKET_STATUS.OPEN,
+                    timestamp: Timestamp.now(),
+                    createdBy: {
+                        id: String(loggedInSession?.user?.id || loggedInSession?.uId || ''),
+                        name: String(loggedInSession?.user?.name || loggedInSession?.user?.email || ''),
+                        email: String(loggedInSession?.user?.email || ''),
+                    },
+                    remark: 'Created after the user requested human support.',
+                }],
                 source: 'ai_escalation',
                 knowledgeCandidate: true,
                 escalationContext,

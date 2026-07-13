@@ -25,16 +25,17 @@
 | ----------------------------- | -------------------------------- | ---------------------------------- | -------------------------- | ------------------------------------------- | -------- |
 | Create special menu           | `projects/{tId}/{sId}`           | Owner clicks "Create Special Menu" | ~2/store/month             | 2 (base project + summary)                  | Yes      |
 | Validate no conflict          | `platformSummary/projects_{sId}` | Before creation                    | ~2/store/month             | 1 (summary doc has all projects)            | N/A      |
-| List special menus            | `platformSummary/projects_{sId}` | Dashboard load                     | ~30/store/month            | 0 (uses SWR cached summary)                 | N/A      |
+| List special menus            | project summary + `stores/{sId}` | Dashboard/mobile cache miss         | Owner usage                | 2 in parallel; SWR dedupes for 30 seconds   | N/A      |
 | Resolver check                | `stores/{sId}`                   | Every public page view             | Per page view              | 0 (store data already fetched + cached 60s) | N/A      |
 | Resolver load special project | `projects/{tId}/{sId}`           | When special menu is active        | Per page view (cached 60s) | 1 (cached via `unstable_cache`)             | Yes      |
-| Nightly activation check      | `platformSummary/projects_{sId}` | Scheduler 2:30 AM UTC              | 1/day per store            | 1 per store with scheduled menus            | N/A      |
+| Nightly lifecycle check       | `platformSummary/projects_{sId}` | Hourly scheduler, per-store nightly window | Up to 1/day per eligible active store | 1 compact summary; each due transition then uses 2 transaction reads | N/A      |
 
 ### Cost-Critical Notes
 
 - **Resolver adds ZERO extra reads when no special menu is active** — checks `store.activeSpecialMenuId` field which is already loaded
 - **When active, adds 1 cached read** — project is cached via `unstable_cache` with 60s TTL and `menu-store-{sId}` tag
-- **Nightly check reads summary doc only** — already read by existing scheduler, so incremental cost is near-zero
+- **The global `storesSummary` read is reused** by the existing hourly scheduler. The per-store project-summary read is incremental and currently bounded to at most one per eligible store/nightly window; a future summary marker may skip stores with no live special-menu schedule after a migration/backfill contract exists.
+- **Transactions preserve correctness under contention** — baseline counts below can increase when Firestore retries, but failed attempts do not publish partial project/store/summary state.
 
 ---
 
@@ -46,10 +47,10 @@
 | Update summary              | `platformSummary/projects_{sId}` | On create             | ~2/store/month | `projects.{id}` with special menu fields            | `setDoc` merge                   |
 | Activate (project)          | `projects/{tId}/{sId}`           | Scheduler/DAL         | ~2/store/month | `_specialMenu.status`, `_specialMenu.activatedAt`   | `setDoc` merge                   |
 | Activate (store)            | `stores/{sId}`                   | Scheduler/DAL         | ~2/store/month | `activeSpecialMenuId`                               | `setDoc` merge                   |
-| Activate (temp status)      | `stores/{sId}`                   | Scheduler/DAL         | ~2/store/month | `tempStatus` object                                 | `setDoc` merge (batched)         |
+| Activate (temp status)      | `stores/{sId}`                   | Scheduler/DAL         | ~2/store/month | `tempStatus` object with `sourceProjectId`          | Same atomic store write          |
 | Deactivate (project)        | `projects/{tId}/{sId}`           | Scheduler/DAL         | ~2/store/month | `_specialMenu.status`, `_specialMenu.deactivatedAt` | `setDoc` merge                   |
 | Deactivate (store)          | `stores/{sId}`                   | Scheduler/DAL         | ~2/store/month | Clear `activeSpecialMenuId`                         | `setDoc` merge + `deleteField()` |
-| Deactivate (temp status)    | `stores/{sId}`                   | Scheduler/DAL         | ~2/store/month | Delete `tempStatus`                                 | `setDoc` merge + `deleteField()` |
+| Deactivate (temp status)    | `stores/{sId}`                   | Scheduler/DAL         | ~2/store/month | Delete only the banner owned by this menu           | Same atomic store write          |
 | Edit special menu           | `projects/{tId}/{sId}`           | Owner edits in editor | ~4/store/month | Same as regular project edit                        | `setDoc` merge                   |
 | Connected screen touch      | `platformSummary/campaigns_{sId}`, `platformSummary/screen_{sId}` | Scheduler activation/deactivation after public cache revalidation | Only when a screen token exists | `screen.contentVersion`, `screen.lastContentChangeAt`, public-safe mirror fields | Existing Functions public-cache helper |
 
@@ -94,11 +95,12 @@ Same pattern as `duplicateProject`, `updateStore`, etc.
 
 | DAL Function                 | File                             | Firebase Operations       |
 | ---------------------------- | -------------------------------- | ------------------------- |
-| `createSpecialMenuProject()` | `src/database/projects/index.ts` | 2R + 2W                   |
-| `activateSpecialMenu()`      | `src/database/projects/index.ts` | 2R + 2-3W                 |
-| `deactivateSpecialMenu()`    | `src/database/projects/index.ts` | 2R + 2-3W                 |
-| `cancelSpecialMenu()`        | `src/database/projects/index.ts` | 1R + 2W                   |
-| `getSpecialMenus()`          | `src/database/projects/index.ts` | 1R (summary) + 1R (store) |
+| `createSpecialMenuProject()` | `src/database/projects/index.ts` | scheduled: 2R + 2W; immediate: 3R + 3W transaction |
+| `updateSpecialMenuProject()` | `src/database/projects/index.ts` | 3R + 2-3W transaction     |
+| `activateSpecialMenu()`      | `src/database/projects/index.ts` | 2R + 2-3W transaction     |
+| `deactivateSpecialMenu()`    | `src/database/projects/index.ts` | 2R + 2-3W transaction     |
+| `cancelSpecialMenu()`        | `src/database/projects/index.ts` | 1R + 2W transaction       |
+| `getSpecialMenus()`          | `src/database/projects/index.ts` | 2R in parallel            |
 
 `useSpecialMenus()` must require explicit create/update/lifecycle acknowledgements before returning success to desktop or mobile callers. Lifecycle acknowledgements include the requested project id and resulting status (`active`, `expired`, or `cancelled`) so local UI state cannot advance on a generic `{ success: true }` fallback. This adds no Firestore reads/writes/deletes; it only prevents client-side `apiCallComposer()` fallback values from being treated as confirmed special-menu writes.
 
@@ -108,11 +110,11 @@ Same pattern as `duplicateProject`, `updateStore`, etc.
 
 | Category        | Operations                                        | Cost                              |
 | --------------- | ------------------------------------------------- | --------------------------------- |
-| Reads           | ~6,000 (create + activate + deactivate + nightly) | ~₹0.50                            |
-| Writes          | ~12,000 (create + activate + deactivate + edits) plus at most 2 existing screen-state writes per initialized-screen activation/deactivation | ~₹2.00+                           |
+| Reads           | Up to ~30,000 per-store nightly summary reads, plus owner lifecycle/list reads and transaction retries | Region/pricing/free-tier dependent |
+| Writes          | Lifecycle baseline is 2-3 atomic document writes per action, plus initialized-screen writes after scheduled transitions | Region/pricing/free-tier dependent |
 | Storage         | Same as regular projects (~0 incremental)         | ~₹0.00                            |
 | Cloud Functions | +5s on existing scheduler                         | ~₹0.00                            |
-| **Total**       |                                                   | **~₹2.50/month per 1,000 stores** |
+| **Total**       | Use current Firebase pricing and observed usage; do not rely on the historical fixed-rupee estimate | Measured after deployment |
 
 **Extremely cost-efficient.** Reusing project infrastructure means near-zero incremental cost.
 
@@ -126,15 +128,17 @@ Same pattern as `duplicateProject`, `updateStore`, etc.
 | Separate `specialMenus` collection                               | Doubles storage, requires sync    | Reuse projects collection                            |
 | Real-time activation (Cloud Function trigger)                    | Always-on cost                    | Nightly scheduler + API route hybrid                 |
 | Storing full overlay merge result                                | Doubles project storage           | Compute overlay at render time                       |
+| Cloning base rows into every new overlay                          | Duplicates document bytes and IDs | Persist empty overlay rows; retain only editor file/language context |
 
 ---
 
 ## Optimization Opportunities
 
-1. **Batch activation writes** — Store update + project update + temp status in single batch write
-2. **Skip nightly check** — Only check stores that have `projectsSummary` entries with `isSpecialMenu: true` and `status: 'scheduled'`
-3. **Lazy cleanup** — Don't delete expired special menus. Let owner archive them naturally. Zero cleanup cost.
+1. **Implemented: atomic lifecycle transactions** — project, compact summary, store pointer, and owned temp banner commit together.
+2. **Candidate after migration design: stores-summary schedule marker** — skip per-store project-summary reads when no scheduled/active special menu exists. Do not add the marker until client writes, scheduler backfill, parser, rules, and stale-marker repair are one contract.
+3. **Implemented: lazy cleanup** — expired/cancelled projects remain as audit history; no cleanup collection or scheduled delete job.
+4. **Implemented: storage-light overlays** — new overlays do not duplicate base category/item rows, and runtime namespacing requires no mapping document or extra read/write.
 
 ---
 
-**Last Updated:** June 28, 2026
+**Last Updated:** July 13, 2026

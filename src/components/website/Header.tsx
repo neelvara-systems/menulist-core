@@ -3,7 +3,7 @@
 import { signOut, useSession } from "next-auth/react";
 import { useTranslations } from "next-intl";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import {
   LuArrowRight,
   LuBadgeCheck,
@@ -70,8 +70,20 @@ export default function Header() {
   const openDrawer = () => setIsOpen(true);
   const handleMenuTouch = () => openDrawer();
 
-  const closeDrawer = () => {
+  const closeDrawer = useCallback(() => {
     setIsOpen(false);
+  }, []);
+
+  const handleDesktopDropdownKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== "Escape") {
+      return;
+    }
+
+    event.preventDefault();
+    const activeElement = document.activeElement;
+    if (activeElement instanceof HTMLElement) {
+      activeElement.blur();
+    }
   };
 
   const isResourcesPath = Boolean(
@@ -106,6 +118,21 @@ export default function Header() {
       document.body.style.overflow = "";
     };
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        closeDrawer();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [closeDrawer, isOpen]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -181,7 +208,11 @@ export default function Header() {
                 || (item.href === "/resources" && (isResourcesPath || isToolsPath));
               if (item.key === "features") {
                 return (
-                  <div key={item.href} className="ws-header-feature-menu">
+                  <div
+                    key={item.href}
+                    className="ws-header-feature-menu"
+                    onKeyDown={handleDesktopDropdownKeyDown}
+                  >
                     <button
                       type="button"
                       className="ws-header-feature-menu__trigger"
@@ -258,7 +289,11 @@ export default function Header() {
 
               if (item.key === "resources") {
                 return (
-                  <div key={item.href} className="ws-header-resource-menu">
+                  <div
+                    key={item.href}
+                    className="ws-header-resource-menu"
+                    onKeyDown={handleDesktopDropdownKeyDown}
+                  >
                     <Link
                       href="/resources"
                       className="ws-header-resource-menu__trigger"
@@ -435,7 +470,12 @@ export default function Header() {
             className="ws-drawer-backdrop ws-drawer-backdrop--open"
             aria-hidden="true"
           />
-          <div className="ws-drawer-panel ws-drawer-panel--open">
+          <div
+            className="ws-drawer-panel ws-drawer-panel--open"
+            role="dialog"
+            aria-modal="true"
+            aria-label={t("Header.openMenu")}
+          >
             <div className="ws-drawer-header">
               <Link
                 href="/"
@@ -450,6 +490,7 @@ export default function Header() {
                 />
               </Link>
               <button
+                type="button"
                 onClick={closeDrawer}
                 className="ws-drawer-close"
                 aria-label={t("Header.closeMenu")}
@@ -460,7 +501,7 @@ export default function Header() {
 
             <nav
               className="ws-mobile-drawer-nav"
-              style={{ flex: 1, overflowY: "auto" }}
+              style={{ flex: 1, minHeight: 0, overflowY: "auto" }}
             >
               {navItemKeys.map((item) => {
                 const Icon = item.icon;
@@ -769,7 +810,7 @@ export default function Header() {
             </nav>
 
             {/* CTA */}
-            <div style={{ padding: "1rem 1.25rem 1.5rem", flexShrink: 0 }}>
+            <div className="ws-drawer-cta">
               {status !== "authenticated" && (
                 <Link
                   href="/create-menu"

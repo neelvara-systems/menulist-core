@@ -1,5 +1,10 @@
 import { FEATURE_FLAGS } from '@config/features';
 import { getBoundedAnswerlatticeStringContext, logAnswerlatticeFailure } from '@lib/answerlattice/diagnostics';
+import {
+    AnswerlatticeIntakeReviewItemSchema,
+    AnswerlatticeKnowledgeIntakeJobSchema,
+    AnswerlatticeKnowledgeSourceSchema,
+} from '@lib/answerlattice/knowledgeIntakeContracts';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import type {
     AnswerlatticeIntakeReviewItem,
@@ -64,7 +69,7 @@ type KnowledgeIntakeBundleResponse = { bundle: IntakeBundle };
 type KnowledgeIntakeSourceResponse = { source: AnswerlatticeKnowledgeSource };
 type KnowledgeIntakeMediaSourceResponse = {
     source: AnswerlatticeKnowledgeSource;
-    usage?: Record<string, any>;
+    usage: { unitsConsumed: number };
 };
 type KnowledgeIntakeDiscoverLinksResponse = {
     links: Array<{ url: string; title: string; role: string; reason: string }>;
@@ -80,13 +85,15 @@ const isRecord = (value: unknown): value is Record<string, any> => (
     Boolean(value) && typeof value === 'object' && !Array.isArray(value)
 );
 
-const hasStringId = (value: unknown): value is { id: string } => (
-    isRecord(value) && typeof value.id === 'string' && value.id.length > 0
+const isIntakeJob = (value: unknown): value is AnswerlatticeKnowledgeIntakeJob => (
+    AnswerlatticeKnowledgeIntakeJobSchema.safeParse(value).success
 );
-
-const isIntakeJob = (value: unknown): value is AnswerlatticeKnowledgeIntakeJob => hasStringId(value);
-const isKnowledgeSource = (value: unknown): value is AnswerlatticeKnowledgeSource => hasStringId(value);
-const isReviewItem = (value: unknown): value is AnswerlatticeIntakeReviewItem => hasStringId(value);
+const isKnowledgeSource = (value: unknown): value is AnswerlatticeKnowledgeSource => (
+    AnswerlatticeKnowledgeSourceSchema.safeParse(value).success
+);
+const isReviewItem = (value: unknown): value is AnswerlatticeIntakeReviewItem => (
+    AnswerlatticeIntakeReviewItemSchema.safeParse(value).success
+);
 
 const isEntityOption = (value: unknown): value is KnowledgeIntakeEntityOption => (
     isRecord(value)
@@ -134,7 +141,10 @@ const isKnowledgeIntakeSourceResponse = (value: unknown): value is KnowledgeInta
 const isKnowledgeIntakeMediaSourceResponse = (value: unknown): value is KnowledgeIntakeMediaSourceResponse => (
     isRecord(value)
     && isKnowledgeSource(value.source)
-    && (value.usage === undefined || isRecord(value.usage))
+    && isRecord(value.usage)
+    && typeof value.usage.unitsConsumed === 'number'
+    && Number.isFinite(value.usage.unitsConsumed)
+    && value.usage.unitsConsumed >= 0
 );
 
 const isKnowledgeIntakeDiscoverLinksResponse = (value: unknown): value is KnowledgeIntakeDiscoverLinksResponse => (
@@ -401,6 +411,10 @@ export function useKnowledgeIntake() {
             },
         );
         const entities = data.entities || [];
+        if (entityOptionCacheRef.current.size >= 50) {
+            const oldestKey = entityOptionCacheRef.current.keys().next().value;
+            if (oldestKey) entityOptionCacheRef.current.delete(oldestKey);
+        }
         entityOptionCacheRef.current.set(normalizedQuery, entities);
         return entities;
     }, []);

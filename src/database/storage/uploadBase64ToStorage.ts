@@ -7,6 +7,7 @@
  * Supported Formats:
  * - Images: JPEG, PNG, SVG, WebP, GIF
  * - Documents: PDF, DOC, DOCX, TXT
+ * - Fonts: TTF, OTF, WOFF, WOFF2
  */
 
 import { firebaseStorage } from "@lib/firebase/firebaseClient";
@@ -20,7 +21,7 @@ import {
  * Supported file types for upload
  * Covers common image formats and document types
  */
-type SupportedFileType = 
+export type SupportedFileType =
     // Image formats (extensions)
     | "jpeg" | "jpg" | "png" | "svg" | "webp" | "gif" 
     // Image formats (MIME types)
@@ -28,7 +29,11 @@ type SupportedFileType =
     // Document formats (extensions)
     | "pdf" | "doc" | "docx" | "txt"
     // Document formats (MIME types)
-    | "application/pdf" | "application/msword" | "application/vnd.openxmlformats-officedocument.wordprocessingml.document" | "text/plain";
+    | "application/pdf" | "application/msword" | "application/vnd.openxmlformats-officedocument.wordprocessingml.document" | "text/plain"
+    // Font formats
+    | "ttf" | "otf" | "woff" | "woff2"
+    | "font/ttf" | "font/otf" | "font/woff" | "font/woff2"
+    | "application/font-woff" | "application/font-sfnt" | "application/x-font-ttf" | "application/x-font-opentype";
 
 interface UploadFileData {
     cacheControl?: string;      // Optional Cache-Control metadata for versioned/immutable paths
@@ -62,6 +67,40 @@ function normalizeFileType(type?: SupportedFileType): FileTypeConfig {
     }
 
     const normalizedType = type.toLowerCase();
+
+    // Fonts — check before the generic document/image fallbacks so binary
+    // font uploads retain their real extension and browser-loadable MIME.
+    if (normalizedType.includes('woff2')) {
+        return {
+            extension: '.woff2',
+            contentType: 'font/woff2',
+            uploadFormat: 'data_url'
+        };
+    }
+
+    if (normalizedType.includes('woff')) {
+        return {
+            extension: '.woff',
+            contentType: 'font/woff',
+            uploadFormat: 'data_url'
+        };
+    }
+
+    if (normalizedType.includes('opentype') || normalizedType.includes('font/otf') || normalizedType === 'otf') {
+        return {
+            extension: '.otf',
+            contentType: 'font/otf',
+            uploadFormat: 'data_url'
+        };
+    }
+
+    if (normalizedType.includes('truetype') || normalizedType.includes('font/ttf') || normalizedType.includes('font-sfnt') || normalizedType === 'ttf') {
+        return {
+            extension: '.ttf',
+            contentType: 'font/ttf',
+            uploadFormat: 'data_url'
+        };
+    }
 
     // PNG
     if (normalizedType.includes('png')) {

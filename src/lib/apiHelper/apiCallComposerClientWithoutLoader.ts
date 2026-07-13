@@ -4,7 +4,9 @@ import { secureError } from "@lib/security/secureLogger";
 import { showErrorToast } from "@reduxSlices/toast";
 import { reduxStore } from "@reduxStore/index";
 
-const summarizeDalArgs = (args: any[]) => args.slice(0, -1).map((arg) => {
+type DalOperation<T> = () => Promise<T> | T;
+
+const summarizeDalArgs = (args: unknown[]) => args.slice(0, -1).map((arg) => {
     if (arg === null || arg === undefined) return arg;
     if (Array.isArray(arg)) return { type: 'array', length: arg.length };
     if (typeof arg === 'object') {
@@ -22,18 +24,18 @@ const summarizeDalArgs = (args: any[]) => args.slice(0, -1).map((arg) => {
  * Use this for operations that have their own local loading states
  * (e.g., chat sessions with skeleton UI)
  */
-export const apiCallComposerClientWithoutLoader = async (fn, ...args) => {
+export const apiCallComposerClientWithoutLoader = async <T>(fn: DalOperation<T>, ...args: unknown[]): Promise<T> => {
     const functionName = typeof args[args.length - 1] === 'string' ? args[args.length - 1] : 'unknownDalCall';
     const session = await getActiveSession();
     
     if (!Boolean(session?.user)) {
         reduxStore.dispatch(showErrorToast("User not logged in"));
-        return null;
+        throw new Error('dal_client_session_required');
     }
 
     try {
         // NO startLoader/stopLoader - component manages its own loading state
-        const response = await fn(...args);
+        const response = await fn();
         return response;
     } catch (error) {
         const fallbackMessage = 'Could not load data. Please try again.';
@@ -44,8 +46,6 @@ export const apiCallComposerClientWithoutLoader = async (fn, ...args) => {
             withLoader: false,
         });
         reduxStore.dispatch(showErrorToast(getSafeUiErrorMessage(error, fallbackMessage)));
-        
-        // Return an empty array for data fetching operations to avoid 'not a function' errors
-        return [];
+        throw error;
     }
 }

@@ -280,7 +280,7 @@ requireToken(useMenuList, 'brandColor: storeBrandColor', 'Use MenuList print sho
 
 const desktopAssetsRoute = read('src/components/templates/main-app/printableAssetTemplates/PrintableAssetTemplatesRoute.tsx');
 [
-  'menuModifiedOn: project.modifiedOn',
+  'menuModifiedOn: storeDetails.lastPublishedAt',
   'menuModifiedOn: project.menuModifiedOn',
   'aria-pressed={active}',
   'activeTemplateId',
@@ -337,6 +337,15 @@ const desktopAssetsRoute = read('src/components/templates/main-app/printableAsse
   'businessCategory: platformBusinessCategory',
   'secondaryLabel: project.url.replace',
 ].forEach((token) => requireToken(desktopAssetsRoute, token, 'desktop assets route'));
+if (desktopAssetsRoute.includes('menuModifiedOn: project.modifiedOn') || desktopAssetsRoute.includes('menuModifiedOn: defaultProject.modifiedOn')) {
+  failures.push('desktop assets route must use the store publish timestamp instead of project edit time for printable freshness');
+}
+if (!mobileShare.includes('menuModifiedOn: storeDetails.lastPublishedAt')) {
+  failures.push('mobile share must use the store publish timestamp for printable freshness');
+}
+if (mobileShare.includes('menuModifiedOn: defaultProject.modifiedOn')) {
+  failures.push('mobile share must not use project edit time as the printable publish timestamp');
+}
 
 const templateRegistryDal = read('src/lib/creative-editor/templateRegistryDal.ts');
 [
@@ -630,6 +639,19 @@ const firebaseDoc = read('__docs__/printable-asset-templates/printable-asset-tem
   'No new Cloud Functions',
   'No new Firestore indexes',
 ].forEach((token) => requireToken(firebaseDoc, token, 'firebase cost doc'));
+
+const productionReadinessAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
+const changelog = read('__docs__/changelog.md');
+requireToken(
+  productionReadinessAudit,
+  'Printable asset publish-timestamp verifier parity checkpoint',
+  'production readiness audit printable publish timestamp boundary',
+);
+requireToken(
+  changelog,
+  'Printable Asset Publish Timestamp Verifier Parity',
+  'changelog printable publish timestamp boundary',
+);
 
 if (failures.length) {
   console.error('Printable Asset Templates verification failed:');

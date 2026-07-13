@@ -152,7 +152,7 @@ const FAQS = [
     },
     {
         question: 'Will proactive help interrupt users everywhere?',
-        answer: 'No. Proactive help is configured for specific product pages. The widget should only request or show configured prompts when the workspace has active triggers and approved support summaries for that page context.',
+        answer: 'No. Proactive help is configured for specific product pages. The widget only requests or shows configured prompts when the workspace has active triggers. Temporary known-issue notices use the same page-aware runtime and expire or stop after resolution.',
     },
     {
         question: 'Does every widget load scan all support data?',
@@ -177,6 +177,30 @@ const FAQS = [
     {
         question: 'Does widget context decide workspace identity?',
         answer: 'No. Widget page context helps AnswerLattice choose relevant support. Workspace identity is resolved through AnswerLattice workspace, domain, widget key, and authenticated scope controls.',
+    },
+    {
+        question: 'Can I test important answers before a release?',
+        answer: 'Yes. Save critical questions with expected source, answer, fallback behavior, or wording. Canonical-only checks are deterministic; full-runtime checks are capped and use support credits only when they reach provider fallback. Release checks run only linked cases.',
+    },
+    {
+        question: 'Does AnswerLattice roll back a failed answer automatically?',
+        answer: 'No. A failed test can prepare a prior audited answer version as a mutation proposal. The live answer is not overwritten, and applying accepted content remains a separate governed edit.',
+    },
+    {
+        question: 'Can a temporary issue notice replace an approved answer?',
+        answer: 'No. Known Issue Mode shows an approved, contextual widget notice with an active window and optional HTTPS status link. Permanent approved answers remain unchanged.',
+    },
+    {
+        question: 'What happens when a verified visitor token is invalid?',
+        answer: 'AnswerLattice discards verified visitor context such as signed-only identity, plan, role, and locale claims. Safe page context can still provide generic page-aware support, and workspace scope always comes from the widget key.',
+    },
+    {
+        question: 'What does Daily Brief change?',
+        answer: 'Nothing in your support data directly. Daily Brief is the read-only opening view inside Support Assistant. It summarizes coverage, drift, friction, Support Board attention, and Knowledge Intake review counts, then links the owner to the correct governed screen.',
+    },
+    {
+        question: 'Can I export my approved support knowledge?',
+        answer: 'Yes, with export permission. The bounded JSON package includes approved product structure, articles, FAQs, releases, changelog entries, and canonical answers. It excludes tickets, conversations, visitor details, secrets, keys, credentials, and raw audit logs.',
     },
 ];
 

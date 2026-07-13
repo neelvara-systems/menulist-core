@@ -39,6 +39,7 @@
 - Same `completeCampaign`, `skipCampaign` DAL functions
 - Same `ACTION_TITLES`, `CONTEXT_TEMPLATES`, `SURFACE_BUTTON_COPY` constants
 - Same `TodayCampaignSummary` type
+- Same transactional, identity-checked, idempotent complete/skip DAL; mobile acknowledgement guards remain mandatory before optimistic SWR state changes or success copy
 - Weekly Growth Pack uses `src/lib/today/weeklyGrowthPack.ts`, shared with desktop.
 
 ## Diagnostic Boundary

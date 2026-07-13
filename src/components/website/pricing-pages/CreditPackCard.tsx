@@ -1,9 +1,11 @@
 import { AIEnhancementPack, Currency } from '@data/common';
+import { getContentCreditOutcomeExamples } from '@data/shared/contentCreditPolicy';
 
 import { Button } from '@shadcncomponents/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@shadcncomponents/card';
 import { FirestoreSubscriptionDoc } from '@type/razorpay';
 import { useSession } from 'next-auth/react';
+import { useTranslations } from 'next-intl';
 import React from 'react';
 import { LuCoins } from 'react-icons/lu';
 import { buildCurrentWebsiteSignInPath } from '@/lib/website/signInLinks';
@@ -19,8 +21,10 @@ type CreditPackCardProps = {
 
 const CreditPackCard: React.FC<CreditPackCardProps> = ({ pack, currency, onPurchase, activeSubscription }) => {
     const { data: session, status } = useSession();
+    const t = useTranslations('Website.Pricing');
 
     const price = pack[`price${currency}`].price;
+    const examples = getContentCreditOutcomeExamples(pack.creditAmount);
 
     const planStyles = {
         starter: {
@@ -109,6 +113,15 @@ const CreditPackCard: React.FC<CreditPackCardProps> = ({ pack, currency, onPurch
             <CardContent className="p-3 pt-0 flex-grow flex flex-col items-center justify-between">
                 <div className="text-center">
                     <p className="text-gray-600 dark:text-gray-300 text-sm">{pack.description || 'Enhancement Pack'}</p>
+                    <p className="mt-3 mb-1 text-base font-semibold text-slate-900 dark:text-white">
+                        {t('creditPackAmount', { credits: pack.creditAmount })}
+                    </p>
+                    <p className="m-0 text-xs leading-5 text-gray-600 dark:text-gray-300">
+                        {t('creditPackExample', {
+                            descriptions: examples.descriptionRewrites,
+                            images: examples.generatedMenuImages,
+                        })}
+                    </p>
                     <span className="text-3xl font-bold text-slate-900 dark:text-white mt-1 block">{price !== null ? formatCurrencyOnPricingPage(price, currency) : 'N/A'}</span>
                 </div>
                 <CTAButton />

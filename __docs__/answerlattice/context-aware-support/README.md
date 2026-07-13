@@ -1,9 +1,9 @@
 # Answerlattice — Context-Aware Support
 
 > **Status:** IMPLEMENTED
-> **Version:** 1.1.0
+> **Version:** 1.2.0
 > **Created:** 2026-03-08
-> **Last Updated:** 2026-03-08
+> **Last Updated:** 2026-07-11
 > **Feature Flag:** `ENABLE_ANSWERLATTICE_CONTEXT_AWARE`
 > **Expansion Tracker:** Item #1 (Phase A — Foundation)
 > **Doctrine Check:** ✅ Allowed — improves deterministic retrieval performance (Non-Goals §VII)
@@ -15,6 +15,8 @@
 Transforms Answerlattice's retrieval from **query-only** matching to **product-state-aware** reasoning by accepting structured context from the client product alongside the user's query.
 
 Runtime note: Help Center surfaces pass context directly through Answerlattice-owned React state. External product widgets pass it through the v1 browser contract, `AnswerlatticeWidget.setContext()` / `page()`, or mount-time script attributes such as `data-page` and `data-workflow`. Context remains transient, sanitized, and capped at 2KB; it is not stored as chat history or customer profile data.
+
+Canonical scope note: page, feature, workflow, and entity hints improve deterministic entity matching. Plan, role, and product state are different: when a canonical answer restricts one of those dimensions, the matching runtime value is required and must be allowed. Missing or mismatched scope returns a fixed governed fallback before FAQ or RAG.
 
 **Before:**
 ```

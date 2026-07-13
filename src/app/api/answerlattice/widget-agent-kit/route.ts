@@ -15,7 +15,7 @@ import { DB_COLLECTIONS } from '@constant/database';
 import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
 import { buildAnswerlatticeAgentKitFiles } from '@lib/answerlattice/installContract/contract';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
-import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
+import { isAnswerlatticeStoreInScope, resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { normalizeAnswerlatticeWidgetApiState } from '@lib/answerlattice/widgetKeyManager';
 import { normalizeWidgetAllowedOrigins, normalizeWidgetConfig } from '@lib/answerlattice/widgetConfig';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
@@ -63,8 +63,7 @@ export const GET = withAuth(async (request: NextRequest, session) => {
         }
 
         const storeData = storeSnap.data() || {};
-        const storeTenantId = Number(storeData.tenantId || storeData.tId);
-        if (Number.isFinite(storeTenantId) && storeTenantId !== Number(scope.tenantId)) {
+        if (!isAnswerlatticeStoreInScope(storeData, scope, storeSnap.id)) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 

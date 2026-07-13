@@ -65,6 +65,7 @@ const DEFAULT_FORM_STATE: FormState = {
 };
 
 const GUEST_FEEDBACK_SUBMIT_FAILED_MESSAGE = 'Failed to submit feedback';
+const GUEST_FEEDBACK_MESSAGE_MAX_LENGTH = 300;
 const GUEST_FEEDBACK_SUBMIT_REQUEST_POLICY = {
     cache: 'no-store' as RequestCache,
     credentials: 'same-origin' as RequestCredentials,
@@ -590,26 +591,41 @@ export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
                                                 <LuMessageSquare size={18} />
                                             </div>
                                             <div>
-                                                <p className={styles.notePromptTitle}>
+                                                <label className={styles.notePromptTitle} htmlFor="guest-feedback-message">
                                                     {settings.collectCommentRequired ? 'Add a note' : 'Add a note if you want'}
-                                                </p>
-                                                <p className={styles.notePromptText}>{ratingCopy.notePrompt}</p>
+                                                </label>
+                                                <p className={styles.notePromptText} id="guest-feedback-message-prompt">{ratingCopy.notePrompt}</p>
                                             </div>
                                         </div>
                                         <textarea
+                                            aria-describedby={[
+                                                'guest-feedback-message-prompt',
+                                                'guest-feedback-message-meta',
+                                                touchedFields.message && formErrors.message ? 'guest-feedback-message-error' : '',
+                                            ].filter(Boolean).join(' ')}
+                                            aria-invalid={Boolean(touchedFields.message && formErrors.message)}
                                             className={`${styles.textarea} ${touchedFields.message && formErrors.message ? styles.inputInvalid : ''}`}
                                             disabled={submitState === 'submitting'}
-                                            maxLength={300}
+                                            id="guest-feedback-message"
+                                            maxLength={GUEST_FEEDBACK_MESSAGE_MAX_LENGTH}
+                                            name="message"
                                             onBlur={() => markFieldTouched('message')}
-                                            onChange={(event) => updateField('message', event.target.value)}
+                                            onChange={(event) => updateField(
+                                                'message',
+                                                event.target.value.slice(0, GUEST_FEEDBACK_MESSAGE_MAX_LENGTH),
+                                            )}
                                             placeholder={ratingCopy.placeholder}
                                             value={formValues.message}
                                         />
                                         {touchedFields.message && formErrors.message ? (
-                                            <p className={styles.fieldError}>{formErrors.message}</p>
+                                            <p className={styles.fieldError} id="guest-feedback-message-error">{formErrors.message}</p>
                                         ) : null}
-                                        <div className={styles.metaRow}>
-                                            <span>{formValues.message.length > 0 ? `${formValues.message.length}/300` : 'Up to 300 characters'}</span>
+                                        <div className={styles.metaRow} id="guest-feedback-message-meta">
+                                            <span>
+                                                {formValues.message.length > 0
+                                                    ? `${formValues.message.length}/${GUEST_FEEDBACK_MESSAGE_MAX_LENGTH}`
+                                                    : `Up to ${GUEST_FEEDBACK_MESSAGE_MAX_LENGTH} characters`}
+                                            </span>
                                             <span>Your feedback stays private.</span>
                                         </div>
                                     </div>
@@ -634,6 +650,8 @@ export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
                                         {settings.collectName ? (
                                             <Field
                                                 error={touchedFields.customerName ? formErrors.customerName : ''}
+                                                label="Name"
+                                                name="customerName"
                                                 onBlur={() => markFieldTouched('customerName')}
                                                 onChange={(value) => updateField('customerName', value)}
                                                 placeholder="Your name"
@@ -646,6 +664,8 @@ export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
                                             <Field
                                                 icon={<LuPhone size={16} />}
                                                 error={touchedFields.customerPhone ? formErrors.customerPhone : ''}
+                                                label="Phone number"
+                                                name="customerPhone"
                                                 onBlur={() => markFieldTouched('customerPhone')}
                                                 onChange={(value) => updateField('customerPhone', value)}
                                                 placeholder="+1 (555) 000-0000"
@@ -658,6 +678,8 @@ export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
                                             <Field
                                                 icon={<LuMail size={16} />}
                                                 error={touchedFields.customerEmail ? formErrors.customerEmail : ''}
+                                                label="Email address"
+                                                name="customerEmail"
                                                 onBlur={() => markFieldTouched('customerEmail')}
                                                 onChange={(value) => updateField('customerEmail', value)}
                                                 placeholder="name@example.com"
@@ -718,6 +740,8 @@ export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
 function Field({
     icon,
     error,
+    label,
+    name,
     onChange,
     onBlur,
     placeholder,
@@ -726,6 +750,8 @@ function Field({
 }: {
     icon?: React.ReactNode;
     error?: string;
+    label: string;
+    name: 'customerEmail' | 'customerName' | 'customerPhone';
     onChange: (value: string) => void;
     onBlur: () => void;
     placeholder: string;
@@ -737,9 +763,15 @@ function Field({
             <div className={styles.inputWrap}>
                 {icon ? <span className={styles.inputIcon}>{icon}</span> : null}
                 <input
+                    aria-describedby={error ? `guest-feedback-${name}-error` : undefined}
+                    aria-invalid={Boolean(error)}
+                    aria-label={label}
+                    autoComplete={name === 'customerName' ? 'name' : name === 'customerPhone' ? 'tel' : 'email'}
                     className={`${styles.input} ${icon ? styles.inputWithIcon : ''} ${error ? styles.inputInvalid : ''}`}
+                    id={`guest-feedback-${name}`}
                     inputMode={type === 'tel' ? 'tel' : type === 'email' ? 'email' : 'text'}
                     maxLength={type === 'email' ? 120 : type === 'tel' ? 20 : 60}
+                    name={name}
                     onBlur={onBlur}
                     onChange={(event) => onChange(event.target.value)}
                     placeholder={placeholder}
@@ -747,7 +779,7 @@ function Field({
                     value={value}
                 />
             </div>
-            {error ? <p className={styles.fieldError}>{error}</p> : null}
+            {error ? <p className={styles.fieldError} id={`guest-feedback-${name}-error`}>{error}</p> : null}
         </label>
     );
 }

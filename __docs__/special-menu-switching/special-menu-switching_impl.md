@@ -158,15 +158,18 @@ All special menu operations use the existing DAL pattern (`apiCallComposer` + cl
 
 All functions live in `src/database/projects/index.ts`:
 
-| Function                           | Purpose                                     | Firestore Ops             |
-| ---------------------------------- | ------------------------------------------- | ------------------------- |
-| `getSpecialMenus()`                | List all special menus from summary         | 1R (summary) + 1R (store) |
-| `createSpecialMenuProject(params)` | Clone base + attach metadata + sync summary | 2R + 2W                   |
-| `activateSpecialMenu(projectId)`   | Set status=active, update store fields      | 2R + 2-3W                 |
-| `deactivateSpecialMenu(projectId)` | Set status=expired, clear store fields      | 2R + 2-3W                 |
-| `cancelSpecialMenu(projectId)`     | Set status=cancelled (scheduled only)       | 1R + 2W                   |
+| Function                           | Purpose                                     | Firestore Ops                                      |
+| ---------------------------------- | ------------------------------------------- | -------------------------------------------------- |
+| `getSpecialMenus()`                | List all special menus from summary         | 2R in parallel (summary + store)                    |
+| `createSpecialMenuProject(params)` | Clone base + attach metadata + sync summary | scheduled: 2R + 2W; immediate: 3R + 3W transaction |
+| `updateSpecialMenuProject(params)` | Edit metadata/schedule and lifecycle state  | 3R + 2-3W transaction                              |
+| `activateSpecialMenu(projectId)`   | Set status=active, update store fields      | 2R + 2-3W transaction                              |
+| `deactivateSpecialMenu(projectId)` | Set status=expired, clear store fields      | 2R + 2-3W transaction                              |
+| `cancelSpecialMenu(projectId)`     | Set status=cancelled (scheduled only)       | 1R + 2W transaction                                |
 
-The `useSpecialMenus()` SWR hook in `src/hooks/useSpecialMenus.ts` calls these DAL functions directly. It must require explicit acknowledgement for create, update, activate, deactivate, and cancel calls before returning success or mutating local SWR state. Create acknowledgements must include the created `projectId` and `summaryData`. Update acknowledgements must include the requested `projectId` and resulting `status`. Lifecycle acknowledgements must include `success: true`, the requested `projectId`, and the expected resulting status (`active`, `expired`, or `cancelled`). The project DAL remains the write authority, but the hook rejects `apiCallComposer()` fallback values such as `[]` through `special_menu_create_rejected`, `special_menu_update_rejected`, `special_menu_activate_rejected`, `special_menu_deactivate_rejected`, or `special_menu_cancel_rejected` before owner UI shows success.
+Create, update, activation, deactivation, and cancellation publish project truth, the compact project summary, and any store pointer/banner change atomically. Firestore may retry a transaction after contention, so operation counts can exceed the baseline, but a failed attempt cannot leave a partial lifecycle state. Temporary special-menu banners include `sourceProjectId`; cleanup deletes only the banner owned by the menu being ended (legacy banners are cleared only while the same project owns `activeSpecialMenuId`).
+
+The `useSpecialMenus()` SWR hook in `src/hooks/useSpecialMenus.ts` calls these DAL functions directly. Its cache key includes tenant and store IDs, and the list DAL captures one validated scope before reading summary and store in parallel. The hook must require explicit acknowledgement for create, update, activate, deactivate, and cancel calls before returning success or mutating local SWR state. Create acknowledgements must include the created `projectId` and `summaryData`. Update acknowledgements must include the requested `projectId` and resulting `status`. Lifecycle acknowledgements must include `success: true`, the requested `projectId`, and the expected resulting status (`active`, `expired`, or `cancelled`). The project DAL remains the write authority, but the hook rejects `apiCallComposer()` fallback values such as `[]` through `special_menu_create_rejected`, `special_menu_update_rejected`, `special_menu_activate_rejected`, `special_menu_deactivate_rejected`, or `special_menu_cancel_rejected` before owner UI shows success.
 
 ---
 
@@ -210,31 +213,23 @@ async function getProjectBySlugOrDefault(tId, sId, slug?) {
 ### Overlay Merge Logic
 
 ```typescript
-function mergeOverlay(base: Project, special: Project): Project {
-  // Deep clone base
-  const merged = deepClone(base);
-
-  // Extract special menu categories
-  const specialCategories = extractCategories(special);
-  const specialItems = extractItems(special);
-
-  // Append special categories to base menu
-  // Mark them with _isSpecialSection: true for potential UI styling
-  if (merged.files?.[0]?.extractedData?.data) {
-    const baseData = merged.files[0].extractedData.data;
-    baseData.categories = [
-      ...baseData.categories,
-      ...specialCategories.map((cat) => ({ ...cat, _isSpecialSection: true })),
-    ];
-    baseData.items = [
-      ...baseData.items,
-      ...specialItems.map((item) => ({ ...item, _isSpecialSection: true })),
-    ];
-  }
-
-  return merged;
-}
+const overlayFiles = createSpecialMenuOverlayFiles(baseProject.files);
+const publicProjection = mergeSpecialMenuOverlayProjects(baseProject, specialProject);
 ```
+
+`createSpecialMenuOverlayFiles()` deep-clones the base file shells and clears their category/item rows before the new special-menu project is persisted. This keeps languages and editor context without storing another copy of the base menu.
+
+`mergeSpecialMenuOverlayProjects()` is the only public/configured-screen overlay resolver. It:
+
+1. Never mutates either persisted input.
+2. Drops legacy special rows whose category/item IDs already exist in the base project.
+3. Accepts each new source category/item identity once.
+4. Gives accepted category, item, and attribute rows deterministic runtime-only `sm_*` IDs.
+5. Remaps item category references to the namespaced category, or retains an existing base category reference.
+6. Omits malformed rows and items referencing an unknown category.
+7. Clears extraction aliases that could reconnect overlay rows to base identities.
+
+The projection is computed at render time and is never written back to Firestore. A pure regression test covers legacy clone deduplication, malformed/duplicate rows, category and attribute remapping, deterministic replay, and input immutability.
 
 ---
 
@@ -242,8 +237,10 @@ function mergeOverlay(base: Project, special: Project): Project {
 
 ### Hybrid Approach
 
-1. **Nightly Scheduler** ✅ IMPLEMENTED (extend existing `decisionBlocksScoring.ts`)
-   - At 2:30 AM UTC: check all stores for special menus that should activate/deactivate today
+1. **Timezone-aware nightly scheduler** ✅ IMPLEMENTED (existing hourly scheduler in `decisionBlocksScoring.ts`)
+   - The scheduler runs hourly at `:30`, then processes each store only in its configured business-day window.
+   - Ended windows are expired before due windows are activated, in deterministic schedule order.
+   - The compact project-summary reader accepts the repository's canonical flat keys and legacy nested shape.
    - Activate: set `status: 'active'`, update `store.activeSpecialMenuId`, set temp status banner
    - Deactivate: set `status: 'expired'`, clear `store.activeSpecialMenuId`, clear temp status
    - **Codebase:** `functions/src/decisionBlocksScoring.ts` — full activate/deactivate logic
@@ -263,18 +260,18 @@ Owner creates special menu (scheduled for future)
     → projectsSummary updated
 
 Nightly scheduler OR client-side DAL triggers at startsAt
-    → Set project._specialMenu.status = 'active'
-    → Set project._specialMenu.activatedAt = now
-    → Set store.activeSpecialMenuId = projectId
-    → Set store.tempStatus = { type: 'special_menu', message: displayName, expiresAt: endsAt }
+    → In one transaction, set project._specialMenu.status/activatedAt
+    → In the same transaction, set store.activeSpecialMenuId
+    → In the same transaction, set store.tempStatus with sourceProjectId
+    → In the same transaction, set compact-summary status
     → Invalidate cache tags
     → Bump initialized screen contentVersion/safe mirror when a screen token exists
 
-Nightly scheduler OR auto-check at endsAt
-    → Set project._specialMenu.status = 'expired'
-    → Set project._specialMenu.deactivatedAt = now
-    → Clear store.activeSpecialMenuId
-    → Clear store.tempStatus (if it was special_menu type)
+Nightly scheduler OR owner action at endsAt
+    → In one transaction, set project._specialMenu.status/deactivatedAt
+    → In the same transaction, set compact-summary status
+    → Clear store.activeSpecialMenuId only when this project owns it
+    → Clear only this project's special-menu temp status
     → Invalidate cache tags
     → Bump initialized screen contentVersion/safe mirror when a screen token exists
 ```
@@ -396,7 +393,7 @@ export const TEMPLATE_CAPABILITIES: Record<
 ### Phase 3: Resolver Integration (~150 LOC)
 
 - [x] Modify `getProjectBySlugOrDefault()` to check `activeSpecialMenuId`
-- [x] Implement `mergeOverlay()` for overlay mode
+- [x] Implement one shared, deterministic, legacy-safe overlay projection for public menus and configured screens
 - [x] Add cache invalidation triggers
 
 ### Phase 4: Activation System (~200 LOC)
@@ -467,4 +464,4 @@ async function validateNoConflict(
 
 ---
 
-**Last Updated:** June 28, 2026
+**Last Updated:** July 13, 2026

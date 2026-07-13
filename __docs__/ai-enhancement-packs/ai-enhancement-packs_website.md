@@ -2,7 +2,7 @@
 
 **Feature:** AI Enhancement Packs
 **Status:** Website/source evidence; not current launch certification
-**Last Updated:** February 9, 2026
+**Last Updated:** July 11, 2026
 **Audience:** Website visitors, prospective customers
 **Tone:** Calm, flat, boring. Infrastructure language. No excitement.
 
@@ -13,6 +13,8 @@
 This website copy is source evidence only. It is not current launch certification and must not be published until the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md), `npm run verify:billing-entitlement-boundary`, Razorpay sandbox top-up smoke, desktop/mobile Billing browser QA, website/pricing copy review, target deploy evidence, and production-host smoke are recorded.
 
 Do not publish with TBD price placeholders, unverified activation timing, or provider behavior that lacks current Razorpay evidence.
+
+The pricing card must show `250 credits` and the current examples derived from `src/data/shared/contentCreditPolicy.ts`: up to 50 generated menu images or 250 description rewrites. Do not show a rupee-per-credit conversion, monthly included capacity, provider cost, margin, or overdraft.
 
 ---
 
@@ -31,6 +33,8 @@ Do not publish with TBD price placeholders, unverified activation timing, or pro
 > MenuList handles your menu with AI — generating images, writing descriptions, translating languages. Every plan includes AI features for typical menu needs.
 >
 > For businesses with larger menus, frequent updates, or multiple languages, AI Enhancement Packs provide additional capacity. Buy once. Use whenever your menu needs it.
+
+> Content Credit Pack: 250 credits. Up to 50 generated menu images or 250 description rewrites at current rates.
 
 ### CTA Button
 

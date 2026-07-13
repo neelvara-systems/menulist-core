@@ -20,6 +20,7 @@
 
 import { Timestamp } from 'firebase-admin/firestore';
 import * as logger from 'firebase-functions/logger';
+import { randomUUID } from 'crypto';
 import { ANSWERLATTICE_TEXT_MODEL } from '../constants/ai';
 import { DB_COLLECTIONS } from '../constants/database';
 import { FUNCTION_FLAGS } from '../constants/features';
@@ -31,12 +32,15 @@ import {
     recordGeminiCallOperation,
 } from './aiOperationAccounting';
 import { normalizeAnswerlatticeResolvedFunctionEntityId } from './entityIdBoundary';
+import { parseExactAnswerlatticeScope } from './scopeBoundary';
 
 // ═══════════════════════════════════════════════════════════════
 // CONSTANTS
 // ═══════════════════════════════════════════════════════════════
 
 const MAX_DRAFTS_PER_RUN = 10;
+const MAX_PENDING_PROPOSALS_TO_SCAN = 50;
+const DRAFT_PROCESSING_LEASE_MS = 15 * 60 * 1000;
 const DRAFT_PROMPT_VERSION = 'v1';
 const DRAFT_ACTOR = 'system:draft_generator_nightly';
 const ANSWERLATTICE_DRAFT_GEMINI_CALL_FAILED = 'ANSWERLATTICE_DRAFT_GEMINI_CALL_FAILED';
@@ -44,6 +48,9 @@ const ANSWERLATTICE_DRAFT_PARSE_FAILED = 'ANSWERLATTICE_DRAFT_PARSE_FAILED';
 const ANSWERLATTICE_DRAFT_PROPOSAL_FAILED = 'ANSWERLATTICE_DRAFT_PROPOSAL_FAILED';
 const ANSWERLATTICE_DRAFT_STATUS_MARK_FAILED = 'ANSWERLATTICE_DRAFT_STATUS_MARK_FAILED';
 const ANSWERLATTICE_DRAFT_BATCH_FAILED = 'ANSWERLATTICE_DRAFT_BATCH_FAILED';
+const ANSWERLATTICE_DRAFT_ENTITY_LOAD_FAILED = 'ANSWERLATTICE_DRAFT_ENTITY_LOAD_FAILED';
+const ANSWERLATTICE_DRAFT_SIGNAL_CONTEXT_LOAD_FAILED = 'ANSWERLATTICE_DRAFT_SIGNAL_CONTEXT_LOAD_FAILED';
+const ANSWERLATTICE_DRAFT_EXISTING_ANSWERS_LOAD_FAILED = 'ANSWERLATTICE_DRAFT_EXISTING_ANSWERS_LOAD_FAILED';
 
 // ═══════════════════════════════════════════════════════════════
 // SYSTEM PROMPT (mirrors src/lib/answerlattice/draftPrompt.ts)
@@ -91,17 +98,60 @@ export interface DraftGenerationResult {
 
 interface ProposalForDraft {
     id: string;
+    pId: string;
     tId: number;
     sId: number;
+    status: string;
+    targetAnswerId: string;
     relatedEntityIds: string[];
     signalSummary: {
         ticketCount: number;
         chatCount: number;
         exampleReferences: string[];
     };
-    mutationType: string;
+    mutationType: SupportedDraftMutationType;
     suggestedChange: Record<string, any>;
+    processingRunId: string;
 }
+
+type SupportedDraftMutationType = 'new_answer_required' | 'content_refinement';
+
+const isSupportedDraftMutationType = (value: unknown): value is SupportedDraftMutationType => (
+    value === 'new_answer_required' || value === 'content_refinement'
+);
+
+const isScopedAnswerlatticeDocument = (value: Record<string, any>, tId: number, sId: number): boolean => {
+    const scope = parseExactAnswerlatticeScope(value.tId, value.sId);
+    return value.pId === 'AL' && scope?.tId === tId && scope.sId === sId;
+};
+
+const normalizeDraftContextText = (value: unknown, fallback: string, maxLength: number): string => {
+    if (typeof value !== 'string') return fallback;
+    return value.trim().slice(0, maxLength) || fallback;
+};
+
+const normalizeAnswerlatticeFunctionEntityIds = (value: unknown): string[] => {
+    if (!Array.isArray(value)) return [];
+    const ids = new Set<string>();
+    for (const candidate of value) {
+        const entityId = normalizeAnswerlatticeResolvedFunctionEntityId(candidate);
+        if (entityId) ids.add(entityId);
+    }
+    return Array.from(ids);
+};
+
+const timestampToMillis = (value: unknown): number => {
+    if (!value || typeof value !== 'object') return 0;
+    const candidate = value as { toMillis?: () => number; seconds?: unknown };
+    if (typeof candidate.toMillis === 'function') {
+        const millis = candidate.toMillis();
+        return Number.isFinite(millis) ? millis : 0;
+    }
+    const seconds = candidate.seconds;
+    return typeof seconds === 'number' && Number.isSafeInteger(seconds) && seconds > 0
+        ? seconds * 1_000
+        : 0;
+};
 
 function getDraftSourceErrorContext(error: unknown): {
     sourceErrorName: string | null;
@@ -166,19 +216,25 @@ function getDraftDiagnosticContext(context: {
  * Gather entity context for draft prompt.
  * Returns entity name + description. 1 Firestore read.
  */
-async function getEntityContext(entityId: string): Promise<{ name: string; description: string; type: string } | null> {
+async function getEntityContext(tId: number, sId: number, entityId: string): Promise<{ name: string; description: string; type: string } | null> {
     try {
         const normalizedEntityId = normalizeAnswerlatticeResolvedFunctionEntityId(entityId);
         if (!normalizedEntityId) return null;
         const doc = await db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITIES).doc(normalizedEntityId).get();
         if (!doc.exists) return null;
-        const data = doc.data();
+        const data = doc.data() || {};
+        if (!isScopedAnswerlatticeDocument(data, tId, sId) || data.status === 'deprecated') return null;
         return {
-            name: data?.name || 'Unknown',
-            description: data?.description || '',
-            type: data?.type || 'feature',
+            name: normalizeDraftContextText(data.name, 'Unknown', 180),
+            description: normalizeDraftContextText(data.description, '', 4_000),
+            type: normalizeDraftContextText(data.type, 'feature', 80),
         };
-    } catch {
+    } catch (error) {
+        logger.error('[Answerlattice Draft] Entity context load failed', {
+            failureCode: ANSWERLATTICE_DRAFT_ENTITY_LOAD_FAILED,
+            ...getDraftDiagnosticContext({ tId, sId, entityId }),
+            ...getDraftSourceErrorContext(error),
+        });
         return null;
     }
 }
@@ -204,8 +260,10 @@ async function getSignalExamples(
             if (!doc.exists) continue;
 
             const data = doc.data();
+            if (!data || !isScopedAnswerlatticeDocument(data, tId, sId) || data.entityId !== entityId) continue;
             const meta = data?.metadata || {};
-            const text = meta.query || meta.subject || meta.title || meta.comments || '';
+            const text = [meta.query, meta.subject, meta.title, meta.comments]
+                .find((value): value is string => typeof value === 'string') || '';
             if (text && text.length > 5) {
                 examples.push(text.substring(0, 200));
             }
@@ -225,15 +283,22 @@ async function getSignalExamples(
 
             for (const doc of snap.docs) {
                 if (examples.length >= 5) break;
-                const meta = doc.data().metadata || {};
-                const text = meta.query || meta.subject || meta.title || meta.comments || '';
+                const data = doc.data();
+                if (!isScopedAnswerlatticeDocument(data, tId, sId) || data.entityId !== entityId) continue;
+                const meta = data.metadata || {};
+                const text = [meta.query, meta.subject, meta.title, meta.comments]
+                    .find((value): value is string => typeof value === 'string') || '';
                 if (text && text.length > 5 && !examples.includes(text.substring(0, 200))) {
                     examples.push(text.substring(0, 200));
                 }
             }
         }
-    } catch {
-        // Non-blocking — return whatever we have
+    } catch (error) {
+        logger.warn('[Answerlattice Draft] Signal context load failed', {
+            failureCode: ANSWERLATTICE_DRAFT_SIGNAL_CONTEXT_LOAD_FAILED,
+            ...getDraftDiagnosticContext({ tId, sId, entityId }),
+            ...getDraftSourceErrorContext(error),
+        });
     }
 
     return examples;
@@ -257,12 +322,17 @@ async function getExistingAnswerSummaries(tId: number, sId: number, entityId: st
 
         for (const doc of snap.docs) {
             const data = doc.data();
-            if (data.title && data.content?.structuredSummary) {
-                summaries.push(`${data.title}: ${data.content.structuredSummary.substring(0, 150)}`);
+            if (!isScopedAnswerlatticeDocument(data, tId, sId)) continue;
+            if (typeof data.title === 'string' && typeof data.content?.structuredSummary === 'string') {
+                summaries.push(`${data.title.slice(0, 180)}: ${data.content.structuredSummary.slice(0, 150)}`);
             }
         }
-    } catch {
-        // Non-blocking
+    } catch (error) {
+        logger.warn('[Answerlattice Draft] Existing answer context load failed', {
+            failureCode: ANSWERLATTICE_DRAFT_EXISTING_ANSWERS_LOAD_FAILED,
+            ...getDraftDiagnosticContext({ tId, sId, entityId }),
+            ...getDraftSourceErrorContext(error),
+        });
     }
 
     return summaries;
@@ -275,7 +345,9 @@ async function getExistingAnswerSummaries(tId: number, sId: number, entityId: st
 function buildUserPrompt(
     entity: { name: string; description: string; type: string },
     signalExamples: string[],
-    existingAnswerSummaries: string[]
+    existingAnswerSummaries: string[],
+    mode: SupportedDraftMutationType,
+    currentAnswerText?: string,
 ): string {
     const parts: string[] = [];
 
@@ -298,8 +370,16 @@ function buildUserPrompt(
         }
     }
 
+    if (mode === 'content_refinement' && currentAnswerText) {
+        parts.push('');
+        parts.push('Current approved answer to refine:');
+        parts.push(currentAnswerText.slice(0, 6_000));
+    }
+
     parts.push('');
-    parts.push('Generate a canonical answer draft for this knowledge gap. Return JSON only.');
+    parts.push(mode === 'content_refinement'
+        ? 'Generate a complete replacement draft for the existing canonical answer. Preserve confirmed facts, address the support signals, and do not invent new product behavior. Return JSON only.'
+        : 'Generate a canonical answer draft for this knowledge gap. Return JSON only.');
 
     return parts.join('\n');
 }
@@ -332,16 +412,21 @@ function parseDraftResponse(rawResponse: string | null): ParsedDraft | null {
         if (!parsed.structuredSummary || typeof parsed.structuredSummary !== 'string') return null;
         if (!parsed.detailedExplanation || typeof parsed.detailedExplanation !== 'string') return null;
 
-        const summary = parsed.structuredSummary.length > 500
-            ? parsed.structuredSummary.substring(0, 497) + '...'
-            : parsed.structuredSummary;
+        const title = parsed.title.trim().slice(0, 180);
+        const detailedExplanation = parsed.detailedExplanation.trim().slice(0, 24_000);
+        const normalizedSummary = parsed.structuredSummary.trim();
+        if (!title || !detailedExplanation || !normalizedSummary) return null;
+
+        const summary = normalizedSummary.length > 500
+            ? normalizedSummary.substring(0, 497) + '...'
+            : normalizedSummary;
 
         return {
-            title: parsed.title.substring(0, 200),
+            title,
             structuredSummary: summary,
-            detailedExplanation: parsed.detailedExplanation,
-            edgeCases: typeof parsed.edgeCases === 'string' ? parsed.edgeCases : null,
-            constraints: typeof parsed.constraints === 'string' ? parsed.constraints : null,
+            detailedExplanation,
+            edgeCases: typeof parsed.edgeCases === 'string' ? parsed.edgeCases.trim().slice(0, 8_000) || null : null,
+            constraints: typeof parsed.constraints === 'string' ? parsed.constraints.trim().slice(0, 8_000) || null : null,
             procedure: parsed.procedure && typeof parsed.procedure === 'object' ? parsed.procedure : null,
         };
     } catch {
@@ -380,16 +465,172 @@ async function callGeminiForDraft(
     }
 }
 
+async function getTargetAnswerText(
+    tId: number,
+    sId: number,
+    answerId: string,
+    entityId: string,
+): Promise<string | null> {
+    const normalizedAnswerId = normalizeAnswerlatticeResolvedFunctionEntityId(answerId);
+    if (!normalizedAnswerId) return null;
+    const snapshot = await db.collection(DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS).doc(normalizedAnswerId).get();
+    if (!snapshot.exists) return null;
+    const answer = snapshot.data() || {};
+    if (
+        !isScopedAnswerlatticeDocument(answer, tId, sId)
+        || answer.status !== 'active'
+        || !normalizeAnswerlatticeFunctionEntityIds(answer.scope?.entityIds).includes(entityId)
+    ) return null;
+    return [
+        `Title: ${String(answer.title || '').slice(0, 180)}`,
+        `Summary: ${String(answer.content?.structuredSummary || '').slice(0, 500)}`,
+        `Explanation: ${String(answer.content?.detailedExplanation || '').slice(0, 4_500)}`,
+    ].join('\n');
+}
+
+async function claimProposalForDraft(
+    proposalDoc: FirebaseFirestore.QueryDocumentSnapshot,
+    tId: number,
+    sId: number,
+): Promise<ProposalForDraft | null> {
+    const processingRunId = randomUUID();
+    const nowMillis = Date.now();
+
+    return db.runTransaction(async transaction => {
+        const currentSnap = await transaction.get(proposalDoc.ref);
+        if (!currentSnap.exists) return null;
+        const current = currentSnap.data() || {};
+        if (
+            !isScopedAnswerlatticeDocument(current, tId, sId)
+            || current.status !== 'pending_review'
+            || !isSupportedDraftMutationType(current.mutationType)
+        ) return null;
+
+        const draftStatus = current.suggestedChange?.draftStatus;
+        if (draftStatus === 'generated' || draftStatus === 'failed') return null;
+        const leaseExpiresAt = timestampToMillis(current.suggestedChange?.draftProcessingRun?.leaseExpiresAt);
+        if (draftStatus === 'pending' && leaseExpiresAt > nowMillis) return null;
+
+        const now = Timestamp.fromMillis(nowMillis);
+        transaction.update(proposalDoc.ref, {
+            'suggestedChange.draftStatus': 'pending',
+            'suggestedChange.draftProcessingRun': {
+                id: processingRunId,
+                startedAt: now,
+                leaseExpiresAt: Timestamp.fromMillis(nowMillis + DRAFT_PROCESSING_LEASE_MS),
+            },
+            modifiedOn: now,
+            modifiedBy: DRAFT_ACTOR,
+        });
+
+        return {
+            ...current,
+            id: currentSnap.id,
+            processingRunId,
+        } as ProposalForDraft;
+    });
+}
+
+async function markDraftClaimFailed(proposal: ProposalForDraft): Promise<void> {
+    const proposalRef = db.collection(DB_COLLECTIONS.ANSWERLATTICE_MUTATION_PROPOSALS).doc(proposal.id);
+    await db.runTransaction(async transaction => {
+        const currentSnap = await transaction.get(proposalRef);
+        const current = currentSnap.data() || {};
+        if (
+            !currentSnap.exists
+            || !isScopedAnswerlatticeDocument(current, proposal.tId, proposal.sId)
+            || current.status !== 'pending_review'
+            || current.suggestedChange?.draftProcessingRun?.id !== proposal.processingRunId
+        ) return;
+        transaction.update(proposalRef, {
+            'suggestedChange.draftStatus': 'failed',
+            'suggestedChange.draftProcessingRun': null,
+            modifiedOn: Timestamp.now(),
+            modifiedBy: DRAFT_ACTOR,
+        });
+    });
+}
+
+async function commitGeneratedDraft(
+    proposal: ProposalForDraft,
+    entityId: string,
+    entity: { name: string; description: string; type: string },
+    signalExamples: string[],
+    parsed: ParsedDraft,
+): Promise<boolean> {
+    const proposalRef = db.collection(DB_COLLECTIONS.ANSWERLATTICE_MUTATION_PROPOSALS).doc(proposal.id);
+    const auditRef = db.collection(DB_COLLECTIONS.ANSWERLATTICE_AUDIT_LOGS).doc();
+    return db.runTransaction(async transaction => {
+        const currentSnap = await transaction.get(proposalRef);
+        const current = currentSnap.data() || {};
+        if (
+            !currentSnap.exists
+            || !isScopedAnswerlatticeDocument(current, proposal.tId, proposal.sId)
+            || current.status !== 'pending_review'
+            || current.mutationType !== proposal.mutationType
+            || !normalizeAnswerlatticeFunctionEntityIds(current.relatedEntityIds).includes(entityId)
+            || current.suggestedChange?.draftProcessingRun?.id !== proposal.processingRunId
+        ) return false;
+
+        const proposedContent = {
+            structuredSummary: parsed.structuredSummary,
+            detailedExplanation: parsed.detailedExplanation,
+            ...(parsed.edgeCases ? { edgeCases: parsed.edgeCases } : {}),
+            ...(parsed.constraints ? { constraints: parsed.constraints } : {}),
+            ...(parsed.procedure ? { procedure: parsed.procedure } : {}),
+        };
+        const update: Record<string, unknown> = {
+            'suggestedChange.draftTitle': parsed.title,
+            'suggestedChange.structuredSummary': parsed.structuredSummary,
+            'suggestedChange.detailedExplanation': parsed.detailedExplanation,
+            'suggestedChange.edgeCases': parsed.edgeCases,
+            'suggestedChange.constraints': parsed.constraints,
+            'suggestedChange.procedure': parsed.procedure,
+            'suggestedChange.draftStatus': 'generated',
+            'suggestedChange.draftSource': 'signal_cluster',
+            'suggestedChange.draftGeneratedAt': Timestamp.now(),
+            'suggestedChange.draftSignalExamples': signalExamples.slice(0, 5),
+            'suggestedChange.draftEntityContext': `${entity.name}: ${entity.description}`.substring(0, 500),
+            'suggestedChange.draftPromptVersion': DRAFT_PROMPT_VERSION,
+            'suggestedChange.draftProcessingRun': null,
+            modifiedOn: Timestamp.now(),
+            modifiedBy: DRAFT_ACTOR,
+        };
+        if (proposal.mutationType === 'content_refinement') {
+            update['suggestedChange.proposedContent'] = proposedContent;
+        }
+
+        transaction.update(proposalRef, update);
+        transaction.create(auditRef, {
+            pId: 'AL',
+            tId: proposal.tId,
+            sId: proposal.sId,
+            action: 'draft_generated',
+            entityType: 'mutationProposal',
+            entityId: proposal.id,
+            previousState: null,
+            newState: {
+                draftTitle: parsed.title,
+                draftSource: 'signal_cluster',
+                mutationType: proposal.mutationType,
+                entityId,
+                promptVersion: DRAFT_PROMPT_VERSION,
+            },
+            performedBy: DRAFT_ACTOR,
+            timestamp: Timestamp.now(),
+        });
+        return true;
+    });
+}
+
 // ═══════════════════════════════════════════════════════════════
 // MAIN DRAFT GENERATION (called from answerlatticeNightly.ts)
 // ═══════════════════════════════════════════════════════════════
 
 /**
- * Generate AI drafts for new_answer_required proposals that don't have drafts yet.
- * 
- * Called as Step 9 of the nightly batch.
- * Max 10 drafts per run (cost cap).
- * Failure never blocks — proposals exist with or without drafts.
+ * Generate AI drafts for new-answer and content-refinement proposals.
+ * A bounded lease prevents duplicate AI calls and permits recovery from a
+ * crashed pending run. Failed drafts wait for explicit owner regeneration.
  */
 export async function generateDraftsForNewProposals(
     tId: number,
@@ -406,66 +647,60 @@ export async function generateDraftsForNewProposals(
     }
 
     try {
-        // Find new_answer_required proposals without drafts
+        // Scan a bounded pending queue, then claim supported proposal types in
+        // transactions so another scheduler/manual request cannot process them.
         const proposalsSnap = await db.collection(DB_COLLECTIONS.ANSWERLATTICE_MUTATION_PROPOSALS)
             .where('tId', '==', tId)
             .where('sId', '==', sId)
-            .where('mutationType', '==', 'new_answer_required')
             .where('status', '==', 'pending_review')
-            .limit(MAX_DRAFTS_PER_RUN)
+            .limit(MAX_PENDING_PROPOSALS_TO_SCAN)
             .get();
 
         if (proposalsSnap.empty) return result;
 
         for (const proposalDoc of proposalsSnap.docs) {
-            const proposal = { id: proposalDoc.id, ...proposalDoc.data() } as ProposalForDraft;
-
-            // Skip if draft already exists
-            if (proposal.suggestedChange?.draftStatus === 'generated' || proposal.suggestedChange?.draftStatus === 'pending') {
-                continue;
-            }
-
             // Cost cap
             if (result.draftsGenerated >= MAX_DRAFTS_PER_RUN) break;
+            const proposal = await claimProposalForDraft(proposalDoc, tId, sId);
+            if (!proposal) continue;
 
             try {
-                // Mark as pending
-                await proposalDoc.ref.update({
-                    'suggestedChange.draftStatus': 'pending',
-                    modifiedOn: Timestamp.now(),
-                    modifiedBy: DRAFT_ACTOR,
-                });
-
                 // Gather context
                 const entityId = normalizeAnswerlatticeResolvedFunctionEntityId(proposal.relatedEntityIds?.[0]);
                 if (!entityId) {
-                    await proposalDoc.ref.update({
-                        'suggestedChange.draftStatus': 'failed',
-                        modifiedOn: Timestamp.now(),
-                        modifiedBy: DRAFT_ACTOR,
-                    });
+                    await markDraftClaimFailed(proposal);
                     result.draftsFailed++;
                     continue;
                 }
 
-                const entity = await getEntityContext(entityId);
+                const entity = await getEntityContext(tId, sId, entityId);
                 if (!entity) {
-                    await proposalDoc.ref.update({
-                        'suggestedChange.draftStatus': 'failed',
-                        modifiedOn: Timestamp.now(),
-                        modifiedBy: DRAFT_ACTOR,
-                    });
+                    await markDraftClaimFailed(proposal);
                     result.draftsFailed++;
                     continue;
                 }
 
-                const [signalExamples, existingAnswers] = await Promise.all([
+                const [signalExamples, existingAnswers, currentAnswerText] = await Promise.all([
                     getSignalExamples(tId, sId, entityId, proposal.signalSummary?.exampleReferences || []),
                     getExistingAnswerSummaries(tId, sId, entityId),
+                    proposal.mutationType === 'content_refinement'
+                        ? getTargetAnswerText(tId, sId, proposal.targetAnswerId, entityId)
+                        : Promise.resolve(null),
                 ]);
+                if (proposal.mutationType === 'content_refinement' && !currentAnswerText) {
+                    await markDraftClaimFailed(proposal);
+                    result.draftsFailed++;
+                    continue;
+                }
 
                 // Build prompt and call Gemini
-                const userPrompt = buildUserPrompt(entity, signalExamples, existingAnswers);
+                const userPrompt = buildUserPrompt(
+                    entity,
+                    signalExamples,
+                    existingAnswers,
+                    proposal.mutationType,
+                    currentAnswerText || undefined,
+                );
                 const geminiResult = await callGeminiForDraft(DRAFT_SYSTEM_PROMPT, userPrompt, {
                     tId,
                     sId,
@@ -493,11 +728,7 @@ export async function generateDraftsForNewProposals(
                 // Parse response
                 const parsed = parseDraftResponse(rawResponse);
                 if (!parsed) {
-                    await proposalDoc.ref.update({
-                        'suggestedChange.draftStatus': 'failed',
-                        modifiedOn: Timestamp.now(),
-                        modifiedBy: DRAFT_ACTOR,
-                    });
+                    await markDraftClaimFailed(proposal);
                     result.draftsFailed++;
                     logger.warn('[Answerlattice Draft] Failed to parse Gemini response', {
                         failureCode: ANSWERLATTICE_DRAFT_PARSE_FAILED,
@@ -513,45 +744,11 @@ export async function generateDraftsForNewProposals(
                     continue;
                 }
 
-                // Store draft on proposal
-                await proposalDoc.ref.update({
-                    'suggestedChange.draftTitle': parsed.title,
-                    'suggestedChange.structuredSummary': parsed.structuredSummary,
-                    'suggestedChange.detailedExplanation': parsed.detailedExplanation,
-                    'suggestedChange.edgeCases': parsed.edgeCases,
-                    'suggestedChange.constraints': parsed.constraints,
-                    'suggestedChange.procedure': parsed.procedure,
-                    'suggestedChange.draftStatus': 'generated',
-                    'suggestedChange.draftSource': 'signal_cluster',
-                    'suggestedChange.draftGeneratedAt': Timestamp.now(),
-                    'suggestedChange.draftSignalExamples': signalExamples.slice(0, 5),
-                    'suggestedChange.draftEntityContext': `${entity.name}: ${entity.description}`.substring(0, 500),
-                    'suggestedChange.draftPromptVersion': DRAFT_PROMPT_VERSION,
-                    modifiedOn: Timestamp.now(),
-                    modifiedBy: DRAFT_ACTOR,
-                });
-
-                // Audit log
-                await db.collection(DB_COLLECTIONS.ANSWERLATTICE_AUDIT_LOGS).add({
-                    pId: 'AL',
-                    tId,
-                    sId,
-                    action: 'draft_generated',
-                    entityType: 'mutationProposal',
-                    entityId: proposal.id,
-                    previousState: null,
-                    newState: {
-                        draftTitle: parsed.title,
-                        draftSource: 'signal_cluster',
-                        entityId,
-                        promptVersion: DRAFT_PROMPT_VERSION,
-                    },
-                    performedBy: 'system:draft_generator_nightly',
-                    timestamp: Timestamp.now(),
-                });
-
-                result.draftsGenerated++;
-                result.proposalIds.push(proposal.id);
+                const committed = await commitGeneratedDraft(proposal, entityId, entity, signalExamples, parsed);
+                if (committed) {
+                    result.draftsGenerated++;
+                    result.proposalIds.push(proposal.id);
+                }
 
             } catch (error) {
                 // Per-proposal failure — continue with next
@@ -564,13 +761,9 @@ export async function generateDraftsForNewProposals(
                             entityId: normalizeAnswerlatticeResolvedFunctionEntityId(proposal.relatedEntityIds?.[0]),
                         }),
                         ...getDraftSourceErrorContext(error),
-                    });
+                });
                 try {
-                    await proposalDoc.ref.update({
-                        'suggestedChange.draftStatus': 'failed',
-                        modifiedOn: Timestamp.now(),
-                        modifiedBy: DRAFT_ACTOR,
-                    });
+                    await markDraftClaimFailed(proposal);
                 } catch (statusError) {
                     logger.error('[Answerlattice Draft] Failed to mark proposal draft failed', {
                         failureCode: ANSWERLATTICE_DRAFT_STATUS_MARK_FAILED,

@@ -15,7 +15,7 @@ It verifies the operating company behind the current operated product lineup, ex
 The site should make a visitor understand:
 
 - Neelvara Systems operates software infrastructure for customer-facing business information.
-- MenuList, Answerlattice, and CampaignCue are operated by Neelvara Systems.
+- MenuList and Answerlattice are operated by Neelvara Systems.
 - The company scope is clear and narrow.
 - Company, legal, privacy, and product-support routes are separated.
 
@@ -33,7 +33,7 @@ Long:
 
 Relationship:
 
-> MenuList, Answerlattice, and CampaignCue are operated by Neelvara Systems.
+> MenuList and Answerlattice are operated by Neelvara Systems.
 
 Entity description:
 
@@ -46,10 +46,9 @@ Entity description:
 Allowed:
 
 - Neelvara Systems operates software infrastructure for customer-facing business information.
-- MenuList, Answerlattice, and CampaignCue are operated by Neelvara Systems.
+- MenuList and Answerlattice are operated by Neelvara Systems.
 - MenuList keeps menus, hours, profiles, and customer-facing details in a public business information source.
 - Answerlattice keeps support knowledge, help content, and business responses tied to approved answers.
-- CampaignCue keeps campaign briefs, reusable content, and marketing assets tied to business context.
 - Neelvara Systems does not claim POS, payroll, accounting, CRM, delivery, or internal operations software on this company website.
 
 Only show products approved for company-site mention. Do not add future-product cards, placeholder products, or private/internal product names.
@@ -161,9 +160,9 @@ Do not make the H1 a slogan. The brand/entity name should be the first signal.
 Use:
 
 - Neelvara current-color Prism mesh, grain, prism-panel, and glass-panel treatment as a scoped visual system
-- meaningful hero artifact focused on company routing instead of blank decoration or product-count proof
+- direct hero-to-company-summary flow without a decorative routing mock or product-count proof
 - problem-first bento and spotlight sections
-- actual product marks for MenuList, Answerlattice, and CampaignCue
+- actual product marks for MenuList and Answerlattice
 - direct contact-routing sections
 - page-specific Privacy Policy, Terms of Use, Legal, Contact, Products, About, and 404 content
 
@@ -189,7 +188,6 @@ Product summaries:
 
 - MenuList: keeps menus, hours, profiles, and customer-facing details in a public business information source.
 - Answerlattice: keeps support knowledge, help content, and business responses tied to approved answers.
-- CampaignCue: keeps campaign briefs, reusable content, and marketing assets tied to business context.
 
 Product pricing, onboarding, support, documentation, privacy, and terms remain on individual product websites.
 

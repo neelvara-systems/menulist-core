@@ -2,7 +2,7 @@
 
 **Feature:** Silent Reputation Defense Layer  
 **Status:** 🔒 SPEC LOCKED — Implementation blocked until GBP API access granted  
-**Last Updated:** July 1, 2026
+**Last Updated:** July 11, 2026
 **Priority:** LOW (currently) — Not yet implemented. Document for future cost planning.
 
 ---
@@ -50,6 +50,12 @@ June 30, 2026 Review Reply response/request acknowledgement is browser-only hard
 June 30, 2026 Review Reply prompt-input normalization is Firebase-cost neutral. `/api/reviews/suggest` still uses the same feature gates, auth, tenant access, 16KB body cap, Zod schema, SAFE_MODE/rate-limit/capacity checks, Gemini call/fallback behavior, AI accounting write, and credit consumption order. The route now caps `businessType`, strips control/template characters from pasted review/business-type prompt inputs, escapes sanitized review text with JSON string serialization, and records sanitized prompt length/business type metadata. This adds no Firestore reads/writes/deletes, Storage operations, provider calls beyond existing valid suggestions, cache invalidations, rules, indexes, Cloud Function logic, owner-facing settings, Firebase deploy requirement, or Vercel deploy action.
 
 June 30, 2026 Review Reply copy acknowledgement is browser-only hardening. `ReviewReplyTool` shows copied feedback only after Clipboard API success or acknowledged textarea fallback success, and failed copy diagnostics add clipboard/fallback support booleans without logging raw pasted review text or generated reply text. It adds no Firestore reads/writes/deletes, Storage operations, provider calls, route behavior, AI accounting writes, rules, indexes, Cloud Function logic, owner-facing settings, Firebase deploy requirement, or Vercel deploy action.
+
+July 11, 2026 classification input/keyword hardening is pre-persistence and cost-neutral. The dormant classifier rejects ratings outside the integer 1-5 contract and non-string comments before classification, matches complete words/phrases instead of arbitrary substrings, and preserves discrimination variants through an explicit bounded rule. It changes no Firestore read/write/delete count, rules, indexes, scheduler, provider, cache, deployment, or owner-visible runtime while the parent feature remains disabled.
+
+July 11, 2026 state-path and provider-fallback reconciliation is persistence-cost neutral. The executable contract is one flat `reviewsState/{reviewId}` collection with required embedded `tId`/`sId`; the protected state API applies both equality predicates and active rules authorize from the embedded scope. Reply-provider failures emit bounded diagnostics before returning the existing static, uncharged fallback. No Firestore operation count, rule/index source, AI debit, scheduler, cache, Firebase deploy, or Vercel deploy changed.
+
+July 11, 2026 rules evidence is local and cost-neutral: `npm run test:reviews:rules` proves own-store/multi-store reads, numeric/string embedded identity compatibility, cross-store/cross-tenant/public denial, scoped-query admission, malformed-scope denial, platform reads, and owner/platform client-write denial against the current Firestore rules emulator. It does not prove deployed rules or live data.
 
 July 1, 2026 Review Reply source acknowledgement is browser-only hardening. `ReviewReplyTool` now requires the successful suggestion envelope to include `source: "ai" | "fallback"` before showing a reply, setting the source badge, syncing balance, or incrementing attempts. It adds no Firestore reads/writes/deletes, Storage operations, provider calls, route behavior, AI accounting writes, rules, indexes, Cloud Function logic, owner-facing settings, Firebase deploy requirement, or Vercel deploy action.
 

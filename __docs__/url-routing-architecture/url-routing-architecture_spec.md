@@ -63,6 +63,9 @@
 - Subdomain settings UI in Business Settings (`SubdomainTab.tsx`)
 - Subdomain availability checker API (`GET /api/subdomain/check`)
 - Custom domain management via Vercel API (`POST/GET/DELETE /api/domain`)
+- Transactional, request-unique custom-domain claims that serialize concurrent add/replace/remove work
+- Canonical store and tenant lifecycle/identity admission before owner domain reads or writes
+- Duplicate legacy hostname and claim-owner mismatch handling that fails closed without choosing a winner
 - Custom domain settings UI (`CustomDomainTab.tsx`)
 - Subdomain → custom domain 301 redirect (SEO consolidation)
 - Lowercase + trailing slash URL normalization (middleware 301)
@@ -121,6 +124,10 @@
 | **Single-store behavior** | Zero visible difference for single-store brands (95% of users)                 |
 | **Backward compat**       | Projects without stored slugs fall back to `slugify(name)` matching            |
 | **Product host isolation** | Internal product hosts are registered before tenant routing and never treated as restaurant custom domains |
+| **Custom-domain ownership** | One normalized hostname has one current MenuList store claim; active reservation/release leases block same-store and cross-store overlap |
+| **Provider conflict proof** | A provider `409` is accepted only with MenuList provenance and confirmation that the domain belongs to the configured Vercel project |
+| **Verification truth** | `domainVerified=true` requires explicit Vercel DNS configuration plus configured-project membership; explicit misconfiguration/project absence clears it, while provider errors preserve last confirmed state |
+| **Legacy ambiguity** | Duplicate store rows, claim-owner mismatch, and active legacy work return `409`; no route silently picks a public winner |
 | **Internal reader access** | MyCodex Vercel access uses a first-party login page, validates `MYCODEX_BASIC_AUTH_USER` and `MYCODEX_BASIC_AUTH_PASSWORD` server-side, and persists access with a signed `HttpOnly` session cookie |
 | **Internal reader discovery** | MyCodex routes must be no-index/no-follow and must serve disallow-all `robots.txt` without affecting MenuList or Answerlattice discovery |
 

@@ -1,4 +1,9 @@
-import { Timestamp } from 'firebase/firestore';
+export type GuestFeedbackTimestamp = {
+    nanoseconds: number;
+    seconds: number;
+    toDate(): Date;
+    toMillis(): number;
+};
 
 /**
  * GuestFeedback - Public feedback submitted by guests
@@ -76,13 +81,13 @@ export interface GuestFeedback {
     // ─────────────────────────────────────────────────────────────
 
     /** When feedback was submitted */
-    createdOn: Timestamp;
+    createdOn: GuestFeedbackTimestamp;
 
     /** Always 'guest' for public submissions */
     createdBy: 'guest';
 
     /** When status was last updated */
-    modifiedOn?: Timestamp;
+    modifiedOn?: GuestFeedbackTimestamp;
 
     /** User ID who updated status (owner/manager) */
     modifiedBy?: string;
@@ -92,7 +97,7 @@ export interface GuestFeedback {
     // ─────────────────────────────────────────────────────────────
 
     /** Calculated expiry date (createdOn + 90 days) */
-    expiresOn: Timestamp;
+    expiresOn: GuestFeedbackTimestamp;
 }
 
 /**

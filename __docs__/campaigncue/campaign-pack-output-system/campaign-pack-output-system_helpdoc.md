@@ -14,18 +14,23 @@ It can include:
 - staff sharing text
 - print and QR brief
 - trust checks
-- reuse notes
+- pack readiness
+- the next manual campaign task
+- safe-reuse notes when a past campaign helped
 - result question
 
 ## How To Use It
 
 1. Open the latest campaign pack.
 2. Check whether anything says Needs input or Needs review.
-3. Select Download campaign pack ZIP.
-4. Open the folder for the channel you want to use.
-5. Copy the text into the channel you control.
-6. Download or export visual files from the editor when a rendered file is needed.
-7. After using the campaign, record what happened.
+3. Check Pack readiness. It measures completeness and safety, not predicted performance.
+4. Select Download campaign pack ZIP.
+5. Open the folder for the channel you want to use.
+6. Copy the text into the channel you control.
+7. Download or export visual files from the editor when a rendered file is needed.
+8. After using the campaign, record what happened.
+
+When CampaignCue shows **Reuse safely**, it creates a new pack from current business facts. It does not repeat the old campaign automatically or copy its old approval and trust state.
 
 ## Important
 

@@ -6,6 +6,8 @@ This is the owner-managed mapping layer between product routes, semantic context
 
 Answerlattice App Product Surface ID Boundary: owner-edited and generated product surface IDs are normalized through the shared Firestore document-ID guard before product-surface document refs, archive refs, direct surface reads, or compiled-context source-version IDs. Malformed, reserved, empty, or path-shaped surface IDs are rejected before Firestore access while valid generated IDs keep the existing `{tId}_{sId}_{surfaceKey}` shape.
 
+Answerlattice Product Surface Summary Boundary: stored product-surface documents and `platformSummary/contextContent_{tId}_{sId}` summaries re-enter an exact `pId=AL`, exact numeric workspace, normalized surface-key, bounded-counter, resolved-entity and allowlisted related-content parser before browser state, server memory cache, search related content, activation readiness or compiled-context fallback use. Invalid derived rows fail closed until rebuilt.
+
 ## Documents
 
 - [Spec](product-surface-contexts_spec.md)

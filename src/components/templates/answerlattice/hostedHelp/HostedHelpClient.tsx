@@ -1,6 +1,7 @@
 'use client';
 
 import type { KnowledgeBaseArticleMeta, KnowledgeBaseCategoriesType } from '@type/knowledgeBase';
+import { normalizeHostedHelpArticleSlug } from '@lib/answerlattice/hostedHelpRequest';
 import { theme } from 'antd';
 import Link from 'next/link';
 import { type CSSProperties, useMemo, useState } from 'react';
@@ -30,7 +31,7 @@ export type HostedHelpChangelogEntry = {
     title: string;
     version?: string | null;
     releasedOn?: string | null;
-    description?: any;
+    descriptionText: string;
 };
 
 export type HostedHelpChangelogPage = {
@@ -59,16 +60,6 @@ type HostedHelpClientProps = {
 
 const pathFor = (path: string) => path;
 
-function normalizeArticleSlug(value?: string | null) {
-    const normalized = String(value || '')
-        .trim()
-        .replace(/[?#].*$/, '')
-        .replace(/^\/+|\/+$/g, '');
-    return normalized
-        .replace(/^(articles|help|docs)\//, '')
-        .replace(/^\/+|\/+$/g, '');
-}
-
 function getArticles(categories: KnowledgeBaseCategoriesType | null): ArticleSearchItem[] {
     if (!categories?.categories) return [];
 
@@ -89,27 +80,17 @@ function getArticles(categories: KnowledgeBaseCategoriesType | null): ArticleSea
 }
 
 function articleHref(article: Pick<KnowledgeBaseArticleMeta, 'id' | 'url'>) {
-    const slug = normalizeArticleSlug(article.url || article.id) || article.id;
+    const slug = normalizeHostedHelpArticleSlug(article.url || article.id) || article.id;
     return pathFor(`/articles/${encodeURIComponent(slug)}`);
 }
 
 function entryText(entry: HostedHelpChangelogEntry) {
-    const extract = (node: any): string => {
-        if (!node) return '';
-        if (node.type === 'text') return node.text || '';
-        if (Array.isArray(node.content)) return node.content.map(extract).join(' ');
-        return '';
-    };
-    return extract(entry.description).replace(/\s+/g, ' ').trim();
+    return entry.descriptionText;
 }
 
-function formatDate(value: any) {
+function formatDate(value?: string | null) {
     if (!value) return '';
-    const date = typeof value?.toDate === 'function'
-        ? value.toDate()
-        : typeof value?.seconds === 'number'
-            ? new Date(value.seconds * 1000)
-            : new Date(value);
+    const date = new Date(value);
     if (Number.isNaN(date.getTime())) return '';
     return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 }

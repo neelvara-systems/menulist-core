@@ -107,6 +107,8 @@ export interface ProjectSummaryData {
     businessType?: string;
     active: boolean;
     isDefault?: boolean;
+    createdOn?: Timestamp;
+    modifiedOn?: Timestamp;
 
     // ── URL PERMANENCE (Feature: URL Routing Architecture) ──────────
     /** Permanent URL slug for this project */

@@ -24,6 +24,20 @@ import {
     IngestionJobCategoriesMap,
 } from '../types';
 
+const SHARED_KB_EMBED_TASK_OPTIONS = {
+    ...FUNCTION_OPTIONS.aiCallable,
+    retryConfig: {
+        maxAttempts: 3,
+        maxBackoffSeconds: 120,
+        maxDoublings: 2,
+        minBackoffSeconds: 10,
+    },
+    rateLimits: {
+        maxConcurrentDispatches: 3,
+        maxDispatchesPerSecond: 3,
+    },
+};
+
 function getRequesterRole(request: { auth?: { token?: Record<string, any> } }): string {
     return String(request.auth?.token?.platformRole || request.auth?.token?.role || '');
 }
@@ -104,7 +118,7 @@ function hashRateLimitValue(value: unknown): string {
 
 function assertFirestoreDocumentId(value: unknown, fieldName: string): string {
     const id = typeof value === 'string' ? value.trim() : '';
-    if (!id || id === '.' || id === '..' || id.includes('/') || /^__.*__$/.test(id)) {
+    if (id !== value || !id || id.length > 180 || id === '.' || id === '..' || id.includes('/') || /^__.*__$/.test(id)) {
         throw new HttpsError('invalid-argument', `${fieldName} must be a valid Firestore document ID.`);
     }
     return id;
@@ -124,13 +138,25 @@ function getSharedKbTaskContext(articleData: EmbedArticleType, jobId: string): R
 // ═══════════════════════════════════════════════════════════════
 
 // STEP 6 (PART 2) - The Worker - Triggered by the Task Queue
-export const embedArticleWorker = onTaskDispatched(FUNCTION_OPTIONS.aiCallable, async (request) => {
+export const embedArticleWorker = onTaskDispatched(SHARED_KB_EMBED_TASK_OPTIONS, async (request) => {
     const data = request.data;
     const logger = functions.logger;
-    const { articleData, jobId } = data as { articleData: EmbedArticleType; jobId: string };
+    const { articleData, embeddingRunId, jobId } = data as {
+        articleData?: EmbedArticleType;
+        embeddingRunId?: string;
+        jobId?: string;
+    };
+
+    if (!articleData?.id || !jobId) {
+        throw new HttpsError('invalid-argument', 'Missing required payload: articleData.id, jobId.');
+    }
 
     logger.info('[embedArticleWorker] Worker starting to re-embed article.', getSharedKbTaskContext(articleData, jobId));
-    await embedArticleWorkerLogic(articleData, jobId);
+    await embedArticleWorkerLogic(articleData, jobId, {
+        embeddingRunId,
+        retryCount: request.retryCount,
+        finalAttempt: request.retryCount >= 2,
+    });
 });
 
 // ON-SAVE HOOK - Triggered by the client UI
@@ -138,7 +164,7 @@ export const regenerateEmbedding = onCall(FUNCTION_OPTIONS.aiCallable, async (re
     assertPlatformOwner(request, 'regenerate knowledge-base embeddings');
 
     const articleId = assertFirestoreDocumentId(request.data?.articleId, 'articleId');
-    await regenerateEmbeddingLogic(articleId);
+    return regenerateEmbeddingLogic(articleId);
 });
 
 // STEP 6 & 7 (PART 1) - The Orchestrator - Triggered by the client UI
@@ -151,7 +177,7 @@ export const publishApprovedJobFn = onCall(FUNCTION_OPTIONS.aiCallable, async (r
         throw new HttpsError('invalid-argument', 'Missing required payload: jobId, finalCategories.');
     }
 
-    await publishApprovedJobLogic(jobId, finalCategories);
+    return publishApprovedJobLogic(jobId, finalCategories);
 });
 
 // ═══════════════════════════════════════════════════════════════

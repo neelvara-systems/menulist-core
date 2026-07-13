@@ -32,11 +32,11 @@ function assertOrder(source, tokens, label) {
 }
 
 function verifyPackageScript(packageJson) {
-  assertIncludes(
-    packageJson,
+  [
     '"verify:reseller-dashboard-boundary": "node scripts/verification/verify-reseller-dashboard-boundary.js"',
-    'Root package scripts',
-  );
+    '"test:reseller-confirm-payment-boundary":',
+    '"test:reseller-confirm-payment:emulator":',
+  ].forEach((token) => assertIncludes(packageJson, token, 'Root package scripts'));
 }
 
 function verifyReadRateLimit(helper) {
@@ -143,7 +143,7 @@ function verifyManageRoute(route) {
   ].forEach((token) => assertNotIncludes(route, token, 'Reseller management API boundary'));
 }
 
-function verifyOnboardRoute(route) {
+function verifyOnboardRoute(route, ownerClaim) {
   verifyCommonMutationRoute(route, 'Reseller onboarding API', 'ResellerOnboardSchema', 'reseller-onboard');
 
   [
@@ -157,9 +157,12 @@ function verifyOnboardRoute(route) {
     'assertOwnerLoginIsAvailable({',
     'prepareOwnerAuthUser({',
     'result = await db.runTransaction(async (transaction) => {',
+    'readResellerOwnerClaimInTransaction({',
     'createTenantStoreInTransaction(transaction, db, {',
     "onboardingSource: 'RESELLER_ONBOARDING'",
     'await authAdmin.deleteUser(authAccount.uid);',
+    'if (await canDeleteCreatedResellerAuthUser(db, authAccount.uid)) {',
+    'error instanceof ResellerOwnerClaimConflictError',
     'await authAdmin.setCustomUserClaims(result.authUid, {',
     'await revalidateMenuCache(result.storeId, { tId: result.tenantId });',
     'getOrCreateRazorpayPlan({',
@@ -184,9 +187,26 @@ function verifyOnboardRoute(route) {
     'assertOwnerLoginIsAvailable({',
     'prepareOwnerAuthUser({',
     'result = await db.runTransaction(async (transaction) => {',
+    'readResellerOwnerClaimInTransaction({',
+    'createTenantStoreInTransaction(transaction, db, {',
     'await authAdmin.setCustomUserClaims(result.authUid, {',
     'await revalidateMenuCache(result.storeId, { tId: result.tenantId });',
   ], 'Reseller onboarding local account/store admission order');
+
+  [
+    'const snapshot = await transaction.get(ref);',
+    "if (snapshot.exists) throw new ResellerOwnerClaimConflictError();",
+    "if (!snapshot.exists) throw new ResellerOwnerClaimConflictError();",
+    'storedEmail !== expectedEmail',
+    'storedFirebaseUid && storedFirebaseUid !== authUid',
+    '|| hasTenant',
+    '|| hasStore',
+    "return !(await db.collection(DB_COLLECTIONS.USERS).doc(normalizedUserId).get()).exists;",
+  ].forEach((token) => assertIncludes(ownerClaim, token, 'Reseller owner claim transaction boundary'));
+  [
+    'const currentStores = Array.isArray(existingOwnerData?.stores)',
+    'transaction.update(existingOwnerDoc.ref',
+  ].forEach((token) => assertNotIncludes(route, token, 'Reseller stale owner snapshot write'));
 
   assertOrder(route, [
     'getOrCreateRazorpayPlan({',
@@ -196,19 +216,64 @@ function verifyOnboardRoute(route) {
   ], 'Reseller online provider compensation order');
 }
 
-function verifyConfirmPaymentRoute(route) {
+function verifyConfirmPaymentRoute(route, boundary, subscriptionServer, boundaryTest, emulatorTest) {
   verifyCommonMutationRoute(route, 'Reseller confirm-payment API', 'ResellerConfirmPaymentSchema', 'reseller-confirm-payment');
 
   [
-    'getSubscriptionById(subscriptionId)',
-    'subscription.resellerId !== resellerId && !isPlatformUser',
+    'getCurrentPlatformUser(session)',
+    'getResellerProfile(resellerId, session.user.email)',
+    'hasCurrentResellerProfile({',
+    'confirmManualSubscriptionPayment({',
+    "confirmation.kind === 'not_found'",
+    "confirmation.kind === 'forbidden'",
+    "confirmation.kind === 'invalid_state'",
+    "confirmation.kind === 'malformed'",
     "logger.security('Reseller Confirm Payment - Unauthorized Access'",
-    "subscription.billingMode !== 'manual'",
-    'subscription.status === \'active\' && subscription.manualPaymentConfirmed',
-    'manualPaymentConfirmed: true',
     'safeSyncStorePlanEntitlementFromSubscription(',
     "'api:reseller-confirm-payment'",
+    'alreadyConfirmed: confirmation.alreadyConfirmed',
   ].forEach((token) => assertIncludes(route, token, 'Reseller confirm-payment API'));
+
+  [
+    'getSubscriptionById',
+    'updateSubscription(',
+    'Timestamp.now()',
+    '...subscription.statuses',
+    'bodyResult.data as any',
+  ].forEach((token) => assertNotIncludes(route, token, 'Reseller confirm-payment API'));
+
+  [
+    "data.billingMode !== 'manual'",
+    "data.status === 'active' && data.manualPaymentConfirmed === true",
+    "data.status !== 'pending'",
+    'normalizeRequiredScopeAliases(data.tenantId, data.tId)',
+    'normalizeRequiredScopeAliases(data.storeId, data.sId)',
+    "currency !== 'INR'",
+    'Number.isSafeInteger(amount)',
+    'statuses.length >= MAX_MANUAL_PAYMENT_STATUS_HISTORY',
+    ') !== DEFAULT_PRODUCT_ID',
+  ].forEach((token) => assertIncludes(boundary, token, 'Manual subscription confirmation boundary'));
+
+  [
+    'runTransaction<ManualSubscriptionPaymentConfirmationResult>',
+    'const snapshot = await transaction.get(subscriptionRef);',
+    'admitManualSubscriptionConfirmation({',
+    'transaction.set(subscriptionRef',
+    "alreadyConfirmed: admission.kind === 'already_confirmed'",
+  ].forEach((token) => assertIncludes(subscriptionServer, token, 'Manual subscription confirmation transaction'));
+
+  [
+    "['active', 'cancelled', 'completed', 'expired', 'past_due']",
+    "manualPaymentConfirmed: 'true'",
+    "pId: 'AL'",
+    'statuses: Array.from({ length: 200 }',
+  ].forEach((token) => assertIncludes(boundaryTest, token, 'Manual subscription confirmation regression'));
+  [
+    'Promise.all(Array.from({ length: 8 }',
+    'result.alreadyConfirmed === false',
+    'result.alreadyConfirmed === true',
+    'stored?.statuses.length, 1',
+  ].forEach((token) => assertIncludes(emulatorTest, token, 'Manual subscription confirmation emulator regression'));
 }
 
 function verifyRenewRoute(route) {
@@ -620,7 +685,12 @@ const files = {
   readRateLimit: read('src/app/api/reseller/readRateLimit.ts'),
   manageRoute: read('src/app/api/reseller/manage/route.ts'),
   onboardRoute: read('src/app/api/reseller/onboard/route.ts'),
+  ownerClaim: read('src/lib/reseller/resellerOwnerClaim.ts'),
   confirmPaymentRoute: read('src/app/api/reseller/confirm-payment/route.ts'),
+  confirmPaymentBoundary: read('src/lib/billing/manualSubscriptionConfirmation.ts'),
+  subscriptionServer: read('src/database/subscriptions/server.ts'),
+  confirmPaymentBoundaryTest: read('scripts/verification/test-reseller-confirm-payment-boundary.ts'),
+  confirmPaymentEmulatorTest: read('scripts/verification/test-reseller-confirm-payment-emulator.ts'),
   renewRoute: read('src/app/api/reseller/renew/route.ts'),
   addLocationRoute: read('src/app/api/reseller/add-location-capacity/route.ts'),
   clientsRoute: read('src/app/api/reseller/clients/route.ts'),
@@ -651,8 +721,14 @@ const files = {
 verifyPackageScript(files.packageJson);
 verifyReadRateLimit(files.readRateLimit);
 verifyManageRoute(files.manageRoute);
-verifyOnboardRoute(files.onboardRoute);
-verifyConfirmPaymentRoute(files.confirmPaymentRoute);
+verifyOnboardRoute(files.onboardRoute, files.ownerClaim);
+verifyConfirmPaymentRoute(
+  files.confirmPaymentRoute,
+  files.confirmPaymentBoundary,
+  files.subscriptionServer,
+  files.confirmPaymentBoundaryTest,
+  files.confirmPaymentEmulatorTest,
+);
 verifyRenewRoute(files.renewRoute);
 verifyAddLocationRoute(files.addLocationRoute);
 verifyReadRoutes(files.clientsRoute, files.monthlyRoute, files.profileRoute);

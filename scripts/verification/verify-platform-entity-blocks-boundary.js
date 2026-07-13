@@ -41,7 +41,9 @@ function verifyRoute(route) {
     'import { hashPublicRateLimitValue } from "src/middleware/publicApi";',
     'const PLATFORM_ENTITY_BLOCK_MAX_BODY_BYTES = 64 * 1024;',
     "const PLATFORM_ENTITY_BLOCK_RATE_LIMIT_KEY = 'platform-entity-block';",
-    'const TENANT_STORE_BLOCK_BATCH_LIMIT = 450;',
+    'const MAX_TENANT_BLOCK_STORES = 200;',
+    'const TENANT_BLOCK_EFFECT_CHUNK_SIZE = 20;',
+    "const PLATFORM_ENTITY_BLOCK_SCOPE_CONFLICT = 'platform_entity_block_scope_conflict';",
     'type PlatformEntityBlockDocumentScope = {',
     'function normalizePlatformEntityBlockDocumentId(value: string | number | undefined | null): PlatformEntityBlockDocumentScope | null {',
     'value === value.trim() && isValidFirestoreDocumentId(value)',
@@ -71,32 +73,64 @@ function verifyRoute(route) {
     'buildPlatformBlockDetails({',
     'actorEmail: session?.user?.email',
     'actorUserId: session?.uId || session?.user?.id',
-    'const tenantScope = normalizePlatformEntityBlockTargetDocumentId(\'tenant\', existingEntity.tenantId) || entityScope;',
-    'syncTenantStoreBlockState(db, tenantScope, true)',
-    'syncTenantStoreBlockState(db, tenantScope, false)',
+    'const tenantScope = entityScope;',
+    'async function updateTenantBlockStateAtomically({',
+    'return db.runTransaction(async (transaction) => {',
+    'transaction.get(docRef)',
+    'transaction.get(summaryRef)',
+    '...storeQueries.map((query) => transaction.get(query))',
     'TENANT_STORE_SCOPE_FIELDS',
-    'TENANT_STORE_BLOCK_BATCH_LIMIT',
-    'getDirectTenantStoreIds(db, tenantScope)',
-    'normalizePlatformEntityBlockTargetDocumentId(\'store\', doc.id)',
-    'normalizePlatformEntityBlockTargetDocumentId(\'store\', storeId)',
-    'batch.update(db.collection(DB_COLLECTIONS.STORES).doc(storeScope.documentId), {',
+    'MAX_TENANT_BLOCK_STORES',
+    'hasExactStoredEntityIdentity(tenant, \'tenantId\', tenantScope)',
+    'hasExactTenantOwnership(storeData, tenantScope)',
+    'normalizePlatformEntityBlockTargetDocumentId(\'store\', store.id)',
     "db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc('storesSummary')",
-    'await syncTenantBlockedToStoreDocs(db, directStoreIds, tenantBlocked)',
-    'summaryRef.set({',
+    'transaction.update(docRef, { blocked, blockDetails });',
+    'transaction.update(store.ref, {',
+    'tenantBlocked: blocked,',
+    'transaction.set(summaryRef, {',
+    'affectedStoreIds.length > MAX_TENANT_BLOCK_STORES',
+    'const result = await updateTenantBlockStateAtomically({',
+    'offset += TENANT_BLOCK_EFFECT_CHUNK_SIZE',
     'revalidateTag(`menu-store-${storeId}`)',
     'revalidateTag(`store-${storeId}`)',
     "revalidateTag('client-stores')",
     "revalidateTag('screen-data')",
     "touchDigitalScreenContentVersionForStoreServer(storeId, 'platformEntityBlocks')",
     'invalidateOwnerBusinessAssistantPacketCache({',
-    'const storeScope = normalizePlatformEntityBlockTargetDocumentId(\'store\', existingEntity.storeId) || entityScope;',
-    'await revalidateStorePublicCache(storeScope.documentId, tenantScope?.documentId);',
-    'await authAdmin.updateUser(firebaseUser.uid, { disabled: shouldDisable })',
+    'const storeScope = entityScope;',
+    'const freshStoreSnap = await transaction.get(docRef);',
+    "hasExactStoredEntityIdentity(freshStore, 'storeId', storeScope)",
+    'transaction.set(summaryRef, {',
+    'await revalidateStorePublicCache(storeScope.documentId, result.tenantDocumentId);',
+    'const USER_AUTH_RECONCILIATION_MAX_ATTEMPTS = 5;',
+    'const USER_AUTH_SYNC_LEASE_MS = 2 * 60 * 1000;',
+    'await authAdmin.updateUser(firebaseUser.uid, { disabled: desiredDisabled })',
     'await authAdmin.revokeRefreshTokens(firebaseUser.uid)',
     'platform_entity_block_auth_user_missing',
+    'async function reconcileUserBlockAuthState({',
+    'const revision = typeof user.authSyncRevision === \'string\' ? user.authSyncRevision : \'\';',
+    'const authSync = await syncUserBlockAuthState({',
+    'freshUser.authSyncRevision !== revision',
+    'authSyncPending: admin.firestore.FieldValue.delete()',
+    'authSyncStatus: authSync.status',
+    'superseded: revision !== requestedOperationId',
+    'const operationId = randomUUID();',
+    'hasActiveUserAuthSyncLease(freshUser, now.toMillis())',
+    'authSyncPending: {',
+    'leaseExpiresAt: admin.firestore.Timestamp.fromMillis(now.toMillis() + USER_AUTH_SYNC_LEASE_MS)',
+    'authSyncRevision: operationId',
+    "authSyncStatus: 'pending'",
+    'const reconciled = await reconcileUserBlockAuthState({',
+    'platform_entity_block_user_update_superseded',
+    'await markUserAuthSyncFailed(db, docRef, operationId);',
+    "authSyncStatus: 'failed'",
     'authTokensRevokedAt',
     'sessionRevokedAt',
-    'sessionRevokedReason = "platform_user_block"',
+    "updateData.sessionRevokedReason = 'platform_user_block'",
+    'prepareStaffAccessStateScope(db, entitySnap.data() || {})',
+    'readStaffAccessStateInTransaction(transaction, db, staffAccessScope)',
+    'writeStaffBlockedAccessStateInTransaction(',
   ].forEach((token) => assertIncludes(route, token, 'Platform entity-block route'));
 
   assertOrder(route, [
@@ -119,13 +153,27 @@ function verifyRoute(route) {
 
   assertOrder(route, [
     "if (entityType === 'store') {",
-    'await docRef.update({',
-    'modifiedOn,',
-    '});',
-    'await db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(\'storesSummary\').set({',
-    '[storeId]: {',
-    'await revalidateStorePublicCache(storeScope.documentId, tenantScope?.documentId);',
+    'const result = await db.runTransaction(async (transaction) => {',
+    'const freshStoreSnap = await transaction.get(docRef);',
+    'transaction.update(docRef, { blocked, blockDetails, modifiedOn });',
+    'transaction.set(summaryRef, {',
+    'committed = true;',
+    'await revalidateStorePublicCache(storeScope.documentId, result.tenantDocumentId);',
   ], 'Store block public-summary/cache update order');
+
+  assertOrder(route, [
+    'const operationId = randomUUID();',
+    'const started = await db.runTransaction(async (transaction) => {',
+    'readStaffAccessStateInTransaction(transaction, db, staffAccessScope)',
+    'const freshUserSnap = await transaction.get(docRef);',
+    'if (hasActiveUserAuthSyncLease(freshUser, now.toMillis())) {',
+    'authSyncRevision: operationId,',
+    'writeStaffBlockedAccessStateInTransaction(',
+    'transaction.update(docRef, updateData);',
+    'committed = true;',
+    'const reconciled = await reconcileUserBlockAuthState({',
+    'if (reconciled.superseded) {',
+  ], 'User block Firestore authority before provider reconciliation order');
 
   [
     'request.json()',
@@ -137,7 +185,12 @@ function verifyRoute(route) {
     "z.string().trim().min(1).max(160).refine(isValidFirestoreDocumentId, 'Invalid entity ID')",
     'getEntityDocRef(db, entityType, entityId)',
     'syncTenantStoreBlockState(db, tenantId',
-    'batch.update(db.collection(DB_COLLECTIONS.STORES).doc(String(storeId)), {',
+    'db.batch()',
+    'batch.update(',
+    "normalizePlatformEntityBlockTargetDocumentId('tenant', existingEntity.tenantId) || entityScope",
+    "normalizePlatformEntityBlockTargetDocumentId('store', existingEntity.storeId) || entityScope",
+    'await docRef.update(updateData)',
+    'const authSync = await syncUserBlockAuthState({\n        blocked,',
     'key: `platform-entity-block:${getPlatformEntityBlockOperatorId(session)}`',
     'key: `platform-entity-block:${session',
   ].forEach((token) => assertNotIncludes(route, token, 'Platform entity-block route boundary'));
@@ -239,6 +292,26 @@ function verifyDesktopSurface(component) {
   ].forEach((token) => assertNotIncludes(component, token, 'Entity Blocks desktop settings boundary'));
 }
 
+function verifyPlatformUserScopeReader(usersDal) {
+  [
+    'const PLATFORM_USER_SCOPE_QUERY_LIMIT = 500;',
+    'const numericScopeId = normalizePlatformUserScopeId(scopeId, field === "tenantId");',
+    'const pattern = allowZero ? /^(0|[1-9]\\d*)$/ : /^[1-9]\\d*$/;',
+    'const values: Array<number | string> = [numericScopeId, String(numericScopeId)];',
+    'limit(PLATFORM_USER_SCOPE_QUERY_LIMIT + 1)',
+    'const users = new Map<string, PlatformUserRecord>();',
+    'normalizePlatformUserScopeId(data.tenantId, true) === numericScopeId',
+    'data.storeIds.some((storeId: unknown) => normalizeStoreSwitchStoreId(storeId) === numericScopeId)',
+    'if (users.size > PLATFORM_USER_SCOPE_QUERY_LIMIT) throw new Error("PLATFORM_USER_SCOPE_LIMIT_EXCEEDED");',
+    'users.set(userDoc.id, {',
+    'throw new Error("INVALID_PLATFORM_USER_DOCUMENT_ID");',
+  ].forEach((token) => assertIncludes(usersDal, token, 'Platform user scope reader'));
+  assertNotIncludes(usersDal, 'users.set(userDoc.id, { ...data', 'Platform user scope reader private-field projection');
+  assertNotIncludes(usersDal, 'where("tenantId", "==", tenantId)', 'Platform user numeric/string compatibility reader');
+  ['export const addPlatformUser', 'export const addStoreToUser', 'export const getAllPlatformUsers', 'export const getUsersByStoreId']
+    .forEach((token) => assertNotIncludes(usersDal, token, 'Unused unsafe platform user DAL surface'));
+}
+
 function verifyMobileSurface(mobileShell, mobileMore, mobilePlatformInternal) {
   [
     "'/platform/entity-blocks': 'entityBlocks'",
@@ -281,12 +354,21 @@ function verifyDocsAndPackage(packageJson, opsDoc, auditDoc, changelog, lowercas
     'July 5 follow-up: entity ID values now use the shared Firestore document-ID boundary',
     'July 6 follow-up: entity-block target IDs now use strict platform entity-block document-ID normalization',
     'July 6 follow-up: `/api/platform/entity-blocks` now applies the shared `PLATFORM_ENTITY_BLOCK_MUTATION` rate limit',
+    'July 11 follow-up: tenant and store block mutations now re-read exact document identity and ownership inside Firestore transactions',
+    'up to 200 existing store mirrors',
+    'refresh begins afterward in chunks of 20',
+    'July 11 user-auth follow-up: user block/unblock writes the current Firestore access decision',
+    'Up to five reconciliation attempts apply the latest desired disabled state',
   ].forEach((token) => assertIncludes(opsDoc, token, 'Ops docs entity-block source gate'));
 
   [
     'Platform Entity Blocks Entity ID Boundary checkpoint',
     'Platform Entity Blocks Strict Target Document ID Boundary checkpoint',
     'Platform Entity Blocks Rate-Limit Boundary checkpoint',
+    'Platform Entity Blocks Atomic Scope Boundary checkpoint',
+    'caps tenant fanout at 200 affected stores',
+    'Platform Entity Blocks User Auth Reconciliation checkpoint',
+    'reconciles Firebase Auth for up to five attempts',
     'Platform entity-block boundary source gate: `npm run verify:platform-entity-blocks-boundary`',
     'source-only tenant/store/user block route, auth sync, public cache invalidation, desktop/mobile, and docs gate',
   ].forEach((token) => assertIncludes(auditDoc, token, 'Production audit entity-block checkpoint'));
@@ -296,6 +378,11 @@ function verifyDocsAndPackage(packageJson, opsDoc, auditDoc, changelog, lowercas
     'Entity block mutations are rate-limited',
     'Platform Entity Blocks Strict Target Document ID Boundary',
     'Malformed tenant/store/user targets fail closed',
+    'Atomic Platform Entity Block Scope',
+    'Tenant blocks no longer partially update public block truth',
+    'Drifted identity cannot redirect fanout',
+    'User access state is durable before provider work',
+    'Concurrent user block actions converge to the latest decision',
   ].forEach((token) => {
     assertIncludes(changelog, token, 'Changelog entity-block ID boundary');
     assertIncludes(lowercaseChangelog, token, 'Lowercase changelog entity-block ID boundary');
@@ -310,6 +397,7 @@ function verifyPlatformEntityBlocksBoundary() {
     client: read('src/database/platformEntityBlocks/index.ts'),
     helper: read('src/lib/platform/entityBlock.ts'),
     desktop: read('src/components/templates/platform/settings/EntityBlockSettings.tsx'),
+    usersDal: read('src/database/users/index.ts'),
     mobileShell: read('src/components/mobile/MobileShell.tsx'),
     mobileMore: read('src/components/mobile/screens/MobileMoreScreen.tsx'),
     mobilePlatformInternal: read('src/components/mobile/screens/MobilePlatformInternalScreen.tsx'),
@@ -324,6 +412,7 @@ function verifyPlatformEntityBlocksBoundary() {
   verifyClient(files.client);
   verifySharedBlockHelper(files.helper);
   verifyDesktopSurface(files.desktop);
+  verifyPlatformUserScopeReader(files.usersDal);
   verifyMobileSurface(files.mobileShell, files.mobileMore, files.mobilePlatformInternal);
   verifyDocsAndPackage(files.packageJson, files.opsDoc, files.auditDoc, files.changelog, files.lowercaseChangelog);
 

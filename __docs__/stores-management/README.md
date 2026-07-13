@@ -25,7 +25,7 @@
 - **Internal admin tool** for platform operators to manually create tenants and stores
 - Access restricted to users with `ECOMSAI_PLATFORM_USER_ROLE`
 - Entry points: desktop Platform settings plus mobile More → Platform for Entity Blocks, Tenants, Stores, and Users management
-- Platform administrators can block tenants, stores, or users through Entity Blocks without changing `active` or `deleted` lifecycle fields. Block actions write `blocked` plus `blockDetails` audit metadata on the affected entity; tenant and store blocks are also enforced on public menu/OBP lookup paths. Browser acknowledgements are capped and must echo the requested entity ID plus blocked state before desktop or mobile local state shows success.
+- Platform administrators can block tenants, stores, or users through Entity Blocks without changing `active` or `deleted` lifecycle fields. Block actions write `blocked` plus `blockDetails` audit metadata on the affected entity; public menu/OBP lookup rejects the store mirror and independently reads the canonical tenant on a cold cache fill, so a missing/stale denormalized `tenantBlocked` value cannot bypass tenant state. User blocks commit Firestore-authoritative access and a durable Auth-sync revision before Firebase Auth disable/token-revoke work, then acknowledge only after bounded reconciliation of the current revision. Browser acknowledgements are capped and must echo the requested entity ID plus blocked state before desktop or mobile local state shows success.
 - Platform tenant create/update actions in `TenantDetailsModal` require tenant DAL acknowledgement before the drawer closes. DAL fallback values keep the drawer open, log `platform_tenant_save_failed`, and show fixed failure copy.
 
 ### Multi-Chain State ✅ (Implemented)
@@ -86,13 +86,13 @@ Multi-chain business owners can add their own outlet stores via the Add Outlet m
 
 | Operation            | Function                    | Collections Updated                                                  |
 | -------------------- | --------------------------- | -------------------------------------------------------------------- |
-| Create Store         | `addStore()`                | `stores`, `platformSummary/default`, `platformSummary/storesSummary`, public cache refresh |
-| Update Store         | `updateStore()`             | `stores`, `platformSummary/storesSummary` when summary fields change |
-| Manage custom domain | `POST/GET/DELETE /api/domain` | `stores`; public cache tags `menu-store-{storeId}`, `store-{storeId}`, `client-stores` |
+| Create Store         | `addStore()`                | Reserves a global ID, then transactionally writes `stores`, `platformSummary/storesSummary`, and current `tenants.storesList`; public cache refresh follows commit |
+| Update Store         | `updateStore()`             | Summary-relevant changes transactionally update `stores`, `platformSummary/storesSummary`, and current `tenants.storesList` for name changes; public cache refresh follows commit |
+| Manage custom-domain routing | `POST/GET/DELETE /api/domain` | Canonical `tenants`/`stores`, deterministic `platformSummary/customDomainClaim_{domain}` state machine, Vercel project domain API, and public cache tags `menu-store-{storeId}`, `store-{storeId}`, `client-stores`. Same-store/cross-store overlap and duplicate legacy ownership fail closed. |
 | Manage time-slot presets | `updateTimeSlotPresets()`, `updatePresetInAllCategories()`, `removePresetFromAllCategories()` | `stores`; changed `projects/{tId}/{sId}` docs only when assigned category windows need edit/delete cleanup. Store writes and project cascades require acknowledgements before local success state. Failed desktop save/delete diagnostics use bounded Business Settings logging only. |
-| Block/unblock Entity | `POST /api/platform/entity-blocks` via `updatePlatformEntityBlockState()` | `tenants`, `stores`, or `users`; platform-only route rejects bodies above 64KB before entity reads, store blocks sync public summary/cache, tenant blocks update `stores/{storeId}.tenantBlocked` plus `platformSummary/storesSummary.stores.{storeId}.tenantBlocked` before revalidating affected stores, and browser requests use no-store cache, same-origin credentials, manual redirects, 64KB response caps, and `success` / entity-id / blocked-state validation |
-| Link Store to Tenant | `updateTenantsStoreslist()` | `tenants`                                                            |
-| Get Next Store ID    | `getPlatformSummary()`      | Read `platformSummary/default`                                       |
+| Block/unblock Entity | `POST /api/platform/entity-blocks` via `updatePlatformEntityBlockState()` | `tenants`, `stores`, or `users`; platform-only route rejects bodies above 64KB before entity reads. Store blocks transactionally update the canonical store and summary row. Tenant blocks transactionally re-read exact tenant/store ownership, cap scope at 200 stores, and commit tenant state, existing-store `tenantBlocked` mirrors, and `platformSummary/storesSummary` together before bounded public/screen/context refresh. Browser requests use no-store cache, same-origin credentials, manual redirects, 64KB response caps, and `success` / entity-id / blocked-state validation. |
+| Mirror Store Identity to Tenant | Internal `addStore()` / `updateStore()` transaction | Current `tenants.storesList` entry derived from the canonical store snapshot; no whole-list browser replacement API |
+| Get counter snapshot | `getPlatformSummary()`      | Directly reconciles canonical `platformSummary/summary`, legacy read-only `default`, and strict `storesSummary` floors; allocation itself uses a retrying reservation transaction |
 
 ---
 

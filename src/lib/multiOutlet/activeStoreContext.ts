@@ -1,16 +1,30 @@
 import type LoginUserType from "@type/loginUser";
+import {
+    canUserAccessStore,
+    normalizeStoreSwitchStoreId,
+} from "@lib/multiOutlet/storeSwitchAccess";
 
 export const ACTIVE_STORE_CONTEXT_STORAGE_KEY = "activeStoreContext";
 
-type ActiveStoreContextValue = {
+export type ActiveStoreContextValue = {
     baseStoreId: number;
     storeId: number;
     tenantId: number;
 };
 
-const normalizeStoreId = (value: unknown): number | null => {
-    const parsed = Number(value);
-    return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
+export const normalizeActiveStoreContextValue = (value: unknown): ActiveStoreContextValue | null => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+    const candidate = value as Partial<ActiveStoreContextValue>;
+    if (
+        typeof candidate.storeId !== "number"
+        || typeof candidate.baseStoreId !== "number"
+        || typeof candidate.tenantId !== "number"
+    ) return null;
+    const storeId = normalizeStoreSwitchStoreId(candidate.storeId);
+    const baseStoreId = normalizeStoreSwitchStoreId(candidate.baseStoreId);
+    const tenantId = normalizeStoreSwitchStoreId(candidate.tenantId);
+    if (!storeId || !baseStoreId || !tenantId) return null;
+    return { baseStoreId, storeId, tenantId };
 };
 
 const readActiveStoreContextValue = (): ActiveStoreContextValue | null => {
@@ -20,18 +34,12 @@ const readActiveStoreContextValue = (): ActiveStoreContextValue | null => {
         const stored = window.localStorage.getItem(ACTIVE_STORE_CONTEXT_STORAGE_KEY);
         if (!stored) return null;
 
-        const legacyStoreId = normalizeStoreId(stored);
+        const legacyStoreId = normalizeStoreSwitchStoreId(stored);
         if (legacyStoreId) {
             return { baseStoreId: 0, storeId: legacyStoreId, tenantId: 0 };
         }
 
-        const parsed = JSON.parse(stored) as Partial<ActiveStoreContextValue>;
-        const storeId = normalizeStoreId(parsed.storeId);
-        const baseStoreId = normalizeStoreId(parsed.baseStoreId);
-        const tenantId = normalizeStoreId(parsed.tenantId);
-
-        if (!storeId || !baseStoreId || !tenantId) return null;
-        return { baseStoreId, storeId, tenantId };
+        return normalizeActiveStoreContextValue(JSON.parse(stored));
     } catch {
         return null;
     }
@@ -49,16 +57,17 @@ export const writeActiveStoreContextId = (
 
     try {
         if (storeId) {
-            const baseStoreId = normalizeStoreId(owner?.baseStoreId);
-            const tenantId = normalizeStoreId(owner?.tenantId);
+            const targetStoreId = normalizeStoreSwitchStoreId(storeId);
+            const baseStoreId = normalizeStoreSwitchStoreId(owner?.baseStoreId);
+            const tenantId = normalizeStoreSwitchStoreId(owner?.tenantId);
 
-            if (baseStoreId && tenantId) {
+            if (targetStoreId && baseStoreId && tenantId) {
                 window.localStorage.setItem(
                     ACTIVE_STORE_CONTEXT_STORAGE_KEY,
-                    JSON.stringify({ baseStoreId, storeId, tenantId }),
+                    JSON.stringify({ baseStoreId, storeId: targetStoreId, tenantId }),
                 );
             } else {
-                window.localStorage.setItem(ACTIVE_STORE_CONTEXT_STORAGE_KEY, String(storeId));
+                window.localStorage.removeItem(ACTIVE_STORE_CONTEXT_STORAGE_KEY);
             }
         } else {
             window.localStorage.removeItem(ACTIVE_STORE_CONTEXT_STORAGE_KEY);
@@ -68,21 +77,28 @@ export const writeActiveStoreContextId = (
     }
 };
 
-export const applyActiveStoreContextToSession = (
+export const applyActiveStoreContextValueToSession = (
     session: LoginUserType | null,
+    activeContext: ActiveStoreContextValue | null,
 ): LoginUserType | null => {
-    const activeContext = readActiveStoreContextValue();
     const activeStoreId = activeContext?.storeId || null;
     if (!session || !activeStoreId || activeStoreId === session.sId) {
         return session;
     }
 
+    const loginTenantId = normalizeStoreSwitchStoreId(session.tId);
+    const loginStoreId = normalizeStoreSwitchStoreId(session.sId);
+    const userTenantId = normalizeStoreSwitchStoreId(session.user?.tenantId);
+    const userStoreId = normalizeStoreSwitchStoreId(session.user?.storeId);
     const contextMatchesLoginStore =
-        activeContext?.tenantId === session.tId &&
-        activeContext?.baseStoreId === session.sId;
+        Boolean(loginTenantId && loginStoreId && userTenantId && userStoreId)
+        && loginTenantId === userTenantId
+        && loginStoreId === userStoreId
+        && activeContext?.tenantId === loginTenantId
+        && activeContext?.baseStoreId === loginStoreId
+        && canUserAccessStore({ sessionUser: session.user, storeId: activeStoreId });
 
     if (!contextMatchesLoginStore) {
-        writeActiveStoreContextId(null);
         return session;
     }
 
@@ -94,4 +110,15 @@ export const applyActiveStoreContextToSession = (
             storeId: activeStoreId,
         },
     };
+};
+
+export const applyActiveStoreContextToSession = (
+    session: LoginUserType | null,
+): LoginUserType | null => {
+    const activeContext = readActiveStoreContextValue();
+    const scopedSession = applyActiveStoreContextValueToSession(session, activeContext);
+    if (activeContext && scopedSession === session && activeContext.storeId !== session?.sId) {
+        writeActiveStoreContextId(null);
+    }
+    return scopedSession;
 };

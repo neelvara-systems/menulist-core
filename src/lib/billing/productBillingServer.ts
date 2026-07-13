@@ -7,16 +7,32 @@ import {
     getSubscriptionById as getMenuListSubscriptionById,
     updateSubscription as updateMenuListSubscription,
 } from '@database/subscriptions/server';
-import { normalizeAnswerlatticeSubscriptionId } from '@lib/answerlattice/billingDocumentIdBoundary';
+import {
+    normalizeAnswerlatticeBillingScopeDocumentId,
+    normalizeAnswerlatticeSubscriptionId,
+} from '@lib/answerlattice/billingDocumentIdBoundary';
+import { isAnswerlatticeSubscriptionInScope } from '@lib/answerlattice/billingScopeBoundary';
 import { getBoundedAnswerlatticeStringContext, logAnswerlatticeFailure } from '@lib/answerlattice/diagnostics';
-import { getAnswerlatticeScopedSession, resolveAnswerlatticeSessionScope, canUseAnswerlatticeManagement } from '@lib/answerlattice/sessionScope';
+import {
+    canUseAnswerlatticeManagement,
+    getAnswerlatticeScopedSession,
+    isAnswerlatticeStoreInScope,
+    resolveAnswerlatticeSessionScope,
+} from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { admin, firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
-import { getGracePeriodInfo } from '@util/razorpay';
+import { calculateRemainingCredits, getGracePeriodInfo } from '@util/razorpay';
 import type { MinimalStoreDataType } from '@type/platform/store';
 import type { FirestoreSubscriptionDoc } from '@type/razorpay';
 import { getActivePlanTypeForSubscription, safeSyncStorePlanEntitlementFromSubscription } from './subscriptionEntitlementSync';
+import {
+    normalizeBillingSubscriptionDocumentId,
+    normalizeBillingSubscriptionScopeDocumentId,
+} from './subscriptionDocumentIdBoundary';
+import { getFounderSubscriptionMrrPaise } from '@lib/ops/founderRevenueReadModel';
+import { isValidBillingPeriodKey } from './billingPeriod';
+import { resolveSubscriptionUpgradeCreditTransfer } from './subscriptionUpgradeSettlement';
 import { validateTransition } from './subscriptionStateMachine';
 import {
     normalizeBillingProductId,
@@ -32,21 +48,7 @@ export type ProductBillingScope = {
     scopedSession: any;
 };
 
-export type AnswerlatticeBillingScopeDocumentId = {
-    numericId: number;
-    documentId: string;
-};
-
-export function normalizeAnswerlatticeBillingScopeDocumentId(value: unknown): AnswerlatticeBillingScopeDocumentId | null {
-    const raw = typeof value === 'string' || typeof value === 'number' ? String(value) : '';
-    const documentId = raw.trim();
-    if (documentId !== raw || !isValidFirestoreDocumentId(documentId)) return null;
-
-    const numericId = Number(documentId);
-    return Number.isSafeInteger(numericId) && numericId > 0 && String(numericId) === documentId
-        ? { numericId, documentId }
-        : null;
-}
+export { normalizeAnswerlatticeBillingScopeDocumentId } from '@lib/answerlattice/billingDocumentIdBoundary';
 
 const isTimestampLike = (value: any) => (
     value
@@ -126,14 +128,14 @@ export const resolveBillingScopeFromSession = (
         };
     }
 
-    const tenantId = Number(session?.user?.tenantId);
-    const storeId = Number(session?.user?.storeId);
-    if (!Number.isFinite(tenantId) || !Number.isFinite(storeId)) return null;
+    const tenantScope = normalizeBillingSubscriptionScopeDocumentId(session?.user?.tenantId);
+    const storeScope = normalizeBillingSubscriptionScopeDocumentId(session?.user?.storeId);
+    if (!tenantScope || !storeScope) return null;
 
     return {
         productId,
-        tenantId,
-        storeId,
+        tenantId: tenantScope.numericId,
+        storeId: storeScope.numericId,
         userId,
         scopedSession: session,
     };
@@ -179,8 +181,12 @@ const normalizeAnswerlatticeSubscription = (
     ...(data as FirestoreSubscriptionDoc),
     id,
     providerSubscriptionId: data.providerSubscriptionId || id,
-    tenantId: Number(data.tenantId ?? data.tId ?? tenantId),
-    storeId: Number(data.storeId ?? data.sId ?? storeId),
+    pId: PRODUCT_IDS.ANSWERLATTICE,
+    productId: PRODUCT_IDS.ANSWERLATTICE,
+    tId: tenantId,
+    sId: storeId,
+    tenantId,
+    storeId,
     amount: Number.isFinite(Number(data.amount)) ? Number(data.amount) : 0,
     quantity: Number.isFinite(Number(data.quantity)) && Number(data.quantity) > 0 ? Number(data.quantity) : 1,
     monthlyCreditsAllowance: Number.isFinite(Number(data.monthlyCreditsAllowance)) ? Number(data.monthlyCreditsAllowance) : 0,
@@ -201,10 +207,7 @@ const isAnswerlatticeSubscriptionForScope = (
     subscription: FirestoreSubscriptionDoc,
     tenantId: number,
     storeId: number,
-): boolean => (
-    Number(subscription.tenantId ?? subscription.tId) === Number(tenantId)
-    && Number(subscription.storeId ?? subscription.sId) === Number(storeId)
-);
+): boolean => isAnswerlatticeSubscriptionInScope(subscription, { tId: tenantId, sId: storeId });
 
 const isCurrentAnswerlatticeSubscription = (subscription: FirestoreSubscriptionDoc): boolean => {
     if (['pending', 'paused', 'past_due'].includes(String(subscription.status))) return true;
@@ -300,16 +303,26 @@ const fetchAnswerlatticeSubscriptionRaw = async (
     const db = getBillingFirestoreAdminForProduct(PRODUCT_IDS.ANSWERLATTICE);
     const collectionRef = db.collection(DB_COLLECTIONS.SUBSCRIPTIONS);
     const storeSnap = await db.collection(DB_COLLECTIONS.STORES).doc(storeScope.documentId).get();
-    const subscriptionSummary = storeSnap.exists ? storeSnap.data()?.answerlatticeSubscription : null;
+    const storeData = storeSnap.exists ? storeSnap.data() || {} : {};
+    const storeInScope = storeSnap.exists && isAnswerlatticeStoreInScope(
+        storeData,
+        { tenantId: tenantScope.numericId, storeId: storeScope.numericId },
+        storeSnap.id,
+    );
+    const subscriptionSummary = storeInScope ? storeData.answerlatticeSubscription : null;
     const rawSummarySubscriptionId = String(subscriptionSummary?.id || subscriptionSummary?.providerSubscriptionId || '').trim();
     const summarySubscriptionId = normalizeAnswerlatticeSubscriptionId(rawSummarySubscriptionId);
 
     if (summarySubscriptionId) {
         const subscriptionSnap = await collectionRef.doc(summarySubscriptionId).get();
         if (subscriptionSnap.exists) {
-            const subscription = normalizeAnswerlatticeSubscription(subscriptionSnap.data() || {}, subscriptionSnap.id, tenantScope.numericId, storeScope.numericId);
-            if (isAnswerlatticeSubscriptionForScope(subscription, tenantScope.numericId, storeScope.numericId) && isCurrentAnswerlatticeSubscription(subscription)) {
-                return subscription;
+            const subscriptionData = subscriptionSnap.data() || {};
+            if (isAnswerlatticeSubscriptionInScope(subscriptionData, {
+                tId: tenantScope.numericId,
+                sId: storeScope.numericId,
+            })) {
+                const subscription = normalizeAnswerlatticeSubscription(subscriptionData, subscriptionSnap.id, tenantScope.numericId, storeScope.numericId);
+                if (isCurrentAnswerlatticeSubscription(subscription)) return subscription;
             }
         }
     }
@@ -321,8 +334,11 @@ const fetchAnswerlatticeSubscriptionRaw = async (
         .get();
 
     return fallbackSnapshot.docs
+        .filter((docSnap) => isAnswerlatticeSubscriptionInScope(docSnap.data(), {
+            tId: tenantScope.numericId,
+            sId: storeScope.numericId,
+        }))
         .map((docSnap) => normalizeAnswerlatticeSubscription(docSnap.data(), docSnap.id, tenantScope.numericId, storeScope.numericId))
-        .filter((subscription) => isAnswerlatticeSubscriptionForScope(subscription, tenantScope.numericId, storeScope.numericId))
         .filter(isCurrentAnswerlatticeSubscription)
         .sort((a, b) => toMillis(b.cycleEndDate) - toMillis(a.cycleEndDate))[0] || null;
 };
@@ -333,29 +349,74 @@ const expireIfGracePeriodEnded = async (
 ): Promise<FirestoreSubscriptionDoc | null> => {
     if (!sub.pastDueSinceAt) return sub;
 
-    const { remainingDays, graceEndsDate } = getGracePeriodInfo(sub.pastDueSinceAt);
-    if (remainingDays > 0) return sub;
+    const initialGracePeriod = getGracePeriodInfo(sub.pastDueSinceAt);
+    if (!initialGracePeriod.hasKnownGracePeriod || initialGracePeriod.remainingDays > 0) return sub;
 
     if (!validateTransition(sub.status, 'expired', 'server:grace-period-auto-expire')) {
         return sub;
     }
 
-    await updateProductSubscription(productId, sub.id, {
-        status: 'expired',
-        cycleEndDate: admin.firestore.Timestamp.now() as any,
-        subscriptionEndDate: admin.firestore.Timestamp.now() as any,
-        statuses: [
-            ...sub.statuses,
-            {
-                status: 'expired',
-                timestamp: admin.firestore.Timestamp.now() as any,
-                amount: sub.amount,
-                currency: sub.currency,
-                remark: `Expired due to payment failed and past due since ${graceEndsDate?.toLocaleDateString()}`,
-            },
-        ],
+    const subscriptionId = isAnswerlatticeBillingProduct(productId)
+        ? normalizeAnswerlatticeSubscriptionId(sub.id)
+        : normalizeBillingSubscriptionDocumentId(sub.id);
+    if (!subscriptionId) return sub;
+    const db = getBillingFirestoreAdminForProduct(productId);
+    const subscriptionRef = db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId);
+    const result = await db.runTransaction(async (transaction) => {
+        const snapshot = await transaction.get(subscriptionRef);
+        if (!snapshot.exists) return { expired: false, subscription: null };
+
+        const current = {
+            ...(snapshot.data() as FirestoreSubscriptionDoc),
+            id: snapshot.id,
+        } as FirestoreSubscriptionDoc;
+        if (current.status !== 'past_due') {
+            return { expired: false, subscription: current };
+        }
+
+        const gracePeriod = getGracePeriodInfo(current.pastDueSinceAt);
+        if (!gracePeriod.hasKnownGracePeriod || gracePeriod.remainingDays > 0) {
+            return { expired: false, subscription: current };
+        }
+        if (!validateTransition(current.status, 'expired', 'server:grace-period-auto-expire')) {
+            return { expired: false, subscription: current };
+        }
+
+        const expiredAt = admin.firestore.Timestamp.now();
+        const update: Partial<FirestoreSubscriptionDoc> = {
+            status: 'expired',
+            cycleEndDate: expiredAt as any,
+            subscriptionEndDate: expiredAt as any,
+            statuses: [
+                ...(Array.isArray(current.statuses) ? current.statuses : []),
+                {
+                    status: 'expired',
+                    timestamp: expiredAt as any,
+                    amount: current.amount,
+                    currency: current.currency,
+                    remark: `Expired after the payment recovery period ended on ${gracePeriod.graceEndsDate?.toLocaleDateString()}`,
+                },
+            ],
+        };
+        transaction.set(subscriptionRef, productDocPayload(productId, update), { merge: true });
+        return {
+            expired: true,
+            subscription: { ...current, ...update, id: snapshot.id } as FirestoreSubscriptionDoc,
+        };
     });
 
+    if (!result.subscription) return null;
+    if (!result.expired) {
+        return ['expired', 'completed'].includes(result.subscription.status)
+            ? null
+            : result.subscription;
+    }
+
+    await safeSyncProductSubscriptionEntitlementFromSubscription(
+        productId,
+        result.subscription,
+        'server:grace-period-auto-expire',
+    );
     return null;
 };
 
@@ -397,17 +458,28 @@ export const getActiveProductSubscriptionForStore = async (
 export const writeProductPaymentTransactionAudit = async (
     productId: ProductId,
     data: any,
+    auditDocumentId: string,
 ): Promise<string> => {
     if (isProductBillingDisabled(productId)) {
         throw new Error(getDisabledBillingMessage(productId));
     }
 
     const db = getBillingFirestoreAdminForProduct(productId);
+    const normalizedAuditDocumentId = String(auditDocumentId || '').trim();
+    if (
+        normalizedAuditDocumentId !== auditDocumentId
+        || normalizedAuditDocumentId.length > 180
+        || !isValidFirestoreDocumentId(normalizedAuditDocumentId)
+    ) {
+        throw new Error('Invalid billing audit document id.');
+    }
     const tenantId = Number(data?.tenantId ?? data?.tId);
     const storeId = Number(data?.storeId ?? data?.sId);
     const now = admin.firestore.FieldValue.serverTimestamp();
-    const docRef = await db.collection(DB_COLLECTIONS.PAYMENT_TRANSACTIONS).add(sanitizeForAdminFirestore({
+    const docRef = db.collection(DB_COLLECTIONS.PAYMENT_TRANSACTIONS).doc(normalizedAuditDocumentId);
+    await docRef.set(sanitizeForAdminFirestore({
         ...data,
+        webhookEventKey: normalizedAuditDocumentId,
         pId: productId,
         productId,
         tenantId: Number.isFinite(tenantId) ? tenantId : null,
@@ -416,57 +488,659 @@ export const writeProductPaymentTransactionAudit = async (
         sId: data?.sId ?? (Number.isFinite(storeId) ? storeId : null),
         createdOn: now,
         modifiedOn: now,
-    }));
+    }), { merge: true });
 
     return docRef.id;
 };
+
+export type ProductSubscriptionPaymentApplicationResult = {
+    applied: boolean;
+    duplicate: boolean;
+    previousSubscription: FirestoreSubscriptionDoc;
+    subscription: FirestoreSubscriptionDoc;
+};
+
+/**
+ * Apply one captured subscription payment exactly once. The provider payment ID
+ * is both billing-history evidence and the transaction idempotency key. The
+ * transaction serializes the cycle reset against concurrent AI consumption, so
+ * replay cannot replenish credits that were consumed after the first apply.
+ */
+export async function applyProductSubscriptionPayment(
+    productId: ProductId,
+    params: {
+        billingPeriod: number;
+        paymentHistoryId: string;
+        statusEntry: FirestoreSubscriptionDoc['statuses'][number];
+        subscriptionId: string;
+        update: Partial<FirestoreSubscriptionDoc>;
+    },
+): Promise<ProductSubscriptionPaymentApplicationResult | null> {
+    if (isProductBillingDisabled(productId)) {
+        throw new Error(getDisabledBillingMessage(productId));
+    }
+    const subscriptionId = isAnswerlatticeBillingProduct(productId)
+        ? normalizeAnswerlatticeSubscriptionId(params.subscriptionId)
+        : normalizeBillingSubscriptionDocumentId(params.subscriptionId);
+    const paymentHistoryId = String(params.paymentHistoryId || '').trim();
+    if (
+        !subscriptionId
+        || paymentHistoryId !== params.paymentHistoryId
+        || paymentHistoryId.length > 180
+        || !isValidFirestoreDocumentId(paymentHistoryId)
+        || !isValidBillingPeriodKey(params.billingPeriod)
+    ) {
+        throw new Error('Invalid subscription payment application.');
+    }
+
+    const db = getBillingFirestoreAdminForProduct(productId);
+    const subscriptionRef = db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId);
+    return db.runTransaction(async (transaction) => {
+        const snapshot = await transaction.get(subscriptionRef);
+        if (!snapshot.exists) return null;
+
+        const current = {
+            ...(snapshot.data() as FirestoreSubscriptionDoc),
+            id: snapshot.id,
+        } as FirestoreSubscriptionDoc;
+        const billingHistory = Array.isArray(current.billingHistory)
+            ? current.billingHistory.filter((entry): entry is string => typeof entry === 'string')
+            : [];
+        if (billingHistory.includes(paymentHistoryId)) {
+            return {
+                applied: false,
+                duplicate: true,
+                previousSubscription: current,
+                subscription: current,
+            };
+        }
+        if (!validateTransition(current.status, 'active', 'payment:captured')) {
+            return {
+                applied: false,
+                duplicate: false,
+                previousSubscription: current,
+                subscription: current,
+            };
+        }
+
+        const {
+            billingHistory: _ignoredBillingHistory,
+            creditsLastResetMonth: _ignoredResetPeriod,
+            monthlyCredits: _ignoredMonthlyCredits,
+            statuses: _ignoredStatuses,
+            topUpCredits: _ignoredTopUpCredits,
+            ...safeUpdate
+        } = params.update;
+        const shouldResetCredits = billingHistory.length === 0
+            || Number(current.creditsLastResetMonth) !== params.billingPeriod;
+        const nextAllowance = Number(safeUpdate.monthlyCreditsAllowance ?? current.monthlyCreditsAllowance ?? 0);
+        const update = {
+            ...safeUpdate,
+            status: 'active' as const,
+            pastDueSinceAt: null,
+            billingHistory: [...billingHistory, paymentHistoryId],
+            statuses: [
+                ...(Array.isArray(current.statuses) ? current.statuses : []),
+                params.statusEntry,
+            ],
+            ...(shouldResetCredits ? {
+                monthlyCredits: Number.isFinite(nextAllowance) && nextAllowance > 0 ? nextAllowance : 0,
+                creditsLastResetMonth: params.billingPeriod,
+            } : {}),
+        };
+        transaction.set(subscriptionRef, productDocPayload(productId, update), { merge: true });
+
+        return {
+            applied: true,
+            duplicate: false,
+            previousSubscription: current,
+            subscription: {
+                ...current,
+                ...update,
+                id: snapshot.id,
+            } as FirestoreSubscriptionDoc,
+        };
+    });
+}
+
+export type ProductSubscriptionWebhookApplicationResult = {
+    applied: boolean;
+    duplicate: boolean;
+    previousSubscription: FirestoreSubscriptionDoc;
+    subscription: FirestoreSubscriptionDoc;
+};
+
+export type ProductSubscriptionStatusTransitionResult = {
+    applied: boolean;
+    duplicate: boolean;
+    previousSubscription: FirestoreSubscriptionDoc;
+    subscription: FirestoreSubscriptionDoc;
+};
+
+/**
+ * Apply an owner/provider-confirmed lifecycle transition against the current
+ * subscription snapshot. Re-reading in the transaction prevents a route that
+ * started from stale state from overwriting a concurrent payment or webhook.
+ */
+export async function applyProductSubscriptionStatusTransition(
+    productId: ProductId,
+    params: {
+        expectedStatuses?: FirestoreSubscriptionDoc['status'][];
+        nextStatus: FirestoreSubscriptionDoc['status'];
+        statusEntry: FirestoreSubscriptionDoc['statuses'][number];
+        subscriptionId: string;
+        update?: Partial<FirestoreSubscriptionDoc>;
+    },
+): Promise<ProductSubscriptionStatusTransitionResult | null> {
+    if (isProductBillingDisabled(productId)) {
+        throw new Error(getDisabledBillingMessage(productId));
+    }
+    const subscriptionId = isAnswerlatticeBillingProduct(productId)
+        ? normalizeAnswerlatticeSubscriptionId(params.subscriptionId)
+        : normalizeBillingSubscriptionDocumentId(params.subscriptionId);
+    if (!subscriptionId) throw new Error('Invalid subscription status transition.');
+
+    const db = getBillingFirestoreAdminForProduct(productId);
+    const subscriptionRef = db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId);
+    return db.runTransaction(async (transaction) => {
+        const snapshot = await transaction.get(subscriptionRef);
+        if (!snapshot.exists) return null;
+
+        const current = {
+            ...(snapshot.data() as FirestoreSubscriptionDoc),
+            id: snapshot.id,
+        } as FirestoreSubscriptionDoc;
+        if (current.status === params.nextStatus) {
+            return {
+                applied: false,
+                duplicate: true,
+                previousSubscription: current,
+                subscription: current,
+            };
+        }
+        if (
+            params.expectedStatuses?.length
+            && !params.expectedStatuses.includes(current.status)
+        ) {
+            return {
+                applied: false,
+                duplicate: false,
+                previousSubscription: current,
+                subscription: current,
+            };
+        }
+        if (!validateTransition(current.status, params.nextStatus, 'api:lifecycle-status-transaction')) {
+            return {
+                applied: false,
+                duplicate: false,
+                previousSubscription: current,
+                subscription: current,
+            };
+        }
+
+        const {
+            billingHistory: _ignoredBillingHistory,
+            creditsLastResetMonth: _ignoredResetPeriod,
+            id: _ignoredId,
+            monthlyCredits: _ignoredMonthlyCredits,
+            monthlyCreditsAllowance: _ignoredMonthlyCreditsAllowance,
+            pId: _ignoredProductCode,
+            planId: _ignoredPlanId,
+            productId: _ignoredProductId,
+            providerSubscriptionId: _ignoredProviderSubscriptionId,
+            sId: _ignoredStoreCode,
+            status: _ignoredStatus,
+            statuses: _ignoredStatuses,
+            storeId: _ignoredStoreId,
+            tId: _ignoredTenantCode,
+            tenantId: _ignoredTenantId,
+            topUpCredits: _ignoredTopUpCredits,
+            webhookEventHistory: _ignoredWebhookEventHistory,
+            ...safeUpdate
+        } = params.update || {};
+        const update = {
+            ...safeUpdate,
+            status: params.nextStatus,
+            statuses: [
+                ...(Array.isArray(current.statuses) ? current.statuses : []),
+                params.statusEntry,
+            ],
+        };
+        transaction.set(subscriptionRef, productDocPayload(productId, update), { merge: true });
+
+        return {
+            applied: true,
+            duplicate: false,
+            previousSubscription: current,
+            subscription: {
+                ...current,
+                ...update,
+                id: snapshot.id,
+            } as FirestoreSubscriptionDoc,
+        };
+    });
+}
+
+export type ProductSubscriptionUpgradeApplicationResult = {
+    applied: boolean;
+    duplicate: boolean;
+    newSubscription: FirestoreSubscriptionDoc;
+    oldSubscription: FirestoreSubscriptionDoc;
+    remainingCredits: number;
+};
+
+const normalizeProductBillingScopeDocumentId = (productId: ProductId, value: unknown) => (
+    isAnswerlatticeBillingProduct(productId)
+        ? normalizeAnswerlatticeBillingScopeDocumentId(value)
+        : normalizeBillingSubscriptionScopeDocumentId(value)
+);
+
+/**
+ * Expire the old subscription and add its remaining credits to the verified
+ * replacement as one transaction. This prevents partial carry-forward and
+ * prevents retries or concurrent top-ups from overwriting the new balance.
+ */
+export async function applyProductSubscriptionUpgradeCarryForward(
+    productId: ProductId,
+    params: {
+        newSubscriptionId: string;
+        oldSubscriptionId: string;
+        storeId: number;
+        tenantId: number;
+    },
+): Promise<ProductSubscriptionUpgradeApplicationResult | null> {
+    if (isProductBillingDisabled(productId)) {
+        throw new Error(getDisabledBillingMessage(productId));
+    }
+    const normalizeSubscriptionId = isAnswerlatticeBillingProduct(productId)
+        ? normalizeAnswerlatticeSubscriptionId
+        : normalizeBillingSubscriptionDocumentId;
+    const oldSubscriptionId = normalizeSubscriptionId(params.oldSubscriptionId);
+    const newSubscriptionId = normalizeSubscriptionId(params.newSubscriptionId);
+    const tenantScope = normalizeProductBillingScopeDocumentId(productId, params.tenantId);
+    const storeScope = normalizeProductBillingScopeDocumentId(productId, params.storeId);
+    if (
+        !oldSubscriptionId
+        || !newSubscriptionId
+        || oldSubscriptionId === newSubscriptionId
+        || !tenantScope
+        || !storeScope
+    ) {
+        throw new Error('Invalid subscription upgrade application.');
+    }
+
+    const db = getBillingFirestoreAdminForProduct(productId);
+    const subscriptionCollection = db.collection(DB_COLLECTIONS.SUBSCRIPTIONS);
+    const oldSubscriptionRef = subscriptionCollection.doc(oldSubscriptionId);
+    const newSubscriptionRef = subscriptionCollection.doc(newSubscriptionId);
+    return db.runTransaction(async (transaction) => {
+        const [oldSnapshot, newSnapshot] = await Promise.all([
+            transaction.get(oldSubscriptionRef),
+            transaction.get(newSubscriptionRef),
+        ]);
+        if (!oldSnapshot.exists || !newSnapshot.exists) return null;
+
+        const oldSubscription = {
+            ...(oldSnapshot.data() as FirestoreSubscriptionDoc),
+            id: oldSnapshot.id,
+        } as FirestoreSubscriptionDoc;
+        const newSubscription = {
+            ...(newSnapshot.data() as FirestoreSubscriptionDoc),
+            id: newSnapshot.id,
+        } as FirestoreSubscriptionDoc;
+        const oldTenantScope = normalizeProductBillingScopeDocumentId(
+            productId,
+            oldSubscription.tenantId ?? oldSubscription.tId,
+        );
+        const oldStoreScope = normalizeProductBillingScopeDocumentId(
+            productId,
+            oldSubscription.storeId ?? oldSubscription.sId,
+        );
+        const newTenantScope = normalizeProductBillingScopeDocumentId(
+            productId,
+            newSubscription.tenantId ?? newSubscription.tId,
+        );
+        const newStoreScope = normalizeProductBillingScopeDocumentId(
+            productId,
+            newSubscription.storeId ?? newSubscription.sId,
+        );
+        const scopeMatches = Boolean(
+            oldTenantScope
+            && oldStoreScope
+            && newTenantScope
+            && newStoreScope
+            && oldTenantScope.numericId === tenantScope.numericId
+            && newTenantScope.numericId === tenantScope.numericId
+            && oldStoreScope.numericId === storeScope.numericId
+            && newStoreScope.numericId === storeScope.numericId
+        );
+        const carriedFromId = normalizeSubscriptionId(newSubscription.carryForwardFromSubscriptionId);
+        const storedCarryForwardCredits = Number(newSubscription.carryForwardCredits);
+        const duplicate = (
+            scopeMatches
+            && oldSubscription.status === 'expired'
+            && carriedFromId === oldSubscriptionId
+            && Number.isSafeInteger(storedCarryForwardCredits)
+            && storedCarryForwardCredits >= 0
+        );
+        if (duplicate) {
+            return {
+                applied: false,
+                duplicate: true,
+                newSubscription,
+                oldSubscription,
+                remainingCredits: storedCarryForwardCredits,
+            };
+        }
+        if (
+            !scopeMatches
+            || oldSubscription.status === 'expired'
+            || newSubscription.status !== 'active'
+            || (carriedFromId && carriedFromId !== oldSubscriptionId)
+            || !validateTransition(oldSubscription.status, 'expired', 'api:upgrade-subscription-transaction')
+        ) {
+            return {
+                applied: false,
+                duplicate: false,
+                newSubscription,
+                oldSubscription,
+                remainingCredits: 0,
+            };
+        }
+
+        const calculatedCredits = calculateRemainingCredits(oldSubscription);
+        const creditTransfer = resolveSubscriptionUpgradeCreditTransfer({
+            calculatedRemainingCredits: calculatedCredits.totalRemainingCredits,
+            currentNewTopUpCredits: newSubscription.topUpCredits,
+            oldSubscriptionId,
+            replacementCarryForwardCredits: storedCarryForwardCredits,
+            replacementCarryForwardFromSubscriptionId: carriedFromId,
+        });
+        if (!creditTransfer) {
+            throw new Error('Subscription upgrade credit balance is invalid.');
+        }
+        const {
+            carryAlreadyApplied,
+            carryForwardCredits,
+            nextTopUpCredits,
+            remainingCredits,
+        } = creditTransfer;
+
+        const appliedAt = admin.firestore.Timestamp.now();
+        const oldUpdate: Partial<FirestoreSubscriptionDoc> & Record<string, unknown> = {
+            status: 'expired',
+            cycleEndDate: appliedAt as any,
+            subscriptionEndDate: appliedAt as any,
+            upgradeReplacementSubscriptionId: newSubscriptionId,
+            statuses: [
+                ...(Array.isArray(oldSubscription.statuses) ? oldSubscription.statuses : []),
+                {
+                    status: 'expired',
+                    timestamp: appliedAt as any,
+                    amount: oldSubscription.amount,
+                    currency: oldSubscription.currency,
+                    remark: `Upgraded with ${remainingCredits} credits transferred to ${newSubscriptionId}`,
+                },
+            ],
+        };
+        const newUpdate: Partial<FirestoreSubscriptionDoc> & Record<string, unknown> = {
+            topUpCredits: nextTopUpCredits,
+            carryForwardCredits,
+            carryForwardFromSubscriptionId: oldSubscriptionId,
+            carryForwardAppliedAt: appliedAt as any,
+            founderMonitorReplacementForSubscriptionId: oldSubscriptionId,
+            founderMonitorReplacementMrrPaise: getFounderSubscriptionMrrPaise(oldSubscription),
+            founderMonitorReplacementPlanId: oldSubscription.planId || null,
+            founderMonitorReplacementPlanName: oldSubscription.planName || null,
+            statuses: [
+                ...(Array.isArray(newSubscription.statuses) ? newSubscription.statuses : []),
+                ...(carryAlreadyApplied ? [] : [{
+                    status: 'carry_forward_applied',
+                    timestamp: appliedAt as any,
+                    amount: newSubscription.amount,
+                    currency: newSubscription.currency,
+                    remark: `Credits transferred from upgraded subscription: ${remainingCredits}`,
+                }]),
+            ],
+        };
+        transaction.set(oldSubscriptionRef, productDocPayload(productId, oldUpdate), { merge: true });
+        transaction.set(newSubscriptionRef, productDocPayload(productId, newUpdate), { merge: true });
+
+        return {
+            applied: true,
+            duplicate: false,
+            newSubscription: {
+                ...newSubscription,
+                ...newUpdate,
+                id: newSnapshot.id,
+            } as FirestoreSubscriptionDoc,
+            oldSubscription: {
+                ...oldSubscription,
+                ...oldUpdate,
+                id: oldSnapshot.id,
+            } as FirestoreSubscriptionDoc,
+            remainingCredits,
+        };
+    });
+}
+
+/**
+ * Serialize one non-payment provider event against the subscription document.
+ * This prevents two different webhook deliveries from overwriting each other's
+ * status history and prevents a partial-failure retry from appending twice.
+ */
+export async function applyProductSubscriptionWebhookEvent(
+    productId: ProductId,
+    params: {
+        eventKey: string;
+        nextStatus?: FirestoreSubscriptionDoc['status'];
+        statusEntry?: FirestoreSubscriptionDoc['statuses'][number];
+        subscriptionId: string;
+        update?: Partial<FirestoreSubscriptionDoc>;
+    },
+): Promise<ProductSubscriptionWebhookApplicationResult | null> {
+    if (isProductBillingDisabled(productId)) {
+        throw new Error(getDisabledBillingMessage(productId));
+    }
+    const subscriptionId = isAnswerlatticeBillingProduct(productId)
+        ? normalizeAnswerlatticeSubscriptionId(params.subscriptionId)
+        : normalizeBillingSubscriptionDocumentId(params.subscriptionId);
+    const eventKey = String(params.eventKey || '').trim();
+    if (
+        !subscriptionId
+        || eventKey !== params.eventKey
+        || eventKey.length > 180
+        || !isValidFirestoreDocumentId(eventKey)
+    ) {
+        throw new Error('Invalid subscription webhook application.');
+    }
+
+    const db = getBillingFirestoreAdminForProduct(productId);
+    const subscriptionRef = db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId);
+    return db.runTransaction(async (transaction) => {
+        const snapshot = await transaction.get(subscriptionRef);
+        if (!snapshot.exists) return null;
+
+        const current = {
+            ...(snapshot.data() as FirestoreSubscriptionDoc),
+            id: snapshot.id,
+        } as FirestoreSubscriptionDoc;
+        const eventHistory = Array.isArray(current.webhookEventHistory)
+            ? current.webhookEventHistory.filter((entry): entry is string => typeof entry === 'string')
+            : [];
+        if (eventHistory.includes(eventKey)) {
+            return {
+                applied: false,
+                duplicate: true,
+                previousSubscription: current,
+                subscription: current,
+            };
+        }
+        if (
+            params.nextStatus
+            && !validateTransition(current.status, params.nextStatus, 'webhook:event-transaction')
+        ) {
+            return {
+                applied: false,
+                duplicate: false,
+                previousSubscription: current,
+                subscription: current,
+            };
+        }
+
+        const {
+            billingHistory: _ignoredBillingHistory,
+            creditsLastResetMonth: _ignoredResetPeriod,
+            monthlyCredits: _ignoredMonthlyCredits,
+            monthlyCreditsAllowance: _ignoredMonthlyCreditsAllowance,
+            status: _ignoredStatus,
+            statuses: _ignoredStatuses,
+            topUpCredits: _ignoredTopUpCredits,
+            webhookEventHistory: _ignoredWebhookEventHistory,
+            ...safeUpdate
+        } = params.update || {};
+        const update = {
+            ...safeUpdate,
+            ...(params.nextStatus ? { status: params.nextStatus } : {}),
+            ...(params.nextStatus === 'past_due' && safeUpdate.pastDueSinceAt ? {
+                pastDueSinceAt: current.pastDueSinceAt || safeUpdate.pastDueSinceAt,
+            } : {}),
+            webhookEventHistory: [...eventHistory.slice(-99), eventKey],
+            ...(params.statusEntry ? {
+                statuses: [
+                    ...(Array.isArray(current.statuses) ? current.statuses : []),
+                    params.statusEntry,
+                ],
+            } : {}),
+        };
+        transaction.set(subscriptionRef, productDocPayload(productId, update), { merge: true });
+
+        return {
+            applied: true,
+            duplicate: false,
+            previousSubscription: current,
+            subscription: {
+                ...current,
+                ...update,
+                id: snapshot.id,
+            } as FirestoreSubscriptionDoc,
+        };
+    });
+}
 
 export const syncAnswerlatticeSubscriptionEntitlementFromSubscription = async (
     subscription: FirestoreSubscriptionDoc,
     source: string,
 ): Promise<void> => {
+    const tenantScope = normalizeAnswerlatticeBillingScopeDocumentId(subscription.tenantId ?? subscription.tId);
     const storeScope = normalizeAnswerlatticeBillingScopeDocumentId(subscription.storeId ?? subscription.sId);
-    if (!storeScope) return;
+    const subscriptionId = normalizeAnswerlatticeSubscriptionId(subscription.id || subscription.providerSubscriptionId);
+    if (!tenantScope || !storeScope || !subscriptionId) return;
 
     const db = getBillingFirestoreAdminForProduct(PRODUCT_IDS.ANSWERLATTICE);
-    const syncedAt = admin.firestore.FieldValue.serverTimestamp();
-    const activePlanType = getActivePlanTypeForSubscription(subscription);
-    const subscriptionId = normalizeAnswerlatticeSubscriptionId(subscription.id || subscription.providerSubscriptionId);
-    if (!subscriptionId) return;
+    const subscriptionsRef = db.collection(DB_COLLECTIONS.SUBSCRIPTIONS);
+    const subscriptionRef = subscriptionsRef.doc(subscriptionId);
+    const activeSubscriptionsQuery = subscriptionsRef
+        .where('status', '==', 'active')
+        .where('storeId', '==', storeScope.numericId)
+        .where('tenantId', '==', tenantScope.numericId)
+        .where('cycleEndDate', '>=', admin.firestore.Timestamp.now())
+        .orderBy('cycleEndDate', 'desc')
+        .limit(10);
+    await db.runTransaction(async (transaction) => {
+        const [snapshot, activeSubscriptionsSnapshot] = await Promise.all([
+            transaction.get(subscriptionRef),
+            transaction.get(activeSubscriptionsQuery),
+        ]);
+        if (!snapshot.exists) return;
 
-    const providerSubscriptionId = normalizeAnswerlatticeSubscriptionId(subscription.providerSubscriptionId || subscription.id);
-    const subscriptionSummary = {
-        id: subscriptionId,
-        providerSubscriptionId: providerSubscriptionId || subscriptionId,
-        planId: subscription.planId || null,
-        planName: subscription.planName || null,
-        status: subscription.status || null,
-        currency: subscription.currency || null,
-        amount: subscription.amount ?? null,
-        isBeta: false,
-        subscriptionEndDate: subscription.subscriptionEndDate || null,
-        monthlyCreditsAllowance: subscription.monthlyCreditsAllowance ?? 0,
-        monthlyCredits: subscription.monthlyCredits ?? 0,
-        topUpCredits: subscription.topUpCredits ?? 0,
-        creditsLastResetMonth: subscription.creditsLastResetMonth ?? null,
-        updatedAt: syncedAt,
-    };
+        const currentData = snapshot.data() || {};
+        const currentTenantScope = normalizeAnswerlatticeBillingScopeDocumentId(
+            currentData.tenantId ?? currentData.tId,
+        );
+        const currentStoreScope = normalizeAnswerlatticeBillingScopeDocumentId(
+            currentData.storeId ?? currentData.sId,
+        );
+        if (
+            !currentTenantScope
+            || !currentStoreScope
+            || currentTenantScope.numericId !== tenantScope.numericId
+            || currentStoreScope.numericId !== storeScope.numericId
+            || !isAnswerlatticeSubscriptionInScope(currentData, {
+                tId: tenantScope.numericId,
+                sId: storeScope.numericId,
+            })
+        ) return;
 
-    await Promise.all([
-        db.collection(DB_COLLECTIONS.STORES).doc(storeScope.documentId).set({
+        const current = normalizeAnswerlatticeSubscription(
+            currentData,
+            snapshot.id,
+            currentTenantScope.numericId,
+            currentStoreScope.numericId,
+        );
+        const syncedAt = admin.firestore.FieldValue.serverTimestamp();
+        const activeSubscription = activeSubscriptionsSnapshot.docs
+            .filter((activeSnapshot) => isAnswerlatticeSubscriptionInScope(activeSnapshot.data(), {
+                tId: currentTenantScope.numericId,
+                sId: currentStoreScope.numericId,
+            }))
+            .map((activeSnapshot) => normalizeAnswerlatticeSubscription(
+                activeSnapshot.data(),
+                activeSnapshot.id,
+                currentTenantScope.numericId,
+                currentStoreScope.numericId,
+            ))
+            .filter((candidate) => isAnswerlatticeSubscriptionForScope(
+                candidate,
+                currentTenantScope.numericId,
+                currentStoreScope.numericId,
+            ))
+            .sort((left, right) => toMillis(right.cycleEndDate) - toMillis(left.cycleEndDate))[0]
+            || null;
+        const summarySubscription = activeSubscription || current;
+        const activePlanType = activeSubscription
+            ? getActivePlanTypeForSubscription(activeSubscription)
+            : null;
+        const providerSubscriptionId = normalizeAnswerlatticeSubscriptionId(
+            summarySubscription.providerSubscriptionId || summarySubscription.id,
+        );
+        const subscriptionSummary = {
+            id: summarySubscription.id,
+            pId: PRODUCT_IDS.ANSWERLATTICE,
+            productId: PRODUCT_IDS.ANSWERLATTICE,
+            tId: currentTenantScope.numericId,
+            sId: currentStoreScope.numericId,
+            tenantId: currentTenantScope.numericId,
+            storeId: currentStoreScope.numericId,
+            providerSubscriptionId: providerSubscriptionId || summarySubscription.id,
+            planId: summarySubscription.planId || null,
+            planName: summarySubscription.planName || null,
+            status: summarySubscription.status || null,
+            currency: summarySubscription.currency || null,
+            amount: summarySubscription.amount ?? null,
+            isBeta: false,
+            subscriptionEndDate: summarySubscription.subscriptionEndDate || null,
+            monthlyCreditsAllowance: summarySubscription.monthlyCreditsAllowance ?? 0,
+            monthlyCredits: summarySubscription.monthlyCredits ?? 0,
+            topUpCredits: summarySubscription.topUpCredits ?? 0,
+            creditsLastResetMonth: summarySubscription.creditsLastResetMonth ?? null,
+            updatedAt: syncedAt,
+        };
+
+        transaction.set(db.collection(DB_COLLECTIONS.STORES).doc(currentStoreScope.documentId), {
             activePlanType,
             answerlatticeSubscription: subscriptionSummary,
             answerlatticeBillingUpdatedAt: syncedAt,
-        }, { merge: true }),
-        db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId).set({
+        }, { merge: true });
+        transaction.set(subscriptionRef, {
             analyticsEntitlement: {
                 activePlanType,
-                status: subscription.status || null,
+                status: current.status || null,
                 syncedAt,
                 source,
             },
-        }, { merge: true }),
-    ]);
+        }, { merge: true });
+    });
 };
 
 export async function safeSyncProductSubscriptionEntitlementFromSubscription(

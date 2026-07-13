@@ -1,4 +1,5 @@
 import { FEATURE_FLAGS } from "@config/features";
+import { normalizeStoreSwitchStoreId } from "@lib/multiOutlet/storeSwitchAccess";
 import type { RolePermissions } from "@type/platform/roles";
 
 type StoreSummary = {
@@ -12,11 +13,6 @@ type LocationAccessContext = {
     storeDetails?: { isMaster?: boolean; storeId?: number | string } | null;
     tenantDetails?: { storesList?: StoreSummary[] } | null;
     userPermissions?: RolePermissions | null;
-};
-
-const normalizeStoreId = (value: unknown): number | null => {
-    const parsed = Number(value);
-    return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
 };
 
 export const hasMasterStoreInTenant = (
@@ -33,7 +29,7 @@ export const isLegacySingleStoreMasterCandidate = ({
     storeDetails,
     tenantDetails,
 }: Pick<LocationAccessContext, "storeDetails" | "tenantDetails">) => {
-    const storeId = normalizeStoreId(storeDetails?.storeId);
+    const storeId = normalizeStoreSwitchStoreId(storeDetails?.storeId);
     const storesList = tenantDetails?.storesList || [];
 
     if (!storeId || storesList.length !== 1 || hasMasterStoreInTenant(tenantDetails)) {
@@ -41,7 +37,7 @@ export const isLegacySingleStoreMasterCandidate = ({
     }
 
     const onlyStore = storesList[0];
-    return onlyStore?.active !== false && normalizeStoreId(onlyStore?.storeId) === storeId;
+    return onlyStore?.active !== false && normalizeStoreSwitchStoreId(onlyStore?.storeId) === storeId;
 };
 
 export const isMasterLocationContext = ({

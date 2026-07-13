@@ -8,7 +8,7 @@ import { PERMISSIONS } from '@constant/permissions';
 import { getActiveSubscriptionForStore } from '@database/subscriptions/server';
 import { HarmBlockThreshold, HarmCategory } from '@google/genai';
 import { finalizeAiOperationAccounting } from '@lib/ai/accounting';
-import { checkAICapacity } from '@lib/ai/capacityCheck';
+import { checkAICapacity, refundAiCapacityReservationSafely, reserveAiCapacity } from '@lib/ai/capacityCheck';
 import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
 import { getAIGatewayDiagnostics, getAIRouteLogContext, getAIRouteSecurityContext, logAIRouteFailure } from '@lib/google/genAi/diagnostics';
 import { genAIClient } from '@lib/google/genAi';
@@ -228,6 +228,7 @@ function hasAllowedAdvisorPlan(subscription: FirestoreSubscriptionDoc | null): b
 export const POST = withAuth(async (request: NextRequest, session) => {
     const requestId = crypto.randomUUID();
     const userId = session.user?.id || session.uId;
+    let capacityReservation: Awaited<ReturnType<typeof reserveAiCapacity>> | null = null;
 
     if (!FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT || !FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT_AI_ADVISOR) {
         return NextResponse.json({ error: 'Feature disabled' }, { status: 404 });
@@ -311,6 +312,16 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 code: capacityCheck.reason,
             }, { status: 402 });
         }
+        capacityReservation = await reserveAiCapacity({
+            action: ACTION,
+            pId: session.pId ?? session.user?.pId ?? session.user?.productId,
+            sId: storeId,
+            source: ENDPOINT,
+            subscription: capacityCheck.subscription!,
+            tId: tenantId,
+            uId: userId,
+            unitsToReserve: capacityCheck.unitsRequired,
+        });
 
         logger.info('Menu card design advisor requested', getAIRouteLogContext({
             action: ACTION,
@@ -399,6 +410,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
         try {
             const accounting = await finalizeAiOperationAccounting({
+                capacityReservation,
                 capacitySubscription: capacityCheck.subscription,
                 context: {
                     endpoint: ENDPOINT,
@@ -433,6 +445,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 logLabel: 'Menu card design advisor',
                 session,
             });
+            capacityReservation = null;
             transactionId = accounting.transactionId;
             remainingBalance = accounting.remainingBalance;
         } catch (transactionError) {
@@ -474,5 +487,10 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             });
         }
         return NextResponse.json({ error: 'Layout suggestion failed' }, { status: 500 });
+    } finally {
+        await refundAiCapacityReservationSafely(capacityReservation, 'menu_card_design_advisor_request_did_not_settle', {
+            endpoint: ENDPOINT,
+            requestId,
+        });
     }
 });

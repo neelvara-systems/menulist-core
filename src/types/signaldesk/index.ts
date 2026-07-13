@@ -61,7 +61,9 @@ export type SignalDeskConfidence = "high" | "medium" | "low";
 export type SignalDeskOutboundChannel = "email" | "whatsapp" | "instagram" | "messenger" | "manual";
 export type SignalDeskSourceProviderId = "google-places" | "foursquare" | "apify" | "fhrs-fhis" | "manual";
 export type SignalDeskResearchProviderId = Extract<SignalDeskSourceProviderId, "google-places" | "apify" | "fhrs-fhis">;
-export type SignalDeskAiTask = "score" | "evidence" | "draft" | "reply-classification" | "approval-packet" | "weekly-strategist" | "vendor-audit";
+export type SignalDeskAiTask = "score" | "evidence" | "draft" | "reply-classification" | "approval-packet" | "weekly-strategist" | "vendor-audit" | "quality-critic";
+export type SignalDeskAiVolumeTask = Extract<SignalDeskAiTask, "score" | "evidence" | "draft" | "reply-classification">;
+export type SignalDeskAiShadowReviewDecision = "accepted" | "edited" | "rejected" | "held";
 export type SignalDeskProviderId =
     | SignalDeskSourceProviderId
     | "owned-email"
@@ -253,6 +255,10 @@ export type SignalDeskOpportunity =
 export type SignalDeskSourceConfidence = "high" | "medium" | "low" | "blocked";
 export type SignalDeskContactability = "ready" | "limited" | "missing" | "blocked";
 export type SignalDeskSuppressionStatus = "clear" | "suppressed" | "wrong-contact" | "complaint";
+export type SignalDeskRoutePermissionState = "permissioned" | "research_only" | "blocked" | "review_required" | "expired";
+export type SignalDeskAllowedRoute = "email-export" | "partner-intro" | "pod-review" | "none";
+export type SignalDeskManualContactRoute = Extract<SignalDeskAllowedRoute, "email-export" | "partner-intro">;
+export type SignalDeskManualContactResult = "contacted" | "no-answer" | "wrong-contact" | "requested-later" | "declined" | "introduced";
 export type SignalDeskNextAction =
     | "review"
     | "enrich"
@@ -261,10 +267,20 @@ export type SignalDeskNextAction =
     | "draft"
     | "approve"
     | "export"
+    | "contact"
     | "reply"
     | "outcome"
     | "hold"
     | "reject";
+
+export type SignalDeskActivationSurface =
+    | "qr"
+    | "whatsapp"
+    | "google-profile"
+    | "instagram"
+    | "website"
+    | "print"
+    | "other";
 
 export interface SignalDeskTargetSummary {
     targetId: string;
@@ -290,7 +306,15 @@ export interface SignalDeskTargetSummary {
     latestDraftId?: string | null;
     latestApprovalId?: string | null;
     latestConversationId?: string | null;
+    latestManualContactAt?: string | null;
+    latestManualContactResult?: SignalDeskManualContactResult | null;
+    latestManualContactRoute?: SignalDeskManualContactRoute | null;
     latestOutcomeAt?: string | null;
+    latestVerifiedActivationAt?: string | null;
+    latestVerifiedActivationEvidenceRef?: string | null;
+    latestVerifiedActivationIntegrityStatus?: "owner-reviewed-manual" | "menulist-signed" | null;
+    latestVerifiedActivationSurfaces?: SignalDeskActivationSurface[];
+    ownerQualifiedAt?: string | null;
     updatedAt?: string | null;
 }
 
@@ -309,6 +333,17 @@ export interface SignalDeskSourcePolicy {
         storage?: boolean;
     };
     retentionDays: number;
+    accessMethod?: "owner-supplied" | "permissioned-referral" | "licensed-api" | "open-data" | "manual-public-research" | "other" | null;
+    allowedFields?: string[];
+    attributionRequirements?: string[];
+    blockedFields?: string[];
+    policyOwner?: string | null;
+    prohibitedUses?: string[];
+    rawPayloadPolicy?: "never-store" | "transient-only" | "retention-bound" | null;
+    refreshMethod?: "manual-review" | "provider-refresh" | "owner-refresh" | "no-refresh" | null;
+    termsUrl?: string | null;
+    termsVersion?: string | null;
+    lastReviewedAt?: string | null;
     approvedAt?: string | null;
     createdAt?: string | null;
     expiresAt?: string | null;
@@ -354,6 +389,63 @@ export interface SignalDeskAiScoreSummary {
     createdAt?: string | null;
 }
 
+export interface SignalDeskAiWorkerRunSummary {
+    aiRunId: string;
+    confidence: SignalDeskConfidence;
+    costEstimate: number;
+    createdAt?: string | null;
+    founderAttentionMinutes?: number;
+    criticConfidence?: SignalDeskConfidence | null;
+    criticModel?: string | null;
+    criticRejectedFactCount?: number;
+    criticVerdict?: "pass" | "revise" | "hold" | null;
+    escalated?: boolean;
+    escalationBlocked?: boolean;
+    escalationModel?: string | null;
+    modelCallCount?: number;
+    model: string;
+    modelEvalId?: string | null;
+    modelRouteId?: string | null;
+    output?: Record<string, unknown> | null;
+    provider?: Extract<SignalDeskProviderId, "gemini" | "openai" | "anthropic"> | null;
+    rejectedFactCount?: number;
+    reviewDecision?: SignalDeskAiShadowReviewDecision | null;
+    reviewReason?: string | null;
+    reviewedAt?: string | null;
+    reviewedBy?: string | null;
+    volumeRunId?: string | null;
+    targetId: string;
+    task?: SignalDeskAiTask | null;
+    workerType: string;
+    workerVersion: string;
+}
+
+export interface SignalDeskAiVolumeRunSummary {
+    aiRunId: string;
+    volumeRunId: string;
+    workerType: "ai_volume_batch";
+    workerVersion: "ai-volume-v1";
+    status: "running" | "completed" | "partial" | "blocked";
+    targetIds: string[];
+    tasks: SignalDeskAiVolumeTask[];
+    requestedPairCount: number;
+    completedPairCount: number;
+    failedPairCount: number;
+    modelCallCount: number;
+    estimatedCostUsd: number;
+    maxEstimatedCostUsd: number;
+    projectedMaxCostUsd?: number;
+    childRunIds: string[];
+    failureCodes: string[];
+    idempotencyKeyHash?: string;
+    instruction?: string | null;
+    lockExpiresAt?: string | null;
+    createdAt?: string | null;
+    completedAt?: string | null;
+    createdBy: string;
+    updatedAt?: string | null;
+}
+
 export interface SignalDeskTemplateSummary {
     templateId: string;
     name: string;
@@ -390,30 +482,46 @@ export interface SignalDeskApprovalItem {
     status: "pending" | "approved" | "rejected" | "queued" | "exported" | "sent" | "failed";
     priority: "low" | "normal" | "high";
     reviewReason: string;
+    rejectionReason?: SignalDeskApprovalRejectionReason | null;
     channel: SignalDeskOutboundChannel;
     approvalPacketId?: string | null;
     dueAt?: string | null;
     updatedAt?: string | null;
 }
 
+export type SignalDeskApprovalRejectionReason =
+    | "evidence-weak-or-stale"
+    | "identity-uncertain"
+    | "no-customer-truth-gap"
+    | "contact-route-not-allowed"
+    | "already-solved"
+    | "wrong-segment"
+    | "duplicate"
+    | "other";
+
 export interface SignalDeskConversationSummary {
     conversationId: string;
     targetId: string;
     targetName: string;
     channel: SignalDeskOutboundChannel;
-    state: "new" | "exported" | "interested" | "not_interested" | "dnc" | "wrong_contact" | "needs_review";
+    state: "new" | "exported" | "contacted" | "interested" | "not_interested" | "dnc" | "wrong_contact" | "complaint" | "privacy_request" | "legal_request" | "needs_review";
     lastMessagePreview?: string | null;
     lastInboundAt?: string | null;
+    lastInboundOccurredAt?: string | null;
+    lastOutboundAt?: string | null;
     updatedAt?: string | null;
 }
 
 export interface SignalDeskProviderEventSummary {
     channel?: SignalDeskOutboundChannel | null;
+    direction?: "inbound" | "source" | "status";
     eventId: string;
     eventType: string;
     provider: string;
+    providerMessageId?: string | null;
     status: "received" | "processed" | "ignored" | "blocked" | "failed";
     targetId?: string | null;
+    occurredAt?: string | null;
     updatedAt?: string | null;
 }
 
@@ -522,9 +630,25 @@ export interface SignalDeskModelEvalSummary {
     model: string;
     status: "passed" | "failed" | "needs-review";
     sampleSize: number;
+    passedSampleCount?: number;
+    lowConfidenceCount?: number;
+    rejectedFactSampleCount?: number;
+    measurementVersion?: "cumulative-v1";
+    legacySampleSize?: number;
+    legacyPassRate?: number;
+    legacyRejectedFactRate?: number;
+    reviewedSampleSize?: number;
+    acceptedCount?: number;
+    editedCount?: number;
+    rejectedCount?: number;
+    heldCount?: number;
     passRate: number;
     editRate: number;
     rejectedFactRate: number;
+    acceptanceRate?: number;
+    rejectionRate?: number;
+    holdRate?: number;
+    founderAttentionMinutes?: number;
     updatedAt?: string | null;
 }
 
@@ -823,6 +947,8 @@ export interface SignalDeskContentAssetSummary {
     marketPodId?: string | null;
     primaryAudience: SignalDeskContentSourceSummary["defaultAudience"];
     proofLevel: "owned" | "customer-proof" | "market-research" | "internal-note";
+    proofPermissionId?: string | null;
+    proofScopes?: SignalDeskProofPermissionScope[];
     riskNotes: string[];
     sourceId?: string | null;
     sourceNotes?: string | null;
@@ -830,6 +956,30 @@ export interface SignalDeskContentAssetSummary {
     sourceUrl?: string | null;
     status: "draft" | "ready" | "distributed" | "hold" | "archived";
     title: string;
+    updatedAt?: string | null;
+}
+
+export type SignalDeskProofPermissionScope =
+    | "internal-learning"
+    | "anonymous-aggregate"
+    | "business-name"
+    | "logo"
+    | "quotation"
+    | "before-after-screenshots"
+    | "public-case-study"
+    | "partner-material";
+
+export interface SignalDeskProofPermissionSummary {
+    proofPermissionId: string;
+    targetId: string;
+    targetName?: string | null;
+    status: "active" | "hold" | "revoked" | "expired";
+    scopes: SignalDeskProofPermissionScope[];
+    evidenceRef: string;
+    grantedAt?: string | null;
+    expiresAt?: string | null;
+    revokedAt?: string | null;
+    notes?: string | null;
     updatedAt?: string | null;
 }
 
@@ -1020,6 +1170,7 @@ export interface SignalDeskActivationWatchSummary {
     deadlineAt?: string | null;
     lastOutcomeAt?: string | null;
     nextAction: string;
+    ownerQualifiedAt?: string | null;
     outcomeTypes: SignalDeskOutcomeSummary["outcomeType"][];
     revenueAccountId: string;
     source: "signaldesk-outcome-summaries";
@@ -1108,8 +1259,18 @@ export interface SignalDeskResearchTableRowSummary {
         value: string;
         verdict: "pass" | "fail" | "unsure";
     }>;
+    evidenceSummary: string;
     fitDecision: "pass" | "fail" | "unsure";
     fitScore: number;
+    actionabilityState: "actionable" | "verify" | "research_only" | "blocked";
+    allowedRoute: SignalDeskAllowedRoute;
+    allowedRouteReason: string;
+    hardGateFailures: string[];
+    routePermissionState: SignalDeskRoutePermissionState;
+    /** @deprecated Use allowedRoute. Retained for persisted-row compatibility. */
+    recommendedChannel?: "email-export" | "partner-intro" | "pod-review" | "hold";
+    recommendedCta: string;
+    recommendedMessageAngle: string;
     provider: SignalDeskResearchProviderId;
     providerRecordUrl?: string | null;
     recommendedNextAction: "score" | "evidence" | "hold" | "partner-review" | "pod-review";
@@ -1141,6 +1302,58 @@ export interface SignalDeskOutcomeSummary {
     channel: "email" | "manual" | "qr" | "share" | "claim";
     count: number;
     day: string;
+    evidenceRef?: string | null;
+    integrityStatus?: "unverified" | "owner-reviewed-manual" | "menulist-signed";
+    ownerQualifiedAt?: string | null;
+    ownerReviewedAt?: string | null;
+    sourceEventId?: string | null;
+    routeTokenId?: string | null;
+    surfaces?: SignalDeskActivationSurface[];
+    updatedAt?: string | null;
+}
+
+export type SignalDeskActivationOpportunityState =
+    | "candidate"
+    | "verified"
+    | "actionable"
+    | "contacted"
+    | "engaged"
+    | "activation_started"
+    | "activated"
+    | "rejected"
+    | "closed"
+    | "suppressed"
+    | "expired";
+
+export interface SignalDeskActivationOpportunitySummary {
+    activationOpportunityId: string;
+    targetId: string;
+    displayName: string;
+    category?: string | null;
+    city?: string | null;
+    state: SignalDeskActivationOpportunityState;
+    truthGap: SignalDeskOpportunity;
+    sourcePolicyState: NonNullable<SignalDeskSourcePolicy["policyState"]>;
+    evidenceGrade: SignalDeskConfidence;
+    allowedRoute: SignalDeskAllowedRoute;
+    allowedRouteReason: string;
+    routePermissionState: SignalDeskRoutePermissionState;
+    hardGateFailures: string[];
+    dimensions: {
+        truthGap: number;
+        evidence: number;
+        reachability: number;
+        activationFeasibility: number;
+        surfaceLeverage: number;
+        learningValue: number;
+    };
+    ownerQualifiedAt?: string | null;
+    activationStartedAt?: string | null;
+    activatedAt?: string | null;
+    activationDeadlineAt?: string | null;
+    surfaces: SignalDeskOutcomeSummary["surfaces"];
+    nextAction: string;
+    priority: number;
     updatedAt?: string | null;
 }
 
@@ -1167,7 +1380,10 @@ export interface SignalDeskAuditEvent {
 }
 
 export interface SignalDeskWorkspaceData {
+    activationOpportunities: SignalDeskActivationOpportunitySummary[];
     activationWatches: SignalDeskActivationWatchSummary[];
+    aiVolumeRuns: SignalDeskAiVolumeRunSummary[];
+    aiWorkerRuns: SignalDeskAiWorkerRunSummary[];
     approvalPackets: SignalDeskApprovalPacketSummary[];
     audienceSegments: SignalDeskAudienceSegmentSummary[];
     budgetPolicies: SignalDeskBudgetPolicySummary[];
@@ -1199,6 +1415,7 @@ export interface SignalDeskWorkspaceData {
     commercialOpportunities: SignalDeskCommercialOpportunitySummary[];
     operatingEnvelopes: SignalDeskOperatingEnvelopeSummary[];
     policies: SignalDeskSourcePolicy[];
+    proofPermissions: SignalDeskProofPermissionSummary[];
     providerAccounts: SignalDeskProviderAccountSummary[];
     providerEvaluations: SignalDeskProviderEvaluationSummary[];
     providerEvents: SignalDeskProviderEventSummary[];

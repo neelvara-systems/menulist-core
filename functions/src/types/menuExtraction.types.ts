@@ -12,11 +12,11 @@ import type { ExtractedBusinessProfile } from "../sharedData/extractedBusinessPr
 // ═══════════════════════════════════════════════════════════════════════════
 
 export interface MenuFileToProcess {
-    uid?: string;
+    uid: string;
     name: string;
     size: number;
     type: string;
-    url: string; // HTTPS URL or data URI
+    url: string; // Validated Firebase Storage HTTPS URL
 }
 
 export interface TargetLanguage {
@@ -80,6 +80,7 @@ export interface MenuItem {
     spiceLevel?: 'none' | 'mild' | 'medium' | 'hot' | 'very-hot';
     duration?: number;
     confidence?: ExtractionConfidence;  // Infrastructure Compounding 10.1
+    sourceFileIndex?: number;
 }
 
 export interface MenuCategory {
@@ -87,6 +88,7 @@ export interface MenuCategory {
     name: Record<string, string>;
     description?: Record<string, string>;
     icon?: string;
+    sourceFileIndex?: number;
 }
 
 export interface BusinessAttributeSuggestion {
@@ -159,6 +161,12 @@ export interface ProcessMenuImagesResponse {
         candidatesTokenCount: number;
         totalTokenCount: number;
     };
+    batchResults?: {
+        batchIndex: number;
+        failedFileIndices: number[];
+        filesProcessed: number;
+        success: boolean;
+    }[];
     timings?: {
         requestStartedAt?: number;
         uploadStartedAt?: number;

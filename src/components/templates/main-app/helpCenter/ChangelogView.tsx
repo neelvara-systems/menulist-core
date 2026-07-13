@@ -3,6 +3,7 @@ import { useAppDispatch } from '@hook/useAppDispatch';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import DisplayChangelog from '@template/platform/changelog/displayChangelog';
 import { ChangelogPage } from '@type/changelog';
+import type { AnswerlatticePublicChangelogPage } from '@lib/answerlattice/publicContentBoundary';
 import { message } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useCallback, useEffect, useState } from 'react';
@@ -14,7 +15,7 @@ interface ChangelogViewProps {
 const ChangelogView = ({ initialEntryId }: ChangelogViewProps) => {
     const t = useTranslations('HelpCenter');
     const dispatch = useAppDispatch();
-    const [changelogPage, setChangelogPage] = useState<ChangelogPage | null>(null);
+    const [changelogPage, setChangelogPage] = useState<AnswerlatticePublicChangelogPage | null>(null);
 
     const fetchLatestPage = useCallback(async () => {
         dispatch(startLoader('Fetching Changelog...'));

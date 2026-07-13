@@ -32,7 +32,7 @@ export default function Error({ error, reset }: {
                     subTitle={<Flex vertical justify="center" align="center">
                         <Text>{`We're sorry, the app has encountered an error. We're working on a fix and apologize for any inconvenience.`}</Text>
                         <Text strong>Please try refreshing the app. If the issue persists, click here</Text>
-                        <Button type="link" icon={<LuRefreshCcw />} onClick={() => clearBrowserCache(true)}>Reload Page</Button>
+                        <Button type="link" icon={<LuRefreshCcw />} onClick={() => void clearBrowserCache(true)}>Reload Page</Button>
                     </Flex>}
                 />
                 <Flex gap={10}>

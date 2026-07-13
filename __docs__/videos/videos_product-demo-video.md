@@ -4,6 +4,8 @@
 **Created:** July 7, 2026
 **Primary output:** 2-3 minute product demo walkthrough
 
+**Mandatory production standard:** [MenuList Founder-Approved Video Production Standard](./videos_founder-approved-production-standard.md).
+
 ## Purpose
 
 The product demo proves how MenuList works after the launch video creates interest.

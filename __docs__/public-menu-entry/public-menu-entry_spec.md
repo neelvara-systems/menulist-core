@@ -1,9 +1,11 @@
 # Public Menu Entry — Business Requirements (Spec)
 
 **Version:** 1.0
-**Status:** ✅ IMPLEMENTED — Active funnel
+**Status:** Source-implemented requirements — not current launch or deploy certification
 **Feature Flag:** `ENABLE_PUBLIC_MENU_ENTRY`
-**Last Updated:** July 1, 2026
+**Last Updated:** July 10, 2026
+
+> **Launch boundary:** Not current launch certification or deploy approval. This document is source-gated Public Menu Entry evidence only. The `/create-menu` page is public, but source submission, acquisition, extraction, preview polling, claim, and publish require a signed-in owner. Current release approval still requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:menu-extraction-pipeline`, `npm run verify:public-business-truth`, `npm run verify:auth-security-failure-matrix`, signed-in desktop/mobile browser QA, physical-device camera/link/preview/claim QA, Gemini extraction provider smoke, Razorpay sandbox evidence where conversion is in scope, applicable target Firebase/Vercel deploy evidence, and production-host smoke.
 
 ---
 
@@ -125,11 +127,11 @@ or paste public menu link → permission confirmation + SSRF-safe acquisition
       ↓
 POST /api/public/create-menu (authenticated, SAFE_MODE + user rate-limited + draft reuse/dedupe)
       ↓
-Upload source artifact to Firebase Storage (temp path)
+Upload source artifact to deterministic Firebase Storage temp path/token
       ↓
-Gemini extraction (server-side, public-route model/cost tracked)
+Atomically create publicMenuDrafts/{draftId} + menuImageProcessingJobs/public_{draftId}
       ↓
-Store result in publicMenuDrafts/{draftId}
+Shared worker verifies draft/job/owner/source binding, then extracts and writes an allowlisted DTO
       ↓
 Return draftId + preview URL
       ↓
@@ -142,7 +144,7 @@ Published starter activation: permanent customer URL from getMenuUrl(subdomain)
 
 ### Key Architectural Decision
 
-**This feature keeps extraction narrow and isolated.** It reuses the shared Gemini client, AI operation logging, and category/language helpers, but does not reuse the authenticated job queue because public drafts do not have tenant/store context until claim. The new code is:
+**This feature keeps extraction narrow and isolated.** It reuses the shared durable `menuImageProcessingJobs` queue, Gemini client, AI operation logging, source validation, and mirrored public-draft DTO contract. Public drafts use the reserved platform extraction scope until claim and never write a real tenant/store project before owner confirmation. The code is:
 - A public-facing upload page
 - A thin API route that creates a lightweight draft (not a full project)
 - A preview page that renders the extracted data
@@ -158,9 +160,12 @@ Published starter activation: permanent customer URL from getMenuUrl(subdomain)
 | R2 | Cost: repeated extraction by non-converting users | SAFE_MODE + user rate limiting + active draft reuse + source dedupe + 24h TTL cleanup |
 | R3 | Quality: poor extraction from phone photos or unreadable links | Show clear fallback: upload a photo or try another public menu link |
 | R4 | Privacy: menu sources submitted by non-owners | Permission confirmation, 24h draft TTL, no raw IP storage, sign-in before public claim/publish |
-| R5 | Storage: unclaimed source artifacts accumulate | 24h TTL auto-cleanup via nightly scheduler |
+| R5 | Storage: unclaimed source artifacts accumulate | 24h TTL cleanup deletes the source first and preserves the draft for retry if Storage deletion fails |
 | R6 | Stale existing account session writes public menu truth into a blocked/deleted/mismatched store | Claim transaction reads store and tenant eligibility before project/store/summary writes |
-| R6 | SSRF/crawler abuse from public URLs | Same bounded acquisition helper as authenticated Menu Link Import; blocks unsafe protocols, private IPs, unsafe redirects, and unbounded crawling |
+| R7 | SSRF/crawler abuse from public URLs | Same bounded acquisition helper as authenticated Menu Link Import; blocks unsafe protocols, private IPs, unsafe redirects, and unbounded crawling |
+| R8 | Concurrent identical submissions create duplicate drafts/jobs or corrupt the winner's download token | Owner/content-derived UUID, deterministic download token, create-only atomic draft/job batch, exact collision recovery |
+| R9 | Provider/legacy fields leak into durable public truth | Mirrored allowlist DTO normalizer at worker, preview, and claim plus independent Storage source-envelope validation |
+| R10 | Lost claim response causes duplicate project or permanent 409 | Complete conversion receipt on the draft and exact-owner idempotent retry |
 | OQ1 | Should we support PDF file upload in v1? | DECISION: Direct public file upload remains image-only; public links may resolve to readable PDFs through Menu Link Import. |
 | OQ2 | Should preview be editable before publish? | DECISION: No. Edit after publish in dashboard. Keeps flow simple. |
 | OQ3 | Should we require account before extraction? | DECISION: Yes. Phone/WhatsApp OTP or existing sign-in happens before upload/extraction so free processing stays owner-bound. |
@@ -193,7 +198,7 @@ The future resolver must not be treated as Menu Kit. It would need feature flagg
 | One sentence without "and"? | "Start from your current menu source." | ✅ PASS |
 | Still matters in 3 years? | Yes — page creation is foundational | ✅ PASS |
 
-**Result: 5/5 — APPROVED**
+**Result: 5/5 — SCOPE ADMISSION APPROVED; not release certification**
 
 ---
 

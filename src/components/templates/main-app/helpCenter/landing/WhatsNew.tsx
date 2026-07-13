@@ -11,10 +11,11 @@ import { fetchAnswerlatticePublicChangelogPage } from '@lib/answerlattice/public
 import ChangelogPreview from '@template/platform/changelog/ChangelogPreview';
 import ChangelogTagRenderer from '@template/platform/changelog/ChangelogTagRenderer';
 import { ChangelogEntry, ChangelogPage } from '@type/changelog';
+import type { AnswerlatticePublicChangelogEntry, AnswerlatticePublicChangelogPage } from '@lib/answerlattice/publicContentBoundary';
 
 const { Text, Title, Paragraph } = Typography;
 
-const getPlainTextFromDescription = (description: ChangelogEntry['description']): string => {
+const getPlainTextFromDescription = (description: ChangelogEntry['description'] | AnswerlatticePublicChangelogEntry['description']): string => {
     if (!description || typeof description !== 'object') return '';
 
     const extractText = (node: any): string => {
@@ -35,7 +36,7 @@ const getPlainTextFromDescription = (description: ChangelogEntry['description'])
     return '';
 };
 
-const getExcerpt = (entry: ChangelogEntry, maxLength = 160): string | null => {
+const getExcerpt = (entry: ChangelogEntry | AnswerlatticePublicChangelogEntry, maxLength = 160): string | null => {
     const plain = getPlainTextFromDescription(entry.description);
     if (!plain) return null;
     if (plain.length <= maxLength) return plain;
@@ -46,8 +47,8 @@ function WhatsNew() {
     const t = useTranslations('HelpCenter');
     const router = useRouter();
     const screens = Grid.useBreakpoint();
-    const [selectedEntry, setSelectedEntry] = useState<ChangelogEntry | null>(null);
-    const [changelog, setChangelog] = useState<ChangelogPage | null>(null);
+    const [selectedEntry, setSelectedEntry] = useState<AnswerlatticePublicChangelogEntry | null>(null);
+    const [changelog, setChangelog] = useState<AnswerlatticePublicChangelogPage | null>(null);
 
     const fetchInitialData = async () => {
         try {

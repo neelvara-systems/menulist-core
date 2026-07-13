@@ -2,7 +2,7 @@
 
 **Owner-Facing Name:** Business Health
 **Status:** Implemented read-only runtime
-**Last Updated:** July 1, 2026
+**Last Updated:** July 13, 2026
 
 ## Implementation Contract
 
@@ -40,6 +40,7 @@ Active routes:
 - `GET /api/owner-business-assistant/locations`
 - session/thread routes where the thread flag is enabled
 - feedback routes where feedback logging is enabled; `POST /api/owner-business-assistant/feedback` uses the `DATA_WRITE` limiter with hashed owner, tenant, and store key segments, then an 8KB bounded JSON body before Zod validation, selected-store scope resolution, `VIEW_ANALYTICS` permission, and the feedback document write. The browser feedback hook uses the shared no-store/same-origin/manual-redirect request policy and requires the bounded `{ data: { success: true } }` acknowledgement before returning success.
+- selected-store IDs use the shared canonical store-access boundary before mapped-store authorization. A supplied whitespace, leading-zero, exponent, decimal, signed, unsafe or otherwise non-canonical ID returns `400` instead of being coerced to the current or another store.
 - Business Health feedback answer ID boundary: feedback `answerId` values use the shared Firestore document-ID guard with an exact raw-value check before the route composes the `ownerBusinessAssistantFeedback` document ID, and the route rechecks the composed feedback doc ID before the write. This blocks whitespace-mutated, path-shaped, or reserved IDs without changing valid server-generated answer IDs.
 - Business Health answer-event ID boundary: `src/lib/ownerBusinessAssistant/server/answerEventLogger.ts` rechecks the server-generated answer ID with the shared Firestore document-ID guard and rejects whitespace-mutated IDs before writing `ownerBusinessAssistantAnswerEvents/{answerId}`. Malformed IDs skip only the optional answer-event write; the owner answer and valid thread/feedback behavior stay unchanged.
 - `GET /api/platform/owner-business-assistant/monitor`; applies the shared `DATA_READ` gate before answer-event/feedback reads, sanitizes stored answer/feedback text for platform display, and the browser monitor validates the 256KB response envelope before rendering answer-event, source-coverage, feedback, and cost/read metrics. Unexpected route failures log `owner_business_assistant_monitor_route_failed` with bounded request-path metadata and source error name/code/status only.
@@ -66,6 +67,7 @@ Route requirements:
 Active server pieces:
 
 - context packet builder
+- shared persisted read-model schemas/projectors for Firestore and Redis packets
 - context packet cache and invalidation
 - answer resolver and deterministic fallbacks
 - domain capability matrix
@@ -143,6 +145,10 @@ Active collections are compact read/monitoring collections only. Removed workflo
 - Business Health operation drafts
 
 Business Health must not store generated media or base64 payloads. Heavy artifacts are not part of the current Business Health runtime.
+
+The current-health, daily-snapshot, and analytics-index writers replace their complete sanitized documents. They must not use merge writes because optional facts legitimately disappear as source availability and project scope change. The multi-location writer alone keeps a merge write for its single-store map entry, preserving sibling store summaries.
+
+The context-packet builder parses stored current-health and analytics-index documents through `readModelBoundary.ts` with expected tenant/store identity. It never forwards a raw `DocumentData` object. Unknown/storage-only fields are stripped recursively by the schema, invalid persisted documents use bounded fallbacks, and cached packets are accepted only when their packet, health, and cache-key tenant/store/project identities match.
 
 ## Platform Monitor
 

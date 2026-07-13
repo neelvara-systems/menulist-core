@@ -44,7 +44,6 @@ export const metadata: Metadata = {
         'software infrastructure for business information',
         'MenuList',
         'Answerlattice',
-        'CampaignCue',
         'business information infrastructure',
         'business entity website',
     ],
@@ -89,6 +88,9 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
     width: 'device-width',
     initialScale: 1,
+    maximumScale: 5,
+    userScalable: true,
+    viewportFit: 'cover',
     themeColor: '#f7f9fc',
 };
 

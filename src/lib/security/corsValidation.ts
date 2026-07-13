@@ -10,6 +10,7 @@
  */
 
 import { DASHBOARD_URL, PLATFORM_URL } from '@constant/urls';
+import { normalizeRequestAuthority } from '@lib/routing/hostAuthority';
 import { NextResponse } from 'next/server';
 import { getBoundedSecurityStringContext, logSecurityDiagnostic } from './securityDiagnostics';
 
@@ -79,6 +80,24 @@ const getCorsOriginDiagnosticContext = (origin: string) => {
     };
 };
 
+const normalizeHttpProtocol = (value: string | null): 'http' | 'https' | null => {
+    if (value === 'http' || value === 'https') return value;
+    return null;
+};
+
+const getRequestHostOrigin = (request: Request): string | null => {
+    const requestAuthority = normalizeRequestAuthority(request.headers.get('host'));
+    if (!requestAuthority) return null;
+
+    const requestUrl = new URL(request.url);
+    const forwardedProtocol = normalizeHttpProtocol(request.headers.get('x-forwarded-proto'));
+    const requestProtocol = normalizeHttpProtocol(requestUrl.protocol.replace(/:$/, ''));
+    const protocol = forwardedProtocol || requestProtocol;
+    if (!protocol) return null;
+
+    return `${protocol}://${requestAuthority.authority}`;
+};
+
 const isSameOriginRequest = (request: Request, origin: string | null): boolean => {
     const originUrl = parseOrigin(origin);
     if (!originUrl) return false;
@@ -87,14 +106,8 @@ const isSameOriginRequest = (request: Request, origin: string | null): boolean =
         const requestUrl = new URL(request.url);
         if (originUrl.origin === requestUrl.origin) return true;
 
-        const requestHeaders = request.headers;
-        const forwardedHost = requestHeaders.get('x-forwarded-host');
-        const host = forwardedHost || requestHeaders.get('host');
-        if (!host) return false;
-
-        const forwardedProto = requestHeaders.get('x-forwarded-proto');
-        const protocol = forwardedProto || requestUrl.protocol.replace(/:$/, '');
-        return originUrl.origin === `${protocol}://${host}`;
+        const requestHostOrigin = getRequestHostOrigin(request);
+        return Boolean(requestHostOrigin && originUrl.origin === requestHostOrigin);
     } catch {
         return false;
     }

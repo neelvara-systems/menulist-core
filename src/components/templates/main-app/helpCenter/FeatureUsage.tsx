@@ -1,21 +1,15 @@
 import { Checkbox, Col, Form, Input, Row } from 'antd';
+import {
+  ANSWERLATTICE_FEEDBACK_FEATURE_ISSUES,
+  ANSWERLATTICE_FEEDBACK_TEXT_MAX_LENGTH,
+} from '@lib/answerlattice/feedbackBoundary';
 import { useTranslations } from 'next-intl';
 
-const features = [
-  'Account access',
-  'Billing and invoices',
-  'Onboarding and setup',
-  'Team roles and permissions',
-  'Settings and configuration',
-  'Integrations',
-  'Data import or export',
-  'Notifications and email',
-  'Reports and analytics',
-  'Performance or reliability',
-];
+const features = ANSWERLATTICE_FEEDBACK_FEATURE_ISSUES;
 
 const FeatureUsage = () => {
   const t = useTranslations('HelpCenter');
+  const form = Form.useFormInstance();
   return (
     <>
       <Form.Item
@@ -38,8 +32,18 @@ const FeatureUsage = () => {
         label={t('featureUsageMore')}
         name="featureComment"
         style={{ paddingTop: 24 }}
+        rules={[{
+          validator: async (_, value) => {
+            const hasComment = String(value || '').trim().length > 0;
+            const hasIssue = (form.getFieldValue('featureIssues') || []).length > 0;
+            if (hasComment || hasIssue) return;
+            throw new Error(t('feedbackRequired'));
+          },
+        }]}
       >
         <Input.TextArea
+          maxLength={ANSWERLATTICE_FEEDBACK_TEXT_MAX_LENGTH}
+          showCount
           rows={4}
           placeholder={t('featureUsagePlaceholder')}
         />

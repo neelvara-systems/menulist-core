@@ -25,6 +25,17 @@ const schema = z.object({ targetStoreId: z.number().int().positive() });
 const SWITCH_STORE_MAX_BODY_BYTES = 1024;
 const SWITCH_STORE_ENDPOINT = "/api/auth/switch-store";
 
+type TenantStoreSummary = {
+    storeId?: unknown;
+    active?: unknown;
+    isMaster?: unknown;
+    name?: unknown;
+};
+
+const isTenantStoreSummary = (value: unknown): value is TenantStoreSummary => (
+    Boolean(value) && typeof value === "object" && !Array.isArray(value)
+);
+
 const getSwitchStoreLogContext = (session: any, targetStoreId?: unknown) => ({
     endpoint: SWITCH_STORE_ENDPOINT,
     ...getAuthSessionLogContext(session),
@@ -60,7 +71,7 @@ export const POST = withAuth(async (request, session) => {
             invalidJsonMessage: "Invalid input",
         });
         if (bodyResult.ok === false) return bodyResult.response;
-        const body = bodyResult.data as any;
+        const body = bodyResult.data;
         const v = validateAPIInput(schema, body);
         if (!v.success) return NextResponse.json({ error: "Invalid input" }, { status: 400 });
         const { targetStoreId } = v.data;
@@ -88,8 +99,11 @@ export const POST = withAuth(async (request, session) => {
             return NextResponse.json({ error: "Store access not allowed" }, { status: 403 });
         }
 
-        const storesList = tenantData?.storesList || [];
-        const targetStore = storesList.find((s: any) => Number(s.storeId) === targetStoreScope.numericId);
+        const storesList = Array.isArray(tenantData?.storesList) ? tenantData.storesList : [];
+        const targetStore = storesList.find((store: unknown) => {
+            if (!isTenantStoreSummary(store)) return false;
+            return normalizeStorePermissionScopeDocumentId(store.storeId)?.numericId === targetStoreScope.numericId;
+        });
         if (!targetStore) {
             return NextResponse.json({ error: "Store not in tenant" }, { status: 404 });
         }
@@ -113,7 +127,7 @@ export const POST = withAuth(async (request, session) => {
             ...(session.user || {}),
             platformRole: session.user?.platformRole || session.platformRole,
         };
-        if (!canUserAccessStore({ sessionUser: switchAccessUser as any, storeId: targetStoreScope.numericId })) {
+        if (!canUserAccessStore({ sessionUser: switchAccessUser, storeId: targetStoreScope.numericId })) {
             logger.security("Unauthorized Store Switch Attempt", {
                 ...getBoundedSecurityRouteContext(session, request),
                 ...getSwitchStoreLogContext(session, targetStoreScope.numericId),
@@ -124,8 +138,10 @@ export const POST = withAuth(async (request, session) => {
         return NextResponse.json({
             success: true,
             targetStoreId: targetStoreScope.numericId,
-            targetStoreName: targetStoreData.name || targetStore.name,
-            isMaster: targetStoreData.isMaster || targetStore.isMaster || false,
+            targetStoreName: typeof targetStoreData.name === "string"
+                ? targetStoreData.name
+                : typeof targetStore.name === "string" ? targetStore.name : "",
+            isMaster: targetStoreData.isMaster === true || targetStore.isMaster === true,
         });
     } catch (error) {
         logAuthFailure("switch_store_route_failed", error, getSwitchStoreLogContext(session, targetStoreIdForLog));

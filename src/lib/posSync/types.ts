@@ -5,6 +5,7 @@
  */
 
 import { Timestamp } from "firebase/firestore";
+import type { DecisionFactValue } from "@template/main-app/projects/types/extractedData.types";
 
 // ─────────────────────────────────────────────────────────────
 // Store posSync config (stored on store document)
@@ -22,6 +23,7 @@ export interface PosSyncConfig {
     lastStatus: PosSyncLastStatus;
     lastError: string;
     menuVersion: number;
+    lastCompletedMenuVersion?: number;
     consecutiveFailures?: number;
     instructionsSentCount: number;
     instructionsSentDate: string;
@@ -66,6 +68,7 @@ export interface PosDeliveryLog {
     duration: number;
     error: string | null;
     payloadSize: number;
+    payloadHash: string;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -95,6 +98,7 @@ export interface PosSyncCategory {
     id: string;
     active: boolean;
     name: { [key: string]: string };
+    icon?: string;
     images?: Array<{ url?: string; name?: string }>;
     timeSlots?: Array<{
         presetId?: string;
@@ -116,6 +120,21 @@ export interface PosSyncItem {
     images?: Array<{ url?: string; name?: string }>;
     tags?: string[];
     isBestSeller?: boolean;
+    decisionFacts?: Record<string, { value?: DecisionFactValue }>;
+    allergens?: string[];
+    dietaryTags?: string[];
+    spiceLevel?: 'none' | 'mild' | 'medium' | 'hot' | 'very-hot';
+    nutritionInfo?: {
+        calories?: number;
+        protein?: number;
+        carbs?: number;
+        fat?: number;
+        servingSize?: string;
+    };
+    skillLevel?: 'beginner' | 'intermediate' | 'advanced' | 'all-levels';
+    targetAudience?: 'for-men' | 'for-women' | 'unisex' | 'kids' | 'adults' | 'seniors';
+    materials?: string;
+    warranty?: string;
     duration?: number;
     attributes?: Array<{
         id: string;

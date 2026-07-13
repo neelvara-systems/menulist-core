@@ -2,16 +2,20 @@ import { AI_SERVICE_ROUTE_REQUEST_OPTIONS, createAiServiceHttpError, getBoundedA
 import { syncBalanceFromResponse } from "@services/ai/balanceSync";
 import { AICapacityError, checkCapacityResponse } from "@services/ai/capacityError";
 import { DescriptionAPIParams } from "@template/main-app/projects/types";
+import {
+    normalizeDescriptionGenerationResult,
+    type DescriptionGenerationResult,
+} from "@lib/ai/descriptionOutput";
 
 const DESCRIPTION_GENERATION_RESPONSE_JSON_MAX_BYTES = 1024 * 1024;
 
 type DescriptionGenerationApiResponse = {
-    data?: Record<string, string> | null;
+    data?: DescriptionGenerationResult | null;
     remainingBalance?: unknown;
     transaction?: unknown;
 };
 
-async function getDescriptionsViaAPI({ itemsList, targetLang, sourceLang, action, projectId, fileId, contentLength, tone = 'Professional' }: DescriptionAPIParams): Promise<Record<string, string>> {
+async function getDescriptionsViaAPI({ itemsList, targetLang, sourceLang, action, projectId, fileId, contentLength, tone = 'Professional' }: DescriptionAPIParams): Promise<DescriptionGenerationResult | null> {
     try {
         const payload = {
             itemsList,
@@ -49,8 +53,11 @@ async function getDescriptionsViaAPI({ itemsList, targetLang, sourceLang, action
             parseFailureCode: 'ai_description_response_parse_failed',
         });
         syncBalanceFromResponse(responseJson);
-        const { data } = responseJson;
-        return data || null;
+        return normalizeDescriptionGenerationResult(
+            responseJson.data,
+            itemsList.map((item) => item.id),
+            targetLang.map((language) => language.code),
+        );
 
     } catch (error) {
         if (error instanceof AICapacityError) throw error;

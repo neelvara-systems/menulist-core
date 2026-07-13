@@ -25,6 +25,13 @@
 import { DB_COLLECTIONS } from "@constant/database";
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import { getBusinessAnalyticsDateKey, getLatestSettledBusinessDateKey } from "@lib/analytics/businessDay";
+import {
+    CustomerAppAnalyticsSummary,
+    CustomerAppDailyAnalytics,
+    normalizeAnalyticsScopeDocumentId,
+    normalizeCustomerAppDashboardReadModel,
+} from "@lib/analytics/readBoundary";
+import { normalizeOBPDailyReadDocument, normalizeOBPDashboardReadModel } from "@lib/analytics/obpReadBoundary";
 import { getBoundedAnalyticsStringContext, logAnalyticsFailure } from "@lib/analytics/analyticsDiagnostics";
 import {
     addDaysToAnalyticsDateKey,
@@ -2128,10 +2135,14 @@ export async function getOwnerDashboardData(
 // ================================================================
 
 export interface CustomerAppDashboardSummary {
-    summary: Record<string, any> | null;
-    daily30d: Array<Record<string, any>>;
-    generatedForLocalDate?: string;
-    lastSettledLocalDate?: string;
+    tId: string;
+    sId: string;
+    projectId: 'customerApp';
+    kind: 'customerAppDashboardSummary';
+    summary: CustomerAppAnalyticsSummary;
+    daily30d: CustomerAppDailyAnalytics[];
+    generatedForLocalDate: string;
+    lastSettledLocalDate: string;
     lastFetched: Date;
 }
 
@@ -2141,7 +2152,10 @@ export async function getCustomerAppDashboardSummary(
 ): Promise<CustomerAppDashboardSummary | null> {
     return await apiCallComposer(
         async () => {
-            const summaryDocId = getDocId.dashboardSummary(tId, sId, 'customerApp');
+            const tenantId = normalizeAnalyticsScopeDocumentId(tId);
+            const storeId = normalizeAnalyticsScopeDocumentId(sId);
+            if (!tenantId || !storeId) throw new Error('Invalid Customer App analytics scope');
+            const summaryDocId = getDocId.dashboardSummary(tenantId, storeId, 'customerApp');
             const summaryRef = doc(firebaseClient, COLLECTION, summaryDocId);
             const summarySnap = await getDoc(summaryRef);
 
@@ -2149,10 +2163,15 @@ export async function getCustomerAppDashboardSummary(
                 return null;
             }
 
-            const data = summarySnap.data();
+            const data = normalizeCustomerAppDashboardReadModel(summarySnap.data(), tenantId, storeId);
+            if (!data) throw new Error('Invalid Customer App dashboard read model');
             return {
-                summary: data.summary || null,
-                daily30d: Array.isArray(data.daily30d) ? data.daily30d : [],
+                tId: data.tId,
+                sId: data.sId,
+                projectId: data.projectId,
+                kind: data.kind,
+                summary: data.summary,
+                daily30d: data.daily30d,
                 generatedForLocalDate: data.generatedForLocalDate,
                 lastSettledLocalDate: data.lastSettledLocalDate,
                 lastFetched: new Date(),
@@ -2280,6 +2299,11 @@ export interface OBPOverallData {
 }
 
 export interface OBPDashboardData {
+    tId: string;
+    sId: string;
+    projectId: 'obp';
+    kind: 'obpDashboardSummary';
+    lastSettledLocalDate: string;
     overview: OBPOverviewData | null;
     overall: OBPOverallData | null;
     daily30d?: OBPTodayData[];
@@ -2752,8 +2776,11 @@ export async function getOBPDashboardToday(
 ): Promise<OBPTodayData | null> {
     return await apiCallComposer(
         async () => {
+            const tenantId = normalizeAnalyticsScopeDocumentId(tId);
+            const storeId = normalizeAnalyticsScopeDocumentId(sId);
+            if (!tenantId || !storeId) throw new Error('Invalid OBP analytics scope');
             const todayDate = getTodayDate(timeZone, businessDayEndTime);
-            const docId = getDocId.daily(tId, sId, OBP_PROJECT_ID, todayDate);
+            const docId = getDocId.daily(tenantId, storeId, OBP_PROJECT_ID, todayDate);
             const docRef = doc(firebaseClient, COLLECTION, docId);
             const docSnap = await getDoc(docRef);
 
@@ -2761,7 +2788,13 @@ export async function getOBPDashboardToday(
                 return null;
             }
 
-            return buildOBPTodayData(docSnap.data(), todayDate);
+            const normalized = normalizeOBPDailyReadDocument(docSnap.data(), {
+                date: todayDate,
+                sId: storeId,
+                tId: tenantId,
+            });
+            if (!normalized) throw new Error('Invalid OBP daily analytics document');
+            return buildOBPTodayData(normalized, todayDate);
         },
         "getOBPDashboardToday"
     );
@@ -2849,46 +2882,38 @@ export async function getOBPDashboardData(
 ): Promise<OBPDashboardData> {
     return await apiCallComposer(
         async () => {
-            const summaryDocId = getDocId.dashboardSummary(tId, sId, OBP_PROJECT_ID);
+            const tenantId = normalizeAnalyticsScopeDocumentId(tId);
+            const storeId = normalizeAnalyticsScopeDocumentId(sId);
+            if (!tenantId || !storeId) throw new Error('Invalid OBP analytics scope');
+            const summaryDocId = getDocId.dashboardSummary(tenantId, storeId, OBP_PROJECT_ID);
             const summaryRef = doc(firebaseClient, COLLECTION, summaryDocId);
             const summarySnap = await getDoc(summaryRef);
 
             if (summarySnap.exists()) {
-                const data = summarySnap.data();
-                const normalizeOBPPeriod = (period: any) => period ? {
-                    ...period,
-                    sources: period.sources || [],
-                    openHoursActionBreakdown: period.openHoursActionBreakdown || { open: 0, closed: 0, unknown: 0, closedShare: 0 },
-                    topLanguages: period.topLanguages || [],
-                } : null;
-                const overview = data.overview ? {
-                    ...data.overview,
-                    yesterday: normalizeOBPPeriod(data.overview.yesterday),
-                    wtd: normalizeOBPPeriod(data.overview.wtd),
-                    mtd: normalizeOBPPeriod(data.overview.mtd),
-                } : null;
+                const normalized = normalizeOBPDashboardReadModel(summarySnap.data(), tenantId, storeId);
+                if (!normalized) throw new Error('Invalid OBP dashboard read model');
                 return {
-                    overview,
-                    overall: data.overall ? {
-                        ...data.overall,
-                        lifetimeSources: data.overall.lifetimeSources || [],
-                        lifetimeOpenHoursActionBreakdown: data.overall.lifetimeOpenHoursActionBreakdown || { open: 0, closed: 0, unknown: 0, closedShare: 0 },
-                        lifetimeLanguages: data.overall.lifetimeLanguages || [],
-                        lastUpdated: parseDateValue(data.overall.lastUpdated),
-                    } : null,
-                    daily30d: Array.isArray(data.daily30d)
-                        ? data.daily30d
-                            .map((row: Record<string, any>) => {
-                                const date = String(row?.date || '');
-                                return date ? buildOBPTodayData(row, date, false) : null;
-                            })
-                            .filter(Boolean) as OBPTodayData[]
-                        : [],
+                    tId: normalized.tId,
+                    sId: normalized.sId,
+                    projectId: normalized.projectId,
+                    kind: normalized.kind,
+                    lastSettledLocalDate: normalized.lastSettledLocalDate,
+                    overview: normalized.overview,
+                    overall: {
+                        ...normalized.overall,
+                        lastUpdated: parseDateValue(normalized.overall.lastUpdated),
+                    },
+                    daily30d: normalized.daily30d.map((row) => buildOBPTodayData(row, String(row.date), false)),
                     lastFetched: new Date(),
                 };
             }
 
             return {
+                tId: tenantId,
+                sId: storeId,
+                projectId: OBP_PROJECT_ID,
+                kind: 'obpDashboardSummary',
+                lastSettledLocalDate: getLatestSettledBusinessDateKey(new Date(), timeZone, businessDayEndTime),
                 overview: null,
                 overall: null,
                 daily30d: [],

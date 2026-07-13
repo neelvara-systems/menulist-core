@@ -35,8 +35,9 @@ Client-side DAL (addTicket, addTicketMessage, updateTicketStatus)
   └── triggerNotification() — fire-and-forget POST to /api/notifications/send
         │
         ├── Feature flag check (ENABLE_ANSWERLATTICE_NOTIFICATIONS)
-        ├── Per-user route throttle + 16KB bounded request body + validation
-        ├── Idempotency (deterministic log doc by eventType + referenceId)
+        ├── Fail-closed per-user throttle + 16KB bounded request body + strict IDs
+        ├── Current support permission + exact scoped ticket read/projection
+        ├── Transactional delivery claim (deterministic eventType + referenceId)
         ├── Rate limiting (20/day per recipient)
         ├── Template resolution (event type → subject + HTML)
         ├── SMTP send via nodemailer (reuses existing transporter)
@@ -52,7 +53,8 @@ Client-side DAL (addTicket, addTicketMessage, updateTicketStatus)
 5. **Separate from lifecycle messaging** — Lifecycle messages are for billing/subscription events. Notifications are for operational events (tickets, etc.)
 6. **Answerlattice-scoped logs** — Answerlattice events write to `answerlattice_notificationLogs` in the Answerlattice Firebase project; non-Answerlattice callers still use the legacy generic `notificationLogs` target.
 7. **Activation verification** — `/answerlattice/activation` exposes a test-email action through `/api/answerlattice/notifications/test` with a 3/hour workspace rate limit before permission/readiness/store/send work and fixed-code bounded failure diagnostics.
-8. **Route guardrails** — `/api/notifications/send` accepts only the three client ticket events, throttles each authenticated user to 120 notification attempts/hour with a hashed sender key segment, rejects bodies above 16KB before schema validation, limits metadata to 8KB before dispatch, and logs unexpected route failures through bounded notification diagnostics.
+8. **Route guardrails** — `/api/notifications/send` accepts only the three client ticket events and ticket/message identifiers. It fails the hashed 120/hour limiter closed, requires current `canManageSupport` authority, reads the exact current-workspace ticket, and derives recipient, bounded template data, product and deterministic reference on the server. Browser callers cannot supply an email, template metadata, product, reference, or dedupe bypass. Unexpected failures use bounded notification diagnostics.
+9. **Delivery claim and content safety** — A Firestore transaction claims each deterministic event/reference before SMTP, so concurrent retries produce one active sender. Finalization is claim-bound, SMTP has connection/greeting/socket deadlines and a deterministic Message-ID, and every subject/HTML value is normalized and escaped. Only validated HTTPS links render. This is the ticket notification authority hardening boundary.
 
 ## Files Created
 
@@ -61,6 +63,8 @@ Client-side DAL (addTicket, addTicketMessage, updateTicketStatus)
 | `src/lib/notifications/index.ts` | Core notification sender (server-side, firebase-admin) |
 | `src/lib/notifications/client.ts` | Client-side fire-and-forget trigger helper |
 | `src/lib/notifications/notificationDiagnostics.ts` | Bounded notification failure diagnostics |
+| `src/lib/notifications/ticketNotificationBoundary.ts` | Server-only ticket recipient/template/reference projection |
+| `src/lib/notifications/deliveryClaim.ts` | Transactional external-effect claim/finalization boundary |
 | `src/lib/notifications/templates.ts` | Template registry (3 ticket templates) |
 | `src/app/api/notifications/send/route.ts` | API route (withAuth, bridges client → server) |
 | `src/app/api/answerlattice/notifications/test/route.ts` | Workspace test-send route used by Activation |
@@ -77,8 +81,8 @@ Client-side DAL (addTicket, addTicketMessage, updateTicketStatus)
 ## Adding a New Notification Type
 
 1. Add template to `src/lib/notifications/templates.ts` → `NOTIFICATION_TEMPLATES` object
-2. Call `triggerNotification({ eventType: 'YOUR_EVENT', ... })` from the triggering code
-3. Done — the rest (feature flag, idempotency, rate limit, SMTP, logging) is automatic
+2. For server-owned events, call `sendNotification()` with a deterministic reference and already-authorized recipient. Browser ticket events remain limited to the three strict identifiers and must extend the server ticket projector before a new client event is admitted.
+3. Add focused authorization, projection, escaping, idempotency and cost coverage; the sender then owns claim, rate limit, SMTP, and logging.
 
 ---
 

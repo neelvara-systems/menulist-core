@@ -137,7 +137,7 @@ export const updatePWASettings = async (
             }
             if (Object.keys(update).length === 0) return { noop: true } satisfies PWASettingsUpdateResult;
 
-            await updateDoc(getDocRef(storeId), await requestBodyComposer(update));
+            await updateDoc(getDocRef(storeId), await requestBodyComposer(update, { isNew: false }));
             await revalidatePublicClientCache(storeId, 'updatePWASettings');
             return { success: true, updated: Object.keys(update) } satisfies PWASettingsUpdateResult;
         },
@@ -162,7 +162,7 @@ export const updatePWAIconOverride = async (
                 'publicPresence.pwaIconOverrideUrl': override.pwaIconOverrideUrl,
                 'publicPresence.pwaIconUpdatedAt': pwaIconUpdatedAt,
             };
-            await updateDoc(getDocRef(storeId), await requestBodyComposer(update));
+            await updateDoc(getDocRef(storeId), await requestBodyComposer(update, { isNew: false }));
             await revalidatePublicClientCache(storeId, 'updatePWAIconOverride');
             return { success: true, pwaIconUpdatedAt } satisfies PWAIconOverrideUpdateResult;
         },

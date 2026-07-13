@@ -1,12 +1,12 @@
 export const dynamic = 'force-dynamic';
 import { isFeatureEnabled } from "@config/features";
-import { canManageBillingMutation } from "@lib/billing/billingAccess";
+import { canManageAnswerlatticeBillingMutation, canManageBillingMutation } from "@lib/billing/billingAccess";
 import {
+    applyProductSubscriptionStatusTransition,
     getDirectActiveProductSubscriptionForStore,
     getProductSubscriptionById,
     resolveBillingScopeFromSession,
     safeSyncProductSubscriptionEntitlementFromSubscription,
-    updateProductSubscription,
 } from "@lib/billing/productBillingServer";
 import {
     getBoundedRazorpaySecurityContext,
@@ -77,6 +77,13 @@ export const POST = withAuth(async (request, session) => {
         }
         const { tenantId, storeId } = scope;
 
+        if (isAnswerlatticeBillingProduct(productId) && !(await canManageAnswerlatticeBillingMutation(session, request))) {
+            return NextResponse.json(
+                { error: 'Forbidden - Access denied' },
+                { status: 403 }
+            );
+        }
+
         if (!isAnswerlatticeBillingProduct(productId) && !verifyTenantAccess(session, tenantId, storeId, request)) {
             return NextResponse.json(
                 { error: 'Forbidden - Access denied' },
@@ -143,27 +150,28 @@ export const POST = withAuth(async (request, session) => {
             data: getRazorpaySubscriptionMutationLogContext(internalSub),
         });
 
-        // Update internal record
-        await updateProductSubscription(productId, internalSub.id, {
-            status: 'paused',
-            statuses: [
-                ...internalSub.statuses,
-                {
-                    status: "paused",
-                    timestamp: Timestamp.now(),
-                    amount: internalSub.amount,
-                    currency: internalSub.currency,
-                    remark: `Paused by user${reason ? `, reason: ${reason}` : ''}`,
-                },
-            ],
+        const statusApplication = await applyProductSubscriptionStatusTransition(productId, {
+            expectedStatuses: ['active'],
+            nextStatus: 'paused',
+            statusEntry: {
+                status: "paused",
+                timestamp: Timestamp.now(),
+                amount: internalSub.amount,
+                currency: internalSub.currency,
+                remark: `Paused by user${reason ? `, reason: ${reason}` : ''}`,
+            },
+            subscriptionId: internalSub.id,
         });
+        if (!statusApplication || (!statusApplication.applied && !statusApplication.duplicate)) {
+            return NextResponse.json({ error: "Subscription state changed while pausing. Please refresh and try again." }, { status: 409 });
+        }
         await safeSyncProductSubscriptionEntitlementFromSubscription(
             productId,
-            { ...internalSub, status: 'paused' },
+            statusApplication.subscription,
             'api:pause-subscription',
         );
 
-        if (!isAnswerlatticeBillingProduct(productId)) {
+        if (!isAnswerlatticeBillingProduct(productId) && statusApplication.applied) {
             try {
                 const { sendLifecycleMessage } = await import('@lib/messaging');
                 sendLifecycleMessage({

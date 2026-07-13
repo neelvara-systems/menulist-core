@@ -35,6 +35,8 @@ Until external-client CCT auth becomes the primary cross-product contract, the s
 
 This bridge does not make MenuList the owner of Answerlattice data. It only lets one Google login access both products while Firebase data, rules, functions, and widget credentials stay separated.
 
+The explicit default-auth bridge exceptions are `src/app/api/answerlattice/onboard/route.ts` and `src/lib/answerlattice/staffAccessServer.ts`. They may initialize MenuList Admin only for the documented default user/product-account, Firebase Auth, and session bridge writes while using Answerlattice Admin for Answerlattice-owned data/auth. Other Answerlattice routes, libraries, search/vector code, and DALs must use `answerlatticeFirebaseAdmin` or import `FieldValue`/`Timestamp` directly from `firebase-admin/firestore`; importing `@lib/firebase/firebaseAdmin` only for SDK utilities is not allowed.
+
 ---
 
 ## PART 1: DAL Files — Switch `firebaseClient` → `answerlatticeFirebaseClient`
@@ -354,6 +356,7 @@ App Check is per-Firebase project. When Answerlattice project is created, it nee
 - [x] `answerlatticeRequestBodyComposer` — Answerlattice DAL writes now force `pId = 'AL'` and attach source context + trace IDs
 - [x] KB callable functions — `embedArticleWorker`, `regenerateEmbedding`, and `publishApprovedJobFn` exported from `functions-answerlattice/src/index.ts`
 - [x] Answerlattice KB embeddings — callable functions use Answerlattice Firebase Admin and Answerlattice-owned Gemini API secrets so separate-mode cost/accounting stays inside Answerlattice
+- [x] Answerlattice Next.js AI paths — embeddings, image-query interpretation, RAG fallback, entity extraction, draft regeneration, FAQ generation, translation, and Knowledge Intake media extraction use the app-side Answerlattice `ANSWERLATTICE_GEMINI_AI_KEY*` gateway without MenuList credential fallback
 - [x] API hardening — Answerlattice translate/widget routes use Answerlattice Admin surfaces and structured secure logging
 
 ### Pending (User Action Items)

@@ -529,6 +529,8 @@ Verifies the OTP challenge and returns a short-lived one-time login token for th
 - **Returns:** `{ success, action: "verify", challengeId, loginToken, phoneMasked, expiresInSeconds }`
 - **Browser acknowledgement:** `PhoneOtpAuthPanel` requires the verify action and matching challenge id before using the login token.
 - **Follow-up:** Client calls `signIn('credentials', { phoneOtpLoginToken })`; dashboard Firebase sync continues through `/api/auth/set-claims`.
+- **Attempt/atomicity boundary:** Invalid-attempt and expiry decisions commit before typed errors are thrown. A valid code first reserves the challenge, then creates the login token together with challenge finalization; token consumption reads the exact bound user before its one-time update.
+- **Identity uniqueness boundary:** Email and phone/staff-login resolution reads enough matches across every supported identity field to detect ambiguity. More than one distinct `users` document fails closed before session/custom-token creation; the separate Answerlattice Firebase profile lookup uses the same exact-email rule.
 
 ### `POST /api/auth/claim-account`
 
@@ -540,9 +542,11 @@ Links a messaging-onboarded business to a real account. Three modes:
 
 Modes 1 and 2 also sync the claimed tenant/store email. Because store email is public business truth, the route revalidates public menu, Official Business Page, store, and client-store cache tags after those store email writes.
 
-The route applies the `AUTH_SENSITIVE` hashed-IP limiter before a 16KB bounded JSON body and claim-token lookup. Claim-token lookup boundary: `normalizeAuthClaimToken()` caps tokens to 20-256 base64url/hex-safe characters before the indexed `users.claimToken` query. Missing-token diagnostics record only claim-token presence and length, never token characters.
+The route applies the `AUTH_SENSITIVE` hashed-IP limiter before a 16KB bounded JSON body and claim-token lookup. Claim-token lookup boundary: `normalizeAuthClaimToken()` caps tokens to 20-256 base64url/hex-safe characters before the indexed `users.claimToken` query. The shared lookup reads at most two matches and rejects ambiguity before selecting a business. Missing-token diagnostics record only claim-token presence and length, never token characters.
 
-Before any ownership write, each claim mode re-reads the messaging user document in a Firestore transaction and verifies the same claim token is still present, unexpired, and attached to tenant/store identity. This keeps the token single-use even under duplicate submit or parallel claim attempts.
+Before any Firebase Auth mutation or ownership write, each claim mode reserves the messaging user document in a Firestore transaction. The reservation rechecks the same token, a valid expiry, active/unblocked user state, exact tenant/store scope, and an owner mapping for that store. An unexpired competing reservation returns conflict before it can create or update an Auth identity.
+
+Finalization re-reads the reservation, messaging user, canonical tenant/store and at most 100 matching subscriptions in one transaction. It consumes the token, applies owner/tenant/store changes and relinks subscriptions atomically. Mode 2 creates the shared deterministic global-email user and retires the phone-source user; Mode 1 similarly validates the exact Google email target, rejects any existing scope/block/deletion or privileged platform role, and creates a missing target with transaction `create`. Mode 3 keeps the canonical phone user. Failed finalization releases only the same reservation and deletes a request-created Firebase Auth identity only while no user document has bound that UID. Custom-claim mirror failure is logged but does not turn an already committed account claim into a false 500; the normal sign-in `/api/auth/set-claims` path repairs that mirror.
 
 Claim-account tenant/store scope boundary: the claim route normalizes the messaging user's tenant/store IDs as exact positive numeric Firestore document IDs before Firebase Auth user mutation, tenant/store email writes, subscription relinking, public cache revalidation, custom-claim minting, or success acknowledgement. The final claim transaction re-runs the same scope guard after re-reading the messaging user, so a stale or malformed claim record fails with the normal claim failure copy before raw tenant/store IDs can reach document refs.
 
@@ -551,7 +555,7 @@ Claim-account tenant/store scope boundary: the claim route normalizes the messag
 Validates a claim token from messaging onboarding. Returns business info for login page welcome. No authentication required.
 
 - **Rate limit:** `AUTH_SENSITIVE` by hashed IP before claim-token lookup
-- **Claim-token lookup boundary:** `normalizeAuthClaimToken()` caps and shape-checks the query token before the indexed `users.claimToken` query. Malformed or oversized values return the normal invalid-link response before Firestore reads.
+- **Claim-token lookup boundary:** `normalizeAuthClaimToken()` caps and shape-checks the query token before the indexed `users.claimToken` query. The shared lookup rejects duplicate persisted tokens, and the preview uses the same required-expiry, active/unblocked, exact-scope, and owner-mapping admission as account claim. Malformed, oversized, missing-expiry, malformed-expiry, expired, or ambiguous values return the normal invalid-link response before preview data is admitted.
 - **Success acknowledgement:** The browser only enters claim setup when the route returns `valid: true`, `status: "valid"`, `preview: "claim-token"`, and a non-empty business name. Phone values are displayed only when already masked.
 - **Diagnostics:** Unexpected failures use bounded auth diagnostics with claim-token and request metadata presence-length only; the token value is never logged.
 
@@ -570,8 +574,12 @@ Changes logged-in user's password. Verifies current password via Firebase Auth R
 - **Body:** `{ currentPassword, newPassword }`
 - **Auth:** Requires active NextAuth session
 - **Admission:** Session user ID must pass the shared Firestore document-ID guard, then `AUTH_SENSITIVE` rate limit by HMAC-hashed normalized session user ID before a 2KB bounded JSON body and Firebase Auth verification
+- **Current authority and identity:** After input validation, the route re-reads the exact `users/{sessionUserId}` document and requires current active, verified, unblocked, non-revoked lifecycle truth plus exact session email. Disabled Firebase Auth users, email disagreement, malformed stored Firebase UID, and present Firebase UID disagreement fail closed before password verification or update.
+- **Provider resilience:** The sensitive limiter fails closed when its provider is unavailable and reports 503 separately from caller throttling. Firebase REST password verification has an eight-second abort deadline.
+- **Commit truth:** Firebase Auth is authoritative for the password. After that write succeeds, a failed `passwordChangedAt` metadata write is recorded through bounded diagnostics but does not return a false failure for a password that is already active.
 - **Client request/response boundary:** Desktop account modal and mobile More account access screen send the request with same-origin credentials, no browser cache, and manual redirect handling. They parse the response through `src/lib/auth/accountClientResponses.ts`, cap JSON at 16KB, and require `success: true` before showing success.
 - **Diagnostics:** Missing Firebase API key, current-password verification exceptions, and unexpected route failures use bounded auth diagnostics with session/request metadata presence-length only.
+- **Audit marker:** change-password current-authority hardening.
 - **Note:** Works for password/passcode accounts, including email/password, Staff ID/passcode, and WhatsApp-number/passcode accounts. OAuth-only users manage their password with the OAuth provider.
 
 ### Key Design Decisions (Auth Audit)
@@ -579,7 +587,7 @@ Changes logged-in user's password. Verifies current password via Firebase Auth R
 - **`isVerified`** — KEPT. Gate for login: `false` = user doc exists but no Firebase Auth account.
 - **`platformRole`** — KEPT. Controls platform admin access (`"PLATFORM"` vs `"OWNER"` vs `"USER"`).
 - **`role` vs `roles`** — Only `role` (singular) is used. One role per store per user. `roles` removed from sanitizer.
-- **Claim token expiry** — Enforced when `claimTokenExpiresAt` is present. Expired tokens are cleared and rejected before account claim or claim-preview data is returned.
+- **Claim token expiry** — Required. Missing, malformed, or expired `claimTokenExpiresAt` fails closed before account claim or claim-preview data is returned. Expired-token cleanup re-reads the document transactionally and clears only the unchanged expired token.
 
 ---
 

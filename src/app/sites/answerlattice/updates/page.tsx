@@ -25,6 +25,15 @@ function getBasePath(): string {
 
 const UPDATES = [
     {
+        date: 'July 11, 2026',
+        title: 'Founder controls added for releases, incidents, and support portability',
+        items: [
+            'Owners can save critical answer tests, run deterministic approved-answer checks, recheck release-linked cases, and prepare rollback proposals without overwriting live answers.',
+            'Known Issue Mode can show a contextual, expiring widget notice while permanent approved answers remain unchanged, and Support Assistant now includes a read-only Daily Founder Brief from compact summaries.',
+            'Optional signed visitor context, exact-host diagnostic links, and bounded support-truth export add trust and portability without accepting browser workspace scope, recording sessions, or exporting private conversations.',
+        ],
+    },
+    {
         date: 'June 6, 2026',
         title: 'Knowledge Intake can start from repeated replies',
         items: [

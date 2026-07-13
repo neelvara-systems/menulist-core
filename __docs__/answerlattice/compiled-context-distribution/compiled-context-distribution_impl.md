@@ -33,6 +33,10 @@ Private:
 
 Storage objects are immutable. The manifest chooses the active version. Runtime code must not overwrite `latest.json`.
 
+Bundle version admission is fail-closed before locks or uploads. App and Functions builders accept nonnegative safe-integer manifest versions plus canonical legacy digit strings, select the greatest valid current/active/ready pointer, refuse missing/malformed/exhausted existing version state, and rebuild rather than early-skip a ready manifest whose version fields are still strings. The next version is always a positive safe integer. No `vNaN`, fractional, exponent, leading-zero, or unsafe Storage path can be composed.
+
+Source-version admission is also exact. Existing `sourceVersions_*` rows must have `pId='AL'`, exact tenant/store identity, and nonnegative safe-integer counters; canonical legacy digit strings normalize during a rebuild, while ambiguous strings, fractions and unsafe counters make equality false and fail the build before a lock/upload. The app Admin reader and Functions repair both enforce this persisted ownership contract, including the source recheck at build completion.
+
 ## Bundle Files
 
 Public:
@@ -85,6 +89,8 @@ The repair builder keeps the same immutable Storage paths as the manual rebuild 
 
 Manual and Functions-side repair diagnostics use fixed context-bundle failure codes. Changelog-load fallback logs use source error name/code/status and scope booleans only. Best-effort Storage manifest copy failures now log bounded manifest-upload diagnostics while preserving the Firestore manifest write and active-version behavior. Failed repairs preserve the existing manifest `build_failed` status, write the fixed repair code plus source error metadata to the build lock, and return the fixed repair code to the scheduler so raw Storage/Admin exception text cannot enter run logs.
 
+Retention parses the same canonical version contract before computing the active/last-ready keep set. If manifest version state is invalid or empty, context-bundle Storage cleanup performs no deletion for that workspace. Storage path versions also re-enter the safe-integer contract before comparison.
+
 The Functions repair builder enforces the same Answerlattice Compiled Context Bundle Entity ID Boundary with the Functions entity ID normalizer before it writes public/private bundle objects.
 
 ## Widget Flow
@@ -106,7 +112,7 @@ Answer retrieval stays canonical-first through the server because plan/role/vers
 
 ## MCP Flow
 
-`POST /api/answerlattice/mcp/session` validates an Answerlattice `al_*` key once and returns a short-lived signed session token. It reads the compiled context manifest for bundle version/status metadata. A thrown manifest read logs `answerlattice_mcp_session_bundle_manifest_load_failed` with bounded tenant/store metadata and keeps the existing `bundleStatus: 'missing'` response behavior.
+`POST /api/answerlattice/mcp/session` validates an Answerlattice `al_*` key once, requires its store row to pass the exact shared `AL` product/tenant/store boundary, and then returns a short-lived signed session token. The compiled-context source builder uses the same exact boundary before projecting store identity into a bundle; missing or malformed ownership yields no store projection. The session route reads the compiled context manifest for bundle version/status metadata. A thrown manifest read logs `answerlattice_mcp_session_bundle_manifest_load_failed` with bounded tenant/store metadata and keeps the existing `bundleStatus: 'missing'` response behavior.
 
 `POST /api/answerlattice/mcp` implements JSON-RPC methods:
 
@@ -125,5 +131,7 @@ Day-one tools:
 - `report_missing_context`
 
 Read tools use private Storage bundles through a server manifest cache, metadata-checked object downloads, and an object cache. The JSON-RPC route validates feature flags, origin, signed MCP session, and per-workspace rate limits before parsing a 16KB bounded request body. Session creation, JSON-RPC failures, and oversized private bundle objects log fixed runtime codes with bounded metadata only. `report_missing_context` does not require bundle hydration and writes only an aggregated bucket, not one raw signal event per agent step.
+
+Signed session capability is enforced at the final tool boundary. `tools/list` exposes only tools allowed by the token's exact scope set. Bundle/context tools require `context:read`; `report_missing_context` requires `signals:write`; a known tool called without its required scope receives the fixed `Tool scope not authorized` JSON-RPC error before bundle reads or signal writes.
 
 MCP code is split for maintenance: `src/app/api/answerlattice/mcp/route.ts` owns JSON-RPC/session/rate-limit handling, `src/lib/answerlattice/mcpTools.ts` owns tool definitions and bundle-backed handlers, and `src/lib/answerlattice/mcpSession.ts` owns signed short-lived sessions.

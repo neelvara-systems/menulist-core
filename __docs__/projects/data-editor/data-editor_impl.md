@@ -6,7 +6,13 @@
 
 **Launch boundary:** This implementation note documents the menu data editor. Current release approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, browser/mobile editor QA, publish/cache evidence for edited public truth, and deploy evidence for the target environment.
 
-MOL no-session diagnostics update (July 5, 2026): the Menu Observation Layer remains fire-and-forget and non-blocking for editor saves, but enabled calls without an active tenant/store session, explicit-scope calls without scope, and flushes without session now log bounded `menu_change_log_session_missing`, `menu_change_log_scope_missing`, or `menu_change_log_flush_session_missing` diagnostics. Valid debounced writes, scoped writes, query helpers, owner UI behavior, and feature-flag disabled no-ops are unchanged.
+MOL scope and flush hardening (July 13, 2026): the Menu Observation Layer remains fire-and-forget and non-blocking for editor saves. Enabled calls without a valid active tenant/store session or with malformed explicit scope log bounded `menu_change_log_session_missing` or `menu_change_log_scope_invalid` diagnostics. Each pending change stores the validated scope captured at queue time, so batch logging and `flushPendingChanges()` cannot retarget an event after an active-store/session switch. Query helpers apply a default limit and a hard cap; valid writes, owner UI behavior, and feature-flag disabled no-ops remain unchanged.
+
+Default summary mode now preserves nightly drift input without restoring one write per changed item: each revision records a bounded per-item price/availability contribution list, recently extracted price corrections count as price drift, and only contributions above the compact cap fall back to detailed events. Revision summaries and publish events bypass replacement-style debouncing because they represent completed operations; detailed item/category changes retain the existing cost-control debounce.
+
+Project update and publish operations capture one validated tenant/store session before their first read and reuse it for document paths, persistence metadata, MOL events, and publish snapshots. A mid-operation active-store switch therefore cannot redirect the observation ledger or snapshot away from the project write. Linked-outlet and standalone publishes both execute the common post-publish observation handoff after their authoritative save succeeds.
+
+Snapshot rules mirror that operation boundary: same-tenant users without assignment to the path store cannot read or create its snapshots; creates require owner/manager authority, exact path/payload tenant and store IDs, an existing project, a bounded count-consistent payload, and append-only semantics.
 
 ---
 

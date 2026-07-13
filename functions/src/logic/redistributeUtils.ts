@@ -15,6 +15,7 @@
 
 import * as functions from 'firebase-functions';
 import type { ExtractedBusinessProfile } from '../sharedData/extractedBusinessProfile';
+import { findInvalidMenuExtractionSourceIndexes } from '../sharedData/menuExtractionIntegrity';
 import { FileMessage } from '../types';
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -82,7 +83,8 @@ export interface ExtractedData {
     };
 }
 
-interface CategoryWithSource extends ExtractedDataCategory {
+interface CategoryWithSource extends Omit<ExtractedDataCategory, 'id'> {
+    id: string | number;
     sourceFileIndex?: number;
 }
 
@@ -150,19 +152,16 @@ function stripHtml(text: string): string {
  */
 function sanitizeMultilingualObject(
     obj: Record<string, string> | string | undefined | null,
-    allowBasicTags: boolean = false
 ): Record<string, string> {
     if (!obj) return {};
     // Defensive: AI may return a plain string instead of multilingual object
-    if (typeof obj === 'string') return { en: allowBasicTags ? obj : stripHtml(obj) };
+    if (typeof obj === 'string') return { en: stripHtml(obj).replace(/\s+/g, ' ').trim().slice(0, 2000) };
     if (typeof obj !== 'object') return {};
-    const sanitized: Record<string, string> = {};
-    for (const [lang, text] of Object.entries(obj)) {
-        if (typeof text === 'string') {
-            sanitized[lang] = allowBasicTags ? text : stripHtml(text);
-        }
-    }
-    return sanitized;
+    return Object.fromEntries(
+        Object.entries(obj)
+            .filter(([lang, text]) => /^[a-z]{2,3}(?:-[a-z]{2,4})?$/i.test(lang) && typeof text === 'string')
+            .map(([lang, text]) => [lang, stripHtml(text).replace(/\s+/g, ' ').trim().slice(0, 2000)]),
+    );
 }
 
 /**
@@ -238,7 +237,14 @@ export function redistributeExtractedData(
             .map(cat => {
                 // Remove sourceFileIndex from the output
                 const { sourceFileIndex, ...categoryWithoutSource } = cat;
-                return categoryWithoutSource as ExtractedDataCategory;
+                return {
+                    ...categoryWithoutSource,
+                    id: String(categoryWithoutSource.id),
+                    name: sanitizeMultilingualObject(categoryWithoutSource.name),
+                    ...(categoryWithoutSource.description
+                        ? { description: sanitizeMultilingualObject(categoryWithoutSource.description) }
+                        : {}),
+                };
             });
 
         // Filter items for this file
@@ -352,7 +358,7 @@ export function transformIdsForFile(
     if (!extractedData?.data) return extractedData;
 
     // Create ID mapping: old ID -> new prefixed ID
-    const categoryIdMap: Record<string | number, string> = {};
+    const categoryIdMap = new Map<string, string>();
 
     // Get primary language for category name comparison
     const primaryLang = Object.keys(extractedData.data.categories?.[0]?.name || {})[0] || 'en';
@@ -370,29 +376,35 @@ export function transformIdsForFile(
         if (existingCategories?.has(categoryName)) {
             // USE existing category ID (don't transform)
             const existingId = existingCategories.get(categoryName)!;
-            categoryIdMap[oldId] = existingId;
+            categoryIdMap.set(String(oldId), existingId);
             existingCategoryIds.add(String(oldId));
         } else {
             // NEW category - transform with file UID
-            categoryIdMap[oldId] = `${fileUid}c${newCategoryCounter++}`;
+            categoryIdMap.set(String(oldId), `${fileUid}c${newCategoryCounter++}`);
         }
     });
 
     // Filter out categories that already exist (they don't need to be created again)
     const transformedCategories = extractedData.data.categories?.filter((cat) => {
         return !existingCategoryIds.has(String(cat.id));
-    }).map((cat) => ({
-        ...cat,
-        id: categoryIdMap[cat.id],
-        active: true
-    })) || [];
+    }).map((cat) => {
+        const transformedId = categoryIdMap.get(String(cat.id));
+        if (!transformedId) {
+            throw new Error('MENU_EXTRACTION_CATEGORY_ID_MAPPING_MISSING');
+        }
+        return {
+            ...cat,
+            id: transformedId,
+            active: true,
+        };
+    }) || [];
 
     // Transform item IDs and category references
     const transformedItems = extractedData.data.items?.map((item) => {
         const newItemId = `${fileUid}i${item.id}`;
         // Update the category reference using the mapping
         const newCategoryId = item.category !== undefined
-            ? categoryIdMap[item.category] || item.category
+            ? categoryIdMap.get(String(item.category)) || item.category
             : item.category;
 
         const {
@@ -472,6 +484,14 @@ export function processParallelResponse(
     files: Array<{ uid: string;[key: string]: any }>,
     existingCategories?: Map<string, string>
 ): Map<string, ExtractedData> {
+    const categories = combinedResponse?.data?.categories || [];
+    const items = combinedResponse?.data?.items || [];
+    if (
+        findInvalidMenuExtractionSourceIndexes(categories, files.length).length > 0
+        || findInvalidMenuExtractionSourceIndexes(items, files.length).length > 0
+    ) {
+        throw new Error('MENU_EXTRACTION_SOURCE_INDEX_INVALID');
+    }
     // Create file mappings (index = order files were sent to AI)
     const fileMappings: FileMapping[] = files.map((file, index) => ({
         uid: file.uid,

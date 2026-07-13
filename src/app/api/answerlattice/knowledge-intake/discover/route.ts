@@ -17,9 +17,9 @@ import { z } from 'zod';
 import { withAuth } from '@/middleware/auth';
 
 const DiscoverSchema = z.object({
-    url: z.string().trim().min(8).max(500),
+    url: z.string().trim().min(8).max(500).url().refine(value => ['http:', 'https:'].includes(new URL(value).protocol)),
     fetchText: z.boolean().optional().default(false),
-});
+}).strict();
 const KNOWLEDGE_INTAKE_DISCOVER_MAX_BODY_BYTES = 4 * 1024;
 
 export const POST = withAuth(async (request: NextRequest, session) => {
@@ -46,10 +46,10 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         const parsed = DiscoverSchema.parse(bodyResult.data);
         if (parsed.fetchText) {
             const page = await fetchPublicPageText(parsed.url);
-            return NextResponse.json({ page: serializeIntakeValue(page) });
+            return NextResponse.json({ page: serializeIntakeValue(page) }, { headers: { 'Cache-Control': 'private, no-store' } });
         }
         const links = await discoverKnowledgeIntakeLinks(parsed.url);
-        return NextResponse.json({ links: serializeIntakeValue(links) });
+        return NextResponse.json({ links: serializeIntakeValue(links) }, { headers: { 'Cache-Control': 'private, no-store' } });
     } catch (error) {
         if (error instanceof z.ZodError) {
             return NextResponse.json({ error: 'Enter a valid public URL.' }, { status: 400 });

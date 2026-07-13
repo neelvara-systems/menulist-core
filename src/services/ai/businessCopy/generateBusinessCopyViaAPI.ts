@@ -1,6 +1,12 @@
 import { AI_SERVICE_ROUTE_REQUEST_OPTIONS, createAiServiceHttpError, getBoundedAiServiceStringContext, logAiServiceFailure, readAiServiceResponseJson } from "@services/ai/aiServiceDiagnostics";
 import { syncBalanceFromResponse } from "@services/ai/balanceSync";
 import { AICapacityError, checkCapacityResponse } from "@services/ai/capacityError";
+import {
+    normalizeBusinessCopyGenerationResult,
+    type BusinessCopyGenerationResult,
+} from "@lib/ai/businessCopyOutput";
+
+export type { BusinessCopyGenerationResult } from "@lib/ai/businessCopyOutput";
 
 export interface BusinessCopyGenerationPayload {
     sourceLang?: {
@@ -44,17 +50,6 @@ export interface BusinessCopyGenerationPayload {
     };
 }
 
-export interface BusinessCopyGenerationResult {
-    descriptor: string;
-    keywords: string[];
-    knownFor: string;
-    metaDescription: string;
-    metaTitle: string;
-    pwaShortName: string;
-    specialNote: string;
-    tagline: string;
-}
-
 const BUSINESS_COPY_GENERATION_RESPONSE_JSON_MAX_BYTES = 1024 * 1024;
 
 type BusinessCopyGenerationApiResponse = {
@@ -86,7 +81,7 @@ export default async function generateBusinessCopyViaAPI(payload: BusinessCopyGe
             parseFailureCode: 'ai_business_copy_generation_response_parse_failed',
         });
         syncBalanceFromResponse(responseJson);
-        return responseJson.data || null;
+        return normalizeBusinessCopyGenerationResult(responseJson.data);
     } catch (error) {
         if (error instanceof AICapacityError) throw error;
         logAiServiceFailure('ai_business_copy_generation_api_failed', error, {

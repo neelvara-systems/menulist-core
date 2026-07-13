@@ -220,6 +220,10 @@ metadata: {
 
 **Location:** `platformSummary/predictiveTriggers_{tId}_{sId}`
 
+The app DAL treats predictive-trigger product/workspace identity as exact persisted truth. Caller and stored `tId`/`sId` values must be positive safe integers; numeric strings, fractions and non-finite values do not enter query keys, summary document IDs or runtime cache keys. Updates first load and validate the existing `AL` trigger, reject caller attempts to change product/tenant/store ownership, construct an empty allowlisted patch from the validated owner-editable fields, and write the exact stored scope back with update/activation/disable changes.
+
+Summary rebuilds do not copy raw trigger documents. Each row must pass exact `AL` product/scope, ID, status/source/action and bounded numeric/text checks, then a field allowlist omits composer metadata such as source context, actor, trace/request IDs and timestamps before the public read model is written. The server summary parser repeats exact scope/product/ID/enum/numeric admission and reconstructs an allowlisted trigger object before predictive evaluation.
+
 **Why platformSummary, not a separate collection?**
 
 - Trigger rules are bounded (~500 rules max per tenant)
@@ -282,7 +286,7 @@ Answerlattice App Predictive Trigger ID Boundary: app-side trigger actions valid
 **Why reuse, not new collection?**
 
 - Same append-only pattern
-- Same 12-month TTL cleanup
+- Same 12-month Firestore TTL (`expiresAt`) as other Answerlattice signal events
 - Same nightly aggregation
 - Existing batched signal counts can include new types
 

@@ -5,7 +5,7 @@ import { AI_ACTIONS_TYPES, CHARGE_PER_CREDIT, TOKENS_PER_CREDIT } from "@constan
 import { PERMISSIONS } from "@constant/permissions";
 import { HarmBlockThreshold, HarmCategory } from "@google/genai";
 import { finalizeAiOperationAccounting } from "@lib/ai/accounting";
-import { checkAICapacity } from "@lib/ai/capacityCheck";
+import { checkAICapacity, refundAiCapacityReservationSafely, reserveAiCapacity } from "@lib/ai/capacityCheck";
 import { getAIGatewayDiagnostics, getAIRouteLogContext, getAIRouteSecurityContext, logAIRouteFailure } from "@lib/google/genAi/diagnostics";
 import { genAIClient } from "@lib/google/genAi";
 import { logger } from "@lib/monitoring/logger";
@@ -191,6 +191,7 @@ function getCampaignCaptionResponseSummary(response: Record<string, unknown>) {
 export const POST = withAuth(async (request, session) => {
     const userId = session.user.id;
     const requestId = crypto.randomUUID();
+    let capacityReservation: Awaited<ReturnType<typeof reserveAiCapacity>> | null = null;
 
     try {
         // �️ SAFE_MODE: Block expensive operations during system maintenance
@@ -274,6 +275,16 @@ export const POST = withAuth(async (request, session) => {
                 code: capacityCheck.reason,
             }, { status: 402 });
         }
+        capacityReservation = await reserveAiCapacity({
+            action: ACTION,
+            pId: session.pId ?? session.user?.pId ?? session.user?.productId,
+            sId: session.sId,
+            source: '/api/campaigns/caption',
+            subscription: capacityCheck.subscription!,
+            tId: session.tId,
+            uId: session.uId ?? session.user?.id,
+            unitsToReserve: capacityCheck.unitsRequired,
+        });
 
         const startTime = Date.now();
 
@@ -455,12 +466,14 @@ export const POST = withAuth(async (request, session) => {
         let remainingBalance = null;
         try {
             const accounting = await finalizeAiOperationAccounting({
+                capacityReservation,
                 capacitySubscription: capacityCheck.subscription,
                 context: { userId, projectId, action: ACTION, storeId: session.sId, tenantId: session.tId },
                 input: transactionObject,
                 logLabel: 'Campaign caption',
                 session,
             });
+            capacityReservation = null;
             transactionObject.unitsConsumed = accounting.unitsConsumed;
             transactionObject.transactionId = accounting.transactionId;
             remainingBalance = accounting.remainingBalance;
@@ -515,5 +528,10 @@ export const POST = withAuth(async (request, session) => {
         return NextResponse.json({
             error: 'Caption generation failed'
         }, { status: 500 });
+    } finally {
+        await refundAiCapacityReservationSafely(capacityReservation, 'campaign_caption_request_did_not_settle', {
+            endpoint: '/api/campaigns/caption',
+            requestId,
+        });
     }
 });

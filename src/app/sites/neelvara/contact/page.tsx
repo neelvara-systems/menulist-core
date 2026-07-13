@@ -2,7 +2,9 @@ import type { Metadata } from 'next';
 import { LuArrowRight, LuExternalLink, LuMail } from 'react-icons/lu';
 import {
     NEELVARA_CONTACT_EMAIL,
+    NEELVARA_LEGAL_EMAIL,
     NEELVARA_OG_IMAGE_PATH,
+    NEELVARA_PRIVACY_EMAIL,
     NEELVARA_PRODUCT_LINEUP,
     buildNeelvaraUrl,
 } from '../siteConfig';
@@ -47,24 +49,19 @@ export default function NeelvaraContactPage() {
                             <span className="nv-pip" aria-hidden="true" />
                             Contact Neelvara Systems
                         </span>
-                        <h1 className="serif">Choose the right contact route.</h1>
+                        <h1 className="serif">Start with the right contact route.</h1>
                         <p>
                             Company, legal, privacy, partnership, and business inquiries
                             use direct Neelvara email routes.
                         </p>
-                        <div className="nv-page-hero-meta glass">
-                            <span className="mono">company reference</span>
-                            <span className="mono">direct email</span>
-                            <span className="mono">India</span>
-                        </div>
                     </div>
                     <PagePrismPanel
-                        eyebrow="Contact routes"
-                        title="Contact"
+                        eyebrow="Reference summary"
+                        title="Contact routing"
                         rows={[
-                            'Business inbox',
-                            'Legal inbox',
-                            'Privacy inbox',
+                            NEELVARA_CONTACT_EMAIL,
+                            NEELVARA_LEGAL_EMAIL,
+                            NEELVARA_PRIVACY_EMAIL,
                         ]}
                     />
                 </div>
@@ -94,7 +91,7 @@ export default function NeelvaraContactPage() {
                     <div>
                         <h2 className="serif">Looking for product support?</h2>
                         <p>
-                            MenuList, Answerlattice, and CampaignCue keep product-specific
+                            MenuList and Answerlattice keep product-specific
                             support, documentation, onboarding, billing, and account questions on
                             their own websites.
                         </p>

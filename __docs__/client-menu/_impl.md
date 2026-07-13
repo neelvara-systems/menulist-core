@@ -36,10 +36,10 @@ This document consolidates all technical implementation details for the Customer
 1. Customer → joespizza.menulist.ai/drinks
 2. Middleware (src/middleware.ts)
    - resolveDomain() extracts subdomain or custom domain
-   - Sets headers: x-tenant-subdomain, x-tenant-custom-domain, x-tenant-type
+   - Deletes caller-supplied routing headers, then forwards middleware-owned x-tenant-subdomain, x-tenant-custom-domain, and x-tenant-type values on the rewritten request
    - Rewrites to /client/drinks
 3. Page (src/app/client/[[...slug]]/page.tsx)
-   - getTenantFromHeaders() reads middleware headers
+   - getTenantFromHeaders() derives identity from validated Host; middleware headers are integrity claims only
    - getStoreBySubdomain() or getStoreByCustomDomain()
    - getProjectBySlugOrDefault() finds correct menu
    - getPrecomputedDecisionBlocks() fetches recommendations
@@ -96,6 +96,12 @@ The following infrastructure improvements were implemented to make the menu surf
 | **Client Sanitization**     | `sanitizeForClient()` strips `_mce` and internal metadata        |
 | **MCE Publish Gate**        | 17 validation rules prevent corrupt data from reaching customers |
 | **Multi-Outlet Resolution** | `resolveProjectForRender()` merges master + outlet data. Metadata outlet lookup, metadata project lookup, and runtime outlet lookup failures remain fail-open but log bounded `public_menu_resolution_*` diagnostics with tenant/store/slug presence-length context only. |
+
+Public hostname resolution in `src/lib/firestore/clientStoreLookup.ts` queries current subdomain/custom-domain/outlet candidates with bounded duplicate detection, validates exact positive store/tenant identity, then reads the referenced canonical tenant for existence, lifecycle, and platform-block eligibility. The returned object remains the store payload only; tenant fields never cross the render boundary. A duplicate candidate, malformed identity, missing tenant, inactive/deleted store or tenant, or either platform block fails closed as not found.
+
+Owner custom-domain writes use `platformSummary/customDomainClaim_{domain}` with request-unique reservation IDs. POST reserves before Vercel, rechecks scope when finalizing, and verifies an apparent provider conflict against the configured project only when MenuList provenance exists. Replacement/DELETE mark the old claim `releasing` before provider cleanup and `released` only after an acknowledged/404 cleanup. GET rechecks the exact current domain after provider status and requires both explicit DNS configuration and configured-project membership before setting verification true. Explicit misconfiguration/project absence clears verification; provider transport/body failures preserve last truth and remain non-success status. Duplicate/mismatched legacy ownership returns `409`; malformed legacy hostnames can be cleared locally without unsafe provider interpolation.
+
+Menu Observation Layer writes in `src/database/menuChangeLog/index.ts` snapshot exact positive tenant/store scope with the sanitized event before scheduling. Collision-safe JSON tuple keys include project, item/category identity, and change type; completed `MENU_REVISION_SUMMARY` and `PUBLISH` entries receive unique queue keys, while replaceable detail events retain the bounded debounce. `pagehide` flushing drains the captured scopes instead of re-reading the active session. Internal reads validate identifiers/dates/cursor pairs, order by timestamp plus document ID, normalize stored documents, cap each result and stop after 5,000 scanned documents. `firestore.rules` separately enforces exact store membership/write role, payload/path scope agreement, project existence, canonical/legacy allowlists, bounded learning/drift/snapshot shapes, and immutable update/delete denial.
 
 ### Public UI Governance Hardening (May 2026)
 

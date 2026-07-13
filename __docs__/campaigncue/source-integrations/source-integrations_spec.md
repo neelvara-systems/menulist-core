@@ -15,6 +15,7 @@ The active runtime uses the signed-in MenuList store profile as a read-only boot
 | Manual entry | Business details, services, prices, CTA, offers. |
 | Upload | PDF/image/CSV menus, service lists, photos, videos. |
 | Website URL | Basic business facts and available public content, with review. |
+| Public inspiration link | Owner-submitted format reference plus transcript/notes; compact pattern only, no account monitoring or source-media fetch. |
 | MenuList | Official restaurant/store/menu/photos/public-link source snapshots. |
 | Google Business Profile | Manual Google-ready drafts; connected publish context is reserved for a separate future layer. |
 | WhatsApp Business | Manual message download/export; direct-send and template status are reserved for a separate future layer. |
@@ -39,6 +40,7 @@ The active runtime uses the signed-in MenuList store profile as a read-only boot
 - No importing contact lists without consent/source metadata.
 - No using reviews, testimonials, or before/after photos without permission and trust review.
 - No unofficial provider APIs or browser automation as the normal integration path.
+- No recurring creator-account surveillance, viral alerts, or private/social-session scraping.
 - No source write-back unless the provider contract, permission model, and audit trail are documented first.
 
 ## Requirements

@@ -16,7 +16,11 @@ import { AI_ACTIONS_TYPES, CHARGE_PER_CREDIT, TOKENS_PER_CREDIT } from '@constan
 import { getOurChargePaise, getRealCostPaise, getUnitCost } from '@constant/AI/unitCosts';
 import { PERMISSIONS } from '@constant/permissions';
 import { finalizeAiOperationAccounting } from '@lib/ai/accounting';
-import { checkAICapacity } from '@lib/ai/capacityCheck';
+import {
+    checkAICapacity,
+    refundAiCapacityReservationSafely,
+    reserveAiCapacity,
+} from '@lib/ai/capacityCheck';
 import { genAIClient } from '@lib/google/genAi';
 import { getAIRouteSecurityContext } from '@lib/google/genAi/diagnostics';
 import { requireAnyStorePermission } from '@lib/permissions/server';
@@ -242,6 +246,16 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     }
 
     const userPrompt = `INPUT REVIEW:\n${JSON.stringify(promptReviewText)}\n\nRATING:\n${rating}\n\nNow write the reply.`;
+    let capacityReservation: Awaited<ReturnType<typeof reserveAiCapacity>> | null = await reserveAiCapacity({
+        action: ACTION,
+        pId: session.pId ?? session.user?.pId ?? session.user?.productId,
+        sId: session.sId,
+        source: '/api/reviews/suggest',
+        subscription: capacityCheck.subscription!,
+        tId: session.tId,
+        uId: session.uId ?? session.user?.id,
+        unitsToReserve: capacityCheck.unitsRequired,
+    });
 
     try {
         const startTime = Date.now();
@@ -282,6 +296,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         let transactionId: string | null = null;
         try {
             const accounting = await finalizeAiOperationAccounting({
+                capacityReservation,
                 capacitySubscription: capacityCheck.subscription,
                 context: {
                     endpoint: '/api/reviews/suggest',
@@ -315,6 +330,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 logLabel: 'Review reply suggestion',
                 session,
             });
+            capacityReservation = null;
             transactionId = accounting.transactionId;
             remainingBalance = accounting.remainingBalance;
         } catch (transactionError) {
@@ -339,10 +355,19 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     } catch (error) {
         // AI failure — return fallback
         const category = rating >= 4 ? 'positive' : rating <= 2 ? 'negative' : 'neutral';
+        logRuntimeFailure('review_reply_generation_failed', error, getReviewSuggestLogContext(session, {
+            businessType: promptBusinessType,
+            rating,
+            usedFallback: true,
+        }));
         return NextResponse.json({
             success: true,
             reply: FALLBACK_REPLIES[category],
             source: 'fallback',
+        });
+    } finally {
+        await refundAiCapacityReservationSafely(capacityReservation, 'review_reply_request_did_not_settle', {
+            endpoint: '/api/reviews/suggest',
         });
     }
 });

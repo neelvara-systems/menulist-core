@@ -162,7 +162,7 @@ export const FUNCTION_FLAGS = {
      *
      * @see __docs__/temp-status-layer/temp-status-layer_impl.md
      */
-    ENABLE_TEMP_STATUS: false,
+    ENABLE_TEMP_STATUS: true,
 
     // ═══════════════════════════════════════════════════════════════
     // INFRASTRUCTURE COMPOUNDING (MenuList Truth Engine)

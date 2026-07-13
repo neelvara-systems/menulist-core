@@ -1,5 +1,6 @@
 import { DB_COLLECTIONS } from '@constant/database';
 import { answerlatticeFirestoreAdmin as firestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
+import { normalizeAnswerlatticeScopeDocumentId } from '@lib/answerlattice/sessionScope';
 
 import {
     AnswerlatticeCacheSource,
@@ -12,9 +13,9 @@ export const getAnswerlatticeCacheVersionServer = async (
     tId: number,
     sId: number,
 ): Promise<number | undefined> => {
-    const tenantId = Number(tId);
-    const storeId = Number(sId);
-    if (!Number.isFinite(tenantId) || !Number.isFinite(storeId) || tenantId <= 0 || storeId <= 0) {
+    const tenantId = normalizeAnswerlatticeScopeDocumentId(tId);
+    const storeId = normalizeAnswerlatticeScopeDocumentId(sId);
+    if (!tenantId || !storeId) {
         return undefined;
     }
 
@@ -26,7 +27,12 @@ export const getAnswerlatticeCacheVersionServer = async (
     if (!doc.exists) return undefined;
 
     const data = doc.data() || {};
-    if (data.source !== source || Number(data.tId) !== tenantId || Number(data.sId) !== storeId) {
+    if (
+        data.pId !== 'AL'
+        || data.source !== source
+        || normalizeAnswerlatticeScopeDocumentId(data.tId) !== tenantId
+        || normalizeAnswerlatticeScopeDocumentId(data.sId) !== storeId
+    ) {
         return undefined;
     }
 

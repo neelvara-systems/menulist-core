@@ -3,13 +3,16 @@
 **Feature:** Messaging Onboarding
 **Audience:** Business owners (restaurants, salons, cafes, service providers)
 **Tone:** Simple, patient, step-by-step. Zero jargon.
-**Last Updated:** May 17, 2026
+**Status:** Source-backed help draft — WhatsApp intake is not open for current public use
+**Last Updated:** July 10, 2026
+
+> **Launch boundary:** Not current launch certification or deploy approval. Current source registers WhatsApp only, while checked-in Functions environments keep provider processing disabled. `/whatsapp` is informational and routes its actions to the signed-in `/create-menu` photo or public-link intake. The provider-enabled steps below remain operating-reference material until the final owned account, real Meta secrets, webhook registration, target enablement/deploy evidence, provider smoke, browser/device QA, and production-host smoke exist.
 
 ---
 
 ## Quick Summary
 
-Send your menu photos on WhatsApp and get a live digital menu in minutes. No signup needed. No software to learn. Just send photos, approve the preview, and your menu is live.
+WhatsApp intake is not open yet. To start now, open `/create-menu`, sign in, and upload a photo or provide a permission-confirmed public menu link. The WhatsApp steps below describe the provider-enabled flow; they are not current public-use instructions.
 
 ---
 
@@ -23,7 +26,7 @@ Send your menu photos on WhatsApp and get a live digital menu in minutes. No sig
 
 ### How It Works
 
-1. **Save** the MenuList WhatsApp number: [number to be added]
+1. **Confirm availability** on `/whatsapp`. If the page says intake is not open, use `/create-menu` instead.
 2. **Send** your menu photos or PDF
 3. **Wait** a moment — MenuList reads your photos and creates the menu
 4. **Open** the preview link sent back to you
@@ -180,7 +183,7 @@ Send your menu photos on WhatsApp and get a live digital menu in minutes. No sig
 
 ## Need More Help?
 
-- **WhatsApp:** Send "help" to [MenuList WhatsApp number]
+- **Current support:** Use the contact options listed at `/contact`; no public Messaging Onboarding WhatsApp number is configured.
 - **Email:** support@menulist.ai
 - **Dashboard:** Sign in at menulist.ai and use the help section
 

@@ -22,6 +22,10 @@ import {
     getMenuLinkImportClientMessage,
     MenuLinkImportError,
 } from '@lib/menu-link-import/sourceAcquisition';
+import {
+    createOrReuseActiveMenuExtractionJob,
+    MENU_EXTRACTION_ACTIVE_JOB_STATUSES,
+} from '@lib/menu-extraction/activeJobClaim';
 import { normalizeMenuExtractionProjectId } from '@lib/menu-extraction/projectIdBoundary';
 import { checkSafeMode } from '@lib/ops/safeMode';
 import { checkRateLimit } from '@lib/rateLimit';
@@ -45,10 +49,9 @@ const RequestSchema = z.object({
     permissionConfirmed: z.literal(true),
 });
 
-const ACTIVE_JOB_STATUSES = ['pending', 'processing', 'preview_ready'];
+const ACTIVE_JOB_STATUSES = MENU_EXTRACTION_ACTIVE_JOB_STATUSES;
 const MENU_LINK_IMPORT_MAX_BODY_BYTES = 8 * 1024;
 const MENU_LINK_IMPORT_STORAGE_CLEANUP_FAILED = 'menu_link_import_storage_cleanup_failed';
-const MENU_LINK_IMPORT_ARTIFACT_CLEANUP_FAILED = 'menu_link_import_artifact_cleanup_failed';
 
 function resolveTargetLanguages(projectData: any): Array<{ code: string; name: string }> {
     const codes = Array.isArray(projectData?.languages) && projectData.languages.length
@@ -70,6 +73,7 @@ async function findExistingActiveJob(projectId: string, userId: string): Promise
         .where('projectId', '==', projectId)
         .where('uId', '==', userId)
         .where('status', 'in', ACTIVE_JOB_STATUSES)
+        .limit(10)
         .get();
 
     if (snapshot.empty) return null;
@@ -102,21 +106,6 @@ async function deleteMenuLinkImportStoragePath(
         logMenuProcessingFailure(MENU_LINK_IMPORT_STORAGE_CLEANUP_FAILED, error, {
             ...getMenuProcessingProjectLogContext(context.projectId),
             ...getBoundedMenuProcessingStringContext('storagePath', storagePath),
-            cleanupReason: context.cleanupReason,
-        });
-    }
-}
-
-async function deleteMenuLinkImportArtifactDoc(
-    artifactRef: FirebaseFirestore.DocumentReference,
-    context: { cleanupReason: string; projectId: string },
-): Promise<void> {
-    try {
-        await artifactRef.delete();
-    } catch (error) {
-        logMenuProcessingFailure(MENU_LINK_IMPORT_ARTIFACT_CLEANUP_FAILED, error, {
-            ...getMenuProcessingProjectLogContext(context.projectId),
-            ...getBoundedMenuProcessingStringContext('artifactId', artifactRef.id),
             cleanupReason: context.cleanupReason,
         });
     }
@@ -171,7 +160,6 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
     const { projectId, url } = validation.data;
     const createdStoragePaths: string[] = [];
-    let artifactRefForCleanup: FirebaseFirestore.DocumentReference | null = null;
     let artifactDocCreated = false;
     let jobDocCreated = false;
 
@@ -204,7 +192,6 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         const acquisition = await acquireMenuLinkSource(url, { businessCategory, businessType });
         const jobRef = firestoreAdmin.collection(DB_COLLECTIONS.MENU_IMAGE_PROCESSING_JOBS).doc();
         const artifactRef = firestoreAdmin.collection(DB_COLLECTIONS.MENU_LINK_IMPORT_ARTIFACTS).doc();
-        artifactRefForCleanup = artifactRef;
         const bucket = storageAdmin.bucket();
         const now = Timestamp.now();
         const storagePath = `menuLinkImports/${ids.tId}/${ids.sId}/${projectId}/${jobRef.id}/source.${acquisition.artifactExtension}`;
@@ -228,7 +215,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         const fileUid = `link-${artifactRef.id}`;
         const artifactUrl = buildDownloadUrl(bucket.name, storagePath, downloadToken);
 
-        await artifactRef.set({
+        const artifactData = {
             artifactId: artifactRef.id,
             acquisitionProvider: 'direct-http',
             contentHash: acquisition.contentHash,
@@ -249,10 +236,9 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             storagePath,
             tId: ids.tId,
             uId: ids.uId,
-        });
-        artifactDocCreated = true;
+        };
 
-        await jobRef.set({
+        const jobData = {
             action: AI_ACTIONS_TYPES.IMAGE_PROCESSING,
             createdAt: now,
             currentStep: 'Queued',
@@ -285,7 +271,34 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             targetLanguages,
             uId: ids.uId,
             updatedAt: now,
+        };
+        const jobCreation = await createOrReuseActiveMenuExtractionJob({
+            additionalCreates: [{ data: artifactData, ref: artifactRef }],
+            db: firestoreAdmin,
+            jobData,
+            jobRef,
+            projectId,
         });
+        if (!jobCreation.created) {
+            await deleteMenuLinkImportStoragePath(storagePath, {
+                cleanupReason: 'concurrent_active_job_reuse',
+                projectId,
+            });
+            createdStoragePaths.length = 0;
+            if (String(jobCreation.match.data.uId || '') !== ids.uId) {
+                return NextResponse.json(
+                    { success: false, error: 'Another menu extraction is already running.' },
+                    { status: 409 },
+                );
+            }
+            return NextResponse.json({
+                success: true,
+                jobId: jobCreation.match.id,
+                projectId,
+                reusedExistingJob: true,
+            });
+        }
+        artifactDocCreated = true;
         jobDocCreated = true;
 
         logMenuProcessingDiagnostic('menu_link_import_job_created', {
@@ -318,12 +331,6 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 cleanupReason: 'job_create_failed',
                 projectId,
             })));
-            if (artifactDocCreated && artifactRefForCleanup) {
-                await deleteMenuLinkImportArtifactDoc(artifactRefForCleanup, {
-                    cleanupReason: 'job_create_failed',
-                    projectId,
-                });
-            }
         }
 
         logMenuProcessingFailure('menu_link_import_route_failed', error, {

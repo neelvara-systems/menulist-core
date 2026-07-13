@@ -245,7 +245,7 @@ interface AnswerlatticeRelease {
 - Nightly scheduled audit (Cloud Function, follows existing scheduler pattern)
 - Signal-triggered batch (after signal aggregation)
 
-Answerlattice App Release ID Boundary: release-triggered drift activation first normalizes the release document ID through the shared Firestore document-ID guard, then uses that normalized ID for release reads/writes, drift-audit metadata, and compiled-context source marking.
+Answerlattice App Release ID Boundary: browser release reads normalize the document ID; create/activate actions cross the bounded authenticated release route. The Admin server lifecycle revalidates exact release, entity and canonical-answer product/tenant/store/version contracts and owns the transaction/lease, drift audit and compiled-context source marking.
 
 ### Output
 Updates `governance.driftFlag` + `governance.driftReason` on CanonicalAnswer.

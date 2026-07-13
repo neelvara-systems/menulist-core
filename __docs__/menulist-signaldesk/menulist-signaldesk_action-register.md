@@ -2,7 +2,7 @@
 
 **Status:** Active tracker
 **Created:** June 23, 2026
-**Last Updated:** July 10, 2026
+**Last Updated:** July 11, 2026
 **Purpose:** Track documentation and implementation-preparation work for SignalDesk.
 
 ## Status Legend
@@ -47,6 +47,8 @@
 | SD-D025 | Add Revenue Operating Layer doc set and parent-doc parity | Codex | Done | Created the private revenue account/opportunity/offer/envelope/activation docs and aligned README, spec, implementation, Firebase, feature map, validation, action register, and decision log |
 | SD-D026 | Add current social-channel market research and next trial plan | Codex | Done | Cross-checked X, Reddit, Instagram, YouTube, Google, Bengaluru/India operator signals, QR/customer friction, and five vendor categories; adopted a 30-day manual-first activation trial instead of more horizontal automation |
 | SD-D027 | Create Bengaluru activation-trial operating pack | Codex | Done | Added the approved zero-spend envelope, evidence-only/public versus permissioned-contact policy split, 25-row candidate board, evidence packet, draft-only introduction scripts, preview checklist, stop rules, and external blockers |
+| SD-D028 | Add current AI revenue workflow research and market brief | Codex | Done | Created the deep Markdown research and self-contained HTML brief across account research, signals, outbound, inbound, calls, proposals, content, creators, paid media, discovery, lifecycle, practitioner reality, governance, and five competitive operating models; cross-check found the immediate need is a shadow-mode proof run, not another agent or CRM layer |
+| SD-D029 | Align Research Agent Table docs with AI distribution workbench output | Codex | Done | Updated operating-layer research docs and tests so each row carries evidence summary, recommended channel, CTA, message angle, source transparency, fit decision, and next action for the 20-30 lead review workflow |
 
 ## Implementation Actions
 
@@ -109,8 +111,14 @@
 | SD-I055 | Add revenue rules, indexes, and deterministic E2E coverage | Codex | Done | Revenue collections are internal-read/server-write only; local E2E covers concurrent idempotency, suppression, currencies, immutable IDs/versions, active-pod/budget/sender gates, expiry/hold/approval history, activation-driven opportunity close, exact summaries, and no MenuList truth writes |
 | SD-I056 | Close first-trial operating-loop gaps | Codex | Done | Aligned the create-only held zero-budget seed and first-run UI defaults to the Bengaluru recommendation; the exact unapproved legacy Mumbai seed migrates once while reseeding cannot overwrite founder pod approval; interested replies now create/reuse eligible revenue state; outcomes refresh activation projections automatically; expired seven-day watches read as stalled; Daily Growth Mission prioritizes revenue/activation exceptions and summarizes founder attention and spend; manual recheck remains recovery-only |
 | SD-I057 | Cross-check revenue authority and long-history integrity | Codex | Done | Added founder-only market-pod approve/hold/reject, blocked unreviewed active pods from envelopes, stopped recommendation/research from self-activating or attaching spend, limited win/customer authority to two-surface activation, and replaced unordered outcome truncation with indexed earliest/latest/terminal derivation plus E2E regressions |
-| SD-I058 | Run social-evidence-informed Bengaluru activation trial | Founder + Codex | In progress | Exact zero-external-spend plan approved for preparation: 25 candidates, 12 evidence packets, 5 private previews, 3 two-surface activations, 1 permissioned proof asset, and one photographer/consultant referral test; no business has been contacted |
+| SD-I058 | Run social-evidence-informed Bengaluru activation trial | Founder + Codex | In progress | Exact zero-external-spend plan approved: first daily cap of five public evidence-only candidate reviews completed (3 Pass, 1 Unsure, 1 Fail); 12 evidence packets, 5 private previews, 3 activations, 1 proof asset, and partner referral test remain pending; no business has been contacted |
 | SD-I059 | Align first-trial runtime defaults with approved evidence | Codex | Done | Replaced Pune presets with Bengaluru, made public-business research evidence-only by default, separated permissioned manual introductions, set manual experiment/activation outcomes, held Google Places at zero approval/budget, and made the first trust-partner test zero-spend |
+| SD-I060 | Implement measurable AI shadow review | Codex | Done | Reused provider AI run and model-evaluation records for founder accept/edit/reject/hold review, cumulative quality and attention metrics, replacement-safe transactions, audit/timeline evidence, desktop controls, hard mobile blocking, static verifier checks, and Firestore-emulator E2E; no external action or new collection added |
+| SD-I061 | Implement AI Volume Mode | Codex | Done | Added founder-only bounded batches, fast generation, independent critic, same-provider escalation, maximum estimated cost, idempotent paid retries, partial-failure preservation, parent/child visibility, audit/cost/timeline evidence, mobile blocking, verifier, and emulator E2E without new collections or external-action authority |
+| SD-I062 | Implement AI Distribution Workbench row outputs | Codex | Done | Research Agent Table rows now store evidence summary, recommended channel, recommended CTA, and recommended message angle; Dashboard lead cards render those fields beside share plan and next action while keeping provider send, public pages, and MenuList truth writes unchanged |
+| SD-I063 | Recover expired AI Volume parents | Codex | Done | Desktop persists and reuses the bounded retry payload; expired running parents reconstruct child IDs, calls, and estimated cost; finalize completed/partial/blocked without provider calls; write stable recovery audit/timeline evidence; and release only their owned six-minute lock, with verifier and emulator coverage |
+| SD-I064 | Close full activation-control cross-check defects | Codex | Done | Tightened suppression/source-use route checks, import dedupe, proof scopes, outcome fingerprinting and durable activation projection, atomic provider-scoped webhooks, mobile emergency pause usability, five-item primary navigation, Date serialization, self-only member reads, and SignalDesk-local session-provider isolation; added deterministic E2E, semantic-rules, browser, and static regressions without provider send, deployment, or MenuList runtime changes |
+| SD-I065 | Separate prepared outreach from completed manual contact | Codex | Done | Export preparation now leaves the target uncontacted and requests a manual contact action; the bounded action permits only fresh unconsumed email exports or permissioned partner introductions, fingerprint-binds retries, cannot overwrite concurrent suppression, records safe projections, suppresses wrong contacts, and transactionally arbitrates structured approve/reject decisions without CRM scope, provider send, Firebase schema, or MenuList writes |
 
 ## Feature Doc Backlog
 
@@ -139,6 +147,12 @@
 | SD-F021 | `signaldesk-source-quality-learning` doc coverage | Done | Covered in consolidated Operating Layer docs and runtime through `signaldeskSourceQualitySnapshots` |
 | SD-F022 | `menulist-activation-concierge` doc/runtime foundation | Done | Created separate MenuList-side docs and existing-surface runtime foundation in `../menulist-activation-concierge/`; MenuList owns activation truth and SignalDesk observes outcomes only |
 | SD-F023 | Origami-style Research Agent Table | Done | Prompt-to-table workflow implemented in SignalDesk Mission with governed provider run, enrichment rows, pass/fail/unsure scoring, source transparency, idempotency, market-pod update, verifier, and local E2E; no Origami API integration or send automation |
+| SD-F024 | Source-rights and allowed-route hardening | Done | Field-level rights registry, legacy review-required handling, current-policy row revalidation, research-only state, and no-contact route enforcement implemented |
+| SD-F025 | Verified activation outcome contract | Done | Owner-qualified/review timestamps, distinct surfaces, evidence, idempotency, legacy-unverified rejection, activation-opportunity read model, and emulator fixtures implemented |
+| SD-F026 | Signed outcome bridge receiver | Done locally | HMAC/timestamp/rate/body/route-token/idempotency receiver implemented in SignalDesk; external secret provisioning and MenuList-owned emitter remain blocked |
+| SD-F027 | Proof-rights ledger | Done | Founder-controlled revocable proof permissions implemented and rechecked before customer-proof asset/draft use |
+| SD-F028 | Complaint circuit breaker | Done | Complaint/privacy/legal replies suppress, open incident, pause channel, audit, and outrank new approval work |
+| SD-F029 | Five-destination operator shell | Done | Today, Opportunities, Conversations, Activations, and Controls are primary Ant Design navigation; protected deep routes remain available from Controls |
 
 ## Founder Decisions Needed
 
@@ -158,7 +172,7 @@
 | SD-Q012 | Sender-domain risk policy | Blocked | Decide whether cold outreach uses primary domain, subdomain, separate domain, or no automated sender; no domain-rotation default |
 | SD-Q013 | First self-service proof CTA | Done | No-cost current-list consistency audit plus private MenuList preview; owner reviews before publish and customer viewing requires no identity |
 | SD-Q014 | First trust partner niche and budget | In progress | Menu photographers and restaurant consultants approved for a zero-fee learning test; one real permissioned partner still needs to be selected |
-| SD-Q015 | First content proof asset and channel mix | In progress | One permissioned before/after current-list proof approved in principle for Instagram treatment, short YouTube walkthrough, founder X learning, and partner brief; creation waits for a real activation and owner permission |
+| SD-Q015 | First content proof asset and channel mix | In progress | Exact existing-field run contract is prepared in `../menulist-marketing-distribution/menulist-marketing-distribution_first-proof-distribution-run-operating-pack.md`; one permissioned before/after proof can feed LinkedIn, X, short-video, full-case, and partner-brief jobs, while creation/publication still waits for a real activation, item-level owner permission, and founder approval |
 
 ## Boundaries
 

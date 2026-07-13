@@ -1,24 +1,15 @@
-import { PLATFORM_DOMAIN, PLATFORM_URL } from '@constant/urls';
+import { PLATFORM_URL } from '@constant/urls';
 import {
     DISCOVERY_CRAWLERS,
     PUBLIC_DISCOVERY_DISALLOWED_PATHS,
 } from '@lib/seo/discoveryPolicy';
-import { headers } from 'next/headers';
+import { getTenantFromHeaders } from '@lib/multiTenant/getTenantFromHeaders';
 
 export const dynamic = 'force-dynamic';
 
-function getTenantBaseUrl() {
-    const headersList = headers();
-    const subdomain = headersList.get('x-tenant-subdomain');
-    const customDomain = headersList.get('x-tenant-custom-domain');
-
-    if (customDomain) return `https://${customDomain}`;
-    if (subdomain) return `https://${subdomain}.${PLATFORM_DOMAIN}`;
-    return PLATFORM_URL;
-}
-
-export function GET() {
-    const baseUrl = getTenantBaseUrl();
+export async function GET() {
+    const tenant = await getTenantFromHeaders('ClientRobotsRoute');
+    const baseUrl = tenant.origin || PLATFORM_URL;
     const disallowRules = PUBLIC_DISCOVERY_DISALLOWED_PATHS
         .map((path) => `Disallow: ${path}`)
         .join('\n');

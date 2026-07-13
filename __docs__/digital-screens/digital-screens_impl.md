@@ -14,10 +14,10 @@
 ```
 Server Component (page.tsx)
     ↓ fetches via DAL
-getScreenDataByToken(token) → platformSummary + stores (2 reads)
+getScreenDataByTokenServer(token) → platformSummary + public store gate (2 reads; cached tenant fallback only when needed)
 project summary lookup       → automatic base menu + QR slug when projection context is missing (0-1 read)
 screen.menuProjection      → generated available menu items when version/project/slug context match (0 extra reads)
-getMenuItemsForScreen()    → project items fallback (usually 1 read after baseProjectId)
+getMenuItemsForScreenServer() → scoped project items fallback (usually 1 read after baseProjectId)
     ↓ generates slides (for highlights mode)
 generateScreenSlides()     → Owner Pinned + Campaign + Evergreen + Brand Fallback
     ↓ reads ?mode= query parameter
@@ -35,7 +35,7 @@ Both share: Cache (localStorage) · Firebase listener on public-safe `screen_{st
 - **No API routes for screen display** — server component + DAL pattern
 - **No polling** — Firebase `onSnapshot` doc listener drives content-version reloads after acknowledged public-output changes
 - **No Service Worker** — removed; localStorage cache sufficient
-- **License check** — `getScreenDataByToken()` blocks inactive/blocked stores
+- **Public store check** — `getScreenDataByTokenServer()` uses the shared public store/tenant block gate and rejects missing, inactive, deleted, store-blocked, or tenant-blocked records
 - **Default = Menu Board** — `/screen/token` renders full menu; `?mode=highlights` for slideshow
 - **Mode via URL only** — no settings UI for mode selection; zero cognitive load
 - **Menu source is automatic** — screens follow the store's active menu truth; no project picker
@@ -69,7 +69,7 @@ Both share: Cache (localStorage) · Firebase listener on public-safe `screen_{st
 - `evergreenSlides.ts` (~95 lines) — `generateEvergreenSlides()`, `generateBrandFallback()` (imports `MenuItemForSlide` from `@type/campaigns`)
 - `slideGenerator.ts` — 4-layer stack generator; respects owner-only custom slide mode; normalizes min/max slide counts with unique repeat IDs
 - `screenRenderer.ts` (~140 lines) — `SCREEN_CONFIG` constants, `ScreenRendererState` (uses `ScreenStoreInfo`), `getSlideLabel()`
-- `publicScreenState.ts` — Converts canonical screen state into the public-safe listener mirror and writes `platformSummary/screen_{sId}`.
+- `publicScreenState.ts` — Converts canonical screen state into the public-safe listener mirror; owner mutations write canonical and mirror documents in one transaction.
 - `screenInvalidation.ts` — Browser-side screen content-version touch used by public cache invalidation. It reads the existing summary first, never creates partial screen state, materializes a compact default-menu projection when a project context is available, and supports store-output-only touches without projection reads.
 - `serverScreenInvalidation.ts` — Next.js server-side screen content-version touch used by direct public-truth routes and `revalidateMenuCache()`. It reads the existing screen state, returns when no screen token exists, increments `screen.contentVersion`, and mirrors `screen_{storeId}` for live display listeners.
 
@@ -91,16 +91,17 @@ Both share: Cache (localStorage) · Firebase listener on public-safe `screen_{st
 ### DAL (`src/database/campaigns/`)
 
 - `serverScreen.ts` — Public server-side screen resolver for `/screen/[token]`, including token lookup, store lookup, automatic base menu context, projection context validation, and project-read fallback.
-- `getScreenDataByToken(token)` — Public, query by token → screen + store + automatic base menu context (2 reads on valid projection context, 3 reads on fallback)
-- `getMenuItemsForScreen(storeId, tenantId)` — Public fallback, fetches project items for evergreen slides/menu board when projection is missing or stale (usually 1 read after `baseProjectId`, more for special-menu overlay/fallback)
+- `getScreenDataByTokenServer(token)` — Server-only public resolver; validates token shape/uniqueness, campaign summary ID, and shared public store eligibility before automatic base-menu context
+- `getMenuItemsForScreenServer(storeId, tenantId)` — Server-only fallback; re-verifies tenant/store ownership and document IDs before project reads
 - `index.ts` — Owner/session DAL for screen setup, settings, uploads, pinned slide management, and content-version bumps.
 - `getScreenState()` — Session required, returns DigitalScreenState
 - `initializeScreenState()` — First-time setup, generates 22-character high-entropy token
 - `updateScreenSettings()` — Toggle owner override
 - `addPinnedSlide()` / `removePinnedSlide()` — Owner upload management (max 3)
 - `bumpScreenContentVersion()` — Invalidation trigger
-- `uploadScreenSlide()` — Firebase Storage upload + addPinnedSlide
+- `uploadScreenSlide()` — Firebase Storage variant-ledger upload + transactional `addPinnedSlide`; cleans all newly uploaded variants if persistence fails
 - Settings, caption update, and slide delete mutations return a typed digital-screen acknowledgement. Desktop and mobile callers must require `assertDigitalScreenMutationSucceeded()` before local screen state, pinned-slide state, or success copy changes. Slide uploads also require `assertDigitalScreenSlideUploadSucceeded()` after the outer `apiCallComposer()` result so storage/add-slide failures cannot resolve to success through fallback values.
+- Initialization, settings, add/remove/caption, and owner content-version mutations use Firestore transactions. Canonical screen state and the public-safe listener mirror commit together, concurrent updates retry from current state, exact no-op retries avoid version bumps, and a missing caption target is rejected.
 
 ### Settings UI (`src/components/.../DigitalScreenSettings/` — 4 files)
 
@@ -121,14 +122,14 @@ Both share: Cache (localStorage) · Firebase listener on public-safe `screen_{st
 Browser → /screen/[token] or /screen/[token]?mode=highlights
   → page.tsx (Server Component)
     → Read searchParams.mode (default: undefined = menu_board)
-    → getScreenDataByToken(token) [DAL — campaigns/serverScreen.ts]
+    → getScreenDataByTokenServer(token) [DAL — campaigns/serverScreen.ts]
       → Query platformSummary where screen.screenToken == token [1 read]
       → getDoc(stores/{storeId}) [1 read]
       → getDoc(platformSummary/projects_{storeId}) for automatic base menu + QR slug [1 read]
       → License check: active === false || blocked === true → null → 404
     → getUsableScreenMenuProjection(screen.menuProjection)
       → Use generated items when baseProjectId, activeSpecialMenuId, and contentVersion match [0 reads]
-      → Else getMenuItemsForScreen(storeId, tenantId) [DAL fallback]
+      → Else getMenuItemsForScreenServer(storeId, tenantId) [DAL fallback]
         → getDoc projects/{tenantId}/{storeId}/{projectId} [usually 1 read when baseProjectId is known]
         → Active special-menu overlay/replace can read the special project and, for overlays, the base project
       → Extract and normalize items:
@@ -207,7 +208,7 @@ Owner edits item in Editor (price, name, availability)
   → platformSummary/screen_{sId} mirror updates
   → onSnapshot fires on MenuBoardDisplay.tsx
   → newVersion > currentVersion → window.location.reload()
-  → page.tsx uses matching screen.menuProjection, or falls back to getMenuItemsForScreen()
+  → page.tsx uses matching screen.menuProjection, or falls back to getMenuItemsForScreenServer()
   → MenuBoardDisplay re-renders with updated categories/items/prices in menu order
 
 STORE OUTPUT: Owner edits rendered store profile fields
@@ -350,7 +351,7 @@ Public display clients use `src/lib/screen/screenDiagnostics.ts` for bounded dis
 
 | Limitation                              | Impact                                                                     | Details                                     |
 | --------------------------------------- | -------------------------------------------------------------------------- | ------------------------------------------- |
-| ~~Layer 3 (Evergreen) not generated~~   | ✅ **FIXED** — now fetches menu items via `getMenuItemsForScreen()`        | `page.tsx:44`, `slideGenerator.ts:69-73`    |
+| ~~Layer 3 (Evergreen) not generated~~   | ✅ **FIXED** — now fetches menu items via `getMenuItemsForScreenServer()` | `screen/[token]/page.tsx`, `slideGenerator.ts` |
 | ~~`slideGenerator.ts` dead code~~       | ✅ **FIXED** — `page.tsx` now calls `generateScreenSlides()`               | `page.tsx:52-57`                            |
 | ~~`screenRenderer.ts` dead code~~       | ✅ **FIXED** — `page.tsx` imports `SCREEN_CONFIG` from it                  | `page.tsx:15`                               |
 | ~~No prices displayed~~                 | ✅ **FIXED v2.0** — `price` added to `ScreenSlide`, rendered in both modes | `campaigns.ts:401`, `ScreenDisplay.tsx:482` |
@@ -474,10 +475,10 @@ export default async function ScreenPage({ params, searchParams }) {
     const mode = searchParams?.mode || 'menu_board'; // default = menu_board
 
     // Same DAL calls for both modes
-    const screenData = await getScreenDataByToken(token);
+    const screenData = await getScreenDataByTokenServer(token);
     if (!screenData) return notFound();
 
-    const menuItems = await getMenuItemsForScreen(storeId, tenantId);
+    const menuItems = await getMenuItemsForScreenServer(storeId, tenantId);
 
     if (mode === 'highlights') {
         const slides = generateScreenSlides(/* ... */);
@@ -526,8 +527,8 @@ useEffect(() => {
 
 **$0 additional cost.** Menu Board uses the SAME data already fetched:
 
-- `getScreenDataByToken()` — same 2-3 reads, with valid projection context skipping the project summary read
-- `screen.menuProjection` — 0 reads when valid; `getMenuItemsForScreen()` fallback — usually 1 read after `baseProjectId`
+- `getScreenDataByTokenServer()` — same base read shape, with valid projection context skipping the project summary read and shared eligibility caching
+- `screen.menuProjection` — 0 reads when valid; `getMenuItemsForScreenServer()` fallback — usually 1 read after `baseProjectId`
 - No new collections, no new indexes, no new writes
 
 ### Testing Checklist (v2.0 additions)

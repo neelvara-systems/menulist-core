@@ -2,7 +2,7 @@
 
 ## Summary
 
-API Boundaries defines where CampaignCue exposes or consumes APIs: provider adapters, channel publishing, webhooks, imports, exports, agency/client integrations, analytics ingestion, and internal product APIs.
+API Boundaries defines where CampaignCue exposes or consumes APIs: internal product APIs, manual export/download, imports, agency/client handoff, analytics ingestion, and separately enabled provider adapters such as channel publishing or webhooks.
 
 ## Goals
 
@@ -18,8 +18,8 @@ API Boundaries defines where CampaignCue exposes or consumes APIs: provider adap
 | Adapter boundary | Google, Meta, WhatsApp, generation, video, and billing providers sit behind adapters. |
 | Versioning | Public or partner-facing API contracts include versioned paths or schema versions. |
 | Auth | API calls require workspace-scoped auth and role checks. |
-| Webhooks | Webhooks validate signatures, map to known workspace/provider records, and write idempotently. |
-| Rate limits | Expensive, public, and provider-facing operations are rate-limited. |
+| Webhooks | Webhooks are disabled in the active runtime; if enabled in a provider layer, they must validate signatures, map to known workspace/provider records, and write idempotently. |
+| Rate limits | Expensive, public, and any provider-facing operations are rate-limited. |
 | Manual fallback | API failure or unsupported action preserves download/export workflow. |
 
 ## Provider Posture Matrix

@@ -1,73 +1,84 @@
-import { FieldValue, Timestamp } from "firebase-admin/firestore";
-import * as functions from 'firebase-functions';
-import { HttpsError } from "firebase-functions/v2/https";
-import { firestoreAdmin } from "../firebaseAdmin";
-import { KB_ARTICLES_COLLECTION, KnowledgeBaseArticleType } from "../types";
-import { genrateEmbedding } from "../utils/aiUtils";
+import * as logger from 'firebase-functions/logger';
+import { HttpsError } from 'firebase-functions/v2/https';
+import { bumpAnswerlatticeCacheVersion, ANSWERLATTICE_CACHE_SOURCES } from '../answerlattice/cacheVersionManifest';
+import { firestoreAdmin } from '../firebaseAdmin';
+import {
+    ArticleEmbeddingInProgressError,
+    embedStoredAnswerlatticeArticle,
+    PermanentArticleEmbeddingError,
+} from './articleEmbedding';
 
 const REGENERATE_EMBEDDING_FAILED_CODE = 'ANSWERLATTICE_REGENERATE_EMBEDDING_FAILED';
 const REGENERATE_EMBEDDING_ARTICLE_NOT_FOUND_CODE = 'ANSWERLATTICE_REGENERATE_EMBEDDING_ARTICLE_NOT_FOUND';
+const REGENERATE_EMBEDDING_IN_PROGRESS_CODE = 'ANSWERLATTICE_REGENERATE_EMBEDDING_IN_PROGRESS';
 
 function boundedDiagnosticValue(value: unknown): string | number | null {
     if (typeof value === 'number' && Number.isFinite(value)) return value;
-    if (typeof value === 'string') {
-        const trimmed = value.trim();
-        return trimmed ? trimmed.slice(0, 80) : null;
-    }
+    if (typeof value === 'string') return value.slice(0, 120);
     return null;
 }
 
-function getRegenerateEmbeddingErrorContext(error: unknown): Record<string, string | number | null> {
-    const sourceError = error as { code?: unknown; status?: unknown; statusCode?: unknown };
+function getRegenerateEmbeddingErrorContext(articleId: string, error: unknown) {
+    const sourceError = error as { code?: unknown; status?: unknown };
+    const sourceErrorCode = boundedDiagnosticValue(sourceError?.code);
+    const sourceStatusCode = boundedDiagnosticValue(sourceError?.status);
     return {
+        articleIdLength: articleId.length,
         sourceErrorName: error instanceof Error ? (error.name || 'Error').slice(0, 80) : typeof error,
-        sourceErrorCode: boundedDiagnosticValue(sourceError?.code),
-        sourceErrorStatus: boundedDiagnosticValue(sourceError?.status || sourceError?.statusCode),
+        ...(sourceErrorCode ? { sourceErrorCode } : {}),
+        ...(sourceStatusCode ? { sourceStatusCode } : {}),
     };
 }
 
-export const regenerateEmbeddingLogic = async (articleId: string) => {
-    const logger = functions.logger;
-    logger.info('[regenerateEmbeddingLogic] Regenerating embedding', {
-        articleIdLength: articleId.length,
-    });
-
+export async function regenerateEmbeddingLogic(articleId: string) {
     try {
-        const articleRef = firestoreAdmin.collection(KB_ARTICLES_COLLECTION).doc(articleId);
-        const articleDoc = await articleRef.get();
-
-        if (!articleDoc.exists) {
-            throw new HttpsError('not-found', 'Article not found.', REGENERATE_EMBEDDING_ARTICLE_NOT_FOUND_CODE);
-        }
-
-        const article = articleDoc.data() as KnowledgeBaseArticleType;
-        const articleToEmbed = {
-            id: article.id,
-            categoryTitle: article.categoryTitle,
-            sectionTitle: article.sectionTitle || "",
-            title: article.title,
-            content: article.content
-        }
-        const embeddingVector = await genrateEmbedding(articleToEmbed);
-
-        await articleRef.update({ embedding: FieldValue.vector(embeddingVector), modifiedOn: Timestamp.now() });
-
-        logger.info('[regenerateEmbeddingLogic] Successfully regenerated embedding', {
-            articleIdLength: articleId.length,
+        const result = await embedStoredAnswerlatticeArticle({
+            articleId,
+            force: true,
+            source: 'answerlattice_regenerate_embedding',
         });
-        return { success: true, message: 'Embedding regenerated successfully.' };
-
-    } catch (error: any) {
-        logger.error('[regenerateEmbeddingLogic] Error regenerating embedding', {
-            articleIdLength: articleId.length,
-            failureCode: error instanceof HttpsError
-                ? boundedDiagnosticValue(error.details) || REGENERATE_EMBEDDING_FAILED_CODE
-                : REGENERATE_EMBEDDING_FAILED_CODE,
-            ...getRegenerateEmbeddingErrorContext(error),
+        await bumpAnswerlatticeCacheVersion(
+            firestoreAdmin,
+            ANSWERLATTICE_CACHE_SOURCES.KB,
+            result.scope.tId,
+            result.scope.sId,
+            {
+                reason: 'article_embedding_regenerate',
+                sourceId: result.articleId,
+                sourceType: 'kb_article',
+            },
+        );
+        logger.info('[Answerlattice KB] Article embedding regenerated', {
+            articleIdLength: result.articleId.length,
+            vectorDimensions: result.vectorDimensions,
         });
-        if (error instanceof HttpsError) {
-            throw error;
+        return {
+            success: true,
+            articleId: result.articleId,
+            vectorDimensions: result.vectorDimensions,
+        };
+    } catch (error) {
+        const failureCode = error instanceof PermanentArticleEmbeddingError
+            ? REGENERATE_EMBEDDING_ARTICLE_NOT_FOUND_CODE
+            : error instanceof ArticleEmbeddingInProgressError
+                ? REGENERATE_EMBEDDING_IN_PROGRESS_CODE
+                : REGENERATE_EMBEDDING_FAILED_CODE;
+        logger.error('[Answerlattice KB] Article embedding regeneration failed', {
+            failureCode,
+            ...getRegenerateEmbeddingErrorContext(articleId, error),
+        });
+        if (error instanceof PermanentArticleEmbeddingError) {
+            throw new HttpsError('not-found', 'Article not found.', {
+                code: REGENERATE_EMBEDDING_ARTICLE_NOT_FOUND_CODE,
+            });
         }
-        throw new HttpsError('internal', 'Could not regenerate embedding.', REGENERATE_EMBEDDING_FAILED_CODE);
+        if (error instanceof ArticleEmbeddingInProgressError) {
+            throw new HttpsError('aborted', 'Article embedding is already running.', {
+                code: REGENERATE_EMBEDDING_IN_PROGRESS_CODE,
+            });
+        }
+        throw new HttpsError('internal', 'Could not regenerate embedding.', {
+            code: REGENERATE_EMBEDDING_FAILED_CODE,
+        });
     }
-};
+}

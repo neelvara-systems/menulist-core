@@ -18,7 +18,10 @@ import {
     shouldPersistActivationSummary,
 } from '@lib/answerlattice/activationSummary';
 import { getAnswerlatticeBundleManifestDocId } from '@lib/answerlattice/compiledContext';
-import { getContextContentSummaryDocId } from '@lib/answerlattice/productSurfaceContent';
+import {
+    getContextContentSummaryDocId,
+    normalizeAnswerlatticeSurfaceContentSummary,
+} from '@lib/answerlattice/productSurfaceContent';
 import { normalizeAnswerlatticeScopeDocumentId, resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
@@ -149,7 +152,9 @@ export const GET = withAuth(async (_request: NextRequest, session) => {
             sId,
             storeData,
             subscription: legacySubscription,
-            contextSummary: contextSnap.exists ? contextSnap.data() as any : null,
+            contextSummary: contextSnap.exists
+                ? normalizeAnswerlatticeSurfaceContentSummary({ ...contextSnap.data(), id: contextSnap.id }, { tId, sId }, contextSnap.id)
+                : null,
             coverage: coverageSnap.exists ? coverageSnap.data() as any : null,
             trustMetrics: trustSnap.exists ? trustSnap.data() as any : null,
             compiledContext: buildCompiledContextReadiness(bundleManifestSnap.exists ? bundleManifestSnap.data() as any : null),

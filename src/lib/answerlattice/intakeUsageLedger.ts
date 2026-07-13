@@ -4,11 +4,19 @@ import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
 import {
     normalizeAnswerlatticeIntakeUsageLedgerId,
+    normalizeAnswerlatticeBillingScopeDocumentId,
     normalizeAnswerlatticeSubscriptionId,
 } from '@lib/answerlattice/billingDocumentIdBoundary';
+import { isAnswerlatticeSubscriptionInScope } from '@lib/answerlattice/billingScopeBoundary';
+import {
+    isAnswerlatticeIntakeLedgerInScope,
+    resolveAnswerlatticeIntakeRefundAllocation,
+} from '@lib/answerlattice/intakeUsageSettlement';
+import { isAnswerlatticeStoreInScope } from '@lib/answerlattice/sessionScope';
+import { getBillingPeriodKey, isValidBillingPeriodKey } from '@lib/billing/billingPeriod';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
-import { admin } from '@lib/firebase/firebaseAdmin';
 import type { FirestoreSubscriptionDoc } from '@type/razorpay';
+import { Timestamp } from 'firebase-admin/firestore';
 
 type AnswerlatticeScope = {
     tId: number;
@@ -44,6 +52,17 @@ type FinalizeUsageInput = {
     unitsCharged?: number;
 };
 
+export type AnswerlatticeIntakeUsageSettlementContext = {
+    ledger: Record<string, any>;
+    timestamp: FirebaseFirestore.Timestamp;
+    unitsReserved: number;
+};
+
+export type AnswerlatticeIntakeUsageSettlementWriter = (
+    transaction: FirebaseFirestore.Transaction,
+    context: AnswerlatticeIntakeUsageSettlementContext,
+) => Promise<void> | void;
+
 const db = answerlatticeFirestoreAdmin as FirebaseFirestore.Firestore;
 const ANSWERLATTICE_INTAKE_USAGE_ACTIONS = new Set<string>([
     AI_ACTIONS_TYPES.ANSWERLATTICE_INTAKE_OCR,
@@ -51,7 +70,7 @@ const ANSWERLATTICE_INTAKE_USAGE_ACTIONS = new Set<string>([
     AI_ACTIONS_TYPES.ANSWERLATTICE_INTAKE_EMBEDDING,
 ]);
 
-const now = () => admin.firestore.Timestamp.now();
+const now = () => Timestamp.now();
 
 const cleanText = (value: unknown, max = 300) => String(value || '')
     .replace(/[\u0000-\u001f\u007f]/g, ' ')
@@ -92,23 +111,8 @@ const toMillis = (value: any): number | null => {
     return null;
 };
 
-const getBillingPeriodKey = (cycleStartDate: any): number => {
-    const current = new Date();
-    const startMs = toMillis(cycleStartDate);
-    if (!startMs) return current.getFullYear() * 100 + (current.getMonth() + 1);
-
-    const start = new Date(startMs);
-    const anchorDay = start.getDate();
-    const lastDay = new Date(current.getFullYear(), current.getMonth() + 1, 0).getDate();
-    const effectiveAnchor = Math.min(anchorDay, lastDay);
-    const billingDate = current.getDate() >= effectiveAnchor
-        ? current
-        : new Date(current.getFullYear(), current.getMonth() - 1, 1);
-
-    return billingDate.getFullYear() * 100 + (billingDate.getMonth() + 1);
-};
-
 const isActiveSubscription = (subscription: Record<string, any>) => {
+    if ((subscription.pId ?? subscription.productId) !== PRODUCT_IDS.ANSWERLATTICE) return false;
     const status = String(subscription.status || '').toLowerCase();
     if (!['active', 'trialing'].includes(status)) return false;
     const endMs = toMillis(subscription.subscriptionEndDate || subscription.cycleEndDate || subscription.currentPeriodEnd);
@@ -116,15 +120,23 @@ const isActiveSubscription = (subscription: Record<string, any>) => {
 };
 
 async function resolveSubscriptionRef(scope: AnswerlatticeScope) {
-    const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(String(scope.sId));
+    const tenantScope = normalizeAnswerlatticeBillingScopeDocumentId(scope.tId);
+    const storeScope = normalizeAnswerlatticeBillingScopeDocumentId(scope.sId);
+    if (!tenantScope || !storeScope) {
+        throw new Error('Answerlattice workspace is not available.');
+    }
+    const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(storeScope.documentId);
     const storeSnap = await storeRef.get();
     if (!storeSnap.exists) {
         throw new Error('Answerlattice workspace is not available.');
     }
 
     const storeData = storeSnap.data() || {};
-    const storeTenantId = Number(storeData.tId || storeData.tenantId);
-    if (Number.isFinite(storeTenantId) && storeTenantId !== Number(scope.tId)) {
+    if (!isAnswerlatticeStoreInScope(
+        storeData,
+        { tenantId: tenantScope.numericId, storeId: storeScope.numericId },
+        storeSnap.id,
+    )) {
         throw new Error('Answerlattice workspace is not available.');
     }
 
@@ -138,14 +150,17 @@ async function resolveSubscriptionRef(scope: AnswerlatticeScope) {
     }
 
     const fallback = await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS)
-        .where('tenantId', '==', Number(scope.tId))
-        .where('storeId', '==', Number(scope.sId))
+        .where('tenantId', '==', tenantScope.numericId)
+        .where('storeId', '==', storeScope.numericId)
         .limit(5)
         .get();
 
     const match = fallback.docs
         .map((doc): Record<string, any> & { id: string } => ({ id: doc.id, ...(doc.data() as Record<string, any>) }))
-        .filter(data => Number(data.tId || data.tenantId) === Number(scope.tId) && Number(data.sId || data.storeId) === Number(scope.sId))
+        .filter(data => isAnswerlatticeSubscriptionInScope(data, {
+            tId: tenantScope.numericId,
+            sId: storeScope.numericId,
+        }))
         .find(isActiveSubscription);
 
     if (!match?.id) {
@@ -167,15 +182,36 @@ export async function reserveAnswerlatticeIntakeUsage(scope: AnswerlatticeScope,
         throw new Error('Unsupported Answerlattice intake usage action.');
     }
 
-    const unitsRequired = Math.max(0, getUnitCost(action));
+    const unitsRequired = getUnitCost(action);
+    const byteSize = Number(input.byteSize || 0);
+    if (!Number.isFinite(unitsRequired) || unitsRequired < 0 || !Number.isFinite(byteSize) || byteSize < 0) {
+        throw new Error('Answerlattice intake usage reservation is invalid.');
+    }
     const { storeRef, subscriptionRef } = await resolveSubscriptionRef(scope);
+    const tenantScope = normalizeAnswerlatticeBillingScopeDocumentId(scope.tId);
+    const storeScope = normalizeAnswerlatticeBillingScopeDocumentId(scope.sId);
+    if (!tenantScope || !storeScope) {
+        throw new Error('Answerlattice workspace is not available.');
+    }
     const ledgerRef = db.collection(DB_COLLECTIONS.ANSWERLATTICE_INTAKE_USAGE_LEDGER).doc();
     const timestamp = now();
 
     const result = await db.runTransaction(async (transaction) => {
-        const subscriptionSnap = await transaction.get(subscriptionRef);
-        if (!subscriptionSnap.exists) {
+        const [subscriptionSnap, storeSnap] = await Promise.all([
+            transaction.get(subscriptionRef),
+            transaction.get(storeRef),
+        ]);
+        if (!subscriptionSnap.exists || !storeSnap.exists) {
             throw new Error('An active Answerlattice subscription is required before running paid intake processing.');
+        }
+
+        const storeData = storeSnap.data() || {};
+        if (!isAnswerlatticeStoreInScope(
+            storeData,
+            { tenantId: tenantScope.numericId, storeId: storeScope.numericId },
+            storeSnap.id,
+        )) {
+            throw new Error('Answerlattice workspace is not available.');
         }
 
         const subscription = {
@@ -183,7 +219,10 @@ export async function reserveAnswerlatticeIntakeUsage(scope: AnswerlatticeScope,
             id: subscriptionSnap.id,
         } as FirestoreSubscriptionDoc;
 
-        if (Number(subscription.tId || subscription.tenantId) !== Number(scope.tId) || Number(subscription.sId || subscription.storeId) !== Number(scope.sId)) {
+        if (!isAnswerlatticeSubscriptionInScope(subscription, {
+            tId: tenantScope.numericId,
+            sId: storeScope.numericId,
+        })) {
             throw new Error('Answerlattice subscription scope does not match this workspace.');
         }
         if (!isActiveSubscription(subscription as any)) {
@@ -194,6 +233,20 @@ export async function reserveAnswerlatticeIntakeUsage(scope: AnswerlatticeScope,
         let topUpCredits = Number(subscription.topUpCredits || 0);
         const monthlyCreditsAllowance = Number(subscription.monthlyCreditsAllowance || 0);
         const billingPeriod = getBillingPeriodKey(subscription.cycleStartDate);
+        if (billingPeriod === null) {
+            throw new Error('Answerlattice subscription billing period is invalid.');
+        }
+
+        if (
+            !Number.isFinite(monthlyCredits)
+            || !Number.isFinite(topUpCredits)
+            || monthlyCredits < 0
+            || topUpCredits < 0
+            || !Number.isFinite(monthlyCreditsAllowance)
+            || monthlyCreditsAllowance < 0
+        ) {
+            throw new Error('Answerlattice subscription credit balance is invalid.');
+        }
 
         if (monthlyCreditsAllowance > 0 && subscription.creditsLastResetMonth !== billingPeriod) {
             monthlyCredits = monthlyCreditsAllowance;
@@ -216,17 +269,19 @@ export async function reserveAnswerlatticeIntakeUsage(scope: AnswerlatticeScope,
             modifiedOn: timestamp,
         }, { merge: true });
         transaction.set(storeRef, {
-            'answerlatticeSubscription.monthlyCredits': nextMonthlyCredits,
-            'answerlatticeSubscription.topUpCredits': nextTopUpCredits,
-            'answerlatticeSubscription.creditsLastResetMonth': billingPeriod,
-            'answerlatticeSubscription.updatedAt': timestamp,
+            answerlatticeSubscription: {
+                monthlyCredits: nextMonthlyCredits,
+                topUpCredits: nextTopUpCredits,
+                creditsLastResetMonth: billingPeriod,
+                updatedAt: timestamp,
+            },
         }, { merge: true });
 
         transaction.set(ledgerRef, {
             id: ledgerRef.id,
             pId: PRODUCT_IDS.ANSWERLATTICE,
-            tId: Number(scope.tId),
-            sId: Number(scope.sId),
+            tId: tenantScope.numericId,
+            sId: storeScope.numericId,
             jobId: cleanText(input.jobId, 160) || null,
             sourceId: cleanText(input.sourceId, 160) || null,
             action,
@@ -235,8 +290,9 @@ export async function reserveAnswerlatticeIntakeUsage(scope: AnswerlatticeScope,
             model: cleanText(input.model, 80) || null,
             fileName: cleanText(input.fileName, 180) || null,
             mimeType: cleanText(input.mimeType, 120) || null,
-            byteSize: Number(input.byteSize || 0),
+            byteSize,
             unitsReserved: unitsRequired,
+            billingPeriod,
             unitsCharged: 0,
             chargedMonthlyCredits,
             chargedTopUpCredits,
@@ -278,44 +334,139 @@ export async function reserveAnswerlatticeIntakeUsage(scope: AnswerlatticeScope,
     return result;
 }
 
-export async function finalizeAnswerlatticeIntakeUsage(_scope: AnswerlatticeScope, ledgerId: string, input: FinalizeUsageInput = {}) {
+export async function finalizeAnswerlatticeIntakeUsage(
+    scope: AnswerlatticeScope,
+    ledgerId: string,
+    input: FinalizeUsageInput = {},
+    settlementWriter?: AnswerlatticeIntakeUsageSettlementWriter,
+) {
     const normalizedLedgerId = normalizeAnswerlatticeIntakeUsageLedgerId(ledgerId);
-    if (!normalizedLedgerId) return;
-    await db.collection(DB_COLLECTIONS.ANSWERLATTICE_INTAKE_USAGE_LEDGER).doc(normalizedLedgerId).set({
-        status: 'succeeded',
-        unitsCharged: Number(input.unitsCharged || 0),
-        aiOperationId: input.aiOperationId || null,
-        promptTokenCount: Number(input.promptTokenCount || 0),
-        candidatesTokenCount: Number(input.candidatesTokenCount || 0),
-        tokenCountSource: input.tokenCountSource || 'none',
-        totalTokenCount: Number(input.totalTokenCount || 0),
-        metadata: sanitizeMetadata(input.metadata),
-        settledOn: now(),
-        modifiedOn: now(),
-    }, { merge: true });
+    if (!normalizedLedgerId) throw new Error('Answerlattice intake usage ledger is not available.');
+    const tenantScope = normalizeAnswerlatticeBillingScopeDocumentId(scope.tId);
+    const storeScope = normalizeAnswerlatticeBillingScopeDocumentId(scope.sId);
+    if (!tenantScope || !storeScope) throw new Error('Answerlattice workspace is not available.');
+    const ledgerRef = db.collection(DB_COLLECTIONS.ANSWERLATTICE_INTAKE_USAGE_LEDGER).doc(normalizedLedgerId);
+    await db.runTransaction(async (transaction) => {
+        const ledgerSnap = await transaction.get(ledgerRef);
+        if (!ledgerSnap.exists) throw new Error('Answerlattice intake usage ledger is not available.');
+        const ledger = ledgerSnap.data() || {};
+        if (!isAnswerlatticeIntakeLedgerInScope(ledger, { tId: tenantScope.numericId, sId: storeScope.numericId })) {
+            throw new Error('Answerlattice intake usage scope does not match this workspace.');
+        }
+        if (ledger.status === 'succeeded') return;
+        if (ledger.status !== 'reserved') {
+            throw new Error('Answerlattice intake usage reservation is not available for settlement.');
+        }
+        const unitsReserved = Number(ledger.unitsReserved);
+        if (!Number.isFinite(unitsReserved) || unitsReserved < 0) {
+            throw new Error('Answerlattice intake reservation credit evidence is invalid.');
+        }
+        const timestamp = now();
+        if (input.unitsCharged !== undefined && Number(input.unitsCharged) !== unitsReserved) {
+            throw new Error('Answerlattice intake settlement units do not match the reservation.');
+        }
+        if (settlementWriter) {
+            await settlementWriter(transaction, { ledger, timestamp, unitsReserved });
+        }
+        transaction.set(ledgerRef, {
+            status: 'succeeded',
+            unitsCharged: unitsReserved,
+            aiOperationId: input.aiOperationId || null,
+            promptTokenCount: Number(input.promptTokenCount || 0),
+            candidatesTokenCount: Number(input.candidatesTokenCount || 0),
+            tokenCountSource: input.tokenCountSource || 'none',
+            totalTokenCount: Number(input.totalTokenCount || 0),
+            metadata: {
+                ...sanitizeMetadata(ledger.metadata),
+                ...sanitizeMetadata(input.metadata),
+            },
+            settledOn: timestamp,
+            modifiedOn: timestamp,
+        }, { merge: true });
+    });
 }
 
 export async function refundAnswerlatticeIntakeUsage(scope: AnswerlatticeScope, ledgerId: string, reason: string) {
     const normalizedLedgerId = normalizeAnswerlatticeIntakeUsageLedgerId(ledgerId);
-    if (!normalizedLedgerId) return;
+    if (!normalizedLedgerId) throw new Error('Answerlattice intake usage ledger is not available.');
     const { storeRef, subscriptionRef } = await resolveSubscriptionRef(scope);
+    const tenantScope = normalizeAnswerlatticeBillingScopeDocumentId(scope.tId);
+    const storeScope = normalizeAnswerlatticeBillingScopeDocumentId(scope.sId);
+    if (!tenantScope || !storeScope) throw new Error('Answerlattice workspace is not available.');
     const ledgerRef = db.collection(DB_COLLECTIONS.ANSWERLATTICE_INTAKE_USAGE_LEDGER).doc(normalizedLedgerId);
     const timestamp = now();
 
     await db.runTransaction(async (transaction) => {
-        const [ledgerSnap, subscriptionSnap] = await Promise.all([
+        const [ledgerSnap, subscriptionSnap, storeSnap] = await Promise.all([
             transaction.get(ledgerRef),
             transaction.get(subscriptionRef),
+            transaction.get(storeRef),
         ]);
-        if (!ledgerSnap.exists || !subscriptionSnap.exists) return;
+        if (!ledgerSnap.exists || !subscriptionSnap.exists || !storeSnap.exists) {
+            throw new Error('Answerlattice intake refund evidence is not available.');
+        }
 
         const ledger = ledgerSnap.data() || {};
+        if (!isAnswerlatticeIntakeLedgerInScope(ledger, { tId: tenantScope.numericId, sId: storeScope.numericId })) {
+            throw new Error('Answerlattice intake usage scope does not match this workspace.');
+        }
         if (ledger.status !== 'reserved') return;
         const refundMonthly = Number(ledger.chargedMonthlyCredits || 0);
         const refundTopUp = Number(ledger.chargedTopUpCredits || 0);
         const subscription = subscriptionSnap.data() || {};
-        const nextMonthlyCredits = Number(subscription.monthlyCredits || 0) + refundMonthly;
-        const nextTopUpCredits = Number(subscription.topUpCredits || 0) + refundTopUp;
+        if (!isAnswerlatticeSubscriptionInScope(subscription, {
+            tId: tenantScope.numericId,
+            sId: storeScope.numericId,
+        })) {
+            throw new Error('Answerlattice subscription scope does not match this workspace.');
+        }
+        const storeData = storeSnap.data() || {};
+        if (!isAnswerlatticeStoreInScope(
+            storeData,
+            { tenantId: tenantScope.numericId, storeId: storeScope.numericId },
+            storeSnap.id,
+        )) {
+            throw new Error('Answerlattice workspace is not available.');
+        }
+        const currentBillingPeriod = getBillingPeriodKey(subscription.cycleStartDate);
+        if (currentBillingPeriod === null) {
+            throw new Error('Answerlattice subscription billing period is invalid.');
+        }
+        const storedBillingPeriod = Number(ledger.billingPeriod);
+        const reservedOnMillis = toMillis(ledger.reservedOn);
+        const reservedBillingPeriod = isValidBillingPeriodKey(storedBillingPeriod)
+            ? storedBillingPeriod
+            : reservedOnMillis
+                ? getBillingPeriodKey(subscription.cycleStartDate, new Date(reservedOnMillis))
+                : null;
+        if (reservedBillingPeriod === null) {
+            throw new Error('Answerlattice intake reservation billing period is invalid.');
+        }
+        const allocation = resolveAnswerlatticeIntakeRefundAllocation({
+            currentBillingPeriod,
+            currentMonthlyCredits: subscription.monthlyCredits || 0,
+            monthlyCreditsAllowance: subscription.monthlyCreditsAllowance || 0,
+            refundMonthlyCredits: refundMonthly,
+            refundTopUpCredits: refundTopUp,
+            reservedBillingPeriod,
+        });
+        if (!allocation) {
+            throw new Error('Answerlattice intake refund credit evidence is invalid.');
+        }
+        const currentMonthlyCredits = Number(subscription.monthlyCredits || 0);
+        const currentTopUpCredits = Number(subscription.topUpCredits || 0);
+        const nextMonthlyCredits = currentMonthlyCredits + allocation.refundedMonthlyCredits;
+        const nextTopUpCredits = currentTopUpCredits + allocation.refundedTopUpCredits;
+        if (
+            !Number.isFinite(nextMonthlyCredits)
+            || !Number.isFinite(nextTopUpCredits)
+            || currentMonthlyCredits < 0
+            || currentTopUpCredits < 0
+            || nextMonthlyCredits < 0
+            || nextTopUpCredits < 0
+        ) {
+            throw new Error('Answerlattice subscription credit balance is invalid.');
+        }
 
         transaction.set(subscriptionRef, {
             monthlyCredits: nextMonthlyCredits,
@@ -323,13 +474,19 @@ export async function refundAnswerlatticeIntakeUsage(scope: AnswerlatticeScope, 
             modifiedOn: timestamp,
         }, { merge: true });
         transaction.set(storeRef, {
-            'answerlatticeSubscription.monthlyCredits': nextMonthlyCredits,
-            'answerlatticeSubscription.topUpCredits': nextTopUpCredits,
-            'answerlatticeSubscription.updatedAt': timestamp,
+            answerlatticeSubscription: {
+                monthlyCredits: nextMonthlyCredits,
+                topUpCredits: nextTopUpCredits,
+                updatedAt: timestamp,
+            },
         }, { merge: true });
         transaction.set(ledgerRef, {
             status: 'failed_refunded',
             errorMessage: cleanText(reason, 500),
+            expiredMonthlyCredits: allocation.expiredMonthlyCredits,
+            refundedMonthlyCredits: allocation.refundedMonthlyCredits,
+            refundedTopUpCredits: allocation.refundedTopUpCredits,
+            refundBillingPeriod: currentBillingPeriod,
             refundedOn: timestamp,
             modifiedOn: timestamp,
         }, { merge: true });

@@ -7,6 +7,8 @@ import { isPlatformEntityBlocked } from "@lib/platform/entityBlock";
 import { DANGEROUS_KEYS, removeKeys } from "@lib/security/sanitizeObject";
 import { getEmailValidationError, validateEmail } from '@lib/validation/emailDomainValidator';
 import { UserDataType } from "@type/platform/user";
+import type LoginUserType from "@type/loginUser";
+import type { AuthSessionUserType } from "@type/loginUser";
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { DefaultSession, NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
@@ -14,6 +16,7 @@ import GoogleProvider from "next-auth/providers/google";
 import { signOut } from "next-auth/react";
 import { getAuthSessionLogContext, getBoundedAuthStringContext, logAuthDiagnostic, logAuthFailure } from "./authDiagnostics";
 import { consumePhoneOtpLoginToken, PhoneOtpError } from "./phoneOtp";
+import { normalizeAuthSessionStoreScope } from "./sessionUserBoundary";
 import { checkAccountLock, getLockoutMessage, logFailedLogin, logSuccessfulLogin } from "./security";
 import {
     addAuthPlatformUser,
@@ -35,9 +38,8 @@ if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
 }
 
 declare module "next-auth" {
-    interface Session extends DefaultSession {
-        user: UserDataType & DefaultSession["user"]
-        authIssuedAt?: number;
+    interface Session extends LoginUserType {
+        user: AuthSessionUserType & DefaultSession["user"];
     }
 }
 
@@ -262,10 +264,12 @@ export const authOptions: NextAuthOptions = {
             const timestamp = new Date().toISOString();
             if (Boolean(token?.email) && Boolean(token?.dbUser)) {
                 const dbUser: UserDataType = token?.dbUser;
-                const storeRole = Array.isArray(dbUser.stores)
-                    ? dbUser.stores.find((store: any) => store.storeId === dbUser.storeId)?.role
+                const sessionStoreMapping = Array.isArray(dbUser.stores)
+                    ? dbUser.stores.find((store: any) => store.storeId === dbUser.storeId)
                     : undefined;
-                const sessionStoreRole = storeRole || (dbUser as any).role;
+                const sessionStoreRole = sessionStoreMapping
+                    ? sessionStoreMapping.role
+                    : (dbUser as any).role;
 
                 // ✅ SECURITY FIX: Validate and sanitize dbUser to prevent prototype pollution
                 // Only assign known safe properties, reject dangerous keys
@@ -578,13 +582,7 @@ const getDatabaseUserForSession = (dbUser: any): any => {
         }
         : productAccounts;
     const safeProductAccounts = serializeAuthSessionValue(normalizedProductAccounts);
-    const storeIds = Array.from(new Set([
-        ...(Array.isArray(sanitized.storeIds) ? sanitized.storeIds : []),
-        ...(Array.isArray(sanitized.stores) ? sanitized.stores.map((store: any) => store?.storeId) : []),
-        sanitized.storeId,
-    ]
-        .map((storeId) => Number(storeId))
-        .filter((storeId) => Number.isSafeInteger(storeId) && storeId > 0)));
+    const sessionStoreScope = normalizeAuthSessionStoreScope(sanitized);
 
     // ✅ PERFORMANCE: Keep JWT cookie small
     // NextAuth JWT is stored in a cookie (header). If it gets too big, the app will fail with HTTP 431.
@@ -602,9 +600,9 @@ const getDatabaseUserForSession = (dbUser: any): any => {
         blocked: sanitized.blocked,
         blockDetails: sanitized.blockDetails,
         deleted: sanitized.deleted,
-        tenantId: sanitized.tenantId,
-        storeId: sanitized.storeId,
-        storeIds,
+        tenantId: sessionStoreScope.tenantId,
+        storeId: sessionStoreScope.storeId,
+        storeIds: sessionStoreScope.storeIds,
         pId: normalizeAuthProductId(sanitized.pId)
             || normalizeAuthProductId(sanitized.productId)
             || DEFAULT_PRODUCT_ID,
@@ -625,12 +623,7 @@ const getDatabaseUserForSession = (dbUser: any): any => {
         phoneLoginEnabled: sanitized.phoneLoginEnabled,
         sessionRevokedAt: serializeAuthTimestamp(sanitized.sessionRevokedAt),
         // Keep only what we actually use for role derivation
-        stores: Array.isArray(sanitized.stores)
-            ? sanitized.stores.map((s: any) => ({
-                storeId: s?.storeId,
-                role: s?.role,     // Single role per store (e.g., 'owner', 'manager', 'staff')
-            }))
-            : [],
+        stores: sessionStoreScope.stores,
     };
 }
 

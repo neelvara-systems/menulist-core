@@ -116,18 +116,20 @@
 | 3   | Added base project deletion guard in `deleteProject()` — blocks if non-expired special menu references base                           | Spec INV-1: "Base menu is NEVER modified" ✅                        | ✅ PASS |
 | 4   | Added default project guard in `updateProjectMetadata()` — blocks special menu from `isDefault: true`                                 | Prevents routing logic corruption ✅                                | ✅ PASS |
 
-### Logged for Pre-Flag-ON (Not Implemented Yet)
+### Production Controls
 
 | #   | Item                                                    | Priority | When                         |
 | --- | ------------------------------------------------------- | -------- | ---------------------------- |
-| L1  | Activation atomicity (Firestore transaction)            | High     | Before flag ON               |
-| L2  | Version bump (`menuVersion`) on activation/deactivation | High     | Before flag ON               |
-| L3  | 5-minute scheduler (more frequent than nightly)         | Medium   | Before production rollout    |
-| L4  | Overlay ID namespacing (`SM_` prefix)                   | Medium   | Before overlay mode enabled  |
-| L5  | Process expiries before activations in scheduler        | Medium   | Before scheduler enhancement |
+| #   | Control                                                  | Status | Evidence |
+| --- | -------------------------------------------------------- | ------ | -------- |
+| L1  | Activation atomicity (Firestore transaction)             | ✅ | Browser and Admin transaction helpers plus concurrent emulator cases |
+| L2  | Public/cache and initialized-screen version refresh      | ✅ | Shared public cache invalidation and scheduled screen-version touch |
+| L3  | Hourly dispatcher with one per-store local-nightly window | ✅ | Existing consolidated scheduler; no standalone high-frequency function |
+| L4  | Overlay runtime ID namespacing and legacy deduplication   | ✅ | `specialMenuOverlay.ts` plus pure projection regression |
+| L5  | Process expiries before due activations                   | ✅ | Deterministic scheduler transition ordering and Admin emulator |
 
 ## FINAL STATUS: READY
 
 ---
 
-**Last Updated:** February 21, 2026
+**Last Updated:** July 13, 2026

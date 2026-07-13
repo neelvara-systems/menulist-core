@@ -13,13 +13,11 @@ import {
     setDoc,
     Timestamp,
     where,
-    writeBatch,
 } from '@firebase/firestore';
 import { apiCallComposer } from '@lib/apiHelper/apiCallComposer';
 import getActiveSession from '@lib/auth/getActiveSession';
 import { bumpAnswerlatticeCacheVersion } from '@lib/answerlattice/cacheVersionClient';
 import { ANSWERLATTICE_CACHE_SOURCES } from '@lib/answerlattice/cacheVersionManifest';
-import { getAnswerlatticeScopeLogContext, logAnswerlatticeFailure } from '@lib/answerlattice/diagnostics';
 import {
     ANSWERLATTICE_FAQ_ARTICLE_LINK_LIMIT,
     ANSWERLATTICE_FAQ_MANAGEMENT_LIMIT,
@@ -52,9 +50,6 @@ const getArticleRef = (articleId: string) => {
     if (!normalizedArticleId) throw new Error('Invalid Answerlattice FAQ article id');
     return doc(answerlatticeFirebaseClient, ARTICLE_COLLECTION, normalizedArticleId);
 };
-
-type FaqArticleMaintenanceScope = { tId: number; sId: number };
-type FaqArticleMaintenanceInput = { id: string; tId?: unknown; sId?: unknown };
 
 export type AnswerlatticeFaqWriteResult = AnswerlatticeFaq & {
     success: true;
@@ -114,34 +109,6 @@ const requireScope = async () => {
         throw new Error('Answerlattice workspace is not available.');
     }
     return { tId: scope.tenantId, sId: scope.storeId };
-};
-
-const normalizeFaqArticleMaintenanceScope = (
-    source: Pick<FaqArticleMaintenanceInput, 'tId' | 'sId'>,
-): FaqArticleMaintenanceScope | null => {
-    const tId = normalizeAnswerlatticeScopeDocumentId(source.tId);
-    const sId = normalizeAnswerlatticeScopeDocumentId(source.sId);
-    if (!tId || !sId) return null;
-    return { tId, sId };
-};
-
-const resolveFaqArticleMaintenanceScope = async (
-    article: FaqArticleMaintenanceInput,
-    failureCode: string,
-): Promise<FaqArticleMaintenanceScope | null> => {
-    const explicitScope = normalizeFaqArticleMaintenanceScope(article);
-    if (explicitScope) return explicitScope;
-
-    try {
-        return await requireScope();
-    } catch (error) {
-        logAnswerlatticeFailure(failureCode, error, getAnswerlatticeScopeLogContext({
-            articleId: article.id,
-            tId: article.tId,
-            sId: article.sId,
-        }));
-        return null;
-    }
 };
 
 const getTimestampMillis = (value: any): number => {
@@ -260,53 +227,92 @@ export const saveFaq = async (input: unknown) => {
             const scope = await requireScope();
             const parsed = parseAnswerlatticeFaqSaveInput(input, scope);
             const faqRef = parsed.id ? getDocRef(parsed.id) : doc(getCollectionRef());
-            const existingSnap = parsed.id ? await getDoc(faqRef) : null;
-            const existing = existingSnap?.exists() ? existingSnap.data() as AnswerlatticeFaq : null;
             const nextStatus = parsed.status;
-            const isNew = !existing;
             const now = Timestamp.now();
-            const publishData = nextStatus === ANSWERLATTICE_FAQ_STATUS.PUBLISHED
-                ? {
-                    ...(existing?.publishedOn ? {} : { publishedOn: now }),
-                    lastReviewedOn: now,
-                    reviewRequestedOn: null,
-                }
-                : {};
-
-            const composedData = await answerlatticeRequestBodyComposer({
+            const baseComposedData = await answerlatticeRequestBodyComposer({
                 ...parsed,
                 id: faqRef.id,
-                ...(isNew ? { likes: 0, dislikes: 0 } : {}),
                 ...(nextStatus === ANSWERLATTICE_FAQ_STATUS.ARCHIVED ? { active: false } : {}),
-                ...publishData,
-            });
-
-            const batch = writeBatch(answerlatticeFirebaseClient);
-            batch.set(faqRef, composedData, { merge: true });
-
-            const previousArticleId = normalizeAnswerlatticeKbArticleId(existing?.articleId);
+            }, { isNew: false });
             const nextArticleId = normalizeAnswerlatticeKbArticleId(parsed.articleId);
-            if (previousArticleId && previousArticleId !== nextArticleId) {
-                batch.set(getArticleRef(previousArticleId), {
-                    faqIds: arrayRemove(faqRef.id),
-                    modifiedOn: Timestamp.now(),
-                }, { merge: true });
-            }
-            if (nextArticleId && nextStatus !== ANSWERLATTICE_FAQ_STATUS.ARCHIVED) {
-                batch.set(getArticleRef(nextArticleId), {
-                    faqIds: arrayUnion(faqRef.id),
-                    modifiedOn: Timestamp.now(),
-                }, { merge: true });
-            }
+            const transactionResult = await runTransaction(answerlatticeFirebaseClient, async (transaction) => {
+                const existingSnap = await transaction.get(faqRef);
+                const existing = existingSnap.exists() ? existingSnap.data() as AnswerlatticeFaq : null;
+                if (
+                    existing
+                    && (
+                        existing.pId !== 'AL'
+                        || normalizeAnswerlatticeScopeDocumentId(existing.tId) !== scope.tId
+                        || normalizeAnswerlatticeScopeDocumentId(existing.sId) !== scope.sId
+                    )
+                ) {
+                    throw new Error('FAQ is outside this Answerlattice workspace.');
+                }
+                const previousArticleId = normalizeAnswerlatticeKbArticleId(existing?.articleId);
+                if (existing?.articleId != null && existing.articleId !== '' && !previousArticleId) {
+                    throw new Error('FAQ has an invalid stored article link and cannot be updated safely.');
+                }
+                const linkedArticleIds = Array.from(new Set([
+                    previousArticleId,
+                    nextArticleId,
+                ].filter((articleId): articleId is string => Boolean(articleId))));
+                const linkedArticleRefs = linkedArticleIds.map(getArticleRef);
+                const linkedArticleDocs = await Promise.all(linkedArticleRefs.map(articleRef => transaction.get(articleRef)));
+                linkedArticleDocs.forEach((articleDoc, index) => {
+                    const linkedArticleId = linkedArticleIds[index];
+                    if (!articleDoc.exists()) throw new Error(`Linked article ${linkedArticleId} was not found.`);
+                    const linkedArticle = articleDoc.data();
+                    if (
+                        linkedArticle.pId !== 'AL'
+                        || normalizeAnswerlatticeScopeDocumentId(linkedArticle.tId) !== scope.tId
+                        || normalizeAnswerlatticeScopeDocumentId(linkedArticle.sId) !== scope.sId
+                    ) {
+                        throw new Error(`Linked article ${linkedArticleId} is outside this workspace.`);
+                    }
+                });
 
-            await batch.commit();
-            await bumpFaqVersion(scope, isNew ? 'faq_create' : 'faq_update', faqRef.id);
+                const isNew = !existing;
+                const composedData = {
+                    ...baseComposedData,
+                    ...(isNew ? {
+                        createdBy: baseComposedData.modifiedBy,
+                        createdOn: baseComposedData.modifiedOn,
+                        likes: 0,
+                        dislikes: 0,
+                    } : {}),
+                    ...(nextStatus === ANSWERLATTICE_FAQ_STATUS.PUBLISHED ? {
+                        ...(existing?.publishedOn ? {} : { publishedOn: now }),
+                        lastReviewedOn: now,
+                        reviewRequestedOn: null,
+                    } : {}),
+                };
+                transaction.set(faqRef, composedData, { merge: true });
+
+                const shouldRemovePrevious = Boolean(
+                    previousArticleId
+                    && (previousArticleId !== nextArticleId || nextStatus === ANSWERLATTICE_FAQ_STATUS.ARCHIVED)
+                );
+                if (previousArticleId && shouldRemovePrevious) {
+                    transaction.update(getArticleRef(previousArticleId), {
+                        faqIds: arrayRemove(faqRef.id),
+                        modifiedOn: now,
+                    });
+                }
+                if (nextArticleId && nextStatus !== ANSWERLATTICE_FAQ_STATUS.ARCHIVED) {
+                    transaction.update(getArticleRef(nextArticleId), {
+                        faqIds: arrayUnion(faqRef.id),
+                        modifiedOn: now,
+                    });
+                }
+                return { composedData, isNew };
+            });
+            await bumpFaqVersion(scope, transactionResult.isNew ? 'faq_create' : 'faq_update', faqRef.id);
             await revalidateAnswerlatticePublicClientCache(scope, ['faqs', 'kb', 'context'], 'saveFaq');
             return {
-                ...composedData,
+                ...transactionResult.composedData,
                 id: faqRef.id,
                 success: true,
-                operation: isNew ? 'create' : 'update',
+                operation: transactionResult.isNew ? 'create' : 'update',
             } satisfies AnswerlatticeFaqWriteResult;
         },
         input,
@@ -322,24 +328,45 @@ export const archiveFaq = async (faqId: string) => {
 
             const scope = await requireScope();
             const faqRef = getDocRef(normalizedFaqId);
-            const snap = await getDoc(faqRef);
-            if (!snap.exists()) throw new Error('FAQ not found.');
-            const existing = snap.data() as AnswerlatticeFaq;
             const composedData = await answerlatticeRequestBodyComposer({
                 status: ANSWERLATTICE_FAQ_STATUS.ARCHIVED,
                 active: false,
+                pId: 'AL',
+                tId: scope.tId,
+                sId: scope.sId,
+            }, { isNew: false });
+            await runTransaction(answerlatticeFirebaseClient, async (transaction) => {
+                const snap = await transaction.get(faqRef);
+                if (!snap.exists()) throw new Error('FAQ not found.');
+                const existing = snap.data() as AnswerlatticeFaq;
+                if (
+                    existing.pId !== 'AL'
+                    || normalizeAnswerlatticeScopeDocumentId(existing.tId) !== scope.tId
+                    || normalizeAnswerlatticeScopeDocumentId(existing.sId) !== scope.sId
+                ) {
+                    throw new Error('FAQ is outside this Answerlattice workspace.');
+                }
+                const linkedArticleId = normalizeAnswerlatticeKbArticleId(existing.articleId);
+                const linkedArticleRef = linkedArticleId ? getArticleRef(linkedArticleId) : null;
+                const linkedArticleSnap = linkedArticleRef ? await transaction.get(linkedArticleRef) : null;
+                if (linkedArticleSnap?.exists()) {
+                    const linkedArticle = linkedArticleSnap.data();
+                    if (
+                        linkedArticle.pId !== 'AL'
+                        || normalizeAnswerlatticeScopeDocumentId(linkedArticle.tId) !== scope.tId
+                        || normalizeAnswerlatticeScopeDocumentId(linkedArticle.sId) !== scope.sId
+                    ) {
+                        throw new Error('Linked article is outside this Answerlattice workspace.');
+                    }
+                }
+                transaction.set(faqRef, composedData, { merge: true });
+                if (linkedArticleRef && linkedArticleSnap?.exists()) {
+                    transaction.update(linkedArticleRef, {
+                        faqIds: arrayRemove(normalizedFaqId),
+                        modifiedOn: Timestamp.now(),
+                    });
+                }
             });
-
-            const batch = writeBatch(answerlatticeFirebaseClient);
-            batch.set(faqRef, composedData, { merge: true });
-            const linkedArticleId = normalizeAnswerlatticeKbArticleId(existing.articleId);
-            if (linkedArticleId) {
-                batch.set(getArticleRef(linkedArticleId), {
-                    faqIds: arrayRemove(normalizedFaqId),
-                    modifiedOn: Timestamp.now(),
-                }, { merge: true });
-            }
-            await batch.commit();
             await bumpFaqVersion(scope, 'faq_archive', normalizedFaqId);
             await revalidateAnswerlatticePublicClientCache(scope, ['faqs', 'kb', 'context'], 'archiveFaq');
             return {
@@ -353,80 +380,6 @@ export const archiveFaq = async (faqId: string) => {
         },
         { faqId: normalizedFaqId },
         'archiveFaq',
-    );
-};
-
-export const markFaqsNeedReviewForArticle = async (article: FaqArticleMaintenanceInput) => {
-    return await apiCallComposer(
-        async () => {
-            const scope = await resolveFaqArticleMaintenanceScope(
-                article,
-                'answerlattice_faq_article_review_scope_resolve_failed',
-            );
-            if (!scope) return { updatedCount: 0 };
-            const normalizedArticleId = normalizeAnswerlatticeKbArticleId(article.id);
-            if (!normalizedArticleId) return { updatedCount: 0 };
-
-            const snapshot = await getDocs(query(
-                getCollectionRef(),
-                where('tId', '==', scope.tId),
-                where('sId', '==', scope.sId),
-                where('articleId', '==', normalizedArticleId),
-                where('active', '==', true),
-                limit(ANSWERLATTICE_FAQ_ARTICLE_LINK_LIMIT),
-            ));
-            if (snapshot.empty) return { updatedCount: 0 };
-
-            const batch = writeBatch(answerlatticeFirebaseClient);
-            const updateData = await answerlatticeRequestBodyComposer({
-                status: ANSWERLATTICE_FAQ_STATUS.NEEDS_REVIEW,
-                reviewRequestedOn: Timestamp.now(),
-            });
-            snapshot.docs.forEach(item => batch.set(item.ref, updateData, { merge: true }));
-            await batch.commit();
-            await bumpFaqVersion(scope, 'article_changed_mark_faq_review', normalizedArticleId);
-            await revalidateAnswerlatticePublicClientCache(scope, ['faqs', 'kb', 'context'], 'markFaqsNeedReviewForArticle');
-            return { updatedCount: snapshot.size };
-        },
-        article,
-        'markFaqsNeedReviewForArticle',
-    );
-};
-
-export const archiveFaqsForArticle = async (article: FaqArticleMaintenanceInput) => {
-    return await apiCallComposer(
-        async () => {
-            const scope = await resolveFaqArticleMaintenanceScope(
-                article,
-                'answerlattice_faq_article_archive_scope_resolve_failed',
-            );
-            if (!scope) return { updatedCount: 0 };
-            const normalizedArticleId = normalizeAnswerlatticeKbArticleId(article.id);
-            if (!normalizedArticleId) return { updatedCount: 0 };
-
-            const snapshot = await getDocs(query(
-                getCollectionRef(),
-                where('tId', '==', scope.tId),
-                where('sId', '==', scope.sId),
-                where('articleId', '==', normalizedArticleId),
-                where('active', '==', true),
-                limit(ANSWERLATTICE_FAQ_ARTICLE_LINK_LIMIT),
-            ));
-            if (snapshot.empty) return { updatedCount: 0 };
-
-            const batch = writeBatch(answerlatticeFirebaseClient);
-            const updateData = await answerlatticeRequestBodyComposer({
-                status: ANSWERLATTICE_FAQ_STATUS.ARCHIVED,
-                active: false,
-            });
-            snapshot.docs.forEach(item => batch.set(item.ref, updateData, { merge: true }));
-            await batch.commit();
-            await bumpFaqVersion(scope, 'article_deleted_archive_faqs', normalizedArticleId);
-            await revalidateAnswerlatticePublicClientCache(scope, ['faqs', 'kb', 'context'], 'archiveFaqsForArticle');
-            return { updatedCount: snapshot.size };
-        },
-        article,
-        'archiveFaqsForArticle',
     );
 };
 

@@ -10,6 +10,7 @@ import {
 import { getAnswerlatticeCacheVersionServer } from './cacheVersionServer';
 import { normalizeAnswerlatticeCanonicalAnswerId } from './governanceIdBoundary';
 import { normalizeAnswerlatticeKbArticleId } from './kbArticleIdBoundary';
+import { normalizeAnswerlatticeScopeDocumentId } from './sessionScope';
 
 const FRESHNESS_CLOCK_SKEW_MS = 1000;
 
@@ -84,7 +85,11 @@ export const isCachedCanonicalAnswerFresh = async ({
     if (!doc.exists) return false;
 
     const answer = doc.data() || {};
-    if (Number(answer.tId) !== Number(tId) || Number(answer.sId) !== Number(sId)) return false;
+    if (
+        answer.pId !== 'AL'
+        || normalizeAnswerlatticeScopeDocumentId(answer.tId) !== normalizeAnswerlatticeScopeDocumentId(tId)
+        || normalizeAnswerlatticeScopeDocumentId(answer.sId) !== normalizeAnswerlatticeScopeDocumentId(sId)
+    ) return false;
     if (answer.status !== 'active') return false;
     if (answer.governance?.driftFlag || answer.governance?.reviewRequired) return false;
     if (isModifiedAfterCache(answer.modifiedOn, cachedAtMs)) return false;
@@ -116,7 +121,11 @@ const isCachedArticleReferenceFresh = async (
     if (!doc.exists) return false;
 
     const article = doc.data() || {};
-    if (Number(article.tId) !== Number(tId) || Number(article.sId) !== Number(sId)) return false;
+    if (
+        article.pId !== 'AL'
+        || normalizeAnswerlatticeScopeDocumentId(article.tId) !== normalizeAnswerlatticeScopeDocumentId(tId)
+        || normalizeAnswerlatticeScopeDocumentId(article.sId) !== normalizeAnswerlatticeScopeDocumentId(sId)
+    ) return false;
     if (article.status !== 'published') return false;
     if (article.active === false || article.deleted === true) return false;
     if (isModifiedAfterCache(article.modifiedOn, cachedAtMs)) return false;
@@ -143,6 +152,17 @@ export const isCachedSearchResultFresh = async (
             currentSourceVersions,
         });
     }
+
+    // Non-canonical cache entries must also yield to newly approved or changed
+    // canonical truth. Governance version changes invalidate FAQ/RAG history.
+    const canonicalManifestFresh = await isVersionManifestFresh(
+        ANSWERLATTICE_CACHE_SOURCES.CANONICAL,
+        tId,
+        sId,
+        cachedResult.sourceVersions,
+        currentSourceVersions,
+    );
+    if (canonicalManifestFresh === false) return false;
 
     const references = Array.isArray(cachedResult.references) ? cachedResult.references : [];
     if (references.length === 0) {

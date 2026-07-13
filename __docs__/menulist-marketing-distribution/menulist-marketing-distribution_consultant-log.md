@@ -1423,3 +1423,201 @@ The founder requested deep internet research into growth systems used by other r
 - No product runtime, website route, public copy, locale, Firebase target, provider account, outreach, review request, paid campaign, build, or deploy was changed.
 - Real businesses, sender identity, proof permission, and external account decisions remain founder-controlled.
 - Runtime source-to-day-30 work remains gated until the manual cohort demonstrates a repeated founder decision need.
+
+---
+
+## July 10, 2026 - Growth Gap Operating Packs Completed
+
+### Context
+
+The founder instructed Codex to do the necessary follow-through after the current market growth systems gap audit.
+
+### Decisions
+
+- Reused SignalDesk Evidence Packets for pre-outreach source facts and kept post-activation customer proof in a separate marketing operating pack.
+- Created a complete proof contract covering eligibility, states, packet worksheet, item-level permission, activation/day-30 interviews, claim classes, neutral independent-review requests, first owner clinic, AssetOS/SignalDesk handoff, revocation, and takedown.
+- Prepared the Google/Apple/Bing/read-only AI distribution dossier now without waiting for provider integration authorization.
+- Kept actual provider applications behind five permissioned activations, three day-30 active businesses, repeated owner demand, and founder/legal/security/cost ownership.
+- Preserved the existing reseller, partner, SignalDesk, Activation Concierge, and ten-business board boundaries; no duplicate lead, CRM, partner, or evidence runtime was added.
+- Completed the first daily cap of five public evidence-only Bengaluru candidate reviews in the SignalDesk trial board: three Pass, one Unsure, and one Fail. No contact fields, outreach permission, or inferred consent were recorded.
+
+### Files Added Or Updated
+
+- `menulist-marketing-distribution_pilot-proof-and-owner-learning-pack.md`
+- `menulist-marketing-distribution_publisher-ai-distribution-readiness.md`
+- `menulist-marketing-distribution_market-growth-gap-audit-2026-07-10.md`
+- `menulist-marketing-distribution_bengaluru-ten-business-pilot.md`
+- `menulist-marketing-distribution_action-register.md`
+- `menulist-marketing-distribution_consultant-log.md`
+- `README.md`
+- `../menulist-signaldesk/menulist-signaldesk_bengaluru-activation-trial-operating-pack-2026-07-10.md`
+- `../menulist-signaldesk/menulist-signaldesk_action-register.md`
+
+### Boundaries
+
+- No real business was added, contacted, interviewed, or used as proof.
+- No review profile, provider account, API request, OAuth client, external send, public asset, runtime code, Firebase target, build, or deploy was created.
+- The immediate external blocker remains a permissioned owner introduction and sender identity.
+
+---
+
+## July 11, 2026 - Cross-Platform Distribution Workflow Research
+
+### Context
+
+The founder asked for deep internet research into the workflow people actually follow for distribution, after the earlier X, Reddit, Instagram, YouTube, Google, competitor, and Bengaluru channel research.
+
+### Decisions
+
+- Separated channel choice from operating workflow: the repeated market sequence is narrow audience -> canonical proof -> channel-native derivative -> trusted distribution -> one measurable next action -> activation -> learning -> proof/referral/review reuse.
+- Confirmed that founder-led first-customer work remains manual, researched, value-first, and outcome-led before purchased lists or broad automation.
+- Confirmed that content operators create one pillar asset, plan derivatives, publish natively, engage in replies, and connect performance to downstream business outcomes rather than copying one post everywhere.
+- Confirmed that X and Reddit work as conversation/listening systems first; Reddit explicitly favors listening, useful comments, community-rule fit, and organic proof before paid amplification.
+- Confirmed that creator workflows require audience fit, portfolio review, a clear brief, terms/rights/disclosure, native publishing, result review, and permission before paid amplification.
+- Confirmed that YouTube requires audience-led repeatable formats and supported link routes; Shorts description/comment URLs are not clickable.
+- Confirmed that Google/Profile is an activation and current-truth surface with measurable menu, website, call, direction, booking, and other eligible interactions, not merely a content feed.
+- Kept Product Hunt as a later proof/feedback event and paid media behind proven organic proof, measurable activation, approved budget, and stop rules.
+- Cross-checked current SignalDesk runtime: the Content Distribution Rail and Trust Partner Rail already cover the required internal primitives, so no new runtime module or collection is justified before a real distribution run.
+
+### Files Added Or Updated
+
+- `menulist-marketing-distribution_distribution-workflow-research-2026-07-11.md`
+- `menulist-marketing-distribution_distribution-workflow-brief-2026-07-11.html`
+- `menulist-marketing-distribution_execution-plan.md`
+- `menulist-marketing-distribution_action-register.md`
+- `menulist-marketing-distribution_consultant-log.md`
+- `README.md`
+
+### Current Next Action
+
+1. Founder supplies one real permissioned business or approved partner introduction.
+2. Founder confirms the exact sender/manual identity for that contact path.
+3. Complete one private preview and one two-surface activation.
+4. Obtain item-level owner permission for the first proof packet.
+5. Use the existing SignalDesk content and trust-partner rails to prepare one approval-gated derivative set and measured distribution run.
+
+### Boundaries
+
+- No business was contacted, no external account was created, no content was published, and no provider or media spend was enabled.
+- No runtime code, collection, API, feature flag, public website route, Firebase target, build, or deploy was changed.
+- Public sources remain research inputs rather than MenuList proof or outreach authority.
+
+---
+
+## July 11, 2026 - Distribution Research Converted Into First-Run Operations
+
+### Context
+
+The founder instructed Codex to do the necessary follow-through after the cross-platform distribution workflow research.
+
+### Decisions
+
+- Mapped the first customer-proof distribution run to the exact existing SignalDesk content source, canonical asset, CTA, channel draft, approval, calendar, performance, audit, and kill-switch contracts.
+- Limited the first derivative set to founder LinkedIn, founder X, short-video, full-case, and trust-partner brief jobs; Reddit remains listening-only and email/newsletter/blog/paid drafts remain excluded.
+- Kept the canonical content asset on `hold` until a permissioned activation, two-surface outcome, item-level proof permission, claim review, CTA readiness, and revocation owner all pass.
+- Defined manual publication ledger, compact performance interpretation, continue/narrow/hold/stop rules, and proof revocation propagation without adding runtime fields or collections.
+- Prepared a weekly read-only distribution watch for Monday 9:00 AM Asia/Kolkata with official-source priority, materiality gates, adopt/delay/reject output, and explicit external-mutation blocks.
+- Activated the supported Codex recurring automation as `menulist-distribution-watch`. No raw cron, launchd, GitHub Actions, or hand-written automation file was created as a workaround.
+
+### Files Added Or Updated
+
+- `menulist-marketing-distribution_first-proof-distribution-run-operating-pack.md`
+- `menulist-marketing-distribution_weekly-distribution-watch.md`
+- `menulist-marketing-distribution_execution-plan.md`
+- `menulist-marketing-distribution_action-register.md`
+- `menulist-marketing-distribution_consultant-log.md`
+- `README.md`
+- `../menulist-signaldesk/menulist-signaldesk_action-register.md`
+- `../menulist-signaldesk/signaldesk-content-distribution-rail/README.md`
+
+### Verification
+
+- `npm run docs:check-links -- --root __docs__/menulist-marketing-distribution` passed with 0 broken links and 0 naming violations.
+- Scoped `git diff --check` passed for the MenuList marketing distribution docs and the touched SignalDesk distribution references.
+- Targeted claim-boundary scan across the first-proof run pack, weekly watch spec, workflow research, and HTML brief found only negative guardrail wording.
+- Scoped diff review confirmed this remains docs-only distribution planning with no runtime, Firebase, public-route, send, publish, or provider changes.
+- Checked for an existing local Codex automation directory before activation; none existed, so no duplicate watch was created.
+- Viewed the saved Codex automation card for `menulist-distribution-watch` after activation.
+
+### Boundaries
+
+- No business was contacted and no proof was created from a real business.
+- No external content was published, partner was approached, account was modified, or spend was enabled.
+- No application runtime, Firestore collection, API, feature flag, Firebase target, build, or deploy was changed.
+- Live execution still requires one permissioned owner/partner path, sender/manual identity, two-surface activation, item-level proof permission, and founder publication approval.
+
+---
+
+## July 11, 2026 - Current AI Revenue Workflow Deep Research
+
+### Context
+
+The founder requested a renewed deep internet review of how teams currently use AI to drive sales, marketing, and distribution, followed by the necessary repo-side cross-check and operating plan.
+
+### Research Coverage
+
+- account and meeting research;
+- first-party and third-party signal orchestration;
+- enrichment, fit, intent, and prioritization;
+- evidence-grounded outbound preparation;
+- inbound qualification and routing;
+- meeting notes, conversation intelligence, and proposed CRM updates;
+- standard proposals, quotes, and commercial rules;
+- content supply chains, creative derivatives, and localization;
+- creator/partner matching and amplification;
+- paid-media optimization;
+- Google and AI-search discovery readiness;
+- activation, lifecycle, retention, expansion, and referral;
+- AI contribution attribution, evaluation, governance, and safe pause;
+- current practitioner uses and failure reports from seller and marketer discussions.
+
+### Decisions
+
+- Confirmed the market is moving from isolated AI writing tools toward shared-context, closed-loop revenue workflows.
+- Confirmed the strongest current uses are research, preparation, classification, summarization, repurposing, follow-up drafting, recordkeeping, and outcome analysis.
+- Confirmed autonomous signal-to-send outbound remains one of the highest-risk and least universally mature motions because AI scales weak ICP, timing, proof, source-rights, and sender-health mistakes.
+- Confirmed creator platforms use AI primarily for fit recommendations, translation, derivative creation, delivery optimization, and paid amplification while human authenticity, rights, disclosure, and commercial judgment remain necessary.
+- Confirmed Google continues to recommend ordinary helpful-content and technical SEO fundamentals for AI search features rather than special GEO tricks.
+- Cross-checked SignalDesk runtime and docs: the system already has the required account, source, evidence, AI evaluation, policy, budget, approval, content, partner, opportunity, offer, activation, attribution, audit, and kill-switch foundations.
+- Rejected a new generic AI agent, CRM, social publisher, campaign optimizer, or collection before real proof.
+- Adopted shadow mode as the current trial posture: AI prepares; founder accepts, edits, rejects, or holds; no AI send occurs.
+- Kept meeting/transcript, calendar, proposal, payment, creator scoring, lifecycle automation, paid optimization, and new AI-contribution summaries evidence-gated.
+- Preserved the immediate external blocker: one permissioned owner or partner introduction plus exact sender/manual identity.
+
+### Files Added Or Updated
+
+- `../menulist-signaldesk/menulist-signaldesk_ai-sales-marketing-distribution-research-2026-07-11.md`
+- `../menulist-signaldesk/menulist-signaldesk_ai-revenue-workflow-market-brief-2026-07-11.html`
+- `../menulist-signaldesk/README.md`
+- `../menulist-signaldesk/menulist-signaldesk_action-register.md`
+- `menulist-marketing-distribution_execution-plan.md`
+- `menulist-marketing-distribution_action-register.md`
+- `menulist-marketing-distribution_consultant-log.md`
+- `README.md`
+
+### Current Next Action
+
+1. Founder supplies one permissioned Bengaluru business or approved trust-partner introduction.
+2. Founder confirms the sender/manual identity and response owner.
+3. SignalDesk prepares the first AI account recommendation in shadow mode.
+4. MenuList prepares a private preview and completes a two-surface activation.
+5. Record AI acceptance, edits, rejected facts, founder attention, objections, cost, and outcome.
+6. Add runtime only if repeated evidence shows an existing record or summary cannot represent the workflow.
+
+### Verification
+
+- `npm run verify:signaldesk` passed with 2,221 checks.
+- SignalDesk and marketing-distribution documentation link checks both passed with 0 broken links and 0 naming violations.
+- Scoped `git diff --check` passed across the two new artifacts and all updated SignalDesk/marketing operating docs.
+- The HTML contract contains the required Overview, Competitors, Guidance, and Sources sections, 24 direct external sources, and responsive styling.
+- Chrome desktop and small-screen renders were visually reviewed; responsive overflow hardening was added after the first small-screen capture, and the corrected render passed.
+- Chrome print-to-PDF smoke produced an eight-page local review artifact; no PDF was added to the repo.
+- The existing `menulist-distribution-watch` automation remains active and was not duplicated or widened in this pass.
+
+### Boundaries
+
+- No business was contacted and no customer data was used.
+- No external content was published, account was changed, creator or partner was approached, or spend was enabled.
+- No provider, CRM, calendar, proposal, payment, ad, or social platform was connected.
+- No runtime code, API, collection, feature flag, Firebase target, build, or deploy was changed.
+- Vendor and practitioner sources remain directional market evidence, not MenuList performance proof or outreach authority.

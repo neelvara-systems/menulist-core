@@ -1,9 +1,9 @@
 # Automatic Knowledge Creation — Firebase Operations
 
 > **Status:** IMPLEMENTED — operations contract updated
-> **Version:** 1.1.4
+> **Version:** 1.2.0
 > **Created:** 2026-03-09
-> **Last Updated:** 2026-06-29
+> **Last Updated:** 2026-07-11
 > **Audience:** Developers
 
 ---
@@ -41,17 +41,23 @@
 
 **Total per draft: 4-5 reads + 3 writes**
 
-### §2.2 — Draft Approval (Client-side — per approval)
+### §2.2 — Draft Approval (server governance transaction — per approval)
 
 | Operation | Collection | Type | Count | Purpose |
 |-----------|-----------|------|-------|---------|
-| Read proposal | `answerlattice_mutation_proposals` | R | 1 | Fetch draft content |
-| Create canonical answer | `answerlattice_canonical_answers` | W | 1 | New answer from draft |
-| Create search index | `answerlattice_entity_search_index` | W | 1 | Index for retrieval |
-| Update proposal status | `answerlattice_mutation_proposals` | W | 1 | Mark as implemented |
-| Write audit log | `answerlattice_audit_logs` | W | 1 | Log approval event |
+| Read proposal | `answerlattice_mutation_proposals` | R | 1 | Fetch and validate stored draft/proposal state |
+| Read target answer | `answerlattice_canonical_answers` | R | 0-1 | Load before-state for updates and rollback evidence |
+| Read latest release | `answerlattice_releases` | R | 1 bounded query | Bind validation to the current active product version |
+| Read bound entities | `answerlattice_entities` | R | 1-25 | Prove every answer entity exists in the workspace |
+| Read active answers | `answerlattice_canonical_answers` | R | 1 bounded query, max 500 | Reject overlapping active scope/version windows |
+| Create/update canonical answer | `answerlattice_canonical_answers` | W | 1 | Apply reviewed answer truth |
+| Update proposal status | `answerlattice_mutation_proposals` | W | 1 | Mark as implemented with server actor/review metadata |
+| Write audit log | `answerlattice_audit_logs` | W | 1 | Store before/after answer snapshot and proposal link |
+| Increment canonical cache version | `answerlattice_cacheVersions` | W | 1 | Prevent stale canonical cache hits |
+| Increment compiled source version | `platformSummary/sourceVersions_*` | W | 1 | Mark canonical source change |
+| Mark compiled bundle stale | `platformSummary/bundleManifest_*` | W | 1 | Prevent stale bundle from appearing current |
 
-**Total per approval: 1 read + 4 writes**
+**Typical total per approval: 4 bounded read groups plus one read per bound entity and 6 writes.** A new-answer idempotency check can add one answer-document read. All approval writes commit in one Admin Firestore transaction.
 
 ### §2.3 — Draft Regeneration (API route — manual trigger)
 
@@ -67,7 +73,7 @@
 
 **Total per regeneration: 4 reads/queries + 3 writes**
 
-Manual regeneration route guard changes on 2026-06-28 added no Firestore reads/writes. The route now resolves scope, checks safe mode, and applies the AI operation rate limit before permission, request-body parsing, proposal/entity reads, signal/answer grounding reads, provider calls, proposal writes, audit writes, or AI-operation writes. Unexpected route failures use fixed-code bounded tenant/store/user/proposal metadata only. If the optional signal-example or existing-answer grounding reads throw, the route logs `answerlattice_draft_regeneration_signal_examples_load_failed` or `answerlattice_draft_regeneration_existing_answers_load_failed` with bounded tenant/store/entity metadata and continues with empty grounding arrays, so the Firestore operation count and owner response shape stay unchanged. The 2026-06-30 browser/DAL acknowledgement pass adds a 16 KB response-body cap and `{ success: true }` guard before governance success state; it adds no Firestore reads, writes, provider calls, rules, indexes, or deployment requirement.
+Manual regeneration route guard changes on 2026-06-28 added no Firestore reads/writes. The route now resolves scope, checks safe mode, and applies the AI operation rate limit before permission, request-body parsing, proposal/entity reads, signal/answer grounding reads, provider calls, proposal writes, audit writes, or AI-operation writes. The current request carries only normalized proposal ID plus a stable bounded idempotency ID; audit actor fields are session-derived. Draft-processing leases accept exact numeric Firestore seconds only. Unexpected route failures use fixed-code bounded tenant/store/user/proposal metadata, and a failed claim-recovery transaction adds `answerlattice_draft_regeneration_claim_recovery_failed` without replacing the primary response. If the optional signal-example or existing-answer grounding reads throw, the route logs `answerlattice_draft_regeneration_signal_examples_load_failed` or `answerlattice_draft_regeneration_existing_answers_load_failed` with bounded tenant/store/entity metadata and continues with empty grounding arrays, so the normal Firestore operation count and owner response shape stay unchanged. The browser/DAL acknowledgement pass adds a 16 KB response-body cap and `{ success: true }` guard before governance success state; it adds no rules, indexes, or deployment requirement.
 
 ### §2.4 — Related Scheduled AI Operations
 
@@ -87,6 +93,8 @@ These rows are internal/accounting-only and do not charge Answerlattice support 
 ### §2.5 — Diagnostic Behavior
 
 Scheduled draft generation diagnostics are logging-only and add no Firestore operations. Gemini call, response-parse, per-proposal, failed draft-status marking, and batch failures use fixed `ANSWERLATTICE_DRAFT_*` codes with source error name/code/status, tenant/store scope booleans, identifier presence/length metadata, and prompt/response lengths. Raw tenant/store IDs, proposal IDs, entity IDs, entity names, provider exceptions, generated content, and prompt text must not be emitted from failure diagnostics.
+
+Nightly mutation-proposal creation requires the referenced entity to retain exact `pId='AL'`, positive safe-integer `tId`/`sId`, matching scheduler scope and non-deprecated status inside the creation transaction. Scheduled draft claims and final writes repeat exact product/workspace checks; the final commit also repeats mutation-type, related-entity and processing-run ownership. Grounding queries filter every returned signal and canonical answer through the same exact scope contract before prompt construction. Legacy numeric strings are not accepted on these server-owned persisted records. The additional entity/signal/answer failure diagnostics are logging-only and add no Firestore cost.
 
 ---
 
@@ -114,6 +122,8 @@ Scheduled draft generation diagnostics are logging-only and add no Firestore ope
 
 Scheduled Answerlattice Cloud Functions use the `@google/genai` SDK through the Answerlattice API-key gateway. They do not depend on MenuList's `GEMINI_AI_KEY` gateway, alternate provider client branches, or an undeclared `@google/generative-ai` package inside `functions-answerlattice`; production credentials are the Answerlattice-owned `ANSWERLATTICE_GEMINI_AI_KEY*` Firebase secrets.
 
+Answerlattice Next.js provider paths use the same product-owned credential boundary through `src/lib/answerlattice/genAiClient.ts`. Article embeddings, image query interpretation, RAG fallback, entity extraction, manual draft regeneration, FAQ generation, translation, and Knowledge Intake media extraction use `ANSWERLATTICE_GEMINI_AI_KEY*` only and do not fall back to MenuList `GEMINI_AI_KEY*`.
+
 ### §3.3 — Total Monthly Cost
 
 | Scale | Firestore | Gemini | Total |
@@ -140,7 +150,7 @@ All queries use existing indexes:
 
 - **Draft content on proposals:** Permanent (follows proposal lifecycle)
 - **Approved drafts → canonical answers:** Permanent (governed knowledge)
-- **Signal events used for context:** 12-month TTL through the Answerlattice nightly Admin SDK cleanup (`archiveExpiredSignals`)
+- **Signal events used for context:** every new signal carries `expiresAt`; Firestore TTL owns 12-month deletion. This avoids a per-workspace cleanup query in the nightly scheduler. Legacy pre-TTL rows require the bounded migration described in the Firebase forensic audit.
 - **Audit logs:** Permanent (append-only, existing policy)
 - **AI operation rows:** Retained under the shared Answerlattice AI operation retention policy; accounting-only rows do not store raw prompts or provider payloads.
 
@@ -148,34 +158,32 @@ All queries use existing indexes:
 
 ## §6 — Security Rules
 
-No changes to Firestore rules required. All operations use existing:
-- CF: `firebase-admin` (server-side, bypasses rules)
-- Client: `answerlatticeFirebaseClient` (Answerlattice Firestore project)
-- Governance UI: Authenticated admin access only
+The governance authority is enforced in `firestore-answerlattice.rules`:
+
+- `answerlattice_canonicalAnswers`: authenticated clients may read within scope/permission, but client create and update are denied.
+- `answerlattice_mutationProposals`: clients may submit strictly pending, scoped proposals; client updates are denied, so approval/rejection/implementation cannot be forged from the browser.
+- `answerlattice_auditLogs`: client-created records cannot use server-reserved canonical, drift, proposal-decision, rollback, or entity-merge action names.
+- Server governance uses Answerlattice Admin Firestore after `withAuth`, session-scope resolution, `canManageGovernance`, rate limiting, bounded request parsing, and strict Zod validation.
+
+`npm run test:answerlattice-governance:rules` proves the direct-write denials in the Firestore emulator.
 
 ---
 
 ## §7 — DAL Functions (New + Modified)
 
-### §7.1 — New Function: `approveDraftAsCanonicalAnswer()`
+### §7.1 — Governed approval action
 
-**File:** `src/database/answerlattice/mutationProposals.ts`
+**Files:** `src/database/answerlattice/mutationProposals.ts`, `src/lib/answerlattice/governanceClient.ts`, `src/app/api/answerlattice/governance/actions/route.ts`, `src/lib/answerlattice/governanceServer.ts`
 
 ```typescript
-/**
- * Approve a draft proposal and create a canonical answer from it.
- * One-click: reads draft → creates answer → creates search index → marks implemented.
- */
-export const approveDraftAsCanonicalAnswer = async (
-    proposalId: string,
-    editedContent: Partial<AnswerlatticeCanonicalAnswer['content']>,
-    tId: number,
-    sId: number,
-    approvedBy: string
-): Promise<AnswerlatticeCanonicalAnswer | null>
+await runAnswerlatticeGovernanceAction({
+    action: 'approve_proposal',
+    proposalId,
+    editedContent,
+});
 ```
 
-**Operations:** 1R + 4W (see §2.2)
+The browser does not send trusted tenant, store, or actor fields and cannot write canonical/proposal-decision state directly. See §2.2 for the transactional operation envelope.
 
 ### §7.2 — Modified: Nightly CF `runSignalMutation()` and `detectRecurringFallbacks()`
 
@@ -201,6 +209,7 @@ After creating proposals, these functions now also call `generateDraftForProposa
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-07-11 | 1.2.0 | Documented server-owned canonical approval, rules denials, atomic audit/cache/source/bundle invalidation, and emulator coverage |
 | 2026-06-29 | 1.1.4 | Added manual draft-regeneration grounding-read diagnostics without changing Firestore operation counts |
 | 2026-06-28 | 1.1.3 | Added manual draft/entity extraction route safe-mode admission and bounded route diagnostics without changing Firestore operation counts |
 | 2026-06-28 | 1.1.2 | Added scheduled draft generator bounded diagnostics contract |

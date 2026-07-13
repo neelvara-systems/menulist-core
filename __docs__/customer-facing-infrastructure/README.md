@@ -132,11 +132,11 @@ Reviews start Google-only. Distribution starts with shareable links. No multi-pl
 | Pillar 1 | `ENABLE_OBP` | `false` (built, testing) |
 | Pillar 2 | `ENABLE_MCE` | `false` (built, testing) |
 | Pillar 3 | `ENABLE_REVIEWS_REPUTATION` | Not added yet (blocked) |
-| Pillar 4 | `ENABLE_TRUST_HEALTH_SIGNAL` | To be added |
-| Pillar 5 | `ENABLE_LOYALTY_HEALTH_SIGNAL` | To be added |
-| Pillar 6 | `ENABLE_RISK_DECLINE_DETECTION` | To be added |
+| Pillar 4 | `ENABLE_TRUST_HEALTH_SIGNAL` | Present, `false`; dormant code is not scheduled or mounted |
+| Pillar 5 | `ENABLE_LOYALTY_HEALTH_SIGNAL` | Present, `false`; shares dormant Pillar 4 boundary |
+| Pillar 6 | `ENABLE_RISK_DECLINE_DETECTION` | Present, `false`; prerequisite signals inactive |
 | Extra | `ENABLE_TEMP_STATUS` | To be added |
 
 ---
 
-**Last Updated:** February 19, 2026
+**Last Updated:** July 13, 2026

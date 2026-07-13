@@ -13,7 +13,7 @@ type SessionUserWithStores = {
     stores?: SessionStoreMapping[] | null;
 };
 
-type StoreSummary = Record<string, any> & {
+type StoreSummary = Record<string, unknown> & {
     active?: boolean;
     storeId?: number | string | null;
     storeDetails?: {
@@ -26,13 +26,15 @@ type TenantWithStoresList = {
     storesList?: StoreSummary[] | null;
 } | null | undefined;
 
-const toStoreId = (value: unknown): number | null => {
-    const numeric = Number(value);
-    return Number.isFinite(numeric) && numeric > 0 ? numeric : null;
+export const normalizeStoreSwitchStoreId = (value: unknown): number | null => {
+    const raw = typeof value === 'string' || typeof value === 'number' ? String(value) : '';
+    if (!/^[1-9]\d*$/.test(raw)) return null;
+    const numeric = Number(raw);
+    return Number.isSafeInteger(numeric) && String(numeric) === raw ? numeric : null;
 };
 
 export const getStoreSummaryId = (store: StoreSummary | null | undefined): number | null => {
-    return toStoreId(store?.storeId ?? store?.storeDetails?.storeId);
+    return normalizeStoreSwitchStoreId(store?.storeId ?? store?.storeDetails?.storeId);
 };
 
 export const isPlatformStoreAccessUser = (sessionUser: SessionUserWithStores | null | undefined): boolean => {
@@ -44,19 +46,19 @@ export const getMappedStoreIdsForUser = (
 ): Set<number> => {
     const mappedStoreIds = new Set<number>();
 
-    const loginStoreId = toStoreId(sessionUser?.storeId);
+    const loginStoreId = normalizeStoreSwitchStoreId(sessionUser?.storeId);
     if (loginStoreId) mappedStoreIds.add(loginStoreId);
 
     if (Array.isArray(sessionUser?.storeIds)) {
         sessionUser.storeIds.forEach((storeId) => {
-            const mappedStoreId = toStoreId(storeId);
+            const mappedStoreId = normalizeStoreSwitchStoreId(storeId);
             if (mappedStoreId) mappedStoreIds.add(mappedStoreId);
         });
     }
 
     if (Array.isArray(sessionUser?.stores)) {
         sessionUser.stores.forEach((store) => {
-            const mappedStoreId = toStoreId(store?.storeId);
+            const mappedStoreId = normalizeStoreSwitchStoreId(store?.storeId);
             if (mappedStoreId) mappedStoreIds.add(mappedStoreId);
         });
     }
@@ -73,7 +75,7 @@ export const canUserAccessStore = ({
     sessionUser: SessionUserWithStores | null | undefined;
     storeId: unknown;
 }): boolean => {
-    const targetStoreId = toStoreId(storeId);
+    const targetStoreId = normalizeStoreSwitchStoreId(storeId);
     if (!targetStoreId) return false;
     if (allowPlatformAllStores && isPlatformStoreAccessUser(sessionUser)) return true;
     return getMappedStoreIdsForUser(sessionUser).has(targetStoreId);

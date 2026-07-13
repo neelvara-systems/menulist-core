@@ -1,6 +1,6 @@
 # Answerlattice Source File Inventory
 
-> **Status:** Current as of 2026-05-24
+> **Status:** Current as of 2026-07-11
 > **Purpose:** Record the Answerlattice source/doc surface reviewed for the system inventory.
 > **Rule:** Code paths are primary. Existing docs are secondary and must be reconciled to runtime behavior.
 
@@ -73,6 +73,7 @@ Top-level Answerlattice docs included:
 - `src/app/sites/answerlattice/contact/page.tsx`
 - `src/app/sites/answerlattice/demo/AnswerlatticePublicDemo.tsx`
 - `src/app/sites/answerlattice/demo/page.tsx`
+- `src/app/sites/answerlattice/trust/page.tsx`
 - `src/app/sites/answerlattice/enginePillars.ts`
 - `src/app/sites/answerlattice/faq/page.tsx`
 - `src/app/sites/answerlattice/get-started/OnboardingForm.tsx`
@@ -136,6 +137,12 @@ Top-level Answerlattice docs included:
 - `src/app/api/answerlattice/mcp/route.ts`
 - `src/app/api/answerlattice/mcp/session/route.ts`
 - `src/app/api/answerlattice/onboard/route.ts`
+- `src/app/api/answerlattice/governance/actions/route.ts`
+- `src/lib/answerlattice/governanceContracts.ts`
+- `src/lib/answerlattice/governanceClient.ts`
+- `src/lib/answerlattice/governanceServer.ts`
+- `src/lib/answerlattice/onboardingProvisioning.ts`
+- `src/lib/answerlattice/onboardingProvisioningServer.ts`
 - `src/app/api/answerlattice/operations/status/route.ts`
 - `src/app/api/answerlattice/product-surfaces/rebuild-summary/route.ts`
 - `src/app/api/answerlattice/public/v1/answers/route.ts`

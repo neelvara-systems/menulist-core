@@ -2,6 +2,7 @@ import { fetchAnswerlatticePublicArticle } from '@lib/answerlattice/publicConten
 import { getBoundedHookStringContext, logHookFailure } from '@hook/hookDiagnostics';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { KnowledgeBaseArticleType } from '@type/knowledgeBase';
+import type { AnswerlatticeReadableArticle } from '@lib/answerlattice/publicContentBoundary';
 import { Timestamp } from 'firebase/firestore';
 import { useCallback, useContext } from 'react';
 
@@ -27,7 +28,7 @@ export const useArticleCache = () => {
      * Add article to cache with LRU eviction
      * If cache is full, removes oldest article
      */
-    const addArticleToCache = useCallback((article: KnowledgeBaseArticleType) => {
+    const addArticleToCache = useCallback((article: AnswerlatticeReadableArticle) => {
         setCachedArticles(prev => {
             const newArticles = [...prev.articles];
 
@@ -79,7 +80,7 @@ export const useArticleCache = () => {
      * Get article from cache by ID
      * Returns undefined if not found
      */
-    const getCachedArticle = useCallback((articleId: string): KnowledgeBaseArticleType | undefined => {
+    const getCachedArticle = useCallback((articleId: string): AnswerlatticeReadableArticle | undefined => {
         return cachedArticles.articles.find(a => a.id === articleId);
     }, [cachedArticles.articles]);
 
@@ -121,7 +122,7 @@ export const useArticleCache = () => {
      * Check if article is active (not archived/deleted)
      * This is the filter for what should be cached
      */
-    const isArticleActive = useCallback((article: KnowledgeBaseArticleType): boolean => {
+    const isArticleActive = useCallback((article: AnswerlatticeReadableArticle): boolean => {
         return article.active === true;
     }, []);
 
@@ -160,7 +161,7 @@ export const useArticleCache = () => {
             onCacheHit?: () => void;  // Callback when cache is used
             onCacheMiss?: () => void; // Callback when fetching
         }
-    ): Promise<KnowledgeBaseArticleType | null> => {
+    ): Promise<AnswerlatticeReadableArticle | null> => {
         // ============================================
         // STEP 1: Force Refresh (Skip Cache)
         // ============================================

@@ -1,4 +1,5 @@
-import { assertProjectUpdateSucceeded, syncProjectToSummary, updateProjectMetadata, uploadFile } from '@database/projects';
+import { assertProjectUpdateSucceeded, updateProjectMetadata, uploadFile } from '@database/projects';
+import { deleteFileByUrl } from '@database/storage/deleteFromStorage';
 import { resolveBusinessCategory } from '@data/shared/businessTypes';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { getMediaImageProfile } from '@lib/media/imageProfiles';
@@ -324,26 +325,6 @@ function buildBusinessImageGuidance(businessType?: string | null, businessCatego
     };
 }
 
-function buildSummaryImageUpdate(summaryData?: Partial<ProjectSummaryData> | null): ProjectSummaryData | null {
-    if (!summaryData?.name) return null;
-
-    return {
-        name: summaryData.name,
-        ...(summaryData.description !== undefined ? { description: summaryData.description } : {}),
-        active: summaryData.active ?? true,
-        ...(summaryData.isDefault !== undefined ? { isDefault: summaryData.isDefault } : {}),
-        ...(summaryData.slug !== undefined ? { slug: summaryData.slug } : {}),
-        ...(summaryData.previousSlugs !== undefined ? { previousSlugs: summaryData.previousSlugs } : {}),
-        ...(summaryData.isSpecialMenu !== undefined ? { isSpecialMenu: summaryData.isSpecialMenu } : {}),
-        ...(summaryData.specialMenuDisplayName !== undefined ? { specialMenuDisplayName: summaryData.specialMenuDisplayName } : {}),
-        ...(summaryData.specialMenuStatus !== undefined ? { specialMenuStatus: summaryData.specialMenuStatus } : {}),
-        ...(summaryData.specialMenuStartsAt !== undefined ? { specialMenuStartsAt: summaryData.specialMenuStartsAt } : {}),
-        ...(summaryData.specialMenuEndsAt !== undefined ? { specialMenuEndsAt: summaryData.specialMenuEndsAt } : {}),
-        ...(summaryData.specialMenuMode !== undefined ? { specialMenuMode: summaryData.specialMenuMode } : {}),
-        ...(summaryData.specialMenuBaseProjectId !== undefined ? { specialMenuBaseProjectId: summaryData.specialMenuBaseProjectId } : {}),
-    };
-}
-
 function collectProjectMenuData(
     project: ProjectImageSource,
     categoriesOverride?: any[],
@@ -615,24 +596,16 @@ export async function generateAndSaveProjectImageIfMissing(
         return { skippedReason: 'upload-failed' };
     }
 
-    const summaryUpdate = buildSummaryImageUpdate(params.summaryData);
-    if (summaryUpdate) {
-        const summaryResult = await syncProjectToSummary(projectId, {
-            ...summaryUpdate,
-            projectImage: imageUrl,
-        });
-        assertProjectUpdateSucceeded(
-            summaryResult,
-            projectId,
-            'project_image_generation_summary_update_rejected',
-        );
-    } else {
+    try {
         const metadataResult = await updateProjectMetadata(projectId, { projectImage: imageUrl });
         assertProjectUpdateSucceeded(
             metadataResult,
             projectId,
             'project_image_generation_metadata_update_rejected',
         );
+    } catch (error) {
+        await deleteFileByUrl(imageUrl);
+        throw error;
     }
 
     return { imageUrl };

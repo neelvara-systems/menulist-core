@@ -2,8 +2,9 @@ import { DB_COLLECTIONS } from '@constant/database';
 import { ANSWERLATTICE_FAQ_STATUS, type AnswerlatticeFaq, type AnswerlatticeRelatedFaqRef, type AnswerlatticeSurfaceContentItem } from '@type/answerlattice';
 import type { KnowledgeBaseArticleType } from '@type/knowledgeBase';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
-import { ANSWERLATTICE_FAQ_PUBLIC_LIMIT } from './faqContent';
+import { ANSWERLATTICE_FAQ_PUBLIC_LIMIT, normalizeAnswerlatticeRetrievalFaq } from './faqContent';
 import { normalizeAnswerlatticeKbArticleId } from './kbArticleIdBoundary';
+import { normalizeAnswerlatticeScopeDocumentId } from './sessionScope';
 import { normalizeContextKeys, normalizeSurfaceList } from './productSurfaceContent';
 import { answerlatticeTokenize } from './tokenizer';
 
@@ -151,19 +152,21 @@ const buildFaqFromRelatedRef = (faq: AnswerlatticeRelatedFaqRef, scope: { tId: n
     active: true,
     articleId: faq.articleId || null,
     articleTitle: faq.articleTitle || null,
+    entityIds: [],
+    contextKeys: [],
     tags: faq.tags || [],
     _summaryOnly: true,
 });
 
 const loadPublishedFaqs = async (tId: number, sId: number, sourceVersion?: number): Promise<AnswerlatticeFaq[]> => {
-    const cacheKey = `${Number(tId)}:${Number(sId)}:${sourceVersion || 'unversioned'}`;
+    const cacheKey = `${tId}:${sId}:${sourceVersion ?? 'unversioned'}`;
     const cached = readFaqsFromCache(cacheKey);
     if (cached) return cached;
 
     const snapshot = await answerlatticeFirestoreAdmin
         .collection(DB_COLLECTIONS.ANSWERLATTICE_FAQS)
-        .where('tId', '==', Number(tId))
-        .where('sId', '==', Number(sId))
+        .where('tId', '==', tId)
+        .where('sId', '==', sId)
         .where('status', '==', ANSWERLATTICE_FAQ_STATUS.PUBLISHED)
         .where('active', '==', true)
         .orderBy('sortOrder', 'asc')
@@ -171,7 +174,9 @@ const loadPublishedFaqs = async (tId: number, sId: number, sourceVersion?: numbe
         .limit(ANSWERLATTICE_FAQ_PUBLIC_LIMIT)
         .get();
 
-    const faqs = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as AnswerlatticeFaq));
+    const faqs = snapshot.docs
+        .map(doc => normalizeAnswerlatticeRetrievalFaq(doc.data(), doc.id, { tId, sId }))
+        .filter((faq): faq is AnswerlatticeFaq => faq !== null);
     rememberFaqs(cacheKey, faqs);
     return faqs;
 };
@@ -301,8 +306,9 @@ const loadLinkedArticleReference = async (
         const article = { ...snap.data(), id: snap.id } as KnowledgeBaseArticleType;
         const articleRecord = article as any;
         if (
-            Number(articleRecord.tId || faq.tId) !== Number(faq.tId)
-            || Number(articleRecord.sId || faq.sId) !== Number(faq.sId)
+            articleRecord.pId !== 'AL'
+            || normalizeAnswerlatticeScopeDocumentId(articleRecord.tId) !== normalizeAnswerlatticeScopeDocumentId(faq.tId)
+            || normalizeAnswerlatticeScopeDocumentId(articleRecord.sId) !== normalizeAnswerlatticeScopeDocumentId(faq.sId)
             || article.status !== 'published'
             || article.active === false
         ) {
@@ -335,15 +341,23 @@ export const attemptFaqAnswerRetrieval = async (
     query: string,
     options: FaqRetrievalContext,
 ): Promise<FaqRetrievalResult> => {
-    const tId = Number(options.tId);
-    const sId = Number(options.sId);
-    if (!Number.isFinite(tId) || !Number.isFinite(sId) || tId <= 0 || sId <= 0) {
+    const tId = typeof options.tId === 'number' ? normalizeAnswerlatticeScopeDocumentId(options.tId) : null;
+    const sId = typeof options.sId === 'number' ? normalizeAnswerlatticeScopeDocumentId(options.sId) : null;
+    const sourceVersion = options.sourceVersion === undefined
+        ? undefined
+        : typeof options.sourceVersion === 'number'
+            && Number.isSafeInteger(options.sourceVersion)
+            && options.sourceVersion >= 0
+            ? options.sourceVersion
+            : null;
+    if (!tId || !sId || sourceVersion === null) {
         return { found: false, confidence: 'none', references: [] };
     }
 
     const relatedFaqCandidates = (options.relatedContent?.faqs || [])
         .map(faq => buildFaqFromRelatedRef(faq, { tId, sId }))
-        .filter(faq => Boolean(faq.question && faq.answer));
+        .map(faq => normalizeAnswerlatticeRetrievalFaq(faq, faq.id, { tId, sId }))
+        .filter((faq): faq is AnswerlatticeFaq => faq !== null);
 
     const relatedMatch = chooseBestFaq(query, relatedFaqCandidates, options.context);
     if (relatedMatch) {
@@ -358,7 +372,7 @@ export const attemptFaqAnswerRetrieval = async (
         };
     }
 
-    const faqs = await loadPublishedFaqs(tId, sId, options.sourceVersion);
+    const faqs = await loadPublishedFaqs(tId, sId, sourceVersion);
     const match = chooseBestFaq(query, faqs, options.context);
     if (!match) return { found: false, confidence: 'none', references: [] };
 

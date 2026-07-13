@@ -26,7 +26,7 @@ It still does not create direct provider calls, billing checkout, ad spend mutat
 | Functions | No CampaignCue Cloud Function is required for the current export/download-first runtime. Scheduled/provider workers remain disabled until external credentials, consent, quotas, idempotency, and leases are configured. |
 | Billing | Billing checkout remains disabled. Future product-aware billing must use the approved CampaignCue product code `CC`; current shared billing helpers fail closed for `CC` instead of falling back to MenuList. Route/domain/env namespaces stay on the `campaigncue` slug. |
 | Auth | Same NextAuth login/session guard as MenuList; inactive, deleted, unverified, or platform-blocked accounts redirect before workspace render. The shell intentionally avoids MenuList store/subscription bootstrap reads just to draw CampaignCue chrome. CampaignCue APIs still require tenant/store workspace scope. |
-| Data access | Server-side product APIs for source, generation, publishing, billing, and trust actions. |
+| Data access | Server-side product APIs for source, deterministic campaign creation, manual delivery actions, trust actions, asset/source metadata, and disabled provider/billing posture. |
 
 ## Core Services
 
@@ -40,11 +40,11 @@ It still does not create direct provider calls, billing checkout, ad spend mutat
 | CampaignService | Campaign brief, structured channel fields, manual handoff steps, and pack state. |
 | DailyDeskService | In-memory Daily Campaign Desk, pack review, missing input inbox, local visibility cues, and manual delivery cards derived from the existing overview. |
 | CampaignPackOutputService | Derived output-pack contract with channel copy, trust report, reuse notes, mini-page/QR brief, Campaign Proof Deck brief, result memory, and browser-local ZIP bundle. |
-| GenerationService | Visual/script/video/ad generation jobs. |
+| GenerationService | Disabled provider-generation boundary. The current runtime creates deterministic text/brief/output-pack artifacts without paid provider jobs. |
 | AssetService | Upload, classify, rights/consent metadata. |
 | TrustService | Fact, source, consent, claim, vertical, destination, asset-rights, and spend checks. |
-| CreditService | Estimate, reserve, capture, refund. |
-| DeliveryService | Single-output download, Campaign Pack ZIP download, schedule, approval, manual-use, and result tracking. Provider posting is a separate future layer. |
+| CreditService | Disabled billing/credit boundary. Credit reservation/capture/refund must remain inactive until paid provider generation or billing is explicitly enabled. |
+| DeliveryService | Single-output download, Campaign Pack ZIP download, schedule/manual-task state, approval, manual-use, and result tracking. Provider posting is a separate explicitly enabled provider layer, not active runtime behavior. |
 | AnalyticsService | Usage, manual execution, owner-reported outcomes, confidence labels, and provider-disabled posture. |
 
 ## Implementation Acceptance
@@ -64,7 +64,7 @@ It still does not create direct provider calls, billing checkout, ad spend mutat
 | Campaign pack review | Latest campaign review is derived from already-loaded source facts, outputs, trust state, missing inputs, and visibility cues; no separate pack collection is added. |
 | Campaign Pack Output | `CampaignCueOutputPack` is derived from the same overview and downloaded as a browser-local ZIP containing summary, JSON, channel files, trust notes, reuse notes, Campaign Proof Deck brief, and result prompt. |
 | Campaign decision object | Created campaigns store the selected deterministic `campaign.pack.decision` plus `recipeId` so later exports can show why the pack was recommended without re-running a model. |
-| Result memory | `record_outcome` accepts a structured `resultSignalId` and updates compact `campaign.resultMemory` for repeat/adjust recommendations without raw scans. |
+| Result memory | `record_outcome` accepts a structured `resultSignalId` plus bounded owner-reported receipt metrics/use time/channel/tested variable, updates compact `campaign.resultMemory`, and derives repeat/adjust/one-variable suggestions without raw scans. `not_used` does not mark the campaign used. |
 
 ## Validation Checklist
 

@@ -1,5 +1,6 @@
 import { FEATURE_FLAGS } from '@config/features';
 import { PRODUCT_IDS } from '@constant/product';
+import { isAnswerlatticeActiveStoreInScope, normalizeAnswerlatticeScopeDocumentId } from '@lib/answerlattice/sessionScope';
 import { apiError, hashApiKey, hasPublicApiCredentialScope, isRequestOriginAllowed, logApiRequest, PublicApiCredentialScope, validatePublicApiKey } from '@lib/publicApi/auth';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
@@ -94,9 +95,9 @@ export async function authenticateAnswerlatticePublicApi(
         return { ok: false, response: apiError('ORIGIN_NOT_ALLOWED', 'Origin not allowed', 403) };
     }
 
-    const tId = Number(storeData.tenantId || storeData.tId);
-    const sId = Number(storeData.id || storeId);
-    if (!Number.isFinite(tId) || !Number.isFinite(sId) || tId <= 0 || sId <= 0) {
+    const tId = normalizeAnswerlatticeScopeDocumentId(storeData.tenantId ?? storeData.tId);
+    const sId = normalizeAnswerlatticeScopeDocumentId(storeData.id ?? storeData.sId ?? storeData.storeId ?? storeId);
+    if (!tId || !sId || !isAnswerlatticeActiveStoreInScope(storeData, { tenantId: tId, storeId: sId }, storeId)) {
         return { ok: false, response: apiError('INVALID_API_KEY', 'Invalid API key', 401) };
     }
 
@@ -116,7 +117,10 @@ export async function authenticateAnswerlatticePublicApi(
 
 export function toIsoTimestamp(value: any): string | null {
     if (!value) return null;
-    if (typeof value === 'string') return value;
+    if (typeof value === 'string') {
+        const parsed = new Date(value);
+        return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+    }
     if (value instanceof Date) return value.toISOString();
     if (typeof value.toDate === 'function') return value.toDate().toISOString();
     if (typeof value.toMillis === 'function') return new Date(value.toMillis()).toISOString();

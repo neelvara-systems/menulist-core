@@ -1,7 +1,8 @@
 # Instant Response Infrastructure — Spec
 
-> **Version:** 1.0.0
+> **Version:** 1.1.0
 > **Created:** 2026-03-09
+> **Last Updated:** 2026-07-11
 > **Audience:** CEO, PM, Clients
 > **Feature Flag:** `ENABLE_ANSWERLATTICE_INSTANT_CACHE`
 
@@ -56,24 +57,24 @@ Add an Upstash Redis cache layer that stores fully-resolved canonical answers. W
 
 ### 4.1 — Cache Lifecycle
 
-1. **First query for an entity:** Cache MISS → Canonical retrieval runs normally → Answer cached in Redis with entity-based key
-2. **Subsequent identical queries:** Cache HIT → Redis returns answer in ~5ms → Firestore untouched
-3. **Answer updated by founder:** Answer version increments → New cache key → Old entry expires via TTL
-4. **Entity deprecated:** Cached answers for deprecated entities not actively purged — TTL handles natural expiry (24h max staleness)
+1. **First query for an entity:** Cache MISS → canonical retrieval runs normally → answer cached in Redis with an entity/scope key and canonical source version.
+2. **Subsequent matching queries:** the compact canonical source manifest is checked, then a Redis hit skips canonical document retrieval and fallback work.
+3. **Answer or scope updated:** the canonical source version changes → the old entry is immediately ineligible and removed best-effort; the versioned key/TTL handles storage cleanup.
+4. **Entity deprecated or truth enters review:** the manifest and live canonical eligibility checks block the old answer before it can be returned.
 
 ### 4.2 — Cache Key Design
 
 Cache key encodes all factors that affect answer selection:
 
 ```
-canon:{tId}:{sId}:entity:{topEntityId}:v{answerVersion}:p:{planId}:r:{roleId}
+canon:v2:{tId}:{sId}:e:{topEntityId}:v{answerVersion}:p:{planId}:r:{roleId}:s:{stateId}
 ```
 
 **Why these components:**
 - `tId` + `sId` — Tenant isolation (MANDATORY)
 - `topEntityId` — The primary matched entity (deterministic from tokenization)
 - `answerVersion` — Ensures stale answers auto-invalidate
-- `planId` + `roleId` — Same entity may have different answers per plan/role (specificity scoring)
+- `planId` + `roleId` + `stateId` — Same entity may have different eligible answers per governed scope
 
 ### 4.3 — What Gets Cached
 

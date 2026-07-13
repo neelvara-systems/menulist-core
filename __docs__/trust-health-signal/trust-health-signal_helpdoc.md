@@ -3,6 +3,7 @@
 **Date:** February 19, 2026  
 **Audience:** Existing Customers (PUBLIC)  
 **Pillar:** 4 of 6
+**Publication status:** Not approved. This owner help draft describes a dormant feature that is not scheduled or shown in the current app.
 
 ---
 
@@ -62,4 +63,4 @@ A: Once per week, automatically.
 
 ---
 
-**Last Updated:** February 19, 2026
+**Last Updated:** July 13, 2026

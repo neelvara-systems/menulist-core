@@ -60,7 +60,7 @@ MenuList's Help Center is a source-backed support system embedded directly insid
 ## 5. Technical Selling Points
 
 - **RAG Architecture** — Retrieval-Augmented Generation with Gemini 2.5 Flash, not simple keyword matching
-- **768-Dimension Embeddings** — text-embedding-004 for semantic understanding
+- **768-Dimension Embeddings** — Version-locked Gemini embeddings for semantic retrieval
 - **40-60% Cache Hit Rate** — Embedding and response caching for instant repeat queries
 - **99.95% Read Reduction** — Aggregated analytics vs raw session scanning
 - **Multi-Tenant Isolated** — Every data point scoped by tenant and store

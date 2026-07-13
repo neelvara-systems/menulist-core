@@ -7,9 +7,18 @@ import {
 } from '@lib/answerlattice/publicContentCache';
 import { renderPublicTiptapHtml } from '@lib/answerlattice/publicRichText';
 import { resolveHostedHelpSiteByDomain } from '@lib/answerlattice/hostedHelpServer';
+import {
+    getHostedHelpChangelogText,
+    normalizeHostedHelpArticleSlug,
+    resolveHostedHelpRequestDomain,
+    serializeHostedHelpDate,
+} from '@lib/answerlattice/hostedHelpRequest';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
 import type { KnowledgeBaseArticleMeta, KnowledgeBaseArticleType, KnowledgeBaseCategoriesType } from '@type/knowledgeBase';
+import type { AnswerlatticeFaq } from '@type/answerlattice';
+import type { ChangelogPage } from '@type/changelog';
+import type { AnswerlatticePublicArticle } from '@lib/answerlattice/publicContentBoundary';
 import { headers } from 'next/headers';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
@@ -29,14 +38,12 @@ type PageProps = {
 
 const getRequestDomain = (searchParams?: { domain?: string }) => {
     const headerList = headers();
-    const routedHost = headerList.get('x-answerlattice-hosted-help-domain');
-    if (routedHost) return routedHost;
-
-    const isDevRewrite = headerList.get('x-answerlattice-hosted-help-dev') === '1';
-    const allowQueryDomain = isDevRewrite || process.env.NODE_ENV === 'development' || process.env.VERCEL !== '1';
-    return allowQueryDomain
-        ? searchParams?.domain || headerList.get('host')
-        : headerList.get('host');
+    return resolveHostedHelpRequestDomain({
+        host: headerList.get('host'),
+        queryDomain: searchParams?.domain,
+        isDevelopmentRewrite: headerList.get('x-answerlattice-hosted-help-dev') === '1',
+        isDevelopmentRuntime: process.env.NODE_ENV === 'development' || process.env.VERCEL !== '1',
+    });
 };
 
 const getRequestIp = () => {
@@ -54,59 +61,22 @@ const getArticlesFromCategories = (categories: KnowledgeBaseCategoriesType | nul
     ]);
 };
 
-const normalizeArticleSlug = (value?: string | null): string => {
-    const normalized = decodeURIComponent(String(value || ''))
-        .trim()
-        .replace(/[?#].*$/, '')
-        .replace(/^\/+|\/+$/g, '');
-    return normalized
-        .replace(/^(articles|help|docs)\//, '')
-        .replace(/^\/+|\/+$/g, '');
-};
-
 const findArticleMeta = (
     categories: KnowledgeBaseCategoriesType | null,
     segment?: string | string[],
 ): KnowledgeBaseArticleMeta | null => {
-    const normalized = normalizeArticleSlug(Array.isArray(segment) ? segment.join('/') : segment);
+    const normalized = normalizeHostedHelpArticleSlug(Array.isArray(segment) ? segment.join('/') : segment);
     if (!normalized) return null;
     return getArticlesFromCategories(categories).find(article => (
         article.id === normalized
-        || normalizeArticleSlug(article.id) === normalized
-        || normalizeArticleSlug(article.url) === normalized
+        || normalizeHostedHelpArticleSlug(article.id) === normalized
+        || normalizeHostedHelpArticleSlug(article.url) === normalized
     )) || null;
-};
-
-const toClientPlainValue = <T,>(value: T): T => {
-    if (value === null || value === undefined) return value;
-
-    if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
-        return value;
-    }
-
-    if (typeof (value as any)?.toMillis === 'function') {
-        return new Date((value as any).toMillis()).toISOString() as T;
-    }
-
-    if (Array.isArray(value)) {
-        return value.map(item => toClientPlainValue(item)) as T;
-    }
-
-    if (typeof value === 'object') {
-        return Object.fromEntries(
-            Object.entries(value as Record<string, unknown>).map(([key, item]) => [
-                key,
-                toClientPlainValue(item),
-            ]),
-        ) as T;
-    }
-
-    return value;
 };
 
 const compactArticleMeta = (article: KnowledgeBaseArticleMeta): KnowledgeBaseArticleMeta => ({
     id: article.id,
-    active: article.active !== false,
+    active: true,
     title: article.title,
     index: Number(article.index || 0),
     url: article.url || article.id,
@@ -145,7 +115,7 @@ const compactCategoriesForClient = (
     };
 };
 
-const compactFaqsForClient = (faqs: any[]): HostedHelpFaq[] => (
+const compactFaqsForClient = (faqs: AnswerlatticeFaq[]): HostedHelpFaq[] => (
     (faqs || []).map(faq => ({
         id: String(faq.id || ''),
         question: String(faq.question || ''),
@@ -153,24 +123,24 @@ const compactFaqsForClient = (faqs: any[]): HostedHelpFaq[] => (
     })).filter(faq => faq.id && faq.question)
 );
 
-const compactChangelogForClient = (page: any): HostedHelpChangelogPage | null => {
+const compactChangelogForClient = (page: ChangelogPage | null): HostedHelpChangelogPage | null => {
     if (!page) return null;
 
     return {
         id: page.id,
-        entries: (page.entries || []).map((entry: any) => ({
+        entries: (page.entries || []).map((entry) => ({
             id: String(entry.id || ''),
             title: String(entry.title || ''),
             version: entry.version ? String(entry.version) : null,
-            releasedOn: toClientPlainValue(entry.releasedOn),
-            description: entry.description || null,
-        })).filter((entry: any) => entry.id && entry.title),
+            releasedOn: serializeHostedHelpDate(entry.releasedOn),
+            descriptionText: getHostedHelpChangelogText(entry.description),
+        })).filter((entry) => entry.id && entry.title),
     };
 };
 
-const compactArticleForClient = (article: KnowledgeBaseArticleType): HostedHelpArticle => ({
+const compactArticleForClient = (article: AnswerlatticePublicArticle): HostedHelpArticle => ({
     id: article.id,
-    active: article.active !== false,
+    active: true,
     title: article.title,
     index: Number(article.index || 0),
     url: article.url || article.id,
@@ -266,13 +236,13 @@ export default async function AnswerlatticeHostedHelpPage({ params, searchParams
         const articleMeta = findArticleMeta(categories, articlePath);
         const article = articleMeta
             ? await getCachedKnowledgeBaseArticle(scope, articleMeta.id)
-            : await getCachedKnowledgeBaseArticle(scope, normalizeArticleSlug(articlePath.join('/')));
+            : await getCachedKnowledgeBaseArticle(scope, normalizeHostedHelpArticleSlug(articlePath.join('/')));
 
         if (!article) notFound();
 
         return (
             <HostedHelpClient
-                article={compactArticleForClient(article as KnowledgeBaseArticleType)}
+                article={compactArticleForClient(article)}
                 categories={compactCategoriesForClient(categories)}
                 changelogPage={compactChangelogForClient(changelogPage)}
                 faqs={compactFaqsForClient(faqs)}

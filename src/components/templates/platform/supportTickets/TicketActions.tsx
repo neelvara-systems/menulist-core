@@ -3,6 +3,7 @@ import { FEATURE_FLAGS } from '@config/features';
 import { getProductSurfacesForSession } from '@database/answerlattice/productSurfaces';
 import { getBoundedAnswerlatticeStringContext, logAnswerlatticeFailure } from '@lib/answerlattice/diagnostics';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import { isAnswerlatticeTicketStatusTransitionAllowed } from '@lib/answerlattice/supportTicketLifecycle';
 import { sanitizeFeedbackComment } from '@lib/sanitization';
 import SupportTicketCategory from '@organisms/SupportTicket/SupportTicketCategory';
 import SupportTicketPriority from '@organisms/SupportTicket/SupportTicketPriority';
@@ -182,7 +183,9 @@ const TicketActions: React.FC<TicketActionsProps> = ({ ticket, setTicket, from }
                                     style={{ width: '100%' }} 
                                     onChange={(value) => handleUpdate('status', value)}
                                 >
-                                    {Object.values(SUPPORT_TICKET_STATUS).map(s => (
+                                    {Object.values(SUPPORT_TICKET_STATUS)
+                                        .filter((status) => isAnswerlatticeTicketStatusTransitionAllowed(ticket.status, status))
+                                        .map(s => (
                                         <Option key={s} value={s}>
                                             <SupportTicketStatus ticket={{ ...ticket, status: s }} />
                                         </Option>

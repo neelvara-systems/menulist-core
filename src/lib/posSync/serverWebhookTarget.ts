@@ -1,9 +1,15 @@
 import { lookup } from 'dns/promises';
 import { isBlockedPosSyncNetworkTarget } from './webhookUrl';
 
+export type ApprovedPosSyncWebhookAddress = {
+    address: string;
+    family: 4 | 6;
+};
+
 export interface PosSyncWebhookTargetValidationResult {
     valid: boolean;
     addressCount: number;
+    approvedAddresses?: ApprovedPosSyncWebhookAddress[];
     error?: string;
     errorName?: string;
 }
@@ -42,10 +48,15 @@ export async function validatePosSyncWebhookNetworkTarget(
             };
         }
 
-        const hasBlockedAddress = addresses.some((address) => isBlockedPosSyncNetworkTarget(address.address));
+        const approvedAddresses = addresses
+            .filter((address): address is ApprovedPosSyncWebhookAddress => address.family === 4 || address.family === 6)
+            .map((address) => ({ address: address.address, family: address.family }));
+        const hasBlockedAddress = approvedAddresses.length !== addresses.length
+            || approvedAddresses.some((address) => isBlockedPosSyncNetworkTarget(address.address));
         return {
             valid: !hasBlockedAddress,
             addressCount: addresses.length,
+            ...(!hasBlockedAddress ? { approvedAddresses } : {}),
             ...(hasBlockedAddress ? { error: 'blocked_resolved_address' } : {}),
         };
     } catch (error) {

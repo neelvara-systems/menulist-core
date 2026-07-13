@@ -20,8 +20,14 @@
  */
 
 import * as admin from 'firebase-admin';
-import { FieldValue, Timestamp } from 'firebase-admin/firestore';
+import { FieldPath, FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { DB_COLLECTIONS } from '../constants/database';
+import {
+    getPriceStaleAssessment,
+    readMenuDriftContributions,
+    type MenuDriftSummaryContribution,
+} from '../sharedData/menuDriftContribution';
+import { parsePlatformStoreSummary } from '../sharedData/storeSummaryBoundary';
 import { logTelemetry, startTimer } from '../telemetry/logger';
 import { analyticsLogger, getAnalyticsErrorContext, getAnalyticsIdContext } from './analyticsDiagnostics';
 
@@ -29,26 +35,15 @@ import { analyticsLogger, getAnalyticsErrorContext, getAnalyticsIdContext } from
 // TYPES
 // ================================================================
 
-interface MenuChangeLogEntry {
-    itemId?: string;
-    changeType: MenuChangeType;
-    timestamp: Timestamp;
+interface ItemDriftAccumulator {
+    priceChangeCount: number;
+    availabilityToggleCount: number;
+    lastPriceChange: Timestamp | null;
+    lastAvailabilityChange: Timestamp | null;
 }
 
-type MenuChangeType =
-    | 'PRICE'
-    | 'AVAILABILITY'
-    | 'ITEM_ADDED'
-    | 'ITEM_REMOVED'
-    | 'ITEM_ACTIVE'
-    | 'CATEGORY_ADDED'
-    | 'CATEGORY_REMOVED'
-    | 'CATEGORY_REORDER'
-    | 'ITEM_REORDER'
-    | 'NAME_CHANGE'
-    | 'DESCRIPTION_CHANGE'
-    | 'IMAGE_CHANGE'
-    | 'STRUCTURE';
+type ProjectDriftAccumulators = Map<string, ItemDriftAccumulator>;
+type StoreDriftAccumulators = Map<string, ProjectDriftAccumulators>;
 
 interface DerivedItemMetrics {
     itemId: string;
@@ -65,7 +60,8 @@ interface DerivedItemMetrics {
     daysSinceLastAvailabilityChange: number | null;
 
     // Internal flags (NEVER exposed to UI - for system use only)
-    _priceStale: boolean;          // daysSinceLastPriceChange > 180
+    _priceStale: boolean | null;
+    _priceStaleStatus: 'measured' | 'unavailable_outside_rolling_window';
     _availabilityChurn: boolean;   // toggleCount30d > 10
     _highVolatility: boolean;      // priceChangeCount30d > 5
 
@@ -95,21 +91,11 @@ const AVAILABILITY_CHURN_THRESHOLD = 10;
 const HIGH_VOLATILITY_THRESHOLD = 5;
 const PROJECT_DRIFT_FAILURE = 'PROJECT_DRIFT_METRICS_FAILED';
 const STORE_DRIFT_FAILURE = 'STORE_DRIFT_METRICS_FAILED';
-const DRIFT_CHANGE_TYPES = new Set<MenuChangeType>([
-    'PRICE',
-    'AVAILABILITY',
-    'ITEM_ADDED',
-    'ITEM_REMOVED',
-    'ITEM_ACTIVE',
-    'CATEGORY_ADDED',
-    'CATEGORY_REMOVED',
-    'CATEGORY_REORDER',
-    'ITEM_REORDER',
-    'NAME_CHANGE',
-    'DESCRIPTION_CHANGE',
-    'IMAGE_CHANGE',
-    'STRUCTURE',
-]);
+const CHANGE_LOG_PAGE_SIZE = 500;
+const MAX_CHANGE_LOG_DOCUMENTS_PER_STORE = 50_000;
+const METRICS_READ_PAGE_SIZE = 500;
+const MAX_METRICS_DOCUMENTS_PER_PROJECT = 10_000;
+const METRICS_WRITE_BATCH_SIZE = 400;
 
 // ================================================================
 // HELPER FUNCTIONS
@@ -139,12 +125,18 @@ function daysSince(timestamp: Timestamp | null): number | null {
  * CRITICAL: These flags are NEVER exposed to UI
  */
 function computeInternalFlags(metrics: Partial<DerivedItemMetrics>): {
-    _priceStale: boolean;
+    _priceStale: boolean | null;
+    _priceStaleStatus: 'measured' | 'unavailable_outside_rolling_window';
     _availabilityChurn: boolean;
     _highVolatility: boolean;
 } {
+    const priceStale = getPriceStaleAssessment(
+        metrics.daysSinceLastPriceChange ?? null,
+        STALE_PRICE_THRESHOLD_DAYS,
+    );
     return {
-        _priceStale: (metrics.daysSinceLastPriceChange || 0) > STALE_PRICE_THRESHOLD_DAYS,
+        _priceStale: priceStale.value,
+        _priceStaleStatus: priceStale.status,
         _availabilityChurn: (metrics.availabilityToggleCount30d || 0) > AVAILABILITY_CHURN_THRESHOLD,
         _highVolatility: (metrics.priceChangeCount30d || 0) > HIGH_VOLATILITY_THRESHOLD,
     };
@@ -154,95 +146,155 @@ function computeInternalFlags(metrics: Partial<DerivedItemMetrics>): {
 // MAIN PROCESSING FUNCTIONS
 // ================================================================
 
+const applyDriftContribution = (
+    changesByItem: ProjectDriftAccumulators,
+    contribution: MenuDriftSummaryContribution,
+    timestamp: Timestamp,
+): void => {
+    const accumulator = changesByItem.get(contribution.itemId) || {
+        priceChangeCount: 0,
+        availabilityToggleCount: 0,
+        lastPriceChange: null,
+        lastAvailabilityChange: null,
+    };
+
+    if (contribution.priceChanges > 0) {
+        accumulator.priceChangeCount += contribution.priceChanges;
+        if (!accumulator.lastPriceChange
+            || timestamp.toMillis() > accumulator.lastPriceChange.toMillis()) {
+            accumulator.lastPriceChange = timestamp;
+        }
+    }
+    if (contribution.availabilityChanges > 0) {
+        accumulator.availabilityToggleCount += contribution.availabilityChanges;
+        if (!accumulator.lastAvailabilityChange
+            || timestamp.toMillis() > accumulator.lastAvailabilityChange.toMillis()) {
+            accumulator.lastAvailabilityChange = timestamp;
+        }
+    }
+    changesByItem.set(contribution.itemId, accumulator);
+};
+
 /**
- * Process drift metrics for a single project
+ * Read each store's rolling MOL window once and partition contributions by the
+ * document-path project IDs that are active in that store.
  */
-async function processProjectDriftMetrics(
+async function readStoreDriftAccumulators(
     db: FirebaseFirestore.Firestore,
     tId: string,
     sId: string,
-    projectId: string
-): Promise<{ itemsProcessed: number; reads: number; writes: number }> {
-    const windowEnd = new Date().toISOString().split('T')[0];
-    const windowStart = getDateNDaysAgo(ROLLING_WINDOW_DAYS);
-    const windowStartDate = new Date(windowStart);
-
+    activeProjectIds: ReadonlySet<string>,
+    windowStartTimestamp: Timestamp,
+): Promise<{ changesByProject: StoreDriftAccumulators; reads: number }> {
     let reads = 0;
-    let writes = 0;
-
-    // Query change logs for this project in the rolling window
+    let documentsScanned = 0;
+    const changesByProject: StoreDriftAccumulators = new Map();
     const changeLogsRef = db.collection(DB_COLLECTIONS.MENU_CHANGE_LOG)
         .doc(tId)
         .collection(sId);
+    let lastDocument: FirebaseFirestore.QueryDocumentSnapshot | undefined;
 
-    const changesSnapshot = await changeLogsRef
-        .where('projectId', '==', projectId)
-        .where('timestamp', '>=', Timestamp.fromDate(windowStartDate))
-        .get();
+    while (true) {
+        if (documentsScanned >= MAX_CHANGE_LOG_DOCUMENTS_PER_STORE) {
+            throw new RangeError('Menu drift store scan limit exceeded');
+        }
+        let changeQuery = changeLogsRef
+            .where('timestamp', '>=', windowStartTimestamp)
+            .orderBy('timestamp', 'asc')
+            .orderBy(FieldPath.documentId(), 'asc')
+            .limit(CHANGE_LOG_PAGE_SIZE);
+        if (lastDocument) changeQuery = changeQuery.startAfter(lastDocument);
 
-    reads++;
+        const changesSnapshot = await changeQuery.get();
+        reads += Math.max(1, changesSnapshot.size);
+        documentsScanned += changesSnapshot.size;
 
-    if (changesSnapshot.empty) {
-        return { itemsProcessed: 0, reads, writes };
+        for (const document of changesSnapshot.docs) {
+            const data = document.data();
+            if (typeof data.projectId !== 'string'
+                || !activeProjectIds.has(data.projectId)
+                || !(data.timestamp instanceof Timestamp)) {
+                continue;
+            }
+
+            const contributions = readMenuDriftContributions(data);
+            if (contributions.length === 0) continue;
+
+            const changesByItem = changesByProject.get(data.projectId) || new Map();
+            for (const contribution of contributions) {
+                applyDriftContribution(changesByItem, contribution, data.timestamp);
+            }
+            changesByProject.set(data.projectId, changesByItem);
+        }
+
+        if (changesSnapshot.size < CHANGE_LOG_PAGE_SIZE) break;
+        lastDocument = changesSnapshot.docs[changesSnapshot.docs.length - 1];
     }
 
-    // Group changes by itemId
-    const changesByItem = new Map<string, MenuChangeLogEntry[]>();
+    return { changesByProject, reads };
+}
 
-    for (const doc of changesSnapshot.docs) {
-        const data = doc.data() || {};
-        const changeType = data.changeType as MenuChangeType;
-        if (!DRIFT_CHANGE_TYPES.has(changeType)) continue;
-        if (!data.timestamp || typeof data.timestamp.toMillis !== 'function') continue;
-
-        const change = {
-            itemId: typeof data.itemId === 'string' ? data.itemId : undefined,
-            changeType,
-            timestamp: data.timestamp as Timestamp,
-        };
-        if (!change.itemId) continue;
-
-        const existing = changesByItem.get(change.itemId) || [];
-        existing.push(change);
-        changesByItem.set(change.itemId, existing);
-    }
-
-    // Compute metrics for each item
+/**
+ * Persist one project's in-memory counters in bounded Firestore batches.
+ */
+async function writeProjectDriftMetrics(
+    db: FirebaseFirestore.Firestore,
+    tId: string,
+    sId: string,
+    projectId: string,
+    changesByItem: ProjectDriftAccumulators,
+    windowStart: string,
+    windowEnd: string,
+): Promise<{ itemsProcessed: number; reads: number; writes: number }> {
     const metricsRef = db.collection(DB_COLLECTIONS.MENU_ITEM_STATE)
         .doc(tId)
         .collection(sId)
         .doc(projectId)
         .collection(DB_COLLECTIONS.METRICS);
+    let batch = db.batch();
+    let writesInBatch = 0;
+    let writes = 0;
+    let reads = 0;
+    let metricsDocumentsScanned = 0;
+    let lastMetricDocument: FirebaseFirestore.QueryDocumentSnapshot | undefined;
 
-    for (const [itemId, changes] of changesByItem.entries()) {
-        // Count by change type
-        let priceChangeCount = 0;
-        let availabilityToggleCount = 0;
-        let lastPriceChange: Timestamp | null = null;
-        let lastAvailabilityChange: Timestamp | null = null;
+    // Rolling-window documents are derived cache. Remove entries whose last
+    // contribution aged out so a previous run cannot remain as current truth.
+    while (true) {
+        if (metricsDocumentsScanned >= MAX_METRICS_DOCUMENTS_PER_PROJECT) {
+            throw new RangeError('Menu drift metrics cleanup scan limit exceeded');
+        }
+        let metricsQuery = metricsRef
+            .orderBy(FieldPath.documentId(), 'asc')
+            .limit(METRICS_READ_PAGE_SIZE);
+        if (lastMetricDocument) metricsQuery = metricsQuery.startAfter(lastMetricDocument);
+        const existingMetrics = await metricsQuery.get();
+        reads += Math.max(1, existingMetrics.size);
+        metricsDocumentsScanned += existingMetrics.size;
 
-        for (const change of changes) {
-            if (change.changeType === 'PRICE') {
-                priceChangeCount++;
-                if (!lastPriceChange || change.timestamp.toMillis() > lastPriceChange.toMillis()) {
-                    lastPriceChange = change.timestamp;
-                }
-            }
-            if (change.changeType === 'AVAILABILITY') {
-                availabilityToggleCount++;
-                if (!lastAvailabilityChange || change.timestamp.toMillis() > lastAvailabilityChange.toMillis()) {
-                    lastAvailabilityChange = change.timestamp;
-                }
+        for (const metricDocument of existingMetrics.docs) {
+            if (changesByItem.has(metricDocument.id)) continue;
+            batch.delete(metricDocument.ref);
+            writesInBatch++;
+            writes++;
+            if (writesInBatch === METRICS_WRITE_BATCH_SIZE) {
+                await batch.commit();
+                batch = db.batch();
+                writesInBatch = 0;
             }
         }
+        if (existingMetrics.size < METRICS_READ_PAGE_SIZE) break;
+        lastMetricDocument = existingMetrics.docs[existingMetrics.docs.length - 1];
+    }
 
-        const daysSinceLastPriceChange = daysSince(lastPriceChange);
-        const daysSinceLastAvailabilityChange = daysSince(lastAvailabilityChange);
+    for (const [itemId, changes] of changesByItem.entries()) {
+        const daysSinceLastPriceChange = daysSince(changes.lastPriceChange);
+        const daysSinceLastAvailabilityChange = daysSince(changes.lastAvailabilityChange);
 
         const flags = computeInternalFlags({
             daysSinceLastPriceChange,
-            availabilityToggleCount30d: availabilityToggleCount,
-            priceChangeCount30d: priceChangeCount,
+            availabilityToggleCount30d: changes.availabilityToggleCount,
+            priceChangeCount30d: changes.priceChangeCount,
         });
 
         const metrics: DerivedItemMetrics = {
@@ -250,8 +302,8 @@ async function processProjectDriftMetrics(
             projectId,
             tId,
             sId,
-            priceChangeCount30d: priceChangeCount,
-            availabilityToggleCount30d: availabilityToggleCount,
+            priceChangeCount30d: changes.priceChangeCount,
+            availabilityToggleCount30d: changes.availabilityToggleCount,
             daysSinceLastPriceChange,
             daysSinceLastAvailabilityChange,
             ...flags,
@@ -260,10 +312,16 @@ async function processProjectDriftMetrics(
             windowEnd,
         };
 
-        // Write metrics (fire-and-forget style but we track for telemetry)
-        await metricsRef.doc(itemId).set(metrics, { merge: true });
+        batch.set(metricsRef.doc(itemId), metrics, { merge: true });
+        writesInBatch++;
         writes++;
+        if (writesInBatch === METRICS_WRITE_BATCH_SIZE) {
+            await batch.commit();
+            batch = db.batch();
+            writesInBatch = 0;
+        }
     }
+    if (writesInBatch > 0) await batch.commit();
 
     return {
         itemsProcessed: changesByItem.size,
@@ -297,7 +355,7 @@ export async function processMenuDriftMetricsForAllStores(): Promise<DriftMetric
         const storesSummaryDoc = await db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc('storesSummary').get();
         result.readsCount++;
 
-        const storesSummary = storesSummaryDoc.exists ? storesSummaryDoc.data()?.stores || {} : {};
+        const storesSummary = parsePlatformStoreSummary(storesSummaryDoc.exists ? storesSummaryDoc.data() : undefined);
         const storeIds = Object.keys(storesSummary);
 
         analyticsLogger.info('[MenuDriftMetrics] Stores found to process', {
@@ -306,7 +364,7 @@ export async function processMenuDriftMetricsForAllStores(): Promise<DriftMetric
 
         for (const sId of storeIds) {
             const storeInfo = storesSummary[sId];
-            const tId = storeInfo.tId != null ? String(storeInfo.tId) : '';
+            const tId = storeInfo.tId;
 
             // Skip inactive stores or stores with no tenant
             if (storeInfo.active === false || !tId) {
@@ -314,46 +372,56 @@ export async function processMenuDriftMetricsForAllStores(): Promise<DriftMetric
             }
 
             try {
-                // Check if store has any change logs (skip if none)
-                const changeLogRef = db.collection(DB_COLLECTIONS.MENU_CHANGE_LOG)
-                    .doc(tId)
-                    .collection(sId);
-
-                const sampleDoc = await changeLogRef.limit(1).get();
-                result.readsCount++;
-
-                if (sampleDoc.empty) {
-                    // No change logs for this store, skip
-                    continue;
-                }
-
-                result.storesProcessed++;
-
-                // Fetch projects for this store
+                // Projects use the nested collection contract
+                // projects/{tId}/{sId}/{projectId}; querying the top-level
+                // collection returns tenant container documents, not projects.
                 const projectsSnapshot = await db.collection(DB_COLLECTIONS.PROJECTS)
-                    .where('tId', '==', parseInt(tId))
-                    .where('sId', '==', parseInt(sId))
+                    .doc(tId)
+                    .collection(sId)
                     .get();
+                result.readsCount += Math.max(1, projectsSnapshot.size);
 
-                result.readsCount++;
-
+                const activeProjectIds = new Set<string>();
                 for (const projectDoc of projectsSnapshot.docs) {
                     const projectData = projectDoc.data();
-                    const projectId = projectData.projectId || projectDoc.id;
-
-                    // Skip inactive/deleted projects
                     if (projectData.deleted === true || projectData.active === false) {
                         continue;
                     }
+                    // The document path is authoritative. Never let a mutable
+                    // payload field redirect metrics to another project.
+                    activeProjectIds.add(projectDoc.id);
+                }
+                if (activeProjectIds.size === 0) continue;
 
+                result.storesProcessed++;
+                const windowEnd = new Date().toISOString().split('T')[0];
+                const windowStart = getDateNDaysAgo(ROLLING_WINDOW_DAYS);
+                const storeDrift = await readStoreDriftAccumulators(
+                    db,
+                    tId,
+                    sId,
+                    activeProjectIds,
+                    Timestamp.fromDate(new Date(windowStart)),
+                );
+                result.readsCount += storeDrift.reads;
+
+                for (const projectId of activeProjectIds) {
                     try {
-                        const projectResult = await processProjectDriftMetrics(db, tId, sId, projectId);
+                        const projectResult = await writeProjectDriftMetrics(
+                            db,
+                            tId,
+                            sId,
+                            projectId,
+                            storeDrift.changesByProject.get(projectId) || new Map(),
+                            windowStart,
+                            windowEnd,
+                        );
 
                         result.projectsProcessed++;
                         result.itemsProcessed += projectResult.itemsProcessed;
                         result.readsCount += projectResult.reads;
                         result.writesCount += projectResult.writes;
-                    } catch (projectError: any) {
+                    } catch (projectError: unknown) {
                         result.errors.push(PROJECT_DRIFT_FAILURE);
                         analyticsLogger.warn('[MenuDriftMetrics] Project processing failed', {
                             projectId: getAnalyticsIdContext(projectId),
@@ -363,7 +431,7 @@ export async function processMenuDriftMetricsForAllStores(): Promise<DriftMetric
                         });
                     }
                 }
-            } catch (storeError: any) {
+            } catch (storeError: unknown) {
                 result.errors.push(STORE_DRIFT_FAILURE);
                 analyticsLogger.warn('[MenuDriftMetrics] Store processing failed', {
                     storeId: getAnalyticsIdContext(sId),
@@ -416,7 +484,7 @@ export async function processMenuDriftMetricsForAllStores(): Promise<DriftMetric
         }, { merge: true });
 
         return result;
-    } catch (error: any) {
+    } catch (error: unknown) {
         analyticsLogger.error('[MenuDriftMetrics] Fatal error', {
             error: getAnalyticsErrorContext(error),
         });

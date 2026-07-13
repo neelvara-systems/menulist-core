@@ -1,9 +1,11 @@
 # Public Menu Entry — Controlled Free Preview Pipeline
 
 **Version:** 1.0
-**Status:** ✅ IMPLEMENTED — Active funnel
+**Status:** Source-implemented funnel — not current launch or deploy certification
 **Feature Flag:** `ENABLE_PUBLIC_MENU_ENTRY`
-**Last Updated:** June 3, 2026
+**Last Updated:** July 10, 2026
+
+> **Launch boundary:** Not current launch certification or deploy approval. This document is source-gated Public Menu Entry evidence only. The `/create-menu` page is public, but source submission, acquisition, extraction, preview polling, claim, and publish require a signed-in owner. Current release approval still requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:menu-extraction-pipeline`, `npm run verify:public-business-truth`, `npm run verify:auth-security-failure-matrix`, signed-in desktop/mobile browser QA, physical-device camera/link/preview/claim QA, Gemini extraction provider smoke, Razorpay sandbox evidence where conversion is in scope, applicable target Firebase/Vercel deploy evidence, and production-host smoke.
 
 ---
 
@@ -36,7 +38,7 @@ MenuList's long-term asset is **canonical public business pages**. This feature 
 | `public-menu-entry_website.md` | Content | Landing page copy, SEO meta |
 | `public-menu-entry_helpdoc.md` | Support | Customer help article |
 | `public-menu-entry_mobile-support.md` | Engineering | Mobile admission test |
-| `public-menu-entry_verification.md` | Engineering/Ops | Production-audit evidence and remaining launch blockers |
+| `public-menu-entry_verification.md` | Engineering/Ops | Historical source/local/QA evidence and remaining external certification gates |
 
 ## Key Decisions
 

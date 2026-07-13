@@ -53,6 +53,7 @@ Public research and permissioned contact must not be combined into one default p
 | SDP-R005 | Policy must include source terms URL or internal approval note. | P0 |
 | SDP-R006 | Source run must enforce per-run cap and budget. | P0 |
 | SDP-R007 | Source policy changes must pause affected source runs until revalidated. | P0 |
+| SDP-R008 | Activating a source policy requires `signaldesk.configure`; standard growth-manager and operator roles cannot create an active policy. | P0 |
 
 ## Allowed Use Values
 

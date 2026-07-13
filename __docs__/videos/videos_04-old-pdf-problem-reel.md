@@ -5,6 +5,8 @@
 **Source:** [Master production blueprint](./videos_launch-product-marketing-production-blueprint.md)
 **Scope:** Standalone production handoff for Video 4.
 
+**Mandatory production standard:** [MenuList Founder-Approved Video Production Standard](./videos_founder-approved-production-standard.md). Apply it to this video's messaging, Inter typography, website gradient emphasis, UI styling, motion, transitions, logo slate, Indian-English voice, brand music, aspect-ratio adaptation, and encoded-MP4 QA.
+
 ## Shared Positioning
 
 MenuList must be shown as public-business truth infrastructure for SMBs, not as a standalone QR menu app, generic AI restaurant software, or flashy SaaS dashboard.
@@ -139,3 +141,16 @@ Use a small paper/page-open sound at the start, a soft warning tick on wrong pri
 ### P. CTA
 
 Create customer link.
+
+### Q. Conversion Contract
+
+- Funnel stage: problem awareness.
+- Belief change: `The file I still share may be answering customers with an old version.`
+- Proof moment: old PDF/wrong item becomes one current approved customer link.
+- Linked action: `Create customer link` -> `/create-menu`.
+- Primary metric: qualified create-link starts per referred session.
+- Guard metric: owner comments show problem recognition rather than blame or a PDF-converter-only interpretation.
+- Asset/UTM pattern: `old_pdf_v1_still_reaching_15s_<aspect>`.
+- Paid eligibility: blocked until the rendered asset, destination, baseline, and deeper milestone measurement are approved.
+
+Use the [conversion brief template](./videos_conversion-brief-template.md) and [campaign ledger](./videos_campaign-measurement-ledger.md).

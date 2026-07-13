@@ -16,14 +16,55 @@ import { MAX_PDF_PAGES, WARN_PDF_PAGES } from '../constants';
 const PDFJS_CDN_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
 const PDFJS_WORKER_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-let pdfjsLoadPromise: Promise<any> | null = null;
+type PdfJsPage = {
+    cleanup: () => void;
+    getViewport: (options: { scale: number }) => { height: number; width: number };
+    render: (options: {
+        canvasContext: CanvasRenderingContext2D;
+        viewport: { height: number; width: number };
+    }) => { promise: Promise<void> };
+};
 
-const ensurePdfLibLoaded = async () => {
+type PdfJsDocument = {
+    cleanup: () => void;
+    getPage: (pageNumber: number) => Promise<PdfJsPage>;
+    numPages: number;
+};
+
+type PdfJsLibrary = {
+    GlobalWorkerOptions: { workerSrc: string };
+    getDocument: (options: { data: ArrayBuffer }) => { promise: Promise<PdfJsDocument> };
+};
+
+type PdfUploadFile = {
+    arrayBuffer: () => Promise<ArrayBuffer>;
+    name: string;
+    uid: string;
+};
+
+export type ConvertedPdfImage = {
+    fileId: string;
+    name: string;
+    size: number;
+    type: 'image/jpeg';
+    uid: string;
+    url: string;
+};
+
+let pdfjsLoadPromise: Promise<PdfJsLibrary> | null = null;
+
+const getLoadedPdfJs = (): PdfJsLibrary | null => {
+    const candidate = (window as Window & { pdfjsLib?: unknown }).pdfjsLib;
+    if (!candidate || typeof candidate !== 'object') return null;
+    return candidate as PdfJsLibrary;
+};
+
+const ensurePdfLibLoaded = async (): Promise<PdfJsLibrary> => {
     if (typeof window === 'undefined') {
         throw new Error('PDF conversion is only available in the browser.');
     }
 
-    const existingLib = (window as any).pdfjsLib;
+    const existingLib = getLoadedPdfJs();
     if (existingLib) {
         existingLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER_SRC;
         return existingLib;
@@ -35,7 +76,7 @@ const ensurePdfLibLoaded = async () => {
 
             if (existingScript) {
                 existingScript.addEventListener('load', () => {
-                    const loadedLib = (window as any).pdfjsLib;
+                    const loadedLib = getLoadedPdfJs();
                     if (!loadedLib) {
                         reject(new Error('PDF library loaded but pdfjsLib was unavailable.'));
                         return;
@@ -51,7 +92,7 @@ const ensurePdfLibLoaded = async () => {
             script.src = PDFJS_CDN_SRC;
             script.async = true;
             script.onload = () => {
-                const loadedLib = (window as any).pdfjsLib;
+                const loadedLib = getLoadedPdfJs();
                 if (!loadedLib) {
                     reject(new Error('PDF library loaded but pdfjsLib was unavailable.'));
                     return;
@@ -64,10 +105,13 @@ const ensurePdfLibLoaded = async () => {
         });
     }
 
-    return pdfjsLoadPromise;
+    try {
+        return await pdfjsLoadPromise;
+    } catch (error) {
+        pdfjsLoadPromise = null;
+        throw error;
+    }
 };
-
-let processedFiles: string[] = [];
 
 /**
  * Converts PDF files to images with proper memory management and error handling
@@ -89,51 +133,46 @@ type ConvertPdfToImagesOptions = {
 };
 
 export const convertPdfToImages = async (
-    pdfFile: any[],
-    tenantId: any,
-    storeId: any,
+    pdfFile: PdfUploadFile[],
+    tenantId: string | number,
+    storeId: string | number,
     options: ConvertPdfToImagesOptions = {},
-) => {
-    const convertedImages: any[] = [];
+): Promise<ConvertedPdfImage[]> => {
+    const convertedImages: ConvertedPdfImage[] = [];
     const canvases: HTMLCanvasElement[] = []; // Track canvases for cleanup
+    const processedFileUids = new Set<string>();
     const requestedPageLimit = typeof options.maxPages === 'number' && Number.isFinite(options.maxPages)
         ? Math.floor(options.maxPages)
         : MAX_PDF_PAGES;
     const pageLimit = Math.max(0, Math.min(MAX_PDF_PAGES, requestedPageLimit));
+    const startTime = Date.now();
 
-    return new Promise(async (resolve) => {
-        if (!pdfFile?.length) {
-            resolve([]);
-            return;
-        }
+    if (!pdfFile?.length) return [];
 
-        // Lazy load pdfjs-dist
+    try {
         const pdfjs = await ensurePdfLibLoaded();
 
-        const startTime = Date.now();
+        // Process each PDF sequentially to keep browser memory bounded.
+        for (const file of pdfFile) {
+            if (processedFileUids.has(file.uid)) continue;
+            processedFileUids.add(file.uid);
 
-        try {
-            // Process each PDF file sequentially (as user requested)
-            for (const file of pdfFile) {
-                // Skip already processed files
-                if (processedFiles.includes(file.uid)) continue;
-                processedFiles.push(file.uid);
-
-                const fileArrayBuffer = await file.arrayBuffer();
-
-                let pdf;
+            const fileArrayBuffer = await file.arrayBuffer();
+            let pdf: PdfJsDocument | null = null;
+            try {
                 try {
                     pdf = await pdfjs.getDocument({ data: fileArrayBuffer }).promise;
-                } catch (pdfError: any) {
-                    // Handle corrupted PDF
-                    if (pdfError.name === 'InvalidPDFException' || pdfError.message?.includes('Invalid')) {
+                } catch (pdfError) {
+                    const errorName = pdfError instanceof Error ? pdfError.name : '';
+                    const errorMessage = pdfError instanceof Error ? pdfError.message : '';
+                    if (errorName === 'InvalidPDFException' || errorMessage.includes('Invalid')) {
                         message.error({
                             content: `"${file.name}" is corrupted or invalid. Please try a different PDF file.`,
                             duration: 6
                         });
-                        continue; // Skip this file, continue with others
+                        continue;
                     }
-                    throw pdfError; // Re-throw other errors
+                    throw pdfError;
                 }
 
                 const totalPages = pdf.numPages;
@@ -147,7 +186,6 @@ export const convertPdfToImages = async (
                         content: limitMessage,
                         duration: 8
                     });
-                    pdf.cleanup();
                     continue; // Skip this file
                 }
 
@@ -161,85 +199,63 @@ export const convertPdfToImages = async (
 
                 // Process each page of the current PDF
                 for (let i = 1; i <= totalPages; i++) {
-                    const page = await pdf.getPage(i);
-                    const viewport = page.getViewport({ scale: 1.5 });
-
-                    // Create canvas with optimized settings
+                    let page: PdfJsPage | null = null;
                     const canvas = document.createElement('canvas');
                     canvases.push(canvas); // Track for cleanup
+                    try {
+                        page = await pdf.getPage(i);
+                        const viewport = page.getViewport({ scale: 1.5 });
+                        const context = canvas.getContext('2d', { willReadFrequently: false });
+                        if (!context) {
+                            logMenuProcessingFailure('menu_pdf_conversion_canvas_context_missing', undefined, {
+                                ...getBoundedMenuProcessingStringContext('fileUid', file.uid),
+                                pageIndex: i,
+                                totalPages,
+                            });
+                            continue;
+                        }
 
-                    // Use willReadFrequently: false for better performance
-                    const context = canvas.getContext('2d', { willReadFrequently: false });
-                    if (!context) {
-                        logMenuProcessingFailure('menu_pdf_conversion_canvas_context_missing', undefined, {
-                            ...getBoundedMenuProcessingStringContext('fileUid', file.uid),
-                            pageIndex: i,
-                            totalPages,
+                        canvas.height = viewport.height;
+                        canvas.width = viewport.width;
+                        await page.render({ canvasContext: context, viewport }).promise;
+                        const pageUrl = canvas.toDataURL('image/jpeg', 0.8);
+                        convertedImages.push({
+                            uid: generateMenuFileUid(tenantId, storeId),
+                            name: `${file.name.replace(/\.pdf$/i, '')}-page-${i}.jpg`,
+                            size: Math.round(pageUrl.length * 0.75),
+                            type: 'image/jpeg',
+                            url: pageUrl,
+                            fileId: file.uid
                         });
-                        continue;
+                    } finally {
+                        page?.cleanup();
+                        canvas.width = 0;
+                        canvas.height = 0;
                     }
-
-                    canvas.height = viewport.height;
-                    canvas.width = viewport.width;
-
-                    // Render page to canvas
-                    await page.render({
-                        canvasContext: context,
-                        viewport: viewport
-                    }).promise;
-
-                    // Convert to JPEG with 80% quality (good balance for OCR)
-                    const pageUrl = canvas.toDataURL('image/jpeg', 0.8);
-
-                    const imageData = {
-                        uid: generateMenuFileUid(tenantId, storeId),
-                        name: `${file.name.replace('.pdf', '')}-page-${i}.jpg`,
-                        size: Math.round(pageUrl.length * 0.75), // Approximate size from base64
-                        type: 'image/jpeg',
-                        url: pageUrl,
-                        fileId: file.uid
-                    };
-                    convertedImages.push(imageData);
-
-                    // ✅ CRITICAL: Clean up canvas immediately after conversion
-                    // This prevents memory leaks on large PDFs
-                    canvas.width = 0;
-                    canvas.height = 0;
-                    context.clearRect(0, 0, canvas.width, canvas.height);
-
-                    // Clean up page
-                    page.cleanup();
                 }
-
-                // Clean up PDF document
-                pdf.cleanup();
+            } finally {
+                pdf?.cleanup();
             }
-
-            // Reset processed files tracker
-            processedFiles = [];
-
-            resolve(convertedImages);
-
-        } catch (error) {
-            logMenuProcessingFailure('menu_pdf_conversion_failed', error, {
-                fileCount: pdfFile.length,
-                convertedImageCount: convertedImages.length,
-                elapsedMs: Date.now() - startTime,
-            });
-            message.error({
-                content: 'Failed to convert PDF. Please try again or contact support if the issue persists.',
-                duration: 6
-            });
-            resolve([]); // Return empty array instead of rejecting
-
-        } finally {
-            // ✅ CRITICAL: Ensure all canvases are cleaned up even on error
-            canvases.forEach(canvas => {
-                canvas.width = 0;
-                canvas.height = 0;
-            });
         }
-    });
+
+        return convertedImages;
+    } catch (error) {
+        logMenuProcessingFailure('menu_pdf_conversion_failed', error, {
+            fileCount: pdfFile.length,
+            convertedImageCount: convertedImages.length,
+            elapsedMs: Date.now() - startTime,
+        });
+        message.error({
+            content: 'Failed to convert PDF. Please try again or contact support if the issue persists.',
+            duration: 6
+        });
+        return [];
+    } finally {
+        canvases.forEach(canvas => {
+            canvas.width = 0;
+            canvas.height = 0;
+        });
+    }
 };
 
 /**
@@ -253,5 +269,5 @@ export const isPdfFile = (file: { type?: string; name?: string }): boolean => {
  * Reset the processed files tracker (useful for testing)
  */
 export const resetProcessedFiles = () => {
-    processedFiles = [];
+    // Retained for compatibility. Processing state is now scoped to each call.
 };

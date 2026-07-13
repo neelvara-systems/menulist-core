@@ -11,18 +11,82 @@ export const dynamic = 'force-dynamic';
 import { FEATURE_FLAGS } from "@config/features";
 import { DB_COLLECTIONS } from "@constant/database";
 import { admin } from "@lib/firebase/firebaseAdmin";
-import { parseSummaryProjects } from "@lib/firestore/parseSummaryProjects";
+import { parseSummaryProjects, withAuthoritativeSummaryProjectId } from "@lib/firestore/parseSummaryProjects";
+import { getMultiOutletProjectLogContext, logMultiOutletFailure } from "@lib/multiOutlet/diagnostics";
+import { normalizeMultiOutletProjectId } from "@lib/multiOutlet/projectIdBoundary";
+import { populateMasterCache, resolveProjectForRender } from "@lib/multiOutlet/resolveProject";
+import { normalizePosSyncMenuVersion } from "@lib/posSync/deliveryState";
 import { buildMenuSnapshot } from "@lib/posSync/payloadFormatter";
-import { apiError, buildPullApiResponseHeaders, generateETag, hashApiKey, isMenuListPublicApiTargetAllowed, logApiRequest, normalizeMenuListPublicApiNumericId, normalizePublicApiDocumentId, PULL_API_SCHEMA_VERSION, validatePublicApiKey } from "@lib/publicApi/auth";
+import { inheritLinkedPublicPullMetadata } from '@lib/publicApi/menuProjection';
+import { isMenuListPublicApiCredentialInScope, resolveMenuListPublicApiTenantDocumentId } from '@lib/publicApi/menuListScope';
+import { buildPullApiResponseHeaders, generatePullApiETag, hasPublicApiCredentialScope, hashApiKey, isMenuListPublicApiTargetAllowed, logApiRequest, normalizeMenuListPublicApiNumericId, normalizePublicApiDocumentId, normalizePublicApiKey, PULL_API_KEY_RATE_LIMIT, PULL_API_PREAUTH_RATE_LIMIT, PULL_API_RATE_LIMIT_WINDOW_SECONDS, PULL_API_SCHEMA_VERSION, pullApiError, pullApiRateLimitError, validatePublicApiKey } from "@lib/publicApi/auth";
 import { checkRateLimit } from "@lib/rateLimit";
 import { getBoundedSecurityStringContext, logSecurityFailure } from "@lib/security/securityDiagnostics";
 import { NextRequest, NextResponse } from "next/server";
+import type { Project } from "@template/main-app/projects/types";
+import { getClientIp, hashPublicRateLimitValue } from "src/middleware/publicApi";
+
+async function resolvePublicPullProject(
+    db: ReturnType<typeof admin.firestore>,
+    tenantDocumentId: string,
+    storeProject: Project,
+): Promise<Project | null> {
+    if (!FEATURE_FLAGS.ENABLE_MULTI_OUTLET || !storeProject.masterProjectId) {
+        return storeProject;
+    }
+
+    const masterProjectScope = normalizeMultiOutletProjectId(storeProject.masterProjectId);
+    if (!masterProjectScope || masterProjectScope.tenantDocumentId !== tenantDocumentId) {
+        logMultiOutletFailure('platform_pull_master_project_reference_invalid', undefined, {
+            ...getMultiOutletProjectLogContext(storeProject.projectId, storeProject.masterProjectId),
+        });
+        return null;
+    }
+
+    const masterProjectSnapshot = await db
+        .collection(DB_COLLECTIONS.PROJECTS)
+        .doc(masterProjectScope.tenantDocumentId)
+        .collection(masterProjectScope.storeDocumentId)
+        .doc(masterProjectScope.projectId)
+        .get();
+    const masterProjectData = masterProjectSnapshot.data() as Project | undefined;
+    if (
+        !masterProjectSnapshot.exists
+        || !masterProjectData
+        || masterProjectData.active === false
+        || masterProjectData.deleted === true
+        || masterProjectData.masterProjectId
+        || !masterProjectData.files?.length
+    ) {
+        logMultiOutletFailure('platform_pull_master_project_unavailable', undefined, {
+            ...getMultiOutletProjectLogContext(storeProject.projectId, storeProject.masterProjectId),
+        });
+        return null;
+    }
+
+    populateMasterCache(masterProjectScope.projectId, {
+        ...masterProjectData,
+        projectId: masterProjectSnapshot.id,
+    });
+    const resolvedProject = await resolveProjectForRender({ storeProject });
+    if (resolvedProject._resolved?.isMasterLinked !== true) {
+        logMultiOutletFailure('platform_pull_master_project_unresolved', undefined, {
+            ...getMultiOutletProjectLogContext(storeProject.projectId, storeProject.masterProjectId),
+        });
+        return null;
+    }
+
+    return {
+        ...inheritLinkedPublicPullMetadata(resolvedProject, masterProjectData),
+        projectId: storeProject.projectId,
+    };
+}
 
 async function getDefaultPublicMenuProject(
     db: ReturnType<typeof admin.firestore>,
     tenantDocumentId: string,
     storeId: string,
-): Promise<Record<string, any> | null> {
+): Promise<Project | null> {
     const storeDocumentId = normalizePublicApiDocumentId(storeId);
     if (!storeDocumentId) return null;
 
@@ -34,16 +98,13 @@ async function getDefaultPublicMenuProject(
     if (!summarySnap.exists) return null;
 
     const projects = Object.entries(parseSummaryProjects(summarySnap.data()))
-        .map(([projectId, data]: [string, any]) => {
+        .map(([projectId, data]) => {
             const projectDocumentId = normalizePublicApiDocumentId(projectId);
             return projectDocumentId
-                ? {
-                    projectId: projectDocumentId,
-                    ...data,
-                }
+                ? withAuthoritativeSummaryProjectId(projectDocumentId, data)
                 : null;
         })
-        .filter((project): project is Record<string, any> => Boolean(project))
+        .filter((project): project is NonNullable<typeof project> => Boolean(project))
         .filter((project) => (
             project.active !== false
             && project.deleted !== true
@@ -62,30 +123,43 @@ async function getDefaultPublicMenuProject(
 
     if (!projectDoc.exists) return null;
 
-    const projectData = projectDoc.data() as Record<string, any> | undefined;
+    const projectData = projectDoc.data() as Project | undefined;
     if (!projectData) return null;
     if (projectData?.active === false || projectData?.deleted === true) return null;
 
-    return {
+    const storeProject = {
         ...projectData,
-        projectId: projectData?.projectId || selectedProject.projectId,
+        projectId: projectDoc.id,
     };
+    return resolvePublicPullProject(db, tenantDocumentId, storeProject);
 }
 
 export async function GET(request: NextRequest) {
     if (!FEATURE_FLAGS.ENABLE_PUBLIC_API) {
-        return apiError('FEATURE_DISABLED', 'API not available', 403);
+        return pullApiError('FEATURE_DISABLED', 'API not available', 403);
     }
 
-    const apiKey = request.headers.get('x-api-key');
-    if (!apiKey) {
-        return apiError('MISSING_API_KEY', 'Missing X-API-Key header', 401);
+    const rawApiKey = request.headers.get('x-api-key');
+    if (!rawApiKey) {
+        return pullApiError('MISSING_API_KEY', 'Missing X-API-Key header', 401);
     }
-    if (!apiKey.trim().startsWith('ml_')) {
-        return apiError('INVALID_API_KEY', 'Invalid API key', 401);
+    const apiKey = normalizePublicApiKey(rawApiKey);
+    if (!apiKey || !apiKey.startsWith('ml_')) {
+        return pullApiError('INVALID_API_KEY', 'Invalid API key', 401);
     }
 
-    // Rate limit per API key
+    // Bound rotating invalid credentials before per-key lookup/limit work.
+    const preAuthRateLimitResult = await checkRateLimit({
+        key: `public-api-preauth:${hashPublicRateLimitValue(getClientIp(request))}`,
+        limit: PULL_API_PREAUTH_RATE_LIMIT,
+        window: PULL_API_RATE_LIMIT_WINDOW_SECONDS,
+        failClosedOnProviderError: true,
+    });
+    if (!preAuthRateLimitResult.allowed) {
+        return pullApiRateLimitError(preAuthRateLimitResult);
+    }
+
+    // Rate limit each admitted API-key shape independently.
     const apiKeyRateLimitId = hashApiKey(apiKey).slice(0, 16);
     let failureContext: Record<string, boolean | number | string | null | undefined> = {
         endpoint: '/api/public/v1/menu',
@@ -93,31 +167,38 @@ export async function GET(request: NextRequest) {
         ...getBoundedSecurityStringContext('apiKeyRateLimitId', apiKeyRateLimitId),
     };
 
-    const rlResult = await checkRateLimit({ key: `public-api:${apiKeyRateLimitId}`, limit: 60, window: 60 });
+    const rlResult = await checkRateLimit({
+        key: `public-api:${apiKeyRateLimitId}`,
+        limit: PULL_API_KEY_RATE_LIMIT,
+        window: PULL_API_RATE_LIMIT_WINDOW_SECONDS,
+        failClosedOnProviderError: true,
+    });
     if (!rlResult.allowed) {
-        const retryAfter = Math.ceil((rlResult.resetAt - Date.now()) / 1000);
-        return apiError('RATE_LIMIT_EXCEEDED', 'Too many requests', 429, {
-            'Retry-After': String(Math.max(retryAfter, 1)),
-        });
+        return pullApiRateLimitError(rlResult);
     }
 
     try {
         const result = await validatePublicApiKey(apiKey);
         if (!result) {
-            return apiError('INVALID_API_KEY', 'Invalid API key', 401);
+            return pullApiError('INVALID_API_KEY', 'Invalid API key', 401);
         }
 
-        const { storeData, storeId } = result;
-        const tenantId = storeData.tenantId ?? storeData.tId;
-        const tenantDocumentId = normalizePublicApiDocumentId(tenantId);
+        const { credential, storeData, storeId } = result;
+        if (
+            !isMenuListPublicApiCredentialInScope(credential)
+            || !hasPublicApiCredentialScope(credential, 'public:read')
+        ) {
+            return pullApiError('INVALID_API_KEY', 'Invalid API key', 401);
+        }
+        const tenantDocumentId = resolveMenuListPublicApiTenantDocumentId(storeData);
         const storeDocumentId = normalizePublicApiDocumentId(storeId);
         const tenantNumericId = normalizeMenuListPublicApiNumericId(tenantDocumentId);
         const storeNumericId = normalizeMenuListPublicApiNumericId(storeDocumentId);
         if (!tenantDocumentId || !storeDocumentId || tenantNumericId == null || storeNumericId == null) {
-            return apiError('INVALID_API_KEY', 'Invalid API key', 401);
+            return pullApiError('INVALID_API_KEY', 'Invalid API key', 401);
         }
-        if (!(await isMenuListPublicApiTargetAllowed(storeData))) {
-            return apiError('INVALID_API_KEY', 'Invalid API key', 401);
+        if (!(await isMenuListPublicApiTargetAllowed(storeData, storeDocumentId))) {
+            return pullApiError('INVALID_API_KEY', 'Invalid API key', 401);
         }
         failureContext = {
             ...failureContext,
@@ -134,7 +215,7 @@ export async function GET(request: NextRequest) {
         const db = admin.firestore();
         const projectData = await getDefaultPublicMenuProject(db, tenantDocumentId, storeDocumentId);
         if (!projectData) {
-            return apiError('NO_MENU', 'No published menu found', 404);
+            return pullApiError('NO_MENU', 'No published menu found', 404);
         }
         failureContext = {
             ...failureContext,
@@ -142,11 +223,13 @@ export async function GET(request: NextRequest) {
         };
 
         // Build menu payload using same formatter as POS Webhook Sync
-        const menuVersion = Number(projectData.menuVersion || storeData.posSync?.menuVersion || 1);
+        const menuVersion = normalizePosSyncMenuVersion(projectData.menuVersion)
+            ?? normalizePosSyncMenuVersion(storeData.posSync?.menuVersion)
+            ?? 1;
         const currency = storeData.currencyCode || storeData.currency || 'INR';
 
         const payload = buildMenuSnapshot(
-            projectData as any,
+            projectData,
             storeNumericId,
             tenantNumericId,
             menuVersion,
@@ -162,7 +245,7 @@ export async function GET(request: NextRequest) {
         };
 
         // ETag: conditional request support
-        const etag = `"${generateETag(response)}"`;
+        const etag = `"${generatePullApiETag(response)}"`;
         const responseHeaders = buildPullApiResponseHeaders(etag);
         const ifNoneMatch = request.headers.get('if-none-match');
         if (ifNoneMatch === etag) {
@@ -177,6 +260,6 @@ export async function GET(request: NextRequest) {
         });
     } catch (error) {
         logSecurityFailure('public_api_menu_route_failed', error, failureContext);
-        return apiError('INTERNAL_ERROR', 'Internal error', 500);
+        return pullApiError('INTERNAL_ERROR', 'Internal error', 500);
     }
 }

@@ -1,9 +1,11 @@
 # Public Menu Entry — Website Content
 
 **Version:** 1.0
-**Status:** ✅ IMPLEMENTED — Website copy aligned
-**Last Updated:** June 3, 2026
+**Status:** Source-gated website copy — not current publication or launch approval
+**Last Updated:** July 10, 2026
 **Page URL:** `/create-menu`
+
+> **Launch boundary:** Not current launch certification or deploy approval. This document is source-gated Public Menu Entry evidence only. The `/create-menu` page is public, but source submission, acquisition, extraction, preview polling, claim, and publish require a signed-in owner. Current release approval still requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:menu-extraction-pipeline`, `npm run verify:public-business-truth`, `npm run verify:auth-security-failure-matrix`, signed-in desktop/mobile browser QA, physical-device camera/link/preview/claim QA, Gemini extraction provider smoke, Razorpay sandbox evidence where conversion is in scope, applicable target Firebase/Vercel deploy evidence, and production-host smoke.
 
 ---
 

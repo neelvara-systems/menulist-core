@@ -16,11 +16,13 @@ import {
   type PlatformNotificationCategory,
   type PlatformNotificationSeverity,
 } from '@data/shared/platformNotificationRegistry';
+import { getCurrentPlatformUser } from '@lib/auth/currentPlatformUser';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
 import { logger } from '@lib/monitoring/logger';
 import { createAlert } from '@lib/ops/alerts';
 import { getBoundedOpsStringContext, logOpsFailure } from '@lib/ops/opsDiagnostics';
+import { buildPlatformNotificationWindow } from '@lib/ops/notificationOpsSnapshotBoundary';
 import { classifyPlatformAlert } from '@lib/ops/platformNotificationClassifier';
 import type {
   PlatformNotificationActionResult,
@@ -35,6 +37,7 @@ import { checkRateLimit } from '@lib/rateLimit';
 import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { validateAPIInput } from '@lib/security/inputValidation';
 import { getBoundedSecurityRouteContext } from '@lib/security/securityDiagnostics';
+import { createHash } from 'crypto';
 import { Timestamp } from 'firebase-admin/firestore';
 import { NextResponse } from 'next/server';
 import { hashPublicRateLimitValue } from 'src/middleware/publicApi';
@@ -81,6 +84,12 @@ const PlatformNotificationEventIdSchema = z.string()
   .max(120)
   .refine(isValidFirestoreDocumentId, 'Invalid event ID');
 
+const PlatformNotificationActionIdSchema = z.string()
+  .trim()
+  .min(8)
+  .max(96)
+  .regex(/^[A-Za-z0-9_-]+$/, 'Invalid action ID');
+
 const GetQuerySchema = z.object({
   status: z.enum(STATUS_FILTERS as [PlatformNotificationStatusFilter, ...PlatformNotificationStatusFilter[]]).default('active'),
   severity: z.enum(SEVERITY_FILTERS as [PlatformNotificationSeverityFilter, ...PlatformNotificationSeverityFilter[]]).default('all'),
@@ -100,6 +109,7 @@ const PostActionSchema = z.discriminatedUnion('action', [
     channel: z.enum(['email', 'whatsapp_web']),
     destination: z.string().trim().max(254).optional(),
     note: z.string().trim().max(600).optional(),
+    actionId: PlatformNotificationActionIdSchema,
   }),
   z.object({
     action: z.literal('createManualAlert'),
@@ -109,6 +119,7 @@ const PostActionSchema = z.discriminatedUnion('action', [
     message: z.string().trim().min(3).max(1200),
     productId: z.enum(['PLATFORM', 'ML', 'AL', 'CC', 'MC']).default('PLATFORM'),
     category: z.enum(CATEGORY_VALUES).optional(),
+    actionId: PlatformNotificationActionIdSchema,
   }),
 ]);
 
@@ -128,14 +139,12 @@ function toIso(value: any): string | null {
   return null;
 }
 
-function millis(value?: string | null): number {
-  if (!value) return 0;
-  const parsed = new Date(value).getTime();
-  return Number.isNaN(parsed) ? 0 : parsed;
-}
-
 function getOperatorId(session: any): string {
   return String(session?.uId || session?.user?.id || session?.user?.email || 'platform');
+}
+
+function safeActionDocumentId(value: string): string {
+  return createHash('sha256').update(value).digest('hex').slice(0, 40);
 }
 
 function isEmail(value: string): boolean {
@@ -179,6 +188,11 @@ function getPlatformAlertStringContext(label: string, value: unknown): Record<st
   };
 }
 
+function getPlatformAlertScopeValue(value: unknown): string {
+  const normalized = cleanOpsText(value || 'system', 120);
+  return /^[A-Za-z0-9_.:-]{1,120}$/.test(normalized) ? normalized : 'restricted';
+}
+
 function buildPlatformAlertDisplayMessage(description: string, data: Record<string, any>): string {
   const context = {
     ...getPlatformAlertStringContext('title', data.title),
@@ -207,13 +221,19 @@ function safeMetadataPreview(metadata: any): Record<string, string | number | bo
 
     if (
       value === null ||
-      typeof value === 'string' ||
       typeof value === 'number' ||
       typeof value === 'boolean'
     ) {
-      acc[key] = typeof value === 'string' && value.length > 180
-        ? `${value.slice(0, 177)}...`
-        : value;
+      acc[key] = value;
+      return acc;
+    }
+    if (typeof value === 'string') {
+      const normalized = cleanOpsText(value, 180);
+      if (/^[A-Za-z0-9_.:-]{1,80}$/.test(normalized)) {
+        acc[key] = normalized;
+      } else {
+        Object.assign(acc, getPlatformAlertStringContext(key, normalized));
+      }
     }
     return acc;
   }, {});
@@ -233,14 +253,13 @@ function serializeAlertDoc(
     severity: classified.severity,
     title: classified.entry.title,
     message: buildPlatformAlertDisplayMessage(classified.entry.description, data),
-    tId: String(data.tId || 'system'),
-    sId: String(data.sId || 'system'),
+    tId: getPlatformAlertScopeValue(data.tId),
+    sId: getPlatformAlertScopeValue(data.sId),
     acknowledged: data.acknowledged === true,
     actionRequired: data.actionRequired === true,
     actionTaken: data.actionTaken === true,
     timestamp: toIso(data.timestamp),
     acknowledgedAt: toIso(data.acknowledgedAt),
-    acknowledgedBy: data.acknowledgedBy ? String(data.acknowledgedBy) : null,
     manualHandoffAt: toIso(data.manualHandoffAt),
     manualHandoffChannel: data.manualHandoffChannel === 'email' || data.manualHandoffChannel === 'whatsapp_web'
       ? data.manualHandoffChannel
@@ -252,29 +271,7 @@ function serializeAlertDoc(
   };
 }
 
-async function countQuery(query: FirebaseFirestore.Query): Promise<number> {
-  const snapshot = await query.count().get();
-  return Number(snapshot.data().count || 0);
-}
-
-async function getCounts(): Promise<PlatformNotificationSnapshot['counts']> {
-  const alerts = firestoreAdmin.collection(DB_COLLECTIONS.SYSTEM_ALERTS);
-  const [active, acknowledged, critical, warning, info] = await Promise.all([
-    countQuery(alerts.where('acknowledged', '==', false)),
-    countQuery(alerts.where('acknowledged', '==', true)),
-    countQuery(alerts.where('severity', '==', 'critical')),
-    countQuery(alerts.where('severity', '==', 'warning')),
-    countQuery(alerts.where('severity', '==', 'info')),
-  ]);
-
-  return { active, acknowledged, critical, warning, info };
-}
-
-async function getRows(params: {
-  status: PlatformNotificationStatusFilter;
-  severity: PlatformNotificationSeverityFilter;
-  triggerType: string;
-  limit: number;
+async function getRecentRows(params: {
   scanLimit: number;
   cost: PlatformNotificationOpsCost;
 }): Promise<PlatformNotificationRow[]> {
@@ -285,13 +282,7 @@ async function getRows(params: {
     .get();
   params.cost.alertReads += snapshot.docs.length;
 
-  return snapshot.docs
-    .map(serializeAlertDoc)
-    .filter((row) => params.status === 'all' || (params.status === 'active' ? !row.acknowledged : row.acknowledged))
-    .filter((row) => params.severity === 'all' || row.severity === params.severity)
-    .filter((row) => params.triggerType === 'all' || row.triggerType === params.triggerType)
-    .sort((a, b) => millis(b.timestamp) - millis(a.timestamp))
-    .slice(0, params.limit);
+  return snapshot.docs.map(serializeAlertDoc);
 }
 
 async function getDetail(eventId?: string, cost?: PlatformNotificationOpsCost): Promise<PlatformNotificationRow | undefined> {
@@ -301,10 +292,64 @@ async function getDetail(eventId?: string, cost?: PlatformNotificationOpsCost): 
   return snap.exists ? serializeAlertDoc(snap) : undefined;
 }
 
-async function getExistingAlertRef(eventId: string) {
+async function acknowledgeExistingAlert(
+  eventId: string,
+  operatorId: string,
+): Promise<'missing' | 'changed' | 'replayed'> {
   const ref = firestoreAdmin.collection(DB_COLLECTIONS.SYSTEM_ALERTS).doc(eventId);
-  const snap = await ref.get();
-  return snap.exists ? ref : null;
+  return firestoreAdmin.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(ref);
+    if (!snapshot.exists) return 'missing';
+    if (snapshot.data()?.acknowledged === true) return 'replayed';
+    const now = Timestamp.now();
+    transaction.update(ref, {
+      acknowledged: true,
+      acknowledgedAt: now,
+      acknowledgedBy: operatorId,
+      updatedAt: now,
+    });
+    return 'changed';
+  });
+}
+
+async function recordPlatformManualHandoff(params: {
+  eventId: string;
+  operatorId: string;
+  actionId: string;
+  channel: 'email' | 'whatsapp_web';
+  destination?: string;
+  note?: string;
+}): Promise<'missing' | 'changed' | 'replayed' | 'conflict'> {
+  const ref = firestoreAdmin.collection(DB_COLLECTIONS.SYSTEM_ALERTS).doc(params.eventId);
+  const actionIdHash = safeActionDocumentId(params.actionId);
+  const destinationMasked = params.destination
+    ? maskDestination(params.channel, params.destination)
+    : null;
+  return firestoreAdmin.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(ref);
+    if (!snapshot.exists) return 'missing';
+    const currentData = snapshot.data() || {};
+    if (currentData.manualHandoffActionIdHash === actionIdHash) {
+      return currentData.manualHandoffChannel === params.channel
+        && currentData.manualHandoffDestinationMasked === destinationMasked
+        && currentData.manualHandoffNote === (params.note || null)
+        && currentData.manualHandoffBy === params.operatorId
+        ? 'replayed'
+        : 'conflict';
+    }
+    const now = Timestamp.now();
+    transaction.update(ref, {
+      actionTaken: true,
+      manualHandoffAt: now,
+      manualHandoffBy: params.operatorId,
+      manualHandoffChannel: params.channel,
+      manualHandoffDestinationMasked: destinationMasked,
+      manualHandoffNote: params.note || null,
+      manualHandoffActionIdHash: actionIdHash,
+      updatedAt: now,
+    });
+    return 'changed';
+  });
 }
 
 export const GET = withAuth(async (request, session) => {
@@ -322,28 +367,73 @@ export const GET = withAuth(async (request, session) => {
     return NextResponse.json({ error: 'Invalid query parameters' }, { status: 400 });
   }
 
+  const sessionOperatorId = getOperatorId(session);
+  const operatorRateLimitHash = hashPublicRateLimitValue(sessionOperatorId);
+  const rateLimit = await checkRateLimit({
+    key: `platform-notification-ops-read:${operatorRateLimitHash}`,
+    limit: 60,
+    window: 60 * 60,
+    failClosedOnProviderError: true,
+  });
+  if (!rateLimit.allowed) {
+    const retryAfter = Math.max(1, Math.ceil((rateLimit.resetAt - Date.now()) / 1000));
+    logger.security('Platform Notification Ops Read Rate Limited', {
+      ...getBoundedSecurityRouteContext(session, request),
+      endpoint: request.nextUrl.pathname,
+      providerUnavailable: rateLimit.reason === 'provider_unavailable',
+    }, 'medium');
+    return NextResponse.json(
+      {
+        error: rateLimit.reason === 'provider_unavailable'
+          ? 'Platform notification access is temporarily unavailable'
+          : 'Too many platform notification refreshes',
+        retryAfter,
+      },
+      {
+        status: rateLimit.reason === 'provider_unavailable' ? 503 : 429,
+        headers: { 'Retry-After': String(retryAfter) },
+      },
+    );
+  }
+
   const { status, severity, triggerType, limit, eventId } = validation.data;
   const scanLimit = Math.min(Math.max(limit * 3, 75), 150);
   const cost: PlatformNotificationOpsCost = {
+    authReads: 1,
     alertReads: 0,
-    countQueries: 5,
+    countQueries: 0,
     writes: 0,
     scanLimit,
-    note: 'Manual refresh only. No realtime listener. List scans the recent bounded alert window and filters in memory.',
+    note: 'Manual refresh only. One current-user authorization read and one bounded recent-alert scan. Counts and filters describe that same recent window; no unbounded aggregate query or realtime listener is used.',
   };
 
   try {
-    const [counts, events, selectedEvent] = await Promise.all([
-      getCounts(),
-      getRows({ status, severity, triggerType, limit, scanLimit, cost }),
-      getDetail(eventId, cost),
-    ]);
+    const currentPlatformUser = await getCurrentPlatformUser(session);
+    if (!currentPlatformUser) {
+      logger.security('Authorization Failed - Platform Notification Current Platform Role', {
+        ...getBoundedSecurityRouteContext(session, request),
+        endpoint: request.nextUrl.pathname,
+      }, 'high');
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const recentRows = await getRecentRows({ scanLimit, cost });
+    const { counts, events } = buildPlatformNotificationWindow({
+      rows: recentRows,
+      status,
+      severity,
+      triggerType,
+      limit,
+    });
+    const selectedEvent = eventId
+      ? recentRows.find((row) => row.id === eventId) || await getDetail(eventId, cost)
+      : undefined;
 
     return NextResponse.json({
       generatedAt: new Date().toISOString(),
       feature: {
         dashboardEnabled: FEATURE_FLAGS.ENABLE_PLATFORM_NOTIFICATION_DASHBOARD,
-        accessModel: 'platform_role',
+        accessModel: 'current_persisted_platform_user',
         realtimeListeners: false,
       },
       filters: { status, severity, triggerType, limit, scanLimit },
@@ -385,12 +475,13 @@ export const POST = withAuth(async (request, session) => {
     return NextResponse.json({ error: 'Platform notification dashboard is disabled' }, { status: 404 });
   }
 
-  const operatorId = getOperatorId(session);
-  const operatorRateLimitHash = hashPublicRateLimitValue(operatorId);
+  const sessionOperatorId = getOperatorId(session);
+  const operatorRateLimitHash = hashPublicRateLimitValue(sessionOperatorId);
   const rateLimit = await checkRateLimit({
     key: `platform-notification-ops:${operatorRateLimitHash}`,
     limit: 40,
     window: 60 * 60,
+    failClosedOnProviderError: true,
   });
   if (!rateLimit.allowed) {
     const retryAfter = Math.max(1, Math.ceil((rateLimit.resetAt - Date.now()) / 1000));
@@ -399,9 +490,36 @@ export const POST = withAuth(async (request, session) => {
       endpoint: request.nextUrl.pathname,
     }, 'medium');
     return NextResponse.json(
-      { error: 'Too many platform notification actions', retryAfter },
-      { status: 429, headers: { 'Retry-After': String(retryAfter) } },
+      {
+        error: rateLimit.reason === 'provider_unavailable'
+          ? 'Platform notification actions are temporarily unavailable'
+          : 'Too many platform notification actions',
+        retryAfter,
+      },
+      {
+        status: rateLimit.reason === 'provider_unavailable' ? 503 : 429,
+        headers: { 'Retry-After': String(retryAfter) },
+      },
     );
+  }
+
+  let operatorId: string;
+  try {
+    const currentPlatformUser = await getCurrentPlatformUser(session);
+    if (!currentPlatformUser) {
+      logger.security('Authorization Failed - Platform Notification Current Platform Role', {
+        ...getBoundedSecurityRouteContext(session, request),
+        endpoint: request.nextUrl.pathname,
+      }, 'high');
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+    operatorId = currentPlatformUser.documentId;
+  } catch (error) {
+    logOpsFailure('platform_notifications_current_authorization_failed', error, {
+      ...getBoundedOpsStringContext('userId', sessionOperatorId),
+      ...getBoundedOpsStringContext('requestPath', request.nextUrl.pathname),
+    });
+    return NextResponse.json({ error: 'Platform notification action failed' }, { status: 500 });
   }
 
   const bodyResult = await readBoundedJsonBody(request, PLATFORM_NOTIFICATION_OPS_ACTION_MAX_BODY_BYTES, {
@@ -423,23 +541,15 @@ export const POST = withAuth(async (request, session) => {
 
   try {
     if (validation.data.action === 'acknowledge') {
-      const alertRef = await getExistingAlertRef(validation.data.eventId);
-      if (!alertRef) {
+      const outcome = await acknowledgeExistingAlert(validation.data.eventId, operatorId);
+      if (outcome === 'missing') {
         return NextResponse.json({ error: 'Alert not found' }, { status: 404 });
       }
-
-      await alertRef.update({
-        acknowledged: true,
-        acknowledgedAt: Timestamp.now(),
-        acknowledgedBy: operatorId,
-        updatedAt: Timestamp.now(),
-      });
-
       return NextResponse.json({
         ok: true,
         action: 'acknowledge',
         eventId: validation.data.eventId,
-        message: 'Alert acknowledged',
+        message: outcome === 'replayed' ? 'Alert was already acknowledged' : 'Alert acknowledged',
       } satisfies PlatformNotificationActionResult);
     }
 
@@ -449,28 +559,26 @@ export const POST = withAuth(async (request, session) => {
         return NextResponse.json({ error: destinationError }, { status: 400 });
       }
 
-      const alertRef = await getExistingAlertRef(validation.data.eventId);
-      if (!alertRef) {
+      const outcome = await recordPlatformManualHandoff({
+        eventId: validation.data.eventId,
+        operatorId,
+        actionId: validation.data.actionId,
+        channel: validation.data.channel,
+        destination: validation.data.destination,
+        note: validation.data.note,
+      });
+      if (outcome === 'missing') {
         return NextResponse.json({ error: 'Alert not found' }, { status: 404 });
       }
-
-      await alertRef.update({
-        actionTaken: true,
-        manualHandoffAt: Timestamp.now(),
-        manualHandoffBy: operatorId,
-        manualHandoffChannel: validation.data.channel,
-        manualHandoffDestinationMasked: validation.data.destination
-          ? maskDestination(validation.data.channel, validation.data.destination)
-          : null,
-        manualHandoffNote: validation.data.note || null,
-        updatedAt: Timestamp.now(),
-      });
+      if (outcome === 'conflict') {
+        return NextResponse.json({ error: 'Platform notification action ID conflict' }, { status: 409 });
+      }
 
       return NextResponse.json({
         ok: true,
         action: 'manualHandoff',
         eventId: validation.data.eventId,
-        message: 'Manual handoff recorded',
+        message: outcome === 'replayed' ? 'Manual handoff was already recorded' : 'Manual handoff recorded',
       } satisfies PlatformNotificationActionResult);
     }
 
@@ -491,6 +599,8 @@ export const POST = withAuth(async (request, session) => {
         createdManually: true,
         createdBy: operatorId,
       },
+    }, {
+      documentId: safeActionDocumentId(`manual-alert|${operatorId}|${validation.data.actionId}`),
     });
     if (!eventId) {
       throw new Error('Manual platform alert creation returned empty id');

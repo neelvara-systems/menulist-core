@@ -1,9 +1,9 @@
 # Owner Support Assistant - Helpdoc Draft
 
-> **Status:** DOCS FROZEN
+> **Status:** INTERNAL DRAFT - read-only runtime live
 > **Created:** 2026-06-07
 > **Audience:** Answerlattice owners and staff
-> **Publication status:** Do not publish until implementation is live.
+> **Publication status:** Keep internal until authenticated browser/device QA and release approval; do not describe deferred actions as available.
 
 ---
 
@@ -11,22 +11,17 @@
 
 Owner Support Assistant helps you review support knowledge from one private Answerlattice screen.
 
-You can ask what needs attention, why a support topic keeps appearing, or which review action should happen next. The answer shows evidence and sends you to the correct review screen.
+You can ask what needs attention, whether approved answers are at risk, where the current friction summary shows pressure, whether support is ready, or what intake work is waiting. The answer shows summary evidence and sends you to the correct review screen.
 
 ---
 
 ## What It Can Help With
 
 - Find the highest-priority support review item.
-- Understand why a topic may still be causing questions.
-- Ask for support stats for today, this week, last week, this month, or last month.
+- See the current seven-day friction and escalation summary.
 - See weak or missing answer coverage.
-- Review unanswered questions.
-- Prepare a Support Board plan.
-- Prepare a ticket reply for your review.
-- Prepare a supported ticket status change for confirmation.
-- Turn a repeated question and answer into a review draft.
-- Open the right Governance, FAQ, KB, or Support Board screen.
+- Check launch readiness and Knowledge Intake review counts.
+- Open the right Dashboard, Governance, Knowledge Intake, Ticket, or Support Board screen.
 
 ---
 
@@ -36,8 +31,9 @@ Owner Support Assistant will not:
 
 - approve answers for you
 - publish FAQs or articles
-- close tickets without your confirmation
-- reply to customers without your review and confirmation
+- close or reply to tickets
+- create Support Board cards, drafts, notes, or known issues
+- run answer tests or exports
 - change widget settings
 - show secrets or widget keys
 - replace human review
@@ -52,8 +48,6 @@ If you ask for one of those actions, it will explain that the action must happen
 2. Ask a support review question.
 3. Read the short answer and evidence.
 4. Use the suggested action to open the right review workflow.
-5. Save a plan only when you want to create a governed Support Board item or note.
-6. For ticket actions, review the preview carefully and confirm only when the target and text are correct.
 
 ---
 
@@ -61,16 +55,9 @@ If you ask for one of those actions, it will explain that the action must happen
 
 - What needs review today?
 - Which answers are at risk?
-- Why are users still asking about billing?
-- What Support Board item should we handle first?
-- Show unanswered questions from last week.
-- What are today's support stats?
-- How did support do this week compared with last week?
-- What changed last month?
-- Prepare a review note for this support gap.
-- Draft a reply to this ticket.
-- Mark this ticket resolved.
-- Turn this repeated reply into a FAQ draft.
+- Where are users getting stuck?
+- Is support ready for more users?
+- What knowledge is waiting for review?
 
 ---
 

@@ -68,16 +68,21 @@ export default function AnswerlatticeDeveloperDocPage({ docPath }: { docPath: st
                         />
                         <div className="space-y-5">
                             {doc.sections.map((section) => (
-                                <article key={section.title} className="rounded-[1.5rem] border border-white/[0.06] bg-white/[0.025] p-6">
+                                <article key={section.title} className="min-w-0 rounded-[1.5rem] border border-white/[0.06] bg-white/[0.025] p-6">
                                     <h2 className="text-2xl font-semibold text-white">{section.title}</h2>
                                     <p className="mt-3 text-sm leading-relaxed text-[#a0a0c0]">{section.description}</p>
                                     <ul className="mt-5 grid gap-3 md:grid-cols-3">
                                         {section.bullets.map((item) => (
-                                            <li key={item} className="rounded-xl border border-white/[0.06] bg-[#09091a]/45 p-4 text-sm leading-relaxed text-[#d6d6ef]">
+                                            <li key={item} className="min-w-0 break-words rounded-xl border border-white/[0.06] bg-[#09091a]/45 p-4 text-sm leading-relaxed text-[#d6d6ef] [overflow-wrap:anywhere]">
                                                 {item}
                                             </li>
                                         ))}
                                     </ul>
+                                    {section.code ? (
+                                        <pre className="mt-5 max-w-full overflow-x-auto whitespace-pre rounded-xl border border-white/[0.08] bg-[#050510] p-5 text-left text-xs leading-6 text-[#d6d6ef]">
+                                            <code>{section.code}</code>
+                                        </pre>
+                                    ) : null}
                                 </article>
                             ))}
                         </div>

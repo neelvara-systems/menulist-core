@@ -1,7 +1,7 @@
 # Answerlattice Client Onboarding — Firebase Cost
 
-> **Version:** 1.6.2
-> **Last Updated:** 2026-06-30
+> **Version:** 1.7.0
+> **Last Updated:** 2026-07-11
 > **Audience:** Developers / Ops
 
 ---
@@ -24,7 +24,15 @@
 
 **Approx total per onboarding: 2 reads + 13-18 writes = still negligible for a one-time client event.** Actual billed reads can vary slightly with duplicate checks and rule/auth behavior.
 
-The get-started browser client now parses onboarding responses through a 16 KB bounded JSON reader and validates the success shape before showing the widget key or completion state. This adds no Firestore reads/writes, Storage operations, Cloud Functions, provider calls, rules, indexes, or deployment work; it only prevents malformed, oversized, redirected, or wrong-shape browser responses from being treated as completed onboarding.
+The get-started browser client parses onboarding responses through a 16 KB bounded JSON reader and validates the success, plan, billing, subscription, recovery, and widget-key shape before showing completion state. This adds no Firestore operations; it prevents malformed, oversized, redirected, or wrong-shape browser responses from being treated as completed onboarding.
+
+Resumable provisioning adds correctness reads only on retries or failures:
+
+- the Answerlattice user read recovers `provisioning` or `payment_pending` state even after the default-auth session already contains `productAccounts.AL`;
+- a resumed provisioning attempt reads its scoped store and uses a bounded Razorpay provider search before creating another subscription;
+- pending subscription, store summary, widget-key state, and tenant/store/user statuses commit in one transaction;
+- payment-pending recovery reads the scoped store and returns the existing checkout with no new subscription or widget-key write;
+- compensation reads the exact attempt-owned tenant/store/user and optional subscription, then deactivates only that scope and updates the two compact summary documents.
 
 ## No New Collections
 
@@ -88,6 +96,7 @@ The import flow must use Answerlattice session scope and `answerlatticeStorage` 
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-07-11 | 1.7.0 | Added retry/recovery/compensation operation notes and the atomic pending-subscription plus widget-key finalization boundary |
 | 2026-06-30 | 1.6.2 | Documented that get-started response-boundary hardening is browser-local and adds no Firebase operations |
 | 2026-05-21 | 1.6.1 | Documented product-scoped Razorpay plan lookup for paid Answerlattice onboarding |
 | 2026-05-21 | 1.6.0 | Added Answerlattice subscription ownership fields and store-summary direct-read billing contract |

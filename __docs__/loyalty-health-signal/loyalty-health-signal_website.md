@@ -3,6 +3,7 @@
 **Date:** February 19, 2026  
 **Audience:** Potential Customers (PUBLIC)  
 **Pillar:** 5 of 6
+**Publication status:** Not approved. No current runtime or public route delivers this feature; the copy below is a future concept and must not be published while the flag, scheduler, and UI remain inactive.
 
 ---
 
@@ -43,4 +44,4 @@ A: By analyzing aggregate visitor patterns — total visits vs unique visitors o
 
 ---
 
-**Last Updated:** February 19, 2026
+**Last Updated:** July 13, 2026

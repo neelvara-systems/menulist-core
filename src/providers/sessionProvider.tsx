@@ -23,11 +23,16 @@ import {
 } from '@lib/multiOutlet/activeStoreContext';
 import { isMasterLocationContext } from '@lib/multiOutlet/locationAccess';
 import { canUserAccessStore } from '@lib/multiOutlet/storeSwitchAccess';
+import {
+    getActiveTenantStoreSummaryId,
+    isActiveStoreRecordInTenantScope,
+} from '@lib/multiOutlet/sessionStoreContextBoundary';
 import { applyOutletPolicy } from '@lib/permissions/applyOutletPolicy';
 import { getPermissionsForRole } from '@lib/permissions/hasPermission';
 import type { PlatformStoreSummaryOption } from '@lib/platform/storeSummaryOptions';
 import { ChangelogPage } from '@type/changelog';
 import { KnowledgeBaseArticleType, KnowledgeBaseCategoriesType } from '@type/knowledgeBase';
+import type { AnswerlatticeReadableArticle } from '@lib/answerlattice/publicContentBoundary';
 import { StoreDataType } from '@type/platform/store';
 import { TenantDataType } from '@type/platform/tenant';
 import { FirestoreSubscriptionDoc } from '@type/razorpay';
@@ -103,7 +108,7 @@ export default function SessionProvider({ children, session }: Props) {
 
     const [cachedTickets, setCachedTickets] = useState<{ cachedOn: Timestamp, tickets: SupportTicketType[] }>({ cachedOn: null, tickets: [] })
 
-    const [cachedArticles, setCachedArticles] = useState<{ cachedOn: Timestamp | null, articles: KnowledgeBaseArticleType[] }>({ cachedOn: null, articles: [] })
+    const [cachedArticles, setCachedArticles] = useState<{ cachedOn: Timestamp | null, articles: AnswerlatticeReadableArticle[] }>({ cachedOn: null, articles: [] })
 
     const [platformStoreSummaryOptions, setPlatformStoreSummaryOptions] = useState<PlatformStoreSummaryOption[]>([])
     const [platformStoreSummaryLoadedAt, setPlatformStoreSummaryLoadedAt] = useState<number | null>(null)
@@ -389,9 +394,10 @@ export default function SessionProvider({ children, session }: Props) {
         if (!session || !loginStoreDetails || !tenantDetails?.storesList?.length) return;
 
         const loginStoreId = Number(session.user?.storeId);
+        const loginTenantId = Number(session.user?.tenantId);
         const requestedStoreContextId = Number(activeStoreContext || 0);
         const requestedStoreSummary: any = tenantDetails.storesList.find(
-            (store: any) => Number(store?.storeId) === requestedStoreContextId,
+            (store: any) => getActiveTenantStoreSummaryId(store) === requestedStoreContextId,
         );
         const requestedStoreIsActive = Boolean(
             requestedStoreSummary
@@ -440,7 +446,9 @@ export default function SessionProvider({ children, session }: Props) {
             return;
         }
 
-        const targetSummary = tenantDetails.storesList.find((store: any) => Number(store.storeId) === Number(targetStoreId));
+        const targetSummary = tenantDetails.storesList.find(
+            (store: any) => getActiveTenantStoreSummaryId(store) === targetStoreId,
+        );
         if (!targetSummary) {
             setActiveStoreContext(null);
             return;
@@ -449,16 +457,28 @@ export default function SessionProvider({ children, session }: Props) {
         let cancelled = false;
         const loadTargetStore = async () => {
             setActiveSubscriptionLoading(true);
-            const targetStore = targetSummary.storeDetails || await getStoreById(targetStoreId);
+            const embeddedTargetStore = isActiveStoreRecordInTenantScope(targetSummary.storeDetails, {
+                storeId: targetStoreId,
+                tenantId: loginTenantId,
+            })
+                ? targetSummary.storeDetails
+                : null;
+            const targetStore = embeddedTargetStore || await getStoreById(targetStoreId);
             if (cancelled) return;
+            if (!isActiveStoreRecordInTenantScope(targetStore, {
+                storeId: targetStoreId,
+                tenantId: loginTenantId,
+            })) {
+                throw new Error('Active store context is outside the signed tenant scope.');
+            }
 
-            if (!targetSummary.storeDetails) {
+            if (!embeddedTargetStore) {
                 setTenantDetails((current: TenantDataType) => {
                     if (!current?.storesList?.length) return current;
                     return {
                         ...current,
                         storesList: current.storesList.map((store: any) => (
-                            Number(store.storeId) === Number(targetStoreId)
+                            getActiveTenantStoreSummaryId(store) === targetStoreId
                                 ? { ...store, storeDetails: removeObjRef(targetStore) }
                                 : store
                         )),
@@ -519,7 +539,7 @@ export default function SessionProvider({ children, session }: Props) {
         if (loginStoreCanActAsMaster) return;
 
         const masterSummary = tenantDetails.storesList.find((store: any) => store?.isMaster === true);
-        const masterStoreId = Number(masterSummary?.storeId);
+        const masterStoreId = getActiveTenantStoreSummaryId(masterSummary);
         if (!masterStoreId || masterSummary?.storeDetails) return;
 
         let cancelled = false;
@@ -528,7 +548,10 @@ export default function SessionProvider({ children, session }: Props) {
                 if (
                     cancelled
                     || !masterStore
-                    || Number(masterStore.tenantId) !== Number(session.user?.tenantId)
+                    || !isActiveStoreRecordInTenantScope(masterStore, {
+                        storeId: masterStoreId,
+                        tenantId: session.user?.tenantId,
+                    })
                 ) {
                     return;
                 }
@@ -538,7 +561,7 @@ export default function SessionProvider({ children, session }: Props) {
                     return {
                         ...current,
                         storesList: current.storesList.map((store: any) => (
-                            Number(store.storeId) === Number(masterStoreId)
+                            getActiveTenantStoreSummaryId(store) === masterStoreId
                                 ? { ...store, isMaster: true, storeDetails: removeObjRef(masterStore) }
                                 : store
                         )),
@@ -675,9 +698,7 @@ export default function SessionProvider({ children, session }: Props) {
     const activeStoreContextMatchesTenant = Boolean(
         hasActiveStoreContext
         && tenantDetails?.storesList?.some((store: any) => (
-            Number(store?.storeId) === activeStoreContextId
-            && store?.active !== false
-            && store?.storeDetails?.active !== false
+            getActiveTenantStoreSummaryId(store) === activeStoreContextId
         )),
     ) && (
         loginStoreIsMaster

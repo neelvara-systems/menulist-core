@@ -3,7 +3,7 @@
 **Feature:** Owner Referral
 **Status:** Implemented behind disabled acquisition controls; public release not approved
 **Primary route:** `/invite#r=<authenticated-encrypted-token>`
-**Last updated:** July 10, 2026
+**Last updated:** July 11, 2026
 **Audience:** Website, product, legal, localization
 
 ---
@@ -33,7 +33,7 @@ The route is a private referral handoff, not an indexable acquisition page.
 
 **Page title:** Business owner invitation - MenuList
 
-**Meta description:** A MenuList business invited you to create your official customer link.
+**Meta description:** A business owner you know invited you to create your official customer link.
 
 **Robots:** `noindex, nofollow`
 
@@ -41,7 +41,7 @@ The route is a private referral handoff, not an indexable acquisition page.
 
 **Open Graph title:** Business owner invitation - MenuList
 
-**Open Graph description:** A MenuList business invited you to create your official customer link.
+**Open Graph description:** A business owner you know invited you to create your official customer link.
 
 Never place the token, referrer identity, reward amounts, business name, or status in metadata. The token remains in the URL fragment and is removed before analytics.
 
@@ -53,11 +53,13 @@ Never place the token, referrer identity, reward amounts, business name, or stat
 
 **Eyebrow:** Business owner invitation
 
-**Headline:** Another business owner invited you to MenuList.
+**Headline:** A business owner you know invited you to MenuList.
 
 **Body:** Keep your menu and public business information current from one place, with one customer link that stays up to date.
 
-**Reward disclosure:** Your business receives 50 credits. The inviting business receives 100 credits.
+**Reward disclosure:** Your business receives 50 credits. Their business receives 100 credits.
+
+**Credit-use line:** Your 50 credits can cover up to 10 generated menu images or 50 description rewrites.
 
 **Payment/no-limit line:** Credits are added when both MenuList subscriptions are paid. There is no referral limit or extra activity requirement.
 
@@ -105,7 +107,7 @@ This is the only causal timing boundary. Do not add usage, source, identity, res
 
 **Headline:** This invitation is unavailable
 
-**Body:** Ask the business that invited you for a new link, or continue with normal MenuList setup.
+**Body:** Ask the business owner who invited you for a new link, or continue with normal MenuList setup.
 
 **Primary CTA:** Create my customer link
 
@@ -153,7 +155,7 @@ Owner Referral is not a pricing-card headline. A pricing FAQ may say:
 
 **Question:** Does MenuList have owner invitations?
 
-**Answer:** Eligible MenuList businesses can privately invite another business. After both subscriptions are paid, MenuList adds 100 credits to the referring business and 50 credits to the referred business. There is no referral limit or post-payment action requirement.
+**Answer:** Eligible MenuList businesses can privately invite a business owner they know. After both subscriptions are paid, MenuList adds 100 credits to the referring business and 50 credits to the referred business. There is no referral limit or post-payment action requirement.
 
 Do not show currency equivalents, countdowns, scarcity, tiers, or `Refer and earn` copy.
 

@@ -15,8 +15,14 @@ import { PERMISSIONS } from "@constant/permissions";
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
 import { requireAnyStorePermission, requireAnyStorePermissionForStoreData } from "@lib/permissions/server";
+import {
+    getNextPosSyncMenuVersion,
+    POS_SYNC_CONNECTION_ISSUE_FAILURE_THRESHOLD,
+    resolvePosSyncDeliveryOutcome,
+} from "@lib/posSync/deliveryState";
 import { buildMenuSnapshot } from "@lib/posSync/payloadFormatter";
 import { normalizePosSyncNumericDocumentId } from "@lib/posSync/posSyncDocumentId";
+import { isPosSyncPinnedRequestTimeout, postPosSyncWebhook } from "@lib/posSync/pinnedWebhookRequest";
 import { validatePosSyncWebhookNetworkTarget } from "@lib/posSync/serverWebhookTarget";
 import { generateDeliveryId, signPayload } from "@lib/posSync/signature";
 import { validatePosSyncWebhookUrl } from "@lib/posSync/webhookUrl";
@@ -29,6 +35,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { verifyTenantAccess, withAuth } from "../../../../middleware/auth";
 import { hashPublicRateLimitValue } from "src/middleware/publicApi";
+import { createHash } from "node:crypto";
 
 const schema = z.object({
     storeId: z.number().int().positive(),
@@ -38,8 +45,9 @@ const schema = z.object({
 
 const WEBHOOK_TIMEOUT_MS = 5_000;
 const POS_SYNC_ACTION_MAX_BODY_BYTES = 8 * 1024;
+const POS_SYNC_DELIVERY_LOG_RETENTION_LIMIT = 20;
+const POS_SYNC_DELIVERY_LOG_RETENTION_SCAN_LIMIT = 100;
 const POS_SYNC_CONNECTION_ISSUE_MESSAGE = 'Could not reach connected system';
-const POS_SYNC_CONNECTION_ISSUE_FAILURE_THRESHOLD = 3;
 const POS_SYNC_INVALID_WEBHOOK_URL = 'pos_sync_invalid_webhook_url';
 const POS_SYNC_BLOCKED_WEBHOOK_TARGET = 'pos_sync_blocked_webhook_target';
 const POS_SYNC_LARGE_PAYLOAD_WARNING = 'pos_sync_large_payload_warning';
@@ -48,6 +56,7 @@ const POS_SYNC_WEBHOOK_TIMEOUT = 'pos_sync_webhook_timeout';
 const POS_SYNC_WEBHOOK_CONNECTION_FAILED = 'pos_sync_webhook_connection_failed';
 const POS_SYNC_DELIVERY_SUCCESS = 'pos_sync_delivery_success';
 const POS_SYNC_DELIVERY_FAILED = 'pos_sync_delivery_failed';
+const POS_SYNC_DELIVERY_LOG_RETENTION_FAILED = 'pos_sync_delivery_log_retention_failed';
 const POS_SYNC_DELIVERY_ROUTE_FAILED = 'pos_sync_delivery_route_failed';
 
 function buildPosSyncSecurityContext(
@@ -82,18 +91,8 @@ async function getScopedProjectData(
 
     return {
         ...projectData,
-        projectId: projectData.projectId || projectDoc.id,
+        projectId: projectDoc.id,
     };
-}
-
-function isAbortError(error: unknown): boolean {
-    return error instanceof Error && error.name === 'AbortError';
-}
-
-function getConsecutiveFailureCount(value: unknown): number {
-    return typeof value === 'number' && Number.isFinite(value) && value > 0
-        ? Math.floor(value)
-        : 0;
 }
 
 export const POST = withAuth(async (request, session) => {
@@ -113,8 +112,7 @@ export const POST = withAuth(async (request, session) => {
         invalidJsonMessage: "Invalid input",
     });
     if (bodyResult.ok === false) return bodyResult.response;
-    const body = bodyResult.data as any;
-    const validation = validateAPIInput(schema, body);
+    const validation = validateAPIInput(schema, bodyResult.data);
     if (!validation.success) {
         return NextResponse.json({ error: "Invalid input" }, { status: 400 });
     }
@@ -132,7 +130,7 @@ export const POST = withAuth(async (request, session) => {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const storeRateLimitHash = hashPublicRateLimitValue(storeDocumentId);
+    const storeRateLimitHash = hashPublicRateLimitValue(`${tenantDocumentId}:${storeDocumentId}`);
     const rlResult = await checkRateLimit({ key: `pos-deliver:${storeRateLimitHash}`, limit: 20, window: 60 });
     if (!rlResult.allowed) {
         return NextResponse.json({ error: "Too many requests" }, { status: 429 });
@@ -140,7 +138,6 @@ export const POST = withAuth(async (request, session) => {
 
     try {
         const db = admin.firestore();
-        const now = admin.firestore.Timestamp.now();
         const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(storeDocumentId);
 
         const storeDoc = await storeRef.get();
@@ -165,35 +162,56 @@ export const POST = withAuth(async (request, session) => {
             return NextResponse.json({ error: "Invalid request" }, { status: 400 });
         }
 
+        const markConnectionIssueIfCurrent = async () => {
+            await db.runTransaction(async (transaction) => {
+                const freshDoc = await transaction.get(storeRef);
+                if (!freshDoc.exists) return;
+                const freshStore = freshDoc.data();
+                const freshPermissionError = requireAnyStorePermissionForStoreData(
+                    request,
+                    session,
+                    freshStore,
+                    [PERMISSIONS.MANAGE_INTEGRATIONS, PERMISSIONS.PUBLISH_MENU],
+                    "POS delivery",
+                    storeId,
+                    tenantId,
+                );
+                const currentPosSync = freshStore?.posSync;
+                if (
+                    freshPermissionError
+                    || !currentPosSync?.enabled
+                    || String(currentPosSync.webhookUrl || '') !== String(posSync.webhookUrl)
+                    || String(currentPosSync.webhookSecret || '') !== String(posSync.webhookSecret)
+                ) return;
+
+                transaction.update(storeRef, {
+                    'posSync.status': 'connection_issue',
+                    'posSync.lastStatus': 'failed',
+                    'posSync.lastError': POS_SYNC_CONNECTION_ISSUE_MESSAGE,
+                    'posSync.consecutiveFailures': POS_SYNC_CONNECTION_ISSUE_FAILURE_THRESHOLD,
+                });
+            });
+        };
+
         const webhookValidation = validatePosSyncWebhookUrl(String(posSync.webhookUrl));
         if (!webhookValidation.valid || !webhookValidation.normalizedUrl) {
             logSecurityDiagnostic(POS_SYNC_INVALID_WEBHOOK_URL, {
                 ...buildPosSyncSecurityContext(storeId, tenantId, projectId),
                 ...getBoundedSecurityStringContext('validationError', webhookValidation.error),
             });
-            await storeRef.update({
-                'posSync.status': 'connection_issue',
-                'posSync.lastStatus': 'failed',
-                'posSync.lastError': POS_SYNC_CONNECTION_ISSUE_MESSAGE,
-                'posSync.consecutiveFailures': POS_SYNC_CONNECTION_ISSUE_FAILURE_THRESHOLD,
-            });
+            await markConnectionIssueIfCurrent();
             return NextResponse.json({ error: "Invalid request" }, { status: 400 });
         }
 
         const networkValidation = await validatePosSyncWebhookNetworkTarget(webhookValidation.normalizedUrl);
-        if (!networkValidation.valid) {
+        if (!networkValidation.valid || !networkValidation.approvedAddresses?.length) {
             logSecurityDiagnostic(POS_SYNC_BLOCKED_WEBHOOK_TARGET, {
                 ...buildPosSyncSecurityContext(storeId, tenantId, projectId),
                 addressCount: networkValidation.addressCount,
                 ...getBoundedSecurityStringContext('networkError', networkValidation.error),
                 ...getBoundedSecurityStringContext('networkErrorName', networkValidation.errorName),
             });
-            await storeRef.update({
-                'posSync.status': 'connection_issue',
-                'posSync.lastStatus': 'failed',
-                'posSync.lastError': POS_SYNC_CONNECTION_ISSUE_MESSAGE,
-                'posSync.consecutiveFailures': POS_SYNC_CONNECTION_ISSUE_FAILURE_THRESHOLD,
-            });
+            await markConnectionIssueIfCurrent();
             return NextResponse.json({ error: "Invalid request" }, { status: 400 });
         }
 
@@ -202,40 +220,74 @@ export const POST = withAuth(async (request, session) => {
             return NextResponse.json({ error: "Invalid request" }, { status: 400 });
         }
 
-        // Atomic version increment via transaction to prevent duplicate versions
-        // on concurrent deliveries (ChatGPT feedback: menuVersion must be atomic)
-        const newVersion = await db.runTransaction(async (transaction) => {
+        // Re-read permission and connection state while claiming the version. A
+        // URL/secret/enable change after the initial read invalidates this attempt.
+        const deliveryClaim = await db.runTransaction(async (transaction) => {
             const freshDoc = await transaction.get(storeRef);
-            const current = freshDoc.data()?.posSync?.menuVersion || 0;
-            const next = current + 1;
+            if (!freshDoc.exists) return null;
+            const freshStore = freshDoc.data();
+            const freshPermissionError = requireAnyStorePermissionForStoreData(
+                request,
+                session,
+                freshStore,
+                [PERMISSIONS.MANAGE_INTEGRATIONS, PERMISSIONS.PUBLISH_MENU],
+                "POS delivery",
+                storeId,
+                tenantId,
+            );
+            if (freshPermissionError) return null;
+
+            const currentPosSync = freshStore?.posSync;
+            const currentWebhookValidation = validatePosSyncWebhookUrl(String(currentPosSync?.webhookUrl || ''));
+            if (
+                !currentPosSync?.enabled
+                || !currentPosSync?.webhookSecret
+                || currentPosSync.webhookSecret !== posSync.webhookSecret
+                || !currentWebhookValidation.valid
+                || currentWebhookValidation.normalizedUrl !== webhookValidation.normalizedUrl
+            ) return null;
+
+            const next = getNextPosSyncMenuVersion(currentPosSync.menuVersion);
+            if (next === null) return null;
             transaction.update(storeRef, { 'posSync.menuVersion': next });
-            return next;
+            return {
+                currency: freshStore?.currencyCode || freshStore?.currency || 'INR',
+                menuVersion: next,
+                webhookSecret: String(currentPosSync.webhookSecret),
+                webhookUrl: String(currentPosSync.webhookUrl),
+            };
         });
+        if (!deliveryClaim) {
+            return NextResponse.json({ error: "Connection changed" }, { status: 409 });
+        }
+        const newVersion = deliveryClaim.menuVersion;
 
         const payload = buildMenuSnapshot(
             projectData,
             storeId,
             tenantId,
             newVersion,
-            store?.currencyCode || store?.currency || 'INR',
+            deliveryClaim.currency,
         );
 
         const rawBody = JSON.stringify(payload);
+        const payloadBytes = Buffer.byteLength(rawBody, 'utf8');
+        const payloadHash = createHash('sha256').update(rawBody).digest('hex');
 
         // Internal warning for large payloads (ChatGPT feedback: monitor payload size)
         const PAYLOAD_WARN_BYTES = 1_000_000; // 1 MB
-        if (rawBody.length > PAYLOAD_WARN_BYTES) {
+        if (payloadBytes > PAYLOAD_WARN_BYTES) {
             logSecurityDiagnostic(POS_SYNC_LARGE_PAYLOAD_WARNING, {
                 ...buildPosSyncSecurityContext(storeId, tenantId, projectId),
                 menuVersion: newVersion,
-                payloadBytes: rawBody.length,
-                payloadMB: (rawBody.length / 1_000_000).toFixed(2),
+                payloadBytes,
+                payloadMB: (payloadBytes / 1_000_000).toFixed(2),
             });
         }
 
         const timestamp = Math.floor(Date.now() / 1000);
         const deliveryId = generateDeliveryId();
-        const signature = signPayload(rawBody, posSync.webhookSecret, timestamp);
+        const signature = signPayload(rawBody, deliveryClaim.webhookSecret, timestamp);
 
         const startTime = Date.now();
         let success = false;
@@ -243,15 +295,12 @@ export const POST = withAuth(async (request, session) => {
         let ownerError: string | null = null;
         let failureCode: string | null = null;
         let deliveryStatus: 'success' | 'failed' | 'timeout' = 'success';
-        let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
         try {
-            const controller = new AbortController();
-            timeoutId = setTimeout(() => controller.abort(), WEBHOOK_TIMEOUT_MS);
-
-            const response = await fetch(webhookValidation.normalizedUrl, {
-                method: 'POST',
-                redirect: 'manual',
+            const response = await postPosSyncWebhook({
+                approvedAddresses: networkValidation.approvedAddresses,
+                normalizedUrl: webhookValidation.normalizedUrl,
+                timeoutMs: WEBHOOK_TIMEOUT_MS,
                 headers: {
                     'Content-Type': 'application/json',
                     'X-MenuList-Signature': signature,
@@ -261,10 +310,9 @@ export const POST = withAuth(async (request, session) => {
                     'X-MenuList-Delivery-Id': deliveryId,
                 },
                 body: rawBody,
-                signal: controller.signal,
             });
 
-            responseCode = response.status;
+            responseCode = response.statusCode;
             success = response.ok;
 
             if (!success) {
@@ -273,7 +321,7 @@ export const POST = withAuth(async (request, session) => {
                 deliveryStatus = 'failed';
             }
         } catch (fetchError: unknown) {
-            const isTimeout = isAbortError(fetchError);
+            const isTimeout = isPosSyncPinnedRequestTimeout(fetchError);
             ownerError = POS_SYNC_CONNECTION_ISSUE_MESSAGE;
             failureCode = isTimeout ? POS_SYNC_WEBHOOK_TIMEOUT : POS_SYNC_WEBHOOK_CONNECTION_FAILED;
             deliveryStatus = isTimeout ? 'timeout' : 'failed';
@@ -282,8 +330,6 @@ export const POST = withAuth(async (request, session) => {
                 menuVersion: newVersion,
                 timedOut: isTimeout,
             });
-        } finally {
-            if (timeoutId) clearTimeout(timeoutId);
         }
 
         const duration = Date.now() - startTime;
@@ -294,40 +340,79 @@ export const POST = withAuth(async (request, session) => {
             status: success ? 'success' : deliveryStatus,
             responseCode,
             attempt: 1,
-            sentAt: now,
+            sentAt: admin.firestore.Timestamp.now(),
             duration,
             error: ownerError,
-            payloadSize: rawBody.length,
+            payloadSize: payloadBytes,
+            payloadHash,
         };
+        const deliveryLogsRef = storeRef.collection(DB_COLLECTIONS.POS_DELIVERY_LOGS);
+        const deliveryLogRef = deliveryLogsRef.doc(deliveryId);
 
-        await db
-            .collection(DB_COLLECTIONS.STORES)
-            .doc(storeDocumentId)
-            .collection(DB_COLLECTIONS.POS_DELIVERY_LOGS)
-            .add(logEntry);
+        await db.runTransaction(async (transaction) => {
+            const freshDoc = await transaction.get(storeRef);
+            transaction.set(deliveryLogRef, logEntry);
+            if (!freshDoc.exists) return;
+            const freshStore = freshDoc.data();
+            const currentPosSync = freshStore?.posSync;
+            if (
+                !currentPosSync?.enabled
+                || String(currentPosSync.webhookUrl || '') !== deliveryClaim.webhookUrl
+                || String(currentPosSync.webhookSecret || '') !== deliveryClaim.webhookSecret
+            ) return;
 
-        const logsSnapshot = await db
-            .collection(DB_COLLECTIONS.STORES)
-            .doc(storeDocumentId)
-            .collection(DB_COLLECTIONS.POS_DELIVERY_LOGS)
-            .orderBy('sentAt', 'desc')
-            .offset(20)
-            .get();
+            const outcome = resolvePosSyncDeliveryOutcome({
+                connectionIssueMessage: POS_SYNC_CONNECTION_ISSUE_MESSAGE,
+                currentConsecutiveFailures: currentPosSync.consecutiveFailures,
+                currentLastCompletedMenuVersion: currentPosSync.lastCompletedMenuVersion,
+                currentStatus: currentPosSync.status,
+                menuVersion: newVersion,
+                success,
+            });
+            if (!outcome) return;
 
-        const batch = db.batch();
-        logsSnapshot.docs.forEach(doc => batch.delete(doc.ref));
-        if (!logsSnapshot.empty) {
-            await batch.commit();
+            if (success) {
+                transaction.update(storeRef, {
+                    'posSync.status': outcome.status,
+                    'posSync.lastSentAt': admin.firestore.Timestamp.now(),
+                    'posSync.lastStatus': outcome.lastStatus,
+                    'posSync.lastError': outcome.lastError,
+                    'posSync.consecutiveFailures': outcome.consecutiveFailures,
+                    'posSync.lastCompletedMenuVersion': outcome.lastCompletedMenuVersion,
+                });
+                return;
+            }
+
+            transaction.update(storeRef, {
+                'posSync.status': outcome.status,
+                'posSync.lastStatus': outcome.lastStatus,
+                'posSync.lastError': outcome.lastError,
+                'posSync.consecutiveFailures': outcome.consecutiveFailures,
+                'posSync.lastCompletedMenuVersion': outcome.lastCompletedMenuVersion,
+            });
+        });
+
+        try {
+            const logsSnapshot = await deliveryLogsRef
+                .orderBy('sentAt', 'desc')
+                .limit(POS_SYNC_DELIVERY_LOG_RETENTION_SCAN_LIMIT)
+                .get();
+            const excessLogs = logsSnapshot.docs.slice(POS_SYNC_DELIVERY_LOG_RETENTION_LIMIT);
+            if (excessLogs.length > 0) {
+                const batch = db.batch();
+                excessLogs.forEach((doc) => batch.delete(doc.ref));
+                await batch.commit();
+            }
+        } catch (retentionError) {
+            logSecurityFailure(POS_SYNC_DELIVERY_LOG_RETENTION_FAILED, retentionError, {
+                ...buildPosSyncSecurityContext(storeId, tenantId, projectId),
+                deliveryIdLength: deliveryId.length,
+                retentionLimit: POS_SYNC_DELIVERY_LOG_RETENTION_LIMIT,
+                retentionScanLimit: POS_SYNC_DELIVERY_LOG_RETENTION_SCAN_LIMIT,
+            });
         }
 
         if (success) {
-            await storeRef.update({
-                'posSync.status': 'healthy',
-                'posSync.lastSentAt': now,
-                'posSync.lastStatus': 'success',
-                'posSync.lastError': '',
-                'posSync.consecutiveFailures': 0,
-            });
 
             logSecurityDiagnostic(POS_SYNC_DELIVERY_SUCCESS, {
                 ...buildPosSyncSecurityContext(storeId, tenantId, projectId),
@@ -335,17 +420,6 @@ export const POST = withAuth(async (request, session) => {
                 duration,
             });
         } else {
-            const nextConsecutiveFailures = getConsecutiveFailureCount(posSync?.consecutiveFailures) + 1;
-            const reachedConnectionIssue = nextConsecutiveFailures >= POS_SYNC_CONNECTION_ISSUE_FAILURE_THRESHOLD
-                || posSync?.status === 'connection_issue';
-
-            await storeRef.update({
-                'posSync.status': reachedConnectionIssue ? 'connection_issue' : 'healthy',
-                'posSync.lastStatus': 'failed',
-                'posSync.lastError': reachedConnectionIssue ? POS_SYNC_CONNECTION_ISSUE_MESSAGE : '',
-                'posSync.consecutiveFailures': nextConsecutiveFailures,
-            });
-
             logSecurityDiagnostic(POS_SYNC_DELIVERY_FAILED, {
                 ...buildPosSyncSecurityContext(storeId, tenantId, projectId),
                 menuVersion: newVersion,

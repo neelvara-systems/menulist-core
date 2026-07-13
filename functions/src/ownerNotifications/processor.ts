@@ -21,11 +21,17 @@ import {
   OwnerNotificationChannel,
 } from '../sharedData/ownerNotificationRegistry';
 import { PLATFORM_NOTIFICATION_TRIGGER_TYPES } from '../sharedData/platformNotificationRegistry';
+import {
+  getNextOwnerNotificationProcessingAttempt,
+  normalizeOwnerNotificationNumericScopeDocumentId,
+  normalizeOwnerNotificationReferenceId,
+} from '../sharedData/ownerNotificationDeliveryBoundary';
 import { sendEmailViaSMTP } from '../messaging/providers/resend';
 import { resolveTemplate } from '../messaging/templates';
 import { SendMessagePayload } from '../messaging/types';
 import { readJsonResponseWithLimit } from '../utils/boundedResponseBody';
 import { buildWhatsAppPhoneParam } from '../utils/phoneNumber';
+import { sanitizeForFirestore as sanitizeFirestoreValue } from '../lib/sanitizeForFirestore';
 
 const logger = functions.logger;
 const MAX_PER_RECIPIENT_PER_DAY = 20;
@@ -68,6 +74,7 @@ type OwnerNotificationEventDoc = {
   createdAt: Timestamp;
   expiresAt: Timestamp;
   updatedAt: Timestamp;
+  processingAttempt?: number;
 };
 
 type StoreInfo = {
@@ -220,18 +227,10 @@ function hasWhatsAppConsent(settings?: Record<string, any> | null): boolean {
 }
 
 function sanitizeForFirestore(value: any): any {
-  if (value === undefined) return null;
-  if (value === null) return null;
-  if (value instanceof Date) return value.toISOString();
-  if (Array.isArray(value)) return value.map(sanitizeForFirestore);
-  if (typeof value === 'object' && typeof value.toDate !== 'function') {
-    return Object.fromEntries(
-      Object.entries(value)
-        .filter(([, nested]) => nested !== undefined)
-        .map(([key, nested]) => [key, sanitizeForFirestore(nested)]),
-    );
-  }
-  return value;
+  return sanitizeFirestoreValue(value, {
+    dateTransform: (date) => date.toISOString(),
+    undefinedObjectValue: 'omit',
+  });
 }
 
 function htmlToPlainText(html: string, fallback: string): string {
@@ -254,18 +253,32 @@ function htmlToPlainText(html: string, fallback: string): string {
 }
 
 async function getStoreInfo(event: OwnerNotificationEventDoc): Promise<StoreInfo | null> {
-  let storeDoc = await db.collection(DB_COLLECTIONS.STORES).doc(event.storeId).get();
+  const tenantScope = normalizeOwnerNotificationNumericScopeDocumentId(event.tenantId);
+  const storeScope = normalizeOwnerNotificationNumericScopeDocumentId(event.storeId);
+  if (!tenantScope || !storeScope) return null;
+
+  let usedTenantScopedFallback = false;
+  let storeDoc = await db.collection(DB_COLLECTIONS.STORES).doc(storeScope.documentId).get();
 
   if (!storeDoc.exists) {
+    usedTenantScopedFallback = true;
     storeDoc = await db
-      .collection(DB_COLLECTIONS.TENANTS).doc(event.tenantId)
-      .collection(DB_COLLECTIONS.STORES).doc(event.storeId)
+      .collection(DB_COLLECTIONS.TENANTS).doc(tenantScope.documentId)
+      .collection(DB_COLLECTIONS.STORES).doc(storeScope.documentId)
       .get();
   }
 
-  const data = storeDoc.exists ? storeDoc.data() || {} : {};
+  if (!storeDoc.exists) return null;
+  const data = storeDoc.data();
+  if (!data) return null;
+  const storedTenantScope = normalizeOwnerNotificationNumericScopeDocumentId(data.tenantId ?? data.tId);
+  if (
+    (storedTenantScope && storedTenantScope.numericId !== tenantScope.numericId)
+    || (!storedTenantScope && !usedTenantScopedFallback)
+  ) return null;
+
   const settings = data.notificationSettings || {};
-  const primaryEmail = settings.primaryEmail || data.contactPersonEmail || data.email || event.recipientHints?.email;
+  const primaryEmail = settings.primaryEmail || data.contactPersonEmail || data.email;
   const phoneContext = {
     countryCode: data.countryCode || settings.countryCode,
     dialCode: data.dialCode || settings.dialCode,
@@ -282,7 +295,6 @@ async function getStoreInfo(event: OwnerNotificationEventDoc): Promise<StoreInfo
       settings.whatsappNumber,
       data.ownerWhatsappNumber,
       data.whatsappNumber,
-      event.recipientHints?.whatsappNumber,
       data.phone,
       data.phoneNumber,
     ),
@@ -389,7 +401,7 @@ async function incrementRateLimit(
   const recipientRef = db.collection(OWNER_NOTIFICATION_COLLECTIONS.RATE_LIMITS)
     .doc(safeId(['ML', channel, recipientHash, todayKey()].join('|')));
   const storeRef = db.collection(OWNER_NOTIFICATION_COLLECTIONS.RATE_LIMITS)
-    .doc(safeId(['ML', 'store', event.storeId, todayKey()].join('|')));
+    .doc(safeId(['ML', 'store', event.tenantId, event.storeId, todayKey()].join('|')));
 
   return db.runTransaction(async (tx) => {
     const recipientSnap = await tx.get(recipientRef);
@@ -409,6 +421,7 @@ async function incrementRateLimit(
     tx.set(storeRef, {
       productId: 'ML',
       scope: 'store',
+      tenantId: event.tenantId,
       storeId: event.storeId,
       dateKey: todayKey(),
       count: FieldValue.increment(1),
@@ -434,9 +447,13 @@ async function writeDelivery(params: {
   error?: string;
 }): Promise<void> {
   const recipientHash = sha256(params.recipientValue.toLowerCase());
-  await db.collection(OWNER_NOTIFICATION_COLLECTIONS.DELIVERIES)
-    .doc(safeId(`${params.eventId}|${params.channel}|${recipientHash}`))
-    .set(sanitizeForFirestore({
+  const attemptedAt = Timestamp.now();
+  const deliveryRef = db.collection(OWNER_NOTIFICATION_COLLECTIONS.DELIVERIES)
+    .doc(safeId(`${params.eventId}|${params.channel}|${recipientHash}`));
+  await db.runTransaction(async (tx) => {
+    const existing = await tx.get(deliveryRef);
+    const createdAt = existing.data()?.createdAt || attemptedAt;
+    tx.set(deliveryRef, sanitizeForFirestore({
       eventId: params.eventId,
       productId: 'ML',
       triggerType: params.event.triggerType,
@@ -451,10 +468,12 @@ async function writeDelivery(params: {
       providerMessageId: params.providerMessageId || null,
       error: params.error || null,
       expiresAt: getRetentionExpiry(FUNCTION_RETENTION_CONFIG.OWNER_NOTIFICATION_RETENTION_DAYS),
-      attempt: 1,
-      createdAt: Timestamp.now(),
-      sentAt: params.status === 'sent' ? Timestamp.now() : null,
+      attempt: params.event.processingAttempt || 1,
+      createdAt,
+      lastAttemptAt: attemptedAt,
+      sentAt: params.status === 'sent' ? attemptedAt : null,
     }), { merge: true });
+  });
 }
 
 async function sendWhatsApp(params: {
@@ -544,38 +563,78 @@ function getDedupeKey(payload: SendMessagePayload): string {
   return ['ML', payload.eventType, payload.tenantId, payload.storeId, payload.referenceId].join('|');
 }
 
+async function claimOwnerNotificationEvent(
+  eventRef: FirebaseFirestore.DocumentReference,
+): Promise<OwnerNotificationEventDoc | null> {
+  return db.runTransaction(async (tx) => {
+    const snapshot = await tx.get(eventRef);
+    if (!snapshot.exists) return null;
+
+    const event = snapshot.data() as OwnerNotificationEventDoc;
+    if (event.productId !== 'ML') return null;
+    const processingAttempt = getNextOwnerNotificationProcessingAttempt(
+      event.status,
+      event.processingAttempt,
+    );
+    if (processingAttempt === null) return null;
+    const now = Timestamp.now();
+    tx.set(eventRef, {
+      status: 'processing',
+      processingAttempt,
+      processingStartedAt: now,
+      updatedAt: now,
+    }, { merge: true });
+
+    return {
+      ...event,
+      status: 'processing',
+      processingAttempt,
+      updatedAt: now,
+    };
+  });
+}
+
 export async function sendOwnerLifecycleNotification(payload: SendMessagePayload): Promise<boolean> {
   if (!FUNCTION_FLAGS.ENABLE_OWNER_NOTIFICATIONS || !FUNCTION_FLAGS.ENABLE_OWNER_NOTIFICATION_MENULIST_MIGRATION) {
     return false;
   }
   if (!(await isLifecycleMessagingEnabled())) return false;
 
-  const registryEntry = getOwnerNotificationRegistryEntry('ML', payload.eventType);
+  const tenantScope = normalizeOwnerNotificationNumericScopeDocumentId(payload.tenantId);
+  const storeScope = normalizeOwnerNotificationNumericScopeDocumentId(payload.storeId);
+  const referenceId = normalizeOwnerNotificationReferenceId(payload.referenceId);
+  if (!tenantScope || !storeScope || !referenceId) return false;
+
+  const normalizedPayload: SendMessagePayload = {
+    ...payload,
+    tenantId: tenantScope.documentId,
+    storeId: storeScope.documentId,
+    referenceId,
+  };
+
+  const registryEntry = getOwnerNotificationRegistryEntry('ML', normalizedPayload.eventType);
   if (!registryEntry) {
     logger.warn('[OwnerNotifications] Unknown MenuList trigger skipped', {
       failureCode: OWNER_NOTIFICATION_UNKNOWN_MENULIST_TRIGGER,
       fallbackPolicy: 'skip_owner_notification_without_registry_entry',
-      ...getOwnerNotificationTriggerLogContext(payload.eventType),
+      ...getOwnerNotificationTriggerLogContext(normalizedPayload.eventType),
     });
     return false;
   }
 
-  const dedupeKey = getDedupeKey(payload);
+  const dedupeKey = getDedupeKey(normalizedPayload);
   const eventId = safeId(dedupeKey);
   const eventRef = db.collection(OWNER_NOTIFICATION_COLLECTIONS.EVENTS).doc(eventId);
-  const existing = await eventRef.get();
   const now = Timestamp.now();
-  const eventDoc: OwnerNotificationEventDoc = existing.exists
-    ? existing.data() as OwnerNotificationEventDoc
-    : {
+  const eventDoc: OwnerNotificationEventDoc = {
       productId: 'ML',
-      triggerType: payload.eventType,
-      tenantId: String(payload.tenantId),
-      storeId: String(payload.storeId),
-      referenceId: payload.referenceId,
+      triggerType: normalizedPayload.eventType,
+      tenantId: normalizedPayload.tenantId,
+      storeId: normalizedPayload.storeId,
+      referenceId: normalizedPayload.referenceId,
       dedupeKey,
       recipientRole: registryEntry.recipientRole,
-      metadata: sanitizeForFirestore(payload.metadata || {}),
+      metadata: sanitizeForFirestore(normalizedPayload.metadata || {}),
       priority: registryEntry.priority,
       status: 'pending',
       source: {
@@ -585,23 +644,20 @@ export async function sendOwnerLifecycleNotification(payload: SendMessagePayload
       createdAt: now,
       expiresAt: getRetentionExpiry(FUNCTION_RETENTION_CONFIG.OWNER_NOTIFICATION_RETENTION_DAYS),
       updatedAt: now,
-    };
+  };
 
-  if (!existing.exists) {
-    await eventRef.set(eventDoc);
-  } else if (eventDoc.status === 'delivered') {
-    return false;
-  }
+  await db.runTransaction(async (tx) => {
+    const existing = await tx.get(eventRef);
+    if (!existing.exists) tx.create(eventRef, eventDoc);
+  });
 
   return processOwnerNotificationEvent(eventId);
 }
 
 export async function processOwnerNotificationEvent(eventId: string): Promise<boolean> {
   const eventRef = db.collection(OWNER_NOTIFICATION_COLLECTIONS.EVENTS).doc(eventId);
-  const snap = await eventRef.get();
-  if (!snap.exists) return false;
-
-  const event = snap.data() as OwnerNotificationEventDoc;
+  const event = await claimOwnerNotificationEvent(eventRef);
+  if (!event) return false;
   const registryEntry = getOwnerNotificationRegistryEntry('ML', event.triggerType);
   if (!registryEntry) {
     logger.warn('[OwnerNotifications] Unknown stored MenuList trigger skipped', {
@@ -613,12 +669,6 @@ export async function processOwnerNotificationEvent(eventId: string): Promise<bo
     await eventRef.set({ status: 'skipped', error: 'unknown_trigger', updatedAt: Timestamp.now() }, { merge: true });
     return false;
   }
-
-  await eventRef.set({
-    status: 'processing',
-    processingStartedAt: Timestamp.now(),
-    updatedAt: Timestamp.now(),
-  }, { merge: true });
 
   try {
     const storeInfo = await getStoreInfo(event);
@@ -788,14 +838,14 @@ export async function retryFailedOwnerNotifications(): Promise<{ retried: number
   const yesterdayMs = Date.now() - 24 * 60 * 60 * 1000;
   const snapshot = await db.collection(OWNER_NOTIFICATION_COLLECTIONS.EVENTS)
     .where('status', '==', 'failed')
+    .where('updatedAt', '>=', Timestamp.fromMillis(yesterdayMs))
+    .orderBy('updatedAt', 'asc')
     .limit(20)
     .get();
 
   for (const doc of snapshot.docs) {
     const data = doc.data();
     if (data.retryCount && data.retryCount >= 1) continue;
-    const updatedAt = data.updatedAt?.toDate?.();
-    if (updatedAt instanceof Date && updatedAt.getTime() < yesterdayMs) continue;
     retried++;
     const ok = await processOwnerNotificationEvent(doc.id);
     if (ok) succeeded++;
@@ -809,20 +859,16 @@ export async function getOwnerNotificationDigest(): Promise<{ sent: number; fail
   const yesterdayMs = Date.now() - 24 * 60 * 60 * 1000;
   const sentSnap = await db.collection(OWNER_NOTIFICATION_COLLECTIONS.DELIVERIES)
     .where('status', '==', 'sent')
-    .limit(200)
+    .where('createdAt', '>=', Timestamp.fromMillis(yesterdayMs))
+    .count()
     .get();
   const failedSnap = await db.collection(OWNER_NOTIFICATION_COLLECTIONS.DELIVERIES)
     .where('status', '==', 'failed')
-    .limit(200)
+    .where('createdAt', '>=', Timestamp.fromMillis(yesterdayMs))
+    .count()
     .get();
 
-  const sent = sentSnap.docs.filter((doc) => {
-    const createdAt = doc.data().createdAt?.toDate?.();
-    return !(createdAt instanceof Date) || createdAt.getTime() >= yesterdayMs;
-  }).length;
-  const failed = failedSnap.docs.filter((doc) => {
-    const createdAt = doc.data().createdAt?.toDate?.();
-    return !(createdAt instanceof Date) || createdAt.getTime() >= yesterdayMs;
-  }).length;
+  const sent = sentSnap.data().count;
+  const failed = failedSnap.data().count;
   return { sent, failed, total: sent + failed };
 }

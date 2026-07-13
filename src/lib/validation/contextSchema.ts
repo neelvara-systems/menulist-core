@@ -104,6 +104,7 @@ export const AnswerlatticeContextSchema = z.object({
     // Public v1 install docs expose path/title/role instead.
     userRole: ContextStringSchema.optional(),
     plan: ContextStringSchema.optional(),
+    state: ContextStringSchema.optional(),
 }).strip().transform((value) => {
     const normalized = { ...value };
     if (normalized.role && !normalized.userRole) normalized.userRole = normalized.role;

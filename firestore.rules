@@ -114,7 +114,8 @@ service cloud.firestore {
         );
       allow list: if false;
       allow create: if isAuthenticated()
-        && isValidAiMenuManagerSessionDoc(request.resource.data, sessionId);
+        && isValidAiMenuManagerSessionDoc(request.resource.data, sessionId)
+        && isDeterministicAiMenuManagerSessionId(request.resource.data, sessionId);
       allow update: if isAuthenticated()
         && canWriteAiMenuManagerSession(resource.data.tId, resource.data.sId)
         && isValidAiMenuManagerSessionDoc(request.resource.data, sessionId)
@@ -198,20 +199,29 @@ service cloud.firestore {
                     && (
                       isPlatformAdmin()
                       || isCurrentStoreSummaryDoc(document)
-                      || (isAnswerlatticePlatformSummaryDoc(document) && isAnswerlatticeTenantMember(resource.data))
+                      || (
+                        isAnswerlatticePlatformSummaryClientReadableDoc(document)
+                        && isAnswerlatticeTenantMember(resource.data)
+                        && hasAnswerlatticePlatformSummaryReadPermission(document)
+                      )
                     )
                   );
       allow create: if isAuthenticated()
+                    && !document.matches('^knowledgeIntakeSummary_.*$')
+                    && !document.matches('^ontologyCounters_.*$')
                     && (
                       isPlatformAdmin()
                       || canWriteCurrentStoreSummaryDoc(document)
                       || canWriteCurrentStorePublicScreenDoc(document)
                       || (
                         isAnswerlatticePlatformSummaryDoc(document)
-                        && isAnswerlatticeTenantMember(request.resource.data)
+                        && hasAnswerlatticePlatformSummaryWritePermission(document)
+                        && canCreateAnswerlatticePlatformSummaryDoc(document)
                       )
                     );
       allow update: if isAuthenticated()
+                    && !document.matches('^knowledgeIntakeSummary_.*$')
+                    && !document.matches('^ontologyCounters_.*$')
                     && (
                       isPlatformAdmin()
                       || canWriteCurrentStoreSummaryDoc(document)
@@ -219,10 +229,8 @@ service cloud.firestore {
                       || canWriteStoresSummaryDoc(document)
                       || (
                         isAnswerlatticePlatformSummaryDoc(document)
-                        && isAnswerlatticeTenantMember(resource.data)
-                        && isAnswerlatticeTenantMember(request.resource.data)
-                        && request.resource.data.tId == resource.data.tId
-                        && request.resource.data.sId == resource.data.sId
+                        && hasAnswerlatticePlatformSummaryWritePermission(document)
+                        && canUpdateAnswerlatticePlatformSummaryDoc(document)
                       )
                     );
       allow delete: if false;
@@ -258,7 +266,21 @@ service cloud.firestore {
         && resource.data.keys().hasAll(['stores'])
         && request.resource.data.keys().hasAll(['stores'])
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stores', 'lastUpdated'])
-        && request.resource.data.stores.diff(resource.data.stores).affectedKeys().hasOnly([string(request.auth.token.storeId)]);
+        && request.resource.data.stores.diff(resource.data.stores).affectedKeys().hasOnly([string(request.auth.token.storeId)])
+        && isCurrentStoreSummaryEntryIdentityBounded();
+    }
+
+    function isCurrentStoreSummaryEntryIdentityBounded() {
+      let storeId = string(request.auth.token.storeId);
+      let tenantId = string(request.auth.token.tenantId);
+      let entry = request.resource.data.stores[storeId];
+      return entry is map
+        && entry.keys().hasAll(['tId'])
+        && string(entry.tId) == tenantId
+        && (
+          !entry.keys().hasAny(['storeId'])
+          || string(entry.storeId) == storeId
+        );
     }
 
     function isPublicScreenStateDoc(document) {
@@ -299,69 +321,74 @@ service cloud.firestore {
     // ═══════════════════════════════════════════════════════════
 
     match /answerlattice_entities/{docId} {
-      allow read: if isAnswerlatticeScopedRead();
-      allow create: if isAnswerlatticeScopedCreate();
-      allow update: if isAnswerlatticeScopedUpdate();
-      allow delete: if false;
+      allow read: if isAnswerlatticeScopedReadWithKnowledgeControl();
+      allow write: if false;
+    }
+
+    match /answerlattice_entitySlugIndex/{docId} {
+      allow read, write: if false;
     }
 
     match /answerlattice_entityRelations/{docId} {
-      allow read: if isAnswerlatticeScopedRead();
-      allow create: if isAnswerlatticeScopedCreate();
-      allow update: if isAnswerlatticeScopedUpdate();
-      allow delete: if isAnswerlatticeScopedDelete();
+      allow read: if isAnswerlatticeScopedReadWithKnowledgeControl();
+      allow write: if false;
     }
 
     match /answerlattice_canonicalAnswers/{docId} {
-      allow read: if isAnswerlatticeScopedRead();
-      allow create: if isAnswerlatticeScopedCreate();
-      allow update: if isAnswerlatticeScopedUpdate();
+      allow read: if isAnswerlatticeScopedReadWithKnowledgeControl();
+      // Canonical truth is written only by the server-owned governance
+      // transaction in both dedicated and shared Firebase modes.
+      allow create, update: if false;
       allow delete: if false;
     }
 
     match /answerlattice_releases/{docId} {
-      allow read: if isAnswerlatticeScopedRead();
-      allow create: if isAnswerlatticeScopedCreate();
-      allow update: if isAnswerlatticeScopedUpdate();
+      allow read: if isAnswerlatticeScopedReadWithPermission('canManageKnowledge');
+      // Release ordering, drift evaluation, and activation are one server-owned
+      // transaction through /api/answerlattice/releases.
+      allow create, update: if false;
       allow delete: if false;
     }
 
+    match /answerlattice_changelogEntryIndex/{docId} {
+      allow read, write: if false;
+    }
+
     match /answerlattice_mutationProposals/{docId} {
-      allow read: if isAnswerlatticeScopedRead();
-      allow create: if isAnswerlatticeScopedCreate();
-      allow update: if isAnswerlatticeScopedUpdate();
+      allow read: if isAnswerlatticeScopedReadWithPermission('canManageGovernance');
+      allow create: if isAnswerlatticeScopedCreateWithPermission('canManageGovernance')
+        && isValidAnswerlatticePendingMutationProposal(request.resource.data);
+      // Review decisions and implementation state are server-authoritative.
+      allow update: if false;
       allow delete: if false;
     }
 
     match /answerlattice_signalEvents/{docId} {
-      allow read: if isAnswerlatticeScopedRead();
-      allow create: if isAnswerlatticeScopedCreate();
-      allow update: if isAnswerlatticeScopedUpdate();
-      allow delete: if isAnswerlatticeScopedDelete();
+      allow read: if isAnswerlatticeScopedReadWithSupportControl();
+      allow create: if isAnswerlatticeScopedCreateWithSupportControl()
+        && isValidAnswerlatticeSignalCreate(request.resource.data);
+      allow update, delete: if false;
     }
 
     match /answerlattice_auditLogs/{docId} {
-      allow read: if isAnswerlatticeScopedRead();
-      allow create: if isAnswerlatticeScopedCreate();
+      allow read: if isAnswerlatticeScopedReadWithPermission('canManageGovernance');
+      allow create: if isAnswerlatticeScopedCreateWithPermission('canManageGovernance')
+        && !isAnswerlatticeServerReservedAuditAction(request.resource.data);
       allow update, delete: if false;
     }
 
     match /answerlattice_entitySearchIndex/{docId} {
-      allow read: if isAnswerlatticeScopedRead();
-      allow create: if isAnswerlatticeScopedCreate();
-      allow update: if isAnswerlatticeScopedUpdate();
-      allow delete: if false;
+      allow read: if isAnswerlatticeScopedReadWithKnowledgeControl();
+      allow write: if false;
     }
 
     match /answerlattice_entityCandidates/{docId} {
-      allow read: if isAnswerlatticeScopedRead();
-      allow create: if isAnswerlatticeScopedCreate();
-      allow update: if isAnswerlatticeScopedUpdate();
-      allow delete: if false;
+      allow read: if isAnswerlatticeScopedReadWithPermission('canManageGovernance');
+      allow write: if false;
     }
 
     match /answerlattice_frictionDailyStats/{docId} {
-      allow read: if isAnswerlatticeScopedRead();
+      allow read: if isAnswerlatticeScopedReadWithReadiness();
       allow write: if false;
     }
 
@@ -370,42 +397,86 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    match /answerlattice_aiOperations/{tId}/{sId}/{docId} {
+      allow read: if isAuthenticated() && isPlatformAdmin();
+      allow write: if false;
+    }
+
     match /answerlattice_integrationEvents/{docId} {
-      allow read: if isAnswerlatticeScopedRead();
+      allow read: if isAnswerlatticeScopedReadWithPermission('canManageIntegrations');
       allow write: if false;
     }
 
     match /answerlattice_integrationDeliveryLogs/{docId} {
-      allow read: if isAnswerlatticeScopedRead();
+      allow read: if isAnswerlatticeScopedReadWithPermission('canManageIntegrations');
       allow write: if false;
     }
 
     match /answerlattice_predictiveTriggers/{docId} {
-      allow read: if isAnswerlatticeScopedRead();
-      allow create: if isAnswerlatticeScopedCreate();
-      allow update: if isAnswerlatticeScopedUpdate();
-      allow delete: if isAnswerlatticeScopedDelete();
+      allow read: if isAnswerlatticeScopedReadWithPermission('canManageGovernance');
+      allow create: if isAnswerlatticeScopedCreateWithPermission('canManageGovernance');
+      allow update: if isAnswerlatticeScopedUpdateWithPermission('canManageGovernance');
+      allow delete: if isAnswerlatticeScopedDeleteWithPermission('canManageGovernance');
     }
 
     match /answerlattice_productSurfaces/{docId} {
-      allow read: if isAnswerlatticeScopedRead();
-      allow create: if isAnswerlatticeScopedCreate();
-      allow update: if isAnswerlatticeScopedUpdate();
+      allow read: if isAnswerlatticeScopedReadWithPermission('canManageKnowledge');
+      allow create: if isAnswerlatticeScopedCreateWithPermission('canManageKnowledge');
+      allow update: if isAnswerlatticeScopedUpdateWithPermission('canManageKnowledge');
       allow delete: if false;
     }
 
     match /answerlattice_faqs/{docId} {
-      allow read: if isAnswerlatticeScopedRead();
-      allow create: if isAnswerlatticeScopedCreate();
-      allow update: if isAnswerlatticeScopedUpdate();
+      allow read: if isAnswerlatticeScopedReadWithPermission('canManageKnowledge');
+      allow create: if isAnswerlatticeScopedCreateWithPermission('canManageKnowledge');
+      allow update: if isAnswerlatticeScopedUpdateWithPermission('canManageKnowledge');
       allow delete: if false;
     }
 
-    match /answerlattice_cacheVersions/{docId} {
-      allow read: if isAnswerlatticeScopedRead();
-      allow create: if isAnswerlatticeScopedCreate();
-      allow update: if isAnswerlatticeScopedUpdate();
+    match /answerlattice_supportBoardCards/{docId} {
+      allow read: if isAnswerlatticeScopedReadWithSupportControl();
+      allow create: if isAnswerlatticeScopedCreateWithSupportControl()
+        && isValidAnswerlatticeSupportBoardCard(request.resource.data);
+      allow update: if isAnswerlatticeScopedUpdateWithSupportControl()
+        && isValidAnswerlatticeSupportBoardCard(request.resource.data)
+        && request.resource.data.sourceType == resource.data.sourceType
+        && request.resource.data.sourceId == resource.data.sourceId;
       allow delete: if false;
+    }
+
+    match /answerlattice_knowledgeIntakeJobs/{docId} {
+      allow read: if isAnswerlatticeScopedReadWithKnowledgeControl();
+      allow write: if false;
+    }
+
+    match /answerlattice_knowledgeSources/{docId} {
+      allow read: if isAnswerlatticeScopedReadWithKnowledgeControl();
+      allow write: if false;
+    }
+
+    match /answerlattice_intakeReviewItems/{docId} {
+      allow read: if isAnswerlatticeScopedReadWithKnowledgeControl();
+      allow write: if false;
+    }
+
+    match /answerlattice_intakeUsageLedger/{docId} {
+      allow read: if isAnswerlatticeScopedReadWithKnowledgeControl();
+      allow write: if false;
+    }
+
+    match /answerlattice_cacheVersions/{docId} {
+      allow read: if isAnswerlatticeScopedReadWithKnowledgeControl()
+        || isAnswerlatticeScopedReadWithPermission('canManageWidget');
+      allow create: if isAnswerlatticeScopedCreateWithKnowledgeControl()
+        || isAnswerlatticeScopedCreateWithPermission('canManageWidget');
+      allow update: if isAnswerlatticeScopedUpdateWithKnowledgeControl()
+        || isAnswerlatticeScopedUpdateWithPermission('canManageWidget');
+      allow delete: if false;
+    }
+
+    match /answerlattice_notificationLogs/{docId} {
+      allow read: if isAuthenticated() && isPlatformAdmin();
+      allow write: if false;
     }
     
     // Subscriptions - SERVER-SIDE ONLY (no client writes)
@@ -466,20 +537,34 @@ service cloud.firestore {
       allow read: if isAuthenticated()
                   && (
                     isPlatformAdmin()
-                    || (
-                      belongsToTenantById(resource.data.tId)
-                      && (
-                        request.auth.token.storeIds == null
-                        || belongsToStoreById(resource.data.sId)
-                      )
-                    )
+                    || (belongsToTenantById(resource.data.tId)
+                        && belongsToStoreById(resource.data.sId))
                   );
       
       // AUTHENTICATED UPDATE: Only tenant/store writers can resolve or reopen.
       allow update: if isAuthenticated()
-                    && (isPlatformAdmin() || isTenantAdmin(resource.data.tId, resource.data.sId))
+                    && (
+                      isPlatformAdmin()
+                      || (
+                        hasTenantWriteRole()
+                        && belongsToTenantById(resource.data.tId)
+                        && belongsToStoreById(resource.data.sId)
+                      )
+                    )
                     && request.resource.data.tId == resource.data.tId
                     && request.resource.data.sId == resource.data.sId
+                    && request.resource.data.status in ['new', 'resolved']
+                    && request.resource.data.needsAttention == (resource.data.rating <= 3 && request.resource.data.status == 'new')
+                    && request.resource.data.modifiedOn is timestamp
+                    && request.resource.data.modifiedBy is string
+                    && request.resource.data.modifiedBy.size() > 0
+                    && request.resource.data.modifiedBy.size() <= 128
+                    && (
+                      request.resource.data.modifiedBy == request.auth.uid
+                      || request.resource.data.modifiedBy == request.auth.token.uId
+                    )
+                    && (!request.resource.data.keys().hasAny(['ownerNote'])
+                        || (request.resource.data.ownerNote is string && request.resource.data.ownerNote.size() <= 300))
                     && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
                       'status',
                       'needsAttention',
@@ -492,17 +577,9 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // Feedback Events — anonymous append-only aggregate events, no PII
+    // Feedback Events — server/Admin only, no PII
     match /feedbackEvents/{eventId} {
-      allow create: if request.resource.data.type == 'feedback_event'
-        && request.resource.data.eventType in ['FEEDBACK_SUBMITTED', 'FEEDBACK_RESOLVED']
-        && request.resource.data.rating is int
-        && request.resource.data.rating >= 1
-        && request.resource.data.rating <= 5
-        && request.resource.data.tId is int
-        && request.resource.data.sId is int
-        && request.resource.data.projectId is string;
-      allow read, update, delete: if false;
+      allow read, write: if false;
     }
     
     // ═══════════════════════════════════════════════════════════
@@ -590,24 +667,23 @@ service cloud.firestore {
     //   - Doc ID pattern:  {tId}_{sId}_customerApp_overall_summary
     //   - Doc ID pattern:  {tId}_{sId}_customerApp_weekly_*
     //   - Doc ID pattern:  {tId}_{sId}_customerApp_monthly_*
-    // These events are written by the client `trackAnalyticsEvent()` and
-    // rolled up nightly by `aggregateCustomerAnalytics` (Cloud Function).
+    // Public events are validated and written through the Admin-backed
+    // `/api/public/analytics/track` route, then rolled up nightly by
+    // `aggregateCustomerAnalytics` (Cloud Function). Client writes are denied
+    // so authenticated browsers cannot overwrite owner-visible counters.
     // @see __docs__/customer-app/customer-app_firebase.md
     match /analytics/{docId} {
       allow read: if isAuthenticated()
         && (isPlatformAdmin()
             || isTenantStoreDoc(resource.data)
             || docIdMatchesCurrentTenantStore(docId));
-      allow create: if isTenantStoreCreate(request.resource.data)
-        && request.resource.data.projectId is string;
-      allow update: if isTenantStoreUpdate()
-        && string(request.resource.data.projectId) == string(resource.data.projectId);
-      allow delete: if false;
+      allow create, update, delete: if false;
     }
     
     // Chat Analytics — Aggregated daily chat stats
     match /chatAnalytics/{docId} {
       allow read: if isAuthenticated()
+        && resource.data.pId == 'AL'
         && (isPlatformAdmin() || isTenantStoreDoc(resource.data));
       // Writes are server-side only (nightly aggregation)
       allow write: if false;
@@ -617,8 +693,11 @@ service cloud.firestore {
     match /chatSessions/{docId} {
       allow read: if isAuthenticated()
         && (isPlatformAdmin() || isTenantStoreDoc(resource.data));
-      allow create: if isTenantStoreCreate(request.resource.data);
-      allow update: if isTenantStoreUpdate();
+      allow create: if isTenantStoreCreate(request.resource.data)
+        && isValidAnswerlatticeChatActor(request.resource.data)
+        && isValidAnswerlatticeChatSessionDocument(request.resource.data);
+      allow update: if isTenantStoreUpdate()
+        && isValidAnswerlatticeChatSessionUpdate(resource.data, request.resource.data);
       allow delete: if isAuthenticated()
         && (isPlatformAdmin() || isTenantStoreDoc(resource.data));
     }
@@ -627,8 +706,9 @@ service cloud.firestore {
     match /aiSearchHistory/{docId} {
       allow read: if isAuthenticated()
         && (isPlatformAdmin() || isTenantStoreDoc(resource.data));
-      allow create: if isTenantStoreCreate(request.resource.data);
-      allow update: if isTenantStoreUpdate();
+      allow create: if false;
+      allow update: if isTenantStoreUpdate()
+        && isValidAnswerlatticeAiSearchFeedbackUpdate(resource.data, request.resource.data);
       allow delete: if false;
     }
     
@@ -640,20 +720,29 @@ service cloud.firestore {
     // Feedback — User feedback
     match /feedback/{docId} {
       allow read: if isAuthenticated()
+        && resource.data.pId == 'AL'
         && (isPlatformAdmin() || isTenantStoreDoc(resource.data));
-      allow create: if isTenantStoreCreate(request.resource.data);
-      allow update: if isTenantStoreUpdate();
+      allow create: if isValidAnswerlatticeFeedbackPayload(request.resource.data)
+        && isTenantStoreCreate(request.resource.data)
+        && isAnswerlatticeFeedbackSelfActor(request.resource.data);
+      allow update: if isTenantStoreUpdate()
+        && resource.data.pId == 'AL'
+        && request.resource.data.pId == 'AL'
+        && hasAnswerlatticeSupportControlPermission()
+        && isValidAnswerlatticeFeedbackSurfaceUpdate();
       allow delete: if false;
     }
     
     // Support Tickets — Customer support
     match /supportTickets/{docId} {
       allow read: if isAuthenticated()
+        && resource.data.pId == 'AL'
         && (isPlatformAdmin() || isTenantStoreDoc(resource.data));
-      allow create: if isTenantStoreCreate(request.resource.data);
-      allow update: if isTenantStoreUpdate();
-      allow delete: if isAuthenticated()
-        && (isPlatformAdmin() || isTenantStoreDoc(resource.data));
+      allow create: if isTenantStoreCreate(request.resource.data)
+        && isValidAnswerlatticeSupportTicketCreate(request.resource.data);
+      allow update: if isTenantStoreUpdate()
+        && isValidAnswerlatticeSupportTicketUpdate(resource.data, request.resource.data);
+      allow delete: if isAuthenticated() && isPlatformAdmin() && resource.data.pId == 'AL';
     }
     
     // Menu Intelligence — Continuous intelligence state (read-only from client)
@@ -682,16 +771,22 @@ service cloud.firestore {
     match /imageBatchProcessingJobs/{docId} {
       allow read: if isAuthenticated()
         && (isPlatformAdmin() || isTenantStoreDoc(resource.data));
-      allow create: if isTenantStoreCreate(request.resource.data);
-      allow update: if isTenantStoreUpdate();
+      allow create, update: if false;
       allow delete: if false;
     }
 
     // Image Batch Processing Jobs — Tenant/store-scoped DAL path
     match /imageBatchProcessingJobs/{tId}/{sId}/{docId} {
-      allow read, write: if isAuthenticated()
+      allow read: if isAuthenticated()
         && belongsToTenant(tId)
         && belongsToStoreById(sId);
+      allow create: if isAuthenticated()
+        && isTenantAdmin(tId, sId)
+        && isValidImageBatchJobCreate(tId, sId, docId);
+      allow update: if isAuthenticated()
+        && isTenantAdmin(tId, sId)
+        && isValidImageBatchOwnerUpdate();
+      allow delete: if false;
     }
     
     // Master Operational State — Multi-outlet awareness signals
@@ -706,7 +801,10 @@ service cloud.firestore {
     // AI Insights — generated by server jobs, read by tenant members/platform
     match /insights/{tId}/stores/{sId}/ai/{docId} {
       allow read: if isAuthenticated()
-        && (isPlatformAdmin() || (belongsToTenant(tId) && belongsToStoreById(sId)));
+        && (isPlatformAdmin() || (belongsToTenant(tId) && belongsToStoreById(sId)))
+        && resource.data.pId == 'AL'
+        && string(resource.data.tId) == string(tId)
+        && string(resource.data.sId) == string(sId);
       allow write: if false;
     }
     
@@ -716,8 +814,9 @@ service cloud.firestore {
     
     // Pricing Plans — Public read, no client writes
     match /pricingPlans/{docId} {
-      allow read: if true;
-      allow write: if isAuthenticated() && isPlatformAdmin();
+      allow read: if isPlatformAdmin() || isPublicPricingPlan(resource.data);
+      allow create, update: if isPlatformAdmin() && isPublicPricingPlan(request.resource.data);
+      allow delete: if false;
     }
     
     // Blogs — Public read
@@ -736,7 +835,8 @@ service cloud.firestore {
     match /changelog/{tId}/{sId}/{pageId} {
       allow read: if isAuthenticated()
         && (isPlatformAdmin() || (belongsToTenant(tId) && belongsToStoreById(sId)));
-      allow write: if isAuthenticated() && isPlatformAdmin();
+      // Answerlattice changelog page writes are server-owned in both Firebase modes.
+      allow write: if false;
     }
 
     // Shared static assets/font presets — read by owner tools, maintained by platform
@@ -745,18 +845,27 @@ service cloud.firestore {
       allow write: if isAuthenticated() && isPlatformAdmin();
     }
     
-    // Changelog Feedback — Authenticated write
+    // Legacy flat feedback paths are retained for platform-only reads. Current
+    // Answerlattice writes use the tenant/store-scoped paths below.
     match /changelog_feedback/{docId} {
       allow read: if isAuthenticated() && isPlatformAdmin();
-      allow create: if isAuthenticated();
-      allow update, delete: if false;
+      allow write: if false;
     }
     
     // Article Feedback — Authenticated write
     match /article_feedback/{docId} {
       allow read: if isAuthenticated() && isPlatformAdmin();
-      allow create: if isAuthenticated();
-      allow update, delete: if false;
+      allow write: if false;
+    }
+
+    match /changelog_feedback/{tId}/{sId}/{docId} {
+      allow read: if isAnswerlatticeContentFeedbackRead(tId, sId);
+      allow write: if false;
+    }
+
+    match /article_feedback/{tId}/{sId}/{docId} {
+      allow read: if isAnswerlatticeContentFeedbackRead(tId, sId);
+      allow write: if false;
     }
     
     // Landing Page Enquiries — public submissions write through /api/public/contact (Admin SDK)
@@ -780,47 +889,48 @@ service cloud.firestore {
     
     match /kb_articles/{docId} {
       allow read: if isAuthenticated()
+        && resource.data.pId == 'AL'
         && (isPlatformAdmin() || isTenantStoreDoc(resource.data));
-      allow create: if isTenantStoreCreate(request.resource.data);
-      allow update: if isTenantStoreUpdate();
+      allow create: if isTenantStoreCreate(request.resource.data)
+        && request.resource.data.pId == 'AL'
+        && hasAnswerlatticePermission('canManageKnowledge');
+      allow update: if isTenantStoreUpdate()
+        && resource.data.pId == 'AL'
+        && request.resource.data.pId == 'AL'
+        && hasAnswerlatticePermission('canManageKnowledge');
       allow delete: if isAuthenticated()
-        && (isPlatformAdmin() || isTenantStoreDoc(resource.data));
+        && resource.data.pId == 'AL'
+        && (isPlatformAdmin() || (isTenantStoreDoc(resource.data) && hasAnswerlatticePermission('canManageKnowledge')));
     }
     
     match /kb_sections/{docId} {
       allow read: if isAuthenticated()
+        && resource.data.pId == 'AL'
         && (isPlatformAdmin() || isTenantStoreDoc(resource.data));
-      allow create: if isTenantStoreCreate(request.resource.data);
-      allow update: if isTenantStoreUpdate();
+      allow create: if isTenantStoreCreate(request.resource.data)
+        && request.resource.data.pId == 'AL'
+        && hasAnswerlatticePermission('canManageKnowledge');
+      allow update: if isTenantStoreUpdate()
+        && resource.data.pId == 'AL'
+        && request.resource.data.pId == 'AL'
+        && hasAnswerlatticePermission('canManageKnowledge');
       allow delete: if isAuthenticated()
-        && (isPlatformAdmin() || isTenantStoreDoc(resource.data));
+        && resource.data.pId == 'AL'
+        && (isPlatformAdmin() || (isTenantStoreDoc(resource.data) && hasAnswerlatticePermission('canManageKnowledge')));
     }
     
     match /kb_generation_jobs/{docId} {
-      allow read: if isAuthenticated()
-        && (isPlatformAdmin() || isTenantStoreDoc(resource.data));
-      allow create: if isTenantStoreCreate(request.resource.data);
-      allow update: if isTenantStoreUpdate();
-      allow delete: if isAuthenticated()
-        && (isPlatformAdmin() || isTenantStoreDoc(resource.data));
+      // Legacy generation jobs are internal platform work. Answerlattice
+      // product owners use the server-owned Knowledge Intake pipeline.
+      allow read, create, update, delete: if isAuthenticated() && isPlatformAdmin();
     }
     
     match /kb_staging_sections/{docId} {
-      allow read: if isAuthenticated()
-        && (isPlatformAdmin() || isTenantStoreDoc(resource.data));
-      allow create: if isTenantStoreCreate(request.resource.data);
-      allow update: if isTenantStoreUpdate();
-      allow delete: if isAuthenticated()
-        && (isPlatformAdmin() || isTenantStoreDoc(resource.data));
+      allow read, create, update, delete: if isAuthenticated() && isPlatformAdmin();
     }
     
     match /kb_staging_chunks/{docId} {
-      allow read: if isAuthenticated()
-        && (isPlatformAdmin() || isTenantStoreDoc(resource.data));
-      allow create: if isTenantStoreCreate(request.resource.data);
-      allow update: if isTenantStoreUpdate();
-      allow delete: if isAuthenticated()
-        && (isPlatformAdmin() || isTenantStoreDoc(resource.data));
+      allow read, create, update, delete: if isAuthenticated() && isPlatformAdmin();
     }
     
     // ═══════════════════════════════════════════════════════════
@@ -956,15 +1066,13 @@ service cloud.firestore {
       allow write: if false;
     }
     
-    // Compliance Pages — Public read, tenant-scoped owner/platform writes
+    // Compliance Pages — public read, API/Admin-only writes.
+    // Owner mutations must cross the authenticated, permissioned, rate-limited,
+    // validated and sanitized /api/compliance boundary.
     // @see __docs__/compliance-pages/
     match /compliancePages/{docId} {
       allow read: if true;
-      allow create: if canWriteCompliancePage(docId, request.resource.data);
-      allow update: if canWriteCompliancePage(docId, request.resource.data)
-        && string(request.resource.data.sId) == string(resource.data.sId)
-        && string(request.resource.data.tId) == string(resource.data.tId);
-      allow delete: if false;
+      allow write: if false;
     }
     
     // ═══════════════════════════════════════════════════════════
@@ -975,8 +1083,9 @@ service cloud.firestore {
     // Menu Change Log (MOL) — Append-only event ledger
     // Written by client DAL (fire-and-forget) but scoped to tenant
     match /menuChangeLog/{tId}/{sId}/{entryId} {
-      allow read: if isAuthenticated() && belongsToTenant(tId);
-      allow create: if isAuthenticated() && belongsToTenant(tId);
+      allow read: if canReadMenuChangeLog(tId, sId);
+      allow create: if canCreateMenuChangeLog(tId, sId)
+        && isValidMenuChangeLogCreate(tId, sId, entryId, request.resource.data);
       // Immutable: no updates or deletes from client
       allow update, delete: if false;
     }
@@ -984,8 +1093,9 @@ service cloud.firestore {
     // Menu Snapshots — Immutable publish-time snapshots
     // Written by client DAL on publish, never modified
     match /menuSnapshots/{tId}/{sId}/{snapshotId} {
-      allow read: if isAuthenticated() && belongsToTenant(tId);
-      allow create: if isAuthenticated() && belongsToTenant(tId);
+      allow read: if canReadMenuChangeLog(tId, sId);
+      allow create: if canCreateMenuChangeLog(tId, sId)
+        && isValidMenuSnapshotCreate(tId, sId, request.resource.data);
       // Immutable: no updates or deletes from client
       allow update, delete: if false;
     }
@@ -1044,20 +1154,211 @@ service cloud.firestore {
         && string(request.auth.token.tenantId) == string(tId)
         && hasTenantWriteRole()
         && (
-          string(request.auth.token.storeId) == string(sId)
-          || request.auth.token.storeIds == null
-          || request.auth.token.storeIds.hasAny([string(sId)])
+          string(request.auth.token.get('storeId', null)) == string(sId)
+          || request.auth.token.get('storeIds', []).hasAny([string(sId)])
         );
     }
 
     function hasTenantWriteRole() {
-      return request.auth.token.admin == true
-        || request.auth.token.platformRole == 'PLATFORM'
-        || request.auth.token.role == 'PLATFORM'
-        || request.auth.token.role == 'OWNER'
-        || request.auth.token.role == 'owner'
-        || request.auth.token.role == 'MANAGER'
-        || request.auth.token.role == 'manager';
+      return request.auth.token.get('admin', false) == true
+        || request.auth.token.get('platformRole', null) == 'PLATFORM'
+        || request.auth.token.get('role', null) == 'PLATFORM'
+        || request.auth.token.get('role', null) == 'OWNER'
+        || request.auth.token.get('role', null) == 'owner'
+        || request.auth.token.get('role', null) == 'MANAGER'
+        || request.auth.token.get('role', null) == 'manager';
+    }
+
+    function isValidImageBatchJobCreate(tId, sId, docId) {
+      let data = request.resource.data;
+      return data.keys().hasOnly([
+          'createdBy',
+          'createdOn',
+          'enqueueFailedItemIds',
+          'failedItemIds',
+          'generatedCount',
+          'generationConfig',
+          'itemExecutions',
+          'itemsList',
+          'modifiedBy',
+          'modifiedOn',
+          'pId',
+          'projectId',
+          'requestedItemIds',
+          'role',
+          'sId',
+          'status',
+          'statusHistory',
+          'tId',
+          'totalImages',
+          'uId'
+        ])
+        && string(data.tId) == string(tId)
+        && string(data.sId) == string(sId)
+        && docId.matches('^[A-Za-z0-9]{20}$')
+        && data.pId == 'ML'
+        && data.uId is string
+        && data.uId.size() > 0
+        && data.uId.size() <= 180
+        && (
+          data.uId == request.auth.uid
+          || data.uId == request.auth.token.get('uId', '')
+        )
+        && data.projectId is string
+        && data.projectId.size() >= 3
+        && data.projectId.size() <= 160
+        && data.projectId.matches('^' + string(tId) + '-[^-]+-' + string(sId) + '(-.*)?$')
+        && data.status == 'queued'
+        && data.totalImages is int
+        && data.totalImages >= 1
+        && data.totalImages <= 50
+        && data.generatedCount == 0
+        && isValidImageBatchGenerationConfig(data.generationConfig, tId, sId)
+        && data.requestedItemIds is list
+        && data.requestedItemIds.size() == data.totalImages
+        && data.requestedItemIds.toSet().size() == data.totalImages
+        && data.itemsList is list
+        && data.itemsList.size() == 0
+        && data.failedItemIds is list
+        && data.failedItemIds.size() == 0
+        && data.enqueueFailedItemIds is list
+        && data.enqueueFailedItemIds.size() == 0
+        && data.itemExecutions is map
+        && data.itemExecutions.size() == 0
+        && data.statusHistory is list
+        && data.statusHistory.size() == 1
+        && data.statusHistory[0] is map
+        && data.statusHistory[0].keys().hasOnly(['createdOn', 'reason', 'status'])
+        && data.statusHistory[0].status == 'queued'
+        && data.statusHistory[0].createdOn is string
+        && data.statusHistory[0].createdOn.size() <= 100
+        && (
+          !data.statusHistory[0].keys().hasAny(['reason'])
+          || (
+            data.statusHistory[0].reason is string
+            && data.statusHistory[0].reason.size() <= 240
+          )
+        )
+        && data.createdOn == request.time
+        && data.modifiedOn == request.time;
+    }
+
+    function isValidImageBatchReferenceImage(image, tId, sId) {
+      return image is map
+        && image.keys().hasOnly(['mediaId', 'name', 'size', 'type', 'uid', 'url'])
+        && image.url is string
+        && image.url.size() >= 1
+        && image.url.size() <= 5000
+        && (
+          image.url.matches('^https://firebasestorage.googleapis.com/v0/b/[^/]+/o/media%2FmenuItem%2F' + string(tId) + '%2F' + string(sId) + '%2F.+[?&]alt=media([&#].*)?$')
+          || image.url.matches('^https://firebasestorage.googleapis.com/v0/b/[^/]+/o/projects%2FitemImages%2F' + string(tId) + '%2F' + string(sId) + '%2F.+[?&]alt=media([&#].*)?$')
+        )
+        && (!image.keys().hasAny(['mediaId']) || (image.mediaId is string && image.mediaId.size() <= 160))
+        && (!image.keys().hasAny(['name']) || (image.name is string && image.name.size() <= 255))
+        && (!image.keys().hasAny(['size']) || (image.size is int && image.size >= 0 && image.size <= 15728640))
+        && image.type is string
+        && ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'].toSet().hasAny([image.type])
+        && (!image.keys().hasAny(['uid']) || (image.uid is string && image.uid.size() <= 160));
+    }
+
+    function isValidImageBatchGenerationConfig(config, tId, sId) {
+      return config is map
+        && config.keys().hasOnly([
+          'agreeToTerms',
+          'aspectRatio',
+          'backgroundColor',
+          'colors',
+          'compositions',
+          'environments',
+          'foregroundColor',
+          'isMultiMode',
+          'lighting',
+          'moods',
+          'negativePrompt',
+          'numberOfImages',
+          'prompt',
+          'referanceImage',
+          'selectedImageTypes',
+          'styles',
+          'stylesCategory',
+          'transparentBg'
+        ])
+        && (!config.keys().hasAny(['prompt']) || (config.prompt is string && config.prompt.size() <= 2000))
+        && (!config.keys().hasAny(['negativePrompt']) || (config.negativePrompt is string && config.negativePrompt.size() <= 2000))
+        && (!config.keys().hasAny(['stylesCategory']) || (config.stylesCategory is string && config.stylesCategory.size() <= 100))
+        && (!config.keys().hasAny(['backgroundColor']) || (config.backgroundColor is string && config.backgroundColor.size() <= 50))
+        && (!config.keys().hasAny(['foregroundColor']) || (config.foregroundColor is string && config.foregroundColor.size() <= 50))
+        && (!config.keys().hasAny(['aspectRatio']) || (
+          config.aspectRatio is string
+          && ['1:1', '16:9', '9:16', '4:3', '3:4'].toSet().hasAny([config.aspectRatio])
+        ))
+        && (!config.keys().hasAny(['styles']) || (config.styles is list && config.styles.size() <= 20))
+        && (!config.keys().hasAny(['environments']) || (config.environments is list && config.environments.size() <= 20))
+        && (!config.keys().hasAny(['lighting']) || (config.lighting is list && config.lighting.size() <= 20))
+        && (!config.keys().hasAny(['colors']) || (config.colors is list && config.colors.size() <= 20))
+        && (!config.keys().hasAny(['moods']) || (config.moods is list && config.moods.size() <= 20))
+        && (!config.keys().hasAny(['compositions']) || (config.compositions is list && config.compositions.size() <= 20))
+        && (!config.keys().hasAny(['selectedImageTypes']) || (config.selectedImageTypes is list && config.selectedImageTypes.size() <= 4))
+        && (!config.keys().hasAny(['numberOfImages']) || (config.numberOfImages is int && config.numberOfImages >= 1 && config.numberOfImages <= 4))
+        && (!config.keys().hasAny(['referanceImage']) || config.referanceImage == null || isValidImageBatchReferenceImage(config.referanceImage, tId, sId))
+        && (!config.keys().hasAny(['agreeToTerms']) || config.agreeToTerms is bool)
+        && (!config.keys().hasAny(['isMultiMode']) || config.isMultiMode is bool)
+        && (!config.keys().hasAny(['transparentBg']) || config.transparentBg is bool);
+    }
+
+    function isValidImageBatchOwnerUpdate() {
+      let before = resource.data;
+      let after = request.resource.data;
+      let affected = after.diff(before).affectedKeys();
+      let historySize = after.statusHistory.size();
+      let isCancellation = after.status == 'cancelled'
+        && ['queued', 'processing', 'failed'].toSet().hasAny([before.status])
+        && (
+          (before.status == 'queued' && !before.keys().hasAny(['hasStagedResults']))
+          || before.get('hasStagedResults', true) == false
+        );
+      let isCompletionAction = ['completed', 'failed'].toSet().hasAny([before.status])
+        && ['finished', 'discarded'].toSet().hasAny([after.status]);
+      return affected.hasOnly([
+          'expiresAt',
+          'itemsExpiresAt',
+          'modifiedBy',
+          'modifiedOn',
+          'selectedImagesPersisted',
+          'status',
+          'statusHistory'
+        ])
+        && (isCancellation || isCompletionAction)
+        && after.selectedImagesPersisted is bool
+        && (after.status != 'finished' || after.selectedImagesPersisted == true)
+        && (after.status != 'discarded' || after.selectedImagesPersisted == false)
+        && after.statusHistory is list
+        && (
+          historySize == before.statusHistory.size() + 1
+          || (before.statusHistory.size() == 20 && historySize == 20)
+        )
+        && historySize >= 1
+        && historySize <= 20
+        && after.statusHistory[historySize - 1] is map
+        && after.statusHistory[historySize - 1].keys().hasOnly(['createdOn', 'reason', 'status'])
+        && after.statusHistory[historySize - 1].status == after.status
+        && after.statusHistory[historySize - 1].createdOn is string
+        && after.statusHistory[historySize - 1].createdOn.size() <= 100
+        && (
+          !after.statusHistory[historySize - 1].keys().hasAny(['reason'])
+          || (
+            after.statusHistory[historySize - 1].reason is string
+            && after.statusHistory[historySize - 1].reason.size() <= 240
+          )
+        )
+        && after.expiresAt is timestamp
+        && after.itemsExpiresAt is timestamp
+        && after.itemsExpiresAt >= request.time + duration.value(6, 'd')
+        && after.itemsExpiresAt <= request.time + duration.value(8, 'd')
+        && after.expiresAt >= request.time + duration.value(29, 'd')
+        && after.expiresAt <= request.time + duration.value(31, 'd')
+        && after.expiresAt > after.itemsExpiresAt
+        && after.modifiedOn == request.time;
     }
 
     function legacyProjectBelongsToTenant(data) {
@@ -1068,16 +1369,448 @@ service cloud.firestore {
         );
     }
 
-    function canWriteCompliancePage(docId, data) {
+    function canReadMenuChangeLog(tId, sId) {
+      return isAuthenticated()
+        && (
+          isPlatformAdmin()
+          || (belongsToTenant(tId) && belongsToStoreById(sId))
+        );
+    }
+
+    function canCreateMenuChangeLog(tId, sId) {
       return isAuthenticated()
         && (
           isPlatformAdmin()
           || (
-            data.keys().hasAll(['tId', 'sId'])
-            && string(docId) == string(data.sId)
-            && belongsToTenantById(data.tId)
-            && belongsToStoreById(data.sId)
+            belongsToTenant(tId)
+            && belongsToStoreById(sId)
             && hasTenantWriteRole()
+          )
+        );
+    }
+
+    function isValidMenuChangeLogScope(tId, sId, data) {
+      return data.keys().hasAll(['tId', 'sId'])
+        && data.tId is int
+        && data.sId is int
+        && data.tId > 0
+        && data.sId > 0
+        && string(data.tId) == string(tId)
+        && string(data.sId) == string(sId);
+    }
+
+    function isValidMenuChangeLogIdentifier(value) {
+      return value is string && value.size() > 0 && value.size() <= 180;
+    }
+
+    function isValidOptionalMenuChangeLogIdentifier(data, field) {
+      return !data.keys().hasAny([field])
+        || data[field] == null
+        || isValidMenuChangeLogIdentifier(data[field]);
+    }
+
+    function menuChangeLogChangeTypes() {
+      return [
+        'PRICE', 'AVAILABILITY', 'ITEM_ADDED', 'ITEM_REMOVED', 'ITEM_ACTIVE',
+        'CATEGORY_ADDED', 'CATEGORY_REMOVED', 'CATEGORY_REORDER', 'ITEM_REORDER',
+        'NAME_CHANGE', 'DESCRIPTION_CHANGE', 'IMAGE_CHANGE', 'STRUCTURE',
+        'MENU_REVISION_SUMMARY', 'PUBLISH', 'EXTRACTION_CORRECTION'
+      ];
+    }
+
+    function menuChangeLogLegacyEventTypes() {
+      return [
+        'PRICE_CHANGED', 'ATTRIBUTE_PRICE_CHANGED', 'TIME_SLOT_CHANGED',
+        'PDF_REGEN_QUEUED', 'PDF_REGEN_SUCCESS', 'PDF_REGEN_FAILED',
+        'PDF_GENERATED_ON_DEMAND', 'SCREEN_CACHE_BUSTED', 'HOURS_WEEKLY_UPDATED',
+        'GBP_CONNECTED', 'GBP_DISCONNECTED', 'GBP_SYNC_CHECKED',
+        'GBP_MENU_LINK_AUTO_FIXED', 'GBP_HOURS_MISMATCH_DETECTED',
+        'GBP_HOURS_APPLIED_MANUAL', 'GBP_AUTH_REVOKED',
+        'POS_SYNC_SECRET_REGENERATED', 'EXTRACTION_APPLIED'
+      ];
+    }
+
+    function isValidMenuChangeLogCorrectionCount(value) {
+      return value is int && value >= 0 && value <= 10000;
+    }
+
+    function isValidMenuChangeLogCorrectionFieldCounts(value) {
+      return value is map
+        && value.keys().hasAll(['name', 'price', 'description', 'categoryId', 'tags'])
+        && value.keys().hasOnly(['name', 'price', 'description', 'categoryId', 'tags'])
+        && isValidMenuChangeLogCorrectionCount(value.name)
+        && isValidMenuChangeLogCorrectionCount(value.price)
+        && isValidMenuChangeLogCorrectionCount(value.description)
+        && isValidMenuChangeLogCorrectionCount(value.categoryId)
+        && isValidMenuChangeLogCorrectionCount(value.tags);
+    }
+
+    function isValidMenuChangeLogCorrectionConfidenceCounts(value) {
+      return value is map
+        && value.keys().hasAll(['high', 'medium', 'low'])
+        && value.keys().hasOnly(['high', 'medium', 'low'])
+        && isValidMenuChangeLogCorrectionCount(value.high)
+        && isValidMenuChangeLogCorrectionCount(value.medium)
+        && isValidMenuChangeLogCorrectionCount(value.low);
+    }
+
+    function isValidMenuChangeLogLearningPayload(data) {
+      return (
+          data.changeType != 'EXTRACTION_CORRECTION'
+          || (
+            data.oldValue is map
+            && data.newValue is map
+            && data.oldValue.keys().hasAll(['field', 'extracted'])
+            && data.oldValue.keys().hasOnly(['field', 'extracted', 'confidence'])
+            && data.newValue.keys().hasAll(['field', 'corrected'])
+            && data.newValue.keys().hasOnly(['field', 'corrected'])
+            && data.oldValue.field in ['name', 'price', 'description', 'categoryId', 'tags']
+            && data.newValue.field == data.oldValue.field
+            && (
+              !data.oldValue.keys().hasAny(['confidence'])
+              || data.oldValue.confidence == null
+              || data.oldValue.confidence in ['high', 'medium', 'low']
+            )
+          )
+        )
+        && (
+          data.changeType != 'MENU_REVISION_SUMMARY'
+          || (
+            data.newValue is map
+            && (
+              !data.newValue.keys().hasAny([
+                'extractionCorrections',
+                'extractionCorrectionsByField',
+                'extractionCorrectionsByConfidence'
+              ])
+              || (
+                data.newValue.keys().hasAll([
+                  'extractionCorrections',
+                  'extractionCorrectionsByField',
+                  'extractionCorrectionsByConfidence'
+                ])
+                && isValidMenuChangeLogCorrectionCount(data.newValue.extractionCorrections)
+                && isValidMenuChangeLogCorrectionFieldCounts(data.newValue.extractionCorrectionsByField)
+                && isValidMenuChangeLogCorrectionConfidenceCounts(data.newValue.extractionCorrectionsByConfidence)
+                && (
+                  data.newValue.extractionCorrectionsByField.name
+                  + data.newValue.extractionCorrectionsByField.price
+                  + data.newValue.extractionCorrectionsByField.description
+                  + data.newValue.extractionCorrectionsByField.categoryId
+                  + data.newValue.extractionCorrectionsByField.tags
+                ) == data.newValue.extractionCorrections
+                && (
+                  data.newValue.extractionCorrectionsByConfidence.high
+                  + data.newValue.extractionCorrectionsByConfidence.medium
+                  + data.newValue.extractionCorrectionsByConfidence.low
+                ) <= data.newValue.extractionCorrections
+              )
+            )
+          )
+        );
+    }
+
+    function isValidMenuChangeLogDriftPayload(data) {
+      return data.changeType != 'MENU_REVISION_SUMMARY'
+        || (
+          data.newValue is map
+          && (
+            !data.newValue.keys().hasAny([
+              'itemDriftChanges',
+              'itemDriftChangesOverflowCount'
+            ])
+            || (
+              data.newValue.keys().hasAll([
+                'itemDriftChanges',
+                'itemDriftChangesOverflowCount'
+              ])
+              && data.newValue.itemDriftChanges is list
+              && data.newValue.itemDriftChanges.size() <= 1000
+              && isValidMenuChangeLogCorrectionCount(
+                data.newValue.itemDriftChangesOverflowCount
+              )
+            )
+          )
+        );
+    }
+
+    function isValidCanonicalMenuChangeLogCreate(tId, sId, data) {
+      return data.keys().hasAll([
+          'projectId', 'changeType', 'oldValue', 'newValue', 'changedBy',
+          'timestamp', 'tId', 'sId'
+        ])
+        && data.keys().hasOnly([
+          'projectId', 'itemId', 'categoryId', 'changeType', 'oldValue',
+          'newValue', 'changedBy', 'userId', 'metadata', 'timestamp', 'tId', 'sId'
+        ])
+        && isValidMenuChangeLogScope(tId, sId, data)
+        && isValidMenuChangeLogIdentifier(data.projectId)
+        && exists(/databases/$(database)/documents/projects/$(tId)/$(sId)/$(data.projectId))
+        && data.changeType in menuChangeLogChangeTypes()
+        && data.changedBy in ['OWNER', 'STAFF', 'SYSTEM']
+        && data.timestamp is timestamp
+        && isValidOptionalMenuChangeLogIdentifier(data, 'itemId')
+        && isValidOptionalMenuChangeLogIdentifier(data, 'categoryId')
+        && isValidOptionalMenuChangeLogIdentifier(data, 'userId')
+        && (!data.keys().hasAny(['metadata']) || data.metadata is map)
+        && isValidMenuChangeLogLearningPayload(data)
+        && isValidMenuChangeLogDriftPayload(data);
+    }
+
+    function isValidLegacyMenuChangeLogCreate(tId, sId, entryId, data) {
+      return data.keys().hasAll([
+          'id', 'type', 'projectId', 'actorUserId', 'entityType', 'entityId',
+          'before', 'after', 'version', 'createdOn', 'tId', 'sId'
+        ])
+        && data.keys().hasOnly([
+          'id', 'type', 'projectId', 'actorUserId', 'entityType', 'entityId',
+          'before', 'after', 'version', 'createdOn', 'tId', 'sId'
+        ])
+        && isValidMenuChangeLogScope(tId, sId, data)
+        && data.id == entryId
+        && isValidMenuChangeLogIdentifier(data.id)
+        && data.type in menuChangeLogLegacyEventTypes()
+        && isValidMenuChangeLogIdentifier(data.projectId)
+        && isValidMenuChangeLogIdentifier(data.actorUserId)
+        && data.entityType in [
+          'ITEM', 'ATTRIBUTE', 'CATEGORY', 'PRESET', 'SYSTEM', 'STORE_HOURS',
+          'GBP_INTEGRATION', 'POS_SYNC', 'EXTRACTION'
+        ]
+        && isValidMenuChangeLogIdentifier(data.entityId)
+        && (data.before == null || data.before is map)
+        && (data.after == null || data.after is map)
+        && data.version is int
+        && data.version >= 0
+        && data.createdOn is timestamp;
+    }
+
+    function isValidMenuChangeLogCreate(tId, sId, entryId, data) {
+      return isValidCanonicalMenuChangeLogCreate(tId, sId, data)
+        || isValidLegacyMenuChangeLogCreate(tId, sId, entryId, data);
+    }
+
+    function isValidMenuSnapshotCreate(tId, sId, data) {
+      return data.keys().hasAll([
+          'projectId', 'tId', 'sId', 'itemCount', 'categoryCount', 'languages',
+          'menuData', 'createdAt', 'expiresAt', 'retentionDays', 'snapshotMode'
+        ])
+        && data.keys().hasOnly([
+          'projectId', 'tId', 'sId', 'itemCount', 'categoryCount', 'languages',
+          'menuData', 'createdAt', 'expiresAt', 'retentionDays', 'snapshotMode'
+        ])
+        && isValidMenuChangeLogScope(tId, sId, data)
+        && isValidMenuChangeLogIdentifier(data.projectId)
+        && exists(/databases/$(database)/documents/projects/$(tId)/$(sId)/$(data.projectId))
+        && data.itemCount is int
+        && data.itemCount >= 0
+        && data.itemCount <= 5000
+        && data.categoryCount is int
+        && data.categoryCount >= 0
+        && data.categoryCount <= 1000
+        && data.languages is list
+        && data.languages.size() <= 50
+        && data.menuData is map
+        && data.menuData.keys().hasAll(['items', 'categories'])
+        && data.menuData.keys().hasOnly(['items', 'categories'])
+        && data.menuData.items is list
+        && data.menuData.items.size() == data.itemCount
+        && data.menuData.categories is list
+        && data.menuData.categories.size() == data.categoryCount
+        && data.createdAt is timestamp
+        && data.expiresAt is timestamp
+        && data.expiresAt > data.createdAt
+        && data.retentionDays is int
+        && data.retentionDays > 0
+        && data.retentionDays <= 365
+        && data.snapshotMode == 'full_menu_short_term';
+    }
+
+    function isValidAnswerlatticeSignalCreate(data) {
+      return data.keys().hasAll(['pId', 'tId', 'sId', 'entityId', 'type', 'timestamp', 'expiresAt'])
+        && data.keys().hasOnly([
+          'pId', 'tId', 'sId', 'entityId', 'type', 'timestamp', 'metadata', 'dedupKey',
+          'sourceContext', 'traceId', 'requestId', 'role', 'uId', 'createdOn', 'modifiedOn',
+          'createdBy', 'modifiedBy', 'expiresAt'
+        ])
+        && data.pId == 'AL'
+        && data.entityId is string
+        && data.entityId.size() > 0
+        && data.entityId.size() <= 180
+        && data.type in [
+          'ticket', 'chat_negative', 'escalation', 'feedback',
+          'suggestion_shown', 'suggestion_clicked', 'suggestion_dismissed'
+        ]
+        && data.timestamp is timestamp
+        && data.expiresAt is timestamp
+        && data.expiresAt > data.timestamp
+        && data.expiresAt <= data.timestamp + duration.value(366, 'd')
+        && (!data.keys().hasAny(['metadata']) || (data.metadata is map && data.metadata.size() <= 30))
+        && (!data.keys().hasAny(['dedupKey']) || (data.dedupKey is string && data.dedupKey.size() <= 260))
+        && (!data.keys().hasAny(['requestId']) || (data.requestId is string && data.requestId.size() <= 260));
+    }
+
+    function isValidAnswerlatticeChatActor(data) {
+      return isPlatformAdmin()
+        || (
+          data.uId is string
+          && data.uId.size() > 0
+          && data.uId.size() <= 180
+          && (data.uId == request.auth.uid || data.uId == request.auth.token.get('uId', ''))
+        );
+    }
+
+    function isValidAnswerlatticeChatSessionDocument(data) {
+      return data.keys().hasAll([
+          'pId', 'tId', 'sId', 'uId', 'title', 'mode', 'messages',
+          'createdOn', 'createdBy', 'modifiedOn', 'modifiedBy'
+        ])
+        && data.keys().hasOnly([
+          'pId', 'tId', 'sId', 'uId', 'title', 'mode', 'messages',
+          'userName', 'userEmail', 'userPhone', 'sourceContext', 'role',
+          'createdOn', 'createdBy', 'modifiedOn', 'modifiedBy',
+          'traceId', 'requestId', 'internalNotes', 'adminStatus', 'priority',
+          'adminTags', 'isUnread', 'lastAdminView'
+        ])
+        && data.pId == 'AL'
+        && data.title is string
+        && data.title.size() > 0
+        && data.title.size() <= 160
+        && data.mode in ['qna', 'assistant']
+        && data.messages is list
+        && data.messages.size() > 0
+        && data.messages.size() <= 50
+        && data.createdOn is timestamp
+        && data.modifiedOn is timestamp
+        && data.createdBy is string
+        && data.createdBy.size() > 0
+        && data.createdBy.size() <= 200
+        && data.modifiedBy is string
+        && data.modifiedBy.size() > 0
+        && data.modifiedBy.size() <= 200
+        && (!data.keys().hasAny(['userName']) || (data.userName is string && data.userName.size() <= 200))
+        && (!data.keys().hasAny(['userEmail']) || (data.userEmail is string && data.userEmail.size() <= 320))
+        && (!data.keys().hasAny(['userPhone']) || (data.userPhone is string && data.userPhone.size() <= 80))
+        && (!data.keys().hasAny(['sourceContext']) || data.sourceContext == null || data.sourceContext is map)
+        && (!data.keys().hasAny(['role']) || (data.role is string && data.role.size() <= 80))
+        && (!data.keys().hasAny(['traceId']) || (data.traceId is string && data.traceId.size() <= 200))
+        && (!data.keys().hasAny(['requestId']) || (data.requestId is string && data.requestId.size() <= 200))
+        && (!data.keys().hasAny(['internalNotes']) || (data.internalNotes is list && data.internalNotes.size() <= 1))
+        && (!data.keys().hasAny(['adminStatus']) || data.adminStatus in ['new', 'in_progress', 'resolved', 'follow_up', 'closed'])
+        && (!data.keys().hasAny(['priority']) || data.priority in ['high', 'normal', 'low'])
+        && (!data.keys().hasAny(['adminTags']) || (data.adminTags is list && data.adminTags.size() <= 20))
+        && (!data.keys().hasAny(['isUnread']) || data.isUnread is bool)
+        && (!data.keys().hasAny(['lastAdminView']) || data.lastAdminView is timestamp);
+    }
+
+    function isValidAnswerlatticeChatSessionUpdate(before, after) {
+      return isValidAnswerlatticeChatSessionDocument(after)
+        && after.uId == before.uId
+        && after.createdOn == before.createdOn
+        && after.createdBy == before.createdBy
+        && after.diff(before).affectedKeys().hasOnly([
+          'title', 'mode', 'messages', 'modifiedOn', 'modifiedBy',
+          'internalNotes', 'adminStatus', 'priority', 'adminTags',
+          'isUnread', 'lastAdminView'
+        ]);
+    }
+
+    function isValidAnswerlatticeAiSearchFeedbackUpdate(before, after) {
+      return before.pId == 'AL'
+        && after.pId == 'AL'
+        && after.diff(before).affectedKeys().hasOnly([
+          'isGood', 'reasonsToImprove', 'comments', 'submittedAt',
+          'modifiedBy', 'modifiedOn'
+        ])
+        && after.isGood is bool
+        && after.submittedAt is timestamp
+        && after.modifiedOn is timestamp
+        && after.modifiedBy is string
+        && after.modifiedBy.size() > 0
+        && after.modifiedBy.size() <= 200
+        && (!after.keys().hasAny(['comments']) || (after.comments is string && after.comments.size() <= 1000))
+        && (!after.keys().hasAny(['reasonsToImprove']) || (after.reasonsToImprove is list && after.reasonsToImprove.size() <= 10));
+    }
+
+    function isAnswerlatticeSupportTicketStatus(value) {
+      return value in ['Open', 'In Progress', 'Resolved', 'Closed', 'Re-Opened'];
+    }
+
+    function isAnswerlatticeSupportTicketPriority(value) {
+      return value in ['Low', 'Normal', 'High'];
+    }
+
+    function isAnswerlatticeSupportTicketCategory(value) {
+      return value in [
+        'Technical Issue', 'Billing Inquiry', 'General Question', 'Content Update',
+        'Feature Suggestion', 'Account & Login Help', 'Other'
+      ];
+    }
+
+    function isAnswerlatticeSupportTicketTransition(currentStatus, nextStatus) {
+      return nextStatus == currentStatus
+        || (currentStatus == 'Open' && nextStatus in ['In Progress', 'Resolved', 'Closed'])
+        || (currentStatus == 'In Progress' && nextStatus in ['Open', 'Resolved', 'Closed'])
+        || (currentStatus == 'Resolved' && nextStatus in ['Re-Opened', 'Closed'])
+        || (currentStatus == 'Closed' && nextStatus == 'Re-Opened')
+        || (currentStatus == 'Re-Opened' && nextStatus in ['In Progress', 'Resolved', 'Closed']);
+    }
+
+    function answerlatticeSupportTicketMessageCount(data) {
+      return data.keys().hasAny(['messages']) && data.messages is list ? data.messages.size() : 0;
+    }
+
+    function answerlatticeSupportTicketStatusCount(data) {
+      return data.keys().hasAny(['statuses']) && data.statuses is list ? data.statuses.size() : 0;
+    }
+
+    function answerlatticeSupportTicketDocumentCount(data) {
+      return data.keys().hasAny(['documents']) && data.documents is list ? data.documents.size() : 0;
+    }
+
+    function isValidAnswerlatticeSupportTicketBounds(data) {
+      return answerlatticeSupportTicketMessageCount(data) <= 500
+        && answerlatticeSupportTicketStatusCount(data) <= 200
+        && answerlatticeSupportTicketDocumentCount(data) <= 20
+        && (!data.keys().hasAny(['platformTags']) || (data.platformTags is list && data.platformTags.size() <= 20))
+        && (!data.keys().hasAny(['contextKeys']) || (data.contextKeys is list && data.contextKeys.size() <= 20));
+    }
+
+    function isValidAnswerlatticeSupportTicketCreate(data) {
+      return data.pId == 'AL'
+        && data.keys().hasAll(['tId', 'sId', 'subject', 'status', 'priority', 'category', 'statuses'])
+        && data.subject is string
+        && data.subject.size() <= 300
+        && isAnswerlatticeSupportTicketStatus(data.status)
+        && isAnswerlatticeSupportTicketPriority(data.priority)
+        && isAnswerlatticeSupportTicketCategory(data.category)
+        && answerlatticeSupportTicketStatusCount(data) >= 1
+        && isValidAnswerlatticeSupportTicketBounds(data);
+    }
+
+    function isValidAnswerlatticeSupportTicketUpdate(before, after) {
+      return after.diff(before).affectedKeys().hasOnly([
+          'status', 'statuses', 'messages', 'priority', 'category', 'platformNotes',
+          'platformTags', 'contextKeys', 'deleted', 'satisfaction', 'modifiedBy', 'modifiedOn'
+        ])
+        && after.pId == 'AL'
+        && isAnswerlatticeSupportTicketStatus(after.status)
+        && isAnswerlatticeSupportTicketPriority(after.priority)
+        && isAnswerlatticeSupportTicketCategory(after.category)
+        && (!after.keys().hasAny(['platformNotes']) || (after.platformNotes is string && after.platformNotes.size() <= 4000))
+        && (!after.keys().hasAny(['deleted']) || after.deleted is bool)
+        && isAnswerlatticeSupportTicketTransition(before.status, after.status)
+        && isValidAnswerlatticeSupportTicketBounds(after)
+        && (
+          (
+            after.status == before.status
+            && answerlatticeSupportTicketStatusCount(after) == answerlatticeSupportTicketStatusCount(before)
+            && answerlatticeSupportTicketMessageCount(after) >= answerlatticeSupportTicketMessageCount(before)
+            && answerlatticeSupportTicketMessageCount(after) <= answerlatticeSupportTicketMessageCount(before) + 1
+          )
+          || (
+            after.status != before.status
+            && answerlatticeSupportTicketStatusCount(after) == answerlatticeSupportTicketStatusCount(before) + 1
+            && answerlatticeSupportTicketMessageCount(after) == answerlatticeSupportTicketMessageCount(before) + 1
           )
         );
     }
@@ -1150,18 +1883,66 @@ service cloud.firestore {
     function belongsToStoreById(storeIdInt) {
       return request.auth != null
         && (
-          string(request.auth.token.storeId) == string(storeIdInt)
-          || (
-            request.auth.token.storeIds != null
-            && request.auth.token.storeIds.hasAny([string(storeIdInt)])
-          )
+          string(request.auth.token.get('storeId', null)) == string(storeIdInt)
+          || request.auth.token.get('storeIds', []).hasAny([string(storeIdInt)])
         );
     }
     
     // Check if user is platform admin
     function isPlatformAdmin() {
       return request.auth != null
-        && request.auth.token.platformRole == 'PLATFORM';
+        && request.auth.token.get('platformRole', null) == 'PLATFORM';
+    }
+
+    function isPublicPricingPlan(data) {
+      return data.keys().hasOnly([
+          'active',
+          'createdOn',
+          'currency',
+          'description',
+          'features',
+          'modifiedOn',
+          'name',
+          'periodicity',
+          'planType',
+          'price',
+          'razorpayPlanId',
+          'recommended',
+          'version'
+        ])
+        && data.keys().hasAll([
+          'active',
+          'createdOn',
+          'currency',
+          'description',
+          'features',
+          'modifiedOn',
+          'name',
+          'periodicity',
+          'planType',
+          'price',
+          'version'
+        ])
+        && data.active is bool
+        && data.createdOn is timestamp
+        && data.currency in ['USD', 'INR']
+        && data.description is string
+        && data.description.size() > 0
+        && data.description.size() <= 1000
+        && data.features is list
+        && data.features.size() <= 50
+        && data.modifiedOn is timestamp
+        && data.name is string
+        && data.name.size() > 0
+        && data.name.size() <= 120
+        && data.periodicity in ['MONTH', 'YEAR']
+        && data.planType in ['B2C', 'B2B']
+        && data.price is int
+        && data.price >= 0
+        && data.version is int
+        && data.version >= 1
+        && (!data.keys().hasAny(['razorpayPlanId']) || (data.razorpayPlanId is string && data.razorpayPlanId.size() > 0 && data.razorpayPlanId.size() <= 128))
+        && (!data.keys().hasAny(['recommended']) || data.recommended is bool);
     }
 
     function canAccessCreativeEditorTemplateStore(tId, sId) {
@@ -1174,6 +1955,37 @@ service cloud.firestore {
       return isPlatformAdmin()
         || (request.auth != null && request.auth.token.role == 'PLATFORM')
         || isTenantAdmin(tId, sId);
+    }
+
+    function isValidAiMenuManagerSessionCounterValue(counters, key) {
+      return !counters.keys().hasAny([key])
+        || (counters[key] is int && counters[key] >= 0 && counters[key] <= 1000000000);
+    }
+
+    function isValidAiMenuManagerSessionCounters(counters) {
+      return counters is map
+        && counters.keys().hasOnly([
+          'commands',
+          'proposalsCreated',
+          'approvals',
+          'executions',
+          'compoundCommands',
+          'deterministicRoutes',
+          'plannerAttempts',
+          'plannerAccepted',
+          'plannerFallbacks',
+          'clarifications'
+        ])
+        && isValidAiMenuManagerSessionCounterValue(counters, 'commands')
+        && isValidAiMenuManagerSessionCounterValue(counters, 'proposalsCreated')
+        && isValidAiMenuManagerSessionCounterValue(counters, 'approvals')
+        && isValidAiMenuManagerSessionCounterValue(counters, 'executions')
+        && isValidAiMenuManagerSessionCounterValue(counters, 'compoundCommands')
+        && isValidAiMenuManagerSessionCounterValue(counters, 'deterministicRoutes')
+        && isValidAiMenuManagerSessionCounterValue(counters, 'plannerAttempts')
+        && isValidAiMenuManagerSessionCounterValue(counters, 'plannerAccepted')
+        && isValidAiMenuManagerSessionCounterValue(counters, 'plannerFallbacks')
+        && isValidAiMenuManagerSessionCounterValue(counters, 'clarifications');
     }
 
     function isValidAiMenuManagerSessionDoc(data, sessionId) {
@@ -1203,8 +2015,17 @@ service cloud.firestore {
         ])
         && data.sessionId == sessionId
         && canWriteAiMenuManagerSession(data.tId, data.sId)
+        && data.tId is string
+        && data.tId.matches('^[1-9][0-9]*$')
+        && data.sId is string
+        && data.sId.matches('^[1-9][0-9]*$')
         && data.projectId is string
-        && (!data.keys().hasAny(['sessionDate']) || data.sessionDate is string)
+        && data.projectId.size() > 0
+        && data.projectId.size() <= 160
+        && !data.projectId.matches('.*[/].*')
+        && data.keys().hasAll(['sessionDate'])
+        && data.sessionDate is string
+        && data.sessionDate.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
         && (!data.keys().hasAny(['storageMode']) || data.storageMode in ['daily_compact', 'detailed'])
         && (!data.keys().hasAny(['status']) || data.status in ['active', 'closed'])
         && (!data.keys().hasAny(['compactMessages']) || (data.compactMessages is list && data.compactMessages.size() <= 20))
@@ -1212,8 +2033,12 @@ service cloud.firestore {
         && (!data.keys().hasAny(['pendingOperations']) || (data.pendingOperations is list && data.pendingOperations.size() <= 25))
         && (!data.keys().hasAny(['recentReceiptSummaries']) || (data.recentReceiptSummaries is list && data.recentReceiptSummaries.size() <= 20))
         && (!data.keys().hasAny(['artifactRefs']) || (data.artifactRefs is list && data.artifactRefs.size() <= 20))
-        && (!data.keys().hasAny(['counters']) || data.counters is map)
+        && (!data.keys().hasAny(['counters']) || isValidAiMenuManagerSessionCounters(data.counters))
         && (!data.keys().hasAny(['expiresAt']) || data.expiresAt is timestamp);
+    }
+
+    function isDeterministicAiMenuManagerSessionId(data, sessionId) {
+      return sessionId == 'amm2_' + data.tId + '_' + data.sId + '_' + data.sessionDate + '_' + data.projectId;
     }
 
     function isAiMenuManagerSessionScopeUnchanged(before, after) {
@@ -1247,16 +2072,614 @@ service cloud.firestore {
     }
 
     function isAnswerlatticePlatformSummaryDoc(document) {
-      return document.matches('^(branding|coverage|friction|frictionSnapshot|trustMetrics|entityGraph|interactionRules|predictiveTriggers|contextContent)_.*$');
+      return document.matches('^(branding|coverage|friction|frictionSnapshot|trustMetrics|supportBoardSummary|knowledgeIntakeSummary|entityGraph|entityGraphIndex|interactionRules|predictiveTriggers|contextContent|sourceVersions|bundleManifest|integrationConfig|integrationHealth)_.*$');
+    }
+
+    function isAnswerlatticePlatformSummaryClientReadableDoc(document) {
+      return isAnswerlatticePlatformSummaryDoc(document)
+        && !document.matches('^(sourceVersions|bundleManifest|integrationConfig)_.*$');
+    }
+
+    function hasAnswerlatticePlatformSummaryReadPermission(document) {
+      return (
+          document.matches('^(coverage|friction|frictionSnapshot|trustMetrics)_.*$')
+          && hasAnswerlatticeReadinessPermission()
+        )
+        || (
+          document.matches('^supportBoardSummary_.*$')
+          && hasAnswerlatticeSupportControlPermission()
+        )
+        || (
+          document.matches('^knowledgeIntakeSummary_.*$')
+          && hasAnswerlatticeKnowledgeControlPermission()
+        )
+        || (
+          document.matches('^(entityGraph|entityGraphIndex|interactionRules|predictiveTriggers|contextContent)_.*$')
+          && hasAnswerlatticeKnowledgeControlPermission()
+        )
+        || (
+          document.matches('^branding_.*$')
+          && (
+            hasAnswerlatticePermission('canManageWidget')
+            || hasAnswerlatticePermission('canManageWorkspace')
+            || hasAnswerlatticeKnowledgeControlPermission()
+          )
+        )
+        || (
+          document.matches('^integrationHealth_.*$')
+          && hasAnswerlatticePermission('canManageIntegrations')
+        );
+    }
+
+    function isAnswerlatticeSourceVersionsDoc(document) {
+      return document.matches('^sourceVersions_.*$');
+    }
+
+    function isAnswerlatticeBundleManifestDoc(document) {
+      return document.matches('^bundleManifest_.*$');
+    }
+
+    function isAnswerlatticePlatformSummaryDocumentScopeValid(document, data) {
+      return data.keys().hasAll(['tId', 'sId'])
+        && (
+          document == 'branding_' + string(data.tId) + '_' + string(data.sId)
+          || document == 'coverage_' + string(data.tId) + '_' + string(data.sId)
+          || document == 'friction_' + string(data.tId) + '_' + string(data.sId)
+          || document == 'frictionSnapshot_' + string(data.tId) + '_' + string(data.sId)
+          || document == 'trustMetrics_' + string(data.tId) + '_' + string(data.sId)
+          || document == 'supportBoardSummary_' + string(data.tId) + '_' + string(data.sId)
+          || document == 'knowledgeIntakeSummary_' + string(data.tId) + '_' + string(data.sId)
+          || document == 'entityGraph_' + string(data.tId) + '_' + string(data.sId)
+          || document == 'entityGraphIndex_' + string(data.tId) + '_' + string(data.sId)
+          || document == 'interactionRules_' + string(data.tId) + '_' + string(data.sId)
+          || document == 'predictiveTriggers_' + string(data.tId) + '_' + string(data.sId)
+          || document == 'contextContent_' + string(data.tId) + '_' + string(data.sId)
+          || document == 'sourceVersions_' + string(data.tId) + '_' + string(data.sId)
+          || document == 'bundleManifest_' + string(data.tId) + '_' + string(data.sId)
+          || document == 'integrationConfig_' + string(data.tId) + '_' + string(data.sId)
+          || document == 'integrationHealth_' + string(data.tId) + '_' + string(data.sId)
+        );
+    }
+
+    function hasAnswerlatticePlatformSummaryWritePermission(document) {
+      return (
+          document.matches('^(predictiveTriggers|sourceVersions|bundleManifest)_.*$')
+          && (
+            hasAnswerlatticeKnowledgeControlPermission()
+            || hasAnswerlatticePermission('canRebuildContext')
+          )
+        )
+        || (
+          document.matches('^branding_.*$')
+          && (
+            hasAnswerlatticePermission('canManageWidget')
+            || hasAnswerlatticePermission('canManageWorkspace')
+            || hasAnswerlatticeKnowledgeControlPermission()
+          )
+        );
+    }
+
+    function answerlatticeSourceVersionClientKeys() {
+      return [
+        'schemaVersion', 'pId', 'tId', 'sId', 'workspaceProfile',
+        'widgetConfig', 'kb', 'docsNav', 'entities', 'entityRelations',
+        'canonical', 'surfaces', 'releases', 'branding', 'mcpPolicy',
+        'predictiveTriggers', 'updatedAt', 'lastReason', 'lastSourceId',
+        'lastSourceType'
+      ];
+    }
+
+    function answerlatticeBundleManifestClientKeys() {
+      return [
+        'schemaVersion', 'pId', 'tId', 'sId', 'status', 'staleReason',
+        'updatedAt', 'lastReason', 'lastSourceId', 'lastSourceType'
+      ];
+    }
+
+    function isAnswerlatticeTenantSummaryScopeStable() {
+      return isAnswerlatticeTenantMember(resource.data)
+        && isAnswerlatticeTenantMember(request.resource.data)
+        && request.resource.data.tId == resource.data.tId
+        && request.resource.data.sId == resource.data.sId;
+    }
+
+    function canCreateAnswerlatticePlatformSummaryDoc(document) {
+      return isAnswerlatticeTenantMember(request.resource.data)
+        && isAnswerlatticePlatformSummaryDocumentScopeValid(document, request.resource.data)
+        && (
+          (
+            isAnswerlatticeSourceVersionsDoc(document)
+            && request.resource.data.keys().hasOnly(answerlatticeSourceVersionClientKeys())
+          )
+          || (
+            isAnswerlatticeBundleManifestDoc(document)
+            && request.resource.data.keys().hasOnly(answerlatticeBundleManifestClientKeys())
+            && request.resource.data.status == 'stale'
+          )
+          || (
+            !isAnswerlatticeSourceVersionsDoc(document)
+            && !isAnswerlatticeBundleManifestDoc(document)
+          )
+        );
+    }
+
+    function canUpdateAnswerlatticePlatformSummaryDoc(document) {
+      return isAnswerlatticeTenantSummaryScopeStable()
+        && isAnswerlatticePlatformSummaryDocumentScopeValid(document, request.resource.data)
+        && (
+          (
+            isAnswerlatticeSourceVersionsDoc(document)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(answerlatticeSourceVersionClientKeys())
+          )
+          || (
+            isAnswerlatticeBundleManifestDoc(document)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(answerlatticeBundleManifestClientKeys())
+            && request.resource.data.status == 'stale'
+          )
+          || (
+            !isAnswerlatticeSourceVersionsDoc(document)
+            && !isAnswerlatticeBundleManifestDoc(document)
+          )
+        );
+    }
+
+    function isAnswerlatticeOwnerRole() {
+      return request.auth.token.get('role', null) == 'OWNER'
+        || request.auth.token.get('role', null) == 'owner';
+    }
+
+    function isAnswerlatticeManagerRole() {
+      return request.auth.token.get('role', null) == 'MANAGER'
+        || request.auth.token.get('role', null) == 'manager';
+    }
+
+    function isAnswerlatticeStaffRole() {
+      return request.auth.token.get('role', null) == 'STAFF'
+        || request.auth.token.get('role', null) == 'staff';
+    }
+
+    function defaultManagerHasAnswerlatticePermission(permission) {
+      return isAnswerlatticeManagerRole()
+        && (
+          permission == 'canViewReadiness'
+          || permission == 'canManageWorkspace'
+          || permission == 'canManageTeam'
+          || permission == 'canManageKnowledge'
+          || permission == 'canManageGovernance'
+          || permission == 'canManageWidget'
+          || permission == 'canManageSupport'
+        );
+    }
+
+    function defaultStaffHasAnswerlatticePermission(permission) {
+      return isAnswerlatticeStaffRole() && permission == 'canManageSupport';
+    }
+
+    function hasAnswerlatticePermission(permission) {
+      return isPlatformAdmin()
+        || request.auth.token.get(permission, false) == true
+        || isAnswerlatticeOwnerRole()
+        || defaultManagerHasAnswerlatticePermission(permission)
+        || defaultStaffHasAnswerlatticePermission(permission);
+    }
+
+    function hasAnswerlatticeReadinessPermission() {
+      return hasAnswerlatticePermission('canViewReadiness')
+        || hasAnswerlatticePermission('canManageKnowledge')
+        || hasAnswerlatticePermission('canManageGovernance')
+        || hasAnswerlatticePermission('canManageWidget')
+        || hasAnswerlatticePermission('canManageIntegrations');
+    }
+
+    function hasAnswerlatticeKnowledgeControlPermission() {
+      return hasAnswerlatticePermission('canManageKnowledge')
+        || hasAnswerlatticePermission('canManageGovernance');
+    }
+
+    function hasAnswerlatticeSupportControlPermission() {
+      return hasAnswerlatticePermission('canManageSupport')
+        || hasAnswerlatticePermission('canManageWidget');
+    }
+
+    function isValidAnswerlatticeSupportBoardCard(data) {
+      return data.keys().hasAll([
+          'pId', 'tId', 'sId', 'title', 'description', 'status', 'priority',
+          'sourceType', 'sourceId', 'notes', 'notesCount', 'statuses'
+        ])
+        && data.pId == 'AL'
+        && data.title is string
+        && data.title.size() > 0
+        && data.title.size() <= 140
+        && data.description is string
+        && data.description.size() <= 1200
+        && [
+          'new_signals', 'needs_triage', 'needs_answer', 'draft_ready',
+          'approved_published', 'resolved'
+        ].toSet().hasAny([data.status])
+        && ['low', 'medium', 'high'].toSet().hasAny([data.priority])
+        && [
+          'manual', 'ticket', 'feedback', 'conversation', 'signal',
+          'mutation_proposal', 'canonical_answer', 'release', 'surface'
+        ].toSet().hasAny([data.sourceType])
+        && data.notes is list
+        && data.notes.size() <= 25
+        && data.notesCount is int
+        && data.notesCount == data.notes.size()
+        && data.statuses is list
+        && data.statuses.size() > 0
+        && data.statuses.size() <= 50
+        && (!data.keys().hasAny(['tags']) || (data.tags is list && data.tags.size() <= 8))
+        && (!data.keys().hasAny(['relatedContextKeys']) || (data.relatedContextKeys is list && data.relatedContextKeys.size() <= 8));
+    }
+
+    function isAnswerlatticeFeedbackSelfActor(data) {
+      return data.keys().hasAll(['uId'])
+        && (
+          string(data.uId) == string(request.auth.uid)
+          || string(data.uId) == string(request.auth.token.get('uId', ''))
+        );
+    }
+
+    function answerlatticeFeedbackDocumentKeys() {
+      return [
+        'type', 'rating', 'comment', 'featureComment', 'featureIssues',
+        'featureRequest', 'votedPopularRequests', 'pId', 'sourceContext',
+        'traceId', 'requestId', 'sId', 'tId', 'role', 'uId', 'modifiedBy',
+        'modifiedOn', 'createdOn', 'createdBy'
+      ];
+    }
+
+    function isValidAnswerlatticeFeedbackText(value) {
+      return value is string && value.size() > 0 && value.size() <= 1000;
+    }
+
+    function isValidAnswerlatticeFeedbackIdentifier(value) {
+      return (value is string && value.size() > 0 && value.size() <= 180)
+        || value is int;
+    }
+
+    function isValidAnswerlatticeFeedbackSourceContext(data) {
+      return data.sourceContext == null
+        || (
+          data.sourceContext is map
+          && data.sourceContext.keys().hasAll(['uId', 'name', 'email'])
+          && data.sourceContext.keys().hasOnly(['uId', 'name', 'email', 'phone', 'pId', 'tId', 'sId'])
+          && isValidAnswerlatticeFeedbackIdentifier(data.sourceContext.uId)
+          && isValidAnswerlatticeFeedbackText(data.sourceContext.name)
+          && isValidAnswerlatticeFeedbackText(data.sourceContext.email)
+          && (!data.sourceContext.keys().hasAny(['phone']) || isValidAnswerlatticeFeedbackText(data.sourceContext.phone))
+          && (
+            !data.sourceContext.keys().hasAny(['pId'])
+            || (
+              data.sourceContext.pId is string
+              && ['ML', 'AL', 'CC', 'MC', 'SD', 'SF', 'GR', 'KS'].toSet().hasAny([data.sourceContext.pId])
+            )
+          )
+          && (!data.sourceContext.keys().hasAny(['tId']) || isValidAnswerlatticeFeedbackIdentifier(data.sourceContext.tId))
+          && (!data.sourceContext.keys().hasAny(['sId']) || isValidAnswerlatticeFeedbackIdentifier(data.sourceContext.sId))
+        );
+    }
+
+    function answerlatticeFeedbackFeatureIssueValues() {
+      return [
+        'Account access', 'Billing and invoices', 'Onboarding and setup',
+        'Team roles and permissions', 'Settings and configuration',
+        'Integrations', 'Data import or export', 'Notifications and email',
+        'Reports and analytics', 'Performance or reliability'
+      ];
+    }
+
+    function answerlatticeFeedbackPopularRequestValues() {
+      return [
+        'Clearer setup guides', 'More integration options',
+        'Better billing controls', 'Easier data export and reports',
+        'Faster issue status updates'
+      ];
+    }
+
+    function isValidAnswerlatticeFeedbackVote(vote) {
+      return vote is map
+        && vote.keys().hasAll(['feature', 'interested'])
+        && vote.keys().hasOnly(['feature', 'interested'])
+        && vote.feature is string
+        && answerlatticeFeedbackPopularRequestValues().toSet().hasAny([vote.feature])
+        && vote.interested is bool;
+    }
+
+    function hasUniqueAnswerlatticeFeedbackVotes(votes) {
+      return (votes.size() < 2 || votes[0].feature != votes[1].feature)
+        && (votes.size() < 3 || (votes[0].feature != votes[2].feature && votes[1].feature != votes[2].feature))
+        && (votes.size() < 4 || (votes[0].feature != votes[3].feature && votes[1].feature != votes[3].feature && votes[2].feature != votes[3].feature))
+        && (votes.size() < 5 || (votes[0].feature != votes[4].feature && votes[1].feature != votes[4].feature && votes[2].feature != votes[4].feature && votes[3].feature != votes[4].feature));
+    }
+
+    function isValidAnswerlatticeFeedbackVotes(data) {
+      return !data.keys().hasAny(['votedPopularRequests'])
+        || (
+          data.votedPopularRequests is list
+          && data.votedPopularRequests.size() > 0
+          && data.votedPopularRequests.size() <= 5
+          && isValidAnswerlatticeFeedbackVote(data.votedPopularRequests[0])
+          && (data.votedPopularRequests.size() < 2 || isValidAnswerlatticeFeedbackVote(data.votedPopularRequests[1]))
+          && (data.votedPopularRequests.size() < 3 || isValidAnswerlatticeFeedbackVote(data.votedPopularRequests[2]))
+          && (data.votedPopularRequests.size() < 4 || isValidAnswerlatticeFeedbackVote(data.votedPopularRequests[3]))
+          && (data.votedPopularRequests.size() < 5 || isValidAnswerlatticeFeedbackVote(data.votedPopularRequests[4]))
+          && hasUniqueAnswerlatticeFeedbackVotes(data.votedPopularRequests)
+        );
+    }
+
+    function isValidAnswerlatticeFeedbackPayload(data) {
+      return data.keys().hasAll([
+          'type', 'pId', 'sourceContext', 'traceId', 'requestId', 'sId', 'tId',
+          'role', 'uId', 'modifiedBy', 'modifiedOn', 'createdOn', 'createdBy'
+        ])
+        && data.keys().hasOnly(answerlatticeFeedbackDocumentKeys())
+        && data.pId == 'AL'
+        && isValidAnswerlatticeFeedbackIdentifier(data.tId)
+        && isValidAnswerlatticeFeedbackIdentifier(data.sId)
+        && isValidAnswerlatticeFeedbackIdentifier(data.uId)
+        && isValidAnswerlatticeFeedbackText(data.traceId)
+        && data.traceId.size() <= 180
+        && isValidAnswerlatticeFeedbackText(data.requestId)
+        && data.requestId.size() <= 180
+        && data.role is string
+        && data.role.size() <= 80
+        && data.modifiedBy is string
+        && data.modifiedBy.size() <= 200
+        && data.createdBy is string
+        && data.createdBy.size() <= 200
+        && data.modifiedOn is timestamp
+        && data.createdOn is timestamp
+        && isValidAnswerlatticeFeedbackSourceContext(data)
+        && (
+          (
+            data.type == 'general'
+            && data.keys().hasAll(['rating', 'comment'])
+            && !data.keys().hasAny(['featureComment', 'featureIssues', 'featureRequest', 'votedPopularRequests'])
+            && data.rating is int
+            && data.rating >= 1
+            && data.rating <= 5
+            && isValidAnswerlatticeFeedbackText(data.comment)
+          )
+          || (
+            data.type == 'feature_usage'
+            && !data.keys().hasAny(['rating', 'comment', 'featureRequest', 'votedPopularRequests'])
+            && (data.keys().hasAny(['featureComment']) || data.keys().hasAny(['featureIssues']))
+            && (!data.keys().hasAny(['featureComment']) || isValidAnswerlatticeFeedbackText(data.featureComment))
+            && (
+              !data.keys().hasAny(['featureIssues'])
+              || (
+                data.featureIssues is list
+                && data.featureIssues.size() > 0
+                && data.featureIssues.size() <= 10
+                && data.featureIssues.toSet().size() == data.featureIssues.size()
+                && data.featureIssues.toSet().difference(answerlatticeFeedbackFeatureIssueValues().toSet()).size() == 0
+              )
+            )
+          )
+          || (
+            data.type == 'feature_requests'
+            && !data.keys().hasAny(['rating', 'comment', 'featureComment', 'featureIssues'])
+            && (data.keys().hasAny(['featureRequest']) || data.keys().hasAny(['votedPopularRequests']))
+            && (!data.keys().hasAny(['featureRequest']) || isValidAnswerlatticeFeedbackText(data.featureRequest))
+            && isValidAnswerlatticeFeedbackVotes(data)
+          )
+        );
+    }
+
+    function isValidAnswerlatticeFeedbackSurfaceValue(data, field) {
+      return !data.keys().hasAny([field])
+        || data[field] == null
+        || (data[field] is string && data[field].size() > 0 && data[field].size() <= 180);
+    }
+
+    function isValidAnswerlatticeFeedbackSurfaceUpdate() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'contextKey', 'surfaceId', 'surfaceLabel', 'surfaceAssignedBy',
+          'surfaceAssignedAt', 'modifiedBy', 'modifiedOn'
+        ])
+        && isValidAnswerlatticeFeedbackSurfaceValue(request.resource.data, 'contextKey')
+        && isValidAnswerlatticeFeedbackSurfaceValue(request.resource.data, 'surfaceId')
+        && isValidAnswerlatticeFeedbackSurfaceValue(request.resource.data, 'surfaceLabel')
+        && isValidAnswerlatticeFeedbackSurfaceValue(request.resource.data, 'surfaceAssignedBy')
+        && request.resource.data.keys().hasAll(['surfaceAssignedAt', 'modifiedBy', 'modifiedOn'])
+        && (request.resource.data.surfaceAssignedAt == null || request.resource.data.surfaceAssignedAt is timestamp)
+        && request.resource.data.modifiedBy is string
+        && request.resource.data.modifiedBy.size() > 0
+        && request.resource.data.modifiedBy.size() <= 200
+        && request.resource.data.modifiedOn is timestamp
+        && (
+          (
+            request.resource.data.contextKey == null
+            && request.resource.data.surfaceId == null
+            && request.resource.data.surfaceLabel == null
+            && request.resource.data.surfaceAssignedBy == null
+            && request.resource.data.surfaceAssignedAt == null
+          )
+          || (
+            request.resource.data.surfaceAssignedBy is string
+            && request.resource.data.surfaceAssignedBy.size() > 0
+            && request.resource.data.surfaceAssignedAt is timestamp
+          )
+        );
+    }
+
+    function answerlatticeContentFeedbackKeys() {
+      return [
+        'list', 'pId', 'sourceContext', 'traceId', 'requestId', 'sId', 'tId',
+        'role', 'uId', 'modifiedBy', 'modifiedOn', 'createdOn', 'createdBy'
+      ];
+    }
+
+    function isAnswerlatticeContentFeedbackDoc(data, tId, sId) {
+      return data.keys().hasAll(['list', 'pId', 'tId', 'sId'])
+        && data.keys().hasOnly(answerlatticeContentFeedbackKeys())
+        && data.pId == 'AL'
+        && string(data.tId) == string(tId)
+        && string(data.sId) == string(sId)
+        && data.list is list
+        && data.list.size() <= 200;
+    }
+
+    function isValidAnswerlatticeContentFeedbackSourceContext(sourceContext) {
+      return sourceContext is map
+        && sourceContext.keys().hasAll(['uId', 'name', 'email'])
+        && sourceContext.keys().hasOnly(['uId', 'name', 'email', 'phone', 'pId', 'tId', 'sId'])
+        && isValidAnswerlatticeFeedbackIdentifier(sourceContext.uId)
+        && sourceContext.name is string
+        && sourceContext.name.size() > 0
+        && sourceContext.name.size() <= 160
+        && sourceContext.email is string
+        && sourceContext.email.size() <= 180
+        && (!sourceContext.keys().hasAny(['phone']) || (sourceContext.phone is string && sourceContext.phone.size() > 0 && sourceContext.phone.size() <= 80))
+        && (
+          !sourceContext.keys().hasAny(['pId'])
+          || (
+            sourceContext.pId is string
+            && ['ML', 'AL', 'CC', 'MC', 'SD', 'SF', 'GR', 'KS'].toSet().hasAny([sourceContext.pId])
+          )
+        )
+        && (!sourceContext.keys().hasAny(['tId']) || (sourceContext.tId is int && sourceContext.tId > 0))
+        && (!sourceContext.keys().hasAny(['sId']) || (sourceContext.sId is int && sourceContext.sId > 0));
+    }
+
+    function isAnswerlatticeContentFeedbackActor(item) {
+      return isPlatformAdmin()
+        || item.uId == request.auth.uid
+        || item.uId == request.auth.token.get('uId', '');
+    }
+
+    function isValidAnswerlatticeContentFeedbackItem(item) {
+      return item is map
+        && item.keys().hasAll(['comment', 'sentiment', 'action', 'createdOn', 'uId', 'userName', 'sourceContext'])
+        && item.keys().hasOnly(['comment', 'sentiment', 'action', 'createdOn', 'uId', 'userName', 'userEmail', 'userPhone', 'sourceContext'])
+        && item.comment is string
+        && item.comment.size() <= 500
+        && (item.sentiment == 'like' || item.sentiment == 'dislike')
+        && (item.action == 'added' || item.action == 'removed')
+        && item.createdOn is timestamp
+        && item.uId is string
+        && item.uId.size() > 0
+        && item.uId.size() <= 180
+        && item.userName is string
+        && item.userName.size() > 0
+        && item.userName.size() <= 160
+        && (!item.keys().hasAny(['userEmail']) || (item.userEmail is string && item.userEmail.size() > 0 && item.userEmail.size() <= 180))
+        && (!item.keys().hasAny(['userPhone']) || (item.userPhone is string && item.userPhone.size() > 0 && item.userPhone.size() <= 80))
+        && isValidAnswerlatticeContentFeedbackSourceContext(item.sourceContext)
+        && isAnswerlatticeContentFeedbackActor(item);
+    }
+
+    function hasAnswerlatticeContentFeedbackPermission() {
+      return hasAnswerlatticePermission('canManageKnowledge')
+        || hasAnswerlatticeSupportControlPermission();
+    }
+
+    function isAnswerlatticeContentFeedbackRead(tId, sId) {
+      return isAuthenticated()
+        && (
+          isPlatformAdmin()
+          || (
+            belongsToTenant(tId)
+            && belongsToStoreById(sId)
+            && hasAnswerlatticeContentFeedbackPermission()
+          )
+        );
+    }
+
+    function isAnswerlatticeContentFeedbackCreate(tId, sId) {
+      return isAuthenticated()
+        && (
+          isPlatformAdmin()
+          || (
+            belongsToTenant(tId)
+            && belongsToStoreById(sId)
+            && isTenantStoreCreate(request.resource.data)
+            && hasAnswerlatticeContentFeedbackPermission()
+          )
+        )
+        && isAnswerlatticeContentFeedbackDoc(request.resource.data, tId, sId)
+        && request.resource.data.list.size() == 1
+        && isValidAnswerlatticeContentFeedbackItem(request.resource.data.list[0]);
+    }
+
+    function isAnswerlatticeContentFeedbackUpdate(tId, sId) {
+      return isAuthenticated()
+        && (
+          isPlatformAdmin()
+          || (
+            belongsToTenant(tId)
+            && belongsToStoreById(sId)
+            && isTenantStoreUpdate()
+            && hasAnswerlatticeContentFeedbackPermission()
+          )
+        )
+        && isAnswerlatticeContentFeedbackDoc(resource.data, tId, sId)
+        && isAnswerlatticeContentFeedbackDoc(request.resource.data, tId, sId)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['list', 'modifiedOn', 'modifiedBy'])
+        && resource.data.list.size() < 200
+        && request.resource.data.list.size() == resource.data.list.size() + 1
+        && isValidAnswerlatticeContentFeedbackItem(request.resource.data.list[request.resource.data.list.size() - 1])
+        && request.resource.data.list == resource.data.list.concat([request.resource.data.list[request.resource.data.list.size() - 1]]);
+    }
+
+    function isValidAnswerlatticePendingMutationProposal(data) {
+      return data.keys().hasAll([
+          'pId', 'tId', 'sId', 'targetAnswerId', 'relatedEntityIds', 'mutationType',
+          'signalSummary', 'suggestedChange', 'confidenceScore', 'status'
+        ])
+        && data.pId == 'AL'
+        && data.status == 'pending_review'
+        && [
+          'content_refinement',
+          'scope_adjustment',
+          'version_update',
+          'new_answer_required'
+        ].toSet().hasAny([data.mutationType])
+        && data.targetAnswerId is string
+        && data.targetAnswerId.size() <= 180
+        && data.relatedEntityIds is list
+        && data.relatedEntityIds.size() == 1
+        && data.relatedEntityIds[0] is string
+        && exists(/databases/$(database)/documents/answerlattice_entities/$(data.relatedEntityIds[0]))
+        && get(/databases/$(database)/documents/answerlattice_entities/$(data.relatedEntityIds[0])).data.pId == 'AL'
+        && string(get(/databases/$(database)/documents/answerlattice_entities/$(data.relatedEntityIds[0])).data.tId) == string(data.tId)
+        && string(get(/databases/$(database)/documents/answerlattice_entities/$(data.relatedEntityIds[0])).data.sId) == string(data.sId)
+        && data.signalSummary is map
+        && data.suggestedChange is map
+        && data.confidenceScore is number
+        && data.confidenceScore >= 0
+        && data.confidenceScore <= 1;
+    }
+
+    function isAnswerlatticeServerReservedAuditAction(data) {
+      return !data.keys().hasAll(['action'])
+        || !(data.action is string)
+        || [
+          'canonical_answer_created',
+          'canonical_answer_updated',
+          'canonical_answer_create_proposed',
+          'canonical_answer_update_proposed',
+          'draft_approved_as_canonical_answer',
+          'drift_detected',
+          'drift_cleared',
+          'drift_manually_resolved',
+          'entity_merged',
+          'mutation_proposal_approved',
+          'mutation_proposal_rejected',
+          'mutation_proposal_marked_implemented',
+          'answer_rollback_proposed'
+        ].toSet().hasAny([data.action]);
     }
 
     function isAnswerlatticeTenantMember(data) {
       return request.auth != null
-        && data.keys().hasAll(['tId', 'sId'])
-        && request.auth.token.tenantId != null
-        && request.auth.token.storeId != null
-        && string(data.tId) == string(request.auth.token.tenantId)
-        && string(data.sId) == string(request.auth.token.storeId);
+        && data.keys().hasAll(['pId', 'tId', 'sId'])
+        && data.pId == 'AL'
+        && request.auth.token.get('tenantId', null) != null
+        && request.auth.token.get('storeId', null) != null
+        && string(data.tId) == string(request.auth.token.get('tenantId', null))
+        && string(data.sId) == string(request.auth.token.get('storeId', null));
     }
 
     function isAnswerlatticeScopedRead() {
@@ -1285,6 +2708,93 @@ service cloud.firestore {
     function isAnswerlatticeScopedDelete() {
       return isAuthenticated()
         && (isPlatformAdmin() || isAnswerlatticeTenantMember(resource.data));
+    }
+
+    function isAnswerlatticeScopedReadWithPermission(permission) {
+      return isAuthenticated()
+        && (isPlatformAdmin() || (isAnswerlatticeTenantMember(resource.data) && hasAnswerlatticePermission(permission)));
+    }
+
+    function isAnswerlatticeScopedReadWithReadiness() {
+      return isAuthenticated()
+        && (isPlatformAdmin() || (isAnswerlatticeTenantMember(resource.data) && hasAnswerlatticeReadinessPermission()));
+    }
+
+    function isAnswerlatticeScopedReadWithKnowledgeControl() {
+      return isAuthenticated()
+        && (isPlatformAdmin() || (isAnswerlatticeTenantMember(resource.data) && hasAnswerlatticeKnowledgeControlPermission()));
+    }
+
+    function isAnswerlatticeScopedReadWithSupportControl() {
+      return isAuthenticated()
+        && (isPlatformAdmin() || (isAnswerlatticeTenantMember(resource.data) && hasAnswerlatticeSupportControlPermission()));
+    }
+
+    function isAnswerlatticeScopedCreateWithPermission(permission) {
+      return isAuthenticated()
+        && (isPlatformAdmin() || (isAnswerlatticeTenantMember(request.resource.data) && hasAnswerlatticePermission(permission)));
+    }
+
+    function isAnswerlatticeScopedCreateWithKnowledgeControl() {
+      return isAuthenticated()
+        && (isPlatformAdmin() || (isAnswerlatticeTenantMember(request.resource.data) && hasAnswerlatticeKnowledgeControlPermission()));
+    }
+
+    function isAnswerlatticeScopedCreateWithSupportControl() {
+      return isAuthenticated()
+        && (isPlatformAdmin() || (isAnswerlatticeTenantMember(request.resource.data) && hasAnswerlatticeSupportControlPermission()));
+    }
+
+    function isAnswerlatticeScopedUpdateWithPermission(permission) {
+      return isAuthenticated()
+        && (
+          isPlatformAdmin()
+          || (
+            isAnswerlatticeTenantMember(resource.data)
+            && isAnswerlatticeTenantMember(request.resource.data)
+            && request.resource.data.tId == resource.data.tId
+            && request.resource.data.sId == resource.data.sId
+            && hasAnswerlatticePermission(permission)
+          )
+        );
+    }
+
+    function isAnswerlatticeScopedUpdateWithKnowledgeControl() {
+      return isAuthenticated()
+        && (
+          isPlatformAdmin()
+          || (
+            isAnswerlatticeTenantMember(resource.data)
+            && isAnswerlatticeTenantMember(request.resource.data)
+            && request.resource.data.tId == resource.data.tId
+            && request.resource.data.sId == resource.data.sId
+            && hasAnswerlatticeKnowledgeControlPermission()
+          )
+        );
+    }
+
+    function isAnswerlatticeScopedUpdateWithSupportControl() {
+      return isAuthenticated()
+        && (
+          isPlatformAdmin()
+          || (
+            isAnswerlatticeTenantMember(resource.data)
+            && isAnswerlatticeTenantMember(request.resource.data)
+            && request.resource.data.tId == resource.data.tId
+            && request.resource.data.sId == resource.data.sId
+            && hasAnswerlatticeSupportControlPermission()
+          )
+        );
+    }
+
+    function isAnswerlatticeScopedDeleteWithPermission(permission) {
+      return isAuthenticated()
+        && (isPlatformAdmin() || (isAnswerlatticeTenantMember(resource.data) && hasAnswerlatticePermission(permission)));
+    }
+
+    function isAnswerlatticeScopedDeleteWithKnowledgeControl() {
+      return isAuthenticated()
+        && (isPlatformAdmin() || (isAnswerlatticeTenantMember(resource.data) && hasAnswerlatticeKnowledgeControlPermission()));
     }
 
     function isMenuProcessingJobOwner() {

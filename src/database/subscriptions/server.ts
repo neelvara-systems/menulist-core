@@ -7,34 +7,24 @@ import {
     ECOMSAI_PLATFORM_USER_ROLE,
 } from "@constant/user";
 import { DB_COLLECTIONS } from "@constant/database";
-import { normalizeBillingSubscriptionDocumentId } from "@lib/billing/subscriptionDocumentIdBoundary";
+import {
+    normalizeBillingSubscriptionDocumentId,
+    normalizeBillingSubscriptionScopeDocumentId,
+} from "@lib/billing/subscriptionDocumentIdBoundary";
 import { validateTransition } from "@lib/billing/subscriptionStateMachine";
 import { safeSyncStorePlanEntitlementFromSubscription } from "@lib/billing/subscriptionEntitlementSync";
 import { admin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
-import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
+import { sanitizeForFirestore } from "@lib/firestore/sanitizeForFirestore";
 import { FirestoreSubscriptionDoc } from "@type/razorpay";
 import { MinimalStoreDataType } from "@type/platform/store";
 import { getGracePeriodInfo } from "@util/razorpay";
+import { admitManualSubscriptionConfirmation } from "@lib/billing/manualSubscriptionConfirmation";
 
 const COLLECTION = DB_COLLECTIONS.SUBSCRIPTIONS;
 
 export const getSubscriptionsCollectionRefServer = () => firestoreAdmin.collection(COLLECTION);
 
-type BillingSubscriptionScopeDocumentId = {
-    numericId: number;
-    documentId: string;
-};
-
-export function normalizeBillingSubscriptionScopeDocumentId(value: unknown): BillingSubscriptionScopeDocumentId | null {
-    const raw = typeof value === "string" || typeof value === "number" ? String(value) : "";
-    const documentId = raw.trim();
-    if (documentId !== raw || !isValidFirestoreDocumentId(documentId)) return null;
-
-    const numericId = Number(documentId);
-    return Number.isSafeInteger(numericId) && numericId > 0 && String(numericId) === documentId
-        ? { numericId, documentId }
-        : null;
-}
+export { normalizeBillingSubscriptionScopeDocumentId } from "@lib/billing/subscriptionDocumentIdBoundary";
 
 const getSubscriptionDocRefServer = (docId: string) => {
     const normalizedDocId = normalizeBillingSubscriptionDocumentId(docId);
@@ -42,25 +32,25 @@ const getSubscriptionDocRefServer = (docId: string) => {
     return getSubscriptionsCollectionRefServer().doc(normalizedDocId);
 };
 
-const isTimestampLike = (value: any) => (
+type TimestampLike = {
+    toDate: () => Date;
+    seconds: number;
+};
+
+const isTimestampLike = (value: unknown): value is TimestampLike => (
     value
     && typeof value === "object"
-    && typeof value.toDate === "function"
-    && typeof value.seconds === "number"
+    && typeof (value as Partial<TimestampLike>).toDate === "function"
+    && typeof (value as Partial<TimestampLike>).seconds === "number"
 );
 
 const sanitizeForAdminFirestore = (value: any): any => {
-    if (value === undefined) return null;
-    if (value === null) return null;
-    if (isTimestampLike(value)) return admin.firestore.Timestamp.fromDate(value.toDate());
-    if (value instanceof Date) return value;
-    if (Array.isArray(value)) return value.map(sanitizeForAdminFirestore);
-    if (typeof value === "object") {
-        return Object.fromEntries(
-            Object.entries(value).map(([key, nestedValue]) => [key, sanitizeForAdminFirestore(nestedValue)]),
-        );
-    }
-    return value;
+    return sanitizeForFirestore(value, {
+        atomicTransform: (atomicValue) => {
+            if (!isTimestampLike(atomicValue)) return { handled: false };
+            return { handled: true, value: admin.firestore.Timestamp.fromDate(atomicValue.toDate()) };
+        },
+    });
 };
 
 const composeServerSubscriptionPayload = (
@@ -117,6 +107,75 @@ export const getSubscriptionByIdServer = async (id: string): Promise<FirestoreSu
     return { ...(docSnap.data() as FirestoreSubscriptionDoc), id: docSnap.id };
 };
 
+export type ManualSubscriptionPaymentConfirmationResult =
+    | {
+        amount: number;
+        alreadyConfirmed: boolean;
+        currency: 'INR';
+        kind: 'confirmed';
+        planId: string | null;
+        storeId: number;
+        tenantId: number;
+    }
+    | { kind: 'forbidden' }
+    | { kind: 'invalid_state' }
+    | { kind: 'malformed' }
+    | { kind: 'not_found' }
+    | { kind: 'wrong_mode' };
+
+export const confirmManualSubscriptionPaymentServer = async (params: {
+    actorId: string;
+    isPlatformUser: boolean;
+    subscriptionId: string;
+}): Promise<ManualSubscriptionPaymentConfirmationResult> => {
+    const subscriptionId = normalizeBillingSubscriptionDocumentId(params.subscriptionId);
+    if (!subscriptionId) return { kind: 'not_found' };
+    const subscriptionRef = getSubscriptionsCollectionRefServer().doc(subscriptionId);
+
+    return firestoreAdmin.runTransaction<ManualSubscriptionPaymentConfirmationResult>(async (transaction) => {
+        const snapshot = await transaction.get(subscriptionRef);
+        if (!snapshot.exists) return { kind: 'not_found' };
+
+        const admission = admitManualSubscriptionConfirmation({
+            actorId: params.actorId,
+            isPlatformUser: params.isPlatformUser,
+            subscriptionData: snapshot.data(),
+        });
+        if (admission.kind !== 'eligible' && admission.kind !== 'already_confirmed') {
+            return admission;
+        }
+
+        if (admission.kind === 'eligible') {
+            const confirmedAt = admin.firestore.Timestamp.now();
+            transaction.set(subscriptionRef, composeServerSubscriptionPayload({
+                manualPaymentConfirmed: true,
+                manualPaymentConfirmedAt: confirmedAt,
+                status: 'active',
+                statuses: [
+                    ...admission.statuses,
+                    {
+                        amount: admission.amount,
+                        currency: admission.currency,
+                        remark: 'Offline payment confirmed by reseller',
+                        status: 'active',
+                        timestamp: confirmedAt,
+                    },
+                ],
+            }), { merge: true });
+        }
+
+        return {
+            amount: admission.amount,
+            alreadyConfirmed: admission.kind === 'already_confirmed',
+            currency: admission.currency,
+            kind: 'confirmed',
+            planId: admission.planId,
+            storeId: admission.storeId,
+            tenantId: admission.tenantId,
+        };
+    });
+};
+
 const getMasterStoreIdFromList = (storesList?: MinimalStoreDataType[]): number | null => {
     if (!storesList?.length) return null;
 
@@ -169,6 +228,7 @@ const fetchSubscriptionRawServer = async (
         .where("cycleEndDate", ">=", now)
         .where("tenantId", "==", tenantScope.numericId)
         .where("storeId", "==", storeScope.numericId)
+        .orderBy("cycleEndDate", "desc")
         .limit(1)
         .get();
 
@@ -199,32 +259,67 @@ const expireIfGracePeriodEndedServer = async (
 ): Promise<FirestoreSubscriptionDoc | null> => {
     if (!sub.pastDueSinceAt) return sub;
 
-    const { remainingDays, graceEndsDate } = getGracePeriodInfo(sub.pastDueSinceAt);
-    if (remainingDays > 0) return sub;
+    const initialGracePeriod = getGracePeriodInfo(sub.pastDueSinceAt);
+    if (!initialGracePeriod.hasKnownGracePeriod || initialGracePeriod.remainingDays > 0) return sub;
 
     if (!validateTransition(sub.status, "expired", "server:grace-period-auto-expire")) {
         return sub;
     }
-    await updateSubscriptionServer(sub.id, {
-        status: "expired",
-        cycleEndDate: admin.firestore.Timestamp.now() as any,
-        subscriptionEndDate: admin.firestore.Timestamp.now() as any,
-        statuses: [
-            ...sub.statuses,
-            {
-                status: "expired",
-                timestamp: admin.firestore.Timestamp.now() as any,
-                amount: sub.amount,
-                currency: sub.currency,
-                remark: `Expired due to payment failed and past due since ${graceEndsDate?.toLocaleDateString()}`,
-            },
-        ],
-    });
-    await safeSyncStorePlanEntitlementFromSubscription(
-        { ...sub, status: "expired" },
-        "server:grace-period-auto-expire",
-    );
 
+    const subscriptionId = normalizeBillingSubscriptionDocumentId(sub.id);
+    if (!subscriptionId) return sub;
+    const subscriptionRef = getSubscriptionsCollectionRefServer().doc(subscriptionId);
+    const result = await firestoreAdmin.runTransaction(async (transaction) => {
+        const snapshot = await transaction.get(subscriptionRef);
+        if (!snapshot.exists) return { expired: false, subscription: null };
+
+        const current = {
+            ...(snapshot.data() as FirestoreSubscriptionDoc),
+            id: snapshot.id,
+        } as FirestoreSubscriptionDoc;
+        if (current.status !== "past_due") {
+            return { expired: false, subscription: current };
+        }
+
+        const gracePeriod = getGracePeriodInfo(current.pastDueSinceAt);
+        if (!gracePeriod.hasKnownGracePeriod || gracePeriod.remainingDays > 0) {
+            return { expired: false, subscription: current };
+        }
+        if (!validateTransition(current.status, "expired", "server:grace-period-auto-expire")) {
+            return { expired: false, subscription: current };
+        }
+
+        const expiredAt = admin.firestore.Timestamp.now();
+        const update: Partial<FirestoreSubscriptionDoc> = {
+            status: "expired",
+            cycleEndDate: expiredAt as any,
+            subscriptionEndDate: expiredAt as any,
+            statuses: [
+                ...(Array.isArray(current.statuses) ? current.statuses : []),
+                {
+                    status: "expired",
+                    timestamp: expiredAt as any,
+                    amount: current.amount,
+                    currency: current.currency,
+                    remark: `Expired after the payment recovery period ended on ${gracePeriod.graceEndsDate?.toLocaleDateString()}`,
+                },
+            ],
+        };
+        transaction.set(subscriptionRef, composeServerSubscriptionPayload(update), { merge: true });
+        return {
+            expired: true,
+            subscription: { ...current, ...update, id: snapshot.id } as FirestoreSubscriptionDoc,
+        };
+    });
+
+    if (!result.subscription) return null;
+    if (!result.expired) {
+        return ["expired", "completed"].includes(result.subscription.status)
+            ? null
+            : result.subscription;
+    }
+
+    await safeSyncStorePlanEntitlementFromSubscription(result.subscription, "server:grace-period-auto-expire");
     return null;
 };
 
@@ -271,5 +366,6 @@ export const getCollectionRef = getSubscriptionsCollectionRefServer;
 export const createInitialSubscription = createInitialSubscriptionServer;
 export const updateSubscription = updateSubscriptionServer;
 export const getSubscriptionById = getSubscriptionByIdServer;
+export const confirmManualSubscriptionPayment = confirmManualSubscriptionPaymentServer;
 export const getDirectActiveSubscriptionForStore = getDirectActiveSubscriptionForStoreServer;
 export const getActiveSubscriptionForStore = getActiveSubscriptionForStoreServer;

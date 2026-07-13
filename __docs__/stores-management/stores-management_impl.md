@@ -8,6 +8,8 @@
 
 ## Architecture Overview
 
+> **July 11, 2026 tenant-name propagation boundary:** `updateTenant()` delegates changed tenant names to authenticated `POST /api/tenants/name`. The route transactionally reads the canonical tenant and a bounded tenant store query, rechecks owner/platform authority, and writes tenant `name/storesList`, every canonical store `tenantName`, and one nested `storesSummary` merge together. Browser DAL code requires a bounded shaped acknowledgement and removes server-owned `name/storesList` from the follow-up direct update. Public menu/store/client-store/screen and Owner Business Assistant effects run in bounded chunks after commit.
+
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                         STORES MANAGEMENT ARCHITECTURE                       │
@@ -41,7 +43,7 @@
 │  FIRESTORE                                                                   │
 │  ━━━━━━━━━━                                                                  │
 │  ┌─────────┐  ┌─────────┐  ┌─────────────────────────┐                      │
-│  │ stores  │  │ tenants │  │ platformSummary/default │                      │
+│  │ stores  │  │ tenants │  │ platformSummary/summary │                      │
 │  │         │  │         │  │ platformSummary/storesSummary │                │
 │  └─────────┘  └─────────┘  └─────────────────────────┘                      │
 │                                                                              │
@@ -86,13 +88,8 @@
 ### Create Store Flow
 
 ```typescript
-// 1. Get next store ID
-const summary = await getPlatformSummary();
-const newId = summary.stores?.count + 1;
-
-// 2. Prepare store data
+// Prepare store data; addStore reserves the collision-checked global ID.
 const storeData = {
-  storeId: newId,
   tenantId: tenantDetails.tenantId,
   storeKey: name.toLowerCase().replaceAll(" ", "_"),
   email: tenantDetails.email,
@@ -101,23 +98,14 @@ const storeData = {
   // ... other fields
 };
 
-// 3. Add store to stores collection
-await addStore(storeData);
+const savedStore = await addStore(storeData);
 // Internally:
 //   - Uploads logo if base64 provided
 //   - Assigns default timeSlotPresets based on businessType
-//   - Writes to stores/{storeId}
-//   - Updates platformSummary/default (stores.count++)
-//   - Syncs to platformSummary/storesSummary
-
-// 4. Update tenant's storesList
-await updateTenantsStoreslist({
-  tenantId: tenantDetails.tenantId,
-  storesList: [
-    ...tenantDetails.storesList,
-    { storeId: newId, name: storeName },
-  ],
-});
+//   - Reserves a collision-checked ID through canonical platformSummary/summary
+//   - Reads the current tenant and target store in one transaction
+//   - Creates stores/{storeId}, writes platformSummary/storesSummary,
+//     and upserts the current tenant storesList entry atomically
 ```
 
 ### Update Store Flow
@@ -137,21 +125,14 @@ if (Object.keys(updatedChanges).length > 0) {
       .replaceAll(" ", "_");
   }
 
-  // 4. Call updateStore
+  // Call updateStore
   await updateStore(updatedChanges);
-  // Internally:
-  //   - Uploads new logo if base64 provided
-  //   - Updates stores/{storeId}
+// Internally:
+//   - Uploads new logo if base64 provided
+  //   - Re-reads the current canonical store inside a transaction
+  //   - Atomically updates stores/{storeId} and platformSummary/storesSummary
+  //   - If name/tenantName changed, upserts the tenant list entry from current state
   //   - Revalidates public menu/OBP store cache tags
-  //   - Syncs to platformSummary/storesSummary when summary fields changed
-
-  // 5. Update tenant if name changed
-  if ("name" in updatedChanges) {
-    await updateTenantsStoreslist({
-      tenantId: tenantDetails.tenantId,
-      storesList: updatedStoresList,
-    });
-  }
 }
 ```
 
@@ -167,39 +148,34 @@ if (Object.keys(updatedChanges).length > 0) {
 export const addStore = async (data: any, from: string = "") => {
   return await apiCallComposer(
     async () => {
-      data.id = data.storeId;
-
-      // Upload logo if provided
-      if (data.imageToUpdate) {
-        data.logo = await updateLogoImage(data);
+      if (from !== "onboarding") {
+        data.storeId = await reserveNextPlatformEntityId("store");
       }
-
-      // Assign default time slot presets
-      if (!data.timeSlotPresets && data.businessType) {
-        data.timeSlotPresets = getDefaultTimeSlotPresets(
-          data.businessType,
-          data.tenantId,
-          data.storeId,
-        );
-      }
-
-      // Write to Firestore
-      await setDoc(getDocRef(data.id), await requestBodyComposer(data));
-
-      // Update platform counters (skip during onboarding)
-      if (from != "onboarding") {
-        await updateStoresCountInPlatformSummary();
-      }
-
-      // Sync to storesSummary for Cloud Functions
-      await syncStoreToSummary(data.storeId, {
-        tId: data.tenantId,
-        businessType: data.businessType || "unknown",
-        businessCategory,
-        active: true,
-        name: data.name || "",
+      const storeId = Number(data.storeId);
+      const tenantId = Number(data.tenantId);
+      const storeRef = getDocRef(storeId);
+      const tenantRef = doc(firebaseClient, DB_COLLECTIONS.TENANTS, String(tenantId));
+      const summaryRef = doc(firebaseClient, DB_COLLECTIONS.PLATFORM_SUMMARY, "storesSummary");
+      const composedStore = await requestBodyComposer(data, { isNew: true });
+      await runTransaction(firebaseClient, async (transaction) => {
+        const [storeSnapshot, tenantSnapshot] = await Promise.all([
+          transaction.get(storeRef),
+          transaction.get(tenantRef),
+        ]);
+        if (storeSnapshot.exists()) throw new Error("store_create_id_conflict");
+        if (!tenantSnapshot.exists()) throw new Error("store_create_tenant_missing");
+        if (String(tenantSnapshot.data()?.tenantId) !== String(tenantId)) {
+          throw new Error("store_create_tenant_scope_mismatch");
+        }
+        transaction.set(storeRef, composedStore);
+        transaction.set(summaryRef, {
+          stores: { [String(storeId)]: buildStoreSummaryEntry(buildSummaryDataFromStore(data)) },
+        }, { merge: true });
+        transaction.update(tenantRef, {
+          storesList: upsertTenantStoreListEntry(tenantSnapshot.data()?.storesList, data),
+        });
       });
-
+      await revalidatePublicClientCache(data.storeId, "addStore");
       return { ...data };
     },
     data,
@@ -223,16 +199,17 @@ export const updateStore = async (data: any) => {
         data.logo = await updateLogoImage(data);
       }
 
-      // Update Firestore
-      await updateDoc(getDocRef(data.id), await requestBodyComposer(data));
-
-      // Sync to storesSummary
-      await syncStoreToSummary(data.storeId, {
-        tId: data.tenantId,
-        businessType: data.businessType || "unknown",
-        businessCategory,
-        active: data.active ?? true,
-        name: data.name || "",
+      // Summary-relevant paths read current scope and write canonical store,
+      // summary, and affected tenant list identity together.
+      await runTransaction(firebaseClient, async (transaction) => {
+        const [storeSnapshot, tenantSnapshot] = await Promise.all([
+          transaction.get(storeRef),
+          transaction.get(tenantRef),
+        ]);
+        // Fail closed on collision/missing or mismatched tenant.
+        transaction.set(storeRef, composedStore);
+        transaction.set(summaryRef, summaryPayload, { merge: true });
+        transaction.update(tenantRef, { storesList: nextStoresList });
       });
 
       return data;
@@ -243,11 +220,9 @@ export const updateStore = async (data: any) => {
 };
 ```
 
-### `updateTenantsStoreslist(data)`
+### Tenant `storesList` identity mirror
 
-**Location:** `src/database/tenants/index.tsx`
-
-Updates the `storesList` array in tenant document when store is added or name changes.
+There is no active whole-list browser replacement helper. `addStore()` and summary-relevant `updateStore()` re-read the tenant in their transaction and upsert/deduplicate the affected store entry. This prevents a stale Business Settings snapshot from erasing concurrent outlet create, rename, policy, or deactivation changes.
 
 ### Tenant Details Modal Write Acknowledgement
 
@@ -398,13 +373,9 @@ const addUpdateDetails = async (changesToUpload) => {
         }
     } else {
         // CREATE FLOW
-        const summary = await getPlatformSummary();
-        const newId = summary.stores?.count + 1;
-        changesToUpload.storeId = newId;
         changesToUpload.tenantId = tenantDetails.tenantId;
 
         await addStore(changesToUpload);
-        await updateTenantsStoreslist({...});
     }
 };
 ```

@@ -30,8 +30,8 @@ Answerlattice's current onboarding flow requires 4 manual steps:
 After KB articles are published (existing pipeline), the Founder Onboarding Engine automatically:
 
 1. **Batch-extracts entities** from all published articles
-2. **Auto-promotes high-confidence entities** (≥0.7 confidence, referenced in ≥2 articles)
-3. **Generates provisional canonical answer drafts** for each promoted entity
+2. **Keeps every generated candidate pending** until an explicit owner promotion action
+3. **Generates provisional canonical answer drafts** only for already approved active entities
 4. **Places drafts in review queue** for gradual founder review
 
 The AI support system works **immediately** via RAG (existing behavior). The canonical layer bootstraps in the background, improving answer quality over time as the founder reviews and approves drafts.
@@ -55,8 +55,8 @@ Total time: 30-60 minutes of active work
 ```
 Signup → Upload KB docs → Wait for AI extraction (2-5 min)
 → Review article structure → Publish articles
-→ [AUTOMATIC] Entities extracted + high-confidence ones promoted
-→ [AUTOMATIC] Canonical answer drafts generated
+→ [AUTOMATIC] Entity candidates extracted for review
+→ [AUTOMATIC] Drafts generated only for already approved active entities
 → AI support works IMMEDIATELY via RAG
 → Founder reviews/approves drafts gradually (async, no pressure)
 Total time: 5-8 minutes, then gradual async review
@@ -67,13 +67,13 @@ Total time: 5-8 minutes, then gradual async review
 **Immediate (0-5 min):**
 - Upload docs → articles generated → published
 - AI support starts answering via RAG immediately
-- Progress indicator shows: "X entities detected, Y answer drafts generated"
+- Progress indicator shows: "X candidates detected, Y awaiting review, Z answer drafts generated"
 
 **Background (5-15 min, automatic):**
 - Entity extraction runs on all published articles
-- High-confidence entities auto-promoted to ontology
-- Canonical answer drafts generated from article content per entity
-- Search index built for promoted entities
+- All generated candidates remain in the owner review queue
+- Existing owner-approved active entities can receive canonical answer drafts
+- Entity/search-index truth changes only through the protected promotion action
 
 **Gradual review (async, days/weeks):**
 - Founder sees "X drafts awaiting review" badge on governance dashboard
@@ -92,17 +92,16 @@ Total time: 5-8 minutes, then gradual async review
 - Uses existing `extractEntitiesFromArticles()` with registry-guided dedup
 - Stores new candidates in `answerlattice_entityCandidates`
 
-### 4.2 Auto-Promotion (NEW)
+### 4.2 Candidate Review Admission
 
-- After extraction, evaluates all new candidates
-- Auto-promotes if: confidence ≥ 0.7 AND referenced in ≥ 2 articles
-- Creates entity + search index entry (same as manual `promoteCandidate()`)
-- Audit-logged as `entity_auto_promoted_onboarding`
-- Remaining candidates stay in review queue for manual review
+- After extraction, stores deterministic workspace-scoped pending candidates
+- No confidence score can bypass owner review
+- `promoteCandidate()` is the only candidate-to-entity transition and runs through the protected server ontology transaction
+- Rejected and merged decisions also use the server-owned review action
 
 ### 4.3 Canonical Answer Draft Generation (extends existing)
 
-- For each auto-promoted entity, generates a canonical answer draft
+- For each already approved active entity, generates a canonical answer draft when one does not already exist
 - Uses existing Gemini prompt pattern from `draftGenerator.ts`
 - Source context: article content that references the entity
 - Generates: title, structuredSummary, detailedExplanation, procedure (if how-to)
@@ -123,7 +122,7 @@ Total time: 5-8 minutes, then gradual async review
 
 - Uses existing `MutationProposalReview.tsx` component
 - Filter: proposals from `onboarding_bootstrap` source
-- One-click approve uses existing `approveDraftAsCanonicalAnswer()`
+- Approval uses the protected server governance action; the browser cannot write canonical truth or proposal decision state directly
 - Badge count on governance tab: "X drafts awaiting review"
 
 ---
@@ -132,8 +131,8 @@ Total time: 5-8 minutes, then gradual async review
 
 | Mechanism | Rule | Rationale |
 |-----------|------|-----------|
-| **Entity confidence threshold** | ≥0.7 for auto-promote | Prevents low-quality entities polluting ontology |
-| **Multi-article requirement** | ≥2 article references | Single-mention entities are often noise |
+| **Explicit entity promotion** | Every generated candidate requires owner action | Model confidence never becomes product truth by itself |
+| **Deterministic candidate identity** | Workspace/type/name hash with transaction counter | Retries do not create duplicate pending candidates |
 | **Draft ≠ Active** | Drafts are `pending_review`, never `active` | Doctrine: humans approve canonical answers |
 | **RAG provides immediate answers** | No dependency on canonical layer for first answers | Users get value before canonical bootstrap completes |
 | **Idempotent extraction** | Entity name normalization + dedup | Re-running won't create duplicates |

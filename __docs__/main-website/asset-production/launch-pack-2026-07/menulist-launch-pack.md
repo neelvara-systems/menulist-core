@@ -1,13 +1,15 @@
 # MenuList Coordinated Launch Pack
 
 **Generated:** July 10, 2026  
-**Status:** Production-ready synthetic launch pack  
+**Status:** AssetOS-approved synthetic asset set — not launch, publication, or deploy certification
 **Governance:** Website Asset Operating System  
 **Demo identity:** The Daily Plate, Indiranagar, Bengaluru
 
 ## Purpose
 
 This record binds the current MenuList website, social, device, and launch-film derivatives into one governed launch pack. It reuses approved product visuals where they already exist and adds only the missing AssetOS connections and film keyframes.
+
+> **Publication boundary:** AssetOS approval means a named file passed its slot, brand, source, size, and synthetic-data review. It does not authorize MenuList launch, public distribution, website deployment, social posting, paid use, or production certification. Those actions still require the active production-readiness audit, External Certification Runbook evidence, current AssetOS fingerprints, founder approval where the slot requires it, applicable browser/device and production-host QA, and explicit deploy or distribution action.
 
 ## Data Policy
 
@@ -56,4 +58,5 @@ The launch-film frames are editorial derivatives of the approved local HyperFram
 - The square launch asset remains unchanged and uses The Daily Plate.
 - The LinkedIn asset was regenerated to remove the prior cross-business mismatch and now uses The Daily Plate.
 - The owner-device image was already public and mounted; this pass adds the missing AssetOS slot.
-- The four film frames are deterministic extracts from the approved six-second motion loop.
+- The four film frames are deterministic extracts from the approved six-second motion loop. The closing frame uses the clean 5.40-second proof state; the prior 4.90-second capture intersected a one-frame mask/render artifact and is not retained.
+- Current approval is per manifest slot and per file. It does not convert the coordinated set into launch approval.

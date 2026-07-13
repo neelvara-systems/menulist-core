@@ -2,15 +2,17 @@ import { AI_SERVICE_ROUTE_REQUEST_OPTIONS, createAiServiceHttpError, logAiServic
 import { syncBalanceFromResponse } from "@services/ai/balanceSync";
 import { AICapacityError, checkCapacityResponse } from "@services/ai/capacityError";
 import { ExtractedDataItem, NewItemMetadataAPIParams } from "@template/main-app/projects/types";
+import {
+    GeneratedItemMetadata,
+    normalizeNewItemMetadataOutput,
+} from '@lib/ai/newItemMetadataOutput';
 
-export type GeneratedItemMetadata = Partial<ExtractedDataItem> & {
-    attributes?: Array<Partial<ExtractedDataItem["attributes"][number]>>;
-};
+export type { GeneratedItemMetadata } from '@lib/ai/newItemMetadataOutput';
 
 const NEW_ITEM_METADATA_RESPONSE_JSON_MAX_BYTES = 1024 * 1024;
 
 type NewItemMetadataApiResponse = {
-    data?: GeneratedItemMetadata | null;
+    data?: unknown;
     remainingBalance?: unknown;
     transaction?: unknown;
 };
@@ -21,59 +23,32 @@ export function mergeGeneratedItemMetadata(
 ): ExtractedDataItem {
     if (!generatedData) return currentItem;
 
-    const {
-        attributes: generatedAttributes,
-        description: generatedDescription,
-        name: generatedName,
-        ...otherGeneratedFields
-    } = generatedData;
+    const { attributes: generatedAttributes, description, name } = generatedData;
 
     const mergedItem: ExtractedDataItem = {
         ...currentItem,
-        ...otherGeneratedFields,
-        description: generatedDescription && typeof generatedDescription === 'object'
-            ? {
-                ...(currentItem.description || {}),
-                ...generatedDescription,
-            }
-            : currentItem.description,
-        name: generatedName && typeof generatedName === 'object'
-            ? {
-                ...(currentItem.name || {}),
-                ...generatedName,
-            }
-            : currentItem.name,
+        description: { ...(currentItem.description || {}), ...description },
+        name: { ...(currentItem.name || {}), ...name },
     };
 
-    if (Array.isArray(generatedAttributes) && Array.isArray(currentItem.attributes)) {
-        mergedItem.attributes = currentItem.attributes.map((attribute, index) => {
-            const generatedAttribute = generatedAttributes[index];
+    if (generatedData.dietaryTags) mergedItem.dietaryTags = generatedData.dietaryTags;
+    if (generatedData.spiceLevel) mergedItem.spiceLevel = generatedData.spiceLevel;
+    if (generatedData.duration) mergedItem.duration = generatedData.duration;
 
-            if (!generatedAttribute || typeof generatedAttribute !== 'object') {
-                return attribute;
-            }
+    if (Array.isArray(generatedAttributes) && Array.isArray(currentItem.attributes)) {
+        const generatedById = new Map(generatedAttributes.map(attribute => [attribute.id, attribute]));
+        mergedItem.attributes = currentItem.attributes.map((attribute) => {
+            const generatedAttribute = generatedById.get(attribute.id);
+            if (!generatedAttribute) return attribute;
 
             return {
                 ...attribute,
-                ...generatedAttribute,
-                active: attribute.active,
-                id: attribute.id,
-                name: generatedAttribute.name && typeof generatedAttribute.name === 'object'
-                    ? {
-                        ...(attribute.name || {}),
-                        ...generatedAttribute.name,
-                    }
-                    : attribute.name,
-                price: generatedAttribute.price !== undefined
-                    ? String(generatedAttribute.price)
-                    : attribute.price,
+                name: { ...(attribute.name || {}), ...generatedAttribute.name },
             };
         });
     }
 
-    if (generatedDescription && typeof generatedDescription === 'object') {
-        mergedItem.descriptionSource = 'ai';
-    }
+    mergedItem.descriptionSource = 'ai';
 
     return mergedItem;
 }
@@ -102,7 +77,12 @@ async function getNewItemMetadataViaAPI(payload: NewItemMetadataAPIParams): Prom
         });
         syncBalanceFromResponse(responseJson);
         const { data } = responseJson;
-        return data || null;
+        return normalizeNewItemMetadataOutput(data, {
+            businessType: payload.businessType,
+            item: payload.item,
+            sourceLanguageCode: payload.sourceLang.code,
+            targetLanguageCodes: payload.targetLang.map(language => language.code),
+        });
 
     } catch (error) {
         if (error instanceof AICapacityError) throw error;

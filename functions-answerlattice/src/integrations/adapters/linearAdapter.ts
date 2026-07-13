@@ -17,7 +17,17 @@ import {
     INTEGRATION_LIMITS,
     INTEGRATION_EVENT_TYPES,
 } from '../types';
-import { safeText } from '../safety';
+import {
+    safePayloadCount,
+    safePayloadRatio,
+    safePayloadStringArray,
+    safeText,
+} from '../safety';
+import {
+    INTEGRATION_PROVIDER_FETCH_POLICY,
+    isIntegrationProviderRecord,
+    readIntegrationProviderJson,
+} from './providerJson';
 
 const LINEAR_API_URL = 'https://api.linear.app/graphql';
 
@@ -62,28 +72,28 @@ function formatIssueDescription(event: IntegrationEvent): string {
 
         case INTEGRATION_EVENT_TYPES.MUTATION_PROPOSED:
             lines.push(
-                `**Mutation Type:** ${p.mutationType}`,
-                `**Entities:** ${(p.entityNames || []).map((name: unknown) => safeText(name, 80)).join(', ')}`,
-                `**Signal Count:** ${p.signalCount}`,
-                `**Confidence:** ${Math.round((p.confidenceScore || 0) * 100)}%`,
+                `**Mutation Type:** ${safeText(p.mutationType)}`,
+                `**Entities:** ${safePayloadStringArray(p.entityNames, 5, 80).join(', ')}`,
+                `**Signal Count:** ${safePayloadCount(p.signalCount)}`,
+                `**Confidence:** ${Math.round(safePayloadRatio(p.confidenceScore) * 100)}%`,
             );
             break;
 
         case INTEGRATION_EVENT_TYPES.KNOWLEDGE_GAP_DETECTED:
             lines.push(
                 `**Entity:** ${safeText(p.entityName)} (${safeText(p.entityType, 80)})`,
-                `**Fallback Count:** ${p.fallbackCount} in ${p.windowDays} days`,
+                `**Fallback Count:** ${safePayloadCount(p.fallbackCount)} in ${safePayloadCount(p.windowDays, 3650)} days`,
                 `**Sample Queries:**`,
-                ...(p.sampleQueries || []).map((q: string) => `- ${safeText(q, 160)}`),
+                ...safePayloadStringArray(p.sampleQueries, 5, 160).map(q => `- ${q}`),
             );
             break;
 
         case INTEGRATION_EVENT_TYPES.AI_FAILURE_RECURRING:
             lines.push(
                 `**Entity:** ${safeText(p.entityName)} (${safeText(p.entityType, 80)})`,
-                `**Failure Count:** ${p.failureCount} in ${p.windowDays} days`,
+                `**Failure Count:** ${safePayloadCount(p.failureCount)} in ${safePayloadCount(p.windowDays, 3650)} days`,
                 `**Common Queries:**`,
-                ...(p.commonQueries || []).map((q: string) => `- ${safeText(q, 160)}`),
+                ...safePayloadStringArray(p.commonQueries, 5, 160).map(q => `- ${q}`),
             );
             break;
 
@@ -144,34 +154,51 @@ export class LinearAdapter implements IIntegrationAdapter {
                 },
             };
 
-            const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), INTEGRATION_LIMITS.LINEAR_TIMEOUT_MS);
-
-            const response = await fetch(LINEAR_API_URL, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': config.apiKey,
-                },
-                body: JSON.stringify({ query: mutation, variables }),
-                signal: controller.signal,
-            });
-
-            clearTimeout(timeout);
-            const durationMs = Date.now() - startMs;
+            const response = await (async () => {
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), INTEGRATION_LIMITS.LINEAR_TIMEOUT_MS);
+                try {
+                    return await fetch(LINEAR_API_URL, {
+                        ...INTEGRATION_PROVIDER_FETCH_POLICY,
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': config.apiKey,
+                        },
+                        body: JSON.stringify({ query: mutation, variables }),
+                        signal: controller.signal,
+                    });
+                } finally {
+                    clearTimeout(timeout);
+                }
+            })();
 
             if (!response.ok) {
-                return { success: false, statusCode: response.status, error: 'Linear issue creation returned bad status', durationMs };
+                return {
+                    success: false,
+                    retryable: response.status === 429 || response.status >= 500,
+                    statusCode: response.status,
+                    error: 'Linear issue creation returned bad status',
+                    durationMs: Date.now() - startMs,
+                };
             }
 
-            const data = await response.json() as any;
+            const payload = await readIntegrationProviderJson(response);
+            const root = isIntegrationProviderRecord(payload) ? payload : null;
+            const errors = root && Array.isArray(root.errors) ? root.errors : [];
 
-            if (data.errors && data.errors.length > 0) {
-                return { success: false, error: 'Linear issue creation returned errors', durationMs };
+            if (errors.length > 0) {
+                return {
+                    success: false,
+                    error: 'Linear issue creation returned errors',
+                    durationMs: Date.now() - startMs,
+                };
             }
 
-            if (data.data?.issueCreate?.success) {
-                const issue = data.data.issueCreate.issue;
+            const data = isIntegrationProviderRecord(root?.data) ? root.data : null;
+            const issueCreate = isIntegrationProviderRecord(data?.issueCreate) ? data.issueCreate : null;
+            if (issueCreate?.success === true) {
+                const issue = isIntegrationProviderRecord(issueCreate.issue) ? issueCreate.issue : null;
                 const issueIdentifier = typeof issue?.identifier === 'string' ? issue.identifier : '';
                 const issueId = typeof issue?.id === 'string' ? issue.id : '';
                 logger.info('[Answerlattice Integration] Linear issue created', {
@@ -180,13 +207,18 @@ export class LinearAdapter implements IIntegrationAdapter {
                     issueIdPresent: issueId.length > 0,
                     issueIdLength: issueId.length,
                 });
-                return { success: true, statusCode: 200, durationMs };
+                return { success: true, statusCode: 200, durationMs: Date.now() - startMs };
             }
 
-            return { success: false, error: 'Issue creation returned success=false', durationMs };
+            return {
+                success: false,
+                error: 'Issue creation returned success=false',
+                durationMs: Date.now() - startMs,
+            };
         } catch {
             return {
                 success: false,
+                retryable: false,
                 error: 'Linear issue creation failed',
                 durationMs: Date.now() - startMs,
             };

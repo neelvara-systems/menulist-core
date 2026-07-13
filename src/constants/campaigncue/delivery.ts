@@ -6,6 +6,8 @@ export const CAMPAIGNCUE_EXPORT_ACTIONS = [
     "mark_used",
     "record_outcome",
     "request_approval",
+    "approve",
+    "reject",
     "schedule",
 ] as const;
 

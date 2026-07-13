@@ -60,11 +60,13 @@ Uses duplicateProject() to create from base, same editor to modify.
 ### How Activation Works
 
 ```
-Nightly Scheduler (2:30 AM UTC)
-  └── Check stores with scheduled special menus
+Timezone-aware scheduler (runs hourly at :30; each store in its nightly window)
+  └── Read the store's compact project summary
+  └── Expire ended windows before activating due windows
   └── If startsAt reached → activate (set store.activeSpecialMenuId)
   └── If endsAt passed → deactivate (clear store.activeSpecialMenuId)
-  └── Invalidate cache + bump menuVersion
+  └── Publish project + summary + store state in one transaction
+  └── Invalidate public and initialized-screen caches after commit
 
 Client-Side DAL (same-day precision)
   └── createSpecialMenuProject() with startsAt <= now → auto-activates
@@ -82,6 +84,9 @@ Client-Side DAL (same-day precision)
 | Business-type-aware behavior              | `getBusinessCategory()` determines available modes (replace/overlay). No owner configuration. |
 | One active at a time                      | Prevents conflict logic. Block overlapping at creation time.                                  |
 | Nightly + client-side DAL hybrid          | Cost-optimal. Nightly for overnight transitions, DAL for same-day precision.                  |
+| Atomic lifecycle truth                    | Project metadata, compact summary, store pointer, and owned temp banner cannot split across partial writes. |
+| Scoped owner cache                        | Special-menu SWR data is keyed by tenant and store; one validated scope supplies both list reads. |
+| Overlay rows stay isolated                | New overlays retain the editor file/language context but start with no cloned base rows. Public and screen projections deduplicate legacy clones, namespace new category/item/attribute IDs, and remap category references at runtime. |
 
 ---
 
@@ -97,6 +102,8 @@ Client-Side DAL (same-day precision)
 | `src/components/templates/main-app/projects/SpecialMenuStatusBadge.tsx` | Status badge atom                      |
 | `src/components/mobile/screens/MobileSpecialMenuScreen.tsx`             | Mobile management                      |
 | `src/app/client/[[...slug]]/page.tsx`                                   | Client resolver (replace/overlay)      |
+| `src/lib/menu/specialMenuOverlay.ts`                                    | Shared safe overlay projection         |
+| `src/database/campaigns/serverScreen.ts`                                | Configured-screen active-menu resolver |
 | `functions/src/decisionBlocksScoring.ts`                                | Nightly activation/deactivation        |
 
 ---
@@ -124,7 +131,7 @@ ENABLE_SPECIAL_MENU_SWITCHING: true; // In src/config/features.ts and functions/
 
 ## Cost Impact
 
-**~₹2.50/month per 1,000 stores.** Near-zero incremental cost due to 100% project infrastructure reuse.
+Costs are region, free-tier, retry, and active-store dependent. The hourly scheduler can perform up to one compact project-summary read per eligible store during its local nightly window (about 30,000 reads per month at 1,000 eligible stores), while lifecycle actions use the bounded transactions documented in [special-menu-switching_firebase.md](./special-menu-switching_firebase.md). No separate special-menu collection or persisted overlay projection is added.
 
 ---
 
@@ -134,7 +141,8 @@ ENABLE_SPECIAL_MENU_SWITCHING: true; // In src/config/features.ts and functions/
 | ------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ |
 | 1.0     | Feb 20, 2026 | Initial documentation + implementation                                                                                                           |
 | 1.1     | Feb 21, 2026 | ChatGPT feedback: removed stored behaviorTemplate + activeSpecialMenuMode, added deletion/default guards. Feature FROZEN per lifecycle doctrine. |
+| 1.2     | Jul 13, 2026 | Atomic lifecycle/scheduler repair, scoped cache reads, owner-banner ownership, and deterministic legacy-safe overlay projection. |
 
 ---
 
-**Last Updated:** February 21, 2026
+**Last Updated:** July 13, 2026

@@ -52,6 +52,10 @@ Default business prospect rows include:
 - current-list gap
 - contactability
 - source reference
+- evidence summary
+- recommended channel
+- recommended CTA
+- recommended message angle
 - fit decision
 - next action
 
@@ -101,7 +105,8 @@ Each card shows:
 - lead identity and location;
 - validated / needs-evidence state and score;
 - evidence gap and source reference;
-- recommended contact path;
+- recommended channel such as email/export, manual path, partner intro, pod review, or hold;
+- recommended CTA and message angle for what should be shared;
 - MenuList share message;
 - one next action: score, evidence, partner review, pod review, or hold.
 

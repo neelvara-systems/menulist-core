@@ -1,5 +1,9 @@
 # Menu Link Import Firebase
 
+**Boundary Reviewed:** July 10, 2026
+
+> **Launch boundary:** Not current launch certification or deploy approval. This document records source-gated Menu Link Import evidence only. Both current intake paths require a signed-in owner before source acquisition or extraction: the owner app uses `/api/menu-link-imports`, while the public `/create-menu` page submits through the authenticated `/api/public/create-menu` route. Current release approval still requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md), `npm run verify:production-readiness-local`, `npm run verify:menu-extraction-pipeline`, `npm run verify:functions-deploy-preflight`, authenticated desktop/mobile owner-flow QA, signed-in `/create-menu` browser QA, direct and rendered source-acquisition smoke, Gemini extraction provider smoke where fallback is used, applicable target Firebase/Vercel deploy evidence, and production-host smoke.
+
 ## Collections
 
 ### `menuLinkImportArtifacts/{artifactId}`
@@ -50,6 +54,20 @@ Existing collection. Link import adds optional fields:
 }
 ```
 
+### Signed-in `/create-menu` adapter
+
+The public website page is reachable before sign-in, but it does not perform anonymous acquisition. Link submit redirects unauthenticated visitors to sign-in, and `POST /api/public/create-menu` is protected by `withAuth`.
+
+After sign-in, this adapter:
+
+- stores one private source object under `publicMenuDrafts/{draftId}/source.{ext}`;
+- writes one owner-bound `publicMenuDrafts/{draftId}` document with a 24-hour TTL and link-source metadata;
+- writes one shared `menuImageProcessingJobs/{jobId}` extraction job targeting the public draft;
+- rate-limits with HMAC-hashed user identity through `PUBLIC_MENU_ENTRY_AUTH`;
+- requires authenticated claim before creating tenant/store/project truth or publishing.
+
+It does not create a `menuLinkImportArtifacts` document because the temporary `publicMenuDrafts` record owns source metadata until claim.
+
 ## Storage Paths
 
 ```text
@@ -62,10 +80,9 @@ Artifacts are private and immutable. The extraction job receives a tokenized Fir
 
 ## Cost Impact
 
+- The owner-app path uses one `menuLinkImportArtifacts` write, one `menuImageProcessingJobs` write, and one private Storage object before extraction.
+- The signed-in `/create-menu` path uses one `publicMenuDrafts` write, one `menuImageProcessingJobs` write, and one private Storage object before extraction; reusable owner-bound drafts may avoid duplicate creation.
 - Oversized or malformed request bodies fail before project reads, source acquisition, Storage writes, artifact metadata, or job creation.
-- One Firestore write for artifact metadata.
-- One Firestore write for job creation.
-- One Storage write for the source artifact.
 - HTML/text/JSON link imports store a normalized text artifact only. Raw HTML is not stored separately.
 - Link import metadata stores source text presence and length only; it does not store raw source text previews in artifact, job, or public draft metadata.
 - Same-origin discovery can add bounded server fetches before artifact creation: up to 6 candidate URLs are considered and up to 4 high-confidence HTML pages can be combined into the single text artifact.

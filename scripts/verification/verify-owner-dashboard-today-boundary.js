@@ -132,9 +132,12 @@ forbidToken(ownerDashboardHook, 'Fetches overview + overall on initial load', 'o
   'export async function getOwnerDashboardSettled(',
   'const summaryDocId = getDocId.dashboardSummary(tId, sId, projectId);',
   'export async function getOBPDashboardToday(',
-  'const docId = getDocId.daily(tId, sId, OBP_PROJECT_ID, todayDate);',
+  'const tenantId = normalizeAnalyticsScopeDocumentId(tId);',
+  'const docId = getDocId.daily(tenantId, storeId, OBP_PROJECT_ID, todayDate);',
+  'normalizeOBPDailyReadDocument(docSnap.data(), {',
   'export async function getOBPDashboardData(',
-  'const summaryDocId = getDocId.dashboardSummary(tId, sId, OBP_PROJECT_ID);',
+  'const summaryDocId = getDocId.dashboardSummary(tenantId, storeId, OBP_PROJECT_ID);',
+  'normalizeOBPDashboardReadModel(summarySnap.data(), tenantId, storeId)',
   'normalizeTrendSummary(data.trendSummary)',
   'const OWNER_ACTION_MARK_DONE_RESPONSE_JSON_MAX_BYTES = 16 * 1024;',
   'readJsonResponseWithLimit<unknown>(response, OWNER_ACTION_MARK_DONE_RESPONSE_JSON_MAX_BYTES)',
@@ -353,9 +356,9 @@ forbidToken(ownerDashboardDoc, 'Overview data (fetched on initial load)', 'owner
   ['OBP implementation', obpImplDoc, 'OBP dashboard summary read diagnostics'],
   ['OBP implementation', obpImplDoc, 'owner_dashboard_obp_summary_read_failed'],
   ['OBP implementation', obpImplDoc, 'use_daily_obp_docs_without_views_change'],
-  ['OBP Firebase', obpFirebaseDoc, 'OBP dashboard summary-read diagnostics'],
-  ['OBP Firebase', obpFirebaseDoc, 'owner_dashboard_obp_summary_read_failed'],
-  ['OBP Firebase', obpFirebaseDoc, 'adds no fallback Firestore read, write, delete'],
+  ['OBP Firebase', obpFirebaseDoc, 'OBP dashboard read boundary'],
+  ['OBP Firebase', obpFirebaseDoc, 'Invalid persisted data fails visibly'],
+  ['OBP Firebase', obpFirebaseDoc, 'retired daily-range overview/overall helpers'],
 ].forEach(([label, source, token]) => requireToken(source, token, `${label} docs`));
 
 [

@@ -3,6 +3,7 @@
 **Date:** February 19, 2026  
 **Audience:** Sales, Marketing (INTERNAL)  
 **Pillar:** 6 of 6
+**Usage status:** Do not use in sales or marketing. The feature is dormant, unscheduled, unmounted, and flag-disabled; the copy below is a concept draft only.
 
 ---
 
@@ -23,4 +24,4 @@ The most dangerous threat to any business isn't a sudden crisis — it's the slo
 
 ---
 
-**Last Updated:** February 19, 2026
+**Last Updated:** July 13, 2026

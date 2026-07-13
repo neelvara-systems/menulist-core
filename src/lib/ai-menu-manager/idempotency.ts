@@ -1,3 +1,8 @@
+import {
+    normalizeAiMenuManagerProjectId,
+    normalizeAiMenuManagerScopeDocumentId,
+} from './routeIds';
+
 export function stableStringify(value: unknown): string {
     if (value === null || typeof value !== 'object') {
         return JSON.stringify(value);
@@ -42,14 +47,75 @@ export function hashStableValue(value: unknown): string {
     return stableHashHex(stableStringify(value));
 }
 
-export function buildDailySessionId(params: {
+type AiMenuManagerDailySessionScope = {
     tId: string | number;
     sId: string | number;
-    projectId?: string;
+    projectId: string;
+    sessionDate: string;
+};
+
+export function normalizeAiMenuManagerSessionDate(value: unknown): string | null {
+    if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+    const parsed = new Date(`${value}T00:00:00.000Z`);
+    return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value
+        ? value
+        : null;
+}
+
+function requireDailySessionScope(params: AiMenuManagerDailySessionScope) {
+    const tenant = normalizeAiMenuManagerScopeDocumentId(params.tId);
+    const store = normalizeAiMenuManagerScopeDocumentId(params.sId);
+    const projectId = normalizeAiMenuManagerProjectId(params.projectId);
+    const sessionDate = normalizeAiMenuManagerSessionDate(params.sessionDate);
+    if (!tenant || !store || !projectId || !sessionDate) {
+        throw new Error('Invalid session scope');
+    }
+    return {
+        tId: tenant.documentId,
+        sId: store.documentId,
+        projectId,
+        sessionDate,
+    };
+}
+
+function buildLegacyDailySessionId(params: AiMenuManagerDailySessionScope) {
+    const scope = requireDailySessionScope(params);
+    const raw = `${scope.tId}:${scope.sId}:${scope.projectId}:${scope.sessionDate}`;
+    return `amm_${hashStableValue(raw).slice(0, 24)}`;
+}
+
+export function buildDailySessionId(params: AiMenuManagerDailySessionScope) {
+    const scope = requireDailySessionScope(params);
+    return `amm2_${scope.tId}_${scope.sId}_${scope.sessionDate}_${scope.projectId}`;
+}
+
+export function isDailySessionIdForScope(params: {
+    sessionId: string;
+    tId: string | number;
+    sId: string | number;
+    projectId: string;
     sessionDate: string;
 }) {
-    const raw = `${params.tId}:${params.sId}:${params.projectId || 'store'}:${params.sessionDate}`;
-    return `amm_${hashStableValue(raw).slice(0, 24)}`;
+    try {
+        return params.sessionId === buildDailySessionId(params)
+            || params.sessionId === buildLegacyDailySessionId(params);
+    } catch {
+        return false;
+    }
+}
+
+export function resolveDailySessionId(params: {
+    sessionId?: string;
+    tId: string | number;
+    sId: string | number;
+    projectId: string;
+    sessionDate: string;
+}) {
+    const expectedSessionId = buildDailySessionId(params);
+    if (params.sessionId && !isDailySessionIdForScope({ ...params, sessionId: params.sessionId })) {
+        throw new Error('Session scope mismatch');
+    }
+    return params.sessionId || expectedSessionId;
 }
 
 export function buildProposalId(params: {

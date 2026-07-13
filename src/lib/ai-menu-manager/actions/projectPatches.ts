@@ -2,6 +2,14 @@ import type { Project } from '@template/main-app/projects/types';
 import type { AiMenuManagerExecutionDirective, AiMenuManagerProjectPatch } from '@type/aiMenuManager';
 import { removeObjRef } from '@util/utils';
 import { stableStringify } from '../idempotency';
+import { normalizeAiMenuManagerProjectSnapshot } from '../projectIntegrity';
+
+function normalizeProjectForAiMenuManager(project: Project, expectedProjectId?: string): Project | null {
+    const projectId = expectedProjectId ?? project?.projectId;
+    return typeof projectId === 'string'
+        ? normalizeAiMenuManagerProjectSnapshot(project, projectId)
+        : null;
+}
 
 function applyItemUpdates(project: Project, patch: AiMenuManagerProjectPatch) {
     const itemIds = new Set(patch.itemIds || []);
@@ -140,7 +148,12 @@ export function applyAiMenuManagerProjectPatch(
     project: Project,
     directive: AiMenuManagerExecutionDirective,
 ): Project {
-    const nextProject = removeObjRef(project) as Project;
+    const directiveProjectId = directive.scope.projectId;
+    const normalizedProject = typeof directiveProjectId === 'string'
+        ? normalizeAiMenuManagerProjectSnapshot(project, directiveProjectId)
+        : null;
+    if (!normalizedProject) throw new Error('Invalid project data');
+    const nextProject = removeObjRef(normalizedProject) as Project;
     const patch = directive.patch;
 
     if (patch.kind === 'item_update' || patch.kind === 'bulk_item_update') {
@@ -170,13 +183,21 @@ export function applyAiMenuManagerProjectPatch(
     return nextProject;
 }
 
-export function projectContainsAiMenuManagerPatch(project: Project, patch: AiMenuManagerProjectPatch) {
+export function projectContainsAiMenuManagerPatch(
+    project: Project,
+    patch: AiMenuManagerProjectPatch,
+    expectedProjectId?: string,
+) {
+    const normalizedProject = normalizeProjectForAiMenuManager(project, expectedProjectId);
+    if (!normalizedProject) return false;
+    project = normalizedProject;
+
     if (patch.kind === 'item_update' || patch.kind === 'bulk_item_update') {
         const itemIds = new Set(patch.itemIds || []);
         const updates = patch.updates || {};
         if (!itemIds.size) return false;
 
-        const matchedItems: Record<string, boolean> = {};
+        const matchedItems = new Map<string, { count: number; allMatch: boolean }>();
         project.files?.forEach((file) => {
             file.extractedData?.data?.items?.forEach((item) => {
                 if (!itemIds.has(item.id)) return;
@@ -184,7 +205,7 @@ export function projectContainsAiMenuManagerPatch(project: Project, patch: AiMen
                     ...updates,
                     ...(patch.itemUpdates?.[item.id] || {}),
                 };
-                matchedItems[item.id] = Object.entries(expectedUpdates).every(([key, value]) => {
+                const matches = Object.entries(expectedUpdates).every(([key, value]) => {
                     if ((key === 'name' || key === 'description') && value && typeof value === 'object' && !Array.isArray(value)) {
                         return Object.entries(value as Record<string, unknown>).every(([lang, localizedValue]) => (
                             stableStringify((item as any)[key]?.[lang]) === stableStringify(localizedValue)
@@ -192,10 +213,18 @@ export function projectContainsAiMenuManagerPatch(project: Project, patch: AiMen
                     }
                     return stableStringify((item as any)[key]) === stableStringify(value);
                 });
+                const previous = matchedItems.get(item.id);
+                matchedItems.set(item.id, {
+                    count: (previous?.count || 0) + 1,
+                    allMatch: (previous?.allMatch ?? true) && matches,
+                });
             });
         });
 
-        return Array.from(itemIds).every((id) => matchedItems[id] === true);
+        return Array.from(itemIds).every((id) => {
+            const match = matchedItems.get(id);
+            return match?.count === 1 && match.allMatch;
+        });
     }
 
     if (patch.kind === 'category_update') {
@@ -203,11 +232,11 @@ export function projectContainsAiMenuManagerPatch(project: Project, patch: AiMen
         const updates = patch.updates || {};
         if (!categoryIds.size) return false;
 
-        const matchedCategories: Record<string, boolean> = {};
+        const matchedCategories = new Map<string, { count: number; allMatch: boolean }>();
         project.files?.forEach((file) => {
             file.extractedData?.data?.categories?.forEach((category) => {
                 if (!categoryIds.has(category.id)) return;
-                matchedCategories[category.id] = Object.entries(updates).every(([key, value]) => {
+                const matches = Object.entries(updates).every(([key, value]) => {
                     if (key === 'name' && value && typeof value === 'object' && !Array.isArray(value)) {
                         return Object.entries(value as Record<string, unknown>).every(([lang, localizedValue]) => (
                             stableStringify((category as any)[key]?.[lang]) === stableStringify(localizedValue)
@@ -215,10 +244,18 @@ export function projectContainsAiMenuManagerPatch(project: Project, patch: AiMen
                     }
                     return stableStringify((category as any)[key]) === stableStringify(value);
                 });
+                const previous = matchedCategories.get(category.id);
+                matchedCategories.set(category.id, {
+                    count: (previous?.count || 0) + 1,
+                    allMatch: (previous?.allMatch ?? true) && matches,
+                });
             });
         });
 
-        return Array.from(categoryIds).every((id) => matchedCategories[id] === true);
+        return Array.from(categoryIds).every((id) => {
+            const match = matchedCategories.get(id);
+            return match?.count === 1 && match.allMatch;
+        });
     }
 
     if (patch.kind === 'attribute_update') {
@@ -227,20 +264,28 @@ export function projectContainsAiMenuManagerPatch(project: Project, patch: AiMen
         const updates = patch.updates || {};
         if (!attributeIds.size) return false;
 
-        const matchedAttributes: Record<string, boolean> = {};
+        const matchedAttributes = new Map<string, { count: number; allMatch: boolean }>();
         project.files?.forEach((file) => {
             file.extractedData?.data?.items?.forEach((item) => {
                 if (itemIds.size && !itemIds.has(item.id)) return;
                 item.attributes?.forEach((attribute) => {
                     if (!attributeIds.has(attribute.id)) return;
-                    matchedAttributes[attribute.id] = Object.entries(updates).every(([key, value]) => (
+                    const matches = Object.entries(updates).every(([key, value]) => (
                         stableStringify((attribute as any)[key]) === stableStringify(value)
                     ));
+                    const previous = matchedAttributes.get(attribute.id);
+                    matchedAttributes.set(attribute.id, {
+                        count: (previous?.count || 0) + 1,
+                        allMatch: (previous?.allMatch ?? true) && matches,
+                    });
                 });
             });
         });
 
-        return Array.from(attributeIds).every((id) => matchedAttributes[id] === true);
+        return Array.from(attributeIds).every((id) => {
+            const match = matchedAttributes.get(id);
+            return Boolean(match?.count) && match.allMatch;
+        });
     }
 
     if (patch.kind === 'menu_settings_update') {

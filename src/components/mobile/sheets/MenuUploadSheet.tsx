@@ -289,11 +289,9 @@ export default function MenuUploadSheet({
                     {
                         uid: `${Date.now()}-${createRandomIdSegment(8)}`,
                         name: file.name,
-                        size: file.size,
-                        type: file.type,
                         arrayBuffer: () => file.arrayBuffer(),
                     },
-                ], 'mobile', 'mobile', { maxPages: remainingPageSlots }) as any[];
+                ], 'mobile', 'mobile', { maxPages: remainingPageSlots });
 
                 if (!convertedPdfImages.length) {
                     throw new Error(t('menuUploadNoFilesPrepared'));
@@ -307,7 +305,7 @@ export default function MenuUploadSheet({
 
                 updateSelectedFiles((current) => [
                     ...current,
-                    ...convertedPdfImages.map((page: any) => ({
+                    ...convertedPdfImages.map((page) => ({
                         id: page.uid,
                         name: page.name,
                         previewUrl: page.url,
@@ -661,30 +659,43 @@ export default function MenuUploadSheet({
             setStatusText(t('uploadUploadingFiles'));
 
             let completedUploads = 0;
-            const uploadedFiles = await Promise.all(preparedFiles.map(async (file) => {
-                const uploadedUrl = await uploadFile({
-                    uid: file.uid,
-                    url: file.url,
-                    type: file.type,
-                    name: file.name,
-                    size: file.size,
-                });
+            const uploadResults = await Promise.all(preparedFiles.map(async (file) => {
+                try {
+                    const uploadedUrl = await uploadFile({
+                        uid: file.uid,
+                        url: file.url,
+                        type: file.type,
+                        name: file.name,
+                        size: file.size,
+                    });
 
-                if (!uploadedUrl) {
-                    throw new Error(t('menuUploadFailed'));
+                    if (!uploadedUrl) throw new Error(t('menuUploadFailed'));
+
+                    completedUploads += 1;
+                    setProgress(35 + Math.round((completedUploads / preparedFiles.length) * 45));
+
+                    return {
+                        error: null,
+                        file: {
+                            uid: file.uid,
+                            name: file.name,
+                            size: file.size,
+                            type: file.type,
+                            url: uploadedUrl,
+                        },
+                    };
+                } catch (error) {
+                    return { error, file: null };
                 }
-
-                completedUploads += 1;
-                setProgress(35 + Math.round((completedUploads / preparedFiles.length) * 45));
-
-                return {
-                    uid: file.uid,
-                    name: file.name,
-                    size: file.size,
-                    type: file.type,
-                    url: uploadedUrl,
-                };
             }));
+            const uploadedFiles = uploadResults
+                .map((result) => result.file)
+                .filter((file): file is PreparedFile => file !== null);
+            const failedUploadCount = uploadResults.filter((result) => result.error !== null).length;
+            if (failedUploadCount > 0) {
+                await cleanupUploadedMenuFiles(uploadedFiles, 'partial_upload_failure', projectId);
+                throw new Error(t('menuUploadFailed'));
+            }
 
             const intakeDecision = await confirmMenuIntakeDecision(projectId, uploadedFiles);
             if (intakeDecision.action === 'cancel') {

@@ -21,6 +21,10 @@ import {
 } from './services/gemini/ownerDashboardSummary';
 import { ECOMSAI_PLATFORM_USER_ROLE } from './constants/user';
 import { FUNCTION_MAX_INSTANCES } from './config/secrets';
+import {
+    normalizeStoreSummaryNumericDocumentId,
+    parsePlatformStoreSummary,
+} from './sharedData/storeSummaryBoundary';
 
 /**
  * CUSTOMER-FACING ANALYTICS AGGREGATION
@@ -66,6 +70,7 @@ interface DailyMetrics {
     date?: string;
     totalViews?: number;
     totalClicks?: number;
+    totalItemViews?: number;
     totalSessions?: number;
     menuSessions?: number;
     engagedSessions?: number;
@@ -154,6 +159,220 @@ const CUSTOMER_ANALYTICS_MONTHLY_AI_SUMMARY_FAILED = 'CUSTOMER_ANALYTICS_MONTHLY
 const CUSTOMER_ANALYTICS_DAILY_AI_SUMMARY_FAILED = 'CUSTOMER_ANALYTICS_DAILY_AI_SUMMARY_FAILED';
 const CUSTOMER_ANALYTICS_PROJECT_AGGREGATION_FAILED = 'CUSTOMER_ANALYTICS_PROJECT_AGGREGATION_FAILED';
 const CUSTOMER_ANALYTICS_MANUAL_TRIGGER_FAILED = 'CUSTOMER_ANALYTICS_MANUAL_TRIGGER_FAILED';
+const CUSTOMER_ANALYTICS_DAILY_CONTRACT_INVALID = 'CUSTOMER_ANALYTICS_DAILY_CONTRACT_INVALID';
+const CUSTOMER_ANALYTICS_SUMMARY_CONTRACT_INVALID = 'CUSTOMER_ANALYTICS_SUMMARY_CONTRACT_INVALID';
+const ANALYTICS_PROJECT_ID_PATTERN = /^[A-Za-z0-9_-]{1,120}$/;
+const ANALYTICS_DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const ANALYTICS_CLEANUP_BATCH_SIZE = 400;
+const ANALYTICS_NUMERIC_FIELDS: ReadonlyArray<keyof DailyMetrics> = [
+    'actionSessions',
+    'engagedSessions',
+    'intentSessions',
+    'menuSessions',
+    'totalAppOpens',
+    'totalClicks',
+    'totalDecisionBlocksRendered',
+    'totalInstalled',
+    'totalInstallStarted',
+    'totalItemViews',
+    'totalMenuActionClicks',
+    'totalPromptDismissed',
+    'totalPromptShown',
+    'totalRecommendationClicks',
+    'totalSearches',
+    'totalSessions',
+    'totalUnavailableItemTaps',
+    'totalViews',
+    'uniqueInstallSessions',
+    'zeroResultSearches',
+];
+const ANALYTICS_NUMERIC_MAP_FIELDS: ReadonlyArray<keyof DailyMetrics> = [
+    'actionSessionsByOpenHoursState',
+    'actionSessionsBySource',
+    'appOpensByPlatform',
+    'attributeFilterActionClicks',
+    'attributeFilterInteractions',
+    'attributeFilterItemTaps',
+    'attributeFilterItemViews',
+    'attributeFilterSearches',
+    'attributeFilterUnavailableTaps',
+    'clicksByCategory',
+    'clicksByItem',
+    'decisionBlocksRendered',
+    'hourlyAppOpens',
+    'hourlyMenuActionClicks',
+    'hourlyPromptShown',
+    'hourlyViews',
+    'installsByDevice',
+    'installsByLocation',
+    'installsByPlatform',
+    'installsBySource',
+    'languageAdoptions',
+    'menuActionClicks',
+    'menuActionClicksByOpenHoursState',
+    'menuActionClicksBySource',
+    'menuSessionsByLanguage',
+    'menuSessionsBySource',
+    'menuViewsByLanguage',
+    'recommendationClicks',
+    'recommendationClicksByItem',
+    'searchTerms',
+    'shortcutClicks',
+    'unavailableItemTapsByItem',
+    'viewsByCampaign',
+    'viewsByCategory',
+    'viewsByContent',
+    'viewsByDevice',
+    'viewsByEntrySource',
+    'viewsByItem',
+    'viewsByLocation',
+    'viewsByMedium',
+    'viewsBySource',
+    'zeroResultSearchTerms',
+];
+const ANALYTICS_STRING_MAP_FIELDS: ReadonlyArray<keyof DailyMetrics> = [
+    'attributeFilterNames',
+    'categoryNames',
+    'itemNames',
+    'languageNames',
+];
+
+function isAnalyticsRecord(value: unknown): value is Record<string, unknown> {
+    return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function normalizeAnalyticsProjectId(value: unknown): string | null {
+    return typeof value === 'string'
+        && value === value.trim()
+        && ANALYTICS_PROJECT_ID_PATTERN.test(value)
+        ? value
+        : null;
+}
+
+function normalizeAnalyticsDateKey(value: unknown): string | null {
+    if (typeof value !== 'string' || !ANALYTICS_DATE_KEY_PATTERN.test(value)) return null;
+    const parsed = new Date(`${value}T00:00:00.000Z`);
+    return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value ? value : null;
+}
+
+function isValidAnalyticsNumberMap(value: unknown): boolean {
+    return value === undefined || (
+        isAnalyticsRecord(value)
+        && Object.entries(value).every(([key, entry]) => (
+            /^[A-Za-z0-9_:-]{1,120}$/.test(key)
+            && typeof entry === 'number'
+            && Number.isFinite(entry)
+            && entry >= 0
+        ))
+    );
+}
+
+function isValidAnalyticsStringMap(value: unknown): boolean {
+    return value === undefined || (
+        isAnalyticsRecord(value)
+        && Object.entries(value).every(([key, entry]) => (
+            /^[A-Za-z0-9_:-]{1,120}$/.test(key)
+            && typeof entry === 'string'
+            && entry.trim().length > 0
+            && entry.length <= 120
+        ))
+    );
+}
+
+function normalizeAnalyticsDailyDocument(
+    value: unknown,
+    expected: { docId: string; projectId: string; sId: string; tId: string; date: string },
+): DailyMetrics | null {
+    if (!isAnalyticsRecord(value)) return null;
+    const date = normalizeAnalyticsDateKey(value.localDate ?? value.date);
+    const optionalDate = value.date === undefined ? expected.date : normalizeAnalyticsDateKey(value.date);
+    const expectedSurface = expected.projectId === 'customerApp' ? 'customerApp' : 'menu';
+    if (
+        String(value.tId ?? '') !== expected.tId
+        || String(value.sId ?? '') !== expected.sId
+        || value.projectId !== expected.projectId
+        || value.grain !== 'daily'
+        || value.analyticsScope !== 'customer'
+        || value.surface !== expectedSurface
+        || date !== expected.date
+        || optionalDate !== expected.date
+        || expected.docId !== getAnalyticsDocId.daily(expected.tId, expected.sId, expected.projectId, expected.date)
+    ) return null;
+
+    return normalizeAnalyticsDailyMetrics(value, expected.date);
+}
+
+function normalizeAnalyticsDailyMetrics(value: unknown, expectedDate: string): DailyMetrics | null {
+    if (!isAnalyticsRecord(value) || normalizeAnalyticsDateKey(value.date ?? expectedDate) !== expectedDate) return null;
+    if (
+        ANALYTICS_NUMERIC_FIELDS.some((field) => (
+            value[field] !== undefined
+            && (typeof value[field] !== 'number' || !Number.isFinite(value[field]) || Number(value[field]) < 0)
+        ))
+        || value.languageTrackingEnabled !== undefined && typeof value.languageTrackingEnabled !== 'boolean'
+        || ANALYTICS_NUMERIC_MAP_FIELDS.some((field) => !isValidAnalyticsNumberMap(value[field]))
+        || ANALYTICS_STRING_MAP_FIELDS.some((field) => !isValidAnalyticsStringMap(value[field]))
+    ) return null;
+
+    return { ...value, date: expectedDate } as DailyMetrics;
+}
+
+function assertValidAnalyticsSummaryForSettlement(
+    value: unknown,
+    expected: { projectId: string; sId: string; tId: string },
+): asserts value is Record<string, unknown> {
+    if (!isAnalyticsRecord(value)) throw new Error(CUSTOMER_ANALYTICS_SUMMARY_CONTRACT_INVALID);
+    if (
+        value.tId !== undefined && String(value.tId) !== expected.tId
+        || value.sId !== undefined && String(value.sId) !== expected.sId
+        || value.projectId !== undefined && value.projectId !== expected.projectId
+        || value.grain !== undefined && value.grain !== 'summary'
+        || value.analyticsScope !== undefined && value.analyticsScope !== 'customer'
+    ) throw new Error(CUSTOMER_ANALYTICS_SUMMARY_CONTRACT_INVALID);
+
+    for (const [field, entry] of Object.entries(value)) {
+        if (
+            field.startsWith('lifetime')
+            && field !== 'lifetime'
+            && (typeof entry !== 'number' || !Number.isFinite(entry) || entry < 0)
+        ) throw new Error(CUSTOMER_ANALYTICS_SUMMARY_CONTRACT_INVALID);
+    }
+    if (value.lifetime !== undefined) {
+        if (
+            !isAnalyticsRecord(value.lifetime)
+            || Object.values(value.lifetime).some((entry) => (
+                typeof entry !== 'number' || !Number.isFinite(entry) || entry < 0
+            ))
+        ) throw new Error(CUSTOMER_ANALYTICS_SUMMARY_CONTRACT_INVALID);
+    }
+    if (
+        ANALYTICS_NUMERIC_MAP_FIELDS.some((field) => !isValidAnalyticsNumberMap(value[field]))
+        || ANALYTICS_STRING_MAP_FIELDS.some((field) => !isValidAnalyticsStringMap(value[field]))
+        || value.languageTrackingEnabled !== undefined && typeof value.languageTrackingEnabled !== 'boolean'
+    ) throw new Error(CUSTOMER_ANALYTICS_SUMMARY_CONTRACT_INVALID);
+
+    for (const field of ['firstDataDate', 'lastAggregatedDate', 'lastCorrectionDate'] as const) {
+        if (value[field] !== undefined && !normalizeAnalyticsDateKey(value[field])) {
+            throw new Error(CUSTOMER_ANALYTICS_SUMMARY_CONTRACT_INVALID);
+        }
+    }
+}
+
+function assertValidAnalyticsDashboardIdentity(
+    value: unknown,
+    expected: { projectId: string; sId: string; tId: string },
+): asserts value is Record<string, unknown> {
+    const expectedKind = expected.projectId === 'customerApp'
+        ? 'customerAppDashboardSummary'
+        : 'ownerDashboardSummary';
+    if (
+        !isAnalyticsRecord(value)
+        || String(value.tId ?? '') !== expected.tId
+        || String(value.sId ?? '') !== expected.sId
+        || value.projectId !== expected.projectId
+        || value.kind !== expectedKind
+    ) throw new Error('CUSTOMER_ANALYTICS_DASHBOARD_CONTRACT_INVALID');
+}
 
 function getDashboardSummaryDocId(tId: string, sId: string, projectId: string): string {
     return `${tId}_${sId}_${projectId}_dashboard_summary`;
@@ -165,8 +384,8 @@ function toDateKey(date: Date): string {
 
 function normalizeDailyRow(date: string, data: Record<string, any>): Record<string, any> {
     return {
-        date,
         ...data,
+        date,
     };
 }
 
@@ -198,13 +417,14 @@ async function collectStoreAnalyticsProjects(
     sId: string,
     yesterdayStr: string,
     knownProjectIds: string[] = [],
-): Promise<{ projectIds: Set<string>; yesterdayDocs: Map<string, any> }> {
+): Promise<{ invalidDocuments: number; projectIds: Set<string>; yesterdayDocs: Map<string, any> }> {
     const projectIds = new Set<string>(
         knownProjectIds
-            .map((projectId) => String(projectId || '').trim())
-            .filter(Boolean)
+            .map(normalizeAnalyticsProjectId)
+            .filter((projectId): projectId is string => Boolean(projectId))
     );
     const yesterdayDocs = new Map<string, any>();
+    let invalidDocuments = 0;
 
     const analyticsDocsQuery = await db.collection(ANALYTICS_COLLECTION)
         .where('tId', '==', tId)
@@ -215,15 +435,30 @@ async function collectStoreAnalyticsProjects(
 
     analyticsDocsQuery.docs.forEach((doc) => {
         const data = doc.data();
-        const projectId = String(data.projectId || '').trim();
-        if (!projectId) return;
+        const projectId = normalizeAnalyticsProjectId(data.projectId);
+        if (!projectId) {
+            invalidDocuments += 1;
+            return;
+        }
         if (projectId === OBP_PROJECT_ID) return;
 
+        const normalized = normalizeAnalyticsDailyDocument(data, {
+            date: yesterdayStr,
+            docId: doc.id,
+            projectId,
+            sId,
+            tId,
+        });
+        if (!normalized) {
+            invalidDocuments += 1;
+            return;
+        }
+
         projectIds.add(projectId);
-        yesterdayDocs.set(projectId, { id: doc.id, data });
+        yesterdayDocs.set(projectId, { id: doc.id, data: normalized });
     });
 
-    return { projectIds, yesterdayDocs };
+    return { invalidDocuments, projectIds, yesterdayDocs };
 }
 
 export async function aggregateCustomerAnalyticsForStore(
@@ -263,7 +498,20 @@ export async function aggregateCustomerAnalyticsForStoreDate(
     };
 
     const { yesterday, yesterdayStr, isMonday, isFirstOfMonth } = buildAggregationContextForDate(settlementDate);
-    const { projectIds, yesterdayDocs } = await collectStoreAnalyticsProjects(db, tId, sId, yesterdayStr, knownProjectIds);
+    const { invalidDocuments, projectIds, yesterdayDocs } = await collectStoreAnalyticsProjects(db, tId, sId, yesterdayStr, knownProjectIds);
+    if (invalidDocuments > 0) {
+        appLogger.error('[AnalyticsSettlement] Invalid daily analytics contract', new Error(CUSTOMER_ANALYTICS_DAILY_CONTRACT_INVALID), {
+            failureCode: CUSTOMER_ANALYTICS_DAILY_CONTRACT_INVALID,
+            tId: getAnalyticsIdContext(tId),
+            sId: getAnalyticsIdContext(sId),
+            settlementDate: yesterdayStr,
+            invalidDocuments,
+        });
+        results.errors.push({
+            projectKey: `${tId}_${sId}_invalid_daily`,
+            error: CUSTOMER_ANALYTICS_DAILY_CONTRACT_INVALID,
+        });
+    }
 
     results.totalProjects = projectIds.size;
 
@@ -285,7 +533,7 @@ export async function aggregateCustomerAnalyticsForStoreDate(
             }
 
             if (yesterdayDoc) {
-                const updated = await updateSummaryDocument(db, tId, sId, projectId, yesterdayDoc.data);
+                const updated = await updateSummaryDocument(db, tId, sId, projectId, yesterdayDoc.data, yesterdayStr);
                 if (updated) results.summaryUpdates++;
             }
 
@@ -445,21 +693,27 @@ function hasMenuAnalyticsActivity(data: DailyMetrics | Record<string, any> | nul
 /**
  * Update the overall_summary document with data from a daily document
  */
-async function updateSummaryDocument(
+export async function updateSummaryDocument(
     db: FirebaseFirestore.Firestore,
     tId: string,
     sId: string,
     projectId: string,
-    dailyData: DailyMetrics
+    dailyData: DailyMetrics,
+    aggregateDate: string,
 ): Promise<boolean> {
     const summaryDocId = getAnalyticsDocId.summary(tId, sId, projectId);
     const summaryRef = db.collection(ANALYTICS_COLLECTION).doc(summaryDocId);
-    const aggregateDate = dailyData.date || new Date().toISOString().split('T')[0];
 
     // Prepare incremental updates
     const updates: any = {
+        analyticsScope: 'customer',
+        grain: 'summary',
         lastUpdated: FieldValue.serverTimestamp(),
         lastAggregatedDate: aggregateDate,
+        projectId,
+        sId,
+        surface: projectId === 'customerApp' ? 'customerApp' : 'menu',
+        tId,
     };
 
     // Aggregate numeric totals
@@ -613,8 +867,10 @@ async function updateSummaryDocument(
 
     return await db.runTransaction(async (transaction) => {
         const existingSummary = await transaction.get(summaryRef);
-        const lastAggregatedDate = existingSummary.exists
-            ? String(existingSummary.data()?.lastAggregatedDate || '')
+        const existingData = existingSummary.exists ? existingSummary.data() : null;
+        if (existingData) assertValidAnalyticsSummaryForSettlement(existingData, { projectId, sId, tId });
+        const lastAggregatedDate = existingData?.lastAggregatedDate
+            ? normalizeAnalyticsDateKey(existingData.lastAggregatedDate) || ''
             : '';
 
         if (lastAggregatedDate >= aggregateDate) {
@@ -626,7 +882,7 @@ async function updateSummaryDocument(
     });
 }
 
-async function applyLateDailyCorrection(
+export async function applyLateDailyCorrection(
     db: FirebaseFirestore.Firestore,
     tId: string,
     sId: string,
@@ -634,37 +890,54 @@ async function applyLateDailyCorrection(
     correctionDate: string,
 ): Promise<boolean> {
     const dashboardRef = db.collection(ANALYTICS_COLLECTION).doc(getDashboardSummaryDocId(tId, sId, projectId));
-    const dashboardSnap = await dashboardRef.get();
-    if (!dashboardSnap.exists) return false;
-
-    const dashboardData = dashboardSnap.data() || {};
-    const dailyRows = Array.isArray(dashboardData.daily30d) ? dashboardData.daily30d : [];
-    const previousRow = dailyRows.find((row: any) => String(row?.date || '') === correctionDate);
-    if (!previousRow) return false;
-
     const dailyRef = db.collection(ANALYTICS_COLLECTION).doc(getAnalyticsDocId.daily(tId, sId, projectId, correctionDate));
-    const dailySnap = await dailyRef.get();
-    if (!dailySnap.exists) return false;
+    const summaryRef = db.collection(ANALYTICS_COLLECTION).doc(getAnalyticsDocId.summary(tId, sId, projectId));
+    const corrected = await db.runTransaction(async (transaction) => {
+        const [dashboardSnap, dailySnap, summarySnap] = await Promise.all([
+            transaction.get(dashboardRef),
+            transaction.get(dailyRef),
+            transaction.get(summaryRef),
+        ]);
+        if (!dashboardSnap.exists || !dailySnap.exists) return false;
 
-    const currentDaily = normalizeDailyRow(correctionDate, dailySnap.data() || {});
-    const { updates, hasDelta } = buildLateCorrectionSummaryUpdates(currentDaily, previousRow, correctionDate);
-    if (!hasDelta) return false;
+        if (summarySnap.exists) {
+            assertValidAnalyticsSummaryForSettlement(summarySnap.data(), { projectId, sId, tId });
+        }
 
-    const updatedRows = dailyRows.map((row: any) => (
-        String(row?.date || '') === correctionDate ? currentDaily : row
-    ));
+        const dashboardData = dashboardSnap.data();
+        assertValidAnalyticsDashboardIdentity(dashboardData, { projectId, sId, tId });
+        const dailyRows = Array.isArray(dashboardData.daily30d) ? dashboardData.daily30d : [];
+        const previousRowValue = dailyRows.find((row: any) => String(row?.date || '') === correctionDate);
+        if (!previousRowValue) return false;
+        const previousRow = normalizeAnalyticsDailyMetrics(previousRowValue, correctionDate);
+        if (!previousRow) throw new Error(CUSTOMER_ANALYTICS_DAILY_CONTRACT_INVALID);
 
-    await Promise.all([
-        db.collection(ANALYTICS_COLLECTION).doc(getAnalyticsDocId.summary(tId, sId, projectId)).set(updates, { merge: true }),
-        dashboardRef.set({
+        const currentDaily = normalizeAnalyticsDailyDocument(dailySnap.data(), {
+            date: correctionDate,
+            docId: dailySnap.id,
+            projectId,
+            sId,
+            tId,
+        });
+        if (!currentDaily) throw new Error(CUSTOMER_ANALYTICS_DAILY_CONTRACT_INVALID);
+        const { updates, hasDelta } = buildLateCorrectionSummaryUpdates(currentDaily, previousRow, correctionDate);
+        if (!hasDelta) return false;
+
+        const updatedRows = dailyRows.map((row: any) => (
+            String(row?.date || '') === correctionDate ? currentDaily : row
+        ));
+        transaction.set(summaryRef, updates, { merge: true });
+        transaction.set(dashboardRef, {
             daily30d: updatedRows,
             lateCorrection: {
                 lastCorrectedLocalDate: correctionDate,
                 correctedAt: FieldValue.serverTimestamp(),
             },
             modifiedOn: FieldValue.serverTimestamp(),
-        }, { merge: true }),
-    ]);
+        }, { merge: true });
+        return true;
+    });
+    if (!corrected) return false;
 
     appLogger.warn('[AnalyticsSettlement] Late daily correction applied', {
         tId,
@@ -688,7 +961,13 @@ function buildLateCorrectionSummaryUpdates(
     let hasDelta = false;
 
     const addNumericDelta = (sourceField: string, targetField: string) => {
-        const delta = Math.max(0, (currentDaily[sourceField] || 0) - (previousDaily[sourceField] || 0));
+        const currentValue = typeof currentDaily[sourceField] === 'number' && Number.isFinite(currentDaily[sourceField])
+            ? Math.max(0, currentDaily[sourceField])
+            : 0;
+        const previousValue = typeof previousDaily[sourceField] === 'number' && Number.isFinite(previousDaily[sourceField])
+            ? Math.max(0, previousDaily[sourceField])
+            : 0;
+        const delta = Math.max(0, currentValue - previousValue);
         if (delta > 0) {
             updates[targetField] = FieldValue.increment(delta);
             hasDelta = true;
@@ -700,7 +979,10 @@ function buildLateCorrectionSummaryUpdates(
         const previousMap = readAnalyticsMap(previousDaily, sourceField);
         for (const [key, value] of Object.entries(currentMap)) {
             if (typeof value !== 'number') continue;
-            const delta = Math.max(0, value - (previousMap[key] || 0));
+            const previousValue = typeof previousMap[key] === 'number' && Number.isFinite(previousMap[key])
+                ? Math.max(0, previousMap[key])
+                : 0;
+            const delta = Math.max(0, value - previousValue);
             if (delta > 0) {
                 assignNestedMapUpdate(updates, targetField, key, FieldValue.increment(delta));
                 hasDelta = true;
@@ -773,16 +1055,16 @@ function buildLateCorrectionSummaryUpdates(
     addMapDelta('appOpensByPlatform', 'appOpensByPlatform');
 
     Object.entries(readAnalyticsMap(currentDaily, 'itemNames')).forEach(([itemId, name]) => {
-        assignNestedMapUpdate(updates, 'itemNames', itemId, name);
+        if (typeof name === 'string') assignNestedMapUpdate(updates, 'itemNames', itemId, name);
     });
     Object.entries(readAnalyticsMap(currentDaily, 'categoryNames')).forEach(([categoryId, name]) => {
-        assignNestedMapUpdate(updates, 'categoryNames', categoryId, name);
+        if (typeof name === 'string') assignNestedMapUpdate(updates, 'categoryNames', categoryId, name);
     });
     Object.entries(readAnalyticsMap(currentDaily, 'languageNames')).forEach(([language, name]) => {
-        assignNestedMapUpdate(updates, 'languageNames', language, name);
+        if (typeof name === 'string') assignNestedMapUpdate(updates, 'languageNames', language, name);
     });
     Object.entries(readAnalyticsMap(currentDaily, 'attributeFilterNames')).forEach(([filterId, name]) => {
-        assignNestedMapUpdate(updates, 'attributeFilterNames', filterId, name);
+        if (typeof name === 'string') assignNestedMapUpdate(updates, 'attributeFilterNames', filterId, name);
     });
 
     return { updates, hasDelta };
@@ -936,20 +1218,27 @@ async function getDailyDocsForRollup(
 
     if (dashboardSnap.exists) {
         const dashboardData = dashboardSnap.data() || {};
-        const dailyRows = Array.isArray(dashboardData.daily30d) ? dashboardData.daily30d : [];
+        const rawDailyRows = Array.isArray(dashboardData.daily30d) ? dashboardData.daily30d : [];
+        const dailyRows = rawDailyRows.flatMap((row: unknown) => {
+            const date = isAnalyticsRecord(row) ? normalizeAnalyticsDateKey(row.date) : null;
+            const normalized = date ? normalizeAnalyticsDailyMetrics(row, date) : null;
+            return normalized ? [normalized] : [];
+        });
+        const hasValidDailyCache = dailyRows.length === rawDailyRows.length;
         const firstCachedDate = dailyRows
-            .map((row: any) => String(row?.date || ''))
+            .map((row) => String(row.date || ''))
             .filter(Boolean)
             .sort()[0] || '';
-        const lastSettledLocalDate = String(dashboardData.lastSettledLocalDate || '');
-        const canUseCache = dailyRows.length > 0
+        const lastSettledLocalDate = normalizeAnalyticsDateKey(dashboardData.lastSettledLocalDate) || '';
+        const canUseCache = hasValidDailyCache
+            && dailyRows.length > 0
             && firstCachedDate <= startStr
             && lastSettledLocalDate >= previousSettledDate;
 
         if (canUseCache) {
             const byDate = new Map<string, Record<string, any>>();
-            dailyRows.forEach((row: any) => {
-                const date = String(row?.date || '');
+            dailyRows.forEach((row) => {
+                const date = String(row.date || '');
                 if (date >= startStr && date <= endStr) {
                     byDate.set(date, row);
                 }
@@ -1005,7 +1294,21 @@ async function getDailyDocsInRange(
         .where('__name__', '<=', `${prefix}${endStr}`)
         .get();
 
-    return querySnapshot.docs.map(doc => doc.data());
+    return querySnapshot.docs.map((doc) => {
+        const data = doc.data();
+        const date = normalizeAnalyticsDateKey(data.localDate ?? data.date);
+        const normalized = date ? normalizeAnalyticsDailyDocument(data, {
+            date,
+            docId: doc.id,
+            projectId,
+            sId,
+            tId,
+        }) : null;
+        if (!date || !normalized || date < startStr || date > endStr) {
+            throw new Error(CUSTOMER_ANALYTICS_DAILY_CONTRACT_INVALID);
+        }
+        return normalized;
+    });
 }
 
 /**
@@ -1174,11 +1477,24 @@ function mergeMapField(target: Record<string, number>, source: Record<string, nu
 }
 
 function readAnalyticsMap(data: Record<string, any>, field: string): Record<string, any> {
-    const result: Record<string, any> = { ...(data?.[field] || {}) };
+    const nested = isAnalyticsRecord(data?.[field]) ? data[field] : {};
+    const result: Record<string, any> = {};
+    for (const [key, value] of Object.entries(nested)) {
+        if (/^[A-Za-z0-9_:-]{1,120}$/.test(key)) {
+            Object.defineProperty(result, key, {
+                value,
+                enumerable: true,
+                configurable: true,
+                writable: true,
+            });
+        }
+    }
     const prefix = `${field}.`;
     for (const [key, value] of Object.entries(data || {})) {
         if (!key.startsWith(prefix)) continue;
-        Object.defineProperty(result, key.slice(prefix.length), {
+        const childKey = key.slice(prefix.length);
+        if (!/^[A-Za-z0-9_:-]{1,120}$/.test(childKey)) continue;
+        Object.defineProperty(result, childKey, {
             value,
             enumerable: true,
             configurable: true,
@@ -1213,7 +1529,7 @@ function getTopMetricEntry(source?: Record<string, number>): { key: string; coun
 /**
  * Delete daily documents older than TTL_DAYS
  */
-async function cleanupOldDocuments(
+export async function cleanupOldDocuments(
     db: FirebaseFirestore.Firestore,
     tId: string,
     sId: string,
@@ -1225,33 +1541,20 @@ async function cleanupOldDocuments(
 
     const prefix = getAnalyticsDocId.dailyPrefix(tId, sId, projectId);
 
-    // Query documents older than cutoff
-    const oldDocsQuery = await db.collection(ANALYTICS_COLLECTION)
-        .where('__name__', '>=', `${prefix}0000-00-00`)
-        .where('__name__', '<', `${prefix}${cutoffStr}`)
-        .get();
-
-    if (oldDocsQuery.empty) {
-        return 0;
-    }
-
-    // Delete in batches of 500 (Firestore limit)
-    const batch = db.batch();
     let deleteCount = 0;
+    while (true) {
+        const oldDocsQuery = await db.collection(ANALYTICS_COLLECTION)
+            .where('__name__', '>=', `${prefix}0000-00-00`)
+            .where('__name__', '<', `${prefix}${cutoffStr}`)
+            .limit(ANALYTICS_CLEANUP_BATCH_SIZE)
+            .get();
+        if (oldDocsQuery.empty) break;
 
-    for (const doc of oldDocsQuery.docs) {
-        batch.delete(doc.ref);
-        deleteCount++;
-
-        // Commit batch if we hit 500
-        if (deleteCount % 500 === 0) {
-            await batch.commit();
-        }
-    }
-
-    // Commit remaining deletes
-    if (deleteCount % 500 !== 0) {
+        const batch = db.batch();
+        oldDocsQuery.docs.forEach((document) => batch.delete(document.ref));
         await batch.commit();
+        deleteCount += oldDocsQuery.size;
+        if (oldDocsQuery.size < ANALYTICS_CLEANUP_BATCH_SIZE) break;
     }
 
     return deleteCount;
@@ -1529,6 +1832,12 @@ export const triggerCustomerAnalyticsManually = onCall({
     }
 
     const { tId, sId, projectId, forceWeekly, forceMonthly } = request.data || {};
+    const tenantId = normalizeStoreSummaryNumericDocumentId(tId);
+    const storeId = normalizeStoreSummaryNumericDocumentId(sId);
+    const normalizedProjectId = normalizeAnalyticsProjectId(projectId);
+    if (!tenantId || !storeId || !normalizedProjectId) {
+        throw new HttpsError('invalid-argument', 'A valid tenant, store, and project are required.');
+    }
 
     appLogger.info('[ManualCustomerAnalytics] Trigger accepted', {
         requesterRole,
@@ -1544,36 +1853,61 @@ export const triggerCustomerAnalyticsManually = onCall({
     const db = firestoreAdmin;
     try {
         // If specific project provided, only process that one
-        if (tId && sId && projectId) {
+        if (tenantId && storeId && normalizedProjectId) {
             const storesSummaryDoc = await db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc('storesSummary').get();
-            const storeSummary = storesSummaryDoc.exists ? storesSummaryDoc.data()?.stores?.[String(sId)] : null;
-            const timeZone = storeSummary?.timeZone;
-            const businessDayEndTime = storeSummary?.businessDayEndTime;
+            const storesSummary = parsePlatformStoreSummary(storesSummaryDoc.exists ? storesSummaryDoc.data() : undefined);
+            const storeSummary = storesSummary[storeId];
+            if (!storeSummary || storeSummary.tId !== tenantId) {
+                throw new HttpsError('failed-precondition', 'Store does not match the requested tenant.');
+            }
+            const timeZone = typeof storeSummary.timeZone === 'string' ? storeSummary.timeZone : undefined;
+            const businessDayEndTime = typeof storeSummary.businessDayEndTime === 'string'
+                ? storeSummary.businessDayEndTime
+                : undefined;
             const { yesterday, yesterdayStr } = buildAggregationContext(new Date(), timeZone, businessDayEndTime);
             // Get yesterday's daily doc
-            const dailyDocId = getAnalyticsDocId.daily(tId, sId, projectId, yesterdayStr);
+            const dailyDocId = getAnalyticsDocId.daily(tenantId, storeId, normalizedProjectId, yesterdayStr);
             const dailyDoc = await db.collection(ANALYTICS_COLLECTION).doc(dailyDocId).get();
 
-            if (dailyDoc.exists) {
-                await updateSummaryDocument(db, tId, sId, projectId, dailyDoc.data() as DailyMetrics);
+            const normalizedDaily = dailyDoc.exists
+                ? normalizeAnalyticsDailyDocument(dailyDoc.data(), {
+                    date: yesterdayStr,
+                    docId: dailyDoc.id,
+                    projectId: normalizedProjectId,
+                    sId: storeId,
+                    tId: tenantId,
+                })
+                : null;
+            if (dailyDoc.exists && !normalizedDaily) {
+                throw new HttpsError('failed-precondition', 'Daily analytics data is invalid.');
+            }
+            const summaryUpdated = normalizedDaily
+                ? await updateSummaryDocument(
+                    db,
+                    tenantId,
+                    storeId,
+                    normalizedProjectId,
+                    normalizedDaily,
+                    yesterdayStr,
+                )
+                : false;
+
+            if (forceWeekly === true) {
+                await createWeeklyRollup(db, tenantId, storeId, normalizedProjectId, yesterday);
             }
 
-            if (forceWeekly) {
-                await createWeeklyRollup(db, tId, sId, projectId, yesterday);
+            if (forceMonthly === true) {
+                await createMonthlyRollup(db, tenantId, storeId, normalizedProjectId, yesterday);
             }
 
-            if (forceMonthly) {
-                await createMonthlyRollup(db, tId, sId, projectId, yesterday);
-            }
-
-            const deletedCount = await cleanupOldDocuments(db, tId, sId, projectId);
+            const deletedCount = await cleanupOldDocuments(db, tenantId, storeId, normalizedProjectId);
 
             return {
                 status: 'success',
-                message: `Processed project ${tId}_${sId}_${projectId}`,
-                summaryUpdated: dailyDoc.exists,
-                weeklyRollup: forceWeekly || false,
-                monthlyRollup: forceMonthly || false,
+                message: `Processed project ${tenantId}_${storeId}_${normalizedProjectId}`,
+                summaryUpdated,
+                weeklyRollup: forceWeekly === true,
+                monthlyRollup: forceMonthly === true,
                 documentsDeleted: deletedCount,
             };
         }
@@ -1593,6 +1927,7 @@ export const triggerCustomerAnalyticsManually = onCall({
             hasProjectScope: Boolean(tId && sId && projectId),
             error: getAnalyticsErrorContext(error),
         });
+        if (error instanceof HttpsError) throw error;
         throw new HttpsError(
             'internal',
             'Aggregation failed. Please try again.'

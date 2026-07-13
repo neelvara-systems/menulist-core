@@ -1,15 +1,54 @@
 # MenuList SignalDesk - Implementation Validation
 
-**Status:** Governed source/research/content/partner rails, solo-founder Operating Layer, bounded Revenue Operating Layer, hard mobile read-only enforcement, deterministic local E2E, and Firestore/Storage semantic rules tests implemented and locally validated.
+**Status:** Governed source/research/content/partner rails, solo-founder Operating Layer, bounded Revenue Operating Layer, founder-controlled AI Volume Mode, hard mobile read-only enforcement, deterministic local E2E, and Firestore/Storage semantic rules tests implemented and locally validated.
 **Created:** June 23, 2026
-**Last Updated:** July 10, 2026
+**Last Updated:** July 11, 2026
 **Scope:** Product identity, protected app shell, guarded APIs, internal acquisition and revenue workflow, gated provider/channel runtime, dedicated Firebase config/rules/indexes/storage rules, and functions skeleton.
 
 ## Current Verdict
 
-The SignalDesk internal workflow, gated runtime expansion, and bounded commercial lifecycle are implemented and locally validated.
+**PASS WITH EXTERNAL BLOCKERS.** The SignalDesk internal workflow, gated runtime expansion, bounded commercial lifecycle, product-local auth gateway, and deterministic safety paths are implemented and locally validated. It is safe for a local desktop trial and a mobile observe/emergency-pause trial after signing in with a seeded active member. It is not cleared for real outreach or cloud production use.
 
-The implemented flow covers the existing access, source, target, evidence, draft, approval, inbox, outcome, demand, content, partner, provider/budget/model, mission, and control-room rails plus revenue accounts, deterministic commercial qualification, commercial opportunities, immutable standard offer versions, bounded operating envelopes, interested-reply revenue projection, automatic outcome-to-activation projection, read-time seven-day stall detection, and compact revenue/founder-attention/spend summaries.
+The implemented flow covers the existing access, source, target, evidence, draft, approval, inbox, outcome, demand, content, partner, provider/budget/model, mission, and control-room rails plus revenue accounts, deterministic commercial qualification, commercial opportunities, immutable standard offer versions, bounded operating envelopes, interested-reply revenue projection, automatic outcome-to-activation projection, read-time seven-day stall detection, compact revenue/founder-attention/spend summaries, and cost-capped multi-pass AI batches for internal review work.
+
+## Manual Contact Completion And Rejection Reasons - July 11, 2026
+
+| Area | Verified result |
+| --- | --- |
+| Prepared versus completed | Export-only email and assisted handoff no longer mark a target contacted. They retain the target lifecycle and set `nextAction = contact`; provider success still marks actual contact automatically. |
+| Manual confirmation | `record-manual-contact` permits only a fresh unconsumed `email-export` or a `permissioned-referral` partner introduction. It validates bounded time/result, current source-policy rights, suppression, target eligibility, relevant kill switches, route eligibility, current exported conversation state, and export age. Limited phone/social/generic-website contactability remains unverified and non-actionable, while a permissioned referral does not require direct contact data. |
+| Idempotency | One deterministic existing run-timeline ID is reserved with atomic `batch.create` and bound to a normalized request fingerprint. Exact replay returns `duplicate` even after contact consumes the export; changed facts under the same key fail as a conflict and create no second write set. |
+| Wrong contact | `wrong-contact` atomically updates target/contactability state and writes the existing hashed suppression ledger. Other results omit suppression/contactability fields instead of copying stale values, so they cannot clear a concurrently-added suppression state. |
+| Approval learning | Rejection requires one of eight bounded reasons; `other` requires a note. Server projects the target to evidence, enrichment, hold, or rejection. One Firestore transaction arbitrates concurrent approve/reject requests and atomically applies projections, one queue decrement, audit, and cost. |
+| Mobile | Manual contact maps to blocked `configure`; approval rejection remains blocked as `approve`. UI controls are disabled and forced API requests remain denied. |
+| Firebase boundary | Existing target, conversation, run-timeline, audit, cost, and suppression collections are reused. No collection, index, rule, Storage path, provider integration, public route, or MenuList truth write was added. |
+| Local proof | `npm run verify:signaldesk` passes 2,410 checks; full TypeScript and focused SignalDesk lint pass; `npm run test:signaldesk:e2e:local` passes prepared/contacted separation, exact retry dedupe, changed-payload conflict, consumed/stale export denial, unverified-route revocation, permissioned partner introduction without direct contact data, wrong-contact suppression, expired-policy denial, structured rejection, concurrent approval arbitration, and mobile assertions; semantic Firestore/Storage rules pass; the warm local route/API smoke passes 71 checks; Firebase config parse, documentation links, and scoped diff checks pass. |
+
+## AI Volume Mode Runtime - July 11, 2026
+
+| Area | Verified result |
+| --- | --- |
+| Founder envelope | Only a founder-admin with `signaldesk.configure` can start a desktop batch. Each request is limited to five targets, three approved tasks, a maximum estimated cost of USD 5, and a founder-scoped idempotency key. API and server validate the limits independently. |
+| Model cascade | Score, evidence, draft, and reply-classification use `gemini-2.5-flash-lite`; an independent critic checks every child; only exceptions may escalate through the same executable Gemini adapter to `gemini-2.5-flash`. OpenAI and Anthropic remain non-executable policy records. |
+| Output integrity | Generation and critic responses are strict Zod-validated JSON. Any low confidence, non-pass critic result, or rejected fact remains review-required; a final rejected fact always forces low confidence. |
+| Cost and retry | The complete worst-case call estimate is checked against founder authority and remaining provider daily/monthly budget before the parent is written. The protected route uses batch rate limiting, has a finite 300-second window, runs no more than three children concurrently, holds one six-minute global batch lock, records all model-call estimates through the existing provider budget and AI ledgers, and returns the original parent on the same paid-request key. |
+| Failure recovery | Successful children remain reviewable when a sibling fails. Normal parent state becomes `completed`, `partial`, or `blocked`. A retry of an expired running parent reconstructs at most fifteen children from a bounded twenty-row read, restores calls/cost, writes one recovery audit/timeline, and finalizes without provider calls. Incomplete work stores only `ai_volume_run_interrupted`; lock release is conditional on ownership. |
+| Reachable retry | Desktop persists only the bounded batch request in browser-local storage, reuses the same idempotency key after request failure/page reload, locks scope edits while retrying, clears on terminal state, and exposes an explicit clear action for pre-parent failures. |
+| Evidence and UI | Parent and child summaries, critic verdict, escalation state, model-call count, cost, audit events, and run timeline are visible in the private desktop AI workspace. Mobile classifies the action as blocked provider work. |
+| Authority boundary | The mode produces internal recommendations only. It cannot infer source rights or consent, override suppression, send/export/publish, create commercial truth, approve external spend, change autonomy, or write MenuList truth. |
+| Local proof | `npm run verify:signaldesk` passes 2,302 checks; `npx tsc --noEmit --pretty false`, `npm run test:signaldesk:e2e:local`, `npm run test:signaldesk:rules`, `npm run docs:check-links`, scoped diff/whitespace/action-ID checks, and the 45-check local route/API smoke pass after stale recovery implementation. Static/UI contracts cover persisted payload validation, same-key retry, terminal clearing, and explicit clearing. The E2E covers partial reconstruction, blocked recovery with no children, recovery replay without duplicate audit writes, calls/cost restoration, stable interruption evidence, recovery timeline, and owned-lock release in addition to founder/non-founder, cost, critic, escalation, idempotency, partial-failure, workspace, and zero-export paths. |
+
+## AI Shadow Review Runtime - July 11, 2026
+
+| Area | Verified result |
+| --- | --- |
+| Reuse | Existing `signaldeskAiWorkerRuns` provider-assist rows and `signaldeskModelEvals` summaries are reused; rules scores are separated at read time and cannot enter founder shadow review. |
+| Review | Founder admins with `signaldesk.configure` can accept, mark edited, reject, or hold a provider-backed run with bounded attention minutes and a required reason for every exception decision. |
+| Integrity | Provider quality and founder-review counts/rates update transactionally. Because pre-July-11 rates represented only the latest run and cannot be reconstructed, the first new provider result preserves that legacy snapshot separately and starts an exact `cumulative-v1` measurement window. Re-review replaces the prior decision and attention minutes instead of double-counting either summary. |
+| Evidence | Every review writes the run decision, reviewer, reason, timestamp, audit event, and latest run timeline. The compact revenue summary receives only the attention-minute delta. |
+| UI and mobile | Private desktop AI workspace shows provider runs, rules scores, cumulative pass/rejected-fact/review rates, attention, and review controls. Mobile remains read-only and the API classifies review as blocked approval. |
+| Side effects | Review cannot send, export, publish, create a proposal, approve spend, promote autonomy, or write MenuList store/menu/project/billing truth. |
+| Local proof | `npm run verify:signaldesk` passes 2,241 checks; `npx tsc --noEmit --pretty false` and `npm run test:signaldesk:e2e:local` pass. The emulator test covers non-founder denial, rules-run denial, required reasons, review replacement, attention replacement, audit/timeline evidence, workspace separation, and no outbound export. |
 
 ## Bengaluru Trial Preparation - July 10, 2026
 
@@ -17,11 +56,12 @@ The implemented flow covers the existing access, source, target, evidence, draft
 | --- | --- |
 | Market scope | Market Search presets, placeholder, manual experiment defaults, and pod review reason use Indiranagar/Koramangala, Bengaluru. Presets request 25 rows while the general hard cap remains 30. |
 | Source authority | Defaults seed a 30-day `Public business research` policy with contact and personalization false, plus a separate `Permissioned manual introduction` policy. Manual import prefers the evidence-only policy and strips contact fields. |
+| Founder authority | Source-policy activation, budget mutation, commercial offer/envelope mutation, and trust-partner deal approval map to `signaldesk.configure`; standard growth-manager and compliance-reviewer roles cannot perform those founder decisions. Existing envelope and market-pod server checks remain in force. |
 | Spend | Google Places discovery is disabled, unapproved, and zero-budget by default. The first trust-partner learning budget and deal fee are zero. |
 | Experiment | Manual channel, 25 candidates, five owner-conversation stop rule, three two-surface activations within seven days, and one permissioned proof asset are the first-run values. |
 | Operating artifact | `menulist-signaldesk_bengaluru-activation-trial-operating-pack-2026-07-10.md` records the approved envelope, 25-row board, evidence packet, draft-only scripts, preview checklist, tracking routes, stop rules, and external blockers. |
 | Boundaries | No business contact, provider enablement, message send, content publish, spend, Firebase deploy, or MenuList truth write occurred. |
-| Local proof | `npm run verify:signaldesk` passes 2,179 checks; `npx tsc --noEmit --incremental false --pretty false`, local Firestore E2E, Firestore/Storage rules tests, documentation links, and scoped diff checks pass. |
+| Local proof | `npm run verify:signaldesk` passes 2,183 checks; `npx tsc --noEmit --incremental false --pretty false`, local Firestore E2E, Firestore/Storage rules tests, documentation links, and scoped diff checks pass. |
 
 ## Revenue Operating Layer Runtime - July 10, 2026
 
@@ -351,6 +391,10 @@ The non-paid, non-deploy investment-control slice is implemented. It adds intern
 
 ## Runtime Expansion - June 23, 2026
 
+### SignalDesk AI Credential Isolation - July 11, 2026
+
+SignalDesk AI assist now creates a product-scoped key manager from `MENULIST_SIGNALDESK_GEMINI_AI_KEY`, `_2`, `_3`, and `_4` while reusing the shared app Gemini retry gateway. It no longer reads MenuList `GEMINI_AI_KEY*` or the legacy `GEMINI_API_KEY`, and it does not use Answerlattice credentials. Staging/production env templates now include the separate SignalDesk Firebase and AI variables. This is source-side credential isolation only; real key setup, provider smoke, SignalDesk Firebase deployment, Vercel deployment, and production-host evidence remain pending.
+
 The second implementation pass completed the remaining non-paid, non-deploy runtime work:
 
 | Area | Implementation Evidence |
@@ -586,8 +630,8 @@ This audit treated MenuList as the operator's own product and SignalDesk as the 
 | First paid-provider budget and eval set | Required before buying or connecting paid provider plans beyond small test usage; the registry/governor now exists to hold the decision. |
 | External provider adapters | Required before Apollo, Hunter, ZeroBounce, Firecrawl, Tavily, Exa, Postmark, Resend, Smartlead, Instantly, or lemlist can run against real systems. |
 | First sender domain policy | Required before any provider send, real sequencer handoff, domain warmup, or domain rotation decision; sender-domain risk records now exist. |
-| Strong-model adapter approval | Required before OpenAI/Anthropic routes move from held policy records into executable model routes. |
-| Browser-auth workflow smoke data | Required to verify route/API permissions, role-negative cases, malformed payloads, suppressed contact, missing sender readiness, provider-send disabled, and unsupported-claim rejection with real session access and emulator or QA Firebase. |
+| Cross-provider strong-model approval | Required before OpenAI/Anthropic routes move from held policy records into executable model routes. The approved same-provider Gemini escalation is implemented. |
+| Authenticated browser workspace session | Product-local sign-in hydration is verified, and deterministic emulator E2E covers authenticated workflow/role/safety behavior. A seeded real active-member session is still required for final visual interaction checks across the five private workspace destinations. |
 | Operating-layer smoke data | Required to verify seed -> mission -> offer CTA -> experiment card -> reply playbook -> source snapshot -> mission review with a real authenticated SignalDesk session. |
 | Partner auth account | The internal team access flow can grant SignalDesk access by login email, but the partner still needs a valid auth account/session using that email. |
 | MenuList-side Activation Concierge runtime foundation | Existing MenuList upload/parse/preview/claim/publish/share/presence paths now have a shared activation-proof summary over `starterActivationSignals` and `menuPresence`; SignalDesk still observes outcomes only and does not write MenuList truth. |
@@ -597,6 +641,75 @@ This audit treated MenuList as the operator's own product and SignalDesk as the 
 ## Next Implementation Slice
 
 The next safe slice is granting QA access, approving the held operating inputs, and running one narrow seven-day pod. It is not paid campaigns, provider send, public SignalDesk pages, or production deployment. The first-trial loop now handles interested-reply revenue projection, outcome-to-activation updates, stall detection, and founder-brief prioritization without further horizontal feature expansion.
+
+## AI Distribution Workbench Row Output - July 11, 2026
+
+The Research Agent Table now stores the practical founder-review output directly on each row:
+
+- evidence summary;
+- policy-allowed route and reason;
+- route-permission state and hard-gate failures;
+- recommended CTA;
+- recommended message angle;
+- fit decision;
+- next action.
+
+Opportunities retains the 20-30 row candidate inventory. Today exposes at most five decisions and prioritizes critical replies, engaged owners, and stalled activations before new approvals. Evidence-only or expired source policies now show no contact route.
+
+## Activation-Control Hardening - July 11, 2026
+
+Local emulator coverage now proves:
+
+- source-rights completeness and field-level contact stripping;
+- persisted-row route revalidation after source-policy expiry;
+- owner-review, evidence, two-distinct-surface, and idempotency requirements for activation;
+- no activation authority from legacy unverified outcome summaries;
+- signed HMAC outcome intake, expiring hashed route-token attribution, replay-window rejection, and duplicate no-op behavior;
+- customer-proof creation blocked without permission and draft generation blocked after revocation;
+- complaint classification creates suppression, an incident, an email pause, and top mission priority;
+- no SignalDesk write to MenuList `stores`, `menus`, `projects`, or `billing`.
+
+The receiver is safe for local testing only until `MENULIST_SIGNALDESK_OUTCOME_BRIDGE_SECRET` is provisioned and a separately reviewed MenuList-owned emitter exists. No Firebase or Vercel deploy and no real send occurred.
+
+## Full Activation-Control Cross-Check Corrections - July 11, 2026
+
+The prior static verifier passed while several cross-object lifecycle defects remained possible. A manual code-path review plus expanded emulator fixtures closed the following gaps:
+
+| Area | Correction and regression proof |
+| --- | --- |
+| Operator shell | Primary navigation is now exactly Today, Opportunities, Conversations, Activations, and Controls. Advanced private routes remain reachable from Controls and are explicitly absent from the primary navigation contract. |
+| Allowed routes | Workspace derivation rechecks both the current source policy and current target suppression state, so a persisted contact route cannot survive suppression or rights expiry. |
+| Source-use authority | Draft/approval require current evidence and personalization rights; export/handoff/send/follow-up also require contact rights; retention refresh requires storage and evidence rights. E2E revokes each right independently. |
+| Import identity | A request-local identity map deduplicates repeated businesses before a Firestore batch commits. |
+| Customer proof | Every customer-proof asset binds exact public proof scopes. Creation rejects scopes outside the grant, and draft generation fails after scope narrowing, revocation, or expiry. |
+| Outcomes | Idempotency keys bind normalized request fingerprints; conflicting reuse and future timestamps fail. Owner-qualified intent and verified two-surface activation are durably projected to the target, converted state cannot be downgraded, and the activation deadline starts at owner-qualified intent. |
+| Webhooks | Provider-scoped hashed IDs plus `batch.create` reserve the event atomically with its side effects. Concurrent duplicates produce one winner, same external IDs from different providers do not collide, supplied target IDs must be path-safe and resolve to an existing target, and interested replies project the conversation/intent state. |
+| Mobile | Emergency pause remains available with confirmation/audit, but mobile cannot clear a pause. All approval, export, send, PII, provider, configuration, schedule, spend, and policy mutations remain server-blocked. |
+| Serialization | API projection preserves JavaScript `Date` values as ISO timestamps instead of converting them to empty objects, which keeps activation deadlines usable. |
+| Membership privacy | Normal Firestore clients can read only their own team-membership document; cross-member reads/lists are denied, while platform-admin reads/lists remain available. Client writes remain denied. |
+| Client isolation | SignalDesk now uses the lightweight NextAuth provider already used by a separate protected product shell. The MenuList store/tenant/subscription Firebase bootstrap no longer enters an authenticated SignalDesk client bundle. |
+| Internal auth gateway | `/signaldesk/signin` and the `/sd/signin` alias render a noindex, Ant Design credentials screen under lightweight product-local providers. Callback paths are limited to `/signaldesk` or `/sd`, and the protected layout still rechecks active SignalDesk access after authentication. |
+
+No provider-send flag was enabled, no external provider was called, no public SignalDesk route was added, and no MenuList runtime or truth collection was changed.
+
+### Final local verification evidence
+
+| Check | Result |
+| --- | --- |
+| `npm run verify:signaldesk` | PASS - 2,373 runtime and boundary assertions |
+| `node scripts/verification/smoke-signaldesk-routes.js` | PASS - 71 canonical localhost route/API/auth-alias checks with exact redirect destinations |
+| Fresh-browser desktop/mobile check | PASS - product-local sign-in hydrates with zero new console errors; dark theme is readable; 390px viewport has no horizontal overflow and the submit target is 44px |
+| `npm run test:signaldesk:e2e:local` | PASS - mocked authenticated workflow, source-right revocation, same-import dedupe, proof-scope narrowing/revocation, outcome conflicts/projection, concurrent provider webhooks, safety negatives, signed outcome bridge, complaint circuit breaker, and no MenuList-truth writes |
+| `npm run test:signaldesk:rules` | PASS - Firestore and Storage semantic access tests, including self-only normal-member membership reads and platform-admin visibility |
+| `npx tsc --noEmit --incremental false --pretty false` | PASS - an intermediate run overlapped an unrelated in-progress knowledge-base edit, but the final settled-worktree run completed with no diagnostics; that unrelated file was not changed by this pass. |
+| `npm run lint` | PASS with no warnings |
+| `npm run docs:check-links -- --root __docs__/menulist-signaldesk` | PASS - 2,363 files scanned, 4,229 links checked, 0 broken links or naming violations |
+| `git diff --check` | PASS |
+| `firebase emulators:exec --only firestore --project demo-signaldesk --config firebase-signaldesk.json \"true\"` | PASS - local Firestore configuration/emulator startup only; no deployment |
+
+The canonical private local route is `http://localhost:3000/signaldesk`; fresh sessions enter through `http://localhost:3000/signaldesk/signin`. The route smoke ran against that host because product-aware middleware intentionally treats the canonical localhost host differently from arbitrary development ports.
+
+This remains an internal SignalDesk workflow. No provider send, public SignalDesk page, social auto-reply, WhatsApp automation, paid campaign, external account mutation, or MenuList store/menu/project/billing/public-output write was added.
 
 Recommended default pending founder approval:
 

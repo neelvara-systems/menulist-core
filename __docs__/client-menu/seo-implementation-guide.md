@@ -251,13 +251,22 @@ if (domainInfo.isClient && !shouldSkipRouting) {
   // Rewrite to /client route group
   const url = request.nextUrl.clone();
   url.pathname = `/client${pathname}`;
-  response = NextResponse.rewrite(url);
-
-  // Pass tenant info via headers
-  response.headers.set("x-tenant-subdomain", domainInfo.subdomain);
-  response.headers.set("x-tenant-custom-domain", domainInfo.customDomain);
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.delete("x-tenant-subdomain");
+  requestHeaders.delete("x-tenant-custom-domain");
+  requestHeaders.delete("x-tenant-type");
+  if (domainInfo.subdomain) {
+    requestHeaders.set("x-tenant-subdomain", domainInfo.subdomain);
+    requestHeaders.set("x-tenant-type", "subdomain");
+  } else if (domainInfo.customDomain) {
+    requestHeaders.set("x-tenant-custom-domain", domainInfo.customDomain);
+    requestHeaders.set("x-tenant-type", "custom");
+  }
+  response = NextResponse.rewrite(url, { request: { headers: requestHeaders } });
 }
 ```
+
+The page derives tenant identity from the validated original `Host`. Rewritten `x-tenant-*` request headers are integrity metadata only; caller-supplied values and forwarded/deployment host fallbacks cannot select a tenant.
 
 #### 2. Route Group Structure
 

@@ -14,7 +14,7 @@
  */
 
 import * as functions from 'firebase-functions';
-import { BusinessAttributeSuggestion, ExtractedMenuData } from '../types';
+import { BusinessAttributeSuggestion, ExtractedMenuData, FileMessage } from '../types';
 import { getAllBusinessAttributeInferenceKeys } from '../sharedData/businessAttributeInference';
 import { normalizeExtractedBusinessProfile } from '../sharedData/extractedBusinessProfile';
 
@@ -37,6 +37,35 @@ const SAFE_DIETARY_TAGS = new Set([
 const SAFE_SPICE_LEVELS = new Set(['none', 'mild', 'medium', 'hot', 'very-hot']);
 
 const SAFE_BUSINESS_ATTRIBUTE_KEYS = new Set(getAllBusinessAttributeInferenceKeys());
+const SAFE_FILE_MESSAGE_STATUSES = new Set(['error', 'warning']);
+const SAFE_FILE_MESSAGE_TYPES = new Set([
+    'image_unreadable',
+    'no_menu_content',
+    'image_partial',
+    'low_quality',
+    'items_omitted',
+    'category_unclear',
+    'values_omitted',
+    'ocr_uncertain',
+    'verify_required',
+]);
+
+function normalizeBoundedText(value: unknown, maxLength: number): string {
+    return typeof value === 'string'
+        ? value.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim().slice(0, maxLength)
+        : '';
+}
+
+function normalizeSourceFileIndex(value: unknown): number | undefined {
+    if (typeof value === 'number') {
+        return Number.isInteger(value) && value >= 0 ? value : undefined;
+    }
+    if (typeof value === 'string' && /^\d+$/.test(value.trim())) {
+        const parsed = Number(value.trim());
+        return Number.isSafeInteger(parsed) ? parsed : undefined;
+    }
+    return undefined;
+}
 
 // ============================================================================
 // BASIC STRUCTURE VALIDATION (No external dependencies)
@@ -45,6 +74,20 @@ const SAFE_BUSINESS_ATTRIBUTE_KEYS = new Set(getAllBusinessAttributeInferenceKey
 interface ValidationResult {
     valid: boolean;
     errors: string[];
+}
+
+function isSupportedScalarId(value: unknown): boolean {
+    return (typeof value === 'string' && value.trim().length > 0)
+        || (typeof value === 'number' && Number.isFinite(value));
+}
+
+function isMultilingualTextMap(value: unknown): boolean {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+    return Object.entries(value as Record<string, unknown>).some(([language, text]) => (
+        /^[a-z]{2,3}(?:-[a-z]{2,4})?$/i.test(language)
+        && typeof text === 'string'
+        && text.trim().length > 0
+    ));
 }
 
 /**
@@ -58,13 +101,13 @@ function validateResponseStructure(data: any): ValidationResult {
         return { valid: false, errors: ['Response is not an object'] };
     }
 
-    if (typeof data.message !== 'string') {
+    if (data.message !== undefined && typeof data.message !== 'string') {
         errors.push('message field must be a string');
     }
 
-    if (!data.data || typeof data.data !== 'object') {
-        // Empty data is valid for failed extractions
-        return { valid: errors.length === 0, errors };
+    if (!data.data || typeof data.data !== 'object' || Array.isArray(data.data)) {
+        errors.push('data field must be an object');
+        return { valid: false, errors };
     }
 
     const extractedData = data.data;
@@ -72,6 +115,8 @@ function validateResponseStructure(data: any): ValidationResult {
     // Validate languages
     if (!Array.isArray(extractedData.languages)) {
         errors.push('languages must be an array');
+    } else if (extractedData.languages.length > 12) {
+        errors.push('languages exceeds the supported limit');
     } else if (extractedData.languages.length > 0) {
         extractedData.languages.forEach((lang: any, i: number) => {
             if (!lang.code || typeof lang.code !== 'string') {
@@ -86,12 +131,14 @@ function validateResponseStructure(data: any): ValidationResult {
     // Validate categories
     if (!Array.isArray(extractedData.categories)) {
         errors.push('categories must be an array');
+    } else if (extractedData.categories.length > 200) {
+        errors.push('categories exceeds the supported limit');
     } else {
         extractedData.categories.forEach((cat: any, i: number) => {
-            if (cat.id === undefined) {
+            if (!isSupportedScalarId(cat.id)) {
                 errors.push(`categories[${i}].id is required`);
             }
-            if (!cat.name || typeof cat.name !== 'object') {
+            if (!isMultilingualTextMap(cat.name)) {
                 errors.push(`categories[${i}].name must be an object`);
             }
         });
@@ -100,16 +147,21 @@ function validateResponseStructure(data: any): ValidationResult {
     // Validate items
     if (!Array.isArray(extractedData.items)) {
         errors.push('items must be an array');
+    } else if (extractedData.items.length > 1000) {
+        errors.push('items exceeds the supported limit');
     } else {
         extractedData.items.forEach((item: any, i: number) => {
-            if (item.id === undefined) {
+            if (!isSupportedScalarId(item.id)) {
                 errors.push(`items[${i}].id is required`);
             }
-            if (!item.name || typeof item.name !== 'object') {
+            if (!isMultilingualTextMap(item.name)) {
                 errors.push(`items[${i}].name must be an object`);
             }
-            if (item.category === undefined) {
+            if (!isSupportedScalarId(item.category)) {
                 errors.push(`items[${i}].category is required`);
+            }
+            if (item.attributes !== undefined && (!Array.isArray(item.attributes) || item.attributes.length > 50)) {
+                errors.push(`items[${i}].attributes must be a bounded array`);
             }
         });
     }
@@ -139,11 +191,14 @@ function normalizeResponseData(data: any): { message: string; data: ExtractedMen
         if (cat.id === undefined || cat.id === null) return false;
         if (!cat.name || typeof cat.name !== 'object' || Object.keys(cat.name).length === 0) return false;
         return true;
-    }).map((cat: any) => ({
-        id: String(cat.id),
-        name: cat.name || {},
-        sourceFileIndex: typeof cat.sourceFileIndex === 'number' ? cat.sourceFileIndex : Number(cat.sourceFileIndex),
-    }));
+    }).map((cat: any) => {
+        const sourceFileIndex = normalizeSourceFileIndex(cat.sourceFileIndex);
+        return {
+            id: String(cat.id),
+            name: cat.name || {},
+            ...(sourceFileIndex !== undefined ? { sourceFileIndex } : {}),
+        };
+    });
 
     const normalizeDietaryTag = (value: string): string => {
         const normalized = value
@@ -186,9 +241,7 @@ function normalizeResponseData(data: any): { message: string; data: ExtractedMen
                 const confidence = ['high', 'medium', 'low'].includes(rawConfidence)
                     ? rawConfidence as 'high' | 'medium' | 'low'
                     : undefined;
-                const sourceFileIndex = typeof entry.sourceFileIndex === 'number'
-                    ? entry.sourceFileIndex
-                    : Number(entry.sourceFileIndex);
+                const sourceFileIndex = normalizeSourceFileIndex(entry.sourceFileIndex);
                 const evidence = typeof entry.evidence === 'string'
                     ? entry.evidence.replace(/<[^>]*>/g, '').trim().slice(0, 160)
                     : undefined;
@@ -198,7 +251,7 @@ function normalizeResponseData(data: any): { message: string; data: ExtractedMen
                     value: true as const,
                     ...(confidence ? { confidence } : {}),
                     ...(evidence ? { evidence } : {}),
-                    ...(Number.isFinite(sourceFileIndex) ? { sourceFileIndex } : {}),
+                    ...(sourceFileIndex !== undefined ? { sourceFileIndex } : {}),
                 };
             })
             .filter((entry): entry is BusinessAttributeSuggestion => Boolean(entry));
@@ -260,6 +313,7 @@ function normalizeResponseData(data: any): { message: string; data: ExtractedMen
             ? rawSpiceLevel as 'none' | 'mild' | 'medium' | 'hot' | 'very-hot'
             : undefined;
         const duration = Number(item.duration);
+        const sourceFileIndex = normalizeSourceFileIndex(item.sourceFileIndex);
 
         return {
             id: String(item.id),
@@ -268,7 +322,7 @@ function normalizeResponseData(data: any): { message: string; data: ExtractedMen
             description: normalizedDescription,
             price: item.price,
             tags: normalizedTags,
-            sourceFileIndex: typeof item.sourceFileIndex === 'number' ? item.sourceFileIndex : Number(item.sourceFileIndex),
+            ...(sourceFileIndex !== undefined ? { sourceFileIndex } : {}),
             attributes: item.attributes
                 ?.filter((attr: any) => attr && attr.id != null && attr.name)
                 .map((attr: any) => ({
@@ -301,18 +355,60 @@ function normalizeResponseData(data: any): { message: string; data: ExtractedMen
 
     // Extract fileMessages if present (Section 8.14)
     const fileMessages = Array.isArray(extractedData.fileMessages)
-        ? extractedData.fileMessages.map((msg: any) => ({
-            sourceFileIndex: typeof msg.sourceFileIndex === 'number' ? msg.sourceFileIndex : Number(msg.sourceFileIndex),
-            status: msg.status,
-            type: msg.type,
-            message: msg.message || '',
-            details: msg.details ? {
-                omittedItems: msg.details.omittedItems,
-                affectedFields: msg.details.affectedFields,
-                omittedCount: msg.details.omittedCount,
-                extractedCount: msg.details.extractedCount,
-            } : undefined,
-        }))
+        ? extractedData.fileMessages.map((msg: any): FileMessage | null => {
+            const sourceFileIndex = normalizeSourceFileIndex(msg?.sourceFileIndex);
+            const status = typeof msg?.status === 'string' && SAFE_FILE_MESSAGE_STATUSES.has(msg.status)
+                ? msg.status as FileMessage['status']
+                : null;
+            const type = typeof msg?.type === 'string' && SAFE_FILE_MESSAGE_TYPES.has(msg.type)
+                ? msg.type as FileMessage['type']
+                : null;
+            const message = normalizeBoundedText(msg?.message, 500);
+            if (sourceFileIndex === undefined || !status || !type || !message) return null;
+
+            const omittedItems = Array.isArray(msg?.details?.omittedItems)
+                ? msg.details.omittedItems.slice(0, 20).map((item: any) => ({
+                    position: normalizeBoundedText(item?.position, 80) || undefined,
+                    partialName: normalizeBoundedText(item?.partialName, 120) || undefined,
+                    reason: normalizeBoundedText(item?.reason, 160),
+                })).filter((item: { reason: string }) => item.reason)
+                : undefined;
+            const affectedFields = Array.isArray(msg?.details?.affectedFields)
+                ? msg.details.affectedFields.slice(0, 20).map((field: any) => ({
+                    itemId: Number.isSafeInteger(Number(field?.itemId)) ? Number(field.itemId) : undefined,
+                    itemName: normalizeBoundedText(field?.itemName, 120) || undefined,
+                    field: normalizeBoundedText(field?.field, 80),
+                    reason: normalizeBoundedText(field?.reason, 160),
+                })).filter((field: { field: string; reason: string }) => field.field && field.reason)
+                : undefined;
+            const normalizeCount = (value: unknown) => {
+                const count = Number(value);
+                return Number.isSafeInteger(count) && count >= 0 ? count : undefined;
+            };
+            const omittedCount = normalizeCount(msg?.details?.omittedCount);
+            const extractedCount = normalizeCount(msg?.details?.extractedCount);
+            const hasDetails = Boolean(
+                omittedItems?.length
+                || affectedFields?.length
+                || omittedCount !== undefined
+                || extractedCount !== undefined,
+            );
+
+            return {
+                sourceFileIndex,
+                status,
+                type,
+                message,
+                ...(hasDetails ? {
+                    details: {
+                        ...(omittedItems?.length ? { omittedItems } : {}),
+                        ...(affectedFields?.length ? { affectedFields } : {}),
+                        ...(omittedCount !== undefined ? { omittedCount } : {}),
+                        ...(extractedCount !== undefined ? { extractedCount } : {}),
+                    },
+                } : {}),
+            };
+        }).filter((message: FileMessage | null): message is FileMessage => message !== null)
         : undefined;
     const businessAttributeSuggestions = normalizeBusinessAttributeSuggestions(extractedData.businessAttributeSuggestions);
     const extractedBusinessProfile = normalizeExtractedBusinessProfile(extractedData.extractedBusinessProfile);
@@ -413,7 +509,7 @@ export function processAIResponseForFirebase(rawText: string | object): {
             hasMessage: typeof parsed?.message === 'string',
             hasData: Boolean(parsed?.data),
         });
-        // Continue anyway - we'll normalize what we can
+        throw new Error('AI returned data in an unexpected format. Please try again.');
     }
 
     // Step 3: Normalize the data

@@ -1,12 +1,18 @@
 # Loyalty Health Signal — Implementation Plan
 
-**Status:** ✅ IMPLEMENTED (flags OFF — awaiting real traffic)  
+**Status:** Dormant shared computation/UI skeleton; not scheduled, mounted, or activated
 **Author:** Cascade (Lead Architect)  
 **Date:** February 19, 2026  
 **Audience:** Developers  
 **Pillar:** 5 of 6
 
 ---
+
+## Current Runtime Boundary — July 13, 2026
+
+The code below describes the intended activation contract. Today, `processHealthSignalsForAllStores()` has no Functions export or scheduler caller, `HealthSignalCards.tsx` is not mounted, no mobile screen consumes the state, and the root flag is `false`. Retained logic requires exact aggregate unique/direct counters and may not infer loyalty from percentages. Activation needs the shared bounded scheduler/lease, persisted-shape and freshness proof, desktop/mobile parity, and explicit cost validation.
+
+## Target Activation Architecture
 
 ## Architecture Overview
 
@@ -109,4 +115,4 @@ Shares reads with trust signal computation (same daily analytics docs). Only add
 
 ---
 
-**Last Updated:** February 19, 2026
+**Last Updated:** July 13, 2026

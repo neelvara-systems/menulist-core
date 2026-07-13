@@ -1,10 +1,24 @@
 import { DB_COLLECTIONS } from '@constant/database';
-import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentComposer';
-import { normalizeAnswerlatticeScopeDocumentId } from '@lib/answerlattice/sessionScope';
+import { PRODUCT_IDS } from '@constant/product';
+import {
+    ANSWERLATTICE_CHAT_ANALYTICS_LIVE_SESSION_LIMIT,
+    AnswerlatticeChatAnalyticsDay,
+    getAnswerlatticeAnalyticsQueryWindow,
+    normalizeAnswerlatticeAnalyticsDays,
+    normalizeAnswerlatticeAnalyticsPageSize,
+    parseAnswerlatticeAnalyticsDateRange,
+    parseAnswerlatticeChatAnalyticsDay,
+} from '@lib/answerlattice/chatAnalyticsContracts';
+import {
+    normalizeAnswerlatticeChatSessionId,
+    parseAnswerlatticeChatSessionDocument,
+} from '@lib/answerlattice/chatSessionContracts';
+import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { apiCallComposer } from '@lib/apiHelper/apiCallComposer';
-import { apiCallComposerClientWithoutLoader } from '@lib/apiHelper/apiCallComposerClientWithoutLoader';
+import getActiveSession from '@lib/auth/getActiveSession';
 import { answerlatticeFirebaseClient } from '@lib/firebase/answerlatticeFirebaseClient';
-import { collection, doc, getDoc, getDocs, limit, orderBy, query, setDoc, Timestamp, where } from 'firebase/firestore';
+import type { ChatSession } from '@type/chatSession';
+import { collection, doc, getDoc, getDocs, limit, orderBy, query, startAfter, Timestamp, where } from 'firebase/firestore';
 import {
     getBoundedChatAnalyticsStringContext,
     logChatAnalyticsFailure,
@@ -26,8 +40,6 @@ import {
 
 const ANALYTICS_COLLECTION = 'chatAnalytics'; // New collection for aggregated stats
 const CHAT_SESSIONS_COLLECTION = DB_COLLECTIONS.CHAT_SESSIONS;
-const TODAY_LIVE_STATS_LIMIT = 500;
-const MAX_ANALYTICS_RANGE_DAYS = 90;
 
 type ChatAnalyticsScope = {
     tId: number;
@@ -45,17 +57,36 @@ const getEmptyChatAnalyticsStats = () => ({
     totalRegenerations: 0,
 });
 
-const getChatAnalyticsScope = (session: any): ChatAnalyticsScope | null => {
-    const tId = normalizeAnswerlatticeScopeDocumentId(session?.tId ?? session?.tenantId ?? session?.user?.tenantId);
-    const sId = normalizeAnswerlatticeScopeDocumentId(session?.sId ?? session?.storeId ?? session?.user?.storeId);
-
-    if (!tId || !sId) return null;
-    return { tId, sId };
+const toAnalyticsDate = (value: unknown): Date | null => {
+    if (value instanceof Date) return Number.isFinite(value.getTime()) ? value : null;
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    const record = value as Record<string, unknown>;
+    if (typeof record.toDate === 'function') {
+        try {
+            const date = (record.toDate as () => Date)();
+            return date instanceof Date && Number.isFinite(date.getTime()) ? date : null;
+        } catch {
+            return null;
+        }
+    }
+    if (typeof record.seconds === 'number' && Number.isFinite(record.seconds)) {
+        const date = new Date(record.seconds * 1000);
+        return Number.isFinite(date.getTime()) ? date : null;
+    }
+    return null;
 };
 
-const normalizeAnalyticsDays = (days: number, fallback = 30) => {
-    if (!Number.isFinite(days)) return fallback;
-    return Math.min(Math.max(Math.floor(days), 1), MAX_ANALYTICS_RANGE_DAYS);
+const getRequiredChatAnalyticsContext = async (): Promise<{
+    scope: ChatAnalyticsScope;
+    session: any;
+}> => {
+    const session = await getActiveSession();
+    const scope = resolveAnswerlatticeSessionScope(session);
+    if (!scope) throw new Error('answerlattice_chat_analytics_scope_missing');
+    return {
+        session,
+        scope: { tId: scope.tenantId, sId: scope.storeId },
+    };
 };
 
 const getChatAnalyticsScopeContext = (
@@ -86,24 +117,7 @@ const getChatSessionsCollectionRef = async () => {
  * AGGREGATED STATS STRUCTURE (1 document per store per day)
  * ═══════════════════════════════════════════════════════════════════════
  */
-export interface ChatAnalyticsDay {
-    id?: string; // Format: {tId}_{sId}_{YYYY-MM-DD}
-    tId: number;
-    sId: number; // Store ID (required for multi-store tenants)
-    date: string; // YYYY-MM-DD
-    totalChats: number;
-    qnaChats: number;
-    assistantChats: number;
-    totalMessages: number;
-    positiveFeedback: number;
-    negativeFeedback: number;
-    totalFeedback: number;
-    totalRegenerations: number;
-    topQuestions: Array<{ question: string; count: number }>; // Top 10
-    knowledgeGaps: Array<{ question: string; count: number; examples: string[] }>; // Top 10
-    createdOn?: Timestamp;
-    modifiedOn?: Timestamp;
-}
+export type ChatAnalyticsDay = AnswerlatticeChatAnalyticsDay;
 
 /**
  * Get today's live stats from chatSessions (HYBRID MODEL COMPONENT)
@@ -118,34 +132,43 @@ export interface ChatAnalyticsDay {
 export const getTodayLiveStats = async (session: any) => {
     return await apiCallComposer(
         async () => {
-            const scope = getChatAnalyticsScope(session);
-            if (!scope) return getEmptyChatAnalyticsStats();
+            const { scope } = await getRequiredChatAnalyticsContext();
 
+            // Nightly chat summaries use UTC date buckets. The live slice must
+            // use the same boundary or today's total overlaps adjacent buckets.
             const todayStart = new Date();
-            todayStart.setHours(0, 0, 0, 0);
-            const todayEnd = new Date();
-            todayEnd.setHours(23, 59, 59, 999);
+            todayStart.setUTCHours(0, 0, 0, 0);
+            const todayEnd = new Date(todayStart);
+            todayEnd.setUTCHours(23, 59, 59, 999);
 
             // Query only today's sessions for THIS STORE
             const q = query(
                 await getChatSessionsCollectionRef(),
+                where('pId', '==', PRODUCT_IDS.ANSWERLATTICE),
                 where('tId', '==', scope.tId),
                 where('sId', '==', scope.sId), // CRITICAL: Filter by storeId
                 where('createdOn', '>=', Timestamp.fromDate(todayStart)),
                 where('createdOn', '<=', Timestamp.fromDate(todayEnd)),
-                limit(TODAY_LIVE_STATS_LIMIT)
+                orderBy('createdOn', 'asc'),
+                limit(ANSWERLATTICE_CHAT_ANALYTICS_LIVE_SESSION_LIMIT + 1)
             );
 
             const querySnapshot = await getDocs(q);
-            const sessions: any[] = [];
-
-            querySnapshot.forEach((doc) => {
-                sessions.push({ ...doc.data(), id: doc.id });
-            });
+            const isPartial = querySnapshot.size > ANSWERLATTICE_CHAT_ANALYTICS_LIVE_SESSION_LIMIT;
+            const sessions = querySnapshot.docs
+                .slice(0, ANSWERLATTICE_CHAT_ANALYTICS_LIVE_SESSION_LIMIT)
+                .flatMap((sessionDoc) => {
+                    const parsed = parseAnswerlatticeChatSessionDocument({
+                        id: sessionDoc.id,
+                        value: sessionDoc.data(),
+                        scope,
+                    });
+                    return parsed ? [parsed] : [];
+                });
 
             // Early return if no chats today (optimization)
             if (sessions.length === 0) {
-                return getEmptyChatAnalyticsStats();
+                return { ...getEmptyChatAnalyticsStats(), isPartial };
             }
 
             // Calculate today's stats
@@ -183,7 +206,8 @@ export const getTodayLiveStats = async (session: any) => {
                 positiveFeedback,
                 negativeFeedback,
                 totalFeedback: positiveFeedback + negativeFeedback,
-                totalRegenerations
+                totalRegenerations,
+                isPartial,
             };
         },
         { session },
@@ -205,17 +229,8 @@ export const getTodayLiveStats = async (session: any) => {
 export const getChatStatisticsOptimized = async (session: any, days: number = 30) => {
     return await apiCallComposer(
         async () => {
-            const safeDays = normalizeAnalyticsDays(days, 30);
-            const scope = getChatAnalyticsScope(session);
-            if (!scope) {
-                return {
-                    ...getEmptyChatAnalyticsStats(),
-                    todayChats: 0,
-                    satisfactionRate: 0,
-                    avgMessagesPerChat: 0,
-                    regenerationRate: 0,
-                };
-            }
+            const safeDays = normalizeAnswerlatticeAnalyticsDays(days, 30);
+            const { scope } = await getRequiredChatAnalyticsContext();
 
             const today = new Date().toISOString().split('T')[0];
             const endDate = new Date();
@@ -228,18 +243,23 @@ export const getChatStatisticsOptimized = async (session: any, days: number = 30
 
             const q = query(
                 await getCollectionRef(),
+                where('pId', '==', PRODUCT_IDS.ANSWERLATTICE),
                 where('tId', '==', scope.tId),
                 where('sId', '==', scope.sId), // CRITICAL: Filter by storeId
                 where('date', '>=', startDate.toISOString().split('T')[0]),
                 where('date', '<=', yesterday.toISOString().split('T')[0]),
-                orderBy('date', 'desc')
+                orderBy('date', 'desc'),
+                limit(safeDays + 1)
             );
 
             const querySnapshot = await getDocs(q);
-            const dailyStats: ChatAnalyticsDay[] = [];
-
-            querySnapshot.forEach((doc) => {
-                dailyStats.push({ ...doc.data(), id: doc.id } as ChatAnalyticsDay);
+            const dailyStats = querySnapshot.docs.flatMap((analyticsDoc) => {
+                const parsed = parseAnswerlatticeChatAnalyticsDay({
+                    id: analyticsDoc.id,
+                    value: analyticsDoc.data(),
+                    scope,
+                });
+                return parsed ? [parsed] : [];
             });
 
             // Aggregate historical data
@@ -277,6 +297,7 @@ export const getChatStatisticsOptimized = async (session: any, days: number = 30
                 negativeFeedback: 0,
                 totalFeedback: 0,
                 totalRegenerations: 0
+                , isPartial: false
             };
 
             try {
@@ -321,112 +342,11 @@ export const getChatStatisticsOptimized = async (session: any, days: number = 30
                 satisfactionRate,
                 avgMessagesPerChat,
                 regenerationRate
+                , isPartial: dailyStats.some((day) => !day.sourceComplete) || Boolean(todayStats.isPartial)
             };
         },
-        { session, days: normalizeAnalyticsDays(days, 30) },
+        { session, days: normalizeAnswerlatticeAnalyticsDays(days, 30) },
         'getChatStatisticsOptimized'
-    );
-};
-
-/**
- * Get top questions (from aggregated data)
- * Cost: ~30 reads for 30 days vs 1,000+ reads for old approach
- */
-export const getTopQuestionsOptimized = async (session: any, days: number = 30) => {
-    return await apiCallComposer(
-        async () => {
-            const scope = getChatAnalyticsScope(session);
-            if (!scope) return [];
-
-            const endDate = new Date();
-            const startDate = new Date();
-            startDate.setDate(startDate.getDate() - normalizeAnalyticsDays(days, 30));
-
-            const q = query(
-                await getCollectionRef(),
-                where('tId', '==', scope.tId),
-                where('sId', '==', scope.sId), // CRITICAL: Filter by storeId
-                where('date', '>=', startDate.toISOString().split('T')[0]),
-                where('date', '<=', endDate.toISOString().split('T')[0]),
-                orderBy('date', 'desc')
-            );
-
-            const querySnapshot = await getDocs(q);
-            const questionCounts: Record<string, number> = {};
-
-            // Aggregate questions across days
-            querySnapshot.forEach((doc) => {
-                const data = doc.data() as ChatAnalyticsDay;
-                data.topQuestions?.forEach((q) => {
-                    questionCounts[q.question] = (questionCounts[q.question] || 0) + q.count;
-                });
-            });
-
-            // Sort and return top 10
-            return Object.entries(questionCounts)
-                .map(([question, count]) => ({ question, count }))
-                .sort((a, b) => b.count - a.count)
-                .slice(0, 10);
-        },
-        { session, days: normalizeAnalyticsDays(days, 30) },
-        'getTopQuestionsOptimized'
-    );
-};
-
-/**
- * Get knowledge gaps (from aggregated data)
- * Cost: ~30 reads for 30 days vs 1,000+ reads for old approach
- */
-export const getKnowledgeGapsOptimized = async (session: any, days: number = 30) => {
-    return await apiCallComposer(
-        async () => {
-            const scope = getChatAnalyticsScope(session);
-            if (!scope) return [];
-
-            const endDate = new Date();
-            const startDate = new Date();
-            startDate.setDate(startDate.getDate() - normalizeAnalyticsDays(days, 30));
-
-            const q = query(
-                await getCollectionRef(),
-                where('tId', '==', scope.tId),
-                where('sId', '==', scope.sId), // CRITICAL: Filter by storeId
-                where('date', '>=', startDate.toISOString().split('T')[0]),
-                where('date', '<=', endDate.toISOString().split('T')[0]),
-                orderBy('date', 'desc')
-            );
-
-            const querySnapshot = await getDocs(q);
-            const gapCounts: Record<string, { question: string; count: number; examples: string[] }> = {};
-
-            // Aggregate gaps across days
-            querySnapshot.forEach((doc) => {
-                const data = doc.data() as ChatAnalyticsDay;
-                data.knowledgeGaps?.forEach((gap) => {
-                    if (!gapCounts[gap.question]) {
-                        gapCounts[gap.question] = {
-                            question: gap.question,
-                            count: 0,
-                            examples: []
-                        };
-                    }
-                    gapCounts[gap.question].count += gap.count;
-                    // Add unique examples (limit to 3)
-                    gap.examples?.forEach((ex) => {
-                        if (gapCounts[gap.question].examples.length < 3 && !gapCounts[gap.question].examples.includes(ex)) {
-                            gapCounts[gap.question].examples.push(ex);
-                        }
-                    });
-                });
-            });
-
-            // Sort and return top 20
-            return Object.values(gapCounts)
-                .sort((a, b) => b.count - a.count)
-                .slice(0, 20);
-        },
-        { session, days: normalizeAnalyticsDays(days, 30) },
-        'getKnowledgeGapsOptimized'
     );
 };
 
@@ -435,49 +355,37 @@ export const getKnowledgeGapsOptimized = async (session: any, days: number = 30)
  * Cost: ~30 daily aggregate reads + today's live reads, instead of three
  * separate daily aggregate queries over the same date range.
  */
-export const getChatDashboardAggregatesOptimized = async (session: any, days: number = 30) => {
+export const getChatDashboardAggregatesOptimized = async (
+    session: any,
+    dateRange: { start: Date; end: Date },
+) => {
     return await apiCallComposer(
         async () => {
-            const safeDays = normalizeAnalyticsDays(days, 30);
-            const scope = getChatAnalyticsScope(session);
-            if (!scope) {
-                return {
-                    statistics: {
-                        ...getEmptyChatAnalyticsStats(),
-                        todayChats: 0,
-                        satisfactionRate: 0,
-                        avgMessagesPerChat: 0,
-                        regenerationRate: 0,
-                    },
-                    topQuestions: [],
-                    knowledgeGaps: [],
-                };
-            }
+            const queryWindow = getAnswerlatticeAnalyticsQueryWindow(dateRange);
+            if (!queryWindow) throw new Error('answerlattice_chat_analytics_date_range_invalid');
+            const { scope } = await getRequiredChatAnalyticsContext();
 
-            const endDate = new Date();
-            const startDate = new Date();
-            startDate.setDate(startDate.getDate() - safeDays);
+            const dailyStats = queryWindow.historicalEndDateKey
+                ? (await getDocs(query(
+                    await getCollectionRef(),
+                    where('pId', '==', PRODUCT_IDS.ANSWERLATTICE),
+                    where('tId', '==', scope.tId),
+                    where('sId', '==', scope.sId),
+                    where('date', '>=', queryWindow.startDateKey),
+                    where('date', '<=', queryWindow.historicalEndDateKey),
+                    orderBy('date', 'desc'),
+                    limit(queryWindow.dayCount),
+                ))).docs.flatMap((analyticsDoc) => {
+                    const parsed = parseAnswerlatticeChatAnalyticsDay({
+                        id: analyticsDoc.id,
+                        value: analyticsDoc.data(),
+                        scope,
+                    });
+                    return parsed ? [parsed] : [];
+                })
+                : [];
 
-            const yesterday = new Date();
-            yesterday.setDate(yesterday.getDate() - 1);
-            const yesterdayKey = yesterday.toISOString().split('T')[0];
-
-            const q = query(
-                await getCollectionRef(),
-                where('tId', '==', scope.tId),
-                where('sId', '==', scope.sId),
-                where('date', '>=', startDate.toISOString().split('T')[0]),
-                where('date', '<=', endDate.toISOString().split('T')[0]),
-                orderBy('date', 'desc')
-            );
-
-            const querySnapshot = await getDocs(q);
-            const dailyStats: ChatAnalyticsDay[] = [];
-            querySnapshot.forEach((doc) => {
-                dailyStats.push({ ...doc.data(), id: doc.id } as ChatAnalyticsDay);
-            });
-
-            const historicalDays = dailyStats.filter((day) => day.date <= yesterdayKey);
+            const historicalDays = dailyStats;
             const historicalStats = historicalDays.reduce(
                 (acc, day) => ({
                     totalChats: acc.totalChats + day.totalChats,
@@ -509,17 +417,24 @@ export const getChatDashboardAggregatesOptimized = async (session: any, days: nu
                 positiveFeedback: 0,
                 negativeFeedback: 0,
                 totalFeedback: 0,
-                totalRegenerations: 0
+                totalRegenerations: 0,
+                isPartial: false,
             };
 
-            try {
-                todayStats = await getTodayLiveStats(session);
-            } catch (error) {
-                logChatAnalyticsFailure(
-                    'answerlattice_chat_analytics_today_live_stats_failed',
-                    error,
-                    getChatAnalyticsScopeContext(session, 'getChatDashboardAggregatesOptimized', safeDays),
-                );
+            if (queryWindow.includesToday) {
+                try {
+                    todayStats = await getTodayLiveStats(session);
+                } catch (error) {
+                    logChatAnalyticsFailure(
+                        'answerlattice_chat_analytics_today_live_stats_failed',
+                        error,
+                        getChatAnalyticsScopeContext(
+                            session,
+                            'getChatDashboardAggregatesOptimized',
+                            queryWindow.dayCount,
+                        ),
+                    );
+                }
             }
 
             const combinedStats = {
@@ -543,26 +458,30 @@ export const getChatDashboardAggregatesOptimized = async (session: any, days: nu
                 ? Math.round((combinedStats.totalRegenerations / combinedStats.totalMessages) * 100)
                 : 0;
 
-            const questionCounts: Record<string, number> = {};
-            const gapCounts: Record<string, { question: string; count: number; examples: string[] }> = {};
+            const questionCounts = new Map<string, number>();
+            const gapCounts = new Map<string, { question: string; count: number; examples: string[] }>();
 
             dailyStats.forEach((day) => {
                 day.topQuestions?.forEach((question) => {
-                    questionCounts[question.question] = (questionCounts[question.question] || 0) + question.count;
+                    questionCounts.set(
+                        question.question,
+                        (questionCounts.get(question.question) || 0) + question.count,
+                    );
                 });
 
                 day.knowledgeGaps?.forEach((gap) => {
-                    if (!gapCounts[gap.question]) {
-                        gapCounts[gap.question] = {
+                    if (!gapCounts.has(gap.question)) {
+                        gapCounts.set(gap.question, {
                             question: gap.question,
                             count: 0,
                             examples: []
-                        };
+                        });
                     }
-                    gapCounts[gap.question].count += gap.count;
+                    const entry = gapCounts.get(gap.question)!;
+                    entry.count += gap.count;
                     gap.examples?.forEach((example) => {
-                        if (gapCounts[gap.question].examples.length < 3 && !gapCounts[gap.question].examples.includes(example)) {
-                            gapCounts[gap.question].examples.push(example);
+                        if (entry.examples.length < 3 && !entry.examples.includes(example)) {
+                            entry.examples.push(example);
                         }
                     });
                 });
@@ -574,71 +493,24 @@ export const getChatDashboardAggregatesOptimized = async (session: any, days: nu
                     todayChats: todayStats.totalChats,
                     satisfactionRate,
                     avgMessagesPerChat,
-                    regenerationRate
+                    regenerationRate,
+                    isPartial: historicalDays.some((day) => !day.sourceComplete) || Boolean(todayStats.isPartial),
                 },
-                topQuestions: Object.entries(questionCounts)
+                topQuestions: Array.from(questionCounts.entries())
                     .map(([question, count]) => ({ question, count }))
                     .sort((a, b) => b.count - a.count)
                     .slice(0, 10),
-                knowledgeGaps: Object.values(gapCounts)
+                knowledgeGaps: Array.from(gapCounts.values())
                     .sort((a, b) => b.count - a.count)
                     .slice(0, 20),
             };
         },
-        { session, days: normalizeAnalyticsDays(days, 30) },
-        'getChatDashboardAggregatesOptimized'
-    );
-};
-
-/**
- * Get chat volume over time (from aggregated data)
- * Cost: ~30 reads for 30 days (one per day)
- */
-export const getChatVolumeOverTimeOptimized = async (session: any, days: number = 7) => {
-    return await apiCallComposer(
-        async () => {
-            const safeDays = normalizeAnalyticsDays(days, 7);
-            const scope = getChatAnalyticsScope(session);
-            if (!scope) return [];
-
-            const endDate = new Date();
-            const startDate = new Date();
-            startDate.setDate(startDate.getDate() - safeDays);
-            startDate.setHours(0, 0, 0, 0);
-
-            const q = query(
-                await getCollectionRef(),
-                where('tId', '==', scope.tId),
-                where('sId', '==', scope.sId), // CRITICAL: Filter by storeId
-                where('date', '>=', startDate.toISOString().split('T')[0]),
-                where('date', '<=', endDate.toISOString().split('T')[0]),
-                orderBy('date', 'asc')
-            );
-
-            const querySnapshot = await getDocs(q);
-            const dailyCounts: Record<string, number> = {};
-
-            // Initialize all days with 0
-            for (let i = 0; i < safeDays; i++) {
-                const date = new Date(startDate);
-                date.setDate(date.getDate() + i);
-                const dateKey = date.toISOString().split('T')[0];
-                dailyCounts[dateKey] = 0;
-            }
-
-            // Fill in actual counts
-            querySnapshot.forEach((doc) => {
-                const data = doc.data() as ChatAnalyticsDay;
-                if (dailyCounts[data.date] !== undefined) {
-                    dailyCounts[data.date] = data.totalChats;
-                }
-            });
-
-            // Convert to array
-            return Object.entries(dailyCounts).map(([date, count]) => ({ date, count }));
+        {
+            session,
+            startDate: dateRange?.start,
+            endDate: dateRange?.end,
         },
-        { session, days: normalizeAnalyticsDays(days, 7) },
-        'getChatVolumeOverTimeOptimized'
+        'getChatDashboardAggregatesOptimized'
     );
 };
 
@@ -670,22 +542,32 @@ export const getConversationsPaginated = async (
 ) => {
     return await apiCallComposer(
         async () => {
-            const scope = getChatAnalyticsScope(session);
-            if (!scope) {
-                return {
-                    sessions: [],
-                    hasNextPage: false,
-                    nextPageCursor: null,
-                };
+            const { scope } = await getRequiredChatAnalyticsContext();
+            const safePageSize = normalizeAnswerlatticeAnalyticsPageSize(pageSize, 20);
+            if (filters?.mode && filters.mode !== 'qna' && filters.mode !== 'assistant') {
+                throw new Error('answerlattice_chat_analytics_mode_invalid');
+            }
+            const userName = typeof filters?.userName === 'string'
+                ? filters.userName.trim().slice(0, 200)
+                : '';
+            const searchQuery = typeof filters?.searchQuery === 'string'
+                ? filters.searchQuery.trim().toLowerCase().slice(0, 200)
+                : '';
+            const dateRange = filters?.dateRange
+                ? parseAnswerlatticeAnalyticsDateRange(filters.dateRange)
+                : null;
+            if (filters?.dateRange && !dateRange) {
+                throw new Error('answerlattice_chat_analytics_date_range_invalid');
             }
 
             // Build query with limit (CRITICAL for cost control)
             let q = query(
                 await getChatSessionsCollectionRef(),
+                where('pId', '==', PRODUCT_IDS.ANSWERLATTICE),
                 where('tId', '==', scope.tId),
                 where('sId', '==', scope.sId), // CRITICAL: Filter by storeId
                 orderBy('modifiedOn', 'desc'),
-                limit(pageSize + 1) // +1 to check if there's next page
+                limit(safePageSize + 1) // +1 to check if there's next page
             );
 
             // Add filters
@@ -694,196 +576,79 @@ export const getConversationsPaginated = async (
             }
 
             // userName exact match (useful for filtering by specific user)
-            if (filters?.userName) {
-                q = query(q, where('userName', '==', filters.userName));
+            if (userName) {
+                q = query(q, where('userName', '==', userName));
             }
 
-            if (filters?.dateRange) {
+            if (dateRange) {
                 q = query(
                     q,
-                    where('modifiedOn', '>=', Timestamp.fromDate(filters.dateRange.start)),
-                    where('modifiedOn', '<=', Timestamp.fromDate(filters.dateRange.end))
+                    where('modifiedOn', '>=', Timestamp.fromDate(dateRange.start)),
+                    where('modifiedOn', '<=', Timestamp.fromDate(dateRange.end))
                 );
             }
 
             // Pagination cursor
             if (filters?.lastDocId) {
-                const lastDocRef = doc(answerlatticeFirebaseClient, CHAT_SESSIONS_COLLECTION, filters.lastDocId);
+                const cursorId = normalizeAnswerlatticeChatSessionId(filters.lastDocId);
+                if (!cursorId) throw new Error('answerlattice_chat_analytics_cursor_invalid');
+                const lastDocRef = doc(answerlatticeFirebaseClient, CHAT_SESSIONS_COLLECTION, cursorId);
                 const lastDocSnap = await getDoc(lastDocRef);
                 if (lastDocSnap.exists()) {
-                    const { startAfter } = await import('firebase/firestore');
+                    const parsedCursor = parseAnswerlatticeChatSessionDocument({
+                        id: cursorId,
+                        value: lastDocSnap.data(),
+                        scope,
+                    });
+                    if (!parsedCursor) throw new Error('answerlattice_chat_analytics_cursor_scope_invalid');
                     q = query(q, startAfter(lastDocSnap));
                 }
             }
 
             const querySnapshot = await getDocs(q);
-            let sessions: any[] = [];
-
-            querySnapshot.forEach((doc) => {
-                sessions.push({ ...doc.data(), id: doc.id });
+            const parsedSessions = querySnapshot.docs.flatMap((sessionDoc) => {
+                const parsed = parseAnswerlatticeChatSessionDocument({
+                    id: sessionDoc.id,
+                    value: sessionDoc.data(),
+                    scope,
+                });
+                return parsed ? [parsed] : [];
             });
+            const hasNextPage = parsedSessions.length > safePageSize;
+            const pageSessions = parsedSessions.slice(0, safePageSize);
+            const nextPageCursor = hasNextPage
+                ? pageSessions[pageSessions.length - 1]?.id || null
+                : null;
+            let sessions: ChatSession[] = pageSessions;
 
             // CLIENT-SIDE FILTERING (Firestore doesn't support case-insensitive partial text search)
             // This filters the already-fetched data to reduce what's sent to client
-            if (filters?.searchQuery) {
-                const searchLower = filters.searchQuery.toLowerCase();
+            if (searchQuery) {
                 sessions = sessions.filter(session => {
                     // Search in title
-                    if (session.title?.toLowerCase().includes(searchLower)) return true;
+                    if (session.title?.toLowerCase().includes(searchQuery)) return true;
                     // Search in userName
-                    if (session.userName?.toLowerCase().includes(searchLower)) return true;
-                    if (session.userEmail?.toLowerCase().includes(searchLower)) return true;
-                    if (String(session.uId || '').toLowerCase().includes(searchLower)) return true;
-                    const sourceContext = session.sourceContext && typeof session.sourceContext === 'object'
-                        ? session.sourceContext
+                    if (session.userName?.toLowerCase().includes(searchQuery)) return true;
+                    if (session.userEmail?.toLowerCase().includes(searchQuery)) return true;
+                    if (String(session.uId || '').toLowerCase().includes(searchQuery)) return true;
+                    const sourceContext: Record<string, unknown> = session.sourceContext && typeof session.sourceContext === 'object'
+                        ? session.sourceContext as unknown as Record<string, unknown>
                         : {};
-                    if (String(sourceContext.email || '').toLowerCase().includes(searchLower)) return true;
-                    if (String(sourceContext.name || '').toLowerCase().includes(searchLower)) return true;
+                    if (String(sourceContext.email || '').toLowerCase().includes(searchQuery)) return true;
+                    if (String(sourceContext.name || '').toLowerCase().includes(searchQuery)) return true;
                     // Note: Message content search happens client-side for better UX
                     return false;
                 });
             }
 
-            // Check if there's a next page
-            const hasNextPage = sessions.length > pageSize;
-            if (hasNextPage) {
-                sessions.pop(); // Remove the extra document
-            }
-
             return {
                 sessions,
                 hasNextPage,
-                nextPageCursor: hasNextPage ? sessions[sessions.length - 1].id : null
+                nextPageCursor,
             };
         },
         { session, pageSize, filters },
         'getConversationsPaginated'
-    );
-};
-
-/**
- * ═══════════════════════════════════════════════════════════════════════
- * AGGREGATION HELPER (To be called by Cloud Function or webhook)
- * ═══════════════════════════════════════════════════════════════════════
- * 
- * This should run:
- * - Daily via Cloud Scheduler
- * - Or after each chat session update (Firebase trigger)
- * 
- * Cost: Processes all sessions ONCE per day (not on every dashboard view)
- */
-export const aggregateDailyStats = async (session: any, date: Date) => {
-    return await apiCallComposerClientWithoutLoader(
-        async () => {
-            const scope = getChatAnalyticsScope(session);
-            if (!scope) {
-                throw new Error('Missing Answerlattice chat analytics scope');
-            }
-
-            const dateStr = date.toISOString().split('T')[0];
-            const docId = `${scope.tId}_${scope.sId}_${dateStr}`; // CRITICAL: Include storeId
-
-            // Get all sessions for this STORE and day
-            const startOfDay = new Date(date);
-            startOfDay.setHours(0, 0, 0, 0);
-            const endOfDay = new Date(date);
-            endOfDay.setHours(23, 59, 59, 999);
-
-            const q = query(
-                await getChatSessionsCollectionRef(),
-                where('tId', '==', scope.tId),
-                where('sId', '==', scope.sId), // CRITICAL: Filter by storeId
-                where('createdOn', '>=', Timestamp.fromDate(startOfDay)),
-                where('createdOn', '<=', Timestamp.fromDate(endOfDay))
-            );
-
-            const querySnapshot = await getDocs(q);
-
-            // Calculate stats for this day
-            let totalChats = 0;
-            let qnaChats = 0;
-            let assistantChats = 0;
-            let totalMessages = 0;
-            let positiveFeedback = 0;
-            let negativeFeedback = 0;
-            let totalRegenerations = 0;
-            const questionCounts: Record<string, number> = {};
-            const gapCounts: Record<string, { question: string; count: number; examples: string[] }> = {};
-
-            querySnapshot.forEach((doc) => {
-                const sessionData = doc.data();
-                totalChats++;
-
-                if (sessionData.mode === 'qna') qnaChats++;
-                else assistantChats++;
-
-                sessionData.messages?.forEach((msg: any, index: number) => {
-                    totalMessages++;
-
-                    // Track user questions
-                    if (msg.role === 'user' && msg.content) {
-                        const q = msg.content.trim().toLowerCase();
-                        questionCounts[q] = (questionCounts[q] || 0) + 1;
-                    }
-
-                    // Track feedback
-                    if (msg.feedback) {
-                        if (msg.feedback.isGood) positiveFeedback++;
-                        else {
-                            negativeFeedback++;
-                            // Track knowledge gap
-                            const userMsg = sessionData.messages[index - 1];
-                            if (userMsg?.role === 'user' && userMsg.content) {
-                                const q = userMsg.content.trim().toLowerCase();
-                                if (!gapCounts[q]) {
-                                    gapCounts[q] = { question: userMsg.content, count: 0, examples: [] };
-                                }
-                                gapCounts[q].count++;
-                                if (msg.feedback.comments && gapCounts[q].examples.length < 3) {
-                                    gapCounts[q].examples.push(msg.feedback.comments);
-                                }
-                            }
-                        }
-                    }
-
-                    // Track regenerations
-                    if (msg.generationMetadata?.isRetry) {
-                        totalRegenerations++;
-                    }
-                });
-            });
-
-            // Prepare aggregated document
-            const aggregatedData: ChatAnalyticsDay = {
-                tId: scope.tId,
-                sId: scope.sId, // CRITICAL: Include storeId
-                date: dateStr,
-                totalChats,
-                qnaChats,
-                assistantChats,
-                totalMessages,
-                positiveFeedback,
-                negativeFeedback,
-                totalFeedback: positiveFeedback + negativeFeedback,
-                totalRegenerations,
-                topQuestions: Object.entries(questionCounts)
-                    .map(([question, count]) => ({ question, count }))
-                    .sort((a, b) => b.count - a.count)
-                    .slice(0, 10),
-                knowledgeGaps: Object.values(gapCounts)
-                    .sort((a, b) => b.count - a.count)
-                    .slice(0, 10)
-            };
-
-            // Save to chatAnalytics collection
-            const docRef = await getDocRef(docId);
-            const composedData = await answerlatticeRequestBodyComposer(aggregatedData);
-            await setDoc(docRef, composedData, { merge: true });
-
-            return { success: true, date: dateStr, stats: aggregatedData };
-        },
-        { session, date },
-        'aggregateDailyStats'
     );
 };
 
@@ -897,11 +662,11 @@ export const aggregateDailyStats = async (session: any, date: Date) => {
 export const getLastAnalyticsUpdate = async (session: any): Promise<Date | null> => {
     return await apiCallComposer(
         async () => {
-            const scope = getChatAnalyticsScope(session);
-            if (!scope) return null;
+            const { scope } = await getRequiredChatAnalyticsContext();
 
             const q = query(
                 await getCollectionRef(),
+                where('pId', '==', PRODUCT_IDS.ANSWERLATTICE),
                 where('tId', '==', scope.tId),
                 where('sId', '==', scope.sId),
                 orderBy('modifiedOn', 'desc'),
@@ -914,19 +679,15 @@ export const getLastAnalyticsUpdate = async (session: any): Promise<Date | null>
                 return null;
             }
 
-            const doc = querySnapshot.docs[0];
-            const data = doc.data();
+            const analyticsDoc = querySnapshot.docs[0];
+            const data = parseAnswerlatticeChatAnalyticsDay({
+                id: analyticsDoc.id,
+                value: analyticsDoc.data(),
+                scope,
+            });
+            if (!data) return null;
 
-            // Handle both Firestore Timestamp and serialized timestamps
-            if (data.modifiedOn?.toDate) {
-                return data.modifiedOn.toDate();
-            } else if (data.modifiedOn?.seconds) {
-                return new Date(data.modifiedOn.seconds * 1000);
-            } else if (data.modifiedOn instanceof Date) {
-                return data.modifiedOn;
-            }
-
-            return null;
+            return toAnalyticsDate(data.modifiedOn);
         },
         { session },
         'getLastAnalyticsUpdate'

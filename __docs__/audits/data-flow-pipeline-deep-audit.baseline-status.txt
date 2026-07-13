@@ -1,0 +1,719 @@
+ M .agents/skills/website-asset-factory/SKILL.md
+ M .env.production.example
+ M FEATURE_SWEEP_MASTER_INVENTORY.md
+ M __docs__/ai-enhancement-packs/ai-billing-explainer.md
+ M __docs__/ai-enhancement-packs/ai-enhancement-packs_impl.md
+ M __docs__/ai-enhancement-packs/ai-enhancement-packs_spec.md
+ M __docs__/ai-enhancement-packs/ai-usage-audit.md
+ M __docs__/ai-menu-manager/README.md
+ M __docs__/ai-menu-manager/ai-menu-manager_firebase.md
+ M __docs__/ai-menu-manager/ai-menu-manager_impl.md
+ M __docs__/ai-menu-manager/ai-menu-manager_mobile-support.md
+ M __docs__/ai-menu-manager/ai-menu-manager_spec.md
+ M __docs__/ai-menu-manager/ai-menu-manager_technical-team-flow.md
+ M __docs__/ai-menu-manager/ai-menu-manager_test-cases.md
+ M __docs__/ai-menu-manager/ai-menu-manager_validation.md
+ M __docs__/ai-system-layer/ai-system-layer_firebase.md
+ M __docs__/answerlattice/_archive/chatgpt-feedback-activation-audit.md
+R  __docs__/answerlattice/ANSWERLATTICE-ACTIVATION-CLEARANCE.md -> __docs__/answerlattice/answerlattice-activation-clearance.md
+R  __docs__/answerlattice/ANSWERLATTICE-ACTIVATION-EXPERIMENT.md -> __docs__/answerlattice/answerlattice-activation-experiment.md
+RM __docs__/answerlattice/ANSWERLATTICE-BUILD-PRIORITY-ROADMAP.md -> __docs__/answerlattice/answerlattice-build-priority-roadmap.md
+ M __docs__/answerlattice/answerlattice-website/README.md
+ M __docs__/answerlattice/answerlattice-website/answerlattice-website_spec.md
+ M __docs__/answerlattice/client-activation-command-center/client-activation-command-center_firebase.md
+ M __docs__/answerlattice/client-activation-command-center/client-activation-command-center_impl.md
+ M __docs__/answerlattice/data-inventory/answerlattice-data-inventory_evidence.md
+ M __docs__/answerlattice/entity-system/_archive/entity-in-answerlattice.md
+ M __docs__/answerlattice/help-widget/help-widget_firebase.md
+ M __docs__/answerlattice/help-widget/help-widget_impl.md
+ M __docs__/answerlattice/product-surface-contexts/product-surface-contexts_impl.md
+ M __docs__/answerlattice/staff-access-control/staff-access-control_firebase.md
+ M __docs__/answerlattice/staff-access-control/staff-access-control_impl.md
+ M __docs__/audits/menulist-production-readiness-audit.md
+R  __docs__/auth/ADR-email-uniqueness-strategy.md -> __docs__/auth/adr-email-uniqueness-strategy.md
+R  __docs__/auth/DIAGRAMS.md -> __docs__/auth/diagrams.md
+R  __docs__/business-type-data-model/ASSESSMENT-BUSINESS-TYPE-LABELS-AUDIT.md -> __docs__/business-type-data-model/assessment-business-type-labels-audit.md
+RM __docs__/CHANGELOG.md -> __docs__/changelog.md
+ M __docs__/client-menu/_marketing.md
+R  __docs__/client-menu/MULTI-TENANT-ARCHITECTURE.md -> __docs__/client-menu/multi-tenant-architecture.md
+R  __docs__/client-menu/PUBLIC-ROUTING-DOCTRINE.md -> __docs__/client-menu/public-routing-doctrine.md
+RM __docs__/client-menu/SEO-IMPLEMENTATION-GUIDE.md -> __docs__/client-menu/seo-implementation-guide.md
+R  __docs__/constitution/01-CORE-DOCTRINE.md -> __docs__/constitution/01-core-doctrine.md
+R  __docs__/constitution/02-LANGUAGE-GOVERNANCE.md -> __docs__/constitution/02-language-governance.md
+R  __docs__/constitution/03-STRATEGIC-FRAMEWORKS.md -> __docs__/constitution/03-strategic-frameworks.md
+R  __docs__/constitution/04-AUTOMODE-SPEC.md -> __docs__/constitution/04-automode-spec.md
+R  __docs__/constitution/05-FAILURE-REFUSAL-MATRIX.md -> __docs__/constitution/05-failure-refusal-matrix.md
+R  __docs__/constitution/06-INTERNAL-TRACKING.md -> __docs__/constitution/06-internal-tracking.md
+R  __docs__/constitution/07-TEAM-ENFORCEMENT.md -> __docs__/constitution/07-team-enforcement.md
+R  __docs__/constitution/08-FEATURE-REJECTION-GATE.md -> __docs__/constitution/08-feature-rejection-gate.md
+ M __docs__/continuous-menu-intelligence/README.md
+ M __docs__/continuous-menu-intelligence/continuous-menu-intelligence_firebase.md
+ M __docs__/continuous-menu-intelligence/continuous-menu-intelligence_impl.md
+ M __docs__/cost-self-protection/README.md
+ M __docs__/customer-app/customer-app_firebase.md
+ M __docs__/customer-app/customer-app_helpdoc.md
+ M __docs__/customer-app/customer-app_impl.md
+ M __docs__/customer-app/customer-app_marketing.md
+ M __docs__/customer-app/customer-app_mobile-support.md
+ M __docs__/customer-app/customer-app_spec.md
+ M __docs__/customer-app/customer-app_test.md
+ M __docs__/customer-app/customer-app_website.md
+ M __docs__/customer-communication-kit/README.md
+ M __docs__/customer-communication-kit/customer-communication-kit_firebase.md
+ M __docs__/customer-communication-kit/customer-communication-kit_helpdoc.md
+ M __docs__/customer-communication-kit/customer-communication-kit_impl.md
+ M __docs__/customer-communication-kit/customer-communication-kit_marketing.md
+ M __docs__/customer-communication-kit/customer-communication-kit_mobile-support.md
+ M __docs__/customer-communication-kit/customer-communication-kit_spec.md
+ M __docs__/decision-intelligence/README.md
+ M __docs__/decision-intelligence/decision-intelligence_firebase.md
+ M __docs__/decision-intelligence/decision-intelligence_impl.md
+ M __docs__/deployment/README.md
+ M __docs__/deployment/production-deployment-checklist.md
+ M __docs__/deployment/three-product-environment-setup.md
+ M __docs__/digital-screens/_archive/digital-screens_code-review.md
+ M __docs__/digital-screens/_archive/digital-screens_hardening-spec.md
+ M __docs__/digital-screens/_archive/digital-screens_validation.md
+ M __docs__/digital-screens/digital-screens_firebase.md
+ M __docs__/digital-screens/digital-screens_impl.md
+ M __docs__/digital-screens/digital-screens_mobile-support.md
+ M __docs__/discovery-infrastructure/infrastructure-gap-analysis.md
+R  __docs__/features/NETWORK-STATUS-MONITORING.md -> __docs__/features/network-status-monitoring.md
+R  __docs__/features/PROFILE-MODAL-REDESIGN.md -> __docs__/features/profile-modal-redesign.md
+R  __docs__/gbp-sync/GBP-CHATGPT-CRITICAL-REVIEW.md -> __docs__/gbp-sync/gbp-chatgpt-critical-review.md
+ M __docs__/hours-holiday-accuracy/README.md
+ M __docs__/hours-holiday-accuracy/hours-holiday-accuracy_firebase.md
+ M __docs__/hours-holiday-accuracy/hours-holiday-accuracy_impl.md
+ M __docs__/hours-holiday-accuracy/hours-holiday-accuracy_mobile-support.md
+R  __docs__/internal-tracking/MENULIST-INTERNAL-TRACKING-SYSTEM.md -> __docs__/internal-tracking/menulist-internal-tracking-system.md
+R  __docs__/internal-tracking/MOL-V0-IMPLEMENTATION-PLAN.md -> __docs__/internal-tracking/mol-v0-implementation-plan.md
+ M __docs__/main-website/README.md
+ M __docs__/main-website/asset-production/stage-06-3/stage-06-3-p0-fictional-demo-asset-pack.md
+ M __docs__/main-website/asset-production/stage-08-product-proof/stage-08-product-proof-demo-assets.md
+ M __docs__/main-website/main-website_content.md
+ M __docs__/main-website/main-website_image-assets.md
+ M __docs__/main-website/main-website_impl.md
+ M __docs__/marketing/menulist-growth-and-funnel-strategy.md
+ M __docs__/menu-extraction-pipeline/README.md
+ M __docs__/menu-extraction-pipeline/menu-extraction-pipeline_firebase.md
+ M __docs__/menu-extraction-pipeline/menu-extraction-pipeline_impl.md
+ M __docs__/menu-extraction-pipeline/menu-extraction-pipeline_mobile-support.md
+ M __docs__/menu-health-monitor/menu-health-monitor_firebase.md
+ M __docs__/menu-presence-monitor/README.md
+ M __docs__/menu-presence-monitor/menu-presence-monitor_firebase.md
+ M __docs__/menu-presence-monitor/menu-presence-monitor_helpdoc.md
+ M __docs__/menu-presence-monitor/menu-presence-monitor_impl.md
+ M __docs__/menu-presence-monitor/menu-presence-monitor_marketing.md
+ M __docs__/menu-presence-monitor/menu-presence-monitor_mobile-support.md
+ M __docs__/menu-presence-monitor/menu-presence-monitor_spec.md
+ M __docs__/menu-presence-monitor/menu-presence-monitor_website.md
+ M __docs__/menu-setup-progress/README.md
+ M __docs__/menulist-marketing-distribution/README.md
+ M __docs__/menulist-marketing-distribution/menulist-marketing-distribution_action-register.md
+ M __docs__/menulist-marketing-distribution/menulist-marketing-distribution_consultant-log.md
+ M __docs__/menulist-marketing-distribution/menulist-marketing-distribution_partner-brief.md
+ M __docs__/menulist-marketing-distribution/menulist-marketing-distribution_strategy.md
+ M __docs__/menulist-seo-launch/menulist-seo-launch_action-register.md
+ M __docs__/menulist-signaldesk/README.md
+ M __docs__/menulist-signaldesk/menulist-signaldesk_action-register.md
+ M __docs__/menulist-signaldesk/menulist-signaldesk_compliance.md
+ M __docs__/menulist-signaldesk/menulist-signaldesk_decision-log.md
+ M __docs__/menulist-signaldesk/menulist-signaldesk_feature-map.md
+ M __docs__/menulist-signaldesk/menulist-signaldesk_firebase.md
+ M __docs__/menulist-signaldesk/menulist-signaldesk_impl.md
+ M __docs__/menulist-signaldesk/menulist-signaldesk_spec.md
+ M __docs__/menulist-signaldesk/menulist-signaldesk_validation.md
+ M __docs__/menulist-signaldesk/signaldesk-operating-layer/signaldesk-operating-layer_research-agent-table.md
+ M __docs__/menulist-signaldesk/signaldesk-operating-layer/signaldesk-operating-layer_spec.md
+ M __docs__/menulist-signaldesk/signaldesk-operating-layer/signaldesk-operating-layer_test-cases.md
+ M __docs__/menulist-signaldesk/signaldesk-source-policy/signaldesk-source-policy_compliance.md
+ M __docs__/menulist-signaldesk/signaldesk-source-policy/signaldesk-source-policy_spec.md
+ M __docs__/menulist-tools/tools-hub/README.md
+ M __docs__/menulist-tools/tools-hub/tools-hub_firebase.md
+ M __docs__/menulist-tools/tools-hub/tools-hub_helpdoc.md
+ M __docs__/menulist-tools/tools-hub/tools-hub_impl.md
+ M __docs__/menulist-tools/tools-hub/tools-hub_marketing.md
+ M __docs__/menulist-tools/tools-hub/tools-hub_mobile-support.md
+ M __docs__/menulist-tools/tools-hub/tools-hub_spec.md
+ M __docs__/menulist-tools/tools-hub/tools-hub_test-cases.md
+ M __docs__/menulist-tools/tools-hub/tools-hub_validation.md
+ M __docs__/menulist-tools/tools-hub/tools-hub_website.md
+ M __docs__/messaging-onboarding/_archive/production-readiness-audit-2026-03-12.md
+ M __docs__/messaging-onboarding/messaging-onboarding_firebase.md
+ M __docs__/multi-outlet-consistency/_archive/CHATGPT-CONVERSATION-CRITICAL-REVIEW.md
+ M __docs__/multi-outlet-consistency/_archive/master-updates-awareness_verification.md
+ M __docs__/multi-outlet-consistency/_archive/multi-outlet-consistency_feedback-audit.md
+ M __docs__/multi-outlet-consistency/_archive/multi-outlet-consistency_validation.md
+ M __docs__/neelvara-main-website/neelvara-main-website_validation.md
+ M __docs__/ops-infrastructure-guide.md
+ M __docs__/owner-action-items.md
+ M __docs__/owner-business-assistant/owner-business-assistant_business-health.md
+ M __docs__/owner-business-assistant/owner-business-assistant_mobile-support.md
+ M __docs__/owner-notifications/owner-notifications_firebase.md
+ M __docs__/owner-notifications/owner-notifications_helpdoc.md
+ M __docs__/owner-notifications/owner-notifications_impl.md
+ M __docs__/patterns/nightly-scheduler-architecture.md
+R  __docs__/patterns/SUMMARY-DOCUMENT-PATTERN.md -> __docs__/patterns/summary-document-pattern.md
+ M __docs__/platform-founder-monitor/platform-founder-monitor_firebase.md
+ M __docs__/platform-founder-monitor/platform-founder-monitor_impl.md
+ M __docs__/print-assets/print-assets_impl.md
+ M __docs__/print-assets/print-assets_mobile-support.md
+ M __docs__/print-assets/print-assets_test-cases.md
+ M __docs__/printable-asset-templates/README.md
+ M __docs__/printable-asset-templates/printable-asset-templates_impl.md
+ M __docs__/printable-asset-templates/printable-asset-templates_mobile-support.md
+ M __docs__/printable-asset-templates/printable-asset-templates_test-cases.md
+ M __docs__/production-readiness/README.md
+ M __docs__/production-readiness/dev-prod-environment-guide.md
+ M __docs__/production-readiness/external-certification-runbook.md
+ M __docs__/production-readiness/infrastructure-risk-tracker.md
+ M __docs__/production-readiness/launch-prerequisites.md
+RM __docs__/PRODUCTION-TESTING-GUIDE.md -> __docs__/production-testing-guide.md
+RM __docs__/projects/00-OVERVIEW.md -> __docs__/projects/00-overview.md
+R  __docs__/projects/11-DATABASE-LAYER.md -> __docs__/projects/11-database-layer.md
+RM __docs__/projects/12-API-ROUTES.md -> __docs__/projects/12-api-routes.md
+R  __docs__/projects/13-TYPES-INTERFACES.md -> __docs__/projects/13-types-interfaces.md
+R  __docs__/projects/14-UTILITIES.md -> __docs__/projects/14-utilities.md
+ M __docs__/projects/README.md
+ M __docs__/projects/ai-data-extraction/README.md
+ M __docs__/projects/ai-data-extraction/ai-data-extraction_impl.md
+ M __docs__/projects/ai-data-extraction/ai-data-extraction_spec.md
+ M __docs__/projects/ai-image-generation/README.md
+ M __docs__/projects/ai-image-generation/_archive/AI-IMAGE-GENERATION-COMPLETE-JAN28-2026.md
+ M __docs__/projects/ai-image-generation/ai-image-generation_firebase.md
+ M __docs__/projects/ai-image-generation/ai-image-generation_impl.md
+ M __docs__/projects/ai-image-generation/ai-image-generation_spec.md
+ M __docs__/projects/ai-image-generation/ai-image-generation_verification.md
+R  __docs__/projects/Assessments/ASSESSMENT-01-UPLOAD.md -> __docs__/projects/assessments/assessment-01-upload.md
+R  __docs__/projects/Assessments/ASSESSMENT-02-AI-EXTRACTION.md -> __docs__/projects/assessments/assessment-02-ai-extraction.md
+R  __docs__/projects/Assessments/ASSESSMENT-03-EDITOR.md -> __docs__/projects/assessments/assessment-03-editor.md
+R  __docs__/projects/Assessments/ASSESSMENT-04-PERFORMANCE.md -> __docs__/projects/assessments/assessment-04-performance.md
+R  __docs__/projects/Assessments/ASSESSMENT-05-SECURITY.md -> __docs__/projects/assessments/assessment-05-security.md
+R  __docs__/projects/Assessments/ASSESSMENT-06-UX-USABILITY.md -> __docs__/projects/assessments/assessment-06-ux-usability.md
+R  __docs__/projects/Assessments/ASSESSMENT-07-AI-IMAGE-GENERATION.md -> __docs__/projects/assessments/assessment-07-ai-image-generation.md
+R  __docs__/projects/Assessments/ASSESSMENT-08-IMAGE-EDITING.md -> __docs__/projects/assessments/assessment-08-image-editing.md
+R  __docs__/projects/Assessments/ASSESSMENT-09-DESCRIPTION-GENERATION.md -> __docs__/projects/assessments/assessment-09-description-generation.md
+R  __docs__/projects/Assessments/ASSESSMENT-10-B2B-VIEW.md -> __docs__/projects/assessments/assessment-10-b2b-view.md
+R  __docs__/projects/Assessments/ASSESSMENT-11-B2C-VIEW.md -> __docs__/projects/assessments/assessment-11-b2c-view.md
+RM __docs__/projects/Assessments/ASSESSMENT-12-PROJECT-MANAGEMENT.md -> __docs__/projects/assessments/assessment-12-project-management.md
+R  __docs__/projects/Assessments/ASSESSMENT-13-MULTI-LANGUAGE-TRANSLATION.md -> __docs__/projects/assessments/assessment-13-multi-language-translation.md
+R  __docs__/projects/Assessments/MENU-IMAGE-PROCESSING-JOB-QUEUE-SPEC.md -> __docs__/projects/assessments/menu-image-processing-job-queue-spec.md
+R  __docs__/projects/Assessments/MENU-JOB-QUEUE-FIREBASE-OPERATIONS.md -> __docs__/projects/assessments/menu-job-queue-firebase-operations.md
+R  __docs__/projects/Assessments/MENU-JOB-QUEUE-IMPLEMENTATION.md -> __docs__/projects/assessments/menu-job-queue-implementation.md
+R  __docs__/projects/Assessments/SERVER-SIDE-DATA-PROCESSING-ARCHITECTURE.md -> __docs__/projects/assessments/server-side-data-processing-architecture.md
+ M __docs__/projects/b2b-view/README.md
+ M __docs__/projects/b2b-view/b2b-view_impl.md
+ M __docs__/projects/b2c-view/README.md
+ M __docs__/projects/b2c-view/b2c-view_impl.md
+ M __docs__/projects/data-editor/README.md
+ M __docs__/projects/data-editor/data-editor_impl.md
+ M __docs__/projects/data-editor/data-editor_spec.md
+ M __docs__/projects/description-generation/_archive/description-generation_impl-old.md
+ M __docs__/projects/description-generation/_archive/description-generation_spec-old.md
+ M __docs__/projects/description-generation/_archive/readme-old.md
+ M __docs__/projects/description-generation/description-generation_impl.md
+ M __docs__/projects/description-generation/description-generation_spec.md
+ M __docs__/projects/description-generation/description-generation_verification.md
+R  __docs__/projects/development_done/1-CROSS-CHECK-UPLOAD.md -> __docs__/projects/development_done/1-cross-check-upload.md
+RM __docs__/projects/development_done/1-IMPLEMENTATION-UPLOAD-COMPLETE.md -> __docs__/projects/development_done/1-implementation-upload-complete.md
+RM __docs__/projects/development_done/1-TESTING-GUIDE-UPLOAD.md -> __docs__/projects/development_done/1-testing-guide-upload.md
+RM __docs__/projects/development_done/2-CROSS-CHECK-AI-EXTRACTION.md -> __docs__/projects/development_done/2-cross-check-ai-extraction.md
+RM __docs__/projects/development_done/2-IMPLEMENTATION-AI-EXTRACTION-COMPLETE.md -> __docs__/projects/development_done/2-implementation-ai-extraction-complete.md
+R  __docs__/projects/development_done/2-TESTING-GUIDE-AI-EXTRACTION.md -> __docs__/projects/development_done/2-testing-guide-ai-extraction.md
+RM __docs__/projects/development_done/3-IMPLEMENTATION-EDITOR-COMPLETE.md -> __docs__/projects/development_done/3-implementation-editor-complete.md
+R  __docs__/projects/development_done/4-PERFORMANCE-IMPLEMENTATION-PARTIAL.md -> __docs__/projects/development_done/4-performance-implementation-partial.md
+RM __docs__/projects/development_done/5-IMPLEMENTATION-SUMMARY.md -> __docs__/projects/development_done/5-implementation-summary.md
+R  __docs__/projects/development_done/5-REFACTOR-FILE-VALIDATION.md -> __docs__/projects/development_done/5-refactor-file-validation.md
+R  __docs__/projects/development_done/5-SECURITY-DOCS-ANALYSIS.md -> __docs__/projects/development_done/5-security-docs-analysis.md
+RM __docs__/projects/development_done/5-SECURITY-IMPLEMENTATION-COMPLETE.md -> __docs__/projects/development_done/5-security-implementation-complete.md
+R  __docs__/projects/development_done/6-UX-AND-PERFORMANCE-UPDATE.md -> __docs__/projects/development_done/6-ux-and-performance-update.md
+ M __docs__/projects/development_done/README.md
+R  __docs__/projects/Editor/01-VIEWS.md -> __docs__/projects/editor/01-views.md
+R  __docs__/projects/Editor/02-IMAGE-PREVIEW-ZOOM.md -> __docs__/projects/editor/02-image-preview-zoom.md
+R  __docs__/projects/Editor/03-KEYBOARD-SHORTCUTS.md -> __docs__/projects/editor/03-keyboard-shortcuts.md
+R  __docs__/projects/Editor/04-SEARCH-FILTERS.md -> __docs__/projects/editor/04-search-filters.md
+R  __docs__/projects/Editor/05-BATCH-ACTIONS.md -> __docs__/projects/editor/05-batch-actions.md
+R  __docs__/projects/Editor/06-MODALS.md -> __docs__/projects/editor/06-modals.md
+R  __docs__/projects/Editor/07-AUTO-SAVE.md -> __docs__/projects/editor/07-auto-save.md
+R  __docs__/projects/Editor/08-HOOKS-UTILS.md -> __docs__/projects/editor/08-hooks-utils.md
+RM __docs__/projects/Editor/README.md -> __docs__/projects/editor/README.md
+R  __docs__/projects/Editor/b2c-ui-editor_mobile-approach.md -> __docs__/projects/editor/b2c-ui-editor_mobile-approach.md
+R  __docs__/projects/Editor/EDITOR-5-STAR-IMPROVEMENTS.md -> __docs__/projects/editor/editor-5-star-improvements.md
+ M __docs__/projects/internal-feedback-system/README.md
+ M __docs__/projects/internal-feedback-system/_archive/chatgpt-review-session-mar14.md
+ M __docs__/projects/internal-feedback-system/internal-feedback-system_firebase.md
+ M __docs__/projects/internal-feedback-system/internal-feedback-system_helpdoc.md
+ M __docs__/projects/internal-feedback-system/internal-feedback-system_impl.md
+ M __docs__/projects/internal-feedback-system/internal-feedback-system_mobile-support.md
+ M __docs__/projects/miscellaneous-task.md
+ M __docs__/projects/multi-language-translation/README.md
+ M __docs__/projects/multi-language-translation/multi-language-translation_impl.md
+ M __docs__/projects/multi-language-translation/multi-language-translation_verification.md
+RM __docs__/projects/OWNER-DASHBOARD.md -> __docs__/projects/owner-dashboard.md
+RM __docs__/projects/PRODUCTION-READINESS-ASSESSMENT.md -> __docs__/projects/production-readiness-assessment.md
+RM __docs__/projects/TESTING-CHECKLIST.md -> __docs__/projects/testing-checklist.md
+ M __docs__/projects/upload-file-processing/README.md
+ M __docs__/projects/upload-file-processing/upload-file-processing_impl.md
+ M __docs__/public-menu-entry/public-menu-entry_firebase.md
+ M __docs__/public-menu-entry/public-menu-entry_impl.md
+ M __docs__/razorpay/active-subscription-flow.md
+ M __docs__/razorpay/razorpay_firebase.md
+ M __docs__/reviews-reputation/_archive/CHATGPT-CONVERSATION-CRITICAL-REVIEW.md
+ M __docs__/security/cors/cors-implementation.md
+ M __docs__/security/file-upload/file-upload-security.md
+ M __docs__/social-content/social-content-product-strategy.md
+ M __docs__/special-menu-switching/_archive/chatgpt-review-session5.md
+R  __docs__/strategy/EXPANSION-SURFACES-MASTER-ANALYSIS.md -> __docs__/strategy/expansion-surfaces-master-analysis.md
+ M __docs__/surface-os/_archive/surfaceOS.md
+ M __docs__/system-strengthening/_archive/chatgpt-review-launch-infra.md
+ M __docs__/system-strengthening/_archive/original-README-jan4.md
+ M __docs__/system-strengthening/menulist-system-data-flow-audit-2026-06-20.md
+ M __docs__/videos/README.md
+ M __docs__/videos/hyperframes/menulist-founder-brand-pov/assets/audio/voice-kokoro-af-nova-selected.wav
+ M __docs__/videos/hyperframes/menulist-founder-brand-pov/assets/mix/README.md
+ M __docs__/videos/hyperframes/menulist-founder-brand-pov/assets/mix/founder-brand-pov-audio-v2-master.wav
+ M __docs__/videos/hyperframes/menulist-founder-brand-pov/index.html
+ M __docs__/videos/hyperframes/menulist-founder-brand-pov/renders/menulist-founder-brand-pov-audio-v2.mp4
+ M __docs__/videos/hyperframes/menulist-founder-brand-pov/renders/menulist-founder-brand-pov-draft.mp4
+ M __docs__/videos/hyperframes/menulist-founder-brand-pov/script.txt
+ M __docs__/videos/hyperframes/menulist-launch-announcement-30s-vertical/assets/mix/launch-announcement-audio-v2-master.wav
+ M __docs__/videos/hyperframes/menulist-launch-announcement-30s-vertical/index.html
+ M __docs__/videos/hyperframes/menulist-launch-announcement-30s-vertical/renders/menulist-launch-announcement-30s-vertical-audio-v2.mp4
+ M __docs__/videos/hyperframes/menulist-launch-announcement-30s-vertical/script.txt
+ M __docs__/videos/hyperframes/menulist-launch-announcement-30s/assets/audio/voice-kokoro-af-nova-selected.wav
+ M __docs__/videos/hyperframes/menulist-launch-announcement-30s/assets/captions/launch-announcement-audio-v2.srt
+ M __docs__/videos/hyperframes/menulist-launch-announcement-30s/assets/captions/launch-announcement-audio-v2.vtt
+ M __docs__/videos/hyperframes/menulist-launch-announcement-30s/assets/captions/launch-announcement-audio-v2.words.json
+ M __docs__/videos/hyperframes/menulist-launch-announcement-30s/assets/mix/README.md
+ M __docs__/videos/hyperframes/menulist-launch-announcement-30s/assets/mix/launch-announcement-audio-v2-master.wav
+ M __docs__/videos/hyperframes/menulist-launch-announcement-30s/index.html
+ M __docs__/videos/hyperframes/menulist-launch-announcement-30s/renders/menulist-launch-announcement-30s-audio-v2.mp4
+ M __docs__/videos/hyperframes/menulist-launch-announcement-30s/renders/menulist-launch-announcement-30s-draft.mp4
+ M __docs__/videos/hyperframes/menulist-launch-announcement-30s/script.txt
+ M __docs__/videos/videos_01-product-launch-hero-film.md
+ M __docs__/videos/videos_02-product-demo-walkthrough.md
+ M __docs__/videos/videos_03-launch-announcement-cut.md
+ M __docs__/videos/videos_06-photo-pdf-to-customer-link-reel.md
+ M __docs__/videos/videos_12-founder-brand-pov-video.md
+ M __docs__/videos/videos_campaign-calendar.md
+ M __docs__/videos/videos_feature-videos.md
+ M __docs__/videos/videos_hyperframes-production.md
+ M __docs__/videos/videos_launch-hero-video.md
+ M __docs__/videos/videos_launch-product-marketing-production-blueprint.md
+ M __docs__/videos/videos_product-demo-video.md
+ M __docs__/videos/videos_production-plan.md
+ M __docs__/videos/videos_short-form-reels.md
+ M __docs__/website-asset-operating-system/website-asset-operating-system_impl.md
+ M __docs__/website-asset-operating-system/website-asset-operating-system_usage-guide.md
+ M __docs__/website-asset-operating-system/website-asset-operating-system_validation.md
+ M firestore-signaldesk.indexes.json
+ M firestore-signaldesk.rules
+ M firestore.indexes.json
+ M firestore.rules
+ M functions/src/analytics/dashboardSummaryAggregation.ts
+ M package.json
+ M packages/asset-factory/README.md
+ M packages/asset-factory/briefs/answerlattice.brand.logo.mark.md
+ M packages/asset-factory/briefs/answerlattice.home.hero.support-control-motion.md
+ M packages/asset-factory/briefs/answerlattice.home.og.main.md
+ M packages/asset-factory/briefs/answerlattice.home.section.authority-transfer.md
+ M packages/asset-factory/briefs/answerlattice.product.page-aware-widget.clip.md
+ M packages/asset-factory/briefs/answerlattice.pwa.icons.md
+ M packages/asset-factory/briefs/answerlattice.pwa.splash.md
+ M packages/asset-factory/briefs/menulist.home.analytics.status-proof.md
+ M packages/asset-factory/briefs/menulist.home.customer-browse.mobile-menu.md
+ M packages/asset-factory/briefs/menulist.home.hero.business-truth-loop.md
+ M packages/asset-factory/briefs/menulist.home.hero.official-source.md
+ M packages/asset-factory/briefs/menulist.home.og.official-source.md
+ M packages/asset-factory/briefs/menulist.home.public-presence.obp-browser.md
+ M packages/asset-factory/briefs/menulist.home.public-surfaces.matrix.md
+ M packages/asset-factory/briefs/menulist.home.setup-relief.workflow.md
+ M packages/asset-factory/briefs/menulist.launch.social.linkedin.md
+ M packages/asset-factory/briefs/menulist.launch.social.square.md
+ M packages/asset-factory/manifest/assets.json
+ M packages/asset-factory/scripts/generate-brief.ts
+ M packages/asset-factory/scripts/lock-fingerprints.ts
+ M packages/asset-factory/slots/answerlattice.asset-slots.ts
+ M packages/asset-factory/slots/menulist.asset-slots.ts
+ M public/answerlattice-og-image.png
+ M public/images/website/menulist-analytics-proof.webp
+ M public/images/website/menulist-hero-official-source.webp
+ M public/images/website/menulist-launch-square.png
+ M public/images/website/menulist-linkedin-launch.png
+ M public/images/website/menulist-public-menu-mobile.webp
+ M public/images/website/menulist-public-surfaces-matrix.webp
+ M public/images/website/menulist-setup-relief-workflow.webp
+ M public/images/website/product-proof/business-health-stable-check.webp
+ M public/images/website/product-proof/owner-phone-dashboard.webp
+ M public/locales/menulist.ai/en-US.json
+ M public/locales/menulist.ai/hi-IN.json
+ M scripts/check-docs-links.js
+ M scripts/verification/e2e-signaldesk-local.js
+ M scripts/verification/verify-agent-readiness.js
+ M scripts/verification/verify-ai-accounting-hardening.js
+ M scripts/verification/verify-ai-menu-manager.js
+ M scripts/verification/verify-answerlattice-runtime-truth.js
+ M scripts/verification/verify-auth-security-failure-matrix.js
+ M scripts/verification/verify-billing-entitlement-boundary.js
+ M scripts/verification/verify-campaigncue-pack-templates.js
+ M scripts/verification/verify-campaigncue-runtime.js
+ M scripts/verification/verify-communication-kit-boundary.js
+ M scripts/verification/verify-compliance-pages-boundary.js
+ M scripts/verification/verify-customer-app-pwa.js
+ M scripts/verification/verify-digital-screens-boundary.js
+ M scripts/verification/verify-doc-npm-scripts.js
+ M scripts/verification/verify-growthos-flow.ts
+ M scripts/verification/verify-guest-feedback-boundary.js
+ M scripts/verification/verify-help-center-boundary.js
+ M scripts/verification/verify-menu-card-export.js
+ M scripts/verification/verify-menu-design-presentation-boundary.js
+ M scripts/verification/verify-menu-export.js
+ M scripts/verification/verify-menu-extraction-pipeline.js
+ M scripts/verification/verify-menu-presence-monitor-boundary.js
+ M scripts/verification/verify-menu-project-editor-boundary.js
+ M scripts/verification/verify-menulist-api-tenant-safety.js
+ M scripts/verification/verify-messaging-onboarding-monitor-boundary.js
+ M scripts/verification/verify-multi-location-boundary.js
+ M scripts/verification/verify-mycodex-pwa-assets.js
+ M scripts/verification/verify-official-business-page-boundary.js
+ M scripts/verification/verify-owner-business-assistant-hardening.ts
+ M scripts/verification/verify-owner-business-health-boundary.js
+ M scripts/verification/verify-owner-dashboard-today-boundary.js
+ M scripts/verification/verify-owner-notifications-boundary.js
+ M scripts/verification/verify-platform-cost-posture-boundary.js
+ M scripts/verification/verify-platform-entity-blocks-boundary.js
+ M scripts/verification/verify-platform-founder-monitor-boundary.js
+ M scripts/verification/verify-platform-pull-api-boundary.js
+ M scripts/verification/verify-pos-sync-boundary.js
+ M scripts/verification/verify-pricing-integrity-boundary.js
+ M scripts/verification/verify-printable-asset-templates.js
+ M scripts/verification/verify-public-business-truth.js
+ M scripts/verification/verify-public-truth-check.js
+ M scripts/verification/verify-public-truth-monitor-addon.js
+ M scripts/verification/verify-public-truth-tools.js
+ M scripts/verification/verify-reseller-dashboard-boundary.js
+ M scripts/verification/verify-shareable-tool-reports.js
+ M scripts/verification/verify-signaldesk-runtime.js
+ M scripts/verification/verify-signaldesk-security-rules.js
+ M scripts/verification/verify-staff-prompt-runtime.js
+ M scripts/verification/verify-storage-path-hardening.js
+ M scripts/verification/verify-temporary-status-boundary.js
+ M scripts/verification/verify-tools-hub.js
+ M scripts/verification/verify-website-public-copy-boundary.js
+ M scripts/verification/verify-working-hours-boundary.js
+ M scripts/website-assets/generate-answerlattice-logo-assets.js
+ M scripts/website-assets/generate-product-proof-assets.mjs
+ M scripts/website-assets/generate-stage6-assets.mjs
+ M src/app/(answerlattice)/layout.tsx
+ M src/app/(campaigncue)/layout.tsx
+ M src/app/(main)/layout.tsx
+ M src/app/(signaldesk)/layout.tsx
+ M src/app/(website)/create-menu/CreateMenuClient.tsx
+ M src/app/(website)/create-menu/page.tsx
+ M src/app/api/answerlattice/activation/summary/route.ts
+ M src/app/api/answerlattice/bundles/rebuild/route.ts
+ M src/app/api/answerlattice/hosted-help-settings/route.ts
+ M src/app/api/answerlattice/operations/status/route.ts
+ M src/app/api/answerlattice/product-surfaces/rebuild-summary/route.ts
+ M src/app/api/answerlattice/tenant-summary/route.ts
+ M src/app/api/answerlattice/widget-activity/route.ts
+ M src/app/api/answerlattice/widget-config/route.ts
+ M src/app/api/answerlattice/workspace-profile/route.ts
+ M src/app/api/image-generation/batch-generation/route.ts
+ M src/app/api/image-generation/generators.ts
+ M src/app/api/image-generation/route.ts
+ M src/app/api/onboarding/create-subscription/route.ts
+ M src/app/api/platform/founder-monitor/route.ts
+ M src/app/api/public/create-menu/claim/route.ts
+ M src/app/api/public/create-menu/route.ts
+ M src/app/api/razorpay/cancel-subscription/route.ts
+ M src/app/api/razorpay/create-subscription/route.ts
+ M src/app/api/razorpay/verify-subscription/route.ts
+ M src/app/api/razorpay/webhook/route.ts
+ M src/app/api/reseller/confirm-payment/route.ts
+ M src/app/api/reseller/onboard/route.ts
+ M src/app/api/reseller/renew/route.ts
+ M src/app/api/signaldesk/actions/route.ts
+ M src/app/api/signaldesk/workspace/route.ts
+ M src/app/sites/answerlattice/answerlatticeWebsiteAssets.ts
+ M src/app/sites/answerlattice/components/ClosedLoopSection.tsx
+ M src/app/sites/answerlattice/components/HeroSection.tsx
+ M src/app/sites/answerlattice/components/ProductCapabilityLandingPage.tsx
+ M src/app/sites/answerlattice/page.tsx
+ M src/app/sites/answerlattice/product/page-aware-widget/page.tsx
+ M src/app/sites/answerlattice/styles.css
+ M src/components/answerlattice/AnswerlatticeDashboardLayout.tsx
+ M src/components/antdComponent/layoutWrapper/index.tsx
+ M src/components/auth/SessionExpiryMonitor.tsx
+ M src/components/common/OwnerAppUpdatePrompt.tsx
+ M src/components/customer/PublicMenuListAttribution.tsx
+ M src/components/mobile/ai-menu-manager/MobileAiMenuCardStack.tsx
+ M src/components/mobile/ai-menu-manager/MobileAiMenuManagerScreen.tsx
+ M src/components/mobile/components/MobilePublicTruthOwnerCheckCard.tsx
+ M src/components/mobile/components/PresenceMonitor.tsx
+ M src/components/mobile/screens/MobileBillingScreen.tsx
+ M src/components/mobile/screens/MobileDashboardScreen.tsx
+ M src/components/mobile/screens/MobileFeedbackDetail.tsx
+ M src/components/mobile/screens/MobileMoreScreen.tsx
+ M src/components/mobile/screens/MobileShareScreen.tsx
+ M src/components/signaldesk/SignalDeskWorkspace.module.scss
+ M src/components/signaldesk/SignalDeskWorkspace.tsx
+ M src/components/templates/main-app/aiMenuManager/AiMenuManagerRoute.tsx
+ M src/components/templates/main-app/aiMenuManager/cards/AiMenuProposalCard.tsx
+ M src/components/templates/main-app/billing/ActiveSubscriptionCard.tsx
+ M src/components/templates/main-app/billing/BillingHistory.tsx
+ M src/components/templates/main-app/billing/CancellationModal.tsx
+ M src/components/templates/main-app/businessSettings/TempStatusCard.tsx
+ M src/components/templates/main-app/dashboard/OwnerDashboard/OwnerDashboard.module.scss
+ M src/components/templates/main-app/dashboard/OwnerDashboard/ViewModeTabs.tsx
+ M src/components/templates/main-app/dashboard/OwnerDashboard/index.tsx
+ M src/components/templates/main-app/feedback/FeedbackCard.tsx
+ M src/components/templates/main-app/ownerBusinessAssistant/BusinessHealthDashboardCard.tsx
+ M src/components/templates/main-app/ownerBusinessAssistant/PublicTruthOwnerCheckCard.tsx
+ M src/components/templates/main-app/platform/founderMonitor/index.tsx
+ M src/components/templates/main-app/projects/ProjectDetails/ProjectConfirmModal.tsx
+ M src/components/templates/main-app/projects/types/ownerDashboard.types.ts
+ M src/components/templates/main-app/useMenuList/PresenceMonitor.tsx
+ M src/components/templates/main-app/useMenuList/index.tsx
+ M src/components/templates/main-app/useMenuList/presenceTypes.ts
+ M src/components/website/home/HeroSection.tsx
+ M src/components/website/legal/PrivacyPolicyPage.tsx
+ M src/components/website/legal/TermsOfServicePage.tsx
+ M src/config/features.ts
+ M src/constants/AI/models.ts
+ M src/constants/AI/unitCosts.ts
+ M src/constants/common.ts
+ M src/constants/database.ts
+ M src/constants/navigations.ts
+ M src/constants/signaldesk/database.ts
+ M src/constants/signaldesk/routes.ts
+ M src/database/aiMenuManager/index.ts
+ M src/database/aiMenuManager/server.ts
+ M src/database/ops/founderMonitor.ts
+ M src/database/ownerDashboard/index.ts
+ M src/database/platformSummary/index.ts
+ M src/database/signaldesk/index.ts
+ M src/database/stores/index.tsx
+ M src/database/subscriptions/paymentTransactions.ts
+ M src/hooks/useOwnerDashboard.ts
+ M src/hooks/usePaymentHandler.ts
+ M src/lib/ai-menu-manager/commandResolver.ts
+ M src/lib/ai-menu-manager/contextPacket.ts
+ M src/lib/ai-menu-manager/modelRouter/index.ts
+ M src/lib/ai-menu-manager/modelRouter/routerOutcomeSchema.ts
+ M src/lib/ai-menu-manager/schemas.ts
+ M src/lib/answerlattice/accessControl.ts
+ M src/lib/antd/antdClient.tsx
+ M src/lib/billing/billingHistoryFormatter.ts
+ M src/lib/communication/messageTemplates.ts
+ M src/lib/env/validateEnv.ts
+ M src/lib/onboarding/compensateFailedOnboarding.ts
+ M src/lib/onboarding/starterActivation.ts
+ M src/lib/ops/founderMonitorTypes.ts
+ M src/lib/ops/founderRevenueReadModel.ts
+ M src/lib/rateLimit/configs.ts
+ M src/lib/signaldesk/workflowServer.ts
+ M src/lib/validation/apiSchemas.ts
+ M src/styles/website.css
+ M src/types/aiMenuManager.ts
+ M src/types/platform/store.ts
+ M src/types/razorpay.ts
+ M src/types/signaldesk/index.ts
+?? .codex-artifacts/owner-referral-ui-audit/01-invite-disabled-desktop.png
+?? .codex-artifacts/owner-referral-ui-audit/02-invite-ready-desktop.png
+?? .codex-artifacts/owner-referral-ui-audit/03-invite-ready-desktop-fixed.png
+?? .codex-artifacts/owner-referral-ui-audit/04-invite-ready-mobile-fixed.png
+?? .codex-artifacts/owner-referral-ui-audit/05-invite-ready-mobile-viewport.png
+?? .codex-artifacts/owner-referral-ui-audit/06-owner-referral-modal-desktop.png
+?? .codex-artifacts/owner-referral-ui-audit/07-owner-referral-sheet-mobile.png
+?? .codex-artifacts/owner-referral-ui-audit/08-owner-referral-sheet-mobile-compact.png
+?? .codex-artifacts/owner-referral-ui-audit/09-owner-referral-sheet-mobile-compact-fixed.png
+?? .codex-artifacts/owner-referral-ui-audit/10-invite-unavailable-mobile-fixed.png
+?? .codex-artifacts/owner-referral-ui-audit/11-invite-ready-desktop-final.png
+?? .codex-artifacts/owner-referral-ui-audit/12-invite-ready-mobile-final.png
+?? __docs__/growth-intelligence/README.md
+?? __docs__/growth-intelligence/growth-intelligence_firebase.md
+?? __docs__/growth-intelligence/growth-intelligence_helpdoc.md
+?? __docs__/growth-intelligence/growth-intelligence_impl.md
+?? __docs__/growth-intelligence/growth-intelligence_marketing.md
+?? __docs__/growth-intelligence/growth-intelligence_mobile-support.md
+?? __docs__/growth-intelligence/growth-intelligence_spec.md
+?? __docs__/growth-intelligence/growth-intelligence_test-cases.md
+?? __docs__/growth-intelligence/growth-intelligence_website.md
+?? __docs__/main-website/asset-production/launch-pack-2026-07/menulist-launch-pack.md
+?? __docs__/menulist-marketing-distribution/_archive/owner-to-owner-referral-chatgpt-review-2026-07-10.md
+?? __docs__/menulist-marketing-distribution/menulist-marketing-distribution_bengaluru-ten-business-pilot.md
+?? __docs__/menulist-marketing-distribution/menulist-marketing-distribution_market-growth-gap-audit-2026-07-10.md
+?? __docs__/menulist-marketing-distribution/menulist-marketing-distribution_physical-partner-pilot.md
+?? __docs__/menulist-signaldesk/menulist-signaldesk_bengaluru-activation-trial-operating-pack-2026-07-10.md
+?? __docs__/menulist-signaldesk/menulist-signaldesk_social-channel-market-brief-2026-07-10.html
+?? __docs__/menulist-signaldesk/menulist-signaldesk_social-channel-market-research-and-next-plan-2026-07-10.md
+?? __docs__/menulist-signaldesk/signaldesk-revenue-operating-layer/README.md
+?? __docs__/menulist-signaldesk/signaldesk-revenue-operating-layer/signaldesk-revenue-operating-layer_compliance.md
+?? __docs__/menulist-signaldesk/signaldesk-revenue-operating-layer/signaldesk-revenue-operating-layer_firebase.md
+?? __docs__/menulist-signaldesk/signaldesk-revenue-operating-layer/signaldesk-revenue-operating-layer_impl.md
+?? __docs__/menulist-signaldesk/signaldesk-revenue-operating-layer/signaldesk-revenue-operating-layer_mobile-support.md
+?? __docs__/menulist-signaldesk/signaldesk-revenue-operating-layer/signaldesk-revenue-operating-layer_spec.md
+?? __docs__/menulist-signaldesk/signaldesk-revenue-operating-layer/signaldesk-revenue-operating-layer_test-cases.md
+?? __docs__/owner-action-layer/README.md
+?? __docs__/owner-action-layer/owner-action-layer_firebase.md
+?? __docs__/owner-action-layer/owner-action-layer_helpdoc.md
+?? __docs__/owner-action-layer/owner-action-layer_impl.md
+?? __docs__/owner-action-layer/owner-action-layer_marketing.md
+?? __docs__/owner-action-layer/owner-action-layer_mobile-support.md
+?? __docs__/owner-action-layer/owner-action-layer_spec.md
+?? __docs__/owner-action-layer/owner-action-layer_test-cases.md
+?? __docs__/owner-action-layer/owner-action-layer_website.md
+?? __docs__/owner-referral/README.md
+?? __docs__/owner-referral/_archive/owner-referral_doc-feedback-audit-2026-07-10.md
+?? __docs__/owner-referral/_archive/owner-referral_immediate-founder-implementation-approval-2026-07-10.md
+?? __docs__/owner-referral/_archive/owner-referral_payment-only-policy-amendment-2026-07-10.md
+?? __docs__/owner-referral/owner-referral_firebase.md
+?? __docs__/owner-referral/owner-referral_helpdoc.md
+?? __docs__/owner-referral/owner-referral_impl.md
+?? __docs__/owner-referral/owner-referral_marketing.md
+?? __docs__/owner-referral/owner-referral_mobile-support.md
+?? __docs__/owner-referral/owner-referral_spec.md
+?? __docs__/owner-referral/owner-referral_test-cases.md
+?? __docs__/owner-referral/owner-referral_validation.md
+?? __docs__/owner-referral/owner-referral_website.md
+?? __docs__/videos/hyperframes/answerlattice-authority-transfer/AGENTS.md
+?? __docs__/videos/hyperframes/answerlattice-authority-transfer/CLAUDE.md
+?? __docs__/videos/hyperframes/answerlattice-authority-transfer/README.md
+?? __docs__/videos/hyperframes/answerlattice-authority-transfer/assets/brand/answerlattice-logo-mark.png
+?? __docs__/videos/hyperframes/answerlattice-authority-transfer/assets/brand/answerlattice-logo.svg
+?? __docs__/videos/hyperframes/answerlattice-authority-transfer/hyperframes.json
+?? __docs__/videos/hyperframes/answerlattice-authority-transfer/index.html
+?? __docs__/videos/hyperframes/answerlattice-authority-transfer/meta.json
+?? __docs__/videos/hyperframes/answerlattice-authority-transfer/package.json
+?? __docs__/videos/hyperframes/answerlattice-authority-transfer/renders/answerlattice-authority-transfer-source.mp4
+?? __docs__/videos/hyperframes/answerlattice-authority-transfer/shot-plan.json
+?? __docs__/videos/hyperframes/answerlattice-page-aware-widget-clip/AGENTS.md
+?? __docs__/videos/hyperframes/answerlattice-page-aware-widget-clip/CLAUDE.md
+?? __docs__/videos/hyperframes/answerlattice-page-aware-widget-clip/README.md
+?? __docs__/videos/hyperframes/answerlattice-page-aware-widget-clip/assets/brand/answerlattice-logo-mark.png
+?? __docs__/videos/hyperframes/answerlattice-page-aware-widget-clip/assets/brand/answerlattice-logo.svg
+?? __docs__/videos/hyperframes/answerlattice-page-aware-widget-clip/hyperframes.json
+?? __docs__/videos/hyperframes/answerlattice-page-aware-widget-clip/index.html
+?? __docs__/videos/hyperframes/answerlattice-page-aware-widget-clip/meta.json
+?? __docs__/videos/hyperframes/answerlattice-page-aware-widget-clip/package.json
+?? __docs__/videos/hyperframes/answerlattice-page-aware-widget-clip/renders/answerlattice-page-aware-widget-clip-source.mp4
+?? __docs__/videos/hyperframes/answerlattice-page-aware-widget-clip/shot-plan.json
+?? __docs__/videos/hyperframes/answerlattice-support-control-motion/AGENTS.md
+?? __docs__/videos/hyperframes/answerlattice-support-control-motion/CLAUDE.md
+?? __docs__/videos/hyperframes/answerlattice-support-control-motion/README.md
+?? __docs__/videos/hyperframes/answerlattice-support-control-motion/assets/brand/answerlattice-logo-mark.png
+?? __docs__/videos/hyperframes/answerlattice-support-control-motion/assets/brand/answerlattice-logo.svg
+?? __docs__/videos/hyperframes/answerlattice-support-control-motion/hyperframes.json
+?? __docs__/videos/hyperframes/answerlattice-support-control-motion/index.html
+?? __docs__/videos/hyperframes/answerlattice-support-control-motion/meta.json
+?? __docs__/videos/hyperframes/answerlattice-support-control-motion/package.json
+?? __docs__/videos/hyperframes/answerlattice-support-control-motion/renders/answerlattice-support-control-motion-source.mp4
+?? __docs__/videos/hyperframes/answerlattice-support-control-motion/shot-plan.json
+?? __docs__/videos/hyperframes/menulist-business-truth-loop/AGENTS.md
+?? __docs__/videos/hyperframes/menulist-business-truth-loop/CLAUDE.md
+?? __docs__/videos/hyperframes/menulist-business-truth-loop/README.md
+?? __docs__/videos/hyperframes/menulist-business-truth-loop/assets/brand/menulist-icon.png
+?? __docs__/videos/hyperframes/menulist-business-truth-loop/hyperframes.json
+?? __docs__/videos/hyperframes/menulist-business-truth-loop/index.html
+?? __docs__/videos/hyperframes/menulist-business-truth-loop/meta.json
+?? __docs__/videos/hyperframes/menulist-business-truth-loop/package.json
+?? __docs__/videos/hyperframes/menulist-business-truth-loop/renders/menulist-business-truth-loop-source.mp4
+?? __docs__/videos/hyperframes/menulist-business-truth-loop/shot-plan.json
+?? __docs__/videos/hyperframes/menulist-owner-ease-30s-v2/AGENTS.md
+?? __docs__/videos/hyperframes/menulist-owner-ease-30s-v2/CLAUDE.md
+?? __docs__/videos/hyperframes/menulist-owner-ease-30s-v2/DESIGN.md
+?? __docs__/videos/hyperframes/menulist-owner-ease-30s-v2/README.md
+?? __docs__/videos/hyperframes/menulist-owner-ease-30s-v2/assets/audio/voice-kokoro-af-nova-selected.wav
+?? __docs__/videos/hyperframes/menulist-owner-ease-30s-v2/assets/brand/menulist-icon-512.png
+?? __docs__/videos/hyperframes/menulist-owner-ease-30s-v2/assets/mix/README.md
+?? __docs__/videos/hyperframes/menulist-owner-ease-30s-v2/assets/mix/owner-ease-30s-v2-chain-reaction-master.wav
+?? __docs__/videos/hyperframes/menulist-owner-ease-30s-v2/assets/music/LICENSES.md
+?? __docs__/videos/hyperframes/menulist-owner-ease-30s-v2/assets/music/source-tracks/freetouse-aetheric-chain-reaction.mp3
+?? __docs__/videos/hyperframes/menulist-owner-ease-30s-v2/assets/music/source-tracks/freetouse-pufino-enlivening.mp3
+?? __docs__/videos/hyperframes/menulist-owner-ease-30s-v2/hyperframes.json
+?? __docs__/videos/hyperframes/menulist-owner-ease-30s-v2/index.html
+?? __docs__/videos/hyperframes/menulist-owner-ease-30s-v2/meta.json
+?? __docs__/videos/hyperframes/menulist-owner-ease-30s-v2/package.json
+?? __docs__/videos/hyperframes/menulist-owner-ease-30s-v2/renders/menulist-owner-ease-30s-v2-chain-reaction.mp4
+?? __docs__/videos/hyperframes/menulist-owner-ease-30s-v2/script.txt
+?? __docs__/videos/hyperframes/menulist-owner-ease-30s-v2/storyboard.md
+?? __docs__/videos/hyperframes/menulist-owner-ease-30s/AGENTS.md
+?? __docs__/videos/hyperframes/menulist-owner-ease-30s/CLAUDE.md
+?? __docs__/videos/hyperframes/menulist-owner-ease-30s/DESIGN.md
+?? __docs__/videos/hyperframes/menulist-owner-ease-30s/README.md
+?? __docs__/videos/hyperframes/menulist-owner-ease-30s/assets/audio/voice-kokoro-af-nova-selected.wav
+?? __docs__/videos/hyperframes/menulist-owner-ease-30s/assets/brand/menulist-icon-512.png
+?? __docs__/videos/hyperframes/menulist-owner-ease-30s/assets/mix/owner-ease-30s-audio-v1-master.wav
+?? __docs__/videos/hyperframes/menulist-owner-ease-30s/assets/music/LICENSES.md
+?? __docs__/videos/hyperframes/menulist-owner-ease-30s/assets/music/source-tracks/freetouse-pufino-enlivening.mp3
+?? __docs__/videos/hyperframes/menulist-owner-ease-30s/hyperframes.json
+?? __docs__/videos/hyperframes/menulist-owner-ease-30s/index.html
+?? __docs__/videos/hyperframes/menulist-owner-ease-30s/meta.json
+?? __docs__/videos/hyperframes/menulist-owner-ease-30s/package.json
+?? __docs__/videos/hyperframes/menulist-owner-ease-30s/renders/menulist-owner-ease-30s-v1.mp4
+?? __docs__/videos/hyperframes/menulist-owner-ease-30s/script.txt
+?? __docs__/videos/videos_hyperframes-operating-guide.md
+?? firestore-debug.log
+?? packages/asset-factory/briefs/menulist.launch.device.owner-pwa-dashboard.md
+?? packages/asset-factory/briefs/menulist.launch.video.frame.approved-source.md
+?? packages/asset-factory/briefs/menulist.launch.video.frame.final-proof.md
+?? packages/asset-factory/briefs/menulist.launch.video.frame.public-surfaces.md
+?? packages/asset-factory/briefs/menulist.launch.video.frame.stable-loop.md
+?? packages/asset-factory/published/menulist/launch-video-frames/01-approved-source.png
+?? packages/asset-factory/published/menulist/launch-video-frames/02-public-surfaces.png
+?? packages/asset-factory/published/menulist/launch-video-frames/03-stable-loop.png
+?? packages/asset-factory/published/menulist/launch-video-frames/04-final-proof.png
+?? packages/asset-factory/published/menulist/launch-video-frames/index.json
+?? packages/asset-factory/published/placeholders/answerlattice.home.section.authority-transfer.svg
+?? packages/asset-factory/published/placeholders/answerlattice.product.page-aware-widget.clip.svg
+?? packages/asset-factory/published/placeholders/menulist.home.hero.business-truth-loop.svg
+?? public/answerlattice-authority-transfer-poster.png
+?? public/answerlattice-authority-transfer.mp4
+?? public/answerlattice-authority-transfer.webm
+?? public/answerlattice-page-aware-widget-clip-poster.png
+?? public/answerlattice-page-aware-widget-clip.mp4
+?? public/answerlattice-page-aware-widget-clip.webm
+?? public/answerlattice-support-control-motion-poster.png
+?? public/answerlattice-support-control-motion.mp4
+?? public/answerlattice-support-control-motion.webm
+?? public/images/website/menulist-business-truth-loop-poster.webp
+?? public/images/website/menulist-business-truth-loop.mp4
+?? public/images/website/menulist-business-truth-loop.webm
+?? scripts/verification/test-growth-intelligence-emulator.ts
+?? scripts/verification/test-owner-referral-emulator.ts
+?? scripts/verification/verify-growth-intelligence-boundary.js
+?? scripts/verification/verify-owner-action-layer.js
+?? scripts/verification/verify-owner-referral.ts
+?? scripts/website-assets/extract-menulist-launch-frames.mjs
+?? scripts/website-assets/generate-assetos-motion-compositions.mjs
+?? scripts/website-assets/transcode-assetos-motion-assets.mjs
+?? src/app/(signaldesk)/signaldesk/revenue/page.tsx
+?? src/app/(website)/invite/OwnerReferralInviteClient.tsx
+?? src/app/(website)/invite/page.tsx
+?? src/app/api/ai-menu-manager/plan/route.ts
+?? src/app/api/owner-referrals/route.ts
+?? src/app/api/public/owner-referrals/capture/route.ts
+?? src/app/sites/answerlattice/components/AnswerlatticeMotionAsset.tsx
+?? src/components/mobile/sheets/MobileOwnerReferralSheet.tsx
+?? src/components/templates/main-app/dashboard/OwnerDashboard/OwnerDashboardGraphMode.tsx
+?? src/components/templates/main-app/useMenuList/OwnerReferralModal.tsx
+?? src/data/shared/ownerReferralPolicy.ts
+?? src/hooks/useOwnerReferral.ts
+?? src/lib/ai-menu-manager/compoundCommand.ts
+?? src/lib/ai-menu-manager/modelRouter/modelRouteCard.ts
+?? src/lib/ai-menu-manager/modelRouter/plannerActionContracts.ts
+?? src/lib/ai-menu-manager/modelRouter/plannerContext.ts
+?? src/lib/ai-menu-manager/modelRouter/providerResultPolicy.ts
+?? src/lib/ai-menu-manager/presentation.ts
+?? src/lib/billing/cancellationReasons.ts
+?? src/lib/feedback/feedbackReplyTemplates.ts
+?? src/lib/growth/acquisitionAttribution.ts
+?? src/lib/ops/founderGrowthReadModel.ts
+?? src/lib/ownerActions/buildOwnerActionLayer.ts
+?? src/lib/ownerReferral/ownerReferralAttributionServer.ts
+?? src/lib/ownerReferral/ownerReferralClient.ts
+?? src/lib/ownerReferral/ownerReferralFeature.ts
+?? src/lib/ownerReferral/ownerReferralSettlementServer.ts
+?? src/lib/ownerReferral/ownerReferralTokenServer.ts
+?? src/lib/ownerReferral/ownerReferralTypes.ts

@@ -1,10 +1,15 @@
 import { DB_COLLECTIONS } from '@constant/database';
+import { PRODUCT_IDS } from '@constant/product';
 import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentComposer';
+import { normalizeAnswerlatticeChatFeedback } from '@lib/answerlattice/chatSessionContracts';
+import { normalizeAnswerlatticeSearchHistoryId } from '@lib/answerlattice/searchHistoryIdBoundary';
+import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { apiCallComposer } from '@lib/apiHelper/apiCallComposer';
+import getActiveSession from '@lib/auth/getActiveSession';
 import { answerlatticeFirebaseClient } from '@lib/firebase/answerlatticeFirebaseClient';
 import { AiSearchHistory } from '@type/aiSearchHistory';
 import LoginUserType from '@type/loginUser';
-import { addDoc, collection, doc, getDocs, limit, orderBy, query, setDoc, where } from 'firebase/firestore';
+import { addDoc, collection, doc, getDocs, limit, orderBy, query, runTransaction, Timestamp, where } from 'firebase/firestore';
 
 const COLLECTION = DB_COLLECTIONS.AI_SEARCH_HISTORY;
 
@@ -51,7 +56,7 @@ export function assertAiSearchHistoryFeedbackUpdateSucceeded(
 export const addAiSearchHistory = async (data: Omit<AiSearchHistory, 'id'>) => {
     return await apiCallComposer(
         async () => {
-            const submitData = await answerlatticeRequestBodyComposer(data);
+            const submitData = await answerlatticeRequestBodyComposer(data, { isNew: true });
             const docRef = await addDoc(await getCollectionRef(), submitData);
             return { ...submitData, id: docRef.id };
         },
@@ -77,6 +82,7 @@ export const findCachedSearchByCacheKey = async (
 
         const q = query(
             collRef,
+            where('pId', '==', PRODUCT_IDS.ANSWERLATTICE),
             where("cacheKey", "==", cacheKey),
             where("tId", "==", session.tId),
             where("sId", "==", session.sId),
@@ -101,15 +107,54 @@ export const findCachedSearchByCacheKey = async (
 export const updateAiSearchHistoryWithFeedback = async (data: Partial<AiSearchHistory>) => {
     return await apiCallComposer(
         async () => {
-            if (!data.id) {
-                throw new Error('ai_search_history_feedback_missing_id');
-            }
-            const composedData = await answerlatticeRequestBodyComposer(data);
-            await setDoc(await getDocRef(data.id), composedData, { merge: true });
+            const searchHistoryId = normalizeAnswerlatticeSearchHistoryId(data.id);
+            if (!searchHistoryId) throw new Error('ai_search_history_feedback_missing_id');
+            const session = await getActiveSession();
+            const scope = resolveAnswerlatticeSessionScope(session);
+            const actorName = String(session?.user?.name || session?.user?.email || '').trim();
+            if (!scope || !actorName) throw new Error('ai_search_history_feedback_scope_missing');
+            const feedback = normalizeAnswerlatticeChatFeedback(data, Timestamp.now());
+            let wrote = false;
+            await runTransaction(answerlatticeFirebaseClient, async (transaction) => {
+                const searchHistoryRef = await getDocRef(searchHistoryId);
+                const snapshot = await transaction.get(searchHistoryRef);
+                if (!snapshot.exists()) throw new Error('ai_search_history_not_found');
+                const current = snapshot.data();
+                if (
+                    current.pId !== PRODUCT_IDS.ANSWERLATTICE
+                    || Number(current.tId) !== scope.tenantId
+                    || Number(current.sId) !== scope.storeId
+                ) throw new Error('ai_search_history_feedback_scope_invalid');
+                if (typeof current.isGood === 'boolean') {
+                    const existingComparable = {
+                        isGood: current.isGood,
+                        reasonsToImprove: Array.isArray(current.reasonsToImprove) ? current.reasonsToImprove : [],
+                        comments: String(current.comments || ''),
+                    };
+                    const nextComparable = {
+                        isGood: feedback.isGood,
+                        reasonsToImprove: feedback.reasonsToImprove || [],
+                        comments: feedback.comments || '',
+                    };
+                    if (JSON.stringify(existingComparable) !== JSON.stringify(nextComparable)) {
+                        throw new Error('ai_search_history_feedback_already_submitted');
+                    }
+                    return;
+                }
+                transaction.update(searchHistoryRef, {
+                    ...feedback,
+                    pId: PRODUCT_IDS.ANSWERLATTICE,
+                    tId: scope.tenantId,
+                    sId: scope.storeId,
+                    modifiedBy: actorName,
+                    modifiedOn: Timestamp.now(),
+                });
+                wrote = true;
+            });
             return {
-                searchHistoryId: data.id,
+                searchHistoryId,
                 success: true,
-                updatedFields: Object.keys(composedData),
+                updatedFields: wrote ? ['isGood', 'reasonsToImprove', 'comments', 'submittedAt'] : [],
             } satisfies AiSearchHistoryFeedbackUpdateResult;
         },
         data,

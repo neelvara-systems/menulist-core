@@ -1,7 +1,8 @@
 # SignalDesk Outcome Bridge - Compliance Policy
 
-**Status:** Initial policy
+**Status:** Runtime-enforced policy; local emulator verified
 **Created:** June 23, 2026
+**Runtime reconciled:** July 13, 2026
 
 ## Principle
 
@@ -14,6 +15,8 @@ SignalDesk can measure growth outcomes, but it must not become a hidden backdoor
 - Tokens must be revocable.
 - Tokens must not expose target IDs, operator IDs, email addresses, or phone numbers.
 - Tokens must not bypass MenuList auth or owner approval.
+- New events must revalidate scope, token hash, target binding, active state, revocation state, and expiry in the same transaction as outcome writes.
+- Exact accepted retries may return `duplicate` after revocation so providers can stop retrying without creating new state.
 
 ## Data Boundary
 

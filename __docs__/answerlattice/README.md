@@ -1,7 +1,7 @@
 # Help Center — Feature Documentation
 
 > **Status:** DOCUMENTED (Forensic Audit)
-> **Last Updated:** 2026-05-21
+> **Last Updated:** 2026-07-11
 > **Audit Type:** Codebase-first forensic documentation
 > **Feature Scope:** 16 subsystems, 190+ files, Answerlattice + Help Center Firestore collections
 
@@ -24,6 +24,8 @@ The Help Center is MenuList's **integrated support infrastructure** — a multi-
 - **AI Intelligence Layer** — Cloud Functions for feedback intelligence, KB quality, weekly narratives
 
 Answerlattice is now maintained as separate governed answer infrastructure for SaaS support. MenuList is one independent client integration for shared support surfaces; Answerlattice-owned dashboard, onboarding, widget, scheduler, and Firebase data stay under Answerlattice routes, constants, flags, and product-scoped session data.
+
+Firebase assurance and current deployment limits: [Firebase Forensic Audit](./firebase-forensic-audit.md).
 
 ## Answerlattice Product Operating Model
 
@@ -69,6 +71,7 @@ Owner-facing setup surfaces must stay direct and founder-readable. The dashboard
 | 19  | `knowledge-intake-command-center/`               | Product/Ops/Dev | Planned founder-first, paid-gated source intake architecture that sits above the current KB generation pipeline |
 | 20  | `cost-read-model-guardrails/`                    | Developers/Ops | Answerlattice-wide summary-doc, bounded-list, listener, and Firebase cost guardrails |
 | 21  | `owner-support-assistant/`                       | Product/Ops/Dev | Docs-frozen owner/staff support review and action assistant using existing summaries, tickets, Governance, Support Board, typed action adapters, and cost-bounded AI operation logging |
+| 22  | `aidbase-competitor-response_validation.md`      | Product/Dev/Ops | Aidbase fit verdict, implemented response matrix, cross-surface evidence, source gates, and release blockers |
 
 ---
 
@@ -137,8 +140,11 @@ The `/help-center` surface belongs to the MenuList owner app. Answerlattice dash
 - `/answerlattice/billing` → `src/app/(answerlattice)/answerlattice/billing/page.tsx`
 - `/answerlattice/transactions` → `src/app/(answerlattice)/answerlattice/transactions/page.tsx`
 - `/answerlattice/weekly-digest` → `src/app/(answerlattice)/answerlattice/weekly-digest/page.tsx`
+- `/answerlattice/support-assistant` → `src/app/(answerlattice)/answerlattice/support-assistant/page.tsx`
 
-Planned docs only: Owner Support Assistant reserves `/answerlattice/support-assistant` as an Answerlattice owner/staff route behind `ENABLE_ANSWERLATTICE_OWNER_SUPPORT_ASSISTANT`. Do not expose the nav item, route, query API, or action APIs until implementation, cost proof, access checks, confirmation behavior, and mobile verification pass.
+### Answerlattice Owner Support Assistant Read-Only Runtime
+
+The enabled `/answerlattice/support-assistant` management route requires `MANAGE_SUPPORT` and exposes deterministic, summary-only operational guidance. Its protected brief/query APIs use compact `platformSummary` documents, bounded request/response parsing, private/no-store responses, and rate limiting before data-backed admission. The runtime performs no provider call, transcript persistence, assistant write, raw conversation/ticket read, mutation preview, or mutation execution. The action, feedback, AI-assisted, bounded-detail, owner-analytics, and scheduler contracts in the feature docs remain deferred.
 
 The Answerlattice shell is responsive: desktop uses the shared MenuList dashboard chrome for the header/sidebar and Answerlattice-owned navigation, while mobile uses a sticky header and drawer navigation with the same safe-area handling. The sidebar exposes workflow groups and clean tab subroutes for Governance, Widget, and Team. Client support users see only the client support routes; Answerlattice owner/admin/manager sessions and `PLATFORM` / `PLATFORM_SUPPORT` sessions can access management routes. Governance tables use horizontal scroll on narrow screens, and detail drawers/modals collapse to viewport width.
 
@@ -189,7 +195,10 @@ Widget iframe frame headers are relaxed only on Answerlattice product hosts reso
 - `POST /api/answerlattice/tenant-summary` — Authenticated server-side sync for `platformSummary/answerlatticeTenantsSummary` after client-side entity creation
 - `POST /api/answerlattice/product-surfaces/rebuild-summary` — Authenticated rebuild of compact `platformSummary/contextContent_{tId}_{sId}` for route-aware related content
 
-Planned docs only: Owner Support Assistant reserves `POST /api/answerlattice/support-assistant/query` for a protected, rate-limited, summary-first query endpoint. It also reserves action preview/execute endpoints for typed owner-confirmed actions over existing target write paths. These endpoints are not live until the feature flag and implementation are added.
+- `GET /api/answerlattice/support-assistant/brief` — Protected five-summary operational brief with a bounded in-process cache
+- `POST /api/answerlattice/support-assistant/query` — Protected, rate-limited deterministic question classifier over the same summary packet
+
+No `/api/answerlattice/support-assistant/actions/*`, feedback, or owner-analytics endpoint is live.
 
 ### Database Layer (DAL)
 
@@ -280,8 +289,7 @@ Planned docs only: Owner Support Assistant reserves `POST /api/answerlattice/sup
 | `ENABLE_ANSWERLATTICE_FOUNDER_ONBOARDING` | `src/config/features.ts` / `functions-answerlattice/src/constants/features.ts` | `true` | Capped initial entity/draft bootstrap after KB publish |
 | `ENABLE_ANSWERLATTICE_TRUST_METRICS`     | `src/config/features.ts` / `functions-answerlattice/src/constants/features.ts` | `true` | Compact trust metrics summary                    |
 | `ENABLE_ANSWERLATTICE_NIGHTLY`           | `functions-answerlattice/src/constants/features.ts` | `true`  | Server-side nightly batch (3:00 AM UTC)          |
-
-Planned docs only: Owner Support Assistant defines `ENABLE_ANSWERLATTICE_OWNER_SUPPORT_ASSISTANT` as an app-side flag with default `false`. Do not treat it as a live runtime flag until it is added to `src/config/features.ts`.
+| `ENABLE_ANSWERLATTICE_OWNER_SUPPORT_ASSISTANT` | `src/config/features.ts` | `true` | Private read-only summary assistant; no AI call or mutation path |
 
 ---
 
@@ -324,7 +332,7 @@ Planned docs only: Owner Support Assistant defines `ENABLE_ANSWERLATTICE_OWNER_S
 | `answerlattice_productSurfaces`       | Route/page/workflow context definitions | Tenant+Store scoped                 |
 | `platformSummary/contextContent_{tId}_{sId}` | Compact related-content surface summary | Tenant+Store scoped summary |
 
-Owner Support Assistant docs add no assistant-owned Firestore collection, action queue, or dedicated owner analytics collection. The planned route must reuse compact summaries, existing daily aggregates, existing ticket, Support Board/Governance records, target histories, `answerlattice_auditLogs` when assistant execution needs explicit audit, and `answerlattice_aiOperations` only for LLM-backed operations. New read models are planned as compact `platformSummary/ownerSupportAssistantSummary_{tId}_{sId}` and `platformSummary/ownerSupportAnalyticsSummary_{tId}_{sId}` documents.
+Owner Support Assistant adds no assistant-owned Firestore collection, action queue, or dedicated owner analytics collection. The live read-only route reuses the existing coverage, trust, Support Board, friction, and Knowledge Intake compact summaries through one bounded `getAll()` call. Proposed action audit/AI operation paths and the compact `ownerSupportAssistantSummary` / `ownerSupportAnalyticsSummary` read models remain deferred and are not written by the current runtime.
 
 **Rules, auth, and indexes:** Answerlattice tenant-scoped rules are mirrored in `firestore.rules` for explicit shared-mode/emulator recovery and `firestore-answerlattice.rules` for the active Answerlattice Firebase targets (`answerlattice-qa` locally/in Preview, `answerlattice` in Production). `/api/auth/set-claims` returns a separate Answerlattice custom token when `ANSWERLATTICE_FIREBASE_MODE=separate` and the request is Answerlattice-scoped with `productId: 'AL'`; normal MenuList auth sync must not mint Answerlattice tokens. The client signs into the Answerlattice Firebase app with Answerlattice-scoped `platformRole`, `tenantId`, `storeId`, and Answerlattice permission claims resolved from the default user document's `productAccounts.AL` bridge, the Answerlattice `users` document, and `stores/{sId}.answerlatticeRoles`. Platform/support fallback claims must still use the `productAccounts.AL` tenant/store scope, not the default MenuList store. If separate Answerlattice Firebase Auth cannot mint the custom token, the route returns a controlled service-unavailable response rather than silently falling back to MenuList Firebase credentials. Answerlattice query and vector indexes are mirrored in `firestore.indexes.json` and `firestore-answerlattice.indexes.json`, including the `kb_articles` vector search path filtered by `status + tId + sId + embedding`.
 
@@ -396,8 +404,9 @@ Each subsystem has its own complete documentation suite (8 docs per feature):
 | 9   | **[Knowledge Intake Command Center](./knowledge-intake-command-center/README.md)** | `knowledge-intake-command-center/` | 10 docs | Planned source registry, selected-page website discovery, paid intake gates, product map, review queue, runtime publishing matrix, and cost contract |
 | 10  | **[Repeated Reply Import](./repeated-reply-import/README.md)** | `repeated-reply-import/` | 8 docs | Repeated founder replies become FAQ and canonical proposal drafts through Knowledge Intake |
 | 11  | **[Owner Support Assistant](./owner-support-assistant/README.md)** | `owner-support-assistant/` | 15 docs | Docs-frozen summary-first owner/staff support review assistant with dashboard support analytics, supported cases/actions catalogue, owner-confirmed action adapters, and no assistant-owned transcript/event/action collection |
+| 12  | **[Founder Daily Brief](./founder-daily-brief/README.md)** | `founder-daily-brief/` | 9 docs | Read-only daily action plan computed from the existing Support Assistant five-summary packet |
 
-**Total:** 11 deep-dive feature folders, including FAQ Management, Knowledge Intake Command Center, Repeated Reply Import, and docs-frozen Owner Support Assistant.
+**Total:** 12 deep-dive feature folders, including FAQ Management, Knowledge Intake Command Center, Repeated Reply Import, the live read-only Owner Support Assistant runtime, and Founder Daily Brief.
 
 Each sub-feature folder contains:
 
@@ -416,6 +425,8 @@ Each sub-feature folder contains:
 
 | Date       | Version | Change                                                                                                                                                                                 |
 | ---------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-07-11 | 3.4.15  | Added the maintained Aidbase competitor-response validation matrix and aligned strict canonical scope, cache freshness, resumable paid setup, public demo/trust, and KB publish lifecycle documentation to current source. |
+| 2026-07-11 | 3.4.14  | Added Founder Daily Brief as a read-only Support Assistant extension computed from existing coverage, trust, Support Board, friction, and Knowledge Intake summaries. |
 | 2026-06-28 | 3.4.13  | Hardened public API/widget runtime diagnostics with fixed failure codes and bounded tenant/store metadata while preserving existing auth, admission, cache, and response contracts. |
 | 2026-06-27 | 3.4.12  | Completed bounded request-body admission across Answerlattice, widget, and Help Center route files, including public APIs, widget runtime, MCP, protected AI routes, config saves, onboarding, rebuild actions, and Knowledge Intake. |
 | 2026-06-11 | 3.4.11  | Hardened founder/operator usability across Answerlattice setup surfaces: product-scoped dashboard metadata, safer widget-key placeholders, clearer intake/governance empty states, mobile file selection, and owner-readable digest copy. |

@@ -2,7 +2,7 @@
 
 **Owner-Facing Name:** Business Health
 **Status:** Current read-only test contract
-**Last Updated:** June 17, 2026
+**Last Updated:** July 13, 2026
 
 ## Verification Script
 
@@ -28,6 +28,9 @@ Cover:
 - Business Health signal labels and owner messages
 - answer resolver behavior for supported and unsupported questions
 - type/schema rejection of unsupported packet profiles and oversized payloads
+- persisted current/analytics projection strips Firestore-only and unknown nested fields
+- wrong tenant/store identity and malformed required arrays/maps fail before context-packet composition
+- cached packet identity must match the cache-key tenant, store, and project dimensions
 
 ## API Tests
 
@@ -71,6 +74,7 @@ Cover:
 - bounded answer events
 - bounded monitor queries
 - context-packet cache reuse
+- malformed or scope-mismatched cached packets become cache misses
 - no action/draft document writes
 - no base64 image storage
 - no unbounded historical session scan on open

@@ -5,6 +5,7 @@ import { getBoundedAnalyticsStringContext, logAnalyticsFailure } from '@lib/anal
 import { getBusinessAnalyticsDateKey, resolveBusinessDayEndTime } from '@lib/analytics/businessDay';
 import { addDaysToAnalyticsDateKey } from '@lib/analytics/dateKey';
 import { getResolvedAnalyticsPreferences, type ResolvedAnalyticsPreferences } from '@lib/analytics/preferences';
+import { isValidAnalyticsTimeZone } from '@lib/analytics/timeZoneDiagnostics';
 import { filterAnalyticsUpdateData } from '@lib/analytics/writePolicy';
 import { writePublicAnalyticsEventAdmin } from '@lib/analytics/serverWrite';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
@@ -33,7 +34,7 @@ const AnalyticsTrackSchema = z.object({
     storeTimeZone: z.string().trim().max(80).optional(),
     businessDayEndTime: z.string().trim().regex(/^\d{2}:\d{2}$/).optional(),
     updateData: z.record(
-        z.string().regex(/^[A-Za-z0-9_.:-]{1,180}$/),
+        z.string().min(1).max(180),
         AnalyticsValueSchema,
     ).refine((data) => Object.keys(data).length <= 100, {
         message: 'Too many analytics fields.',
@@ -79,8 +80,15 @@ async function validateAnalyticsTargetUncached(
     if (store.active === false || store.deleted === true || isPlatformEntityBlocked(store)) return null;
 
     const tenantSnap = await firestoreAdmin.collection(DB_COLLECTIONS.TENANTS).doc(tenantId).get();
-    if (!tenantSnap.exists || isPlatformEntityBlocked(tenantSnap.data())) return null;
+    const tenant = tenantSnap.data();
+    if (
+        !tenantSnap.exists
+        || tenant?.active === false
+        || tenant?.deleted === true
+        || isPlatformEntityBlocked(tenant)
+    ) return null;
 
+    const rawStoreTimeZone = typeof store.timeZone === 'string' ? store.timeZone.trim() : '';
     const target: ValidatedAnalyticsTarget = {
         analyticsPreferences: getResolvedAnalyticsPreferences(store.analytics || null),
         businessDayEndTime: resolveBusinessDayEndTime(
@@ -88,8 +96,8 @@ async function validateAnalyticsTargetUncached(
             store.businessDayEndTime,
             store.businessCategory,
         ),
-        storeTimeZone: typeof store.timeZone === 'string' && store.timeZone.trim()
-            ? store.timeZone.trim()
+        storeTimeZone: rawStoreTimeZone && isValidAnalyticsTimeZone(rawStoreTimeZone, 'analytics_date_key')
+            ? rawStoreTimeZone
             : undefined,
     };
 
@@ -152,9 +160,8 @@ function resolveAcceptedDate(
     const currentDate = getBusinessAnalyticsDateKey(new Date(), storeTimeZone, businessDayEndTime);
     const dateString = requestedDate || currentDate;
     const oldestAcceptedDate = addDaysToAnalyticsDateKey(currentDate, -1);
-    const newestAcceptedDate = addDaysToAnalyticsDateKey(currentDate, 1);
 
-    if (dateString < oldestAcceptedDate || dateString > newestAcceptedDate) {
+    if (dateString < oldestAcceptedDate || dateString > currentDate) {
         return null;
     }
 

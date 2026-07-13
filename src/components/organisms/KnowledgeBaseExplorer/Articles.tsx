@@ -2,6 +2,7 @@ import { useArticleCache } from '@hook/useArticleCache';
 import { normalizeHelpCenterRouteSegment } from '@constant/navigations';
 import ArticleView from '@organisms/ArticleView';
 import { KnowledgeBaseArticleMeta, KnowledgeBaseArticleType, KnowledgeBaseCategory, KnowledgeBaseSection } from '@type/knowledgeBase';
+import type { AnswerlatticeReadableArticle } from '@lib/answerlattice/publicContentBoundary';
 import { Button, Empty, Flex, Skeleton, Typography } from 'antd';
 import { useEffect, useState } from 'react';
 import { LuFileSearch, LuRefreshCw } from 'react-icons/lu';
@@ -18,7 +19,7 @@ interface ArticlesProps {
 
 const Articles = ({ activeArticleId, parent, articles, searchTerm, onResetSearch }: ArticlesProps) => {
     const { getArticle } = useArticleCache();
-    const [fullArticles, setFullArticles] = useState<(KnowledgeBaseArticleType | null)[]>([]);
+    const [fullArticles, setFullArticles] = useState<(AnswerlatticeReadableArticle | null)[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {

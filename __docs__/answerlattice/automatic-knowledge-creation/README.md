@@ -1,9 +1,9 @@
 # Answerlattice — Automatic Knowledge Creation
 
 > **Status:** IMPLEMENTED — Capped and human-reviewed
-> **Version:** 1.1.2
+> **Version:** 1.2.0
 > **Created:** 2026-03-09
-> **Last Updated:** 2026-06-28
+> **Last Updated:** 2026-07-11
 > **Feature Flag:** `ENABLE_ANSWERLATTICE_AUTO_KNOWLEDGE` (ready-to-use default ON; capped and human-reviewed)
 > **Expansion Item:** #4 in answerlattice-expansion-tracker.md
 > **Doctrine Compliance:** ⚠️ CAREFUL — AI drafts are PROPOSALS only, never auto-published
@@ -17,7 +17,7 @@ Automatic Knowledge Creation is the **last-mile enhancement** to Answerlattice's
 **What this feature IS:**
 - AI-generated draft canonical answers attached to existing mutation proposals
 - Structured drafts following `CanonicalAnswerSchema` (title, summary, steps, warnings, prerequisites)
-- Founder reviews draft → edits → approves → canonical answer created
+- Founder reviews draft, edits it, and approves it through the server-owned governance transaction that creates or updates canonical truth
 - Knowledge gap metrics surfaced on governance dashboard
 
 **What this feature is NOT:**
@@ -64,13 +64,16 @@ new_answer_required proposal → AI Draft Generator (Gemini) → proposal WITH d
     ↓
 Governance UI → MutationProposalReview → Founder REVIEWS draft → edits → approves
     ↓
-Canonical Answer created from approved draft
+Server governance transaction applies the approved draft and writes the audit/invalidation state
 ```
 
 Current governance UI coverage:
 - Generated drafts appear inside the Signal-to-Knowledge Queue.
-- Product owners can publish a generated draft as a canonical answer after editing.
+- Product owners can approve a generated draft after editing. The browser never writes canonical truth or proposal decision state directly.
 - Product owners can explicitly generate/regenerate a draft from the queue; this is manual, feature-flagged by `ENABLE_ANSWERLATTICE_AUTO_KNOWLEDGE`, and uses one AI request per click.
+- `/api/answerlattice/governance/actions` derives workspace and actor scope from the authenticated session, validates stored proposal content, rejects active answer overlaps, and commits the canonical answer, implemented proposal state, rollback snapshot, audit record, canonical cache version, source version, and stale bundle marker in one transaction.
+- `firestore-answerlattice.rules` denies browser create/update on `answerlattice_canonicalAnswers` and denies browser updates on `answerlattice_mutationProposals`.
+- Canonical retrieval excludes drifted and review-required answers. When the matching governed answer needs review, search returns a fixed non-AI review message and stops before FAQ or RAG so weaker content cannot replace stale canonical truth.
 
 Runtime diagnostics coverage:
 - Manual draft regeneration, scheduled draft generation, signal mutation, signal emission, and entity extraction use bounded diagnostics.

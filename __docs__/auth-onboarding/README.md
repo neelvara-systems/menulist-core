@@ -15,6 +15,8 @@ Current release approval still requires the active [production-readiness audit](
 
 The local source gates confirm current code wiring only. They do not run Google OAuth, Razorpay checkout, live Firebase Auth token minting, Firestore writes, browser/device QA, Firebase deploys, Vercel deploys, a production build, or production-host behavior.
 
+July 13 current-authority and payment-effect hardening: website subscription onboarding now re-reads and locks the exact current `users/{userId}` row inside the tenant/store allocation transaction. Active, verified, unblocked, unrevoked identity and an empty tenant/store mapping are mandatory, so stale sessions and concurrent duplicate requests cannot allocate another business. The payment limiter fails closed, request and plan-price shapes fail closed, ambiguous Razorpay create failures reconcile through an exact server attempt ID, subscription-write failure cancels the provider subscription and compensates local tenant/store truth, and the browser receives only the provider subscription ID plus the new tenant/store IDs. Live Razorpay sandbox and injected provider/Firestore failure evidence remains an external release gate.
+
 ## Quick Navigation
 
 | Audience       | Document                               | Purpose                         |

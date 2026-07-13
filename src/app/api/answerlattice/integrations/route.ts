@@ -12,6 +12,10 @@ import { FEATURE_FLAGS } from '@config/features';
 import { ANSWERLATTICE_PERMISSION_KEYS } from '@constant/answerlattice/permissions';
 import { DB_COLLECTIONS } from '@constant/database';
 import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
+import {
+    buildAnswerlatticeIntegrationConfigIdentity,
+    classifyAnswerlatticeIntegrationConfigOwnership,
+} from '@lib/answerlattice/integrationConfigOwnership';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
@@ -46,7 +50,11 @@ const SlackWebhookSchema = z.preprocess(
         .refine((value) => {
             try {
                 const url = new URL(value);
-                return url.protocol === 'https:' && url.hostname === 'hooks.slack.com' && url.pathname.startsWith('/services/');
+                return url.protocol === 'https:'
+                    && url.hostname === 'hooks.slack.com'
+                    && url.pathname.startsWith('/services/')
+                    && !url.search
+                    && !url.hash;
             } catch {
                 return false;
             }
@@ -61,13 +69,13 @@ const IntegrationsSaveSchema = z.object({
         clearWebhook: z.boolean().optional(),
         channel: z.string().trim().max(80).optional().default(''),
         eventFilters: z.array(EventFilterSchema).max(INTEGRATION_EVENT_TYPES.length).default([]),
-    }).default({ enabled: false, channel: '', eventFilters: [] }),
+    }).strict().default({ enabled: false, channel: '', eventFilters: [] }),
     email: z.object({
         enabled: z.boolean().default(false),
         recipients: z.array(z.string().trim().email().max(160)).max(5).default([]),
         eventFilters: z.array(EventFilterSchema).max(INTEGRATION_EVENT_TYPES.length).default([]),
-    }).default({ enabled: false, recipients: [], eventFilters: [] }),
-});
+    }).strict().default({ enabled: false, recipients: [], eventFilters: [] }),
+}).strict();
 
 const DEFAULT_EVENT_FILTERS: IntegrationEventType[] = [
     'nightly_summary',
@@ -78,19 +86,51 @@ const DEFAULT_EVENT_FILTERS: IntegrationEventType[] = [
 const resolveSessionScope = (session: any): { tenantId: number; storeId: number } | null => {
     const answerlatticeScope = resolveAnswerlatticeSessionScope(session);
     if (!answerlatticeScope) return null;
-    const tenantId = Number(answerlatticeScope.tenantId);
-    const storeId = Number(answerlatticeScope.storeId);
-    if (!Number.isFinite(tenantId) || !Number.isFinite(storeId) || tenantId <= 0 || storeId <= 0) return null;
-    return { tenantId, storeId };
+    return { tenantId: answerlatticeScope.tenantId, storeId: answerlatticeScope.storeId };
 };
 
-const getAnswerlatticeDb = () => {
-    const db = answerlatticeFirestoreAdmin as any;
-    return db && typeof db.collection === 'function' ? answerlatticeFirestoreAdmin : null;
-};
+const getAnswerlatticeDb = () => answerlatticeFirestoreAdmin
+    && typeof answerlatticeFirestoreAdmin.collection === 'function'
+    ? answerlatticeFirestoreAdmin
+    : null;
 const INTEGRATIONS_SAVE_MAX_BODY_BYTES = 16 * 1024;
 
 const configDocId = (tenantId: number, storeId: number) => `integrationConfig_${tenantId}_${storeId}`;
+
+const isRecord = (value: unknown): value is Record<string, unknown> => (
+    Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+);
+
+class IntegrationConfigOwnershipError extends Error {}
+class IntegrationConfigInputError extends Error {}
+
+const readScopedSummaryData = (
+    snapshot: { exists: boolean; data: () => Record<string, unknown> | undefined },
+    scope: { tenantId: number; storeId: number },
+): { data: Record<string, unknown>; identityToClaim: { pId: 'AL'; tId: number; sId: number } | null } => {
+    if (!snapshot.exists) return { data: {}, identityToClaim: null };
+    const data = snapshot.data() || {};
+    const expectedScope = { tId: scope.tenantId, sId: scope.storeId };
+    const ownership = classifyAnswerlatticeIntegrationConfigOwnership(data, expectedScope);
+    if (ownership === 'invalid') throw new IntegrationConfigOwnershipError('Integration summary ownership mismatch');
+    if (ownership === 'legacy-unowned') {
+        const identity = buildAnswerlatticeIntegrationConfigIdentity(expectedScope);
+        if (!identity) throw new IntegrationConfigOwnershipError('Invalid integration summary scope');
+        return { data: { ...data, ...identity }, identityToClaim: identity };
+    }
+    return { data, identityToClaim: null };
+};
+
+const claimScopedSummaryData = async (
+    db: FirebaseFirestore.Firestore,
+    docRef: FirebaseFirestore.DocumentReference,
+    scope: { tenantId: number; storeId: number },
+): Promise<Record<string, unknown>> => db.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(docRef);
+    const { data, identityToClaim } = readScopedSummaryData(snapshot, scope);
+    if (identityToClaim) transaction.set(docRef, identityToClaim, { merge: true });
+    return data;
+});
 
 const normalizeFilters = (value: unknown): IntegrationEventType[] => {
     if (!Array.isArray(value)) return [];
@@ -173,15 +213,21 @@ export const GET = withAuth(async (_request: NextRequest, session) => {
     if (!db) return NextResponse.json({ error: 'Answerlattice Firebase is not configured' }, { status: 503 });
 
     try {
-        const [configSnap, healthSnap] = await Promise.all([
-            db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(configDocId(scope.tenantId, scope.storeId)).get(),
-            db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(`integrationHealth_${scope.tenantId}_${scope.storeId}`).get(),
+        const configRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(configDocId(scope.tenantId, scope.storeId));
+        const healthRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(`integrationHealth_${scope.tenantId}_${scope.storeId}`);
+        const [config, health] = await Promise.all([
+            claimScopedSummaryData(db, configRef, scope),
+            claimScopedSummaryData(db, healthRef, scope),
         ]);
-        return NextResponse.json(buildSafeResponse(
-            configSnap.exists ? configSnap.data() || {} : {},
-            healthSnap.exists ? healthSnap.data() || {} : {},
-        ));
+        return NextResponse.json(buildSafeResponse(config, health));
     } catch (error) {
+        if (error instanceof IntegrationConfigOwnershipError) {
+            logRuntimeFailure('answerlattice_integrations_settings_ownership_mismatch', error, {
+                ...getBoundedRuntimeStringContext('tenantId', scope.tenantId),
+                ...getBoundedRuntimeStringContext('storeId', scope.storeId),
+            });
+            return NextResponse.json({ error: 'Integration settings require support review.' }, { status: 409 });
+        }
         logRuntimeFailure('answerlattice_integrations_settings_load_failed', error, {
             ...getBoundedRuntimeStringContext('tenantId', scope.tenantId),
             ...getBoundedRuntimeStringContext('storeId', scope.storeId),
@@ -225,39 +271,41 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
 
         const parsed = IntegrationsSaveSchema.parse(bodyResult.data);
         const docRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(configDocId(scope.tenantId, scope.storeId));
-        const existingSnap = await docRef.get();
-        const existing = existingSnap.exists ? existingSnap.data() || {} : {};
+        const identity = buildAnswerlatticeIntegrationConfigIdentity({ tId: scope.tenantId, sId: scope.storeId });
+        if (!identity) throw new IntegrationConfigOwnershipError('Invalid integration config scope');
+        const nextConfig = await db.runTransaction(async (transaction) => {
+            const currentSnapshot = await transaction.get(docRef);
+            const { data: existing } = readScopedSummaryData(currentSnapshot, scope);
+            const existingSlack = isRecord(existing.slack) ? existing.slack : {};
+            const existingSlackWebhook = typeof existingSlack.webhookUrl === 'string' ? existingSlack.webhookUrl : '';
+            const nextSlackWebhook = parsed.slack.clearWebhook ? '' : (parsed.slack.webhookUrl || existingSlackWebhook);
 
-        const existingSlackWebhook = typeof existing.slack?.webhookUrl === 'string' ? existing.slack.webhookUrl : '';
-        const nextSlackWebhook = parsed.slack.clearWebhook ? '' : (parsed.slack.webhookUrl || existingSlackWebhook);
+            if (parsed.slack.enabled && !nextSlackWebhook) {
+                throw new IntegrationConfigInputError('Slack webhook is required when Slack alerts are enabled.');
+            }
+            if (parsed.email.enabled && parsed.email.recipients.length === 0) {
+                throw new IntegrationConfigInputError('At least one email recipient is required when email alerts are enabled.');
+            }
 
-        if (parsed.slack.enabled && !nextSlackWebhook) {
-            return NextResponse.json({ error: 'Slack webhook is required when Slack alerts are enabled.' }, { status: 400 });
-        }
-        if (parsed.email.enabled && parsed.email.recipients.length === 0) {
-            return NextResponse.json({ error: 'At least one email recipient is required when email alerts are enabled.' }, { status: 400 });
-        }
-
-        const nextConfig = {
-            slack: {
-                enabled: parsed.slack.enabled,
-                webhookUrl: nextSlackWebhook,
-                channel: parsed.slack.channel || '',
-                eventFilters: parsed.slack.eventFilters.length ? parsed.slack.eventFilters : DEFAULT_EVENT_FILTERS,
-            },
-            email: {
-                enabled: parsed.email.enabled,
-                recipients: normalizeRecipientList(parsed.email.recipients),
-                eventFilters: parsed.email.eventFilters.length ? parsed.email.eventFilters : DEFAULT_EVENT_FILTERS,
-            },
-            linear: existing.linear || { enabled: false, apiKey: '', teamId: '', eventFilters: [] },
-            github: existing.github || { enabled: false, token: '', owner: '', repo: '', eventFilters: [] },
-            circuitBreaker: existing.circuitBreaker || {},
-            modifiedOn: FieldValue.serverTimestamp(),
-            updatedBy: session?.uId || session?.user?.email || 'unknown',
-        };
-
-        await docRef.set(nextConfig, { merge: true });
+            const next = {
+                ...identity,
+                slack: {
+                    enabled: parsed.slack.enabled,
+                    webhookUrl: nextSlackWebhook,
+                    channel: parsed.slack.channel || '',
+                    eventFilters: parsed.slack.eventFilters.length ? parsed.slack.eventFilters : DEFAULT_EVENT_FILTERS,
+                },
+                email: {
+                    enabled: parsed.email.enabled,
+                    recipients: normalizeRecipientList(parsed.email.recipients),
+                    eventFilters: parsed.email.eventFilters.length ? parsed.email.eventFilters : DEFAULT_EVENT_FILTERS,
+                },
+                modifiedOn: FieldValue.serverTimestamp(),
+                updatedBy: session?.uId || session?.user?.email || 'unknown',
+            };
+            transaction.set(docRef, next, { merge: true });
+            return next;
+        });
         logRuntimeDiagnostic('answerlattice_integrations_settings_saved', {
             ...getBoundedRuntimeStringContext('tenantId', scope.tenantId),
             ...getBoundedRuntimeStringContext('storeId', scope.storeId),
@@ -270,6 +318,16 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
     } catch (error) {
         if (error instanceof ZodError) {
             return NextResponse.json({ error: 'Invalid integration settings' }, { status: 400 });
+        }
+        if (error instanceof IntegrationConfigInputError) {
+            return NextResponse.json({ error: error.message }, { status: 400 });
+        }
+        if (error instanceof IntegrationConfigOwnershipError) {
+            logRuntimeFailure('answerlattice_integrations_settings_ownership_mismatch', error, {
+                ...getBoundedRuntimeStringContext('tenantId', scope.tenantId),
+                ...getBoundedRuntimeStringContext('storeId', scope.storeId),
+            });
+            return NextResponse.json({ error: 'Integration settings require support review.' }, { status: 409 });
         }
         logRuntimeFailure('answerlattice_integrations_settings_save_failed', error, {
             ...getBoundedRuntimeStringContext('tenantId', scope.tenantId),

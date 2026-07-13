@@ -1,10 +1,22 @@
 # Owner Notifications - Firebase And Cost Plan
 
 **Status:** Implemented for current owner-notification rollout
-**Date:** 2026-06-02
+**Date:** 2026-07-13
 **Audience:** Engineering, platform owner
 
 > **Launch boundary:** Not current launch certification or deploy approval. This Firebase/cost plan is source-gated owner-notification runtime and cost evidence only; owner-notification release approval still requires current production-readiness audit evidence, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:owner-notifications-boundary`, SMTP/WhatsApp provider smoke where enabled, authenticated owner settings/status QA for the target owner surface, platform recovery monitor browser QA, target Firebase deploy evidence where Functions logic changes, target Vercel deploy evidence where app routes change, and production-host smoke.
+
+July 10 tenant/idempotency follow-up: `ownerNotificationEvents/{eventId}` creation is now a transactional direct-ID read plus conditional create, and processing is a transactional read plus `status: processing` / `processingAttempt` claim before recipient resolution or provider delivery. This preserves the bounded event/delivery collections and adds no collection or composite index. Normal successful delivery keeps the same order of Firestore operations, but the event read/status write are now atomic. A failed event may be claimed once more; processing attempts above two and terminal/active statuses fail closed. MenuList store rate-limit IDs now hash product, tenant, store, and day.
+
+The retry/digest correction adds two required composite indexes: `ownerNotificationEvents(status ASC, updatedAt ASC)` for the bounded 24-hour failed-event retry query and `ownerNotificationDeliveries(status ASC, createdAt ASC)` for exact daily aggregate counts. Retry remains limited to 20 eligible events. Delivery rows preserve their original `createdAt`, update `lastAttemptAt`, and store the real event `processingAttempt`; a retry no longer erases attempt history by writing `attempt: 1` again.
+
+App and Functions recipient reads now require tenant-consistent scope. MenuList canonical `stores/{storeId}` must identify the event tenant; the legacy nested fallback cannot contradict its parent tenant. Answerlattice `stores/{workspaceId}` in the separate project must identify the event tenant. A missing or mismatched scope writes the stable local event error `scope_not_found_or_mismatch` and makes zero provider calls. Ordinary recipient hints no longer bypass those reads. The legacy `messageLogs` fallback adds one deterministic transaction claim (one direct read and one conditional create) before SMTP and finalizes that same document after the provider result. No rules were loosened and no cache/public-output path is affected.
+
+The shared boundary is mirrored byte-for-byte and behavior-tested. Live effect still requires the normal Next.js release path for app code and a scoped MenuList Functions deploy for Functions code. Provider smoke, recovery-monitor QA, and deploy evidence are not supplied by source tests.
+
+July 10 deploy evidence: the Node 22 MenuList QA index command read the updated index/rules files and failed at `https://firebaserules.googleapis.com/v1/projects/menulist-qa:test` with HTTP 403 caller permission. The scoped Functions command targeted `verifyMenuPublish`, `computeDecisionBlocksScores`, `triggerDecisionBlocksScoring`, and `triggerStoreNightlyScheduler`; configured predeploy lint/build passed, then Cloud Resource Manager project lookup returned HTTP 403 caller permission. No target was uploaded. Exact commands are preserved in `__docs__/audits/data-flow-pipeline-deep-audit.md` and `__docs__/audits/menulist-production-readiness-audit.md`.
+
+After the retry/digest indexes and Functions logic were added, the same exact scoped commands were rerun once. The latest attempts reached the same boundaries: Firestore Rules API HTTP 403 for indexes, and predeploy-pass then Cloud Resource Manager HTTP 403 for Functions. No updated owner-notification index or Function was uploaded.
 
 ## Firebase Projects
 
@@ -113,7 +125,13 @@ No collection scans should be needed for rate limits.
 
 ## Indexes
 
-Implemented rollout uses deterministic document IDs, bounded direct document reads, and single-field status queries for retry/digest helpers. No composite index was added in this pass.
+Implemented rollout uses deterministic document IDs and bounded direct document reads. The current retry and digest helpers require the two time-window indexes below; they replace arbitrary single-field status snapshots and in-memory date filtering.
+
+| Collection | Index | Purpose |
+| --- | --- | --- |
+| `ownerNotificationEvents` | `status ASC, updatedAt ASC` | Last-24-hour bounded failed-event retry |
+| `ownerNotificationDeliveries` | `status ASC, createdAt ASC` | Exact sent/failed daily aggregate counts |
+| `ownerNotificationDeliveries` | `eventId ASC, createdAt DESC` | Newest 12 delivery attempts for selected-event platform detail |
 
 Deferred optional indexes for future admin/support inspection:
 
@@ -121,7 +139,6 @@ Deferred optional indexes for future admin/support inspection:
 | --- | --- | --- |
 | `ownerNotificationEvents` | `status ASC, createdAt ASC` | Scheduled retry/backfill worker |
 | `ownerNotificationEvents` | `productId ASC, tenantId ASC, storeId ASC, createdAt DESC` | Admin/support inspection |
-| `ownerNotificationDeliveries` | `eventId ASC, createdAt ASC` | Delivery details for one event |
 | `ownerNotificationDeliveries` | `productId ASC, triggerType ASC, createdAt DESC` | Platform debugging |
 
 Idempotency should prefer deterministic document IDs or `dedupeKey` docs, not repeated composite queries.
@@ -180,13 +197,19 @@ Estimated Firestore operations: 4-7 reads, 6 writes.
 
 ## Internal Tracking Dashboard Cost
 
-The platform dashboard at `/ops/owner-notifications` is intentionally manual and bounded. POST recovery actions keep the platform-role gate, apply the per-operator limiter with HMAC-hashed key material, validate selected/recovery `eventId` values as a simple Firestore document ID, re-normalize those IDs inside the detail/action helpers, and reject bodies above 8KB before event reads, retry processing, manual send enqueueing, or manual handoff writes.
+The platform dashboard at `/ops/owner-notifications` is intentionally manual and bounded. GET and POST keep signed platform admission, apply separate fail-closed per-operator limiters with HMAC-hashed key material, and then spend one direct `users/{uId}` read to re-prove the current platform role/lifecycle/identity/revocation state. POST validates selected/recovery `eventId` values as a simple Firestore document ID, re-normalizes those IDs inside the detail/action helpers, and rejects bodies above 8KB before event reads, retry processing, manual send enqueueing, or manual handoff writes.
+
+July 13 follow-up: list/status counts come from the same product-scoped newest-first window capped at 90 documents. The six collection-wide status aggregation queries were removed. Selected detail still adds one direct event read, at most 12 delivery reads, and an exact resolver count: zero for rejected scope, one for Answerlattice or a canonical MenuList store hit, and two when MenuList checks the canonical store and then the legacy nested fallback. Cross-product delivery rows are billed if Firestore returns them but are not serialized. Manual handoff is one transaction containing an existing-event read plus one delivery create and one source-event update; neither write commits when the event is missing or its product drifts.
+
+The clean-room follow-up activates the `ownerNotificationDeliveries(eventId ASC, createdAt DESC)` detail index in both Firebase index configurations. Manual actions add a bounded `actionId`: identical manual-send action IDs resolve to the existing deterministic event instead of creating another queue event, while identical manual-handoff action IDs re-read the deterministic delivery row and add zero writes on replay. A new handoff transaction performs two direct reads and two writes; a replay performs two direct reads and zero writes. Retry admission failures perform only the processor claim transaction and return `404` or `409`, never a false success acknowledgement.
+
+QA index deployment evidence (July 13, 2026): `firebase deploy --only firestore:indexes --project menulist-qa --non-interactive` read `firestore.indexes.json`, and `firebase deploy --config firebase-answerlattice.json --only firestore:indexes --project answerlattice-qa --non-interactive` read `firestore-answerlattice.indexes.json`. Both stopped during the matching Firestore Rules API compilation check with HTTP 403 caller permission. No index was uploaded; live selected-event newest-first detail remains release-blocked until an authorized account completes both scoped index deploys.
 
 June 30 follow-up: `/api/ops/owner-notifications` query validation, recovery-action rate-limit, and recovery-action validation security events use bounded route metadata instead of raw session/request context. Invalid attempted action text is summarized as presence/length metadata. This changes no Firestore reads/writes/deletes, provider calls, API routes, Cloud Function logic, rules, indexes, Firebase deploy requirement, or Vercel deploy action.
 
 July 1 source gate, updated July 6: `npm run verify:owner-notifications-boundary` checks the owner-notification registry mirror, platform-only route/body/rate-limit boundaries, helper-level simple Firestore document ID event selectors, bounded platform monitor responses, canonical store recipient lookup, app-side recipient-scope document-ID admission, WhatsApp response caps, and retention cleanup registration. The verifier does not run Firestore reads/writes, SMTP, WhatsApp, browser smoke, Firebase deploy, or Vercel deploy.
 
-The July 6 recipient-scope document-ID boundary is Firebase-cost neutral. `normalizeOwnerNotificationRecipientDocumentId()` rejects malformed Answerlattice workspace/store IDs before app-side Answerlattice recipient lookup reads, and `normalizeMenuListOwnerNotificationScopeDocumentId()` rejects malformed, reserved, empty, whitespace-mutated, path-shaped, decimal, zero, negative, unsafe, or nonnumeric MenuList tenant/store IDs before top-level `stores/{storeId}` reads or legacy `tenants/{tenantId}/stores/{storeId}` fallback reads. Valid recipient resolution keeps the same 0-1 store/workspace preference read, delivery channels, event status updates, delivery rows, and rate-limit/dedupe behavior. This changes app-side recipient-scope admission only and adds no Firestore reads/writes/deletes, rules, indexes, Cloud Functions, Firebase deploy requirement, Vercel deploy action, SMTP send, or WhatsApp send.
+The July 6 recipient-scope document-ID boundary is Firebase-cost neutral. `normalizeOwnerNotificationRecipientDocumentId()` rejects malformed Answerlattice workspace/store IDs before app-side Answerlattice recipient lookup reads, and `normalizeMenuListOwnerNotificationScopeDocumentId()` rejects malformed, reserved, empty, whitespace-mutated, path-shaped, decimal, zero, negative, unsafe, or nonnumeric MenuList tenant/store IDs before top-level `stores/{storeId}` reads or legacy `tenants/{tenantId}/stores/{storeId}` fallback reads. Valid Answerlattice recipient resolution uses at most one workspace read; valid MenuList resolution uses one canonical-store read and may add one legacy nested fallback read. Delivery channels, event status updates, delivery rows, and rate-limit/dedupe behavior are unchanged. The July 6 scope-only change added no index; the later July 10 retry/digest correction adds the two time-window indexes documented above.
 
 June 29 follow-up: `src/lib/notifications/notificationService.ts` remains a disabled legacy facade. Moving its blocked-call breadcrumbs from the generic logger to bounded notification diagnostics adds no Firestore reads/writes/deletes, no Storage operations, no Firebase Auth operations, no Cloud Function logic changes, no provider calls, no delivery attempts, no rules/indexes/schema changes, and no Firebase deploy requirement.
 
@@ -194,8 +217,9 @@ June 29 follow-up: `src/lib/notifications/notificationService.ts` remains a disa
 
 | Operation | Count |
 | --- | ---: |
+| Current platform-user authorization | 1 direct read |
 | Bounded event query | Up to 90 document reads |
-| Status count aggregations | 6 aggregation queries |
+| Status count aggregations | 0; derived from the bounded product window |
 | Delivery reads | 0 |
 | Scope/contact reads | 0 |
 | Writes | 0 |
@@ -208,7 +232,7 @@ The dashboard does not attach realtime listeners and does not page through the f
 | --- | ---: |
 | Direct event read | 1 |
 | Delivery query by `eventId` | Up to 12 document reads |
-| Store/workspace scope read | 0-1 |
+| Store/workspace scope read | 0-1 Answerlattice; 0-2 MenuList |
 | Writes | 0 |
 
 Full recipient contact is resolved only after one event is selected.
@@ -220,7 +244,7 @@ Full recipient contact is resolved only after one event is selected.
 | Retry | Reuses the central processor: event read, optional scope read, delivery write, status update, and rate-limit direct read/write as needed. |
 | Prefilled Email/WhatsApp Web | Uses the selected-event detail response and in-memory template rendering only; opening the external tool adds no Firebase write. |
 | Manual system send | Writes one new owner notification event and processes it through the normal channel path. |
-| Manual handoff record | Writes one delivery doc and updates the source event with manual handoff audit fields. |
+| Manual handoff record | One transaction: re-read the source event, create one delivery doc, and update the source event with manual handoff audit fields. |
 
 No new composite index, Firestore rule, Storage path, Cloud Function, or scheduler was added for the dashboard.
 

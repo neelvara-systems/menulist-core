@@ -49,6 +49,27 @@ function requireAny(source, tokens, label) {
   }
 }
 
+function requireNamedImport(source, moduleSpecifier, names, label) {
+  const escapedModule = moduleSpecifier.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const match = source.match(new RegExp(`import\\s*\\{([^}]*)\\}\\s*from\\s*['"]${escapedModule}['"]\\s*;`));
+  if (!match) {
+    failures.push(`${label} missing named import from ${moduleSpecifier}`);
+    return;
+  }
+
+  const importedNames = new Set(
+    match[1]
+      .split(',')
+      .map((entry) => entry.trim().split(/\\s+as\\s+/)[0])
+      .filter(Boolean),
+  );
+  for (const name of names) {
+    if (!importedNames.has(name)) {
+      failures.push(`${label} missing ${name} import from ${moduleSpecifier}`);
+    }
+  }
+}
+
 const packageJson = read('package.json');
 const projectsRoute = read('src/app/(main)/projects/page.tsx');
 const projectsPage = read('src/components/templates/main-app/projects/index.tsx');
@@ -58,6 +79,11 @@ const mobileMenu = read('src/components/mobile/screens/MobileMenuScreen.tsx');
 const mobileProjectSelector = read('src/components/mobile/components/MobileProjectSelectorSheet.tsx');
 const bulkActionsSheet = read('src/components/mobile/sheets/BulkActionsSheet.tsx');
 const projectDal = read('src/database/projects/index.ts');
+const projectSlugOwnership = read('src/lib/menu/projectSlugOwnership.ts');
+const projectDocumentScope = read('src/lib/menu/projectDocumentScope.ts');
+const timeSlotPresetBoundary = read('src/lib/menu/timeSlotPresetBoundary.ts');
+const timedCategories = read('src/hooks/useTimedCategories.ts');
+const storeDal = read('src/database/stores/index.tsx');
 const publicClientCache = read('src/lib/cache/publicClientCache.ts');
 const screenInvalidation = read('src/lib/screen/screenInvalidation.ts');
 const projectsReadme = read('__docs__/projects/README.md');
@@ -75,7 +101,7 @@ const changelog = read('__docs__/changelog.md');
 
 requireToken(
   packageJson,
-  '"verify:menu-project-editor-boundary": "node scripts/verification/verify-menu-project-editor-boundary.js"',
+  '"verify:menu-project-editor-boundary": "node scripts/verification/verify-menu-project-editor-boundary.js && npm run test:project-partial-update-projection && npm run test:project-slug-ownership && npm run test:project-document-scope && npm run test:time-slot-data-flow"',
   'package scripts',
 );
 
@@ -83,8 +109,22 @@ requireToken(
   requireToken(projectsRoute, token, 'projects route');
 });
 
+requireNamedImport(projectsPage, '@database/projects', [
+  'addProject',
+  'assertProjectDeleteSucceeded',
+  'assertProjectUpdateSucceeded',
+  'deleteProject',
+  'duplicateProject',
+  'getMetadataProjectsList',
+  'getProjectData',
+  'getProjectDataWithoutLoader',
+  'setProjectActive',
+  'updateProject',
+  'updateProjectMetadata',
+  'updateProjectWithoutLoader',
+  'uploadFile',
+], 'desktop projects page');
 [
-  'import { addProject, assertProjectDeleteSucceeded, assertProjectUpdateSucceeded, deleteProject, duplicateProject, getMetadataProjectsList, getProjectData, getProjectDataWithoutLoader, setProjectActive, updateProject, updateProjectMetadata, updateProjectWithoutLoader, uploadFile } from \'@database/projects\';',
   'await b2cViewRef.current.publish();',
   'assertProjectUpdateSucceeded(',
   'assertProjectDeleteSucceeded(',
@@ -99,8 +139,13 @@ requireToken(
   'logProjectPageFailure',
 ].forEach((token) => requireToken(projectsPage, token, 'desktop projects page'));
 
+requireNamedImport(editor, '@database/projects', [
+  'appendImageBatchProjectSelections',
+  'assertProjectUpdateSucceeded',
+  'updateProject',
+  'updateProjectMetadata',
+], 'desktop editor');
 [
-  'import { assertProjectUpdateSucceeded, updateProject, updateProjectMetadata } from "@database/projects";',
   'const PUBLISH_GATE_FALLBACK_ERROR = "Menu check needs review before continuing.";',
   'getSafeUiErrorMessage(error.message, PUBLISH_GATE_FALLBACK_ERROR, { allowTrustedPlainText: true })',
   'menu_editor_publish_gate_validation_failed',
@@ -109,7 +154,9 @@ requireToken(
   'stripResolvedOutletProjectForSave(getProjectWithLinkedFieldOverrides(data), activeProject)',
   'const persistEditorProject = useCallback(async (data: Project) => {',
   'const syncChanges = useCallback(',
-  'const updatedProject = await updateProject({',
+  'const saveRequest = updateProject({',
+  'activeEditorSavePromiseRef.current = saveCompletion;',
+  'const updatedProject = await saveRequest;',
   'projectId: selectedProject.projectId,',
   'menu_editor_sync_changes_project_update_rejected',
   'menu_editor_persist_project_update_rejected',
@@ -118,17 +165,30 @@ requireToken(
   'menu_editor_project_public_content_metadata_update_rejected',
   'FEATURE_FLAGS.ENABLE_MENU_COMMAND_CENTER',
   '<CommandCenterModal',
+  'await appendImageBatchProjectSelections({',
 ].forEach((token) => requireToken(editor, token, 'desktop editor'));
 requireOrder(
   editor,
   [
     'const syncChanges = useCallback(',
-    'const updatedProject = await updateProject({',
+    'const saveRequest = updateProject({',
+    'activeEditorSavePromiseRef.current = saveCompletion;',
+    'const updatedProject = await saveRequest;',
     'assertProjectUpdateSucceeded(',
     'menu_editor_sync_changes_project_update_rejected',
     'triggerPosSyncDebounced(',
   ],
   'desktop editor save path order',
+);
+requireOrder(
+  editor,
+  [
+    'let saveCompletion: Promise<void> | null = null;',
+    'activeEditorSavePromiseRef.current = saveCompletion;',
+    'if (activeEditorSavePromiseRef.current === saveCompletion) {',
+    'activeEditorSavePromiseRef.current = null;',
+  ],
+  'desktop editor in-flight save cleanup order',
 );
 forbidToken(editor, 'console.error(', 'desktop editor direct error logging');
 forbidToken(editor, 'validationErrors.push(error.message)', 'desktop editor raw publish-gate error exposure');
@@ -147,38 +207,135 @@ forbidToken(editor, 'validationErrors.push(error.message)', 'desktop editor raw 
   '// INVARIANT: All customer-facing truth must pass through updateProject().',
   'await revalidatePublicClientCacheForProject(data.projectId as string, "updateProject");',
   'export const publishProject = async (data: Partial<Project>) => {',
-  'updatedData.menuVersion = increment(1);',
-  'updatedData.lastPublishedAt = Timestamp.now();',
+  'const publishedAt = Timestamp.now();',
+  'menuVersion: increment(1),',
+  'lastPublishedAt: publishedAt,',
   'await revalidatePublicClientCacheForProject(data.projectId, "publishProject");',
   'LINKED_OUTLET_SAVE_REQUEST_POLICY',
   'project_linked_outlet_save_rejected',
   'project_linked_outlet_publish_rejected',
   'menu_observation_publish_event_failed',
-  'detectAndLogChanges(data.projectId, oldProject, data);',
+  'buildProjectAfterPartialUpdate(oldProject, data)',
+  'sanitizeProjectPartialUpdate(stripGeneratedProjectReadModels(data))',
+  'projectData: projectForValidation as Record<string, any>',
+  'buildProjectAfterPartialUpdate(oldProject, updateData)',
+  'const buildProjectSummaryMutation = (',
+  'const suppliedProjectId = Boolean(data.projectId);',
+  'const existingProjectDoc = suppliedProjectId',
+  'transaction.set(projectDocRef, projectData, { merge: false });',
+  'created && FEATURE_FLAGS.ENABLE_PROJECT_PROPAGATION',
+  "throw new Error('Invalid project metadata scope');",
+  "throw new Error('Project summary not found');",
+  'const transactionResult = await runTransaction(firebaseClient, async (transaction) => {',
+  'const { slug: _ignoredSlug, previousSlugs: _ignoredPreviousSlugs, ...safeData } = data;',
+  "throw new Error('This menu URL is already in use. Please choose a different name.');",
+  'const newProjectId = `${scope.tId}-${timestamp}-${entropy}-${scope.sId}`;',
+  'delete duplicateSource._specialMenu;',
+  'transaction.set(newProjectDocRef, newProjectData, { merge: false });',
+  "throw new Error('Invalid project read scope');",
+  "throw new Error('Legacy project read identity mismatch');",
+  "throw new Error('Invalid cross-store project read scope');",
+  "throw new Error('Legacy cross-store project read identity mismatch');",
+  "throw new Error('Invalid project active scope');",
+  "throw new Error('Project active identity mismatch');",
+  "throw new Error('Invalid project deletion scope');",
+  "if (projectDoc.data().deleted === true) throw new Error('Project is already deleted');",
+  "transactionResult.fallbackProjectId ? [transactionResult.fallbackProjectId] : []",
+  'return await updateProjectMetadata(projectId, data, {',
+  "throw new Error('Invalid project summary removal scope');",
+  "throw new Error('Project summary removal requires a deleted project');",
+  'const filterProjectsSummaryMapForScope = (',
+  "throw new Error('Invalid combined project read scope');",
+  "throw new Error('Combined project read identity mismatch');",
+  'const PROJECT_PRESET_CASCADE_PAGE_SIZE = 100;',
+  'const PROJECT_PRESET_CASCADE_CONCURRENCY = 4;',
+  'orderBy(documentId())',
+  'const currentDoc = await transaction.get(projectDoc.ref);',
+  'const projection = projectTimeSlotPresetReferences(currentProject, mutation);',
+  'files: projection.files,',
 ].forEach((token) => requireToken(projectDal, token, 'project DAL'));
+forbidToken(projectDal, 'void detectAndLogChanges(data.projectId, oldProject, data, operationScope);', 'project DAL partial observation');
+forbidToken(projectDal, 'await syncProjectToSummary(newProjectId, summaryData);', 'project DAL split duplicate summary write');
+forbidToken(projectDal, 'batch.set(doc(projectCollectionRef, projectId), projectData, { merge: true });', 'project DAL destructive deterministic create merge');
+forbidToken(projectDal, 'await setDoc(projectDocRef, { active }, { merge: true });', 'project DAL split active project write');
+forbidToken(projectDal, 'batch.set(docSnap.ref, project, { merge: true });', 'project DAL stale preset cascade write');
+forbidToken(projectDal, 'await setDoc(await getDataDocRef(project.projectId), project, {', 'project DAL stale preset update write');
 forbidToken(projectDal, 'console.error(', 'project DAL direct error logging');
 forbidToken(projectDal, 'console.warn(', 'project DAL direct warn logging');
+
+[
+  'export const isProjectSlugClaimed = (',
+  'summary.previousSlugs.some(',
+  'export const resolveAvailableProjectSlug = (',
+  'for (let attempt = 2; attempt <= 100; attempt += 1)',
+].forEach((token) => requireToken(projectSlugOwnership, token, 'project slug ownership'));
+
+[
+  'export const normalizeProjectDocumentScope = (',
+  'projectId.startsWith(`${tId}-`)',
+  'projectId.endsWith(`-${sId}`)',
+  'export const projectDocumentMatchesScope = (',
+  '["tId", "tenantId", "tenantID"]',
+  '["sId", "storeId", "storeID"]',
+].forEach((token) => requireToken(projectDocumentScope, token, 'project document scope'));
+
+[
+  'export const parseClockMinutes = (',
+  'export const isMinuteWithinClockRange = (',
+  'return currentMinutes >= startMinutes || currentMinutes < endMinutes;',
+  'export const normalizeTimeSlotPresets = (',
+  'export const projectTimeSlotPresetReferences = (',
+].forEach((token) => requireToken(timeSlotPresetBoundary, token, 'time-slot preset boundary'));
+
+[
+  'isMinuteWithinClockRange(current.minutes, slot.startTime, slot.endTime)',
+  'clockRangeAppliesOnDay(',
+  'const futureMinutes = dayOffset * 24 * 60 + startMinutes - current.minutes;',
+].forEach((token) => requireToken(timedCategories, token, 'timed category visibility'));
+
+[
+  "await assertActiveSessionStore(storeId, 'time_slot_preset_store_scope_mismatch');",
+  'const normalizedPresets = normalizeTimeSlotPresets(timeSlotPresets);',
+  'timeSlotPresets: normalizedPresets',
+].forEach((token) => requireToken(storeDal, token, 'store time-slot preset persistence'));
 
 [
   'export const revalidatePublicClientCacheForProject = async (',
   'invalidateOwnerBusinessAssistantBrowserCache({ storeId, projectId });',
   'await revalidatePublicClientCache(storeId, context);',
   'await touchDigitalScreenContentVersion(storeId, context, { projectId });',
+  'const pendingRevalidations = new Map<string, PendingPublicCacheRevalidation>();',
+  'pending.rerunRequested = true;',
+  '} while (entry.rerunRequested);',
   "credentials: 'same-origin'",
   "cache: 'no-store'",
   "redirect: 'manual'",
 ].forEach((token) => requireToken(publicClientCache, token, 'public client cache'));
+forbidToken(publicClientCache, 'const pendingRevalidations = new Map<string, Promise<void>>();', 'public client cache');
 
 [
   'export const touchDigitalScreenContentVersion = async (',
   'if (!FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED || !normalizedStoreId || typeof window === "undefined") {',
-  '"screen.contentVersion": increment(1)',
-  'await syncPublicScreenState(normalizedStoreId, {',
+  'await runTransaction(firebaseClient, async (transaction) => {',
+  '"screen.contentVersion": nextContentVersion',
+  'transaction.set(publicScreenRef, publicState, { merge: false });',
   'digital_screen_content_version_touch_failed',
+  'type PendingScreenContentTouch',
+  'const pendingScreenTouches = new Map<string, PendingScreenContentTouch>();',
+  'pending.rerunRequested = true;',
+  'pending.options = options;',
+  '} while (entry.rerunRequested);',
+  'if (pendingScreenTouches.get(normalizedStoreId) === entry)',
 ].forEach((token) => requireToken(screenInvalidation, token, 'digital screen invalidation'));
+forbidToken(screenInvalidation, 'const pendingScreenTouches = new Map<string, Promise<void>>();', 'digital screen invalidation');
 
+requireNamedImport(mobileMenu, '@database/projects', [
+  'appendImageBatchProjectSelections',
+  'assertProjectUpdateSucceeded',
+  'updateProjectWithoutLoader',
+  'uploadFile',
+], 'mobile menu screen');
 [
-  'import { assertProjectUpdateSucceeded, updateProjectWithoutLoader, uploadFile } from \'@database/projects\';',
   'const MOBILE_MENU_PERSIST_DEBOUNCE_MS = 700;',
   'const MOBILE_MENU_PERSIST_RETRY_MS = 2500;',
   'const persistMenuProjectImmediately = useCallback(async (project: any) => {',
@@ -189,12 +346,23 @@ forbidToken(projectDal, 'console.warn(', 'project DAL direct warn logging');
   'mobile_menu_item_image_project_update_rejected',
   'mobile_menu_item_image_project_update_failed',
   'logMobileMenuFailure',
+  'const savedProject = await appendImageBatchProjectSelections({',
 ].forEach((token) => requireToken(mobileMenu, token, 'mobile menu screen'));
 forbidToken(mobileMenu, 'console.error(', 'mobile menu direct error logging');
 forbidToken(mobileMenu, 'console.warn(', 'mobile menu direct warn logging');
 
+requireNamedImport(mobileProjectSelector, '@database/projects', [
+  'addProject',
+  'assertProjectDeleteSucceeded',
+  'assertProjectUpdateSucceeded',
+  'deleteProject',
+  'duplicateProject',
+  'getProjectDataWithoutLoader',
+  'setProjectActive',
+  'updateProjectMetadata',
+  'updateProjectWithoutLoader',
+], 'mobile project selector');
 [
-  'import { addProject, assertProjectDeleteSucceeded, assertProjectUpdateSucceeded, deleteProject, duplicateProject, getProjectDataWithoutLoader, setProjectActive, updateProjectMetadata, updateProjectWithoutLoader } from \'@database/projects\';',
   'copyMobileProjectSelectorText',
   'MOBILE_PROJECT_SELECTOR_COPY_UNAVAILABLE',
   'MOBILE_PROJECT_SELECTOR_COPY_FALLBACK_FAILED',
@@ -209,8 +377,11 @@ forbidToken(mobileMenu, 'console.warn(', 'mobile menu direct warn logging');
   'logMobileProjectFailure',
 ].forEach((token) => requireToken(mobileProjectSelector, token, 'mobile project selector'));
 
+requireNamedImport(bulkActionsSheet, '@database/projects', [
+  'assertProjectUpdateSucceeded',
+  'updateProjectMetadata',
+], 'mobile bulk actions');
 [
-  'import { assertProjectUpdateSucceeded, updateProjectMetadata } from \'@database/projects\';',
   'applyBulkAvailability',
   'applyBulkActiveInactive',
   'onApply(updated,',

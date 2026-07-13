@@ -2,6 +2,7 @@
 
 **Status:** Initial assessment
 **Created:** June 23, 2026
+**Last Updated:** July 11, 2026
 **Mobile relevance decision:** Read-only summaries only.
 
 ## Admission Test
@@ -29,6 +30,8 @@
 - view full prompt payload;
 - view raw evidence;
 - close eval failures.
+- run AI Volume Mode;
+- retry a partial volume batch;
 
 ## Acceptance Criteria
 

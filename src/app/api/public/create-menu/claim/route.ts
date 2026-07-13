@@ -16,16 +16,27 @@ import countryData from '@atoms/phoneNumberInput/countryData';
 import { DB_COLLECTIONS } from '@constant/database';
 import { appendPublicPath, getMenuUrl } from '@constant/urls';
 import { FALLBACK_BUSINESS_TYPE, resolveStoreBusinessCategory } from '@data/shared/businessTypes';
-import { getSuggestionValue } from '@data/shared/extractedBusinessProfile';
-import { admin } from '@lib/firebase/firebaseAdmin';
+import { getSuggestionValue, normalizeExtractedBusinessProfile } from '@data/shared/extractedBusinessProfile';
+import {
+    getPublicMenuDraftTimestampMillis,
+    normalizePublicMenuDraftExtractedData,
+    type PublicMenuDraftLanguage,
+} from '@data/shared/publicMenuDraftData';
+import { admin, storageAdmin } from '@lib/firebase/firebaseAdmin';
 import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
 import { normalizeGrowthAcquisitionAttribution } from '@lib/growth/acquisitionAttribution';
 import { isPlatformEntityBlocked } from '@lib/platform/entityBlock';
 import { CANONICAL_SOURCE_LANGUAGE, normalizeProjectLanguages } from '@lib/localization/languagePolicy';
 import { getBusinessAttributesWithMenuDefaults } from '@lib/obp/inferBusinessAttributesFromMenu';
-import { createTenantStoreInTransaction, preCheckSubdomain, updateUserWithTenantStore } from '@lib/onboarding/createTenantStore';
+import {
+    createTenantStoreInTransaction,
+    normalizeSubdomainCandidate,
+    preCheckSubdomain,
+    updateUserWithTenantStore,
+} from '@lib/onboarding/createTenantStore';
 import { STARTER_ACTIVATION_MS, STARTER_ACTIVATION_STATUS } from '@lib/onboarding/starterActivation';
 import { normalizePhoneNumberForStorage } from '@lib/phone/phoneNumber';
+import { normalizePublicDraftSourceForProject } from '@lib/public-menu-entry/publicDraftSource';
 import { invalidateOwnerBusinessAssistantPacketCache } from '@lib/ownerBusinessAssistant/server/contextPacketCache';
 import { recordFounderGrowthEvent } from '@lib/ops/founderGrowthReadModel';
 import {
@@ -66,21 +77,13 @@ function normalizePublicMenuClaimNumericDocumentId(
         : null;
 }
 
-const getCanonicalExtractionLanguages = (languages: any): string[] => normalizeProjectLanguages(
-    Array.isArray(languages)
-        ? languages.map((language) => typeof language === 'string' ? language : language?.code)
-        : [],
+const getCanonicalExtractionLanguages = (languages: PublicMenuDraftLanguage[]): string[] => normalizeProjectLanguages(
+    languages.map((language) => language.code),
 );
 
-const getDetectedDefaultLanguage = (languages: any): string => {
-    if (Array.isArray(languages)) {
-        const primary = languages.find((language) => language?.isPrimary)?.code;
-        if (primary) return String(primary).trim().toLowerCase();
-
-        const firstCode = typeof languages[0] === 'string' ? languages[0] : languages[0]?.code;
-        if (firstCode) return String(firstCode).trim().toLowerCase();
-    }
-    return CANONICAL_SOURCE_LANGUAGE;
+const getDetectedDefaultLanguage = (languages: PublicMenuDraftLanguage[]): string => {
+    const primary = languages.find((language) => language.isPrimary)?.code;
+    return primary || languages[0]?.code || CANONICAL_SOURCE_LANGUAGE;
 };
 
 const getCurrencySymbolFromCode = (currencyCode?: string | null): string | undefined => {
@@ -152,6 +155,53 @@ class PublicMenuClaimError extends Error {
         super(clientMessage);
         this.name = 'PublicMenuClaimError';
     }
+}
+
+type PublicMenuClaimTransactionResult = {
+    growthAcquisition: ReturnType<typeof normalizeGrowthAcquisitionAttribution>;
+    idempotent: boolean;
+    isNewAccount: boolean;
+    projectId: string;
+    projectSlug: string;
+    referralBoundInTransaction: boolean;
+    storeId: number;
+    subdomain: string;
+    tenantId: number;
+};
+
+function normalizeCompletedClaimResult(
+    draft: Record<string, unknown>,
+    userId: string,
+): Omit<PublicMenuClaimTransactionResult, 'growthAcquisition'> | null {
+    if (draft.claimed !== true || draft.claimedByUId !== userId) return null;
+    const tenantScope = normalizePublicMenuClaimNumericDocumentId(draft.convertedTenantId);
+    const storeScope = normalizePublicMenuClaimNumericDocumentId(draft.convertedStoreId);
+    const projectId = typeof draft.convertedProjectId === 'string' ? draft.convertedProjectId.trim() : '';
+    const projectSlug = typeof draft.convertedProjectSlug === 'string' ? draft.convertedProjectSlug.trim() : '';
+    const subdomain = typeof draft.convertedSubdomain === 'string' ? draft.convertedSubdomain.trim() : '';
+    if (
+        !tenantScope
+        || !storeScope
+        || !isValidFirestoreDocumentId(projectId)
+        || projectId !== draft.convertedProjectId
+        || !projectSlug
+        || slugify(projectSlug) !== projectSlug
+        || projectSlug.length > 160
+        || !subdomain
+        || normalizeSubdomainCandidate(subdomain) !== subdomain
+    ) {
+        return null;
+    }
+    return {
+        tenantId: tenantScope.numericId,
+        storeId: storeScope.numericId,
+        projectId,
+        projectSlug,
+        subdomain,
+        isNewAccount: draft.convertedWasNewAccount === true,
+        idempotent: true,
+        referralBoundInTransaction: false,
+    };
 }
 
 type PublicMenuClaimDiagnosticContext = {
@@ -279,7 +329,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             ? ''
             : await preCheckSubdomain(db, businessName, city);
 
-        const result = await db.runTransaction(async (transaction) => {
+        const result = await db.runTransaction<PublicMenuClaimTransactionResult>(async (transaction) => {
             const draftDoc = await transaction.get(draftRef);
             if (!draftDoc.exists) {
                 throw new PublicMenuClaimError(404, 'Draft not found or expired.');
@@ -292,10 +342,18 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             }
 
             if (draft.claimed) {
-                throw new PublicMenuClaimError(409, 'This menu has already been claimed.');
+                const completedClaim = normalizeCompletedClaimResult(draft, userId);
+                if (!completedClaim) {
+                    throw new PublicMenuClaimError(409, 'This menu has already been claimed.');
+                }
+                return {
+                    ...completedClaim,
+                    growthAcquisition,
+                };
             }
 
-            if (draft.expiresAt && draft.expiresAt.toMillis() < Date.now()) {
+            const expiresAtMillis = getPublicMenuDraftTimestampMillis(draft.expiresAt);
+            if (expiresAtMillis === null || expiresAtMillis <= Date.now()) {
                 throw new PublicMenuClaimError(410, 'Draft expired. Please upload again.');
             }
 
@@ -303,9 +361,22 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 throw new PublicMenuClaimError(400, 'Menu extraction is not complete yet.');
             }
 
-            const extractedLanguageCodes = getCanonicalExtractionLanguages(draft.extractedData?.languages);
-            const detectedDefaultLanguage = getDetectedDefaultLanguage(draft.extractedData?.languages);
-            const extractedProfile = draft.extractedBusinessProfile || draft.extractedData?.extractedBusinessProfile || null;
+            const extractedData = normalizePublicMenuDraftExtractedData(draft.extractedData);
+            if (!extractedData) {
+                throw new PublicMenuClaimError(422, 'This menu could not be validated. Please upload it again.');
+            }
+            const draftSource = normalizePublicDraftSourceForProject(draft, draftId, {
+                allowedBucket: storageAdmin.bucket().name,
+                allowLocalEmulator: process.env.NODE_ENV !== 'production',
+            });
+            if (!draftSource) {
+                throw new PublicMenuClaimError(422, 'This menu source could not be validated. Please upload it again.');
+            }
+            const extractedLanguageCodes = getCanonicalExtractionLanguages(extractedData.languages);
+            const detectedDefaultLanguage = getDetectedDefaultLanguage(extractedData.languages);
+            const extractedProfile = normalizeExtractedBusinessProfile(
+                draft.extractedBusinessProfile || draft.extractedData?.extractedBusinessProfile,
+            ) || null;
             const profileCurrencyCode = getSuggestionValue(extractedProfile?.identity?.currencyCode, 'medium') || draft.detectedCurrencyCode || null;
             const profileCurrencySymbol = getCurrencySymbolFromCode(profileCurrencyCode);
             const profileProjectName = getSuggestionValue(extractedProfile?.project?.projectName, 'medium') || draft.suggestedProjectName || '';
@@ -325,9 +396,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 resolvedBusinessType,
                 businessCategory || draft.detectedBusinessCategory,
             );
-            const extractedData = draft.extractedData;
             const extractedMenuData = {
-                businessAttributeSuggestions: extractedData.businessAttributeSuggestions || [],
                 categories: extractedData.categories || [],
                 items: extractedData.items || [],
                 languages: extractedData.languages || [],
@@ -505,10 +574,10 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             }
             const fileEntry = {
                 uid: `file_${Date.now()}`,
-                name: draft.originalFileName || 'menu.jpg',
-                url: draft.imageUrl,
-                type: draft.fileType || 'image/jpeg',
-                size: Number(draft.fileSize || 0),
+                name: draftSource.fileName,
+                url: draftSource.imageUrl,
+                type: draftSource.fileType,
+                size: draftSource.fileSize,
                 active: true,
                 deleted: false,
                 index: 0,
@@ -562,8 +631,12 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 claimed: true,
                 claimedByUId: userId,
                 claimedAt: now,
+                convertedTenantId: tenantId,
                 convertedProjectId: projectId,
+                convertedProjectSlug: projectSlug,
                 convertedStoreId: storeId,
+                convertedSubdomain: subdomain,
+                convertedWasNewAccount: !hasExistingAccount,
             });
 
             return {
@@ -574,16 +647,23 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 projectSlug,
                 referralBoundInTransaction,
                 growthAcquisition,
+                idempotent: false,
+                isNewAccount: !hasExistingAccount,
             };
         });
 
         if (result.referralBoundInTransaction) clearReferralCookieOnResponse = true;
+        if (result.idempotent && result.isNewAccount && referralCookiePresent) {
+            clearReferralCookieOnResponse = true;
+        }
 
-        await recordFounderGrowthEvent({
-            attribution: result.growthAcquisition,
-            draftId,
-            stage: 'business_claimed',
-        });
+        if (!result.idempotent) {
+            await recordFounderGrowthEvent({
+                attribution: result.growthAcquisition,
+                draftId,
+                stage: 'business_claimed',
+            });
+        }
 
         logSecurityDiagnostic('public_menu_claim_succeeded', getPublicMenuClaimDiagnosticContext({
             draftId,
@@ -592,31 +672,43 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             storeId: result.storeId,
             projectId: result.projectId,
             hasExistingAccount,
-            isNewAccount: !hasExistingAccount,
+            isNewAccount: result.isNewAccount,
         }));
 
-        try {
-            revalidateTag(`menu-store-${result.storeId}`);
-            revalidateTag(`store-${result.storeId}`);
-            revalidateTag('client-stores');
-            revalidateTag('screen-data');
-            await touchDigitalScreenContentVersionForStoreServer(result.storeId, 'publicCreateMenuClaim');
-            await invalidateOwnerBusinessAssistantPacketCache({
-                tId: result.tenantId,
-                sId: result.storeId,
-                projectId: result.projectId,
+        const cacheEffects = [
+            { name: 'menu-store-tag', run: async () => revalidateTag(`menu-store-${result.storeId}`) },
+            { name: 'store-tag', run: async () => revalidateTag(`store-${result.storeId}`) },
+            { name: 'client-stores-tag', run: async () => revalidateTag('client-stores') },
+            { name: 'screen-data-tag', run: async () => revalidateTag('screen-data') },
+            {
+                name: 'screen-content-version',
+                run: async () => touchDigitalScreenContentVersionForStoreServer(result.storeId, 'publicCreateMenuClaim'),
+            },
+            {
+                name: 'owner-business-assistant-packet',
+                run: async () => invalidateOwnerBusinessAssistantPacketCache({
+                    tId: result.tenantId,
+                    sId: result.storeId,
+                    projectId: result.projectId,
+                }),
+            },
+        ];
+        const cacheResults = await Promise.allSettled(cacheEffects.map((effect) => effect.run()));
+        cacheResults.forEach((cacheResult, index) => {
+            if (cacheResult.status !== 'rejected') return;
+            logSecurityFailure('public_menu_claim_cache_revalidation_failed', cacheResult.reason, {
+                ...getPublicMenuClaimDiagnosticContext({
+                    draftId,
+                    userId,
+                    tenantId: result.tenantId,
+                    storeId: result.storeId,
+                    projectId: result.projectId,
+                    hasExistingAccount,
+                    isNewAccount: result.isNewAccount,
+                }),
+                cacheEffect: cacheEffects[index].name,
             });
-        } catch (cacheError) {
-            logSecurityFailure('public_menu_claim_cache_revalidation_failed', cacheError, getPublicMenuClaimDiagnosticContext({
-                draftId,
-                userId,
-                tenantId: result.tenantId,
-                storeId: result.storeId,
-                projectId: result.projectId,
-                hasExistingAccount,
-                isNewAccount: !hasExistingAccount,
-            }));
-        }
+        });
 
         // 9. Return success with URLs
         const officialPageUrl = getMenuUrl(result.subdomain);
@@ -630,7 +722,8 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             subdomain: result.subdomain,
             officialPageUrl,
             menuUrl,
-            isNewAccount: !hasExistingAccount,
+            isNewAccount: result.isNewAccount,
+            idempotent: result.idempotent,
         });
         if (clearReferralCookieOnResponse) clearOwnerReferralCookie(response);
         return response;

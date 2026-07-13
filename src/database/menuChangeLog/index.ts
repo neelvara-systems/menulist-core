@@ -22,21 +22,27 @@
 import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
 import { apiCallComposer } from '@lib/apiHelper/apiCallComposer';
+import { replaceUndefined } from '@lib/apiHelper';
 import getActiveSession from '@lib/auth/getActiveSession';
 import { firebaseClient } from '@lib/firebase/firebaseClient';
+import { sanitizeForFirestore } from '@lib/firestore/sanitizeForFirestore';
 import {
     ChangeActor,
     ChangeLogDebounceKey,
+    MENU_CHANGE_ACTORS,
+    MENU_CHANGE_TYPES,
     MenuChangeLogEntry,
     MenuChangeLogInput,
+    MenuChangeScope,
     MenuChangeType,
     PendingMenuChange,
 } from '@type/menuObservation';
 import {
     addDoc,
     collection,
+    documentId,
     getDocs,
-    limit,
+    limit as firestoreLimit,
     orderBy,
     query,
     QueryConstraint,
@@ -50,68 +56,55 @@ import {
     logMenuChangeLogDiagnostic,
     logMenuChangeLogFailure,
 } from './menuChangeLogDiagnostics';
+import {
+    createMenuChangeLogPendingKey,
+    createPendingMenuChange,
+    normalizeMenuChangeLogIdentifier,
+    normalizeMenuChangeLogQueryLimit,
+    normalizeMenuChangeLogScope,
+    shouldDebounceMenuChange,
+    takePendingMenuChanges,
+} from './menuChangeLogBoundary';
 
 // ================================================================
 // COST OPTIMIZATION: Debounce tracking to reduce writes
 // Same pattern as ownerControlUsage
 // ================================================================
 const DEBOUNCE_MS = FEATURE_FLAGS.MENU_OBSERVATION_DEBOUNCE_MS || 5000;
-const pendingWrites: Map<ChangeLogDebounceKey, NodeJS.Timeout> = new Map();
+const pendingWrites: Map<ChangeLogDebounceKey, ReturnType<typeof setTimeout>> = new Map();
 const pendingData: Map<ChangeLogDebounceKey, PendingMenuChange> = new Map();
+let appendOnlyQueueSequence = 0;
 
 const COLLECTION = DB_COLLECTIONS.MENU_CHANGE_LOG;
-type MenuChangeScope = { tId: string | number; sId: string | number };
+type MenuChangeScopeInput = { tId: string | number; sId: string | number };
 
-/**
- * Sanitize object for Firestore (replace undefined with null)
- * Required per Security Rule #16
- */
-function sanitizeForFirestore<T extends Record<string, any>>(obj: T): T {
-    const result = {} as T;
-    for (const key in obj) {
-        const value = obj[key];
-        if (value === undefined) {
-            (result as any)[key] = null;
-        } else if (value && typeof value === 'object' && !Array.isArray(value) && !(value as any).toDate) {
-            (result as any)[key] = sanitizeForFirestore(value as Record<string, any>);
-        } else if (Array.isArray(value)) {
-            (result as any)[key] = value.map(item =>
-                (item && typeof item === 'object') ? sanitizeForFirestore(item) : item
-            );
-        } else {
-            (result as any)[key] = value;
-        }
-    }
-    return result;
-}
+const isRecord = (value: unknown): value is Record<string, unknown> => (
+    value !== null && typeof value === 'object' && !Array.isArray(value)
+);
+
+const isMenuChangeType = (value: unknown): value is MenuChangeType => (
+    typeof value === 'string' && MENU_CHANGE_TYPES.some(changeType => changeType === value)
+);
+
+const isChangeActor = (value: unknown): value is ChangeActor => (
+    typeof value === 'string' && MENU_CHANGE_ACTORS.some(actor => actor === value)
+);
 
 /**
  * Get collection reference for change logs
  * Path: menuChangeLog/{tId}/{sId}
  */
-async function getCollectionRef(session?: any) {
-    session = session || await getActiveSession();
-    if (!session?.tId || !session?.sId) {
-        throw new Error('No active session');
-    }
+function getCollectionRef(scope: MenuChangeScope) {
     return collection(
         firebaseClient,
-        `${COLLECTION}/${session.tId}/${session.sId}`
+        `${COLLECTION}/${scope.tId}/${scope.sId}`
     );
 }
 
-/**
- * Generate debounce key for a change
- * Format: {tId}_{sId}_{projectId}_{itemId}_{changeType}
- */
-function getDebounceKey(
-    tId: string | number,
-    sId: string | number,
-    projectId: string,
-    itemId: string | undefined,
-    changeType: MenuChangeType
-): ChangeLogDebounceKey {
-    return `${tId}_${sId}_${projectId}_${itemId || 'category'}_${changeType}`;
+async function getActiveMenuChangeScope(): Promise<MenuChangeScope> {
+    const scope = normalizeMenuChangeLogScope(await getActiveSession());
+    if (!scope) throw new Error('No valid active menu change log scope');
+    return scope;
 }
 
 /**
@@ -132,13 +125,13 @@ export async function logMenuChange(entry: MenuChangeLogInput): Promise<void> {
     }
 
     try {
-        const session = await getActiveSession();
-        if (!session?.tId || !session?.sId) {
+        const scope = normalizeMenuChangeLogScope(await getActiveSession());
+        if (!scope) {
             logMenuChangeLogDiagnostic('menu_change_log_session_missing', getMenuChangeLogEntryContext(entry));
             return;
         }
 
-        await queueScopedMenuChange(entry, session);
+        queueScopedMenuChange(entry, scope);
     } catch (error) {
         // Fire-and-forget - log bounded diagnostics without blocking owner work.
         logMenuChangeLogFailure('menu_change_log_tracking_failed', error, getMenuChangeLogEntryContext(entry));
@@ -147,14 +140,15 @@ export async function logMenuChange(entry: MenuChangeLogInput): Promise<void> {
 
 export async function logMenuChangeForScope(
     entry: MenuChangeLogInput,
-    scope: MenuChangeScope,
+    scope: MenuChangeScopeInput,
 ): Promise<void> {
     if (!FEATURE_FLAGS.ENABLE_MENU_OBSERVATION) {
         return;
     }
 
-    if (!scope?.tId || !scope?.sId) {
-        logMenuChangeLogDiagnostic('menu_change_log_scope_missing', {
+    const normalizedScope = normalizeMenuChangeLogScope(scope);
+    if (!normalizedScope) {
+        logMenuChangeLogDiagnostic('menu_change_log_scope_invalid', {
             ...getMenuChangeLogEntryContext(entry),
             ...getBoundedMenuChangeLogStringContext('tenantId', scope?.tId),
             ...getBoundedMenuChangeLogStringContext('storeId', scope?.sId),
@@ -163,7 +157,7 @@ export async function logMenuChangeForScope(
     }
 
     try {
-        await queueScopedMenuChange(entry, scope);
+        queueScopedMenuChange(entry, normalizedScope);
     } catch (error) {
         logMenuChangeLogFailure('menu_change_log_scoped_tracking_failed', error, {
             ...getMenuChangeLogEntryContext(entry),
@@ -173,70 +167,90 @@ export async function logMenuChangeForScope(
     }
 }
 
-async function queueScopedMenuChange(
+function queueScopedMenuChange(
     entry: MenuChangeLogInput,
     scope: MenuChangeScope,
-): Promise<void> {
-        // COST OPTIMIZATION: Debounce writes per item per change type
-        const debounceKey = getDebounceKey(
-            scope.tId,
-            scope.sId,
-            entry.projectId,
-            entry.itemId,
-            entry.changeType
-        );
+): void {
+    const entrySnapshot = sanitizeForFirestore(entry, {
+        undefinedObjectValue: 'omit',
+    });
+    if (!isMenuChangeType(entrySnapshot.changeType)
+        || !isChangeActor(entrySnapshot.changedBy)
+        || !Object.prototype.hasOwnProperty.call(entrySnapshot, 'oldValue')
+        || !Object.prototype.hasOwnProperty.call(entrySnapshot, 'newValue')) {
+        throw new TypeError('Invalid menu change log entry');
+    }
+    normalizeMenuChangeLogIdentifier(entrySnapshot.projectId, 'projectId');
+    if (entrySnapshot.itemId !== undefined) {
+        normalizeMenuChangeLogIdentifier(entrySnapshot.itemId, 'itemId');
+    }
+    if (entrySnapshot.categoryId !== undefined) {
+        normalizeMenuChangeLogIdentifier(entrySnapshot.categoryId, 'categoryId');
+    }
+    if (entrySnapshot.userId !== undefined) {
+        normalizeMenuChangeLogIdentifier(entrySnapshot.userId, 'userId');
+    }
+    if (entrySnapshot.metadata !== undefined && !isRecord(entrySnapshot.metadata)) {
+        throw new TypeError('Invalid menu change log metadata');
+    }
 
-        // Clear existing timer if any
-        if (pendingWrites.has(debounceKey)) {
-            clearTimeout(pendingWrites.get(debounceKey)!);
-        }
+    // Completed revision/publish operations receive unique queue keys so they
+    // remain flushable but never replace one another. Detailed state changes
+    // retain stable keys and the existing cost-control debounce.
+    if (!shouldDebounceMenuChange(entrySnapshot.changeType)) {
+        appendOnlyQueueSequence = appendOnlyQueueSequence === Number.MAX_SAFE_INTEGER
+            ? 1
+            : appendOnlyQueueSequence + 1;
+    }
+    const debounceKey = createMenuChangeLogPendingKey(
+        scope,
+        entrySnapshot,
+        appendOnlyQueueSequence || 1,
+    );
+    const existingTimer = pendingWrites.get(debounceKey);
+    if (existingTimer) clearTimeout(existingTimer);
 
-        // Store pending data (latest value wins)
-        pendingData.set(debounceKey, {
-            entry,
-            debounceKey,
-            queuedAt: Date.now(),
-        });
+    // Snapshot both payload and scope so later object/session mutations cannot
+    // retarget or alter the queued immutable event.
+    pendingData.set(
+        debounceKey,
+        createPendingMenuChange(entrySnapshot, scope, debounceKey),
+    );
 
-        // Set new debounced write
-        const timer = setTimeout(() => {
-            const pending = pendingData.get(debounceKey);
-            if (pending) {
-                void executeLogWrite(scope.tId, scope.sId, pending.entry);
-                pendingData.delete(debounceKey);
-            }
-            pendingWrites.delete(debounceKey);
-        }, DEBOUNCE_MS);
+    const timer = setTimeout(() => {
+        const pending = pendingData.get(debounceKey);
+        pendingData.delete(debounceKey);
+        pendingWrites.delete(debounceKey);
+        if (pending) void executeLogWrite(pending.scope, pending.entry);
+    }, DEBOUNCE_MS);
 
-        pendingWrites.set(debounceKey, timer);
+    pendingWrites.set(debounceKey, timer);
 }
 
 /**
  * Execute the actual Firestore write (called after debounce)
  */
 async function executeLogWrite(
-    tId: string | number,
-    sId: string | number,
+    scope: MenuChangeScope,
     entry: MenuChangeLogInput
 ): Promise<void> {
     try {
-        const session = { tId, sId };
-        const collectionRef = await getCollectionRef(session);
+        const collectionRef = getCollectionRef(scope);
 
         const logEntry: Omit<MenuChangeLogEntry, 'id'> = {
             ...entry,
-            tId: Number(tId),
-            sId: Number(sId),
+            tId: scope.tId,
+            sId: scope.sId,
             timestamp: Timestamp.now(),
         };
 
-        await addDoc(collectionRef, sanitizeForFirestore(logEntry));
+        await addDoc(collectionRef, replaceUndefined(logEntry));
     } catch (error) {
         // Fire-and-forget - log but don't throw
         logMenuChangeLogFailure('menu_change_log_write_failed', error, {
             ...getMenuChangeLogEntryContext(entry),
-            ...getBoundedMenuChangeLogStringContext('tenantId', tId),
-            ...getBoundedMenuChangeLogStringContext('storeId', sId),
+            ...getBoundedMenuChangeLogStringContext('tenantId', scope.tId),
+            ...getBoundedMenuChangeLogStringContext('storeId', scope.sId),
         });
     }
 }
@@ -246,8 +260,53 @@ async function executeLogWrite(
  * Each change is still debounced individually
  */
 export async function logMenuChanges(entries: MenuChangeLogInput[]): Promise<void> {
+    if (!FEATURE_FLAGS.ENABLE_MENU_OBSERVATION || entries.length === 0) return;
+
+    let scope: MenuChangeScope;
+    try {
+        scope = await getActiveMenuChangeScope();
+    } catch (error) {
+        logMenuChangeLogFailure('menu_change_log_batch_session_failed', error, {
+            entryCount: entries.length,
+        });
+        return;
+    }
+
+    queueMenuChangesForScope(entries, scope);
+}
+
+export async function logMenuChangesForScope(
+    entries: MenuChangeLogInput[],
+    scope: MenuChangeScopeInput,
+): Promise<void> {
+    if (!FEATURE_FLAGS.ENABLE_MENU_OBSERVATION || entries.length === 0) return;
+
+    const normalizedScope = normalizeMenuChangeLogScope(scope);
+    if (!normalizedScope) {
+        logMenuChangeLogDiagnostic('menu_change_log_batch_scope_invalid', {
+            entryCount: entries.length,
+            ...getBoundedMenuChangeLogStringContext('tenantId', scope?.tId),
+            ...getBoundedMenuChangeLogStringContext('storeId', scope?.sId),
+        });
+        return;
+    }
+    queueMenuChangesForScope(entries, normalizedScope);
+}
+
+function queueMenuChangesForScope(
+    entries: MenuChangeLogInput[],
+    scope: MenuChangeScope,
+): void {
     for (const entry of entries) {
-        await logMenuChange(entry);
+        try {
+            queueScopedMenuChange(entry, scope);
+        } catch (error) {
+            logMenuChangeLogFailure('menu_change_log_batch_entry_failed', error, {
+                ...getMenuChangeLogEntryContext(entry),
+                ...getBoundedMenuChangeLogStringContext('tenantId', scope.tId),
+                ...getBoundedMenuChangeLogStringContext('storeId', scope.sId),
+            });
+        }
     }
 }
 
@@ -255,34 +314,22 @@ export async function logMenuChanges(entries: MenuChangeLogInput[]): Promise<voi
  * Flush all pending writes immediately
  * Useful for testing or before page unload
  */
-export function flushPendingChanges(): void {
-    Array.from(pendingWrites.entries()).forEach(([key, timer]) => {
-        clearTimeout(timer);
-        const pending = pendingData.get(key);
-        if (pending) {
-            // Fire without waiting
-            void getActiveSession().then(session => {
-                if (session?.tId && session?.sId) {
-                    void executeLogWrite(session.tId, session.sId, pending.entry);
-                    return;
-                }
-                logMenuChangeLogDiagnostic('menu_change_log_flush_session_missing', {
-                    ...getMenuChangeLogEntryContext(pending.entry),
-                });
-            }).catch((error) => {
-                logMenuChangeLogFailure('menu_change_log_flush_session_failed', error, {
-                    ...getMenuChangeLogEntryContext(pending.entry),
-                });
-            });
-        }
-    });
+export async function flushPendingChanges(): Promise<void> {
+    pendingWrites.forEach(timer => clearTimeout(timer));
     pendingWrites.clear();
-    pendingData.clear();
+    const pending = takePendingMenuChanges(pendingData);
+    await Promise.all(pending.map(change => executeLogWrite(change.scope, change.entry)));
+}
+
+if (typeof window !== 'undefined') {
+    window.addEventListener('pagehide', () => {
+        void flushPendingChanges();
+    });
 }
 
 // ================================================================
-// QUERY FUNCTIONS (For nightly Cloud Function use only)
-// These are NOT for UI - internal system use only
+// QUERY FUNCTIONS (internal authenticated client tooling only)
+// Scheduled Functions use package-local Admin readers; these remain off owner UI.
 // ================================================================
 
 export interface ChangeLogQueryOptions {
@@ -291,12 +338,152 @@ export interface ChangeLogQueryOptions {
     changeType?: MenuChangeType;
     limit?: number;
     startAfterTimestamp?: Timestamp;
+    startAfterId?: string;
 }
+
+const getValidTimestampCursor = (value?: Timestamp): Timestamp | undefined => {
+    if (value === undefined) return undefined;
+    if (!(value instanceof Timestamp) || !Number.isFinite(value.toMillis())) {
+        throw new TypeError('Invalid menu change log timestamp cursor');
+    }
+    return value;
+};
+
+const getValidDateTimestamp = (value: Date, field: string): Timestamp => {
+    if (!(value instanceof Date) || !Number.isFinite(value.getTime())) {
+        throw new TypeError(`Invalid ${field}`);
+    }
+    return Timestamp.fromDate(value);
+};
+
+const normalizeStoredMenuChange = (
+    id: string,
+    value: unknown,
+): MenuChangeLogEntry | null => {
+    if (!isRecord(value)
+        || typeof value.projectId !== 'string'
+        || !isMenuChangeType(value.changeType)
+        || !isChangeActor(value.changedBy)
+        || !(value.timestamp instanceof Timestamp)
+        || !('oldValue' in value)
+        || !('newValue' in value)) {
+        return null;
+    }
+
+    const entry: MenuChangeLogEntry = {
+        id,
+        projectId: value.projectId,
+        changeType: value.changeType,
+        oldValue: value.oldValue,
+        newValue: value.newValue,
+        changedBy: value.changedBy,
+        timestamp: value.timestamp,
+    };
+
+    if (typeof value.itemId === 'string') entry.itemId = value.itemId;
+    if (typeof value.categoryId === 'string') entry.categoryId = value.categoryId;
+    if (typeof value.userId === 'string') entry.userId = value.userId;
+    if (isRecord(value.metadata)) entry.metadata = value.metadata;
+    const storedScope = normalizeMenuChangeLogScope({ tId: value.tId, sId: value.sId });
+    if (storedScope) {
+        entry.tId = storedScope.tId;
+        entry.sId = storedScope.sId;
+    }
+    return entry;
+};
+
+const normalizeChangeSnapshot = (
+    docs: ReadonlyArray<{ id: string; data: () => unknown }>,
+): MenuChangeLogEntry[] => {
+    const entries: MenuChangeLogEntry[] = [];
+    for (const document of docs) {
+        const entry = normalizeStoredMenuChange(document.id, document.data());
+        if (entry) {
+            entries.push(entry);
+        } else {
+            logMenuChangeLogDiagnostic('menu_change_log_document_invalid', {
+                ...getBoundedMenuChangeLogStringContext('documentId', document.id),
+            });
+        }
+    }
+    return entries;
+};
+
+const MENU_CHANGE_LOG_SCAN_PAGE_SIZE = 100;
+const MAX_MENU_CHANGE_LOG_SCAN_DOCUMENTS = 5000;
+
+type MenuChangeLogScanOptions = Readonly<{
+    scope: MenuChangeScope;
+    startTimestamp?: Timestamp;
+    endTimestamp?: Timestamp;
+    startAfterTimestamp?: Timestamp;
+    startAfterId?: string;
+}>;
+
+const visitStoredMenuChanges = async (
+    options: MenuChangeLogScanOptions,
+    visitor: (entry: MenuChangeLogEntry) => boolean,
+): Promise<void> => {
+    const hasCursorTimestamp = options.startAfterTimestamp !== undefined;
+    const hasCursorId = options.startAfterId !== undefined;
+    if (hasCursorTimestamp !== hasCursorId) {
+        throw new TypeError('Menu change log pagination requires timestamp and document ID');
+    }
+
+    let cursorTimestamp: unknown = options.startAfterTimestamp;
+    let cursorId = options.startAfterId === undefined
+        ? undefined
+        : normalizeMenuChangeLogIdentifier(options.startAfterId, 'startAfterId');
+    const collectionRef = getCollectionRef(options.scope);
+    let documentsScanned = 0;
+
+    while (true) {
+        if (documentsScanned >= MAX_MENU_CHANGE_LOG_SCAN_DOCUMENTS) {
+            throw new RangeError('Menu change log scan limit exceeded');
+        }
+        const constraints: QueryConstraint[] = [];
+        if (options.startTimestamp) {
+            constraints.push(where('timestamp', '>=', options.startTimestamp));
+        }
+        if (options.endTimestamp) {
+            constraints.push(where('timestamp', '<=', options.endTimestamp));
+        }
+        constraints.push(orderBy('timestamp', 'desc'));
+        constraints.push(orderBy(documentId(), 'desc'));
+        if (cursorTimestamp !== undefined && cursorId !== undefined) {
+            constraints.push(startAfter(cursorTimestamp, cursorId));
+        }
+        const pageSize = Math.min(
+            MENU_CHANGE_LOG_SCAN_PAGE_SIZE,
+            MAX_MENU_CHANGE_LOG_SCAN_DOCUMENTS - documentsScanned,
+        );
+        constraints.push(firestoreLimit(pageSize));
+
+        const snapshot = await getDocs(query(collectionRef, ...constraints));
+        documentsScanned += snapshot.size;
+        for (const document of snapshot.docs) {
+            const normalized = normalizeChangeSnapshot([document]);
+            if (normalized[0] && !visitor(normalized[0])) return;
+        }
+
+        if (snapshot.size < pageSize) return;
+        const lastDocument = snapshot.docs[snapshot.docs.length - 1];
+        const lastData = lastDocument?.data();
+        if (!lastDocument || !lastData || lastData.timestamp === undefined) {
+            logMenuChangeLogDiagnostic('menu_change_log_pagination_cursor_invalid', {
+                ...getBoundedMenuChangeLogStringContext('documentId', lastDocument?.id),
+            });
+            return;
+        }
+        cursorTimestamp = lastData.timestamp;
+        cursorId = lastDocument.id;
+    }
+};
 
 /**
  * Get change history for a project
  * 
- * NOTE: This is for internal system use only (Cloud Functions)
+ * NOTE: This is for internal system use only
  * NOT for UI display - per MOL v0 doctrine
  */
 export async function getChangeHistory(
@@ -305,40 +492,33 @@ export async function getChangeHistory(
 ): Promise<MenuChangeLogEntry[]> {
     return await apiCallComposer(
         async () => {
-            const collectionRef = await getCollectionRef();
+            const normalizedProjectId = normalizeMenuChangeLogIdentifier(projectId, 'projectId');
+            const normalizedLimit = normalizeMenuChangeLogQueryLimit(options.limit);
+            const timestampCursor = getValidTimestampCursor(options.startAfterTimestamp);
+            const normalizedItemId = options.itemId === undefined
+                ? undefined
+                : normalizeMenuChangeLogIdentifier(options.itemId, 'itemId');
+            const normalizedCategoryId = options.categoryId === undefined
+                ? undefined
+                : normalizeMenuChangeLogIdentifier(options.categoryId, 'categoryId');
+            const entries: MenuChangeLogEntry[] = [];
 
-            const constraints: QueryConstraint[] = [
-                where('projectId', '==', projectId),
-                orderBy('timestamp', 'desc'),
-            ];
+            await visitStoredMenuChanges({
+                scope: await getActiveMenuChangeScope(),
+                startAfterTimestamp: timestampCursor,
+                startAfterId: options.startAfterId,
+            }, entry => {
+                if (entry.projectId !== normalizedProjectId
+                    || (normalizedItemId !== undefined && entry.itemId !== normalizedItemId)
+                    || (normalizedCategoryId !== undefined && entry.categoryId !== normalizedCategoryId)
+                    || (options.changeType !== undefined && entry.changeType !== options.changeType)) {
+                    return true;
+                }
+                entries.push(entry);
+                return entries.length < normalizedLimit;
+            });
 
-            if (options.itemId) {
-                constraints.push(where('itemId', '==', options.itemId));
-            }
-
-            if (options.categoryId) {
-                constraints.push(where('categoryId', '==', options.categoryId));
-            }
-
-            if (options.changeType) {
-                constraints.push(where('changeType', '==', options.changeType));
-            }
-
-            if (options.limit) {
-                constraints.push(limit(options.limit));
-            }
-
-            if (options.startAfterTimestamp) {
-                constraints.push(startAfter(options.startAfterTimestamp));
-            }
-
-            const q = query(collectionRef, ...constraints);
-            const snapshot = await getDocs(q);
-
-            return snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data(),
-            })) as MenuChangeLogEntry[];
+            return entries;
         },
         'getChangeHistory'
     );
@@ -356,18 +536,22 @@ export async function getChangeCountSince(
 ): Promise<number> {
     return await apiCallComposer(
         async () => {
-            const collectionRef = await getCollectionRef();
-
-            const q = query(
-                collectionRef,
-                where('projectId', '==', projectId),
-                where('itemId', '==', itemId),
-                where('changeType', '==', changeType),
-                where('timestamp', '>=', Timestamp.fromDate(since))
-            );
-
-            const snapshot = await getDocs(q);
-            return snapshot.size;
+            const normalizedProjectId = normalizeMenuChangeLogIdentifier(projectId, 'projectId');
+            const normalizedItemId = normalizeMenuChangeLogIdentifier(itemId, 'itemId');
+            const sinceTimestamp = getValidDateTimestamp(since, 'since date');
+            let count = 0;
+            await visitStoredMenuChanges({
+                scope: await getActiveMenuChangeScope(),
+                startTimestamp: sinceTimestamp,
+            }, entry => {
+                if (entry.projectId === normalizedProjectId
+                    && entry.itemId === normalizedItemId
+                    && entry.changeType === changeType) {
+                    count += 1;
+                }
+                return true;
+            });
+            return count;
         },
         'getChangeCountSince'
     );
@@ -380,26 +564,31 @@ export async function getChangeCountSince(
 export async function getChangesInRange(
     projectId: string,
     startDate: Date,
-    endDate: Date
+    endDate: Date,
+    options: Pick<ChangeLogQueryOptions, 'limit' | 'startAfterId' | 'startAfterTimestamp'> = {},
 ): Promise<MenuChangeLogEntry[]> {
     return await apiCallComposer(
         async () => {
-            const collectionRef = await getCollectionRef();
-
-            const q = query(
-                collectionRef,
-                where('projectId', '==', projectId),
-                where('timestamp', '>=', Timestamp.fromDate(startDate)),
-                where('timestamp', '<=', Timestamp.fromDate(endDate)),
-                orderBy('timestamp', 'desc')
-            );
-
-            const snapshot = await getDocs(q);
-
-            return snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data(),
-            })) as MenuChangeLogEntry[];
+            const normalizedProjectId = normalizeMenuChangeLogIdentifier(projectId, 'projectId');
+            const startTimestamp = getValidDateTimestamp(startDate, 'start date');
+            const endTimestamp = getValidDateTimestamp(endDate, 'end date');
+            if (startTimestamp.toMillis() > endTimestamp.toMillis()) {
+                throw new RangeError('Menu change log start date must not be after end date');
+            }
+            const normalizedLimit = normalizeMenuChangeLogQueryLimit(options.limit);
+            const timestampCursor = getValidTimestampCursor(options.startAfterTimestamp);
+            const entries: MenuChangeLogEntry[] = [];
+            await visitStoredMenuChanges({
+                scope: await getActiveMenuChangeScope(),
+                startTimestamp,
+                endTimestamp,
+                startAfterTimestamp: timestampCursor,
+                startAfterId: options.startAfterId,
+            }, entry => {
+                if (entry.projectId === normalizedProjectId) entries.push(entry);
+                return entries.length < normalizedLimit;
+            });
+            return entries;
         },
         'getChangesInRange'
     );
@@ -481,7 +670,7 @@ export function createActiveChangeEntry(
 export function createItemAddedEntry(
     projectId: string,
     itemId: string,
-    itemData: any,
+    itemData: Readonly<{ name?: unknown; price?: unknown; category?: unknown }>,
     actor: ChangeActor = 'OWNER',
     userId?: string
 ): MenuChangeLogInput {
@@ -509,8 +698,8 @@ export function createExtractionCorrectionEntry(
     projectId: string,
     itemId: string,
     field: 'name' | 'price' | 'description' | 'categoryId' | 'tags',
-    extractedValue: any,
-    correctedValue: any,
+    extractedValue: unknown,
+    correctedValue: unknown,
     confidence?: 'high' | 'medium' | 'low',
     actor: ChangeActor = 'OWNER',
     userId?: string
@@ -528,10 +717,10 @@ export function createExtractionCorrectionEntry(
 
 export function createMenuRevisionSummaryEntry(
     projectId: string,
-    summary: Record<string, any>,
+    summary: Record<string, unknown>,
     actor: ChangeActor = 'OWNER',
     userId?: string,
-    metadata?: Record<string, any>,
+    metadata?: Record<string, unknown>,
 ): MenuChangeLogInput {
     return {
         projectId,
@@ -553,7 +742,7 @@ export function createMenuRevisionSummaryEntry(
 export function createItemRemovedEntry(
     projectId: string,
     itemId: string,
-    itemData: any,
+    itemData: Readonly<{ name?: unknown; price?: unknown; category?: unknown }>,
     actor: ChangeActor = 'OWNER',
     userId?: string
 ): MenuChangeLogInput {

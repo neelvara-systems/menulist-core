@@ -2,7 +2,11 @@ export const dynamic = 'force-dynamic';
 import { BATCH_IMAGE_GENERATION_JOB_STATUS } from '@constant/AI';
 import { AI_ACTIONS_TYPES } from '@constant/common';
 import { PERMISSIONS } from '@constant/permissions';
-import { markImageBatchProcessingJobFailedAdmin, updateImageBatchProcessingJobAdmin } from '@database/imageBatchProcessing/server';
+import {
+    markImageBatchProcessingJobFailedAdmin,
+    prepareImageBatchProcessingJobForTriggerAdmin,
+    updateImageBatchProcessingJobAdmin,
+} from '@database/imageBatchProcessing/server';
 import { checkAICapacity } from '@lib/ai/capacityCheck';
 import { normalizeImageBatchJobId, normalizeImageBatchProjectId } from '@lib/ai/imageBatchIdBoundary';
 import { enqueueImageGenerationTask, getImageGenerationTaskConfigStatus } from '@lib/google/cloudTask';
@@ -25,7 +29,7 @@ import { withAuth } from "../../../../middleware/auth";
 
 const LOG_FILE = "batch-image-generation.log"
 const AI_MODEL: AI_MODEL_TYPE = "GEMINI";
-const BATCH_IMAGE_TRIGGER_MAX_BODY_BYTES = 16 * 1024 * 1024;
+const BATCH_IMAGE_TRIGGER_MAX_BODY_BYTES = 4 * 1024 * 1024;
 const IMAGE_BATCH_TASK_CONFIG_MISSING = 'image_batch_task_config_missing';
 const IMAGE_BATCH_TASK_ENQUEUE_FAILED = 'image_batch_task_enqueue_failed';
 const IMAGE_BATCH_TASK_ENQUEUE_REJECTED = 'image_batch_task_enqueue_rejected';
@@ -202,6 +206,14 @@ export const POST = withAuth(async (request, session) => {
             jobId,
             projectId,
         });
+        if (String(session.tId) !== projectScope.tId || String(session.sId) !== projectScope.sId) {
+            logger.security('Batch image generation project/session scope mismatch', {
+                ...getAIRouteSecurityContext(session, request),
+                endpoint: '/api/image-generation/batch-trigger',
+                ...requestLogContext,
+            }, 'critical');
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
 
         const permissionError = await requireAnyStorePermission(
             request,
@@ -210,6 +222,25 @@ export const POST = withAuth(async (request, session) => {
             "Batch image generation",
         );
         if (permissionError) return permissionError;
+
+        const requestedItemIds = itemsList.map((item) => String(item.id));
+        const jobPreflight = await prepareImageBatchProcessingJobForTriggerAdmin({
+            expectedGenerationConfig: generationConfig,
+            expectedItemIds: requestedItemIds,
+            jobId,
+            projectId,
+        });
+        const persistedJob = jobPreflight.job;
+        if (!jobPreflight.ready) {
+            logger.security('Batch image generation job/request contract mismatch', {
+                ...getAIRouteSecurityContext(session, request),
+                endpoint: '/api/image-generation/batch-trigger',
+                ...requestLogContext,
+                jobExists: Boolean(persistedJob),
+                jobStatus: persistedJob?.status,
+            }, 'high');
+            return NextResponse.json({ error: 'The image batch is no longer ready to start.' }, { status: 409 });
+        }
 
         const outletPolicyBlockReason = await getLinkedOutletPolicyBlockReason({
             action: "image",
@@ -304,11 +335,6 @@ export const POST = withAuth(async (request, session) => {
             },
         });
 
-        await updateImageBatchProcessingJobAdmin({
-            id: jobId,
-            requestedItemIds: itemsList.map((item) => item.id),
-        }, projectId);
-
         const taskPromises = itemsList.map(itemDetails => enqueueImageGenerationTask({ jobId, generationConfig, projectId, businessType, itemDetails })
             .catch(e => {
                 logRuntimeFailure(IMAGE_BATCH_TASK_ENQUEUE_FAILED, e, getBatchImageRouteLogContext({
@@ -342,19 +368,26 @@ export const POST = withAuth(async (request, session) => {
                 failedCount: failedTasks.length,
             });
 
-            // Determine failure reason
+            const failedItemIds = failedTasks
+                .map(summarizeFailedTask)
+                .map((failure) => failure.menuItemId)
+                .filter((itemId): itemId is string => typeof itemId === 'string');
             const allTasksFailed = failedTasks.length === itemsList.length;
             const statusReason = allTasksFailed
                 ? 'Image generation could not start.'
                 : 'Some image generation tasks could not start.';
+            const nextStatus = allTasksFailed
+                ? BATCH_IMAGE_GENERATION_JOB_STATUS.FAILED
+                : BATCH_IMAGE_GENERATION_JOB_STATUS.PROCESSING;
 
-            // Single job status update
             await updateImageBatchProcessingJobAdmin({
+                enqueueFailedItemIds: failedItemIds,
+                failedItemIds,
                 id: jobId,
-                status: BATCH_IMAGE_GENERATION_JOB_STATUS.FAILED,
+                status: nextStatus,
                 statusHistory: [
                     {
-                        status: BATCH_IMAGE_GENERATION_JOB_STATUS.FAILED,
+                        status: nextStatus,
                         reason: statusReason,
                         createdOn: getISOStringDate(),
                     },
@@ -373,11 +406,14 @@ export const POST = withAuth(async (request, session) => {
                     ...summarizeTaskResults(results),
                 },
             });
-            return NextResponse.json({ jobId, warning: statusReason }, { status: 500 });
+            return NextResponse.json({
+                data: { failedItemIds, jobId, partial: !allTasksFailed },
+                message: statusReason,
+            }, { status: allTasksFailed ? 503 : 202 });
         }
 
         await writeLogEntry({ logFileName: LOG_FILE, userId: userId, projectId: projectId, logType: 'BATCH_GENERATION_TASK_COMPLETED', error: null, data: null });
-        return NextResponse.json({ data: { jobId }, message: 'Batch job started successfully' }, { status: 200 });
+        return NextResponse.json({ data: { failedItemIds: [], jobId, partial: false }, message: 'Batch job started successfully' }, { status: 200 });
 
     } catch (error) {
         logRuntimeFailure('image_batch_trigger_api_failed', error, requestLogContext);

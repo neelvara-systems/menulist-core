@@ -24,7 +24,10 @@
 import { DB_COLLECTIONS } from '@constant/database';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
-import { isPlatformEntityBlocked } from '@lib/platform/entityBlock';
+import {
+    isMenuListPublicEntityEligible,
+    normalizeMenuListPublicEntityIdentityAliases,
+} from '@lib/publicTruth/entityEligibility';
 import { unstable_cache } from 'next/cache';
 import { cache } from 'react';
 
@@ -51,20 +54,26 @@ const normalizeClientStoreLookupScopeDocumentId = (value: unknown): ClientStoreL
         : null;
 };
 
-async function isStoreOrTenantBlocked(store: Record<string, any>): Promise<boolean> {
-    if (isPlatformEntityBlocked(store)) return true;
-    if (store?.tenantBlocked === false) return false;
-
-    const tenantId = store?.tenantId ?? store?.tId;
-    if (tenantId == null || tenantId === '') return false;
-
-    const tenantScope = normalizeClientStoreLookupScopeDocumentId(tenantId);
+async function isStoreOrTenantIneligible(store: Record<string, any>): Promise<boolean> {
+    if (!isMenuListPublicEntityEligible(store)) return true;
+    const storeDocumentScope = normalizeClientStoreLookupScopeDocumentId(store?.id);
+    const storedStoreScope = normalizeMenuListPublicEntityIdentityAliases([store?.storeId, store?.sId]);
+    if (!storeDocumentScope || !storedStoreScope || storeDocumentScope.documentId !== storedStoreScope.documentId) {
+        return true;
+    }
+    const tenantScope = normalizeMenuListPublicEntityIdentityAliases([store?.tenantId, store?.tId]);
     if (!tenantScope) return true;
 
     const tenantSnap = await buildTenantDocRef(tenantScope.documentId).get();
-    if (!tenantSnap.exists) return false;
+    if (!tenantSnap.exists) return true;
+    const tenantData = tenantSnap.data();
+    if (!isMenuListPublicEntityEligible(tenantData)) return true;
+    const tenantIdentityValues = [tenantData?.tenantId, tenantData?.tId]
+        .filter((value) => value !== undefined && value !== null);
+    if (tenantIdentityValues.length === 0) return false;
+    const tenantIdentityScope = normalizeMenuListPublicEntityIdentityAliases(tenantIdentityValues);
 
-    return isPlatformEntityBlocked(tenantSnap.data());
+    return tenantIdentityScope?.documentId !== tenantScope.documentId;
 }
 
 export const getStoreBySubdomain = cache(
@@ -75,11 +84,12 @@ export const getStoreBySubdomain = cache(
             const directSnap = await buildStoreCollection()
                 .where('subdomain', '==', normalized)
                 .where('active', '==', true)
-                .limit(1)
+                .limit(2)
                 .get();
-            if (!directSnap.empty) {
-                const data = { id: directSnap.docs[0].id, ...directSnap.docs[0].data() };
-                return await isStoreOrTenantBlocked(data) ? null : data;
+            if (directSnap.size > 1) return null;
+            if (directSnap.size === 1) {
+                const data = { ...directSnap.docs[0].data(), id: directSnap.docs[0].id };
+                return await isStoreOrTenantIneligible(data) ? null : data;
             }
             // T1-N-05 / A-03 PUBLIC-ROUTING-DOCTRINE: admin-tier rename chain.
             // Check if any active store has this subdomain in its
@@ -92,27 +102,29 @@ export const getStoreBySubdomain = cache(
             const chainSnap = await buildStoreCollection()
                 .where('previousSubdomainSlugs', 'array-contains', normalized)
                 .where('active', '==', true)
-                .limit(1)
+                .limit(20)
                 .get();
             if (chainSnap.empty) return null;
-            const doc = chainSnap.docs[0];
-            const data = doc.data() as Record<string, any>;
-            const history: Array<{ subdomain?: string; expiresAt?: any }> = Array.isArray(
-                data?.previousSubdomains,
-            )
-                ? data.previousSubdomains
-                : [];
             const nowMs = Date.now();
-            const match = history.find((entry) => {
-                if ((entry?.subdomain || '').toLowerCase() !== normalized) return false;
-                const expiresAtMs =
-                    entry?.expiresAt?.toMillis?.() ??
-                    (typeof entry?.expiresAt === 'string' ? Date.parse(entry.expiresAt) : NaN);
-                return Number.isFinite(expiresAtMs) && expiresAtMs > nowMs;
+            const matchingDocs = chainSnap.docs.filter((doc) => {
+                const data = doc.data() as Record<string, any>;
+                const history: Array<{ subdomain?: string; expiresAt?: any }> = Array.isArray(
+                    data?.previousSubdomains,
+                )
+                    ? data.previousSubdomains
+                    : [];
+                return history.some((entry) => {
+                    if ((entry?.subdomain || '').toLowerCase() !== normalized) return false;
+                    const expiresAtMs =
+                        entry?.expiresAt?.toMillis?.() ??
+                        (typeof entry?.expiresAt === 'string' ? Date.parse(entry.expiresAt) : NaN);
+                    return Number.isFinite(expiresAtMs) && expiresAtMs > nowMs;
+                });
             });
-            if (!match) return null;
-            const storeData = { id: doc.id, ...data };
-            return await isStoreOrTenantBlocked(storeData) ? null : storeData;
+            if (matchingDocs.length !== 1 || chainSnap.size >= 20) return null;
+            const doc = matchingDocs[0];
+            const storeData = { ...doc.data(), id: doc.id };
+            return await isStoreOrTenantIneligible(storeData) ? null : storeData;
         },
         ['client-store-subdomain'],
         { revalidate: 60, tags: ['client-stores'] },
@@ -126,11 +138,11 @@ export const getStoreByCustomDomain = cache(
                 .where('customDomain', '==', domain.toLowerCase())
                 .where('domainVerified', '==', true)
                 .where('active', '==', true)
-                .limit(1)
+                .limit(2)
                 .get();
-            if (snapshot.empty) return null;
-            const data = { id: snapshot.docs[0].id, ...snapshot.docs[0].data() };
-            return await isStoreOrTenantBlocked(data) ? null : data;
+            if (snapshot.size !== 1) return null;
+            const data = { ...snapshot.docs[0].data(), id: snapshot.docs[0].id };
+            return await isStoreOrTenantIneligible(data) ? null : data;
         },
         ['client-store-custom-domain'],
         { revalidate: 60, tags: ['client-stores'] },
@@ -146,10 +158,10 @@ export const getPublicStoreById = cache(
             const snap = await buildStoreCollection().doc(storeScope.documentId).get();
             if (!snap.exists) return null;
 
-            const data: Record<string, any> & { id: string } = { id: snap.id, ...(snap.data() || {}) };
+            const data: Record<string, any> & { id: string } = { ...(snap.data() || {}), id: snap.id };
             if (data.active === false || data.deleted === true) return null;
 
-            return await isStoreOrTenantBlocked(data) ? null : data;
+            return await isStoreOrTenantIneligible(data) ? null : data;
         },
         ['client-store-id'],
         { revalidate: 60, tags: ['client-stores'] },
@@ -176,11 +188,12 @@ export const getStoreByOutletSlug = cache(
                 .where('tenantId', '==', tenantId)
                 .where('outletSlug', '==', normalized)
                 .where('active', '==', true)
-                .limit(1)
+                .limit(2)
                 .get();
-            if (!directSnap.empty) {
-                const data = { id: directSnap.docs[0].id, ...directSnap.docs[0].data() };
-                return await isStoreOrTenantBlocked(data) ? null : data;
+            if (directSnap.size > 1) return null;
+            if (directSnap.size === 1) {
+                const data = { ...directSnap.docs[0].data(), id: directSnap.docs[0].id };
+                return await isStoreOrTenantIneligible(data) ? null : data;
             }
             // Fallback: rename-chain lookup via previousOutletSlugs[]. Mirrors
             // the project-slug chain mechanism on outlet stores.
@@ -188,11 +201,11 @@ export const getStoreByOutletSlug = cache(
                 .where('tenantId', '==', tenantId)
                 .where('previousOutletSlugs', 'array-contains', normalized)
                 .where('active', '==', true)
-                .limit(1)
+                .limit(2)
                 .get();
-            if (chainSnap.empty) return null;
-            const data = { id: chainSnap.docs[0].id, ...chainSnap.docs[0].data() };
-            return await isStoreOrTenantBlocked(data) ? null : data;
+            if (chainSnap.size !== 1) return null;
+            const data = { ...chainSnap.docs[0].data(), id: chainSnap.docs[0].id };
+            return await isStoreOrTenantIneligible(data) ? null : data;
         },
         ['client-store-outlet-slug'],
         { revalidate: 60, tags: ['client-stores'] },

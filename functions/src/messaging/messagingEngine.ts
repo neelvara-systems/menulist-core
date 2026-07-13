@@ -18,9 +18,14 @@
 
 import { Timestamp } from 'firebase-admin/firestore';
 import * as functions from 'firebase-functions';
+import { createHash } from 'crypto';
 import { DB_COLLECTIONS } from '../constants/database';
 import { FUNCTION_FLAGS, FUNCTION_RETENTION_CONFIG } from '../constants/features';
 import { firestoreAdmin as db } from '../firebaseAdmin';
+import {
+  normalizeOwnerNotificationNumericScopeDocumentId,
+  normalizeOwnerNotificationReferenceId,
+} from '../sharedData/ownerNotificationDeliveryBoundary';
 import { sendEmailViaSMTP } from './providers/resend';
 import { resolveTemplate } from './templates';
 import {
@@ -35,6 +40,7 @@ const MESSAGING_FLAG_CHECK_FAILED = 'MESSAGING_FLAG_CHECK_FAILED';
 const MESSAGING_IDEMPOTENCY_CHECK_FAILED = 'MESSAGING_IDEMPOTENCY_CHECK_FAILED';
 const MESSAGING_RATE_LIMIT_CHECK_FAILED = 'MESSAGING_RATE_LIMIT_CHECK_FAILED';
 const MESSAGING_RETRY_MARK_FAILED = 'MESSAGING_RETRY_MARK_FAILED';
+const MESSAGING_DELIVERY_CLAIM_FAILED = 'MESSAGING_DELIVERY_CLAIM_FAILED';
 
 // ================================================================
 // FEATURE FLAG CHECK
@@ -103,6 +109,62 @@ function getMessagingOperationLogContext(context: {
     ...getMessagingIdLogContext('referenceId', context.referenceId),
     ...getMessagingIdLogContext('subscriptionId', context.subscriptionId),
   };
+}
+
+function getMessagingTimestampMillis(value: unknown): number | null {
+  if (!value || typeof value !== 'object') return null;
+  try {
+    const toMillis = (value as { toMillis?: unknown }).toMillis;
+    if (typeof toMillis === 'function') {
+      const millis = Number(toMillis.call(value));
+      return Number.isFinite(millis) ? millis : null;
+    }
+    const seconds = Number((value as { seconds?: unknown }).seconds);
+    if (!Number.isFinite(seconds)) return null;
+    const millis = seconds * 1000;
+    return Number.isFinite(millis) ? millis : null;
+  } catch {
+    return null;
+  }
+}
+
+function getMessageDeliveryDocumentId(storeId: string, eventType: string, referenceId: string): string {
+  return `lifecycle_${createHash('sha256')
+    .update(`${storeId}\u0000${eventType}\u0000${referenceId}`)
+    .digest('hex')}`;
+}
+
+async function claimMessageDelivery(params: {
+  eventType: SendMessagePayload['eventType'];
+  referenceId: string;
+  storeId: string;
+  tenantId: string;
+}): Promise<string | null> {
+  const documentId = getMessageDeliveryDocumentId(params.storeId, params.eventType, params.referenceId);
+  const claimRef = db.collection(DB_COLLECTIONS.MESSAGE_LOGS).doc(documentId);
+  try {
+    return await db.runTransaction(async (transaction) => {
+      const snapshot = await transaction.get(claimRef);
+      if (snapshot.exists) return null;
+      transaction.create(claimRef, {
+        ...params,
+        channel: 'email',
+        status: 'sending',
+        createdAt: Timestamp.now(),
+        expiresAt: Timestamp.fromMillis(
+          Date.now() + FUNCTION_RETENTION_CONFIG.OWNER_NOTIFICATION_RETENTION_DAYS * DAY_MS,
+        ),
+      });
+      return documentId;
+    });
+  } catch (error) {
+    logger.error('[Messaging] Delivery claim failed, skipping send', {
+      failureCode: MESSAGING_DELIVERY_CLAIM_FAILED,
+      ...getMessagingOperationLogContext(params),
+      error: getErrorLogContext(error),
+    });
+    return null;
+  }
 }
 
 async function isMessagingEnabled(): Promise<boolean> {
@@ -189,11 +251,17 @@ interface StoreInfo {
 
 async function getStoreInfo(storeId: string, tenantId: string): Promise<StoreInfo | null> {
   try {
-    let storeDoc = await db.collection(DB_COLLECTIONS.STORES).doc(storeId).get();
+    const storeScope = normalizeOwnerNotificationNumericScopeDocumentId(storeId);
+    const tenantScope = normalizeOwnerNotificationNumericScopeDocumentId(tenantId);
+    if (!storeScope || !tenantScope) return null;
+
+    let usedTenantScopedFallback = false;
+    let storeDoc = await db.collection(DB_COLLECTIONS.STORES).doc(storeScope.documentId).get();
     if (!storeDoc.exists) {
+      usedTenantScopedFallback = true;
       storeDoc = await db
-        .collection(DB_COLLECTIONS.TENANTS).doc(tenantId)
-        .collection(DB_COLLECTIONS.STORES).doc(storeId)
+        .collection(DB_COLLECTIONS.TENANTS).doc(tenantScope.documentId)
+        .collection(DB_COLLECTIONS.STORES).doc(storeScope.documentId)
         .get();
     }
 
@@ -201,6 +269,11 @@ async function getStoreInfo(storeId: string, tenantId: string): Promise<StoreInf
 
     const data = storeDoc.data();
     if (!data) return null;
+    const storedTenantScope = normalizeOwnerNotificationNumericScopeDocumentId(data.tenantId ?? data.tId);
+    if (
+      (storedTenantScope && storedTenantScope.numericId !== tenantScope.numericId)
+      || (!storedTenantScope && !usedTenantScopedFallback)
+    ) return null;
 
     const notifSettings = data.notificationSettings;
     return {
@@ -221,9 +294,9 @@ async function getStoreInfo(storeId: string, tenantId: string): Promise<StoreInf
 // LOG MESSAGE
 // ================================================================
 
-async function logMessage(log: MessageLogDoc): Promise<void> {
+async function logMessage(documentId: string, log: MessageLogDoc): Promise<void> {
   try {
-    await db.collection(DB_COLLECTIONS.MESSAGE_LOGS).add(log);
+    await db.collection(DB_COLLECTIONS.MESSAGE_LOGS).doc(documentId).set(log, { merge: true });
   } catch (error) {
     logger.error('[Messaging] Failed to log message', {
       ...getMessagingOperationLogContext({
@@ -251,12 +324,32 @@ async function logMessage(log: MessageLogDoc): Promise<void> {
  * Returns true if message was sent, false if skipped/failed.
  */
 export async function sendLifecycleMessage(payload: SendMessagePayload): Promise<boolean> {
-  const { storeId, tenantId, eventType, referenceId, metadata = {} } = payload;
+  const { eventType, metadata = {} } = payload;
+  const storeScope = normalizeOwnerNotificationNumericScopeDocumentId(payload.storeId);
+  const tenantScope = normalizeOwnerNotificationNumericScopeDocumentId(payload.tenantId);
+  const referenceId = normalizeOwnerNotificationReferenceId(payload.referenceId);
+  if (
+    !storeScope
+    || !tenantScope
+    || !referenceId
+    || !Object.prototype.hasOwnProperty.call(EVENT_PRIORITY, eventType)
+  ) {
+    logger.warn('[Messaging] Invalid delivery scope, skipping', getMessagingOperationLogContext(payload));
+    return false;
+  }
+  const storeId = storeScope.documentId;
+  const tenantId = tenantScope.documentId;
+  const normalizedPayload: SendMessagePayload = {
+    ...payload,
+    referenceId,
+    storeId,
+    tenantId,
+  };
 
   if (FUNCTION_FLAGS.ENABLE_OWNER_NOTIFICATIONS && FUNCTION_FLAGS.ENABLE_OWNER_NOTIFICATION_MENULIST_MIGRATION) {
     try {
       const { sendOwnerLifecycleNotification } = await import('../ownerNotifications/processor');
-      return await sendOwnerLifecycleNotification(payload);
+      return await sendOwnerLifecycleNotification(normalizedPayload);
     } catch (error) {
       logger.error('[Messaging] Owner notification path failed, using legacy sender', {
         ...getMessagingOperationLogContext({ storeId, tenantId, eventType, referenceId }),
@@ -309,7 +402,23 @@ export async function sendLifecycleMessage(payload: SendMessagePayload): Promise
     return false;
   }
 
-  // 7. Send via SMTP (nodemailer)
+  const deliveryDocumentId = await claimMessageDelivery({
+    eventType,
+    referenceId,
+    storeId,
+    tenantId,
+  });
+  if (!deliveryDocumentId) {
+    logger.info('[Messaging] Delivery already claimed, skipping', getMessagingOperationLogContext({
+      eventType,
+      referenceId,
+      storeId,
+      tenantId,
+    }));
+    return false;
+  }
+
+  // 7. Send via SMTP (nodemailer) after the durable exactly-once claim.
   const result = await sendEmailViaSMTP({
     to: recipientEmail,
     subject: template.subject,
@@ -332,7 +441,7 @@ export async function sendLifecycleMessage(payload: SendMessagePayload): Promise
     expiresAt: Timestamp.fromMillis(Date.now() + FUNCTION_RETENTION_CONFIG.OWNER_NOTIFICATION_RETENTION_DAYS * DAY_MS),
   };
 
-  await logMessage(logDoc);
+  await logMessage(deliveryDocumentId, logDoc);
 
   if (result.success) {
     logger.info('[Messaging] Sent', {
@@ -363,40 +472,56 @@ export async function checkRenewalReminders(): Promise<void> {
     const now = new Date();
     const threeDaysFromNow = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
     const fourDaysFromNow = new Date(now.getTime() + 4 * 24 * 60 * 60 * 1000);
+    const pageSize = 100;
+    const maxPages = 5;
+    let cursor: FirebaseFirestore.QueryDocumentSnapshot | null = null;
+    let found = 0;
 
-    // Find subscriptions renewing in 3-4 days window (run daily, so 1-day window)
-    // IMPORTANT: subscriptions is a top-level collection, NOT a subcollection
-    const snapshot = await db
-      .collection(DB_COLLECTIONS.SUBSCRIPTIONS)
-      .where('status', '==', 'active')
-      .where('renewsOn', '>=', Timestamp.fromDate(threeDaysFromNow))
-      .where('renewsOn', '<', Timestamp.fromDate(fourDaysFromNow))
-      .get();
+    for (let page = 0; page < maxPages; page += 1) {
+      let query = db
+        .collection(DB_COLLECTIONS.SUBSCRIPTIONS)
+        .where('status', '==', 'active')
+        .where('renewsOn', '>=', Timestamp.fromDate(threeDaysFromNow))
+        .where('renewsOn', '<', Timestamp.fromDate(fourDaysFromNow))
+        .orderBy('renewsOn', 'asc')
+        .limit(pageSize);
+      if (cursor) query = query.startAfter(cursor);
+      const snapshot = await query.get();
+      if (snapshot.empty) break;
+      found += snapshot.size;
 
-    logger.info('[Messaging] Renewal reminder subscriptions found', { count: snapshot.size });
+      for (const doc of snapshot.docs) {
+        const sub = doc.data();
+        const renewalMillis = getMessagingTimestampMillis(sub.renewsOn);
+        try {
+          await sendLifecycleMessage({
+            storeId: String(sub.storeId),
+            tenantId: String(sub.tenantId),
+            eventType: 'RENEWAL_REMINDER',
+            referenceId: `renewal-${doc.id}-${now.toISOString().split('T')[0]}`,
+            metadata: {
+              amount: sub.amount,
+              currency: sub.currency,
+              planName: sub.planName,
+              renewalAt: renewalMillis === null ? null : new Date(renewalMillis).toISOString(),
+            },
+          });
+        } catch (err) {
+          logger.error('[Messaging] Renewal reminder failed for subscription', {
+            ...getMessagingOperationLogContext({ subscriptionId: doc.id, eventType: 'RENEWAL_REMINDER' }),
+            error: getErrorLogContext(err),
+          });
+        }
+      }
 
-    for (const doc of snapshot.docs) {
-      const sub = doc.data();
-      try {
-        await sendLifecycleMessage({
-          storeId: String(sub.storeId),
-          tenantId: String(sub.tenantId),
-          eventType: 'RENEWAL_REMINDER',
-          referenceId: `renewal-${doc.id}-${now.toISOString().split('T')[0]}`,
-          metadata: {
-            amount: sub.amount,
-            currency: sub.currency,
-            planName: sub.planName,
-            renewalAt: sub.renewsOn?.toDate?.()?.toISOString?.() || null,
-          },
-        });
-      } catch (err) {
-        logger.error('[Messaging] Renewal reminder failed for subscription', {
-          ...getMessagingOperationLogContext({ subscriptionId: doc.id, eventType: 'RENEWAL_REMINDER' }),
-          error: getErrorLogContext(err),
-        });
+      cursor = snapshot.docs[snapshot.docs.length - 1] || null;
+      if (snapshot.size < pageSize || !cursor) break;
+      if (page === maxPages - 1) {
+        logger.warn('[Messaging] Renewal reminder scan reached bounded page limit', { found });
       }
     }
+
+    logger.info('[Messaging] Renewal reminder subscriptions found', { count: found });
   } catch (error) {
     logger.error('[Messaging] checkRenewalReminders failed', {
       error: getErrorLogContext(error),
@@ -412,40 +537,57 @@ export async function checkRenewalReminders(): Promise<void> {
 export async function checkSuspensionWarnings(): Promise<void> {
   try {
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const now = new Date();
+    const pageSize = 100;
+    const maxPages = 5;
+    let cursor: FirebaseFirestore.QueryDocumentSnapshot | null = null;
+    let found = 0;
 
-    // IMPORTANT: subscriptions is a top-level collection, NOT a subcollection
-    const snapshot = await db
-      .collection(DB_COLLECTIONS.SUBSCRIPTIONS)
-      .where('status', '==', 'past_due')
-      .where('pastDueSinceAt', '<=', Timestamp.fromDate(sevenDaysAgo))
-      .get();
+    for (let page = 0; page < maxPages; page += 1) {
+      let query = db
+        .collection(DB_COLLECTIONS.SUBSCRIPTIONS)
+        .where('status', '==', 'past_due')
+        .where('pastDueSinceAt', '<=', Timestamp.fromDate(sevenDaysAgo))
+        .orderBy('pastDueSinceAt', 'asc')
+        .limit(pageSize);
+      if (cursor) query = query.startAfter(cursor);
+      const snapshot = await query.get();
+      if (snapshot.empty) break;
+      found += snapshot.size;
 
-    logger.info('[Messaging] Suspension warning subscriptions found', { count: snapshot.size });
+      for (const doc of snapshot.docs) {
+        const sub = doc.data();
+        const pastDueMillis = getMessagingTimestampMillis(sub.pastDueSinceAt);
+        const daysOverdue = pastDueMillis === null
+          ? 7
+          : Math.max(7, Math.floor((now.getTime() - pastDueMillis) / (24 * 60 * 60 * 1000)));
 
-    for (const doc of snapshot.docs) {
-      const sub = doc.data();
-      const pastDueDate = sub.pastDueSinceAt?.toDate?.();
-      const daysOverdue = pastDueDate
-        ? Math.floor((Date.now() - pastDueDate.getTime()) / (24 * 60 * 60 * 1000))
-        : 7;
+        try {
+          await sendLifecycleMessage({
+            storeId: String(sub.storeId),
+            tenantId: String(sub.tenantId),
+            eventType: 'SUSPENSION_WARNING',
+            referenceId: `suspension-${doc.id}-${now.toISOString().split('T')[0]}`,
+            metadata: {
+              daysOverdue,
+            },
+          });
+        } catch (err) {
+          logger.error('[Messaging] Suspension warning failed for subscription', {
+            ...getMessagingOperationLogContext({ subscriptionId: doc.id, eventType: 'SUSPENSION_WARNING' }),
+            error: getErrorLogContext(err),
+          });
+        }
+      }
 
-      try {
-        await sendLifecycleMessage({
-          storeId: String(sub.storeId),
-          tenantId: String(sub.tenantId),
-          eventType: 'SUSPENSION_WARNING',
-          referenceId: `suspension-${doc.id}-${new Date().toISOString().split('T')[0]}`,
-          metadata: {
-            daysOverdue,
-          },
-        });
-      } catch (err) {
-        logger.error('[Messaging] Suspension warning failed for subscription', {
-          ...getMessagingOperationLogContext({ subscriptionId: doc.id, eventType: 'SUSPENSION_WARNING' }),
-          error: getErrorLogContext(err),
-        });
+      cursor = snapshot.docs[snapshot.docs.length - 1] || null;
+      if (snapshot.size < pageSize || !cursor) break;
+      if (page === maxPages - 1) {
+        logger.warn('[Messaging] Suspension warning scan reached bounded page limit', { found });
       }
     }
+
+    logger.info('[Messaging] Suspension warning subscriptions found', { count: found });
   } catch (error) {
     logger.error('[Messaging] checkSuspensionWarnings failed', {
       error: getErrorLogContext(error),

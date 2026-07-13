@@ -16,50 +16,12 @@ import { admin } from '@lib/firebase/firebaseAdmin';
 import { logger } from '@lib/monitoring/logger';
 import { getBoundedAuthStringContext, logAuthFailure } from '@lib/auth/authDiagnostics';
 import { getRequestMetadata } from '@lib/security/ipExtractor';
+import { sanitizeForFirestore } from '@lib/firestore/sanitizeForFirestore';
 import { Timestamp } from 'firebase-admin/firestore';
 import { NextRequest } from 'next/server';
 
 const COLLECTION = 'authSecurityEvents';
 
-/**
- * Sanitize data for Firestore (server-side)
- * Replaces undefined values with null to prevent Firestore errors
- * Similar to replaceUndefined in apiHelper but for firebase-admin
- */
-function sanitizeForFirestore<T extends Record<string, any>>(obj: T): T {
-    const result = {} as T;
-
-    for (const key in obj) {
-        if (Object.prototype.hasOwnProperty.call(obj, key)) {
-            const value = obj[key];
-
-            // Replace undefined with null
-            if (value === undefined) {
-                (result as any)[key] = null;
-            }
-            // Preserve Timestamp objects (check constructor name for compatibility)
-            else if (value && typeof value === 'object' && value.constructor?.name === 'Timestamp') {
-                (result as any)[key] = value;
-            }
-            // Recursively handle nested objects
-            else if (value && typeof value === 'object' && !Array.isArray(value)) {
-                (result as any)[key] = sanitizeForFirestore(value);
-            }
-            // Handle arrays
-            else if (Array.isArray(value)) {
-                (result as any)[key] = value.map(item =>
-                    (item && typeof item === 'object') ? sanitizeForFirestore(item) : item
-                );
-            }
-            // Primitives (string, number, boolean, null)
-            else {
-                (result as any)[key] = value;
-            }
-        }
-    }
-
-    return result;
-}
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 minutes
 const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes

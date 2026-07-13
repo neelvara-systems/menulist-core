@@ -20,10 +20,13 @@ type OwnerNotificationResponseKind = 'load' | 'action';
 type OwnerNotificationResponseLogContext = Record<string, boolean | number | string | null | undefined>;
 
 const PRODUCT_IDS = ['ML', 'AL'];
-const EVENT_STATUSES = ['pending', 'processing', 'delivered', 'partial', 'failed', 'skipped'];
-const DELIVERY_STATUSES = ['sent', 'failed', 'skipped', 'rate_limited'];
+const PROCESS_STATUSES = ['pending', 'processing', 'delivered', 'partial', 'failed', 'skipped'];
+const EVENT_STATUSES = [...PROCESS_STATUSES, 'invalid'];
+const DELIVERY_STATUSES = ['sent', 'failed', 'skipped', 'rate_limited', 'invalid'];
 const STATUS_FILTERS = ['all', ...EVENT_STATUSES];
-const CHANNELS = ['email', 'whatsapp'];
+const CHANNELS = ['email', 'whatsapp', 'invalid'];
+const RECIPIENT_ROLES = ['primary_owner', 'billing_owner', 'support_owner', 'whatsapp_owner', 'invalid'];
+const RESOLVED_RECIPIENT_ROLES = RECIPIENT_ROLES.filter((role) => role !== 'invalid');
 const ACTIONS = ['retry', 'manualSend', 'manualHandoff'];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -32,6 +35,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);
+}
+
+function isNonNegativeSafeInteger(value: unknown): value is number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
 }
 
 function isNullableString(value: unknown): value is string | null {
@@ -62,7 +69,7 @@ function isOwnerNotificationEventRow(value: unknown): value is OwnerNotification
     && (value.storeId === undefined || typeof value.storeId === 'string')
     && (value.workspaceId === undefined || typeof value.workspaceId === 'string')
     && typeof value.referenceId === 'string'
-    && typeof value.recipientRole === 'string'
+    && isAllowedString(value.recipientRole, RECIPIENT_ROLES)
     && Array.isArray(value.requestedChannels)
     && value.requestedChannels.every((channel) => isAllowedString(channel, CHANNELS))
     && typeof value.priority === 'string'
@@ -88,7 +95,7 @@ function isOwnerNotificationDeliveryRow(value: unknown): value is OwnerNotificat
     && isAllowedString(value.productId, PRODUCT_IDS)
     && typeof value.triggerType === 'string'
     && isAllowedString(value.channel, CHANNELS)
-    && typeof value.recipientRole === 'string'
+    && isAllowedString(value.recipientRole, RECIPIENT_ROLES)
     && typeof value.recipientMasked === 'string'
     && isAllowedString(value.status, DELIVERY_STATUSES)
     && (value.subject === undefined || isNullableString(value.subject))
@@ -96,7 +103,8 @@ function isOwnerNotificationDeliveryRow(value: unknown): value is OwnerNotificat
     && typeof value.templateVersion === 'string'
     && (value.providerMessageId === undefined || isNullableString(value.providerMessageId))
     && (value.error === undefined || isNullableString(value.error))
-    && isFiniteNumber(value.attempt)
+    && isNonNegativeSafeInteger(value.attempt)
+    && value.attempt >= 1
     && isNullableString(value.createdAt)
     && isNullableString(value.sentAt)
     && (
@@ -108,7 +116,7 @@ function isOwnerNotificationDeliveryRow(value: unknown): value is OwnerNotificat
 
 function isOwnerNotificationRecipient(value: unknown): value is OwnerNotificationOpsRecipient {
   return isRecord(value)
-    && typeof value.role === 'string'
+    && isAllowedString(value.role, RESOLVED_RECIPIENT_ROLES)
     && (value.name === undefined || typeof value.name === 'string')
     && (value.email === undefined || typeof value.email === 'string')
     && (value.whatsappNumber === undefined || typeof value.whatsappNumber === 'string')
@@ -125,18 +133,19 @@ function isOwnerNotificationManualTemplate(value: unknown): value is OwnerNotifi
 
 function isOwnerNotificationOpsCost(value: unknown): value is OwnerNotificationOpsCost {
   return isRecord(value)
-    && isFiniteNumber(value.eventReads)
-    && isFiniteNumber(value.deliveryReads)
-    && isFiniteNumber(value.scopeReads)
-    && isFiniteNumber(value.countQueries)
-    && isFiniteNumber(value.writes)
-    && isFiniteNumber(value.scanLimit)
+    && isNonNegativeSafeInteger(value.authReads)
+    && isNonNegativeSafeInteger(value.eventReads)
+    && isNonNegativeSafeInteger(value.deliveryReads)
+    && isNonNegativeSafeInteger(value.scopeReads)
+    && isNonNegativeSafeInteger(value.countQueries)
+    && isNonNegativeSafeInteger(value.writes)
+    && isNonNegativeSafeInteger(value.scanLimit)
     && typeof value.note === 'string';
 }
 
 function isStatusCounts(value: unknown): value is OwnerNotificationOpsSnapshot['counts'] {
   return isRecord(value)
-    && EVENT_STATUSES.every((status) => isFiniteNumber(value[status]));
+    && EVENT_STATUSES.every((status) => isNonNegativeSafeInteger(value[status]));
 }
 
 function isOwnerNotificationSnapshot(value: unknown): value is OwnerNotificationOpsSnapshot {
@@ -144,14 +153,14 @@ function isOwnerNotificationSnapshot(value: unknown): value is OwnerNotification
     && typeof value.generatedAt === 'string'
     && isRecord(value.feature)
     && typeof value.feature.dashboardEnabled === 'boolean'
-    && value.feature.accessModel === 'platform_role'
+    && value.feature.accessModel === 'current_persisted_platform_user'
     && value.feature.realtimeListeners === false
     && isAllowedString(value.feature.productId, PRODUCT_IDS)
     && isRecord(value.filters)
     && isAllowedString(value.filters.productId, PRODUCT_IDS)
     && isAllowedString(value.filters.status, STATUS_FILTERS)
-    && isFiniteNumber(value.filters.limit)
-    && isFiniteNumber(value.filters.scanLimit)
+    && isNonNegativeSafeInteger(value.filters.limit)
+    && isNonNegativeSafeInteger(value.filters.scanLimit)
     && isStatusCounts(value.counts)
     && Array.isArray(value.events)
     && value.events.every(isOwnerNotificationEventRow)
@@ -159,6 +168,7 @@ function isOwnerNotificationSnapshot(value: unknown): value is OwnerNotification
     && (value.deliveries === undefined || (Array.isArray(value.deliveries) && value.deliveries.every(isOwnerNotificationDeliveryRow)))
     && (value.resolvedRecipient === undefined || isOwnerNotificationRecipient(value.resolvedRecipient))
     && (value.manualTemplate === undefined || isOwnerNotificationManualTemplate(value.manualTemplate))
+    && (value.detailError === undefined || value.detailError === 'recipient_resolution_failed')
     && isOwnerNotificationOpsCost(value.cost);
 }
 
@@ -167,11 +177,12 @@ function isOwnerNotificationActionResult(value: unknown): value is OwnerNotifica
     && value.ok === true
     && isAllowedString(value.action, ACTIONS)
     && typeof value.eventId === 'string'
-    && (value.status === undefined || isAllowedString(value.status, EVENT_STATUSES))
-    && (value.sent === undefined || isFiniteNumber(value.sent))
-    && (value.failed === undefined || isFiniteNumber(value.failed))
-    && (value.skipped === undefined || isFiniteNumber(value.skipped))
+    && (value.status === undefined || isAllowedString(value.status, PROCESS_STATUSES))
+    && (value.sent === undefined || isNonNegativeSafeInteger(value.sent))
+    && (value.failed === undefined || isNonNegativeSafeInteger(value.failed))
+    && (value.skipped === undefined || isNonNegativeSafeInteger(value.skipped))
     && (value.manualEventId === undefined || typeof value.manualEventId === 'string')
+    && (value.replayed === undefined || typeof value.replayed === 'boolean')
     && typeof value.message === 'string';
 }
 

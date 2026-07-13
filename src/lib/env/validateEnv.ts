@@ -86,6 +86,7 @@ const OPTIONAL_VARS: readonly string[] = [
     'FIREBASE_PROJECT_LOCATION',            // Google Cloud Tasks queue location
     'FIREBASE_API_KEY',                    // Firebase Auth REST/API calls should use server-side key (not NEXT_PUBLIC)
     'MENULIST_OWNER_REFERRAL_TOKEN_SECRET', // Owner referral token encryption when acquisition is enabled
+    'ANSWERLATTICE_WIDGET_RUNTIME_SECRET',  // Short-lived host-to-iframe widget authorization
 ] as const;
 
 const isValidOwnerReferralTokenSecret = (value: string | undefined): boolean => {

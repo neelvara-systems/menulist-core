@@ -1,6 +1,6 @@
 # Reputation Protection — Spec
 
-**Status:** Draft  
+**Status:** FUTURE DESIGN ONLY — not implemented, sold, published, or active
 **Author:** Cascade (Lead Architect)  
 **Date:** February 19, 2026  
 **Audience:** CEO, PM, Clients (non-technical)  
@@ -9,6 +9,8 @@
 ---
 
 ## Executive Summary
+
+> Runtime boundary: current source has dormant scaffolding only. Google review ingestion, review inbox, reputation status, multi-location aggregation, reply posting, negative-spike detection, and mobile review flows do not exist. All requirements below are conditional design input, not current capability or launch scope.
 
 **What:** A reputation stability layer that ingests Google reviews, classifies risk, and helps owners reply calmly — all from within MenuList.
 
@@ -119,6 +121,8 @@
 
 ## Market Validation
 
+The table below is historical concept research and was not refreshed in the July 11 runtime audit. It must not be used in public or sales material without current primary-source verification.
+
 | Statistic | Value | Source |
 |-----------|-------|--------|
 | Read reviews before selecting business | 88% | SocialPilot, BrightLocal 2025 |
@@ -134,7 +138,7 @@
 
 ## Activation Timeline
 
-| Phase | Trigger | Action |
+| State | Trigger | Action |
 |-------|---------|--------|
 | **Now** | — | Docs complete, architecture designed |
 | **GBP Approved** | Google grants API access | Enable review ingestion |
@@ -155,4 +159,4 @@
 ---
 
 **Document Signature:** Cascade (Lead Architect)  
-**Last Updated:** February 19, 2026
+**Last Updated:** July 11, 2026

@@ -5,6 +5,8 @@
 **Source:** [Master production blueprint](./videos_launch-product-marketing-production-blueprint.md)
 **Scope:** Standalone production handoff for Video 6.
 
+**Mandatory production standard:** [MenuList Founder-Approved Video Production Standard](./videos_founder-approved-production-standard.md). Apply it to this video's messaging, Inter typography, website gradient emphasis, UI styling, motion, transitions, logo slate, Indian-English voice, brand music, aspect-ratio adaptation, and encoded-MP4 QA.
+
 ## Shared Positioning
 
 MenuList must be shown as public-business truth infrastructure for SMBs, not as a standalone QR menu app, generic AI restaurant software, or flashy SaaS dashboard.
@@ -147,3 +149,16 @@ Use light upload and tap SFX. Music should feel easy and practical. Voiceover sh
 ### P. CTA
 
 Create customer link.
+
+### Q. Conversion Contract
+
+- Funnel stage: setup relief.
+- Belief change: `I do not need to retype my menu; I can upload what I already have and review the prepared version.`
+- Proof moment: menu photos/PDF/owned link -> private preview -> owner review.
+- Linked action: `Create customer link` -> `/create-menu`.
+- Primary metric: private preview reached per referred session.
+- Guard metric: source-selection/upload completion and first approved publish quality.
+- Asset/UTM pattern: `photo_pdf_v1_start_there_25s_<aspect>`.
+- Paid eligibility: blocked until rendered and deeper create-menu milestones are measurable.
+
+Use the [conversion brief template](./videos_conversion-brief-template.md) and register the final version in [the campaign ledger](./videos_campaign-measurement-ledger.md).

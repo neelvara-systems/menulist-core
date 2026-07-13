@@ -2,20 +2,31 @@
 
 **Status:** ✅ IMPLEMENTED — Platform-only access at /ops
 **Created:** February 20, 2026  
-**Last Updated:** July 6, 2026
+**Last Updated:** July 13, 2026
 **Audience:** Developers
 
 ---
+
+## July 13, 2026 Current-Authorization And Bounded-Monitor Audit
+
+- `/api/ops/safe-mode`, `/api/ops/mute-alerts`, `/api/ops/platform-notifications`, and `/api/ops/owner-notifications` keep the signed `withAuth(...PLATFORM)` gate and now also re-read the exact current `users/{uId}` record after a fail-closed per-operator limiter. A stale session is rejected before ops/private reads, provider calls, or writes after role downgrade, disablement, blocking, deletion, identity mismatch, or revocation. Malformed persisted negative lifecycle/block flags also fail closed rather than being treated as enabled authority.
+- Notification monitor GETs now have their own HMAC-hashed 60/hour read limits. Both GET and POST limiters fail closed with `503` when the shared provider is unavailable; normal exhaustion remains `429` with `Retry-After`.
+- Platform- and owner-notification counts are derived from the same bounded, newest-first window used for rows (`systemAlerts <= 150`, owner-notification events `<= 90`). The UI labels those metrics as recent. Collection-wide count aggregation queries were removed, so a manual refresh cannot grow in cost with collection history.
+- Platform alert DTOs no longer return `acknowledgedBy`; stored title/message and unsafe metadata remain presence/length summaries. Owner notification detail keeps only the explicitly required full resolved recipient fields for platform recovery, bounds them, filters delivery rows by product, and reports the resolver's exact zero/one/two scope reads.
+- Owner-notification manual handoff now transactionally verifies the source event and commits the delivery audit plus event marker together. A deleted or cross-product event produces `404` without an orphan delivery or recreated event.
+- SAFE_MODE transitions are transactional and idempotent. Repeating the already-current state performs no config or alert write. A successful state transition remains authoritative even if the secondary alert write fails; that failure is logged and returned as `alertRecorded: false` instead of a false toggle failure that invites a duplicate retry.
+- Platform alert actions are replay-safe: an already-acknowledged alert adds no write, manual handoff uses a stable client action ID to avoid rewriting the marker on an identical response retry, and manual alert creation derives a deterministic alert document ID so the same action cannot create or externally deliver a duplicate alert.
+- `npm run verify:ops-current-authorization-boundary` plus `npm run test:notification-ops-snapshot-boundary` lock these contracts. No Firestore rules, indexes, Cloud Functions, or provider configuration changed; the app routes still require the normal Next.js release path, and no Vercel deploy was run.
 
 ## June 30, 2026 Ops Control Room Action Request/Response Guard Notes
 
 - `/ops` keeps the same platform-only route, manual refresh model, SAFE_MODE toggle, alert-mute button, and force-republish callable behavior.
 - Desktop and mobile SAFE_MODE and alert-mute browser calls use `OPS_CONTROL_ROOM_REQUEST_POLICY`, which pins no-store cache, same-origin credentials, and manual redirect handling before acknowledgement parsing.
 - SAFE_MODE and alert-mute responses pass through `src/lib/ops/opsControlRoomClientResponse.ts`, which caps browser JSON parsing at 16KB and validates acknowledgement shape before showing success copy or refreshing dashboard state.
-- July 1 follow-up: desktop and mobile force-republish callable results now require `success` boolean, non-empty `projectId`, and non-empty `verification` before showing success or warning copy. Invalid callable envelopes log `ops_control_room_force_republish_response_invalid` with bounded shape metadata.
+- July 13 follow-up: desktop and mobile force-republish callable results require `success`, a bounded `projectCount` from 1 to 100, one non-empty representative `projectId`, and non-empty `verification` before showing success or warning copy. Both surfaces state that all active menu projects are affected and report the confirmed count; invalid callable envelopes log `ops_control_room_force_republish_response_invalid` with bounded shape metadata.
 - July 1 follow-up: Source gate: `npm run verify:ops-control-room-boundary` locks the platform-only SAFE_MODE and alert-mute mutation routes, hashed operator rate limits, bounded browser action-response parsing, read-only ops DAL, desktop/mobile force-republish envelope guards, mobile shell routing, and docs parity. The verifier does not run Firestore reads/writes, callable invocations, provider calls, browser smoke, Firebase deploy, or Vercel deploy.
 - Rejected, redirected, oversized, malformed, or invalid action responses use fixed platform failure copy and bounded `ops_control_room_response_*` diagnostics only. Desktop request/network failures log bounded `ops_control_room_safe_mode_toggle_failed` or `ops_control_room_mute_alerts_failed`; mobile request/network failures log bounded `mobile_ops_safe_mode_toggle_failed` or `mobile_ops_mute_alerts_failed`.
-- This does not change mutation route body caps, operator rate limits, SAFE_MODE writes, alert-mute writes, platform alert creation, Cloud Functions, rules, indexes, routes, or platform permissions.
+- The June 30 browser response boundary did not change mutation route behavior; the July 13 audit above supersedes its older authorization, rate-limit, SAFE_MODE, and read-cost assumptions.
 
 ## June 30, 2026 Business Health Monitor Response Guard Notes
 
@@ -48,7 +59,7 @@
 - June 30 follow-up: route-side query validation, rate-limit, and action-validation security logs use bounded route metadata instead of raw session/request context, and invalid attempted action text is summarized as presence/length metadata.
 - July 1 follow-up: Source gate: `npm run verify:platform-notifications-boundary` locks the platform-notification registry mirror, platform-only route/body/rate-limit boundaries, bounded monitor response parsing, safe stored-alert display summaries, table-level scroll/readability anchors, and docs parity. The verifier does not run Firestore reads/writes, provider calls, browser smoke, Firebase deploy, or Vercel deploy.
 - July 5 follow-up: `/api/ops/platform-notifications` now accepts `eventId` only when it is a simple Firestore document ID, and acknowledge/manual-handoff actions return `404` instead of creating a partial alert when the selected alert document does not exist. Explicit manual alert creation still uses the registered `createManualAlert` action.
-- This does not change alert list reads, selected-detail reads, valid acknowledge/manual-handoff writes, valid manual-alert creation, provider handoff behavior, Cloud Functions, rules, indexes, routes, or platform permissions.
+- The July 13 audit above replaces collection-wide count queries with one bounded recent window and adds current persisted platform authorization plus fail-closed GET/POST limits. Acknowledge is write-idempotent, while manual-handoff and manual-alert requests require a stable bounded action ID for replay safety. Valid behavior remains platform-only.
 
 ## June 29, 2026 Owner Notification Monitor Response Guard Notes
 
@@ -57,7 +68,7 @@
 - Rejected, oversized, malformed, or invalid responses use fixed platform failure copy and bounded `owner_notification_monitor_response_*` runtime diagnostics only.
 - June 30 follow-up: route-side query validation, rate-limit, and action-validation security logs use bounded route metadata instead of raw session/request context, and invalid attempted action text is summarized as presence/length metadata.
 - July 5 follow-up: `/api/ops/owner-notifications` now accepts selected/recovery `eventId` values only when they are simple Firestore document IDs before direct event reads, delivery detail queries, retry, manual send, or manual handoff actions.
-- This does not change owner-notification event reads, detail delivery reads, recipient resolution reads, valid retry/manual-send/manual-handoff writes, provider behavior, Cloud Functions, rules, indexes, routes, or platform permissions.
+- The July 13 audit above adds current persisted platform authorization and fail-closed GET/POST limits, derives recent counts from the bounded scan, records exact resolver reads, filters cross-product delivery rows, and makes manual-handoff audit writes atomic.
 
 ## June 29, 2026 Entity Block Response Guard Notes
 
@@ -68,6 +79,8 @@
 - July 5 follow-up: entity ID values now use the shared Firestore document-ID boundary before the platform route reads or writes `tenants`, `stores`, or `users` documents. Numeric IDs remain accepted when finite; string IDs reject path-shaped or reserved Firestore document IDs. This keeps valid platform block/unblock behavior unchanged and adds no Firestore reads/writes/deletes beyond existing valid block actions.
 - July 6 follow-up: entity-block target IDs now use strict platform entity-block document-ID normalization before `getEntityDocRef()`, tenant-to-store direct mirror writes, store-summary key fanout, or public-cache invalidation. Tenant/store targets require exact positive safe-integer document IDs; user targets keep strict simple Firestore document IDs without whitespace mutation. Malformed, reserved, empty, path-shaped, whitespace-mutated, decimal, zero, negative, unsafe, or nonnumeric tenant/store targets fail before entity-block Firestore refs. This keeps valid platform block/unblock behavior unchanged and adds no Firestore reads/writes/deletes beyond existing valid block actions.
 - July 6 follow-up: `/api/platform/entity-blocks` now applies the shared `PLATFORM_ENTITY_BLOCK_MUTATION` rate limit after the feature flag and before bounded body parsing, entity validation, Firestore reads/writes, Firebase Auth disable/token-revoke work, public cache invalidation, screen wakeups, or Business Health packet invalidation. The limiter uses HMAC-hashed platform-operator key material and a 20-per-hour ceiling, returns 429 with retry headers, and keeps valid platform block/unblock behavior unchanged.
+- July 11 follow-up: tenant and store block mutations now re-read exact document identity and ownership inside Firestore transactions. Tenant state, up to 200 existing store mirrors, and the single `storesSummary` mirror commit together; derived cache, screen, and Business Health refresh begins afterward in chunks of 20. Drifted `tenantId`/`storeId` fields, ambiguous store ownership, over-limit scope, or contention fail closed instead of redirecting or partially committing the block.
+- July 11 user-auth follow-up: user block/unblock writes the current Firestore access decision and a unique `authSyncRevision`/pending marker before Firebase Auth work. Up to five reconciliation attempts apply the latest desired disabled state, compare the revision in a transaction, and clear pending state only when stable. A superseded request returns conflict; a provider failure leaves the Firestore block and observable pending marker intact instead of returning stale success.
 
 ## June 27, 2026 Diagnostics Notes
 
@@ -75,11 +88,12 @@
 - Diagnostics record normalized `ops_*` failure codes with bounded alert/store/tenant/run/filter metadata and source error name/code/status only.
 - Manual recovery failures still show the run-log ID when Firebase Functions returns one, but no longer show raw callable/provider error messages in the platform toast.
 - Functions-side ops triggers now apply the same boundary for `verifyMenuPublish`, `forceRepublish`, `gcpBudgetAlertWebhook`, and `backfillStoresSummary`: callable errors use fixed operator copy, and Functions logs use stable `OPERATIONS_*` codes plus bounded store/tenant/requester/public URL metadata and source error name/code/status only.
+- July 13 follow-up: `forceRepublish` no longer authorizes a project touch from a signed platform claim and caller-supplied paths alone. One Firestore transaction requires canonical numeric tenant/store IDs, the claim's canonical user ID, current persisted platform authority, active mutually consistent tenant/store documents, and at most 100 project documents. It touches every active, undeleted project whose embedded scope is absent/legacy-compatible or matches the canonical path; deleted, inactive, malformed-ID, and mismatched-scope rows are excluded. Above the cap, the callable returns fixed `resource-exhausted` copy and logs `OPERATIONS_FORCE_REPUBLISH_PROJECT_LIMIT_EXCEEDED` without partial writes. The subsequent health write repeats current user/tenant/store/platform and public-host validation transactionally, so a downgrade or scope change cannot produce a stale-authority project or health mutation.
 - This does not change dashboard reads, scheduler queries, alert writes, Telegram/platform delivery attempts, callable invocation count, Cloud Function trigger shape, rules, indexes, routes, or platform permissions.
 
 ## June 11, 2026 Audit Notes
 
-- Desktop and mobile Ops Control Room read Firestore only after the session has resolved to `platformRole === 'PLATFORM'`.
+- Desktop and mobile Ops Control Room routes use signed platform-session admission; every scoped mutation/monitor API in the July 13 audit also verifies the current persisted platform user before private reads or writes.
 - `/api/ops/platform-notifications` returns `404` when `ENABLE_PLATFORM_NOTIFICATION_DASHBOARD` is disabled, before any alert reads or writes.
 - `/api/ops/owner-notifications` returns `404` when `ENABLE_OWNER_NOTIFICATIONS` or `ENABLE_OWNER_NOTIFICATION_OPS_DASHBOARD` is disabled.
 - Ops mutation routes use platform-role gates, bounded bodies, and HMAC-hashed operator key material for their rate-limit keys before write/recovery work.
@@ -188,11 +202,13 @@ export async function getRecentAlerts(limit: number = 10): Promise<Alert[]> {
 { action: 'activate' | 'deactivate', reason?: string }
 
 // Response
-{ success: true, SAFE_MODE: boolean }
+{ success: true, SAFE_MODE: boolean, changed?: boolean, alertRecorded?: boolean }
 
 // Access: withAuth({ requiredPlatformRole: 'PLATFORM' })
+// Then exact current users/{uId} platform/lifecycle/revocation verification.
 // Invalid JSON or invalid action returns 400.
 // Security logs use bounded route metadata; reason text is summarized.
+// Repeating the current state is a no-write success.
 ```
 
 ### POST `/api/ops/mute-alerts`
@@ -205,6 +221,7 @@ export async function getRecentAlerts(limit: number = 10): Promise<Alert[]> {
 { success: true, mutedUntil: string }
 
 // Access: withAuth({ requiredPlatformRole: 'PLATFORM' })
+// Then exact current users/{uId} platform/lifecycle/revocation verification.
 // Invalid JSON or out-of-range duration returns 400.
 // Security logs use bounded route metadata.
 ```
@@ -358,10 +375,12 @@ This is required so platform ops can inspect the failed phase first, fix the cau
 
 - [x] Route restricted to superadmin (platformRole check)
 - [x] API routes use `withAuth({ requiredPlatformRole: 'PLATFORM' })`
+- [x] High-risk ops APIs re-prove the current persisted platform user after a fail-closed per-operator limiter
 - [x] SAFE_MODE toggle requires confirmation dialog
 - [x] No sensitive data displayed (no user emails, no tokens)
 - [x] Read-only data (except emergency controls)
 - [x] Input validation with Zod on API routes
+- [x] Notification monitor reads/counts are bounded and recent-window semantics are explicit
 
 ## Estimated Firestore Reads Per Page Load
 

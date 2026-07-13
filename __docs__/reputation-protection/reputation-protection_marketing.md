@@ -4,6 +4,8 @@
 **Audience:** Sales, Marketing (INTERNAL)  
 **Pillar:** 3 of 6
 
+> **HOLD — NOT CURRENT SALES ENABLEMENT.** The product is disabled and incomplete. Do not use the pitch, talking points, ROI claims, CTA, or availability language below in sales, website, proposals, demos, or customer communication. They remain historical concept material only.
+
 ---
 
 ## Elevator Pitch
@@ -42,4 +44,4 @@ One bad review can ruin a business owner's entire week. They see it, panic, and 
 
 ---
 
-**Last Updated:** February 19, 2026
+**Last Updated:** July 11, 2026

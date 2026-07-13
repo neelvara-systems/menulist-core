@@ -234,7 +234,7 @@ Our implementation follows this philosophy with:
 | Aspect         | Rating     | Notes                                 |
 | -------------- | ---------- | ------------------------------------- |
 | Mobile-first   | ⭐⭐⭐⭐⭐ | Responsive, large touch targets       |
-| Accessibility  | ⭐⭐⭐⭐   | Good ARIA labels, could add skip link |
+| Accessibility  | ⭐⭐⭐⭐⭐ | Labelled note/contact fields with linked guidance and errors |
 | UX Flow        | ⭐⭐⭐⭐⭐ | Clear progression, success state      |
 | Error Handling | ⭐⭐⭐⭐   | Shows errors, loading state           |
 | Design         | ⭐⭐⭐⭐⭐ | Clean, modern, Tailwind + Ant Design  |
@@ -246,6 +246,10 @@ Our implementation follows this philosophy with:
 - ✅ Privacy note builds trust
 - ✅ Honeypot field for bot detection
 - ✅ Character counter on message field
+- ✅ Native and controlled-state note input share the 300-character cap
+- ✅ Visible note label is associated with the textarea
+- ✅ Note guidance, character/privacy metadata, and validation errors are described to assistive technology
+- ✅ Optional contact fields expose explicit names, autocomplete hints, invalid state, and linked errors
 
 **Improvements:**
 

@@ -1,11 +1,13 @@
 # Owner Support Assistant - Product Specification
 
-> **Status:** DOCS FROZEN
+> **Status:** TARGET CONTRACT - read-only summary runtime live; expansion deferred
 > **Created:** 2026-06-07
-> **Feature Flag:** `ENABLE_ANSWERLATTICE_OWNER_SUPPORT_ASSISTANT` (planned, default `false`)
-> **Primary Route:** `/answerlattice/support-assistant` (planned)
+> **Feature Flag:** `ENABLE_ANSWERLATTICE_OWNER_SUPPORT_ASSISTANT` (live, `true`)
+> **Primary Route:** `/answerlattice/support-assistant` (live in source)
 
 ---
+
+The current runtime implements the dedicated management route, five-summary brief, deterministic summary-only query, governed route links, and responsive read-only client. Everything below involving bounded detail, AI wording, owner analytics, feedback, draft/card/note creation, or mutation preview/execute is retained only as deferred design material and is not a shipped claim.
 
 ## Problem
 
@@ -172,22 +174,19 @@ Blocked actions:
 1. The route is hidden and unavailable unless `ENABLE_ANSWERLATTICE_OWNER_SUPPORT_ASSISTANT` is enabled.
 2. The route uses the Answerlattice dashboard layout and existing access checks.
 3. A disabled flag returns a calm unavailable state and performs no assistant reads.
-4. The first route load reads only compact summaries and never opens realtime listeners.
-5. Owner questions are classified into known intents or marked unsupported.
-6. Query handling validates input with Zod and applies workspace/user rate limits before expensive work.
-7. Deterministic answers work without an LLM for summary-only and unsupported intents.
-8. LLM-backed answers are assistive, credit-aware, recorded in `answerlattice_aiOperations`, and never receive secrets or raw unrestricted data.
-9. Detail fetches are explicit, capped, and tenant/store scoped.
-10. The UI displays evidence and limits for every answer.
-11. Unsupported mutation requests are refused and routed to the proper review screen.
-12. No assistant chat transcript, session, message, plan, feedback, attribution, analytics, or event collection is created.
-13. No dedicated owner analytics collection is created; dashboard and assistant stats reuse existing daily aggregates plus compact `platformSummary` summaries.
-14. No standalone Cloud Function scheduler is created.
-15. Action preview endpoints perform no writes.
-16. Action execute endpoints require explicit confirmation, idempotency, scoped permission, and existing target write paths.
-17. Ticket status/reply actions preserve existing ticket history, notification, and resolution-signal behavior.
-18. Cross-product business actions return `unsupported` unless a product-owned bridge exists.
-19. Mobile viewport behavior works inside the responsive Answerlattice dashboard layout.
+4. A cold brief reads exactly five compact summaries and never opens a realtime listener.
+5. The summary packet is cached for 60 seconds and the process cache is capped at 300 workspaces.
+6. Owner questions are classified into attention, answer risk, friction, readiness, intake, or unsupported.
+7. Query handling validates input with Zod and applies a workspace/user rate limit before the Firestore-backed permission check.
+8. Answers are deterministic and make no LLM/provider call.
+9. Questions perform no detail, raw ticket, conversation, signal-event, or search-history reads.
+10. The UI displays evidence, limits, and governed route links.
+11. Unsupported mutation requests are refused; no preview or execute endpoint exists.
+12. No assistant transcript, session, message, plan, feedback, attribution, operation, analytics, or event record is created.
+13. No assistant summary, owner analytics summary, scheduler task, or standalone Cloud Function is created.
+14. Mobile viewport behavior works inside the responsive Answerlattice dashboard layout with 44px actions.
+
+The action, AI, owner-analytics, feedback, and bounded-detail criteria described elsewhere in this doc set are deferred design gates, not acceptance criteria for the live read-only runtime.
 
 ---
 

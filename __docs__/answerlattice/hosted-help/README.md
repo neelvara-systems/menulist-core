@@ -30,10 +30,10 @@ This is separate from:
 4. Dashboard save also writes one Answerlattice registry doc per domain:
    `answerlattice_publicHelpSites/{domain}`.
 5. Owners can check DNS status from the Hosted Help tab; the check refreshes Vercel DNS config and stores compact status fields on the registry doc.
-6. Middleware routes likely help domains such as `help.*`, `docs.*`, and `support.*` to `/answerlattice-hosted-help`.
-7. The hosted route validates the hostname against the registry before rendering.
+6. Middleware routes likely help domains such as `help.*`, `docs.*`, and `support.*` to `/answerlattice-hosted-help`, deleting caller-supplied hosted-help routing headers before forwarding middleware-owned request metadata.
+7. The hosted route uses the validated original `Host` as the registry key before rendering; routed headers and query parameters cannot select another public workspace.
 8. Published KB, FAQ, and changelog content is loaded through the existing tenant/store public cache.
-9. Server payloads are compacted before hydration; anonymous clients receive display fields only, not tenant IDs, job IDs, author IDs, embeddings, or Firestore objects.
+9. Server payloads are compacted before hydration; anonymous clients receive display fields only, not tenant IDs, job IDs, author IDs, embeddings, Firestore objects, or raw changelog document trees. Changelog descriptions become bounded plain text and timestamp-like values become validated ISO strings.
 
 ## Security Rules
 
@@ -44,6 +44,8 @@ This is separate from:
 - Public article body rendering uses `renderPublicTiptapHtml()` in `src/lib/answerlattice/publicRichText.ts`. That server renderer is the sanitizer: it accepts Tiptap JSON, emits a fixed tag/mark set, escapes text and attributes, allows only safe link/image schemes, and drops unknown nodes to escaped children before `HostedHelpClient` renders `safeHtml`.
 - `npm run verify:answerlattice-runtime-truth` guards this boundary by tying the hosted-help `dangerouslySetInnerHTML` call to the server-produced `safeHtml` field and the renderer escape/allowlist helpers.
 - Public page reads are rate-limited per domain/IP.
+- Public hosted-help identity is Host-authoritative. `?domain=` is accepted only for a middleware-marked local development rewrite, never for a public hostname, and malformed Host authorities fail closed.
+- Article slug normalization fails closed on malformed percent encoding instead of throwing a public 500.
 - Settings saves and manual DNS refreshes fail closed with a temporary error when rate limiting is enabled but unavailable; public pages show the empty shell instead of reading hosted content during that condition.
 - Vercel provider failures stay in bounded runtime diagnostics with provider code/status and provider-message presence/length only. Browser responses and saved DNS status fields use generic hosted-help messages so provider exception text is not exposed to owners or anonymous users.
 - Widget Management save and DNS-refresh failures show fixed owner-facing copy; route response text, provider exceptions, and browser exception messages are not copied into dashboard notices.

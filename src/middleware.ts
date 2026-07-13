@@ -50,6 +50,7 @@ import {
     type ProductSiteId,
 } from '@constant/productDomains';
 import { resolveDomain, shouldBypassDomainRouting } from '@lib/multiTenant/domainResolver';
+import { normalizeRequestAuthority } from '@lib/routing/hostAuthority';
 import {
     MYCODEX_LOGIN_PATH,
     MYCODEX_PRODUCT_SLUG,
@@ -208,7 +209,7 @@ function shouldPassThroughAnswerlatticeProductPath(pathname: string): boolean {
 }
 
 function normalizeHostname(hostname: string | null): string {
-    return hostname?.split(':')[0].toLowerCase() || '';
+    return normalizeRequestAuthority(hostname)?.hostname || '';
 }
 
 function isLocalDevelopmentHost(hostname: string | null): boolean {
@@ -237,13 +238,17 @@ function buildAnswerlatticeWebsiteRewritePath(basePath: string, publicPath: stri
     return (publicPath === '/' || publicPath === '/home') ? basePath : `${basePath}${publicPath}`;
 }
 
+function buildNeelvaraWebsiteRewritePath(basePath: string, publicPath: string): string {
+    return (publicPath === '/' || publicPath === '/home') ? basePath : `${basePath}${publicPath}`;
+}
+
 function rewriteWithProductHeaders(
     request: NextRequest,
     url: URL,
     productConfig: ProductDomainConfig,
     basePath = '',
 ): NextResponse {
-    const requestHeaders = new Headers(request.headers);
+    const requestHeaders = getSanitizedRoutingRequestHeaders(request);
     requestHeaders.set('x-product-id', productConfig.id);
     requestHeaders.set('x-product-name', productConfig.name);
     if (basePath) {
@@ -266,6 +271,100 @@ function rewriteWithProductHeaders(
         response.headers.set('X-Robots-Tag', 'noindex, nofollow');
     }
 
+    return response;
+}
+
+const CONTROLLED_TENANT_REQUEST_HEADERS = [
+    'x-tenant-subdomain',
+    'x-tenant-custom-domain',
+    'x-tenant-type',
+] as const;
+
+const CONTROLLED_HOSTED_HELP_REQUEST_HEADERS = [
+    'x-answerlattice-hosted-help-domain',
+    'x-answerlattice-hosted-help-dev',
+] as const;
+
+const CONTROLLED_PRODUCT_REQUEST_HEADERS = [
+    'x-product-id',
+    'x-product-name',
+    'x-product-base-path',
+] as const;
+
+function getSanitizedRoutingRequestHeaders(request: NextRequest): Headers {
+    const requestHeaders = new Headers(request.headers);
+    CONTROLLED_TENANT_REQUEST_HEADERS.forEach((header) => requestHeaders.delete(header));
+    CONTROLLED_HOSTED_HELP_REQUEST_HEADERS.forEach((header) => requestHeaders.delete(header));
+    CONTROLLED_PRODUCT_REQUEST_HEADERS.forEach((header) => requestHeaders.delete(header));
+    return requestHeaders;
+}
+
+function nextWithSanitizedRoutingHeaders(request: NextRequest): NextResponse {
+    return NextResponse.next({
+        request: { headers: getSanitizedRoutingRequestHeaders(request) },
+    });
+}
+
+function nextWithProductHeaders(
+    request: NextRequest,
+    productConfig: ProductDomainConfig,
+): NextResponse {
+    const requestHeaders = getSanitizedRoutingRequestHeaders(request);
+    requestHeaders.set('x-product-id', productConfig.id);
+    requestHeaders.set('x-product-name', productConfig.name);
+    const response = NextResponse.next({ request: { headers: requestHeaders } });
+    response.headers.set('x-product-id', productConfig.id);
+    response.headers.set('x-product-name', productConfig.name);
+    return response;
+}
+
+function rewriteHostedHelpResponse(
+    request: NextRequest,
+    url: URL,
+    options: { domain?: string; development?: boolean },
+): NextResponse {
+    const requestHeaders = getSanitizedRoutingRequestHeaders(request);
+    if (options.domain) {
+        requestHeaders.set('x-answerlattice-hosted-help-domain', options.domain);
+    }
+    if (options.development) {
+        requestHeaders.set('x-answerlattice-hosted-help-dev', '1');
+    }
+
+    const response = NextResponse.rewrite(url, {
+        request: { headers: requestHeaders },
+    });
+    if (options.domain) {
+        response.headers.set('x-answerlattice-hosted-help-domain', options.domain);
+    }
+    if (options.development) {
+        response.headers.set('x-answerlattice-hosted-help-dev', '1');
+    }
+    return response;
+}
+
+function rewriteTenantResponse(request: NextRequest, url: URL): NextResponse {
+    const domainInfo = resolveDomain(request.headers.get('host'));
+    const requestHeaders = getSanitizedRoutingRequestHeaders(request);
+
+    if (domainInfo.subdomain) {
+        requestHeaders.set('x-tenant-subdomain', domainInfo.subdomain);
+        requestHeaders.set('x-tenant-type', 'subdomain');
+    } else if (domainInfo.customDomain) {
+        requestHeaders.set('x-tenant-custom-domain', domainInfo.customDomain);
+        requestHeaders.set('x-tenant-type', 'custom');
+    }
+
+    const response = NextResponse.rewrite(url, {
+        request: { headers: requestHeaders },
+    });
+    if (domainInfo.subdomain) {
+        response.headers.set('x-tenant-subdomain', domainInfo.subdomain);
+        response.headers.set('x-tenant-type', 'subdomain');
+    } else if (domainInfo.customDomain) {
+        response.headers.set('x-tenant-custom-domain', domainInfo.customDomain);
+        response.headers.set('x-tenant-type', 'custom');
+    }
     return response;
 }
 
@@ -306,7 +405,6 @@ const MYCODEX_PRODUCT_ALIAS_HOSTS = new Set([
 ]);
 
 const SIGNALDESK_HOST_PASSTHROUGH_PATHS = [
-    '/signin',
     '/forgot-password',
     '/error',
     '/unauthorized',
@@ -332,7 +430,7 @@ function buildSignalDeskHostRewritePath(pathname: string): string {
 }
 
 function getSignalDeskRequestHeaders(request: NextRequest, basePath = SIGNALDESK_BASE_PATH): Headers {
-    const requestHeaders = new Headers(request.headers);
+    const requestHeaders = getSanitizedRoutingRequestHeaders(request);
     requestHeaders.set('x-product-id', 'signaldesk');
     requestHeaders.set('x-product-name', 'MenuList SignalDesk');
     requestHeaders.set('x-product-base-path', basePath);
@@ -529,8 +627,7 @@ export async function middleware(request: NextRequest) {
     ) {
         const url = request.nextUrl.clone();
         url.pathname = getAnswerlatticeHostedHelpRewritePath(pathname);
-        const response = NextResponse.rewrite(url);
-        response.headers.set('x-answerlattice-hosted-help-domain', domainInfo.hostname);
+        const response = rewriteHostedHelpResponse(request, url, { domain: domainInfo.hostname });
         response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300');
         return applySecurityHeaders(request, response);
     }
@@ -595,7 +692,7 @@ export async function middleware(request: NextRequest) {
                 url.pathname = campaignCueWorkspacePath ||
                     `${product.internalBasePath}${strippedPath === '/' ? '' : strippedPath}`;
             } else if (product.id === 'neelvara') {
-                url.pathname = `${product.internalBasePath}${strippedPath === '/' ? '' : strippedPath}`;
+                url.pathname = buildNeelvaraWebsiteRewritePath(product.internalBasePath, strippedPath);
             } else {
                 url.pathname = strippedPath === '/product' ? '/how-it-works' : strippedPath;
             }
@@ -628,7 +725,7 @@ export async function middleware(request: NextRequest) {
             }
 
             if (shouldPassThroughAnswerlatticeProductPath(pathname)) {
-                return applySecurityHeaders(request, NextResponse.next());
+                return applySecurityHeaders(request, nextWithProductHeaders(request, productConfig));
             }
 
             const answerlatticeDashboardPath = getAnswerlatticeDashboardRewritePath(pathname);
@@ -642,7 +739,7 @@ export async function middleware(request: NextRequest) {
 
         if (productConfig.id === 'campaigncue') {
             if (shouldBypassDomainRouting(pathname)) {
-                return applySecurityHeaders(request, NextResponse.next());
+                return applySecurityHeaders(request, nextWithProductHeaders(request, productConfig));
             }
 
             if (isInvalidCampaignCuePublicFeaturePath(pathname)) {
@@ -657,7 +754,9 @@ export async function middleware(request: NextRequest) {
         }
 
         const url = request.nextUrl.clone();
-        url.pathname = `${productConfig.internalBasePath}${pathname === '/' ? '' : pathname}`;
+        url.pathname = productConfig.id === 'neelvara'
+            ? buildNeelvaraWebsiteRewritePath(productConfig.internalBasePath, pathname)
+            : `${productConfig.internalBasePath}${pathname === '/' ? '' : pathname}`;
         const response = rewriteWithProductHeaders(request, url, productConfig);
         return applySecurityHeaders(
             request,
@@ -671,8 +770,7 @@ export async function middleware(request: NextRequest) {
             const url = request.nextUrl.clone();
             const strippedPath = pathname.slice(ANSWERLATTICE_HOSTED_HELP_DEV_PREFIX.length) || '/';
             url.pathname = getAnswerlatticeHostedHelpRewritePath(strippedPath);
-            const response = NextResponse.rewrite(url);
-            response.headers.set('x-answerlattice-hosted-help-dev', '1');
+            const response = rewriteHostedHelpResponse(request, url, { development: true });
             return applySecurityHeaders(request, response);
         }
 
@@ -698,8 +796,8 @@ export async function middleware(request: NextRequest) {
             }
             const productWebsitePath = product.id === 'answerlattice'
                 ? buildAnswerlatticeWebsiteRewritePath(product.internalBasePath, strippedPath)
-                : product.id === 'neelvara' && strippedPath === '/'
-                    ? `${product.internalBasePath}/home`
+                : product.id === 'neelvara'
+                    ? buildNeelvaraWebsiteRewritePath(product.internalBasePath, strippedPath)
                     : `${product.internalBasePath}${strippedPath === '/' ? '' : strippedPath}`;
             url.pathname = answerlatticeDashboardPath || campaignCueWorkspacePath || productWebsitePath;
             const response = rewriteWithProductHeaders(request, url, product, product.devPathPrefix);
@@ -737,7 +835,7 @@ export async function middleware(request: NextRequest) {
         pathname.startsWith('/(global-pages)');
 
     if (skipRouting) {
-        return applySecurityHeaders(request, NextResponse.next());
+        return applySecurityHeaders(request, nextWithSanitizedRoutingHeaders(request));
     }
 
     // URL Routing Architecture — Phase 2: Lowercase + trailing slash normalization
@@ -762,23 +860,14 @@ export async function middleware(request: NextRequest) {
             ? '/client/robots'
             : `/client${pathname === '/' ? '' : pathname}`;
 
-        response = NextResponse.rewrite(url);
+        response = rewriteTenantResponse(request, url);
 
         // CDN cache headers for public menu/OBP pages (URL Routing Architecture — Phase 2)
         response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300');
 
-        // Pass tenant info to the page via headers
-        if (domainInfo.subdomain) {
-            response.headers.set('x-tenant-subdomain', domainInfo.subdomain);
-            response.headers.set('x-tenant-type', 'subdomain');
-        }
-        if (domainInfo.customDomain) {
-            response.headers.set('x-tenant-custom-domain', domainInfo.customDomain);
-            response.headers.set('x-tenant-type', 'custom');
-        }
     } else {
         // Priority 3: Platform domain (menulist.ai) — serves (website) route group naturally
-        response = NextResponse.next();
+        response = nextWithSanitizedRoutingHeaders(request);
     }
 
     return applySecurityHeaders(request, response);

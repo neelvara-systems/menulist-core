@@ -1,6 +1,5 @@
 export const dynamic = 'force-dynamic';
 
-import { FEATURE_FLAGS } from '@config/features';
 import {
     normalizeAnswerlatticeEntityLookupQuery,
     searchAnswerlatticeEntityLookupOptions,
@@ -18,13 +17,9 @@ import { applyAnswerlatticeDashboardReadRateLimit } from '../../readRateLimit';
 
 const EntityLookupSchema = z.object({
     q: z.string().trim().min(3).max(80),
-});
+}).strict();
 
 export const GET = withAuth(async (request: NextRequest, session) => {
-    if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_REPEATED_REPLY_IMPORT) {
-        return NextResponse.json({ error: 'Repeated reply import is not enabled.' }, { status: 404 });
-    }
-
     const normalizedQuery = normalizeAnswerlatticeEntityLookupQuery(new URL(request.url).searchParams.get('q') || '');
     if (normalizedQuery.length < 3) {
         return NextResponse.json({ entities: [] }, { headers: { 'Cache-Control': 'private, no-store' } });
@@ -50,7 +45,7 @@ export const GET = withAuth(async (request: NextRequest, session) => {
             logRuntimeFailure('answerlattice_intake_entity_lookup_failed', error, {
                 ...getBoundedRuntimeStringContext('tenantId', access.context.scope.tId),
                 ...getBoundedRuntimeStringContext('storeId', access.context.scope.sId),
-                ...getBoundedRuntimeStringContext('query', parsed.data.q),
+                queryLength: parsed.data.q.length,
             });
         }
         return NextResponse.json({ error: getAnswerlatticeKnowledgeIntakeClientErrorMessage(error, 'Failed to search product entities.') }, { status });

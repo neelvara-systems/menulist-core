@@ -36,7 +36,7 @@ Step 4:  Coverage KPI (existing)
 Step 5:  Recurring Fallback Detection (existing)
 Step 6:  Post-Mutation Impact Tracking (existing)
 Step 7:  Confidence Auto-Adjustment (existing)
-Step 8:  Signal TTL Archive (existing)
+Retention: signal writers set a 12-month `expiresAt`; Firestore TTL performs deletion without a per-tenant scheduler query.
 Step 9:  Draft Generation for new proposals (existing, Item #4)
 Step 10: Friction Aggregation (existing, Item #5)
 Step 11: Friction Insight Generation (existing, Item #5)
@@ -56,10 +56,10 @@ Step 13: [NEW] Ticket Resolution Knowledge Extraction <- THIS FEATURE
 | Signal events DAL          | `src/database/answerlattice/signalEvents.ts`              | ✅ 4 functions                                                     |
 | Signal clustering          | `src/lib/answerlattice/signalMutation.ts`                 | ✅ Entity-based clustering with severity + time decay              |
 | Nightly signal mutation    | `functions-answerlattice/src/answerlattice/answerlatticeNightly.ts` | ✅ Clusters → proposals                                            |
-| Mutation proposals DAL     | `src/database/answerlattice/mutationProposals.ts`         | ✅ 7 functions + approveDraftAsCanonicalAnswer                     |
+| Mutation proposals DAL     | `src/database/answerlattice/mutationProposals.ts`         | ✅ Reads/submission plus server-routed approval/rejection actions   |
 | Draft generator (CF)       | `functions-answerlattice/src/answerlattice/draftGenerator.ts`  | ✅ Gemini draft for new_answer_required                            |
-| Founder review queue       | `src/hooks/answerlattice/useMutationProposals.ts`         | ✅ approve/reject/implement                                        |
-| Canonical answer creation  | `src/database/answerlattice/canonicalAnswers.ts`          | ✅ 8 functions                                                     |
+| Founder review queue       | `src/hooks/answerlattice/useMutationProposals.ts`         | ✅ server-routed approve/reject/implement                           |
+| Canonical answer apply     | `src/lib/answerlattice/governanceServer.ts`               | ✅ atomic answer/proposal/audit/invalidation transaction            |
 | Ticket system              | `src/database/tickets/index.ts`                      | ✅ Full CRUD + real-time                                           |
 | Ticket types               | `src/types/supportTicket.ts`                         | ✅ Already has `knowledgeCandidate`, `source`, `escalationContext` |
 | Audit logs                 | `src/database/answerlattice/auditLogs.ts`                 | ✅ Append-only                                                     |
@@ -72,7 +72,7 @@ Step 13: [NEW] Ticket Resolution Knowledge Extraction <- THIS FEATURE
 | Resolution extractor    | `functions-answerlattice/src/answerlattice/resolutionExtractor.ts`   | Extract problem/resolution from ticket conversations |
 | Ticket knowledge prompt | `functions-answerlattice/src/answerlattice/ticketKnowledgePrompt.ts` | Gemini prompt for resolution extraction              |
 
-Ticket knowledge diagnostics use fixed codes and bounded context. Optional existing-answer title lookup failures log `ANSWERLATTICE_TICKET_KNOWLEDGE_EXISTING_ANSWERS_LOAD_FAILED` and continue with an empty title list so extraction can still process the cluster without storing raw exception text.
+Ticket knowledge diagnostics use fixed codes and bounded context. Optional existing-answer title lookup failures log `ANSWERLATTICE_TICKET_KNOWLEDGE_EXISTING_ANSWERS_LOAD_FAILED` and continue with an empty title list so extraction can still process the cluster without storing raw exception text. Direct entity-load failures use a separate fixed code instead of being collapsed into a genuine not-found result. Persisted entity/proposal scope must be exact numeric `AL` ownership; proposal ticket counters accept numeric values or an absent legacy field derived from admitted ticket IDs, while strings/fractions/unsafe values fail before the merge update.
 
 ### §2.3 — What Must Be Modified
 

@@ -86,7 +86,20 @@ function withRoutingEnv(env, fn) {
     clearSrcRequireCache();
     const domainResolver = require(path.join(ROOT, 'src/lib/multiTenant/domainResolver.ts'));
     const deploymentTargets = require(path.join(ROOT, 'src/constants/deploymentTargets.ts'));
-    fn({ ...domainResolver, ...deploymentTargets });
+    const productDomains = require(path.join(ROOT, 'src/constants/productDomains.ts'));
+    const hostedHelpRequest = require(path.join(ROOT, 'src/lib/answerlattice/hostedHelpRequest.ts'));
+    const answerlatticeDomains = require(path.join(ROOT, 'src/constants/answerlattice/domains.ts'));
+    const campaignCueDomains = require(path.join(ROOT, 'src/constants/campaigncue/domains.ts'));
+    const neelvaraDomains = require(path.join(ROOT, 'src/constants/neelvara/domains.ts'));
+    fn({
+      ...domainResolver,
+      ...deploymentTargets,
+      ...productDomains,
+      ...hostedHelpRequest,
+      ...answerlatticeDomains,
+      ...campaignCueDomains,
+      ...neelvaraDomains,
+    });
   } finally {
     clearSrcRequireCache();
     restoreEnv(original);
@@ -103,7 +116,15 @@ function verifyPackageScript() {
 }
 
 function verifyResolverRuntimeBoundary() {
-  withRoutingEnv({ NODE_ENV: 'development' }, ({ resolveDomain, shouldBypassDomainRouting }) => {
+  withRoutingEnv({ NODE_ENV: 'development' }, ({
+    getHostedHelpChangelogText,
+    normalizeHostedHelpArticleSlug,
+    resolveDomain,
+    resolveHostedHelpRequestDomain,
+    resolveTenantRequestIdentity,
+    serializeHostedHelpDate,
+    shouldBypassDomainRouting,
+  }) => {
     const localPlatform = resolveDomain('localhost:3000');
     assert(localPlatform.type === 'platform', 'localhost must resolve as platform in local development');
     assert(localPlatform.isPlatform === true && localPlatform.isClient === false, 'localhost must not be tenant client traffic');
@@ -126,6 +147,25 @@ function verifyResolverRuntimeBoundary() {
     assert(customDomain.type === 'custom', 'unknown non-platform host must resolve as custom domain');
     assert(customDomain.customDomain === 'customer-owned-domain.example', 'custom domain resolver must preserve normalized hostname');
 
+    const trailingDotTenant = resolveDomain('mysalon.menulist.online.');
+    assert(trailingDotTenant.type === 'subdomain', 'strict Host parsing must normalize trailing-dot tenant hostnames');
+    assert(trailingDotTenant.subdomain === 'mysalon', 'trailing-dot tenant host must preserve tenant subdomain after normalization');
+
+    [
+      'restaurant.example,attacker.example',
+      'restaurant.example/path',
+      'user@restaurant.example',
+      'restaurant.example:bad',
+      'bad..host.example',
+      '[::1]:3000',
+    ].forEach((malformedHost) => {
+      const malformedResolution = resolveDomain(malformedHost);
+      assert(
+        malformedResolution.isClient === false && malformedResolution.type === 'localhost',
+        `malformed Host authority ${malformedHost} must not resolve as tenant/custom traffic`,
+      );
+    });
+
     assert(shouldBypassDomainRouting('/api/domain'), 'API routes must bypass tenant routing');
     assert(shouldBypassDomainRouting('/_next/static/chunks/app.js'), 'Next static assets must bypass tenant routing');
     assert(shouldBypassDomainRouting('/sites/answerlattice'), 'product site internals must bypass tenant routing');
@@ -135,6 +175,72 @@ function verifyResolverRuntimeBoundary() {
     assert(shouldBypassDomainRouting('/manifest.json'), 'global manifest must bypass tenant routing');
     assert(!shouldBypassDomainRouting('/robots.txt'), 'tenant robots must not bypass middleware');
     assert(!shouldBypassDomainRouting('/sitemap.xml'), 'tenant sitemap must not bypass middleware');
+
+    const trustedTenant = resolveTenantRequestIdentity('mysalon.menulist.online:3000', {
+      subdomain: 'mysalon',
+      tenantType: 'subdomain',
+    });
+    assert(trustedTenant?.subdomain === 'mysalon', 'matching middleware tenant claims must preserve Host-derived identity');
+    assert(trustedTenant?.routingClaimsValid === true, 'matching middleware tenant claims must validate');
+
+    const forgedTenant = resolveTenantRequestIdentity('mysalon.menulist.online:3000', {
+      subdomain: 'another-store',
+      tenantType: 'subdomain',
+    });
+    assert(forgedTenant?.subdomain === 'mysalon', 'forged tenant header must not override the request Host tenant');
+    assert(forgedTenant?.routingClaimsValid === false, 'forged tenant header must fail the integrity claim');
+
+    const forgedCustomDomain = resolveTenantRequestIdentity('restaurant.example', {
+      customDomain: 'other-restaurant.example',
+      tenantType: 'custom',
+    });
+    assert(forgedCustomDomain?.customDomain === 'restaurant.example', 'forged custom-domain header must not change Host-derived identity');
+    assert(forgedCustomDomain?.routingClaimsValid === false, 'forged custom-domain claim must fail validation');
+    assert(resolveTenantRequestIdentity('restaurant.example,attacker.example') === null, 'forwarded host lists must not be accepted as Host authority');
+    assert(resolveTenantRequestIdentity('restaurant.example/path') === null, 'Host authority must reject URL paths');
+
+    assert(
+      resolveHostedHelpRequestDomain({
+        host: 'help.customer.example',
+        queryDomain: 'help.other.example',
+        isDevelopmentRewrite: true,
+        isDevelopmentRuntime: true,
+      }) === 'help.customer.example',
+      'hosted-help query override must not replace a public Host even with a forged dev marker',
+    );
+    assert(
+      resolveHostedHelpRequestDomain({
+        host: 'localhost:3000',
+        queryDomain: 'help.customer.example',
+        isDevelopmentRewrite: true,
+        isDevelopmentRuntime: true,
+      }) === 'help.customer.example',
+      'middleware-marked local hosted-help rewrite may use the explicit test domain',
+    );
+    assert(
+      resolveHostedHelpRequestDomain({
+        host: 'localhost:3000',
+        queryDomain: 'help.customer.example',
+        isDevelopmentRewrite: false,
+        isDevelopmentRuntime: true,
+      }) === 'localhost',
+      'unmarked local hosted-help request must not accept the query override',
+    );
+    assert(normalizeHostedHelpArticleSlug('docs/getting%20started') === 'getting started', 'hosted-help article slug must decode valid percent input');
+    assert(normalizeHostedHelpArticleSlug('%E0%A4%A') === '', 'hosted-help article slug must fail closed for malformed percent input');
+    assert(
+      getHostedHelpChangelogText({
+        type: 'doc',
+        content: [
+          { type: 'paragraph', content: [{ type: 'text', text: 'Safe release note' }] },
+          { type: 'internal', secret: 'must not serialize' },
+        ],
+      }) === 'Safe release note',
+      'hosted-help changelog text must emit text nodes without copying unknown fields',
+    );
+    assert(getHostedHelpChangelogText({ type: 'text', text: 'x'.repeat(3000) }).length === 2000, 'hosted-help changelog text must be bounded');
+    assert(serializeHostedHelpDate({ seconds: 0 }) === '1970-01-01T00:00:00.000Z', 'hosted-help date must serialize Firestore seconds');
+    assert(serializeHostedHelpDate({ toDate: () => { throw new Error('bad timestamp'); } }) === null, 'hosted-help date must fail closed when timestamp conversion throws');
   });
 
   withRoutingEnv({
@@ -142,7 +248,15 @@ function verifyResolverRuntimeBoundary() {
     VERCEL_ENV: 'preview',
     NEXT_PUBLIC_ENV: 'preview',
     NODE_ENV: 'production',
-  }, ({ resolveDomain, resolveKnownProductIdByHostname }) => {
+  }, ({
+    isActiveProductDomain,
+    isAnswerlatticeProductHostname,
+    isCampaignCueProductHostname,
+    isNeelvaraProductHostname,
+    resolveDomain,
+    resolveKnownProductIdByHostname,
+    resolveProductSiteByHostname,
+  }) => {
     assert(resolveDomain('menulist.online').type === 'platform', 'preview MenuList host must resolve as platform');
 
     const answerlattice = resolveDomain('answerlattice.menulist.online');
@@ -164,6 +278,23 @@ function verifyResolverRuntimeBoundary() {
     assert(tenant.type === 'subdomain' && tenant.subdomain === 'joespizza', 'preview tenant subdomain must resolve as client subdomain');
 
     assert(resolveKnownProductIdByHostname('signaldesk.menulist.online') === 'signaldesk', 'known product host lookup must recognize preview SignalDesk');
+    assert(resolveKnownProductIdByHostname('signaldesk.menulist.online:443') === 'signaldesk', 'known product host lookup must accept valid Host ports');
+    assert(isActiveProductDomain('signaldesk', 'signaldesk.menulist.online:443') === true, 'active product-domain lookup must accept valid Host ports');
+    assert(isAnswerlatticeProductHostname('answerlattice.menulist.online:443') === true, 'Answerlattice product helper must accept valid Host ports');
+    assert(isCampaignCueProductHostname('campaigncue.menulist.online:443') === true, 'CampaignCue product helper must accept valid Host ports');
+    assert(isNeelvaraProductHostname('neelvara.menulist.online:443') === true, 'Neelvara product helper must accept valid Host ports');
+    assert(resolveProductSiteByHostname('answerlattice.menulist.online.')?.id === 'answerlattice', 'product-site lookup must normalize trailing-dot product hosts');
+    [
+      'answerlattice.menulist.online:bad',
+      'signaldesk.menulist.online:bad',
+      'menulist.digital:bad',
+    ].forEach((malformedHost) => {
+      assert(resolveKnownProductIdByHostname(malformedHost) === null, `known product host lookup must reject malformed authority ${malformedHost}`);
+      assert(resolveProductSiteByHostname(malformedHost) === undefined, `product-site lookup must reject malformed authority ${malformedHost}`);
+    });
+    assert(isAnswerlatticeProductHostname('answerlattice.menulist.online:bad') === false, 'Answerlattice product helper must reject malformed Host ports');
+    assert(isCampaignCueProductHostname('campaigncue.menulist.online:bad') === false, 'CampaignCue product helper must reject malformed Host ports');
+    assert(isNeelvaraProductHostname('neelvara.menulist.online:bad') === false, 'Neelvara product helper must reject malformed Host ports');
   });
 
   withRoutingEnv({
@@ -171,7 +302,15 @@ function verifyResolverRuntimeBoundary() {
     VERCEL_ENV: 'production',
     NEXT_PUBLIC_ENV: 'production',
     NODE_ENV: 'production',
-  }, ({ resolveDomain, resolveKnownProductIdByHostname }) => {
+  }, ({
+    isActiveProductDomain,
+    isAnswerlatticeProductHostname,
+    isCampaignCueProductHostname,
+    isNeelvaraProductHostname,
+    resolveDomain,
+    resolveKnownProductIdByHostname,
+    resolveProductSiteByHostname,
+  }) => {
     assert(resolveDomain('menulist.ai').type === 'platform', 'production MenuList host must resolve as platform');
     assert(resolveDomain('app.menulist.ai').type === 'platform', 'production app host must resolve as platform');
 
@@ -191,12 +330,37 @@ function verifyResolverRuntimeBoundary() {
     assert(custom.type === 'custom' && custom.isClient === true, 'restaurant custom domain must resolve as tenant client traffic');
 
     assert(resolveKnownProductIdByHostname('signaldesk.menulist.ai') === 'signaldesk', 'known product host lookup must recognize production SignalDesk');
+    assert(isActiveProductDomain('answerlattice', 'answerlattice.com:443') === true, 'active product-domain lookup must accept valid production Host ports');
+    assert(isAnswerlatticeProductHostname('answerlattice.com:443') === true, 'Answerlattice production helper must accept valid Host ports');
+    assert(isCampaignCueProductHostname('campaigncue.ai:443') === true, 'CampaignCue production helper must accept valid Host ports');
+    assert(isNeelvaraProductHostname('neelvara.com:443') === true, 'Neelvara production helper must accept valid Host ports');
+    assert(resolveProductSiteByHostname('answerlattice.com:443')?.id === 'answerlattice', 'product-site lookup must accept valid production Host ports');
+    [
+      'answerlattice.com:bad',
+      'signaldesk.menulist.ai:bad',
+      'menulist.digital:bad',
+    ].forEach((malformedHost) => {
+      assert(resolveKnownProductIdByHostname(malformedHost) === null, `known production product host lookup must reject malformed authority ${malformedHost}`);
+      assert(isActiveProductDomain('answerlattice', malformedHost) === false, `active product-domain lookup must reject malformed authority ${malformedHost}`);
+      assert(resolveProductSiteByHostname(malformedHost) === undefined, `production product-site lookup must reject malformed authority ${malformedHost}`);
+    });
+    assert(isAnswerlatticeProductHostname('answerlattice.com:bad') === false, 'Answerlattice production helper must reject malformed Host ports');
+    assert(isCampaignCueProductHostname('campaigncue.ai:bad') === false, 'CampaignCue production helper must reject malformed Host ports');
+    assert(isNeelvaraProductHostname('neelvara.com:bad') === false, 'Neelvara production helper must reject malformed Host ports');
   });
 }
 
 function verifyResolverSourceBoundary() {
+  const deploymentTargets = read('src/constants/deploymentTargets.ts');
+  const productDomains = read('src/constants/productDomains.ts');
+  const answerlatticeDomains = read('src/constants/answerlattice/domains.ts');
+  const campaignCueDomains = read('src/constants/campaigncue/domains.ts');
+  const neelvaraDomains = read('src/constants/neelvara/domains.ts');
   const resolver = read('src/lib/multiTenant/domainResolver.ts');
+  const hostAuthority = read('src/lib/routing/hostAuthority.ts');
+  const middleware = read('src/middleware.ts');
   const tenantHeaders = read('src/lib/multiTenant/getTenantFromHeaders.ts');
+  const manifestRoute = read('src/app/manifest.webmanifest/route.ts');
 
   assertOrder(
     resolver,
@@ -212,27 +376,40 @@ function verifyResolverSourceBoundary() {
   );
   assertIncludes(resolver, 'PLATFORM_DOMAIN_ALIASES', 'domain resolver supported platform aliases');
   assertIncludes(resolver, 'RESERVED_SUBDOMAINS.includes(subdomain)', 'domain resolver reserved subdomain guard');
+  assertIncludes(resolver, 'const normalizedAuthority = normalizeRequestAuthority(hostname);', 'domain resolver strict Host-authority normalization');
+  assertIncludes(resolver, 'const normalizedHost = normalizedAuthority.hostname;', 'domain resolver must classify the normalized Host hostname');
+  assertIncludes(resolver, 'Malformed host values must never fall', 'domain resolver malformed Host fail-closed comment');
+  assertIncludes(hostAuthority, 'parsed.port', 'shared Host authority parser must preserve valid ports');
+  assertIncludes(hostAuthority, "/[\\s,\\\\/@?#]/.test(candidate)", 'shared Host authority parser must reject forwarded lists, paths, credentials, query and fragment characters');
+  assertIncludes(deploymentTargets, 'normalizeRequestAuthority(hostname)?.hostname', 'deployment target product-host helpers must use the strict Host authority parser');
+  assertIncludes(productDomains, 'normalizeRequestAuthority(hostname)?.hostname', 'product domain helper must use the strict Host authority parser');
+  assertIncludes(answerlatticeDomains, 'normalizeRequestAuthority(hostname)?.hostname', 'Answerlattice product hostname helper must use the strict Host authority parser');
+  assertIncludes(campaignCueDomains, 'normalizeRequestAuthority(hostname)?.hostname', 'CampaignCue product hostname helper must use the strict Host authority parser');
+  assertIncludes(neelvaraDomains, 'normalizeRequestAuthority(hostname)?.hostname', 'Neelvara product hostname helper must use the strict Host authority parser');
+  assertIncludes(middleware, 'normalizeRequestAuthority(hostname)?.hostname || \'\';', 'middleware local/product alias helpers must use the strict Host authority parser');
+  assertNotIncludes(deploymentTargets, "hostname.split(':')[0]", 'deployment target helpers must not use colon-split Host parsing');
+  assertNotIncludes(productDomains, "hostname.split(':')[0]", 'product domain helper must not use colon-split Host parsing');
+  assertNotIncludes(answerlatticeDomains, "hostname.split(':')[0]", 'Answerlattice product hostname helper must not use colon-split Host parsing');
+  assertNotIncludes(campaignCueDomains, 'hostname.split(":")[0]', 'CampaignCue product hostname helper must not use colon-split Host parsing');
+  assertNotIncludes(neelvaraDomains, "hostname.split(':')[0]", 'Neelvara product hostname helper must not use colon-split Host parsing');
+  assertNotIncludes(middleware, "hostname?.split(':')[0]", 'middleware helpers must not use colon-split Host parsing');
   assertIncludes(resolver, "type: 'custom'", 'domain resolver custom domain fallback');
   assertNotIncludes(resolver, "hostname === 'menulist.ai'", 'domain resolver must not hardcode production MenuList host');
   assertNotIncludes(resolver, "hostname === 'menulist.online'", 'domain resolver must not hardcode preview MenuList host');
 
-  assertOrder(
-    tenantHeaders,
-    "headersList.get('x-tenant-subdomain')",
-    'const requestHost =',
-    'tenant header helper reads middleware tenant headers before host fallback',
-  );
-  assertIncludes(tenantHeaders, "headersList.get('x-forwarded-host')", 'tenant header helper forwarded host fallback');
-  assertIncludes(tenantHeaders, "headersList.get('x-vercel-proxied-host')", 'tenant header helper Vercel proxied host fallback');
-  assertIncludes(tenantHeaders, "headersList.get('x-vercel-deployment-url')", 'tenant header helper Vercel deployment host fallback');
-  assertIncludes(tenantHeaders, 'process.env.VERCEL_URL', 'tenant header helper Vercel env host fallback');
+  assertIncludes(tenantHeaders, "const requestHost = headersList.get('host');", 'tenant header helper original Host authority');
+  assertIncludes(tenantHeaders, 'resolveTenantRequestIdentity(requestHost', 'tenant header helper Host-derived identity resolver');
+  assertIncludes(tenantHeaders, "subdomain: headersList.get('x-tenant-subdomain')", 'tenant header helper middleware claim validation');
   assertIncludes(tenantHeaders, 'secureError', 'tenant header helper secure logging');
   assertIncludes(tenantHeaders, 'sanitizeTenantLogContext', 'tenant header helper bounded log context');
-  assertIncludes(tenantHeaders, 'hasForwardedHost: Boolean(headersList.get', 'tenant header helper header presence diagnostics');
-  assertIncludes(tenantHeaders, 'const resolvedDomain = resolveDomain(host);', 'tenant header helper host fallback resolver');
-  assertIncludes(tenantHeaders, 'tenantTypeHeader || (resolvedDomain.isClient ? resolvedDomain.type : null)', 'tenant header helper tenant type fallback');
+  assertNotIncludes(tenantHeaders, "headersList.get('x-forwarded-host')", 'tenant header helper must not trust forwarded host for tenant identity');
+  assertNotIncludes(tenantHeaders, 'process.env.VERCEL_URL', 'tenant header helper must not use deployment host as tenant identity');
+  assertNotIncludes(tenantHeaders, 'tenantSubdomain ||', 'tenant header helper must not prefer a tenant header over Host');
   assertNotIncludes(tenantHeaders, 'console.error', 'tenant header helper must not log raw headers through console');
   assertNotIncludes(tenantHeaders, 'Object.fromEntries(headersList', 'tenant header helper must not serialize raw request headers');
+
+  assertIncludes(manifestRoute, "requestHostname = h.get('host') || '';", 'manifest route Host-derived tenant identity');
+  assertNotIncludes(manifestRoute, 'x-forwarded-host', 'manifest route must not trust forwarded host for tenant identity or cache keys');
 }
 
 function verifyPublicPathSegmentBoundary() {
@@ -306,7 +483,6 @@ function verifyPublicPathSegmentBoundary() {
   ].forEach((token) => assertIncludes(reservedSlugs, token, 'Reserved outlet slug boundary'));
 
   [
-    'normalizePublicOutletSlug(entry.outletSlug)',
     'publicOutletSlug: normalizePublicOutletSlug(outlet.outletSlug)',
     'outlet.publicOutletSlug',
   ].forEach((token) => assertIncludes(brandObp, token, 'Brand OBP public outlet slug boundary'));
@@ -368,7 +544,7 @@ function verifyPublicPathSegmentBoundary() {
   [
     'normalizePublicOutletSlug(data?.outletSlug)',
     'normalizePublicProjectSlug(p?.slug)',
-    '.filter((entry): entry is OutletSitemapEntry => Boolean(entry))',
+    'if (!outletSlug) continue;',
     'Outlets without a safe `outletSlug`',
     'projects without a safe `projectSlug`',
     'logTenantSitemapFailure',
@@ -437,6 +613,16 @@ function verifyMiddlewareBoundary() {
   assertIncludes(middleware, "response.headers.set('x-tenant-custom-domain', domainInfo.customDomain);", 'middleware tenant custom-domain header');
   assertIncludes(middleware, "response.headers.set('x-tenant-type', 'subdomain');", 'middleware subdomain tenant type header');
   assertIncludes(middleware, "response.headers.set('x-tenant-type', 'custom');", 'middleware custom-domain tenant type header');
+  assertIncludes(middleware, 'getSanitizedRoutingRequestHeaders(request)', 'middleware controlled routing-header sanitization');
+  assertIncludes(middleware, "CONTROLLED_TENANT_REQUEST_HEADERS.forEach((header) => requestHeaders.delete(header));", 'middleware forged tenant-header removal');
+  assertIncludes(middleware, "CONTROLLED_HOSTED_HELP_REQUEST_HEADERS.forEach((header) => requestHeaders.delete(header));", 'middleware forged hosted-help header removal');
+  assertIncludes(middleware, "CONTROLLED_PRODUCT_REQUEST_HEADERS.forEach((header) => requestHeaders.delete(header));", 'middleware forged product-header removal');
+  assertIncludes(middleware, 'request: { headers: requestHeaders }', 'middleware trusted routing headers forwarded to rewritten request');
+  assertIncludes(middleware, 'nextWithSanitizedRoutingHeaders(request)', 'middleware pass-through routing-header sanitization');
+  assertIncludes(middleware, 'nextWithProductHeaders(request, productConfig)', 'middleware product pass-through trusted header injection');
+  assertNotIncludes(middleware, 'return applySecurityHeaders(request, NextResponse.next());', 'middleware unsanitized pass-through response');
+  assertIncludes(middleware, 'rewriteTenantResponse(request, url)', 'middleware tenant rewrite request-header boundary');
+  assertIncludes(middleware, 'rewriteHostedHelpResponse(request, url, { domain: domainInfo.hostname })', 'middleware hosted-help rewrite request-header boundary');
   assertNotIncludes(middleware, "`/_client", 'middleware must not rewrite to retired _client namespace');
 }
 
@@ -510,12 +696,139 @@ function verifyDocsBoundary() {
   assertIncludes(audit, 'Public language parameter parse fallback checkpoint', 'production readiness audit language param parse boundary');
 }
 
+function verifySubdomainClaimBoundary() {
+  const claimBoundary = read('src/lib/routing/subdomainClaim.ts');
+  const ownerScopeBoundary = read('src/lib/routing/subdomainOwnerScope.ts');
+  const onboarding = read('src/lib/onboarding/createTenantStore.ts');
+  const subdomainRoute = read('src/app/api/subdomain/check/route.ts');
+  const storeDal = read('src/database/stores/index.tsx');
+  const adminRename = read('src/app/api/admin/subdomains/rename/route.ts');
+  const emulatorTest = read('scripts/verification/test-stores-summary-rules.ts');
+  const readme = read('__docs__/url-routing-architecture/README.md');
+  const firebaseDoc = read('__docs__/url-routing-architecture/url-routing-architecture_firebase.md');
+  const audit = read('__docs__/audits/menulist-production-readiness-audit.md');
+  const changelog = read('__docs__/changelog.md');
+
+  [
+    "const SUBDOMAIN_CLAIM_DOCUMENT_PREFIX = 'subdomainClaim_';",
+    'export async function readSubdomainReservationInTransaction(',
+    'export function isSubdomainUnavailableError(error: unknown)',
+    'if (!claimExists) return false;',
+    "transaction.get(claimRef)",
+    "transaction.get(directQuery)",
+    "transaction.get(previousQuery)",
+    "snapshot.id !== storeId",
+    "previousSnap.size >= PREVIOUS_SUBDOMAIN_QUERY_LIMIT",
+    'export function writeCurrentSubdomainClaim(',
+    'export function writeReleasedSubdomainClaim(',
+    'export function writeRedirectSubdomainClaim(',
+  ].forEach((token) => assertIncludes(claimBoundary, token, 'Durable subdomain claim boundary'));
+
+  [
+    "const BRAND_SUBDOMAIN_TENANT_FIELDS = ['tenantId', 'tId'] as const;",
+    "export type SubdomainOwnerScopeErrorReason = 'INVALID_SCOPE' | 'MASTER_REQUIRED';",
+    'export async function readSubdomainOwnerStoreInTransaction(',
+    'if (storeData.isMaster === true) return { storeData, storeRef };',
+    "if (storeData.isMaster === false) throw new SubdomainOwnerScopeError('MASTER_REQUIRED');",
+    'const tenantValues: Array<string | number> = [tenantId, Number(tenantId)];',
+    ".where(field, '==', value).limit(2)",
+    'canonicalStoreIds.size !== 1 || !canonicalStoreIds.has(storeId)',
+  ].forEach((token) => assertIncludes(ownerScopeBoundary, token, 'Brand subdomain master-store admission boundary'));
+
+  [
+    'readSubdomainReservationInTransaction({',
+    'const candidates = Array.from(new Set([requestedSubdomain, fallbackSubdomain]))',
+    "throw new Error('subdomain_allocation_conflict')",
+    'writeCurrentSubdomainClaim(transaction, subdomainReservation, now);',
+  ].forEach((token) => assertIncludes(onboarding, token, 'Central onboarding subdomain reservation'));
+  assertOrder(
+    onboarding,
+    'subdomainReservation = await readSubdomainReservationInTransaction({',
+    '// 6. Create Tenant',
+    'Onboarding subdomain reads before writes',
+  );
+
+  [
+    'export const POST = withAuth(async (request: NextRequest, session) => {',
+    'getRateLimitForFeature("DATA_WRITE")',
+    'readBoundedJsonBody(request, SUBDOMAIN_ASSIGN_MAX_BODY_BYTES',
+    'validateAPIInput(assignSchema, bodyResult.data)',
+    'await db.runTransaction(async (transaction) => {',
+    'readSubdomainReservationInTransaction({',
+    'writeCurrentSubdomainClaim(transaction, reservation, now);',
+    'writeReleasedSubdomainClaim({',
+    "touchDigitalScreenContentVersionForStoreServer(scope.storeDocumentId, 'subdomainAssign')",
+  ].forEach((token) => assertIncludes(subdomainRoute, token, 'Owner subdomain assignment boundary'));
+  const [subdomainGetRoute, subdomainPostRoute] = subdomainRoute.split('export const POST =');
+  for (const [label, route] of [
+    ['GET', subdomainGetRoute],
+    ['POST', subdomainPostRoute],
+  ]) {
+    assertIncludes(route, 'readSubdomainOwnerStoreInTransaction({', `Owner subdomain ${label} master-store admission`);
+    assertIncludes(route, 'Public link is managed from the main location', `Owner subdomain ${label} outlet-safe response`);
+    assertOrder(
+      route,
+      'readSubdomainOwnerStoreInTransaction({',
+      'readSubdomainReservationInTransaction({',
+      `Owner subdomain ${label} scope-before-claim order`,
+    );
+  }
+
+  [
+    "fetch('/api/subdomain/check'",
+    'readJsonResponseWithLimit<unknown>(response, SUBDOMAIN_ASSIGN_RESPONSE_MAX_BYTES)',
+    'data.subdomain = await assignStoreSubdomain(String(data.subdomain));',
+    'if (subdomainHandledByServer) delete directStoreUpdate.subdomain;',
+    "...(subdomainHandledByServer ? ['subdomain'] : []),",
+  ].forEach((token) => assertIncludes(storeDal, token, 'Store DAL server-owned subdomain handoff'));
+  assertOrder(
+    storeDal,
+    'data.subdomain = await assignStoreSubdomain(String(data.subdomain));',
+    'await updateDoc(getDocRef(data.id)',
+    'Subdomain reservation acknowledgement before client store update',
+  );
+
+  [
+    'const renameResult = await db.runTransaction(async (tx) => {',
+    'readSubdomainReservationInTransaction({',
+    'writeCurrentSubdomainClaim(tx, reservation, now);',
+    'writeRedirectSubdomainClaim({',
+    'previousSubdomain: freshCurrentSubdomain',
+  ].forEach((token) => assertIncludes(adminRename, token, 'Admin subdomain rename claim/redirect transaction'));
+  [
+    'Concurrent onboarding transactions must not commit the same public subdomain',
+    'Exactly one concurrent onboarding transaction may own the requested public subdomain',
+    'Durable subdomain claim owner must match the canonical store document',
+    'Concurrent owner assignments must have exactly one successful public subdomain claim',
+    'Concurrent owner claim ledger must match the only canonical host owner',
+    'Redirect claim must block another store until expiry',
+    'Expired redirect and history must permit a new owner',
+    'Released claim must permit immediate ownership transfer',
+    'Saturated previous-subdomain lookup must fail closed',
+    'Explicit master store must retain brand subdomain authority',
+    'Explicit outlet must not claim a brand subdomain',
+    'Legacy single store must retain subdomain assignment compatibility',
+    'Legacy multi-store topology without a master marker must fail closed',
+  ].forEach((token) => assertIncludes(emulatorTest, token, 'Concurrent subdomain claim emulator regression'));
+  assertIncludes(readme, 'Durable Subdomain Claim Boundary', 'URL routing README subdomain claim boundary');
+  assertIncludes(readme, 'Brand subdomain master-store admission', 'URL routing README master-store subdomain boundary');
+  assertIncludes(firebaseDoc, 'July 11, 2026 durable subdomain claim boundary', 'URL routing Firebase subdomain claim cost boundary');
+  assertIncludes(firebaseDoc, 'legacy master-store compatibility reads', 'URL routing Firebase master-store compatibility cost');
+  assertIncludes(audit, 'Durable subdomain claim and verifier-parity checkpoint', 'production readiness audit subdomain claim boundary');
+  assertIncludes(audit, 'Subdomain claim lifecycle emulator checkpoint', 'production readiness audit subdomain claim lifecycle evidence');
+  assertIncludes(audit, 'Brand subdomain master-store admission checkpoint', 'production readiness audit master-store subdomain boundary');
+  assertIncludes(changelog, 'Durable Subdomain Claim Boundary', 'changelog subdomain claim boundary');
+  assertIncludes(changelog, 'Redirect, release, expiry, and saturation behavior now have emulator regression coverage', 'changelog subdomain claim lifecycle evidence');
+  assertIncludes(changelog, 'Outlet sessions cannot claim a standalone brand subdomain', 'changelog master-store subdomain boundary');
+}
+
 function verifyUrlRoutingBoundary() {
   verifyPackageScript();
   verifyResolverRuntimeBoundary();
   verifyResolverSourceBoundary();
   verifyPublicPathSegmentBoundary();
   verifyMiddlewareBoundary();
+  verifySubdomainClaimBoundary();
   verifyDocsBoundary();
 
   console.log('URL routing boundary verifier passed');

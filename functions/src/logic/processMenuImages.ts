@@ -33,6 +33,7 @@ import { genAIClient } from "../genAiClient";
 import { executeWithCircuitBreaker, geminiCircuitBreaker } from "../lib/circuitBreaker";
 import { logger } from "../lib/logger";
 import { checkExpensiveAIRateLimit } from "../lib/rateLimit";
+import { sanitizeForFirestore } from "../lib/sanitizeForFirestore";
 import * as Sentry from "../lib/sentry";
 import type {
     ExtractedBusinessProfile,
@@ -44,6 +45,7 @@ import {
     MENU_EXTRACTION_JOB_LIMITS,
     MENU_EXTRACTION_SOURCES,
 } from "../sharedData/menuExtractionJob";
+import { findInvalidMenuExtractionSourceIndexes } from "../sharedData/menuExtractionIntegrity";
 import {
     ExtractedMenuData,
     MenuCategory,
@@ -78,7 +80,14 @@ import { ExistingCategoriesContext, getParallelProcessingPrompt } from "./parall
 interface UploadedFile {
     uri: string;
     mimeType: string;
-    name: string;
+    providerName: string;
+    sourceFileIndex: number;
+}
+
+interface UploadedFilesResult {
+    failedFileIndices: number[];
+    firstError?: unknown;
+    uploadedFiles: UploadedFile[];
 }
 
 const PROFILE_CONFIDENCE_RANK: Record<ExtractedBusinessProfileConfidence, number> = {
@@ -92,15 +101,18 @@ const MENU_IMAGE_FILE_FETCH_FAILED_CODE = 'MENU_IMAGE_FILE_FETCH_FAILED';
 const MENU_IMAGE_FILE_TOO_LARGE_CODE = 'MENU_IMAGE_FILE_TOO_LARGE';
 const MENU_IMAGE_FILE_UPLOAD_FAILED_CODE = 'MENU_IMAGE_FILE_UPLOAD_FAILED';
 const MENU_IMAGE_FILE_CLEANUP_FAILED_CODE = 'MENU_IMAGE_FILE_CLEANUP_FAILED';
+const MENU_IMAGE_PROVIDER_FILE_CLEANUP_FAILED_CODE = 'MENU_IMAGE_PROVIDER_FILE_CLEANUP_FAILED';
 const MENU_IMAGE_RETRY_CLIENT_ERROR_CODE = 'MENU_IMAGE_RETRY_CLIENT_ERROR';
 const MENU_IMAGE_RETRY_RATE_LIMIT_CODE = 'MENU_IMAGE_RETRY_RATE_LIMIT';
 const MENU_IMAGE_RETRY_EXHAUSTED_CODE = 'MENU_IMAGE_RETRY_EXHAUSTED';
 const MENU_IMAGE_AI_EMPTY_RESPONSE_CODE = 'MENU_IMAGE_AI_EMPTY_RESPONSE';
 const MENU_IMAGE_BATCH_FAILED_CODE = 'MENU_IMAGE_BATCH_FAILED';
+const MENU_IMAGE_SOURCE_INDEX_INVALID_CODE = 'MENU_IMAGE_SOURCE_INDEX_INVALID';
 const MENU_IMAGE_REQUEST_FAILED_CODE = 'MENU_IMAGE_REQUEST_FAILED';
 const MENU_IMAGE_AI_OPERATION_WRITE_FAILED_CODE = 'MENU_IMAGE_AI_OPERATION_WRITE_FAILED';
 const MENU_IMAGE_FAILURE_TRANSACTION_WRITE_FAILED_CODE = 'MENU_IMAGE_FAILURE_TRANSACTION_WRITE_FAILED';
 const MENU_EXTRACTION_FAILED_MESSAGE = 'Menu extraction failed';
+const MAX_CONCURRENT_FILE_UPLOADS = 3;
 
 function getExtractionErrorName(error: unknown): string {
     if (error instanceof Error) return (error.name || 'Error').slice(0, 96);
@@ -276,7 +288,8 @@ async function resolveValidatedFileFetchUrl(
 async function uploadFileToGemini(
     file: MenuFileToProcess,
     request: ProcessMenuImagesRequest,
-): Promise<UploadedFile | null> {
+    sourceFileIndex: number,
+): Promise<UploadedFile> {
     const logger = functions.logger;
     const tempFilePath = buildSafeTempFilePath(file.name, "menu-source-file");
 
@@ -314,15 +327,23 @@ async function uploadFileToGemini(
             config: { mimeType: file.type },
         });
 
+        const providerName = typeof document?.name === 'string' ? document.name : '';
+        const uri = typeof document?.uri === 'string' ? document.uri : '';
+        const mimeType = typeof document?.mimeType === 'string' ? document.mimeType : '';
+        if (!providerName || !uri || !mimeType) {
+            throw createProcessingError(MENU_IMAGE_FILE_UPLOAD_FAILED_CODE);
+        }
+
         logger.info('[uploadFileToGemini] Upload successful', {
             fileNameLength: file.name.length,
             ...getExtractionIdLogContext('documentName', document?.name),
         });
 
         return {
-            uri: document.uri!,
-            mimeType: document.mimeType!,
-            name: file.name,
+            uri,
+            mimeType,
+            providerName,
+            sourceFileIndex,
         };
     } catch (error) {
         logger.error('[uploadFileToGemini] Failed to upload', undefined, {
@@ -330,7 +351,7 @@ async function uploadFileToGemini(
             fileNameLength: file.name.length,
             ...getExtractionErrorContext(error),
         });
-        return null;
+        throw error;
     } finally {
         // Cleanup temp file
         try {
@@ -353,18 +374,61 @@ async function uploadFileToGemini(
 async function uploadFilesInParallel(
     files: MenuFileToProcess[],
     request: ProcessMenuImagesRequest,
-): Promise<UploadedFile[]> {
+): Promise<UploadedFilesResult> {
     const logger = functions.logger;
-    logger.info(`[uploadFilesInParallel] Starting parallel upload of ${files.length} files`);
+    const concurrency = Math.min(MAX_CONCURRENT_FILE_UPLOADS, files.length);
+    logger.info(`[uploadFilesInParallel] Starting bounded parallel upload of ${files.length} files`, {
+        concurrency,
+    });
 
-    const uploadPromises = files.map(file => uploadFileToGemini(file, request));
-    const results = await Promise.all(uploadPromises);
+    const orderedUploads: Array<UploadedFile | undefined> = new Array(files.length);
+    const failedFileIndices: number[] = [];
+    let firstError: unknown;
+    let nextIndex = 0;
 
-    // Filter out failed uploads
-    const validUploads = results.filter((f): f is UploadedFile => f !== null);
-    logger.info(`[uploadFilesInParallel] Successfully uploaded ${validUploads.length}/${files.length} files`);
+    const uploadWorker = async () => {
+        while (nextIndex < files.length) {
+            const sourceFileIndex = nextIndex;
+            nextIndex += 1;
+            try {
+                orderedUploads[sourceFileIndex] = await uploadFileToGemini(
+                    files[sourceFileIndex],
+                    request,
+                    sourceFileIndex,
+                );
+            } catch (error) {
+                failedFileIndices.push(sourceFileIndex);
+                firstError ??= error;
+            }
+        }
+    };
 
-    return validUploads;
+    await Promise.all(Array.from({ length: concurrency }, () => uploadWorker()));
+    const uploadedFiles = orderedUploads.filter((file): file is UploadedFile => file !== undefined);
+    failedFileIndices.sort((left, right) => left - right);
+
+    logger.info(`[uploadFilesInParallel] Uploaded ${uploadedFiles.length}/${files.length} files`, {
+        failedFileCount: failedFileIndices.length,
+    });
+
+    return { failedFileIndices, firstError, uploadedFiles };
+}
+
+async function cleanupProviderFiles(files: readonly UploadedFile[]): Promise<void> {
+    if (files.length === 0) return;
+
+    const providerNames = [...new Set(files.map((file) => file.providerName).filter(Boolean))];
+    const cleanupResults = await Promise.allSettled(
+        providerNames.map((name) => genAIClient.files.delete({ name })),
+    );
+    const failedCleanupCount = cleanupResults.filter((result) => result.status === 'rejected').length;
+    if (failedCleanupCount > 0) {
+        logger.warn('[processMenuImages] Provider file cleanup partially failed', {
+            failureCode: MENU_IMAGE_PROVIDER_FILE_CLEANUP_FAILED_CODE,
+            attemptedCleanupCount: providerNames.length,
+            failedCleanupCount,
+        });
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -549,7 +613,7 @@ interface TransactionObject {
     destinationId?: string;
     jobMode?: string;
     skipProjectSave?: boolean;
-    status?: 'completed' | 'failed';
+    status?: 'completed' | 'failed' | 'partial';
     success?: boolean;
     billingMode?: 'free' | 'billable' | 'internal' | 'public';
     errorCode?: string;
@@ -565,25 +629,7 @@ interface TransactionObject {
  * Remove undefined values from object (Firestore doesn't accept undefined)
  */
 function removeUndefined(obj: any): any {
-    if (obj === null || obj === undefined) {
-        return null;
-    }
-    if (obj instanceof Date || typeof obj?.toDate === 'function') {
-        return obj;
-    }
-    if (Array.isArray(obj)) {
-        return obj.map(removeUndefined);
-    }
-    if (typeof obj === 'object') {
-        const cleaned: any = {};
-        for (const [key, value] of Object.entries(obj)) {
-            if (value !== undefined) {
-                cleaned[key] = removeUndefined(value);
-            }
-        }
-        return cleaned;
-    }
-    return obj;
+    return sanitizeForFirestore(obj, { undefinedObjectValue: 'omit' });
 }
 
 function summarizeFilesForOperation(files: MenuFileToProcess[]) {
@@ -930,15 +976,15 @@ function mergeExtractedData(
     // Adjust sourceFileIndex for items and categories from subsequent batches
     const adjustedCategories = newData.categories.map(cat => ({
         ...cat,
-        sourceFileIndex: (cat as any).sourceFileIndex !== undefined
-            ? (cat as any).sourceFileIndex + sourceFileOffset
+        sourceFileIndex: cat.sourceFileIndex !== undefined
+            ? cat.sourceFileIndex + sourceFileOffset
             : sourceFileOffset,
     }));
 
     const adjustedItems = newData.items.map(item => ({
         ...item,
-        sourceFileIndex: (item as any).sourceFileIndex !== undefined
-            ? (item as any).sourceFileIndex + sourceFileOffset
+        sourceFileIndex: item.sourceFileIndex !== undefined
+            ? item.sourceFileIndex + sourceFileOffset
             : sourceFileOffset,
     }));
 
@@ -1084,6 +1130,23 @@ async function processSingleBatch(
             : responseText;
 
         const parsedData = processAIResponseForFirebase(responseText);
+        if (!parsedData.data) {
+            throw createProcessingError(MENU_IMAGE_AI_EMPTY_RESPONSE_CODE);
+        }
+        const invalidCategoryIndexes = findInvalidMenuExtractionSourceIndexes(
+            parsedData.data.categories || [],
+            uploadedFiles.length,
+        );
+        const invalidItemIndexes = findInvalidMenuExtractionSourceIndexes(
+            parsedData.data.items || [],
+            uploadedFiles.length,
+        );
+        if (invalidCategoryIndexes.length > 0 || invalidItemIndexes.length > 0) {
+            throw createProcessingError(MENU_IMAGE_SOURCE_INDEX_INVALID_CODE, {
+                invalidCategoryCount: invalidCategoryIndexes.length,
+                invalidItemCount: invalidItemIndexes.length,
+            });
+        }
 
         const duration = Date.now() - startTime;
         const tokensUsed = response.usageMetadata?.totalTokenCount || 0;
@@ -1219,6 +1282,7 @@ export async function processMenuImagesLogic(
 
     // Start performance transaction
     const transaction = Sentry.startTransaction('processMenuImages', 'ai.image-processing');
+    let uploadedFilesForCleanup: UploadedFile[] = [];
 
     logger.info(`[processMenuImages] Starting request`, {
         ...getExtractionRequestLogContext({ requestId, projectId, fileId }),
@@ -1249,11 +1313,16 @@ export async function processMenuImagesLogic(
 
         // Step 1: Upload all files in parallel
         const uploadStartedAt = Date.now();
-        const uploadedFiles = await uploadFilesInParallel(files, request);
+        const uploadResult = await uploadFilesInParallel(files, request);
+        const uploadedFiles = uploadResult.uploadedFiles;
+        uploadedFilesForCleanup = uploadedFiles;
         const uploadCompletedAt = Date.now();
 
-        if (uploadedFiles.length === 0) {
-            throw new Error('No files were uploaded successfully');
+        if (uploadResult.failedFileIndices.length > 0 || uploadedFiles.length !== files.length) {
+            throw createProcessingError(MENU_IMAGE_FILE_UPLOAD_FAILED_CODE, {
+                causeName: getExtractionErrorName(uploadResult.firstError),
+                failedFileCount: uploadResult.failedFileIndices.length,
+            });
         }
 
         logger.info(`[processMenuImages] ${uploadedFiles.length} files uploaded successfully`);
@@ -1423,8 +1492,13 @@ export async function processMenuImagesLogic(
             totalCredits: totalTokenUsage.totalTokenCount / TOKENS_PER_CREDIT,
             totalCharge: CHARGE_PER_CREDIT * (totalTokenUsage.totalTokenCount / TOKENS_PER_CREDIT),
             unitsConsumed: 0,
-            status: 'completed',
-            success: true,
+            status: successfulBatches === totalBatches ? 'completed' : 'partial',
+            success: successfulBatches === totalBatches,
+            ...(successfulBatches === totalBatches ? {} : {
+                errorCode: 'PARTIAL_BATCH_FAILURE',
+                errorMessage: MENU_EXTRACTION_FAILED_MESSAGE,
+                retryable: true,
+            }),
             billingMode: 'free',
             promptVersion: EXTRACTION_PROMPT_VERSION,
             businessType,
@@ -1516,6 +1590,12 @@ export async function processMenuImagesLogic(
                 candidatesTokenCount: transactionObject.candidatesTokenCount,
                 totalTokenCount: transactionObject.totalTokenCount,
             },
+            batchResults: batchResults.map((batch) => ({
+                batchIndex: batch.batchIndex,
+                failedFileIndices: batch.failedFileIndices,
+                filesProcessed: batch.filesProcessed,
+                success: batch.success,
+            })),
             timings: {
                 requestStartedAt: startTime,
                 uploadStartedAt,
@@ -1571,5 +1651,7 @@ export async function processMenuImagesLogic(
         await Sentry.flush();
 
         throw error;
+    } finally {
+        await cleanupProviderFiles(uploadedFilesForCleanup);
     }
 }

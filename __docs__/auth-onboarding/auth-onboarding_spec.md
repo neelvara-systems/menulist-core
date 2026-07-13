@@ -109,10 +109,12 @@ The source gates verify current code contracts only. They do not run live OAuth,
    }
    ```
 
-2. **Get next IDs from platformSummary:**
+2. **Allocate collision-checked IDs from the canonical platform counter:**
    ```typescript
-   const newTenantId = summaryData.tenants.count + 1;
-   const newStoreId = summaryData.stores.count + 1;
+   const tenantFloor = resolvePlatformCounterFloor(canonical, legacy, storesSummary, 'tenant');
+   const storeFloor = resolvePlatformCounterFloor(canonical, legacy, storesSummary, 'store');
+   // Probe tenants/{candidate} and stores/{candidate} inside the transaction;
+   // occupied candidates advance, and 25 collisions fail closed.
    ```
 
 3. **Create Tenant:**

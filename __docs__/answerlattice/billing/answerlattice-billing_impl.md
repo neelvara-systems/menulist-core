@@ -1,7 +1,7 @@
 # Answerlattice Billing — Implementation
 
-> **Version:** 1.1.7
-> **Last Updated:** 2026-07-06
+> **Version:** 1.3.3
+> **Last Updated:** 2026-07-13
 > **Audience:** Developers
 
 ## Architecture
@@ -19,8 +19,11 @@ Answerlattice reuses the MenuList Razorpay routes and payment hook through a pro
 - MenuList payments use the existing default Firestore subscription DAL.
 - Answerlattice payments use `answerlatticeFirestoreAdmin`.
 - Answerlattice product-billing create/update/get-by-id, active-subscription store-summary fallback, and entitlement sync normalize subscription document IDs through `src/lib/answerlattice/billingDocumentIdBoundary.ts` before `subscriptions/{subscriptionId}` refs.
-- July 6 store-scope follow-up: `src/lib/billing/productBillingServer.ts` also validates Answerlattice billing tenant/store scope through `normalizeAnswerlatticeBillingScopeDocumentId()` before active-subscription `stores/{storeId}` summary reads, capped fallback tenant/store queries, and entitlement-summary `stores/{storeId}` writes. Malformed, reserved, whitespace-mutated, path-shaped, decimal, zero, negative, unsafe, or nonnumeric scope IDs fail before the store-summary path.
+- `src/lib/answerlattice/billingDocumentIdBoundary.ts` owns strict provider/ledger document IDs and exact positive numeric tenant/store request scope for both client and server billing paths. `src/lib/answerlattice/billingScopeBoundary.ts` separately owns persisted financial identity: at least one exact `AL` product field is required, every present product alias must agree, tenant/store ownership fields must be positive safe-integer numbers, and duplicate compact/legacy aliases must agree. Paid intake, AI accounting, active-subscription selection, entitlement sync, and paid-history projection reuse that persisted boundary. Whitespace-mutated, case-folded, conflicting, string-coercible, reserved, path-shaped, decimal, zero, negative, unsafe, or nonnumeric identifiers fail before a financial row is admitted.
+- The billing client accepts a store summary only from an exact Answerlattice store. A valid summary ID is used only to load a direct subscription that independently satisfies exact product/workspace/current-state admission. A summary without a usable direct document is accepted only when the summary itself carries exact persisted financial ownership. Firestore document IDs override embedded data fields. Paid history is filtered/ordered/limited in Firestore and rechecked through the same exact product/workspace boundary, so the transactions screen receives at most the latest 25 admitted rows rather than a numerically coerced or arbitrary window.
 - Answerlattice entitlement sync writes a compact `stores/{sId}.answerlatticeSubscription` summary, current monthly/top-up credit balances, and subscription `analyticsEntitlement`.
+- Answerlattice entitlement sync selects the current active subscription inside the same Firestore transaction as the store-summary/subscription audit writes. A stale expiry or old-subscription sync cannot replace the active replacement plan. Grace expiry also re-reads current state and the recovery timestamp transactionally before writing `expired`.
+- Owner lifecycle mutations use the shared current-state transaction, and upgrade carry-forward updates both old and replacement subscription documents atomically. Existing replacement top-up credits are additive and `carryForwardFromSubscriptionId` makes retries idempotent.
 - Answerlattice entitlement sync failures use `answerlattice_subscription_entitlement_sync_failed` with bounded subscription/tenant/store/plan/status/source metadata plus source error name/code/status only.
 
 ## API Behavior
@@ -31,6 +34,8 @@ All shared Razorpay routes accept optional `productId`.
 - `productId: 'AL'` resolves Answerlattice scope through `resolveAnswerlatticeSessionScope()`.
 - MenuList still uses `verifyTenantAccess()` and `canManageBillingMutation()`.
 - Answerlattice uses `canUseAnswerlatticeManagement()` and `productAccounts.AL` scope.
+- Every shared Razorpay mutation additionally resolves the current Answerlattice store, user membership, and persisted role through `canManageAnswerlatticeBillingMutation()`. Only platform authority or a current role with `canManageBilling: true` may create or verify subscriptions/top-ups or cancel, pause, resume, or upgrade a subscription. The broader management gate does not grant billing authority to the default Manager role.
+- Subscription and top-up creation apply their existing product/user/workspace rate limits before the persisted store/membership permission reads. Verification and lifecycle mutations likewise rate-limit before permission and provider/financial work.
 
 Webhook events derive product from Razorpay notes:
 
@@ -68,6 +73,8 @@ The transactions screen also reads Answerlattice AI operation history through `/
 
 The browser DAL sends the usage-history request with no-store cache, same-origin credentials, and manual redirect handling before the existing 512 KB bounded response parser accepts the paginated `{ data, hasMore, lastVisibleDoc }` envelope. The server route validates operation-history query cursors and date filters through `src/lib/ai/operationHistoryQuery.ts`: cursor values must be simple Firestore document IDs that also pass the shared Firestore reserved/path guard, date filters must be strict `YYYY-MM-DD` or browser ISO `...Z` values, and malformed cursors plus reversed or wider-than-366-day ranges are rejected before Firestore cursor/query work.
 
+Persisted cursor admission remains product-scoped. After the existing `answerlattice_aiOperations/{tId}/{sId}/{cursorId}` read, the route requires that document to exist, requires a valid Firestore `createdOn` timestamp, and requires the cursor boundary to remain inside the active inclusive date filter. Missing, corrupt, or filter-incompatible cursors return fixed `400 Invalid cursor` before any continuation query; MenuList and Answerlattice retain separate Admin clients, collections, permissions, and response contracts while sharing only this pure boundary helper.
+
 Provider payloads, raw prompts, real cost, margin, and charge internals stay server/platform-only.
 
 Answerlattice transactions raw load-reason diagnostics boundary: the transactions screen keeps fixed owner-facing load failure copy and records billing-history, support-credit usage, and load-more failures through `answerlattice_billing_history_load_failed`, `answerlattice_support_credit_usage_load_failed`, and `answerlattice_support_credit_usage_more_load_failed` runtime diagnostics. Those diagnostics include bounded tenant/store presence-length metadata, page state counts, cursor presence, and source error name/code/status only; raw rejected Promise reasons, exception messages, tenant IDs, store IDs, transaction rows, and AI operation rows are not logged by the browser component.
@@ -83,7 +90,7 @@ Manual draft regeneration and article entity extraction now run through Answerla
 Answerlattice keeps three layers separate:
 
 - Purchased credits: Razorpay support-credit packs write `topups/{orderId}` and atomically increment `subscriptions/{subscriptionId}.topUpCredits`; Answerlattice top-up verification also mirrors the resulting `topUpCredits` into `stores/{sId}.answerlatticeSubscription`.
-- Consumed support credits: paid Knowledge Intake OCR/transcription reserves monthly credits first, then top-up credits, settles or refunds `answerlattice_intakeUsageLedger`, and logs consumed units in `answerlattice_aiOperations`.
+- Consumed support credits: paid Knowledge Intake OCR/transcription reserves monthly credits first, then top-up credits, settles or refunds `answerlattice_intakeUsageLedger`, and logs consumed units in `answerlattice_aiOperations`. Reservation, finalization, and refund are workspace-bound and transaction-serialized: the ledger `tId/sId` must match the supplied workspace, only `reserved` rows may transition, monthly refunds return only within the reservation billing period, and top-up refunds remain durable across a period boundary.
 - Provider tokens: Gemini prompt/candidate/total tokens are recorded on AI operation rows with `tokenCountSource` as `provider`, `estimated`, `mixed`, or `none`. Provider token counts do not automatically equal consumed support credits.
 
 ## Non-Goals
@@ -96,6 +103,8 @@ Answerlattice keeps three layers separate:
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-07-13 | 1.3.3 | Enforced current persisted billing permission on all shared Answerlattice mutations and moved creation limits ahead of authorization reads |
+| 2026-07-11 | 1.3.1 | Required exact persisted product and numeric workspace ownership for subscription/history reads and entitlement summary selection; conflicting aliases now fail closed |
 | 2026-07-05 | 1.1.6 | Documented the Answerlattice onboarding user ID boundary before onboarding user document refs and subscription metadata |
 | 2026-07-05 | 1.1.5 | Bounded `/answerlattice/transactions` load failure diagnostics and documented the raw load-reason diagnostics boundary |
 | 2026-06-28 | 1.1.4 | Documented safe-mode/rate-limit admission and bounded diagnostics for manual draft/entity extraction routes |

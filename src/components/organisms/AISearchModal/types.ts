@@ -4,7 +4,7 @@ import { KnowledgeBaseArticleType, KnowledgeBaseCategory, KnowledgeBaseSection }
 export type SerachAPIResponseType = SearchAPIResponseType;
 
 export type SearchAPIResponseType = {
-    id: string;
+    id?: string;
     craftedAnswer: string;
     references: KnowledgeBaseArticleType[]; // Includes similarityScore for quality calculation
     suggestedQuestions?: string[]; // AI-generated follow-up questions
@@ -22,6 +22,6 @@ export type SearchDisplayResultReferenceType = {
 
 export type SearchDisplayResultDataType = {
     craftedAnswer: string;
-    searchHistoryId: string;
+    searchHistoryId?: string;
     references: SearchDisplayResultReferenceType[];
 };

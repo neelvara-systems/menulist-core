@@ -25,6 +25,7 @@ export const DB_COLLECTIONS = {
     AI: "ai",
     //users collections
     USERS: "users",
+    STAFF_STORE_ACCESS_STATE: "staffStoreAccessState",
     SHIFTS: "shifts",
     BREAKS: "breaks",
     USERS_SCHEDULES: "usersSchedules",
@@ -142,7 +143,7 @@ export const DB_COLLECTIONS = {
 
     // Reviews & Reputation (Pillar 3 — Reputation Protection)
     // Path: reviews/{tId}/{sId}/{reviewId} (raw GBP review data, immutable)
-    // Path: reviewsState/{tId}/{sId}/{reviewId} (classification + block/escalation state)
+    // Path: reviewsState/{reviewId}; tId/sId fields own classification + block/escalation state
     // @see __docs__/reviews-reputation/reviews-reputation_impl.md
     REVIEWS: "reviews",
     REVIEWS_STATE: "reviewsState",

@@ -16,7 +16,7 @@ export const CAMPAIGNCUE_WEBSITE_FEATURES = [
         eyebrow: "First screen",
         heroTitle: "Know what to promote before the day gets noisy.",
         description:
-            "The first owner screen turns current business facts, missing details, and recent results into one practical campaign cue.",
+            "The first owner screen combines current business facts, a quick stock-and-capacity pulse, commercial rules, recent results, and the next manual campaign task into one practical cue.",
         metaDescription:
             "See how CampaignCue's Daily Campaign Desk helps local owners pick one source-checked promotion, fill missing facts, export, and record the result.",
         ownerProblem:
@@ -28,14 +28,16 @@ export const CAMPAIGNCUE_WEBSITE_FEATURES = [
             "The real owner screen stays inside the CampaignCue app. This public preview shows the workflow shape without exposing workspace data.",
         proofRows: [
             { label: "Cue", value: "Lunch combo needs a push", status: "Recommended" },
+            { label: "Pulse", value: "Quiet now, stock ready, capacity available", status: "Owner confirmed" },
             { label: "Reason", value: "Price, photo, and pickup link are ready", status: "Source backed" },
             { label: "Missing", value: "No owner action needed", status: "Ready" },
-            { label: "Next", value: "Download pack and mark posted", status: "Owner controlled" },
+            { label: "Readiness", value: "Facts, trust, freshness, approval, and handoff", status: "No prediction" },
+            { label: "Rhythm", value: "Use, approve, follow up, record, or reuse", status: "Owner controlled" },
         ],
         steps: [
             {
                 title: "Read the current facts",
-                detail: "Offers, services, photos, hours, owner notes, and result memory become the daily context.",
+                detail: "Offers, services, photos, owner pulse, commercial limits, locality, and result memory become the daily context.",
             },
             {
                 title: "Choose the practical cue",
@@ -47,7 +49,7 @@ export const CAMPAIGNCUE_WEBSITE_FEATURES = [
             },
             {
                 title: "Export and remember",
-                detail: "The owner downloads or copies the pack, then records posted, skipped, sold, booked, or needs follow-up.",
+                detail: "The owner downloads or copies the pack, schedules a manual task if useful, then records posted, skipped, sold, booked, or needs follow-up.",
             },
         ],
         benefits: [
@@ -55,6 +57,8 @@ export const CAMPAIGNCUE_WEBSITE_FEATURES = [
             "Keeps the owner focused on one useful action.",
             "Works for restaurants, salons, retail, services, agencies, and multi-location businesses.",
             "Uses compact result memory instead of a heavy analytics dashboard.",
+            "Can nominate a useful past recipe for a current-fact rebuild without copying stale output or approval.",
+            "Stops a promotion when stock, capacity, discount, or do-not-promote rules make it unsafe.",
         ],
         boundaries: [
             "Not a social feed scheduler.",
@@ -70,6 +74,10 @@ export const CAMPAIGNCUE_WEBSITE_FEATURES = [
                 question: "Can the owner override the cue?",
                 answer: "Yes. The app exposes campaign ideas and source inputs, but the first screen stays simple on purpose.",
             },
+            {
+                question: "Does CampaignCue automatically repeat a campaign that worked?",
+                answer: "No. It can nominate a useful past recipe, but the owner starts a new pack from current facts and reviews it again before manual use.",
+            },
         ],
         relatedFeatureSlugs: ["campaign-pack-studio", "creative-trust-center", "reusable-pack-templates"],
     },
@@ -80,7 +88,7 @@ export const CAMPAIGNCUE_WEBSITE_FEATURES = [
         eyebrow: "Pack builder",
         heroTitle: "Turn one local cue into every handoff the owner can use.",
         description:
-            "Campaign Pack Studio prepares channel copy, creative files, print notes, scripts, approvals, and manual tasks from the same checked source.",
+            "Campaign Pack Studio prepares channel copy, creative files, print notes, staff tasks, presence handoff, and a truth receipt from the same checked source.",
         metaDescription:
             "Explore CampaignCue Campaign Pack Studio for WhatsApp, Google local, social creative, print, video briefs, staff copy, and export-first handoff.",
         ownerProblem:
@@ -94,7 +102,7 @@ export const CAMPAIGNCUE_WEBSITE_FEATURES = [
             { label: "WhatsApp", value: "Status, reply line, and image note", status: "Copy ready" },
             { label: "Google", value: "Local update fields and publish checklist", status: "Manual publish" },
             { label: "Creative", value: "Square, story, poster, and print note", status: "Editable" },
-            { label: "Review", value: "Claims, consent, spend, and source trace", status: "Visible" },
+            { label: "Review", value: "Claims, consent, commercial limits, and truth receipt", status: "Visible" },
         ],
         steps: [
             {
@@ -400,7 +408,7 @@ export const CAMPAIGNCUE_WEBSITE_FEATURES = [
         eyebrow: "Repeat useful work",
         heroTitle: "Save the pack that worked, update the facts, export again.",
         description:
-            "Reusable Pack Templates let owners and agencies turn approved packs into repeatable starting points while current facts and review checks stay visible.",
+            "Reusable Pack Templates and result-backed reuse let owners and agencies repeat useful campaign patterns while current facts and review checks stay visible.",
         metaDescription:
             "Learn how CampaignCue reusable pack templates help restaurants, salons, retail, agencies, and multi-location teams repeat approved campaign packs safely.",
         ownerProblem:
@@ -449,6 +457,10 @@ export const CAMPAIGNCUE_WEBSITE_FEATURES = [
             {
                 question: "Can templates be reused without editing facts?",
                 answer: "No. CampaignCue keeps the old pack as a starting point, but the current price, date, product, location, and review state must be checked again.",
+            },
+            {
+                question: "What happens when a completed campaign was useful?",
+                answer: "Result memory can nominate its recipe for safe reuse. CampaignCue creates a new pack from current business truth instead of copying old files, approval, or trust state.",
             },
             {
                 question: "Can an agency use templates across clients?",

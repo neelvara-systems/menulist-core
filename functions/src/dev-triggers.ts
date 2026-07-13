@@ -1,7 +1,7 @@
 import * as functions from 'firebase-functions';
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { FUNCTION_OPTIONS, isDeployed } from './config/secrets';
-import { finalizePublishLogic } from './logic/finalizePublish';
+import { dispatchPublishingEmbeddingTasks, finalizePublishingJob } from './logic/kbPublishingLifecycle';
 import { processMenuImagesJobLogic } from './logic/processMenuImagesJob';
 import { startGenerationLogic } from "./logic/startGeneration";
 import { IngestionJob, MenuImageProcessingJob } from "./types";
@@ -72,8 +72,8 @@ export const dev_triggerFinalizePublish = onCall(FUNCTION_OPTIONS.aiCallable, as
     if (!jobId || !jobData) throw new HttpsError('invalid-argument', 'jobId and jobData are required.');
 
     functions.logger.info('[DEV_TRIGGER] Manually finalizing publish.', getDevTriggerRequestContext(request.data, 'dev_triggerFinalizePublish'));
-    await finalizePublishLogic(jobData as IngestionJob, jobId);
-    return { success: true };
+    await dispatchPublishingEmbeddingTasks(jobId, jobData as IngestionJob);
+    return { success: true, ...(await finalizePublishingJob(jobId)) };
 });
 
 // ═══════════════════════════════════════════════════════════════════════════

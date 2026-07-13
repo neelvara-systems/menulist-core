@@ -111,6 +111,8 @@
 The owner dashboard does not read a 30-day daily range directly. The nightly settlement writes `{tId}_{sId}_customerApp_dashboard_summary` with:
 
 - `summary`: lifetime install/open/shortcut counters from the overall summary doc
+
+Before the browser constructs this document ref, tenant/store values must pass the exact positive numeric analytics scope boundary. The returned document must match embedded tenant/store/`customerApp`/`customerAppDashboardSummary` identity, have coherent generated/settled dates, and contain only finite nonnegative known lifetime/daily counters and numeric maps. The DAL projects that allowlisted DTO into typed desktop/mobile metrics. The scheduler-cycle localStorage envelope retains the same identity and is revalidated from `unknown` on fallback/fetcher cache hits; malformed, legacy identity-less or cross-store entries are removed and refetched instead of reaching KPI math.
 - `daily30d`: compact 30-day rows required for App Opens (30d) and Installs (30d)
 - `lastSettledLocalDate`: the settled store-local date
 
@@ -292,7 +294,7 @@ match /pwa-icons/{storeId}/{size} {
 | `{tenant-origin}/manifest.webmanifest` | GET    | 1R shared store lookup + 0-1 cached summary read | No | Served at tenant origin; manifest response caches 1h and start-url summary uses `unstable_cache` |
 | `/api/app-icons/{id}/{size}`           | GET    | 0-1R `stores/{id}` + rare 0-1R tenant block check | Yes (`PUBLIC_DYNAMIC_ASSET`) | CDN cached; invalid/rate-limited/inactive/deleted/blocked stores fall back before branding renders; bounded runtime fallback logging |
 | `/api/app-splash/{id}/{size}`          | GET    | 0-1R `stores/{id}` + rare 0-1R tenant block check | Yes (`PUBLIC_DYNAMIC_ASSET`) | CDN cached; invalid/rate-limited/inactive/deleted/blocked stores fall back before branding renders; bounded runtime fallback logging |
-| `/api/app-screenshots/{id}/{formFactor}` | GET  | 0-1R `stores/{id}` + rare 0-1R tenant block check | Yes (`PUBLIC_DYNAMIC_ASSET`) | CDN cached; invalid/rate-limited/inactive/deleted/blocked stores fall back before branding renders; bounded runtime fallback logging |
+| `/api/app-screenshots/{id}/{formFactor}` | GET  | 0-1R `stores/{id}` + rare 0-1R tenant block check | Yes (`PUBLIC_DYNAMIC_ASSET`) | CDN cached; only `narrow` and `wide` form factors are admitted; unsupported form factors return 404 before rate limit or store lookup; invalid/rate-limited/inactive/deleted/blocked stores fall back before branding renders; bounded runtime fallback logging |
 
 Dynamic asset store-ID fallback is cost-neutral: `/api/app-icons/{id}/{size}`, `/api/app-splash/{id}/{size}`, and `/api/app-screenshots/{id}/{formFactor}` validate the route store ID with the numeric 1-20 digit public-store rule and return generic generated assets before `getPublicStoreById()` when the store ID is malformed or the public dynamic asset limiter blocks the request. This adds no Firestore reads/writes/deletes, Storage operations, provider calls, cache invalidations, rules, indexes, Cloud Function logic, Firebase deploy requirement, or Vercel deploy action; it source-gates the existing 0-read fallback path.
 

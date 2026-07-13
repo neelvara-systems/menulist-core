@@ -32,6 +32,8 @@ import {
 import CampaignCueAiSummary from "../../components/CampaignCueAiSummary";
 import CampaignCueMobileNavigation from "../../components/CampaignCueMobileNavigation";
 
+export const dynamic = "force-dynamic";
+
 type PageProps = {
     params: {
         featureSlug: string;

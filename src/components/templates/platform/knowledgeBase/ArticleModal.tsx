@@ -454,6 +454,8 @@ const ArticleModal = ({ open, editingArticle, form, onOk, onCancel, onSuccess, s
         }
     };
 
+    const isSearchReady = Boolean(editingArticle?.embeddingV2);
+
     const RenderTitle = () => {
         return (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
@@ -463,7 +465,7 @@ const ArticleModal = ({ open, editingArticle, form, onOk, onCancel, onSuccess, s
                 </div>
                 <Space size={6} wrap>
                     {editingArticle && (
-                        editingArticle.embedding ? (
+                        isSearchReady ? (
                             <Tooltip title="Search data is ready for this article">
                                 <Tag icon={<LuCheckCircle />} color="green" style={{ borderRadius: 12, marginInlineEnd: 0 }}>Search ready</Tag>
                             </Tooltip>
@@ -539,8 +541,8 @@ const ArticleModal = ({ open, editingArticle, form, onOk, onCancel, onSuccess, s
                     }}
                 >
                     <Space size={8} wrap>
-                        <Tag icon={<LuSearch />} color={editingArticle?.embedding ? 'green' : 'orange'} style={{ borderRadius: 12 }}>
-                            {editingArticle?.embedding ? 'Search ready' : 'Search pending'}
+                        <Tag icon={<LuSearch />} color={isSearchReady ? 'green' : 'orange'} style={{ borderRadius: 12 }}>
+                            {isSearchReady ? 'Search ready' : 'Search pending'}
                         </Tag>
                         {showFaqLinks && (
                             <Tag icon={<LuHelpCircle />} color={linkedFaqCount > 0 ? 'blue' : 'default'} style={{ borderRadius: 12 }}>

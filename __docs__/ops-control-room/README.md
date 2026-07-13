@@ -5,6 +5,7 @@
 **Priority:** 🟠 P1 — Build before scale (50+ stores)  
 **Created:** February 20, 2026  
 **Source:** ChatGPT launch infra review → Cascade critical review
+**Last Updated:** July 13, 2026
 
 ---
 
@@ -69,6 +70,10 @@ Source gate: `npm run verify:scheduler-monitor-boundary` locks the read-only sch
 
 Scheduler and alert failure diagnostics use bounded `ops_*` codes through `src/lib/ops/opsDiagnostics.ts`. Functions-side ops triggers use stable `OPERATIONS_*` codes for publish verification, force republish, budget alerts, and stores-summary backfill failures. The operator UI may show a run-log ID for manual recovery failures, but it does not show raw provider/callable exception messages.
 
+High-risk `/api/ops` controls and notification monitors do not rely on the signed platform-role claim alone. After a fail-closed HMAC-keyed limiter, they re-read the exact current platform user before private data, provider, or mutation work. Notification metrics describe a bounded recent window, and SAFE_MODE repeats are idempotent.
+
+`forceRepublish` is a platform recovery mutation, not a claim-only shortcut. The Function transactionally admits canonical user/tenant/store authority and touches every active canonical project in the selected store, capped at 100 documents. It then revalidates the same authority and public hostname with the resulting store-health write. A stale platform token, removed platform role, inactive entity, mismatched store tenant, or cross-scope project cannot be touched.
+
 ## Cost Posture Monitor
 
 `/platform/cost-posture` is the related internal monitor for known cost posture. It links existing cost-adjacent platform screens together and keeps the original cost-tracking rejection intact:
@@ -98,6 +103,7 @@ No feature flag needed. Access control via route-level superadmin check.
 
 | Version | Date              | Changes                                   |
 | ------- | ----------------- | ----------------------------------------- |
+| 1.3     | July 13, 2026     | Added current persisted platform authorization, fail-closed ops limits, bounded recent notification counts, atomic manual handoff, and idempotent SAFE_MODE transitions |
 | 1.2     | June 16, 2026     | Added link to Platform Cost Posture as the accepted bounded cost visibility surface |
 | 1.1     | May 1, 2026       | Added scheduler settlement monitoring boundary |
 | 1.0     | February 20, 2026 | Initial documentation from ChatGPT review |

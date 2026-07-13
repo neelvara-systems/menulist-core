@@ -72,6 +72,12 @@ const serializeActivityItem = (docSnapshot: FirebaseFirestore.QueryDocumentSnaps
     const data = docSnapshot.data() || {};
     const references = Array.isArray(data.references) ? data.references : [];
     const answer = typeof data.craftedAnswer === 'string' ? data.craftedAnswer.trim() : '';
+    const evidenceLinks = Array.isArray(data.debugEvidenceLinks)
+        ? data.debugEvidenceLinks.slice(0, 3).map((link: any) => ({
+            url: typeof link?.url === 'string' ? link.url.slice(0, 1000) : '',
+            label: typeof link?.label === 'string' ? link.label.slice(0, 80) : null,
+        })).filter((link: { url: string }) => /^https:\/\//i.test(link.url))
+        : [];
 
     return {
         id: docSnapshot.id,
@@ -84,6 +90,8 @@ const serializeActivityItem = (docSnapshot: FirebaseFirestore.QueryDocumentSnaps
         visitorId: typeof data.visitorId === 'string' ? data.visitorId.slice(0, 120) : null,
         visitorName: typeof data.visitorName === 'string' ? data.visitorName.slice(0, 160) : null,
         visitorEmail: typeof data.visitorEmail === 'string' ? data.visitorEmail.slice(0, 180) : null,
+        visitorVerified: data.visitorVerified === true,
+        evidenceLinks,
         widgetSessionId: typeof data.widgetSessionId === 'string' ? data.widgetSessionId.slice(0, 120) : null,
         requestOrigin: typeof data.requestOrigin === 'string' ? data.requestOrigin.slice(0, 180) : null,
         requestPath: typeof data.requestPath === 'string' ? data.requestPath.slice(0, 180) : null,

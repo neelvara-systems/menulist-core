@@ -295,6 +295,7 @@ Do not casually modify these files. If a task requires changes here, read the se
 - **10 Laws**: Default Authority, Silence Is Feature, No Explanations, etc.
 - **Infrastructure Mentality**: Upstream positioning, cleanest source
 - **Zero Cognitive Load**: If it makes owners think, don't ship
+- **Founder-Approved Video Standard**: All MenuList launch, demo, reel, ad, onboarding, founder, website-video, and aspect-ratio assets must follow `__docs__/videos/videos_founder-approved-production-standard.md`. Default to local HyperFrames/FFmpeg, the non-technical owner upload-photo/PDF story, Inter everywhere, zero letter spacing, selective website-gradient phrases, calm UI-led motion, overlapping non-flicker transitions, the plain original MenuList logo, Indian-English voice, audible voice-reactive ducking, controlled timeline lift, native aspect layouts, and encoded-MP4 QA. The Owner Ease 30s V4 background music is specifically founder-approved and frozen to the `Midnight Lo-Fi Focus` Lyria production edit; do not swap it during later visual, caption, aspect-ratio, or export work unless the founder explicitly reopens that named asset's audio. Other videos may use purpose-fit tracks under the same rights, mix, and QA discipline. Do not drift back to QR-only positioning, AI hype, serif/mono type, heavy device frames, repeated blue patterns, blank final frames, `MenuList AI` lockups, random music/voices, paid or attribution-dependent music, or unsupported growth/ranking/integration claims. Retain every active generated WAV, Lyria model, preset, seed or auto-seed status, timestamp, generation manifest, and hashes with its source project; review current service terms before public distribution.
 - **MenuList Memory Discipline**: After non-trivial MenuList owner, customer-facing, mobile, public-output, Firebase, cache, AI, billing, analytics, deploy, or production-hardening work, preserve durable decisions, commands, blockers, and verification results in the appropriate docs/rules/memory before final handoff when active memory policy allows it.
 
 ### Answerlattice Identity (if working on Answerlattice)
@@ -524,7 +525,7 @@ Do not casually modify these files. If a task requires changes here, read the se
 - **Project Summary Format**: `platformSummary/projects_{storeId}` uses flat dot-notation keys.
 - **Project Summary Writes**: Use `setDoc` with a computed `projects.${id}` key and `{ merge: true }`.
 - **Project Summary Reads**: Use `parseSummaryProjects()` from `src/lib/firestore/parseSummaryProjects.ts`.
-- **Known Issue**: `src/database/campaigns/index.ts:688` has an invalid Firestore collection path and needs correction when campaign data access is in scope.
+- **Campaign DAL Path Check**: The former `src/database/campaigns/index.ts:688` invalid-path note is stale. Current campaign, export, project, store, and summary references have valid collection/document segment parity; re-verify the live helper paths rather than acting on the retired line-number claim.
 
 ---
 

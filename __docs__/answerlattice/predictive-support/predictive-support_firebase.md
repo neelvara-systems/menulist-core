@@ -49,6 +49,8 @@ Predictive help diagnostics use fixed runtime failure codes with bounded store m
 
 Answerlattice App Predictive Trigger ID Boundary: app-side update/activate/disable/delete refs and audit-log entity IDs normalize trigger document IDs through the shared Firestore document-ID guard before touching `answerlattice_predictiveTriggers/{triggerId}`. Malformed IDs fail before Firestore access and do not add reads or writes.
 
+Answerlattice Predictive Trigger Scope and Public Summary Boundary: browser queries and mutations require positive safe-integer scope, and every returned or summarized trigger requires exact `pId='AL'` plus the requested tenant/store. Update, activation and disable writes preserve the validated stored scope rather than trusting caller/session fallback. Partial updates start from an empty patch and copy only validated owner-editable fields, so caller metadata and server-owned effectiveness/source fields cannot ride through the generic composer. Summary rebuild still costs one bounded trigger query plus one summary write, but it writes only the predictive runtime allowlist; `sourceContext`, `uId`, role, actor, trace/request IDs, creation metadata and arbitrary top-level fields are excluded. The server parser repeats the same product/scope/ID/status/source/action/numeric checks before caching or rendering suggestions.
+
 | Operation | Count | Type | Description |
 |-----------|-------|------|-------------|
 | Create trigger | 1 | WRITE | answerlattice_predictiveTriggers/{triggerId} |
@@ -208,7 +210,7 @@ Upstash Redis (cooldowns):
 ### 6.3 — Cost Guard Rails
 - **Max 500 triggers per tenant:** Bounds platformSummary doc size
 - **Max 5 auto-generated suggestions per nightly run:** Prevents suggestion explosion
-- **12-month TTL on suggestion signals:** Same as existing signal cleanup
+- **12-month TTL on suggestion signals:** the shared signal writer sets `expiresAt`, and Firestore TTL deletes expired rows without a per-workspace scheduler scan.
 - **Cooldown minimum 1 hour:** Prevents excessive Redis commands
 - **Fail closed when Redis missing:** avoids repeated proactive prompts if cooldown storage is not configured
 

@@ -11,6 +11,10 @@ import { FEATURE_FLAGS } from '@config/features';
 import { ANSWERLATTICE_PERMISSION_KEYS } from '@constant/answerlattice/permissions';
 import { DB_COLLECTIONS } from '@constant/database';
 import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
+import {
+    buildAnswerlatticeIntegrationConfigIdentity,
+    classifyAnswerlatticeIntegrationConfigOwnership,
+} from '@lib/answerlattice/integrationConfigOwnership';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
@@ -21,48 +25,20 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '../../../../../middleware/auth';
 
 const EVENT_TTL_DAYS = 90;
-const TEST_EVENT_PRIORITY = [
-    'nightly_summary',
-    'coverage_drop',
-    'ai_failure_recurring',
-    'knowledge_gap_detected',
-    'mutation_proposed',
-    'drift_detected',
-    'article_approved',
-] as const;
+const TEST_EVENT_TYPE = 'nightly_summary' as const;
 
-type TestEventType = typeof TEST_EVENT_PRIORITY[number];
+class IntegrationTestConfigOwnershipError extends Error {}
 
 const resolveSessionScope = (session: any): { tenantId: number; storeId: number } | null => {
     const answerlatticeScope = resolveAnswerlatticeSessionScope(session);
     if (!answerlatticeScope) return null;
-    const tenantId = Number(answerlatticeScope.tenantId);
-    const storeId = Number(answerlatticeScope.storeId);
-    if (!Number.isFinite(tenantId) || !Number.isFinite(storeId) || tenantId <= 0 || storeId <= 0) return null;
-    return { tenantId, storeId };
+    return { tenantId: answerlatticeScope.tenantId, storeId: answerlatticeScope.storeId };
 };
 
-const getAnswerlatticeDb = () => {
-    const db = answerlatticeFirestoreAdmin as any;
-    return db && typeof db.collection === 'function' ? answerlatticeFirestoreAdmin : null;
-};
-
-const adapterAllowsEvent = (adapterConfig: any, eventType: TestEventType): boolean => {
-    const filters = Array.isArray(adapterConfig?.eventFilters) ? adapterConfig.eventFilters : [];
-    return filters.length === 0 || filters.includes(eventType);
-};
-
-const resolveTestEventType = (config: Record<string, any>): TestEventType | null => {
-    const slackReady = Boolean(config.slack?.enabled && config.slack?.webhookUrl);
-    const emailReady = Boolean(config.email?.enabled && Array.isArray(config.email?.recipients) && config.email.recipients.length > 0);
-
-    for (const eventType of TEST_EVENT_PRIORITY) {
-        if (slackReady && adapterAllowsEvent(config.slack, eventType)) return eventType;
-        if (emailReady && adapterAllowsEvent(config.email, eventType)) return eventType;
-    }
-
-    return null;
-};
+const getAnswerlatticeDb = () => answerlatticeFirestoreAdmin
+    && typeof answerlatticeFirestoreAdmin.collection === 'function'
+    ? answerlatticeFirestoreAdmin
+    : null;
 
 export const POST = withAuth(async (_request: NextRequest, session) => {
     if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_WORKFLOW_INTEGRATIONS) {
@@ -87,27 +63,46 @@ export const POST = withAuth(async (_request: NextRequest, session) => {
         const db = getAnswerlatticeDb();
         if (!db) return NextResponse.json({ error: 'Answerlattice Firebase is not configured' }, { status: 503 });
 
-        const configSnap = await db
+        const configRef = db
             .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
-            .doc(`integrationConfig_${scope.tenantId}_${scope.storeId}`)
-            .get();
-        const config = configSnap.exists ? configSnap.data() || {} : {};
+            .doc(`integrationConfig_${scope.tenantId}_${scope.storeId}`);
+        const expectedScope = { tId: scope.tenantId, sId: scope.storeId };
+        const config = await db.runTransaction(async (transaction) => {
+            const configSnap = await transaction.get(configRef);
+            if (!configSnap.exists) return {};
+            const current = configSnap.data() || {};
+            const ownership = classifyAnswerlatticeIntegrationConfigOwnership(current, expectedScope);
+            if (ownership === 'invalid') throw new IntegrationTestConfigOwnershipError('Integration config ownership mismatch');
+            if (ownership === 'owned') return current;
+
+            const identity = buildAnswerlatticeIntegrationConfigIdentity(expectedScope);
+            if (!identity) throw new Error('answerlattice_integration_test_config_scope_invalid');
+            transaction.set(configRef, identity, { merge: true });
+            return { ...current, ...identity };
+        }).catch((error) => {
+            if (error instanceof IntegrationTestConfigOwnershipError) {
+                return null;
+            }
+            throw error;
+        });
+        if (!config) {
+            logRuntimeDiagnostic('answerlattice_integration_test_config_ownership_mismatch', {
+                ...getBoundedRuntimeStringContext('tenantId', scope.tenantId),
+                ...getBoundedRuntimeStringContext('storeId', scope.storeId),
+            });
+            return NextResponse.json({ error: 'Integration settings require support review.' }, { status: 409 });
+        }
         const hasSlack = Boolean(config.slack?.enabled && config.slack?.webhookUrl);
         const hasEmail = Boolean(config.email?.enabled && Array.isArray(config.email?.recipients) && config.email.recipients.length > 0);
-        const eventType = resolveTestEventType(config);
-
         if (!hasSlack && !hasEmail) {
             return NextResponse.json({ error: 'Enable Slack or email before sending a test.' }, { status: 400 });
-        }
-        if (!eventType) {
-            return NextResponse.json({ error: 'Enable at least one event type before sending a test.' }, { status: 400 });
         }
 
         const now = Timestamp.now();
         const expiresAt = Timestamp.fromMillis(Date.now() + EVENT_TTL_DAYS * 24 * 60 * 60 * 1000);
         const eventRef = await db.collection(DB_COLLECTIONS.ANSWERLATTICE_INTEGRATION_EVENTS).add({
             pId: 'AL',
-            eventType,
+            eventType: TEST_EVENT_TYPE,
             tId: scope.tenantId,
             sId: scope.storeId,
             severity: 'low',
@@ -133,7 +128,7 @@ export const POST = withAuth(async (_request: NextRequest, session) => {
             ...getBoundedRuntimeStringContext('tenantId', scope.tenantId),
             ...getBoundedRuntimeStringContext('storeId', scope.storeId),
             ...getBoundedRuntimeStringContext('eventId', eventRef.id),
-            eventType,
+            eventType: TEST_EVENT_TYPE,
             slackEnabled: hasSlack,
             emailEnabled: hasEmail,
         });

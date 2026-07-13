@@ -22,7 +22,7 @@ The codebase-side gates are currently clean when the latest production-readiness
 
 Prefer `npm run verify:production-readiness-local` for a full local boundary refresh. It runs the child root `verify:*` scripts, including `npm run verify:dependency-freeze`, `docs:check-links`, `npm run typecheck`, lint, and `git diff --check` while excluding itself to avoid recursion. Use `npm run verify:production-readiness-local -- --list` when you only need the gate inventory without executing child checks. `npm run build:verify` delegates to the same root typecheck script. The aggregate can run targeted package builds required by local verifiers, such as the Functions TypeScript build inside `verify:catalog-analytics`, but it does not run a Next.js production build, Firebase deploy, Vercel deploy, provider smoke, Cloud Tasks enqueue, or Firestore write.
 
-Latest local boundary evidence on July 9, 2026: `npm run verify:production-readiness-local` passed with 95/95 checks, including 91 child root `verify:*` scripts. The aggregate includes Answerlattice runtime truth, the public menu rate-limit fail-closed gate, Owner Action Layer source gate, dependency freeze verifier, System Strengthening SS-1 through SS-9, production-testing-guide launch-boundary guard, recycle-bin source-gate output boundary, and documentation health with 0 broken links and 0 naming violations. The aggregate runner prints its own local-only boundary, supports `npm run verify:production-readiness-local -- --list` for a no-execution gate inventory, and uses the root `npm run typecheck` script; `npm run build:verify` delegates to that same script so green output cannot be mistaken for authenticated browser/manual QA or deploy certification.
+Latest local boundary evidence on July 11, 2026: `npm run verify:production-readiness-local` passed with 98/98 checks, including 94 child root `verify:*` scripts. The aggregate includes Answerlattice runtime truth, the public menu rate-limit fail-closed gate, Owner Action Layer source gate, CampaignCue operating-loop verification, dependency freeze verifier, System Strengthening SS-1 through SS-9, production-testing-guide launch-boundary guard, recycle-bin source-gate output boundary, customer PWA source-contract coverage, and documentation health with 0 broken links and 0 naming violations. The aggregate runner prints its own local-only boundary, supports `npm run verify:production-readiness-local -- --list` for a no-execution gate inventory, and uses the root `npm run typecheck` script; `npm run build:verify` delegates to that same script so green output cannot be mistaken for authenticated browser/manual QA or deploy certification.
 
 This runbook is for the remaining external/runtime certification work. Do not mark MenuList fully production-ready until every gate below has evidence attached in `__docs__/audits/menulist-production-readiness-audit.md`.
 
@@ -65,12 +65,14 @@ Local preflight evidence proves the codebase still has the expected guards, limi
 All external-only certification harnesses must at least parse before their live runs are attempted:
 
 ```bash
+node --check scripts/verification/verify-customer-pwa-offline.mjs
 node --check scripts/verification/verify-mobile-owner-menu.mjs
 node --check scripts/verification/verify-mobile-upload-extraction.mjs
 node --check scripts/verification/verify-public-routing-summary-backfill.mjs
+node --check scripts/verification/verify-razorpay-sandbox-readiness.mjs
 ```
 
-These syntax checks prove only that the harness files still load as JavaScript modules. They do not launch Chrome, authenticate an owner, read Firestore, upload media, review target data, or certify any external gate. `npm run verify:agent-readiness` enforces these checks while keeping the live harness executions outside the default local aggregate.
+These five syntax checks prove only that the external-only harness files still load as JavaScript modules. They do not launch Chrome, authenticate an owner, read Firestore, upload media, review target data, call Razorpay, or certify any external gate. `npm run verify:agent-readiness` enforces these checks while keeping the live harness executions outside the default local aggregate.
 
 Use this order for each external gate:
 
@@ -144,6 +146,14 @@ Changed-function subset note: the July 5, 2026 owner-notification template-outpu
 firebase deploy --project menulist-qa --config firebase.json --only functions:verifyMenuPublish,functions:computeDecisionBlocksScores,functions:triggerDecisionBlocksScoring,functions:triggerStoreNightlyScheduler --non-interactive
 ```
 
+Changed-function subset note: the July 11, 2026 shared Functions AI-gateway SAFE_MODE guard changes `functions/src/ai/aiGateway.ts`. Every exported MenuList Function that can reach the shared Gemini gateway must receive the same revision; do not certify only the previously explicit extraction/Maps callers:
+
+```bash
+firebase deploy --project menulist-qa --config firebase.json --only functions:startGeneration,functions:processMenuImagesJob,functions:embedArticleWorker,functions:regenerateEmbedding,functions:mapsPlaceCheck,functions:menulistMaintenanceScheduler,functions:triggerSchedulerManually,functions:triggerWeeklyNarrativeManually,functions:triggerCustomerAnalyticsManually,functions:computeDecisionBlocksScores,functions:triggerDecisionBlocksScoring,functions:triggerStoreNightlyScheduler,functions:messagingOnboarding --non-interactive
+```
+
+Gateway-subset blocker recorded July 11, 2026: the exact 13-target command above completed configured Functions lint/build and then failed before upload with Cloud Resource Manager HTTP 403: the caller does not have permission. No Function revision changed, so active SAFE_MODE provider-rejection smoke remains pending.
+
 Local preflight:
 
 ```bash
@@ -160,7 +170,7 @@ npm --prefix functions run build
 
 Passing preflight proves the Functions package lints and compiles locally, the listed source guards still pass, and the current blocked deploy target set remains documented. It does not prove Firebase CLI authentication, project IAM, enabled Google Cloud APIs, Secret Manager access, function upload, deployed revisions, scheduler execution, callable behavior, trigger delivery, or live production effect.
 
-Current blocker refreshed July 9, 2026: local readiness now passes with 95/95 checks. The current package-local scoped retry `npm --prefix functions run deploy:menulist-qa` targeted `functions:processMenuImages,functions:processMenuImagesJob,functions:menulistMaintenanceScheduler,functions:computeDecisionBlocksScores,functions:triggerDecisionBlocksScoring,functions:triggerStoreNightlyScheduler,functions:messagingOnboarding,functions:backfillStoresSummary,functions:mapsPlaceCheck,functions:verifyMenuPublish`, completed predeploy lint/build, and failed before upload with Cloud Resource Manager HTTP 403: the caller does not have permission. Earlier documented scoped attempts for the source-file path hardening subset (`functions:processMenuImages`, `functions:processMenuImagesJob`, `functions:startGeneration`, `functions:embedArticleWorker`, and `functions:regenerateEmbedding`), the SAFE_MODE worker retry (`functions:processMenuImagesJob`), the scheduler retry (`functions:menulistMaintenanceScheduler`), the staleness lifecycle delivery retry (`functions:computeDecisionBlocksScores`, `functions:triggerDecisionBlocksScoring`, and `functions:triggerStoreNightlyScheduler`), the scheduler-hour diagnostics retry (`functions:messagingOnboarding` and `functions:backfillStoresSummary`), the Maps Place Check raw provider output retry (`functions:mapsPlaceCheck`), and the owner-notification template-output, owner-notification flag/trigger diagnostics, and legacy lifecycle event/status diagnostics retries (`functions:verifyMenuPublish`, `functions:computeDecisionBlocksScores`, `functions:triggerDecisionBlocksScoring`, and `functions:triggerStoreNightlyScheduler`) hit the same blocker class after predeploy lint/build.
+Current Gate 1 state refreshed July 11, 2026: local readiness passes with 98/98 checks. The default package-local scoped set was last retried on July 9 with `npm --prefix functions run deploy:menulist-qa`; it targeted `functions:processMenuImages,functions:processMenuImagesJob,functions:menulistMaintenanceScheduler,functions:computeDecisionBlocksScores,functions:triggerDecisionBlocksScoring,functions:triggerStoreNightlyScheduler,functions:messagingOnboarding,functions:backfillStoresSummary,functions:mapsPlaceCheck,functions:verifyMenuPublish`, completed predeploy lint/build, and failed before upload with Cloud Resource Manager HTTP 403: the caller does not have permission. The July 11 shared AI-gateway 13-target subset above reached the same pre-upload blocker after configured lint/build. Earlier documented scoped attempts for the source-file path hardening subset (`functions:processMenuImages`, `functions:processMenuImagesJob`, `functions:startGeneration`, `functions:embedArticleWorker`, and `functions:regenerateEmbedding`), the SAFE_MODE worker retry (`functions:processMenuImagesJob`), the scheduler retry (`functions:menulistMaintenanceScheduler`), the staleness lifecycle delivery retry (`functions:computeDecisionBlocksScores`, `functions:triggerDecisionBlocksScoring`, and `functions:triggerStoreNightlyScheduler`), the scheduler-hour diagnostics retry (`functions:messagingOnboarding` and `functions:backfillStoresSummary`), the Maps Place Check raw provider output retry (`functions:mapsPlaceCheck`), and the owner-notification template-output, owner-notification flag/trigger diagnostics, and legacy lifecycle event/status diagnostics retries (`functions:verifyMenuPublish`, `functions:computeDecisionBlocksScores`, `functions:triggerDecisionBlocksScoring`, and `functions:triggerStoreNightlyScheduler`) hit the same blocker class after predeploy lint/build.
 
 Staging deploy retry:
 
@@ -246,7 +256,7 @@ npm run verify:production-readiness-local
 
 Passing preflight proves active project fallback uploads use tenant-scoped paths, legacy project paths are read-only in `storage.rules`, and the local aggregate remains clean. It does not prove Firebase CLI authentication, project IAM, Storage rules upload, deployed rules propagation, or live bucket behavior.
 
-Current blocker refreshed July 9, 2026: `npm run verify:storage-paths` passed, and `npm run verify:production-readiness-local` includes `verify:storage-paths` and passes with 95/95 checks. The current scoped retry `firebase deploy --project menulist-qa --config firebase.json --only storage --non-interactive` failed before rules upload while checking/enabling `firebasestorage.googleapis.com` with Service Usage HTTP 403: project `menulist-qa` not found or permission denied.
+Current blocker refreshed July 11, 2026: `npm run verify:storage-paths` passed, and `npm run verify:production-readiness-local` includes `verify:storage-paths` and passes with 98/98 checks. The latest scoped retry remains the July 9 command `firebase deploy --project menulist-qa --config firebase.json --only storage --non-interactive`; it failed before rules upload while checking/enabling `firebasestorage.googleapis.com` with Service Usage HTTP 403: project `menulist-qa` not found or permission denied.
 
 **Prerequisites**
 
@@ -289,6 +299,7 @@ firebase deploy --project menulist --config firebase.json --only storage --non-i
 **Local Preflight**
 
 ```bash
+node --check scripts/verification/verify-customer-pwa-offline.mjs
 node --check scripts/verification/verify-mobile-owner-menu.mjs
 node --check scripts/verification/verify-mobile-upload-extraction.mjs
 npm run verify:mobile-shell-route-map
@@ -298,6 +309,19 @@ npm run verify:public-business-truth
 npm run verify:menu-extraction-pipeline
 npm run verify:public-truth-tools
 ```
+
+When the local tenant host, Chrome, and development server are available, run the maintained non-mutating customer-worker browser harness:
+
+```bash
+CUSTOMER_PWA_QA_TENANT_HOST=habibis.menulist.ai \
+CUSTOMER_PWA_QA_UPSTREAM_URL=http://127.0.0.1:3000 \
+CUSTOMER_PWA_QA_OUTPUT_DIR=/tmp/menulist-customer-pwa-qa \
+npm run smoke:customer-pwa-offline
+```
+
+The harness uses a temporary Chrome profile and a harness-owned loopback tenant proxy. It loads the online tenant page, waits for development service-worker cleanup, manually registers `/sw-customer.js`, verifies Cache Storage contains exactly `customer-app-offline-v1` with only `/offline`, severs only the proxy's upstream connection, and fresh-navigates to the maintained offline screen. It fails if cached menu/runtime content appears, the offline reconnect copy is missing, or the online tenant title leaks into the fallback. It does not stop the shared development server or mutate Firebase, Storage, provider, or deployment state.
+
+Current local evidence, July 11, 2026: the command passed against `habibis.menulist.ai` mapped to loopback with the development server on port 3000. The 390x844 offline capture rendered `You're offline` and `Reconnect to see the latest live menu.`; both online and offline cache inspection found only `/offline`, with `menuContentCached: false`. This proves the local loopback customer-worker contract only. Development intentionally unregisters service workers before the harness manually registers one, so this result does not prove production registration, installability, deployed worker scope, physical-device behavior, or production-host offline behavior.
 
 Passing preflight proves the owner-mobile and mobile upload/extraction harnesses are syntactically valid, shell route targets are source-mapped, Staff/Roles mobile sub-screens keep their shared route/permission contract, customer app and public business truth source gates are intact, menu extraction intake still enforces source limits, and public truth tools remain browser-local/static-report surfaces. It does not prove real device rendering, authenticated owner-shell visual behavior, touch ergonomics, browser console cleanliness, or public route runtime rendering.
 
@@ -320,6 +344,8 @@ node scripts/verification/verify-mobile-owner-menu.mjs
 The harness creates the screenshot output directory before capture and honors `MOBILE_QA_CDP_TIMEOUT_MS` for Chrome DevTools waits. `MOBILE_QA_REQUIRE_EXPLICIT_FIXTURE=1` makes the run fail before browser launch unless the owner email, store id, project id, and expected project name are all provided. Do not certify owner-shell mobile QA from the script's local defaults.
 
 The harness must classify initial blockers explicitly. `fixture_blocked` means the selected owner store needs an active subscription or unexpired starter activation before MobileShell certification can continue; `auth_blocked` means the local auth/session setup failed; `runtime_blocked` means the page rendered an error/not-found state. Do not treat these as visual QA passes.
+
+After fixture admission, the harness traverses Today, Menu, Share, and More through the actual bottom navigation, verifies each `#mobile/{tab}` state remains inside `MobileShell`, captures one screenshot per tab, and fails on page-level horizontal overflow, clipped visible interactive controls outside intentional horizontal scrollers, bottom-navigation targets below 44x44px, missing active-tab accessibility state, or material browser errors. Menu-specific bulk, Visibility, and Fix Text Case sheet checks run only after the four-tab navigation pass returns to Menu.
 
 **Prerequisites**
 
@@ -356,6 +382,7 @@ The harness must classify initial blockers explicitly. `fixture_blocked` means t
 **Local Preflight**
 
 ```bash
+node --check scripts/verification/verify-razorpay-sandbox-readiness.mjs
 npm run verify:billing-entitlement-boundary
 npm run verify:menulist-api-tenant-safety
 npm run verify:no-free-product-plans
@@ -364,7 +391,19 @@ npm run verify:auth-security-failure-matrix
 
 Passing preflight proves local Razorpay admission, bounded-body, signature, diagnostic, plan, UI, subscription/top-up sequencing, webhook cheap-fail/idempotency, browser acknowledgement, and entitlement/cache sync guard coverage only. It does not prove sandbox checkout, provider webhook delivery, captured-payment state, or provider/local state parity.
 
-Current partial evidence refreshed July 9, 2026: the local `.env` Razorpay private/public key IDs were test-mode and a read-only Razorpay SDK `payments.all({ count: 1 })` request returned entity `collection` with one item. This proves the configured test-mode credentials authenticate for a read-only provider request only. It does not prove checkout, subscription creation, payment verification, top-up purchase, webhook delivery, provider failure compensation, local/provider state parity, deployed Functions secrets, or no-real-charge behavior.
+**Repeatable Read-Only Provider Preflight**
+
+```bash
+RAZORPAY_SANDBOX_ENV_FILE=.env \
+RAZORPAY_SANDBOX_TIMEOUT_MS=15000 \
+npm run smoke:razorpay-sandbox-readonly
+```
+
+The command hard-rejects `rzp_live_` keys, requires exact private/public `rzp_test_` key-ID agreement, performs four bounded GET-only provider inventory calls (`payments.all`, `orders.all`, `plans.all`, and `subscriptions.all`, each with `count: 1`), and performs a synthetic raw-body webhook HMAC self-test that must accept the exact body and reject a one-byte change. It prints only mode, operation, entity, count, and pass/fail metadata. It does not create, update, capture, cancel, refund, or delete provider objects and does not access Firestore or Storage.
+
+Current partial evidence refreshed July 11, 2026: `npm run smoke:razorpay-sandbox-readonly` passed against the local test-mode account. All four provider operations returned `entity: collection` with one bounded item, the exact synthetic raw body passed signature validation, and a one-byte body change failed validation. This proves the configured test-mode credentials can read the four provider families and the installed SDK's raw-body signature primitive behaves as expected with the configured local webhook secret. It does not prove the secret matches a deployed Razorpay webhook endpoint, checkout, subscription creation, payment verification, top-up purchase, webhook delivery, provider failure compensation, local/provider state parity, deployed Functions secrets, or no-real-charge behavior.
+
+Provider references: [Test Subscriptions](https://razorpay.com/docs/payments/subscriptions/test/?preferred-country=IN) and [Validate and Test Webhooks](https://razorpay.com/docs/webhooks/validate-test/?locale=en-US).
 
 **Prerequisites**
 

@@ -1,6 +1,6 @@
 /**
  * WeeklySummaryCard Component
- * Displays AI-generated weekly narrative summary
+ * Displays the verified weekly analytics summary.
  */
 
 import React from 'react';
@@ -64,7 +64,7 @@ export const WeeklySummaryCard: React.FC<WeeklySummaryCardProps> = ({
           <Space>
             <RobotOutlined style={{ color: token.colorPrimary }} />
             <span>Weekly Summary</span>
-            <Tag color="purple">Gemini 2.5 Flash</Tag>
+            <Tag color="blue">Verified analytics</Tag>
           </Space>
         }
       >

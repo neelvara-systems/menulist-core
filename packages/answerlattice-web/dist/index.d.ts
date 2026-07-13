@@ -25,8 +25,21 @@ export type AnswerlatticeWidgetRuntime = {
     hide?: () => void;
     show?: () => void;
     clearHistory?: () => void;
+    clearIdentity?: () => void;
+    identify?: (visitor: AnswerlatticeVisitorIdentity | null) => void;
+    identifySigned?: (token: string) => void;
+    setEvidenceLinks?: (links: AnswerlatticeEvidenceLink[]) => void;
     on?: (eventName: string, callback: (payload?: unknown) => void) => void;
     off?: (eventName: string, callback: (payload?: unknown) => void) => void;
+};
+export type AnswerlatticeVisitorIdentity = {
+    id: string;
+    name?: string;
+    email?: string;
+};
+export type AnswerlatticeEvidenceLink = {
+    url: string;
+    label?: string;
 };
 export type AnswerlatticeInitOptions = {
     apiKey: string;
@@ -55,15 +68,14 @@ export type AnswerlatticeWebClient = {
     hide: () => void;
     show: () => void;
     clearHistory: () => void;
+    clearIdentity: () => void;
+    identify: (visitor: AnswerlatticeVisitorIdentity) => void;
+    identifySigned: (token: string) => void;
+    setEvidenceLinks: (links: AnswerlatticeEvidenceLink[]) => void;
     on: (eventName: AnswerlatticeWidgetEventName, callback: (payload?: unknown) => void) => () => void;
     off: (eventName: AnswerlatticeWidgetEventName, callback: (payload?: unknown) => void) => void;
     getRuntime: () => AnswerlatticeWidgetRuntime | null;
 };
-declare global {
-    interface Window {
-        AnswerlatticeWidget?: AnswerlatticeWidgetRuntime;
-    }
-}
 export declare function validateAnswerlatticePageContext(input: AnswerlatticePageContext): AnswerlatticeValidationResult;
 export declare const validateAnswerlatticeContext: typeof validateAnswerlatticePageContext;
 export declare function createAnswerlatticeWebClient(initialOptions: AnswerlatticeInitOptions): AnswerlatticeWebClient;

@@ -4,16 +4,20 @@ import PasteUpload, { PastedFile } from '@atoms/PasteUpload';
 import TiptapEditor from '@atoms/TiptapEditor';
 import { FEATURE_FLAGS } from '@config/features';
 import { CHANGELOG_TAG_CONFIG, CHANGELOG_TAG_OPTIONS } from '@constant/changelog';
+import { getEntities } from '@database/answerlattice/entities';
+import { activateRelease, addRelease } from '@database/answerlattice/releases';
 import { getProductSurfacesForSession, rebuildProductSurfaceContentSummaryWithDiagnostics } from '@database/answerlattice/productSurfaces';
 import { addChangelogEntry, updateChangelogEntry } from '@database/changelog';
 import { useAppDispatch } from '@hook/useAppDispatch';
+import { useClientAuthSession } from '@hook/useClientAuthSession';
 import { getBoundedAnswerlatticeStringContext, logAnswerlatticeFailure } from '@lib/answerlattice/diagnostics';
+import { normalizeAnswerlatticeVersionLabel } from '@lib/answerlattice/releaseContracts';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { ChangelogEntry } from '@type/changelog';
 import { getClockTimeInputFormat } from '@util/dateTime';
 import { getBase64, getYouTubeID } from '@util/utils';
-import { Button, DatePicker, Drawer, Flex, Form, Input, Select, Switch, TimePicker, Typography, message } from 'antd';
+import { Button, DatePicker, Drawer, Flex, Form, Input, Select, Switch, TimePicker, Typography, Upload, message } from 'antd';
 import { RcFile } from 'antd/es/upload';
 import dayjs from 'dayjs';
 import { Timestamp } from 'firebase/firestore';
@@ -33,6 +37,7 @@ const AddEditChangelog: React.FC<AddEditChangelogProps> = ({ open, onClose, onSa
     const [form] = Form.useForm();
     const timePickerFormat = getClockTimeInputFormat();
     const dispatch = useAppDispatch();
+    const session = useClientAuthSession();
     const [isSaving, setIsSaving] = useState(false);
     const [attachments, setAttachments] = useState<any[]>([]);
     const isFormActive = useRef(false);
@@ -63,6 +68,7 @@ const AddEditChangelog: React.FC<AddEditChangelogProps> = ({ open, onClose, onSa
     const [youtubeLink, setYoutubeLink] = useState('');
     const [youtubeLinks, setYoutubeLinks] = useState<string[]>([]);
     const [surfaceOptions, setSurfaceOptions] = useState<Array<{ label: string; value: string }>>([]);
+    const [entityOptions, setEntityOptions] = useState<Array<{ label: string; value: string }>>([]);
 
 
 
@@ -72,22 +78,34 @@ const AddEditChangelog: React.FC<AddEditChangelogProps> = ({ open, onClose, onSa
     }, [open]);
 
     useEffect(() => {
-        if (!open || !FEATURE_FLAGS.ENABLE_ANSWERLATTICE_PRODUCT_SURFACES) return;
+        if (!open) return;
         let mounted = true;
-        getProductSurfacesForSession()
-            .then((surfaces = []) => {
+        const tId = Number(session?.tId || 0);
+        const sId = Number(session?.sId || 0);
+        Promise.all([
+            FEATURE_FLAGS.ENABLE_ANSWERLATTICE_PRODUCT_SURFACES
+                ? getProductSurfacesForSession()
+                : Promise.resolve([]),
+            tId > 0 && sId > 0 ? getEntities(tId, sId) : Promise.resolve([]),
+        ])
+            .then(([surfaces = [], entities = []]) => {
                 if (!mounted) return;
                 setSurfaceOptions(
                     surfaces
                         .filter(surface => surface.active !== false)
                         .map(surface => ({ label: surface.label, value: surface.key })),
                 );
+                setEntityOptions(
+                    entities
+                        .filter(entity => entity.status !== 'deprecated')
+                        .map(entity => ({ label: `${entity.name} (${entity.type})`, value: entity.id })),
+                );
             })
             .catch((error) => {
                 logAnswerlatticeFailure('answerlattice_changelog_surface_options_load_failed', error);
             });
         return () => { mounted = false; };
-    }, [open]);
+    }, [open, session?.sId, session?.tId]);
 
     const handleAddYoutubeLink = () => {
         const trimmedLink = youtubeLink.trim();
@@ -115,9 +133,16 @@ const AddEditChangelog: React.FC<AddEditChangelogProps> = ({ open, onClose, onSa
     };
 
     const onPasteFiles = (pastedFiles: PastedFile[]) => {
+        const acceptedFiles = pastedFiles.filter(file => (
+            ['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type)
+            && file.size <= 5 * 1024 * 1024
+        ));
+        if (acceptedFiles.length !== pastedFiles.length) {
+            message.error('Use a JPG, PNG, WebP, or GIF image up to 5 MB.');
+        }
         setAttachments((prevAttachments) => {
             const existingFiles = new Set(prevAttachments.map(f => `${f.name}|${f.size}`));
-            const uniqueNewFiles = pastedFiles.filter(file => !existingFiles.has(`${file.name}|${file.size}`));
+            const uniqueNewFiles = acceptedFiles.filter(file => !existingFiles.has(`${file.name}|${file.size}`));
 
             if (prevAttachments.length + uniqueNewFiles.length > 4) {
                 message.error('File Limit Exceeded, You can only upload a maximum of 4 files.');
@@ -145,6 +170,7 @@ const AddEditChangelog: React.FC<AddEditChangelogProps> = ({ open, onClose, onSa
                 releaseTime: releasedOnDate,
                 version: initialData.version,
                 contextKeys: initialData.contextKeys || [],
+                entityChanges: initialData.entityChanges || [],
                 // Set form values for TreeSelect
                 kbSources: (initialData.kbSources || []).map(s => s.articleId ? `art-${s.articleId}` : s.sectionId ? `sec-${s.sectionId}` : `cat-${s.categoryId}`)
                 // The above line is now correct as it's just for setting the initial form value.
@@ -158,7 +184,7 @@ const AddEditChangelog: React.FC<AddEditChangelogProps> = ({ open, onClose, onSa
     }, [initialData, form, open]);
 
     const handleSave = async (values: any) => {
-        const { title, description, tags, releaseDate, releaseTime, published, version, contextKeys } = values;
+        const { title, description, tags, releaseDate, releaseTime, published, version, contextKeys, entityChanges } = values;
 
         const combinedDateTime = releaseDate
             .hour(releaseTime.hour())
@@ -184,6 +210,7 @@ const AddEditChangelog: React.FC<AddEditChangelogProps> = ({ open, onClose, onSa
             published: published || false,
             version: version || null,
             contextKeys: contextKeys || [],
+            entityChanges: entityChanges || [],
             kbSources: kbSources,
             youtubeLinks: youtubeLinks,
         };
@@ -207,6 +234,36 @@ const AddEditChangelog: React.FC<AddEditChangelogProps> = ({ open, onClose, onSa
                 savedEntryId = result?.entryId || result?.id || '';
                 onSave(result);
             }
+            let releaseSyncSucceeded = true;
+            const normalizedVersion = version ? normalizeAnswerlatticeVersionLabel(version) : null;
+            if (published && normalizedVersion) {
+                const tId = Number(session?.tId || 0);
+                const sId = Number(session?.sId || 0);
+                if (!tId || !sId || !savedEntryId) {
+                    releaseSyncSucceeded = false;
+                } else {
+                    try {
+                        const release = await addRelease({
+                            tId,
+                            sId,
+                            versionLabel: normalizedVersion.label,
+                            versionNormalized: normalizedVersion.normalized,
+                            releasedAt: entryPayload.releasedOn,
+                            entityChanges: entryPayload.entityChanges,
+                            status: 'pending',
+                            requestId: `changelog:${savedEntryId}:${normalizedVersion.normalized}`,
+                        });
+                        if (release?.action !== 'create') throw new Error('Release registration failed');
+                        if (release.status !== 'active') await activateRelease(release.releaseId);
+                    } catch (error) {
+                        releaseSyncSucceeded = false;
+                        logAnswerlatticeFailure('answerlattice_changelog_release_sync_failed', error, {
+                            ...getBoundedAnswerlatticeStringContext('changelogEntryId', savedEntryId),
+                            ...getBoundedAnswerlatticeStringContext('changelogVersion', normalizedVersion.label),
+                        });
+                    }
+                }
+            }
             let summaryRefreshSucceeded = true;
             if (FEATURE_FLAGS.ENABLE_ANSWERLATTICE_PRODUCT_SURFACES) {
                 summaryRefreshSucceeded = await rebuildProductSurfaceContentSummaryWithDiagnostics({
@@ -220,7 +277,9 @@ const AddEditChangelog: React.FC<AddEditChangelogProps> = ({ open, onClose, onSa
                     },
                 });
             }
-            if (summaryRefreshSucceeded) {
+            if (!releaseSyncSucceeded) {
+                message.warning('Release note saved, but release drift review did not finish. Reopen the entry and save again to retry.');
+            } else if (summaryRefreshSucceeded) {
                 message.success(initialData ? 'Changelog entry updated successfully!' : 'Changelog entry saved successfully!');
             } else {
                 message.warning('Changelog saved, but contextual help refresh failed. Try Refresh after checking product surfaces.');
@@ -292,19 +351,56 @@ const AddEditChangelog: React.FC<AddEditChangelogProps> = ({ open, onClose, onSa
                             })}
                         </Select>
                     </Form.Item>
-                    <Form.Item name="version" label="Version (e.g., 1.0.0)">
-                        <Input placeholder="Enter version" />
+                    <Form.Item
+                        name="version"
+                        label="Version (e.g., 1.0.0)"
+                        rules={[{
+                            validator: async (_, value) => {
+                                if (value && !normalizeAnswerlatticeVersionLabel(value)) {
+                                    throw new Error('Use a numeric version such as 1.0.0');
+                                }
+                            },
+                        }]}
+                    >
+                        <Input
+                            placeholder="Enter version"
+                            disabled={Boolean(initialData?.version)}
+                        />
                     </Form.Item>
                 </Flex>
 
                 <Flex gap={16}>
                     <Form.Item name="releaseDate" label="Release Date" rules={[{ required: true, message: 'Please select a date' }]} style={{ flex: 1 }}>
-                        <DatePicker style={{ width: '100%' }} />
+                        <DatePicker style={{ width: '100%' }} disabled={Boolean(initialData?.version)} />
                     </Form.Item>
                     <Form.Item name="releaseTime" label="Release Time" rules={[{ required: true, message: 'Please select a time' }]} style={{ flex: 1 }}>
-                        <TimePicker style={{ width: '100%' }} format={timePickerFormat} />
+                        <TimePicker style={{ width: '100%' }} format={timePickerFormat} disabled={Boolean(initialData?.version)} />
                     </Form.Item>
                 </Flex>
+
+                <Form.Item
+                    name="entityChanges"
+                    label="Changed Product Areas"
+                    dependencies={['published', 'version']}
+                    rules={[{
+                        validator: async (_, selected) => {
+                            const isVersionedRelease = form.getFieldValue('published') && form.getFieldValue('version');
+                            if (isVersionedRelease && (!Array.isArray(selected) || selected.length === 0)) {
+                                throw new Error('Select at least one changed product area');
+                            }
+                        },
+                    }]}
+                >
+                    <Select
+                        mode="multiple"
+                        allowClear
+                        showSearch
+                        optionFilterProp="label"
+                        options={entityOptions}
+                        disabled={Boolean(initialData?.entityChanges?.length)}
+                        placeholder="Select affected features, plans, workflows, or errors"
+                    />
+                </Form.Item>
 
                 <Form.Item name="kbSources" label="Link to Knowledge Base Article">
                     <KbTreeSelect onChange={handleKbSourceChange} />
@@ -366,6 +462,7 @@ const AddEditChangelog: React.FC<AddEditChangelogProps> = ({ open, onClose, onSa
 
                 <Form.Item label="Attachments">
                     <PasteUpload
+                        accept="image/jpeg,image/png,image/webp,image/gif"
                         isPastingEnabled={isFormActive}
                         onPaste={onPasteFiles}
                         fileList={attachments}
@@ -375,6 +472,14 @@ const AddEditChangelog: React.FC<AddEditChangelogProps> = ({ open, onClose, onSa
                             return true;
                         }}
                         multiple
+                        beforeUpload={(file) => {
+                            const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type);
+                            if (!allowed || file.size > 5 * 1024 * 1024) {
+                                message.error('Use a JPG, PNG, WebP, or GIF image up to 5 MB.');
+                                return Upload.LIST_IGNORE;
+                            }
+                            return false;
+                        }}
                         listType='picture'
                     />
                 </Form.Item>

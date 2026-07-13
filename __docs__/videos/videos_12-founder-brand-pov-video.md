@@ -5,6 +5,8 @@
 **Source:** [Master production blueprint](./videos_launch-product-marketing-production-blueprint.md)
 **Scope:** Standalone production handoff for Video 12.
 
+**Mandatory production standard:** [MenuList Founder-Approved Video Production Standard](./videos_founder-approved-production-standard.md). Apply it to this video's messaging, Inter typography, website gradient emphasis, UI styling, motion, transitions, logo slate, Indian-English voice, brand music, aspect-ratio adaptation, and encoded-MP4 QA.
+
 ## Shared Positioning
 
 MenuList must be shown as public-business truth infrastructure for SMBs, not as a standalone QR menu app, generic AI restaurant software, or flashy SaaS dashboard.
@@ -160,3 +162,17 @@ Music should be sincere, quiet, and grounded. Voiceover should sound like a foun
 ### P. CTA
 
 Start from your current list.
+
+### Q. Conversion Contract
+
+- Funnel stage: trust -> product understanding.
+- Belief change: `MenuList exists to reduce repeated public-information cleanup, not give owners another dashboard to manage.`
+- Proof moment: founder explanation is supported by source upload, private preview, approval, and current customer-link cutaways.
+- Display close: `Start from your current list.`
+- Linked action: companion `Create customer link` -> `/create-menu`.
+- Primary metric: assisted qualified create-link starts and first approved publishes from founder-led distribution.
+- Guard metric: completion/engagement plus absence of generic AI-SaaS or QR-only interpretation.
+- Asset/UTM pattern: `founder_pov_v1_public_truth_75s_<aspect>`.
+- Paid eligibility: primarily organic/founder/sales; any paid use requires a separate brief, consented founder footage/voice, and eligible ledger row.
+
+Use the [conversion brief template](./videos_conversion-brief-template.md) and [campaign ledger](./videos_campaign-measurement-ledger.md).

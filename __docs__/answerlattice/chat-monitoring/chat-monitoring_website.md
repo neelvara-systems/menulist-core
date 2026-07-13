@@ -10,10 +10,10 @@
 
 ```
 Title: AI Chat Monitoring Dashboard | MenuList
-Description: Monitor AI chatbot conversations, filter by quality, calculate ROI, and get AI-generated weekly performance reports.
+Description: Review support conversations, filter by answer quality, calculate ROI, and get source-backed weekly performance summaries.
 Keywords: chat monitoring, AI quality, conversation analytics, support dashboard
 OG Title: Know How Your AI Is Performing
-OG Description: Quality filtering, ROI calculation, and weekly AI performance reports — built in.
+OG Description: Quality filtering, ROI calculation, and verified weekly performance summaries — built in.
 ```
 
 ---
@@ -24,7 +24,7 @@ OG Description: Quality filtering, ROI calculation, and weekly AI performance re
 **Monitor what matters.**
 
 ### Subheadline
-See every AI conversation. Filter by quality. Calculate ROI. Get weekly AI performance reports. No external analytics tools.
+See every support conversation. Filter by quality. Calculate ROI. Get verified weekly performance summaries. No external analytics tools.
 
 ### How It Works
 
@@ -32,9 +32,9 @@ See every AI conversation. Filter by quality. Calculate ROI. Get weekly AI perfo
 
 **Triage conversations** — Assign status, priority, and tags. Add internal team notes for collaboration. Export conversations as CSV or Markdown.
 
-**Measure impact** — Built-in ROI calculator quantifies hours saved, cost saved, and automation rate. Weekly AI-generated reports highlight trends and recommend actions.
+**Measure impact** — Built-in ROI calculator quantifies hours saved, cost saved, and automation rate. Source-backed weekly reports highlight trends and recurring answer gaps.
 
 ### Trust Indicators
 - Quality scores calculated from real similarity metrics, not guesses
 - 99.95% cheaper than raw session scanning (aggregated analytics)
-- AI-generated weekly reports run automatically every Sunday
+- Weekly summaries are rebuilt from completed, scoped analytics data

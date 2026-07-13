@@ -668,17 +668,18 @@ export const isDevelopment = () => {
   return process.env.NODE_ENV === "development"
 }
 
-export const clearBrowserCache = (reloadAfterClear = true) => {
+export const clearBrowserCache = async (reloadAfterClear = true): Promise<void> => {
   if ('caches' in window) {
-    caches.keys().then((names) => {
-      names.forEach(async (name) => {
-        await caches.delete(name)
-      })
-    })
-
-    if (reloadAfterClear)
-      window.location.reload()
+    try {
+      const names = await caches.keys();
+      await Promise.allSettled(names.map((name) => caches.delete(name)));
+    } catch {
+      // Recovery reload must remain available when Cache Storage itself is unavailable.
+    }
   }
+
+  if (reloadAfterClear)
+    window.location.reload()
 }
 
 export const arrayNullCheck = (arrayObj) => {

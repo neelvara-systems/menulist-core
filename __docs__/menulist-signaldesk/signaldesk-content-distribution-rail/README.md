@@ -42,3 +42,9 @@ source asset -> canonical message -> channel drafts -> owner approval -> queued 
 | [Compliance](./signaldesk-content-distribution-rail_compliance.md) | Claims, proof, approval, disclosure, and publishing boundaries. |
 | [Mobile Support](./signaldesk-content-distribution-rail_mobile-support.md) | Mobile admission decision. |
 | [Test Cases](./signaldesk-content-distribution-rail_test-cases.md) | Verification coverage. |
+
+## First Proof Distribution Run
+
+The first live customer-proof run is prepared in [`menulist-marketing-distribution_first-proof-distribution-run-operating-pack.md`](../../menulist-marketing-distribution/menulist-marketing-distribution_first-proof-distribution-run-operating-pack.md).
+
+It maps one permissioned two-surface activation to the existing source, asset, draft, approval, calendar, performance, audit, and kill-switch contracts. It does not add a collection, API, channel adapter, auto-publisher, external send, or paid workflow.

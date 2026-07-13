@@ -4,11 +4,15 @@
 **Created:** July 7, 2026
 **Primary output:** Shot plan, delivery schedule, and final video gates
 
+**Mandatory production standard:** [MenuList Founder-Approved Video Production Standard](./videos_founder-approved-production-standard.md).
+
 ## Purpose
 
 This document defines how MenuList video assets should be produced after scripts are ready.
 
 The goal is to make video production calm, product-led, and proof-safe.
+
+Every video version follows the conversion-first workflow in [videos_hyperframes-operating-guide.md](./videos_hyperframes-operating-guide.md). Complete [videos_conversion-brief-template.md](./videos_conversion-brief-template.md) and add the asset to [videos_campaign-measurement-ledger.md](./videos_campaign-measurement-ledger.md) before animation begins.
 
 ## Visual Direction
 
@@ -59,6 +63,8 @@ Create:
 - shot list;
 - demo account with fictional menu/service-list data;
 - final claim-boundary checklist.
+- one conversion brief per master, cutdown, native aspect version, or hook variant;
+- one campaign-ledger row per planned distributable version.
 
 Done when:
 
@@ -66,6 +72,7 @@ Done when:
 - founder approves script direction;
 - claim-boundary scan is complete;
 - required visuals are listed.
+- funnel stage, proof moment, CTA, destination, primary metric, asset id, and paid eligibility are locked.
 
 ## Week 2 - Recording
 
@@ -108,6 +115,8 @@ Editing requirements:
 - no fake performance numbers;
 - end card uses approved CTA;
 - all demo footage remains sample-safe.
+- final edit still matches its `conversion.md` belief change, proof moment, and linked action;
+- hook variants change only the declared test variable.
 
 Audio requirements:
 
@@ -129,6 +138,14 @@ Publish:
 - reels daily for 7-10 days;
 - paid ads with 6s, 15s, and 30s variants after tracking gates pass;
 - demo video for sales conversations.
+
+Launch testing requirements:
+
+- use a unique `utm_content` for every materially different version;
+- record publish URL/date and platform retention in the campaign ledger;
+- establish an organic baseline before interpreting paid efficiency;
+- keep paid distribution blocked until the primary and guard product milestones are measurable;
+- decide `keep`, `iterate one variable`, `scale`, or `retire` after each review window.
 
 ## Shot List
 
@@ -167,6 +184,8 @@ menulist-ad-cut-30s-v1.mp4
 
 Do not record or publish final assets until these are true:
 
+- Gate 0 conversion brief exists and the asset is entered in the campaign ledger;
+
 - final demo tenant, demo screenshots, or approved mockups exist;
 - no real customer data appears without permission;
 - all demo-like assets are labeled when needed;
@@ -178,6 +197,8 @@ Do not record or publish final assets until these are true:
 - mobile captions are readable at 320px and 390px widths;
 - no video script claims ranking, revenue lift, sales lift, official platform partnerships, or automatic external posting.
 - no draft uses macOS `say` audio for production or public review.
+- distribution package has a unique asset id, `utm_content`, publish owner, and paid-eligibility status;
+- post-publish review date and decision owner are assigned.
 
 ## Current Blockers
 
@@ -191,6 +212,7 @@ Production is still blocked by:
 - final claim-boundary review;
 - upload destination decision if a Product Hunt video is used;
 - paid-tracking and campaign gates before ad spend.
+- consent-aware create-menu milestone attribution from source selection through first approved publish before paid scale.
 
 ## Final Review Checklist
 
@@ -205,3 +227,6 @@ Before publishing any video:
 - CTA is current;
 - asset is filed under the video launch tracker;
 - marketing/distribution action register is updated.
+- `conversion.md` matches the final edit and CTA destination;
+- campaign ledger contains the final asset id, `utm_content`, status, and paid-eligibility decision;
+- baseline/result fields remain `Not available` rather than invented when no real measurement exists.

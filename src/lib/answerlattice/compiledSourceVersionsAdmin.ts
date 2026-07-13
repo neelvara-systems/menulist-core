@@ -4,6 +4,7 @@ import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebase
 import { FieldValue } from 'firebase-admin/firestore';
 import type { AnswerlatticeCompiledSourceVersions, AnswerlatticeContextSourceKey } from '@type/answerlattice';
 import {
+    areAnswerlatticeCompiledSourceVersionsValid,
     getAnswerlatticeBundleManifestDocId,
     getAnswerlatticeSourceVersionsDocId,
     normalizeCompiledSourceVersions,
@@ -23,12 +24,10 @@ const getDb = () => {
 };
 
 const assertScope = (tId: number, sId: number) => {
-    const tenantId = Number(tId);
-    const storeId = Number(sId);
-    if (!Number.isFinite(tenantId) || tenantId <= 0 || !Number.isFinite(storeId) || storeId <= 0) {
+    if (!Number.isSafeInteger(tId) || tId <= 0 || !Number.isSafeInteger(sId) || sId <= 0) {
         throw new Error('Cannot update Answerlattice source versions without valid tenant and store scope.');
     }
-    return { tenantId, storeId };
+    return { tenantId: tId, storeId: sId };
 };
 
 const sanitizeMetadata = (metadata?: SourceVersionBumpMetadata) => ({
@@ -46,7 +45,14 @@ export const getAnswerlatticeCompiledSourceVersionsAdmin = async (
         .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
         .doc(getAnswerlatticeSourceVersionsDocId(tenantId, storeId))
         .get();
-    return normalizeCompiledSourceVersions(snap.exists ? snap.data() as any : null);
+    const data = snap.exists ? snap.data() : null;
+    if (data && (
+        data.pId !== PRODUCT_IDS.ANSWERLATTICE
+        || data.tId !== tenantId
+        || data.sId !== storeId
+        || !areAnswerlatticeCompiledSourceVersionsValid(data)
+    )) throw new Error('Answerlattice compiled source versions are invalid for this workspace.');
+    return normalizeCompiledSourceVersions(data);
 };
 
 export const initializeAnswerlatticeCompiledContextControlPlaneAdmin = async (

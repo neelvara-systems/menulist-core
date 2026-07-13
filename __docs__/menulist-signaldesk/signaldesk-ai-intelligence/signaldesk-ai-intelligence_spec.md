@@ -1,7 +1,8 @@
 # SignalDesk AI Intelligence - Specification
 
-**Status:** Initial planning spec
+**Status:** Implemented runtime specification
 **Created:** June 23, 2026
+**Last Updated:** July 11, 2026
 
 ## Executive Summary
 
@@ -24,6 +25,8 @@ The corrected review says AI should reduce team workload across scoring, detecti
 | Prevent invented facts | AI cites evidence refs and rejected facts. |
 | Reduce unsafe outreach | Risk and blocked-action outputs are explicit. |
 | Control cost | AI only runs when evidence hash changes or cache expires. |
+| Multiply founder capacity | One bounded run may prepare and critique multiple tasks across five targets. |
+| Spend intelligence where useful | Cheap models handle routine work; approved stronger same-provider routes handle risky exceptions. |
 
 ## AI Scores
 
@@ -48,6 +51,17 @@ The corrected review says AI should reduce team workload across scoring, detecti
 | SDAI-R006 | AI cannot infer consent or outreach eligibility. | P0 |
 | SDAI-R007 | AI runs must be cached by evidence hash. | P0 |
 | SDAI-R008 | AI workers need eval thresholds before automation. | P0 |
+| SDAI-R009 | AI Volume Mode must be founder-triggered, feature-flagged, desktop-only, and limited to five targets and three tasks per request. | P0 |
+| SDAI-R010 | Every volume child must run a generation pass and an independent critic pass. | P0 |
+| SDAI-R011 | Escalation may run only when the critic holds/revises, confidence is low, or rejected facts exist, and only through an active same-provider model route. | P0 |
+| SDAI-R012 | A founder-supplied maximum estimated cost must be validated before the first provider call and provider/budget controls must still pass for every child call. | P0 |
+| SDAI-R013 | The parent volume run must record targets, tasks, child run IDs, completed/failed counts, model-call count, estimated cost, status, audit, and timeline without raw provider errors. | P0 |
+| SDAI-R014 | Volume Mode may prepare recommendations but cannot create send approval, send, publish, spend outside its AI budget, change an opportunity, infer consent, or write MenuList truth. | P0 |
+| SDAI-R015 | Rules scores, single-pass provider assists, volume batches, and reviewable provider outputs must remain distinguishable in the AI workspace. | P0 |
+| SDAI-R016 | Every paid volume request must use a founder-scoped idempotency key so transport retries return the original parent batch without duplicate model calls. | P0 |
+| SDAI-R017 | The batch must use batch rate limiting, preflight its aggregate daily/monthly provider budget, and prevent overlapping paid volume runs with an expiring recovery lock. | P0 |
+| SDAI-R018 | A retry of an expired running parent must reconstruct bounded child evidence and transactionally finalize the parent as completed, partial, or blocked without repeating provider calls or releasing another batch's lock. | P0 |
+| SDAI-R019 | Desktop must persist the bounded retry payload locally and reuse its idempotency key until terminal state, while allowing the founder to clear a retry when no parent was created. | P0 |
 
 ## Out Of Scope
 
@@ -55,8 +69,10 @@ The corrected review says AI should reduce team workload across scoring, detecti
 - legal eligibility decision;
 - source-rights decision;
 - WhatsApp opt-in decision;
-- campaign optimizer;
-- autonomous next-best action.
+- campaign optimizer that moves spend or channel authority;
+- autonomous external next-best action;
+- background or scheduled volume agents;
+- OpenAI or Anthropic execution without an approved product-local adapter and credentials.
 
 ## Acceptance Criteria
 
@@ -65,3 +81,7 @@ The corrected review says AI should reduce team workload across scoring, detecti
 - AI cannot draft unsupported claims.
 - AI cannot approve a send.
 - Operator can see why a score was produced.
+- Founder can run one bounded volume batch and see complete, partial, or blocked status.
+- Critic output, escalation state, call count, and estimated cost are attached to each reviewable provider run.
+- Partial failure records stable failure codes and never loses successful child results.
+- Mobile and non-founder attempts are blocked before provider work.

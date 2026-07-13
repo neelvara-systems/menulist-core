@@ -16,7 +16,7 @@ const frames = [
   { id: 'approved-source', time: 0.7, filename: '01-approved-source.png' },
   { id: 'public-surfaces', time: 1.8, filename: '02-public-surfaces.png' },
   { id: 'stable-loop', time: 3.6, filename: '03-stable-loop.png' },
-  { id: 'final-proof', time: 4.9, filename: '04-final-proof.png' },
+  { id: 'final-proof', time: 5.4, filename: '04-final-proof.png' },
 ];
 
 if (!fs.existsSync(source)) {

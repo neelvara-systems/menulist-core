@@ -7,6 +7,7 @@ export const dynamic = 'force-dynamic';
  */
 
 import { DB_COLLECTIONS } from '@constant/database';
+import { PRODUCT_IDS } from '@constant/product';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { FEATURE_FLAGS } from '@config/features';
 import {
@@ -16,6 +17,7 @@ import {
 import { ANSWERLATTICE_PUBLIC_API_SCHEMA_VERSION, authenticateAnswerlatticePublicApi, toIsoTimestamp } from '@lib/answerlattice/publicApi';
 import { apiError, generateETag } from '@lib/publicApi/auth';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import { parseAnswerlatticeRetrievalEntity } from '@lib/answerlattice/retrievalContracts';
 import { ANSWERLATTICE_ENTITY_STATUS, ANSWERLATTICE_ENTITY_TYPES } from '@type/answerlattice';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -24,7 +26,19 @@ const EntityQuerySchema = z.object({
     type: z.enum(Object.values(ANSWERLATTICE_ENTITY_TYPES) as [string, ...string[]]).optional(),
     status: z.enum(Object.values(ANSWERLATTICE_ENTITY_STATUS) as [string, ...string[]]).optional(),
     limit: z.coerce.number().int().min(1).max(200).optional().default(100),
-});
+}).strict();
+
+const CompiledEntitySchema = z.object({
+    id: z.string().trim().min(1).max(180),
+    type: z.enum(Object.values(ANSWERLATTICE_ENTITY_TYPES) as [string, ...string[]]),
+    name: z.string().trim().min(1).max(240),
+    slug: z.string().trim().min(1).max(240),
+    description: z.string().max(8_000).optional().default(''),
+    status: z.enum(Object.values(ANSWERLATTICE_ENTITY_STATUS) as [string, ...string[]]),
+    aliases: z.array(z.string().trim().min(1).max(180)).max(20).optional().default([]),
+    currentVersion: z.number().int().positive().max(999_999_999).nullable().optional().default(null),
+    modifiedOn: z.string().datetime().nullable().optional().default(null),
+}).strip();
 
 type BundledEntitiesParams = {
     tId: number;
@@ -77,6 +91,10 @@ async function loadBundledEntities(params: BundledEntitiesParams) {
 
     const visibleStatuses = params.status ? new Set([params.status]) : new Set(['active', 'beta']);
     return bundle.entities
+        .flatMap((entity) => {
+            const parsed = CompiledEntitySchema.safeParse(entity);
+            return parsed.success ? [parsed.data] : [];
+        })
         .filter((entity) => (!params.type || entity.type === params.type) && visibleStatuses.has(entity.status))
         .slice(0, params.limit)
         .map((entity) => ({
@@ -114,6 +132,7 @@ export async function GET(request: NextRequest) {
         const resolvedEntities = bundledEntities || (await (async () => {
             const snapshot = await getAnswerlatticeAdminDb()
                 .collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITIES)
+                .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
                 .where('tId', '==', auth.context.tId)
                 .where('sId', '==', auth.context.sId)
                 .limit(Math.min(limit * 2, 200))
@@ -121,7 +140,16 @@ export async function GET(request: NextRequest) {
 
             const visibleStatuses = status ? new Set([status]) : new Set(['active', 'beta']);
             return snapshot.docs
-                .map((doc) => ({ ...doc.data(), id: doc.id } as any))
+                .flatMap((doc) => {
+                    try {
+                        return [parseAnswerlatticeRetrievalEntity(
+                            { ...doc.data(), id: doc.id },
+                            { tId: auth.context.tId, sId: auth.context.sId },
+                        )];
+                    } catch {
+                        return [];
+                    }
+                })
                 .filter((entity) => (!type || entity.type === type) && visibleStatuses.has(entity.status))
                 .slice(0, limit)
                 .map((entity) => ({

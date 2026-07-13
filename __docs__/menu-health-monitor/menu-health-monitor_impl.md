@@ -49,6 +49,10 @@ Desktop B2C publish success remains non-blocking with respect to menu-health ver
 
 Mobile Design publish uses the same routed project/menu URL contract. `src/components/mobile/screens/MobileDesignEditorScreen.tsx` prepares the `verifyMenuPublish` handoff after the acknowledged `publishProject()` result, preserves default-project URL semantics, supports custom domains, logs only `mobile_design_publish_verification_setup_failed` for setup failures, and leaves callable/provider failures to the shared wrapper so the owner-facing publish success remains non-blocking.
 
+The browser handoff remains intentionally non-blocking, but the invoked Cloud Function is not allowed to abandon its own server side effects. After the health result is persisted, `verifyMenuPublish` awaits the best-effort lifecycle delivery branch before returning its callable response; delivery exceptions remain bounded and do not convert a successful menu-health check into an owner-facing publish failure.
+
+Callable scope is not accepted from the browser or signed claim alone. Tenant/store IDs must be canonical positive numeric document IDs, the signed account claim must include that tenant/store, and the claim's canonical `uId` must resolve to a current active MenuList user who still has that tenant/store membership (or current platform authority). Current `tenants/{tenantId}` plus `stores/{storeId}` documents must also be active, undeleted, and mutually consistent before DNS/network verification begins. The requested public URL hostname must equal the canonical store custom domain or configured `{subdomain}.{MenuList base domain}`; an owner cannot mark store health from an unrelated public site. `updateStoreHealth()` repeats the user/tenant/store/hostname checks inside the same Firestore transaction as the Admin write. This closes stale-claim, removed-membership, target-substitution, and check/write races; a rejected scope performs no network call, store-health write, alert, or lifecycle delivery.
+
 ## File Structure
 
 ```

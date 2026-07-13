@@ -35,7 +35,7 @@ interface UsePredictiveTriggersReturn {
     loading: boolean;
     error: string | null;
     create: (data: Omit<AnswerlatticePredictiveTrigger, 'id'>) => Promise<AnswerlatticePredictiveTrigger | null>;
-    update: (data: Partial<AnswerlatticePredictiveTrigger> & { id: string }) => Promise<void>;
+    update: (data: Partial<AnswerlatticePredictiveTrigger> & { id: string }) => Promise<boolean>;
     activate: (triggerId: string) => Promise<void>;
     disable: (triggerId: string) => Promise<void>;
     remove: (triggerId: string) => Promise<void>;
@@ -108,8 +108,10 @@ export function usePredictiveTriggers(tId: number, sId: number): UsePredictiveTr
             });
             message.success('Trigger updated');
             await refresh();
+            return true;
         } catch {
             message.error(ANSWERLATTICE_PREDICTIVE_TRIGGER_UPDATE_FAILED);
+            return false;
         }
     }, [tId, sId, refresh]);
 

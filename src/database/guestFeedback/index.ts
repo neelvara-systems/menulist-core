@@ -11,29 +11,30 @@
  */
 
 import { DB_COLLECTIONS } from '@constant/database';
-import { FEATURE_FLAGS } from '@config/features';
 import { apiCallComposer } from '@lib/apiHelper/apiCallComposer';
 import getActiveSession from '@lib/auth/getActiveSession';
+import { normalizeGuestFeedbackNumericDocumentId, normalizeGuestFeedbackProjectId } from '@lib/feedback/guestFeedbackProjectIdBoundary';
 import { firebaseClient } from '@lib/firebase/firebaseClient';
+import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
 import { GuestFeedback, GuestFeedbackFilter } from '@type/guestFeedback';
 import {
-    addDoc,
     collection,
     doc,
+    getCountFromServer,
     getDoc,
     getDocs,
     limit,
     orderBy,
     query,
+    QueryConstraint,
+    runTransaction,
     startAfter,
     Timestamp,
-    updateDoc,
     where
 } from 'firebase/firestore';
-import { getBoundedGuestFeedbackStringContext, logGuestFeedbackFailure } from './guestFeedbackDiagnostics';
 
 const COLLECTION = DB_COLLECTIONS.GUEST_FEEDBACK;
-const DAY_MS = 24 * 60 * 60 * 1000;
+const FEEDBACK_PAGE_SIZE_MAX = 100;
 
 export type GuestFeedbackListResult = {
     items: GuestFeedback[];
@@ -41,12 +42,93 @@ export type GuestFeedbackListResult = {
     hasMore: boolean;
 };
 
-const isGuestFeedbackRecord = (result: unknown, expectedFeedbackId?: string): result is GuestFeedback => (
-    Boolean(result && typeof result === 'object')
-    && !Array.isArray(result)
-    && typeof (result as GuestFeedback).id === 'string'
-    && (!expectedFeedbackId || (result as GuestFeedback).id === expectedFeedbackId)
+const normalizeOptionalString = (value: unknown, maxLength: number): string | null | undefined => {
+    if (value === undefined || value === null || value === '') return undefined;
+    if (typeof value !== 'string') return null;
+    const normalized = value.trim();
+    return normalized.length <= maxLength ? normalized : null;
+};
+
+export const normalizeGuestFeedbackRecord = (value: unknown, id: string): GuestFeedback | null => {
+    if (!value || typeof value !== 'object' || Array.isArray(value) || !isValidFirestoreDocumentId(id)) return null;
+    const record = value as Record<string, unknown>;
+    const tenantScope = normalizeGuestFeedbackNumericDocumentId(record.tId);
+    const storeScope = normalizeGuestFeedbackNumericDocumentId(record.sId);
+    const projectId = normalizeGuestFeedbackProjectId(record.projectId);
+    const message = normalizeOptionalString(record.message, 300);
+    const customerName = normalizeOptionalString(record.customerName, 60);
+    const customerPhone = normalizeOptionalString(record.customerPhone, 20);
+    const customerEmail = normalizeOptionalString(record.customerEmail, 120);
+    const ownerNote = normalizeOptionalString(record.ownerNote, 300);
+    const modifiedBy = normalizeOptionalString(record.modifiedBy, 128);
+    const rating = record.rating;
+    const status = record.status;
+    const expectedNeedsAttention = typeof rating === 'number' && rating <= 3 && status === 'new';
+    if (
+        !tenantScope
+        || !storeScope
+        || !projectId
+        || !Number.isInteger(rating)
+        || Number(rating) < 1
+        || Number(rating) > 5
+        || (status !== 'new' && status !== 'resolved')
+        || record.needsAttention !== expectedNeedsAttention
+        || record.createdBy !== 'guest'
+        || !(record.createdOn instanceof Timestamp)
+        || !(record.expiresOn instanceof Timestamp)
+        || (record.modifiedOn !== undefined && !(record.modifiedOn instanceof Timestamp))
+        || message === null
+        || customerName === null
+        || customerPhone === null
+        || customerEmail === null
+        || ownerNote === null
+        || modifiedBy === null
+        || (customerEmail !== undefined && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail))
+        || (record.source !== 'menu_footer' && record.source !== 'feedback_qr' && record.source !== 'direct_link')
+    ) {
+        return null;
+    }
+
+    return {
+        id,
+        tId: tenantScope.numericId,
+        sId: storeScope.numericId,
+        projectId,
+        rating: Number(rating) as GuestFeedback['rating'],
+        source: record.source,
+        status,
+        needsAttention: expectedNeedsAttention,
+        createdBy: 'guest',
+        createdOn: record.createdOn,
+        expiresOn: record.expiresOn,
+        ...(message !== undefined ? { message } : {}),
+        ...(customerName !== undefined ? { customerName } : {}),
+        ...(customerPhone !== undefined ? { customerPhone } : {}),
+        ...(customerEmail !== undefined ? { customerEmail } : {}),
+        ...(ownerNote !== undefined ? { ownerNote } : {}),
+        ...(record.modifiedOn instanceof Timestamp ? { modifiedOn: record.modifiedOn } : {}),
+        ...(modifiedBy !== undefined ? { modifiedBy } : {}),
+    };
+};
+
+const isGuestFeedbackRecord = (result: unknown, expectedFeedbackId?: string): result is GuestFeedback => {
+    if (!result || typeof result !== 'object' || Array.isArray(result)) return false;
+    const id = expectedFeedbackId || (result as { id?: unknown }).id;
+    return typeof id === 'string' && normalizeGuestFeedbackRecord(result, id) !== null;
+};
+
+const normalizeFeedbackFilter = (filter: unknown): GuestFeedbackFilter | null => (
+    filter === 'all' || filter === 'needs_attention' || filter === 'resolved' ? filter : null
 );
+
+const resolveSessionScope = (session: unknown) => {
+    const record = session && typeof session === 'object' ? session as Record<string, unknown> : {};
+    const tenant = normalizeGuestFeedbackNumericDocumentId(record.tId);
+    const store = normalizeGuestFeedbackNumericDocumentId(record.sId);
+    const userId = normalizeOptionalString(record.uId, 128);
+    if (!tenant || !store || !userId) throw new Error('Guest feedback session scope is invalid');
+    return { tenantId: tenant.numericId, storeId: store.numericId, userId };
+};
 
 export const isGuestFeedbackListResult = (result: unknown): result is GuestFeedbackListResult => (
     Boolean(result && typeof result === 'object')
@@ -91,55 +173,6 @@ const getDocRef = (feedbackId: string) => {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
-// PUBLIC OPERATIONS (No Auth Required)
-// Used by POST /api/public/feedback/submit
-// ═══════════════════════════════════════════════════════════════════════════
-
-/**
- * Submit new guest feedback (PUBLIC - no auth)
- *
- * NOTE: This function does NOT use requestBodyComposer because
- * there is no authenticated session. All fields must be explicitly provided.
- *
- * @param data - Feedback data from validated request
- * @returns Created feedback with ID
- */
-export const submitGuestFeedback = async (
-    data: Omit<GuestFeedback, 'id' | 'createdOn' | 'createdBy' | 'expiresOn' | 'status' | 'needsAttention'>
-): Promise<GuestFeedback> => {
-    const now = Timestamp.now();
-
-    // Calculate expiry date (90 days from now)
-    const expiresOn = Timestamp.fromMillis(
-        now.toMillis() + (90 * 24 * 60 * 60 * 1000)
-    );
-
-    // Compute needsAttention: rating <= 3 AND status == 'new'
-    const needsAttention = data.rating <= 3;
-
-    // Firestore rejects undefined field values, so strip unset optional fields.
-    const sanitizedData = Object.fromEntries(
-        Object.entries(data).filter(([, value]) => value !== undefined)
-    ) as Omit<GuestFeedback, 'id' | 'createdOn' | 'createdBy' | 'expiresOn' | 'status' | 'needsAttention'>;
-
-    const feedbackData: Omit<GuestFeedback, 'id'> = {
-        ...sanitizedData,
-        status: 'new',
-        needsAttention,
-        createdOn: now,
-        createdBy: 'guest',
-        expiresOn,
-    };
-
-    const docRef = await addDoc(getCollectionRef(), feedbackData);
-
-    return {
-        id: docRef.id,
-        ...feedbackData,
-    };
-};
-
-// ═══════════════════════════════════════════════════════════════════════════
 // AUTHENTICATED OPERATIONS (Owner/Manager)
 // Used by dashboard feedback inbox - uses apiCallComposer pattern
 // ═══════════════════════════════════════════════════════════════════════════
@@ -160,21 +193,22 @@ export const getFeedbackList = async (
     return await apiCallComposer(
         async () => {
             const session = await getActiveSession();
-
-            // Build query constraints using session
-            const constraints: any[] = [
-                where('tId', '==', session.tId),
-            ];
-
-            // Store isolation (if sId provided, only that store; if not, HQ sees all)
-            if (session.sId) {
-                constraints.push(where('sId', '==', session.sId));
+            const scope = resolveSessionScope(session);
+            const normalizedFilter = normalizeFeedbackFilter(filter);
+            if (!normalizedFilter) throw new Error('Invalid guest feedback filter');
+            if (!Number.isSafeInteger(pageSize) || pageSize < 1 || pageSize > FEEDBACK_PAGE_SIZE_MAX) {
+                throw new Error('Invalid guest feedback page size');
             }
 
+            const constraints: QueryConstraint[] = [
+                where('tId', '==', scope.tenantId),
+                where('sId', '==', scope.storeId),
+            ];
+
             // Filter by status
-            if (filter === 'needs_attention') {
+            if (normalizedFilter === 'needs_attention') {
                 constraints.push(where('needsAttention', '==', true));
-            } else if (filter === 'resolved') {
+            } else if (normalizedFilter === 'resolved') {
                 constraints.push(where('status', '==', 'resolved'));
             }
 
@@ -183,28 +217,29 @@ export const getFeedbackList = async (
 
             // Pagination - if cursor provided, fetch that doc first for startAfter
             if (cursorId) {
+                if (!isValidFirestoreDocumentId(cursorId)) throw new Error('Invalid guest feedback cursor');
                 const cursorDoc = await getDoc(getDocRef(cursorId));
-                if (cursorDoc.exists()) {
-                    constraints.push(startAfter(cursorDoc));
+                const cursor = cursorDoc.exists() ? normalizeGuestFeedbackRecord(cursorDoc.data(), cursorDoc.id) : null;
+                if (!cursor || cursor.tId !== scope.tenantId || cursor.sId !== scope.storeId) {
+                    throw new Error('Guest feedback cursor is outside the active store');
                 }
+                constraints.push(startAfter(cursorDoc));
             }
             constraints.push(limit(pageSize + 1)); // +1 to check if there's more
 
             const q = query(getCollectionRef(), ...constraints);
             const snapshot = await getDocs(q);
 
-            const items: GuestFeedback[] = [];
-            let lastDocId: string | null = null;
-            let hasMore = false;
-
-            snapshot.docs.forEach((docSnap, index) => {
-                if (index < pageSize) {
-                    items.push({ id: docSnap.id, ...docSnap.data() } as GuestFeedback);
-                    lastDocId = docSnap.id;
-                } else {
-                    hasMore = true;
+            const normalizedPage = snapshot.docs.map((docSnap) => {
+                const feedback = normalizeGuestFeedbackRecord(docSnap.data(), docSnap.id);
+                if (!feedback) {
+                    throw new Error('Guest feedback contains an invalid persisted record');
                 }
+                return feedback;
             });
+            const items = normalizedPage.slice(0, pageSize);
+            const lastDocId = items.at(-1)?.id ?? null;
+            const hasMore = normalizedPage.length > pageSize;
 
             return { items, lastDocId, hasMore };
         },
@@ -223,25 +258,28 @@ export const getFeedbackById = async (feedbackId: string): Promise<GuestFeedback
     return await apiCallComposer(
         async () => {
             const session = await getActiveSession();
+            const scope = resolveSessionScope(session);
+            if (!isValidFirestoreDocumentId(feedbackId)) return null;
             const docSnap = await getDoc(getDocRef(feedbackId));
 
             if (!docSnap.exists()) {
                 return null;
             }
 
-            const data = docSnap.data() as GuestFeedback;
+            const data = normalizeGuestFeedbackRecord(docSnap.data(), docSnap.id);
+            if (!data) return null;
 
             // Tenant/store isolation check. HQ sessions may not carry a single
             // sId; store-scoped manager sessions must stay inside their store.
-            if (String(data.tId) !== String(session.tId)) {
+            if (data.tId !== scope.tenantId) {
                 return null;
             }
 
-            if (session.sId && String(data.sId) !== String(session.sId)) {
+            if (data.sId !== scope.storeId) {
                 return null;
             }
 
-            return { id: docSnap.id, ...data };
+            return data;
         },
         feedbackId,
         'getFeedbackById'
@@ -264,33 +302,25 @@ export const updateFeedbackStatus = async (
     return await apiCallComposer(
         async () => {
             const session = await getActiveSession();
-
-            // First verify the feedback belongs to this tenant
-            const existing = await getFeedbackById(feedbackId);
-            if (!isGuestFeedbackRecord(existing, feedbackId)) {
-                return null;
-            }
-
-            // Recompute needsAttention based on new status
-            const needsAttention = existing.rating <= 3 && status === 'new';
-
-            const updateData: Partial<GuestFeedback> = {
-                status,
-                needsAttention,
-                modifiedOn: Timestamp.now(),
-                modifiedBy: session.uId,
-            };
-
-            if (ownerNote !== undefined) {
-                updateData.ownerNote = ownerNote;
-            }
-
-            await updateDoc(getDocRef(feedbackId), updateData);
-
-            return {
-                ...existing,
-                ...updateData,
-            };
+            const scope = resolveSessionScope(session);
+            if (!isValidFirestoreDocumentId(feedbackId) || (status !== 'new' && status !== 'resolved')) return null;
+            const normalizedOwnerNote = normalizeOptionalString(ownerNote, 300);
+            if (normalizedOwnerNote === null) throw new Error('Guest feedback owner note is invalid');
+            const feedbackRef = getDocRef(feedbackId);
+            return runTransaction(firebaseClient, async (transaction) => {
+                const snapshot = await transaction.get(feedbackRef);
+                const existing = snapshot.exists() ? normalizeGuestFeedbackRecord(snapshot.data(), snapshot.id) : null;
+                if (!existing || existing.tId !== scope.tenantId || existing.sId !== scope.storeId) return null;
+                const updateData: Partial<GuestFeedback> = {
+                    status,
+                    needsAttention: existing.rating <= 3 && status === 'new',
+                    modifiedOn: Timestamp.now(),
+                    modifiedBy: scope.userId,
+                    ...(ownerNote !== undefined ? { ownerNote: normalizedOwnerNote || '' } : {}),
+                };
+                transaction.update(feedbackRef, updateData);
+                return { ...existing, ...updateData };
+            });
         },
         { feedbackId, status, ownerNote },
         'updateFeedbackStatus'
@@ -327,90 +357,25 @@ export const getFeedbackCount = async (
     return await apiCallComposer(
         async () => {
             const session = await getActiveSession();
-
-            const constraints: any[] = [
-                where('tId', '==', session.tId),
+            const scope = resolveSessionScope(session);
+            const normalizedFilter = normalizeFeedbackFilter(filter);
+            if (!normalizedFilter) throw new Error('Invalid guest feedback filter');
+            const constraints: QueryConstraint[] = [
+                where('tId', '==', scope.tenantId),
+                where('sId', '==', scope.storeId),
             ];
 
-            if (session.sId) {
-                constraints.push(where('sId', '==', session.sId));
-            }
-
-            if (filter === 'needs_attention') {
+            if (normalizedFilter === 'needs_attention') {
                 constraints.push(where('needsAttention', '==', true));
-            } else if (filter === 'resolved') {
+            } else if (normalizedFilter === 'resolved') {
                 constraints.push(where('status', '==', 'resolved'));
             }
 
             const q = query(getCollectionRef(), ...constraints);
-            const snapshot = await getDocs(q);
-
-            return snapshot.size;
+            const snapshot = await getCountFromServer(q);
+            return snapshot.data().count;
         },
         filter,
         'getFeedbackCount'
     );
-};
-
-// ═══════════════════════════════════════════════════════════════════════════
-// MOL EVENT LOGGING (Menu Observation Layer)
-// Anonymized event tracking for internal analytics
-// ═══════════════════════════════════════════════════════════════════════════
-
-export type FeedbackEventType = 'FEEDBACK_SUBMITTED' | 'FEEDBACK_RESOLVED';
-
-interface FeedbackMOLEvent {
-    eventType: FeedbackEventType;
-    tId: number;
-    sId: number;
-    projectId: string;
-    rating: number;
-    timestamp: Timestamp;
-    expiresAt: Timestamp;
-    // No PII stored - only aggregatable metrics
-}
-
-/**
- * Log anonymized feedback event to MOL
- * Called when feedback is submitted or resolved
- *
- * NOTE: This logs to insights collection for now (lightweight approach)
- * Future: Could move to dedicated MOL collection if volume requires
- */
-export const logFeedbackMOLEvent = async (
-    eventType: FeedbackEventType,
-    tId: number,
-    sId: number,
-    projectId: string,
-    rating: number
-): Promise<void> => {
-    try {
-        const now = Timestamp.now();
-        const retentionDays = Number(FEATURE_FLAGS.FEEDBACK_EVENT_RETENTION_DAYS || 180);
-        const event: FeedbackMOLEvent = {
-            eventType,
-            tId,
-            sId,
-            projectId,
-            rating,
-            timestamp: now,
-            expiresAt: Timestamp.fromMillis(now.toMillis() + retentionDays * DAY_MS),
-        };
-
-        // Log to the internal feedbackEvents collection with event type prefix.
-        const eventsRef = collection(firebaseClient, DB_COLLECTIONS.FEEDBACK_EVENTS);
-        await addDoc(eventsRef, {
-            type: 'feedback_event',
-            ...event,
-        });
-    } catch (error) {
-        // Non-blocking - log error but don't fail the main operation
-        logGuestFeedbackFailure('guest_feedback_mol_event_log_failed', error, {
-            eventType,
-            rating,
-            ...getBoundedGuestFeedbackStringContext('tenantId', tId),
-            ...getBoundedGuestFeedbackStringContext('storeId', sId),
-            ...getBoundedGuestFeedbackStringContext('projectId', projectId),
-        });
-    }
 };

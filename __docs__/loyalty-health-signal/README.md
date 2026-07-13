@@ -4,7 +4,7 @@
 
 **Created:** February 19, 2026  
 **Pillar:** 5 of 6 — Customer-Facing Infrastructure  
-**Status:** ✅ IMPLEMENTED (flags OFF — awaiting real traffic)  
+**Status:** Dormant implementation skeleton; flag OFF and no scheduler/UI consumer wired
 **Parent:** [`__docs__/customer-facing-infrastructure/`](../customer-facing-infrastructure/README.md)
 
 ---
@@ -31,7 +31,11 @@ A single calm signal that tells business owners whether customers are coming bac
 
 77.4% of restaurant guests never return (Bloom Intelligence 2025). Owners don't know their return rate. They rely on recognizing faces and gut feeling. MenuList can detect returning visit patterns from aggregate analytics and give a simple loyalty health signal.
 
-## Architecture Overview
+## Current Runtime Truth — July 13, 2026
+
+The shared computation helper exists but is not exported or scheduled, the desktop card component is unmounted, no mobile consumer exists, and `ENABLE_LOYALTY_HEALTH_SIGNAL` is intentionally `false`. The flow performs no current Firestore work. The diagram below is the target activation design.
+
+## Target Architecture (Not Active Runtime)
 
 ```
 Aggregate Visitor Analytics (existing infrastructure)
@@ -53,7 +57,7 @@ Owner Dashboard (single word only)
 ## Feature Flag
 
 ```typescript
-ENABLE_LOYALTY_HEALTH_SIGNAL: false; // To be added to features.ts
+ENABLE_LOYALTY_HEALTH_SIGNAL: false; // Present and intentionally dormant
 ```
 
 ## Relationship to Trust Signal (Pillar 4)
@@ -70,4 +74,4 @@ Same computation infrastructure, different input signals. Computed in same Cloud
 
 ---
 
-**Last Updated:** February 19, 2026
+**Last Updated:** July 13, 2026

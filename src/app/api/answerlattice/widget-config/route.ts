@@ -13,7 +13,7 @@ import { DB_COLLECTIONS } from '@constant/database';
 import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
 import { markAnswerlatticeCompiledContextSourceChangedAdmin } from '@lib/answerlattice/compiledSourceVersionsAdmin';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
-import { normalizeAnswerlatticeScopeDocumentId, resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
+import { isAnswerlatticeStoreInScope, resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { getWidgetRuntimeStatusFromStoreData } from '@lib/answerlattice/widgetRuntimeStatus';
 import {
     ANSWERLATTICE_WIDGET_KEY_LIMIT,
@@ -100,8 +100,7 @@ export const GET = withAuth(async (_request: NextRequest, session) => {
         }
 
         const storeData = storeSnap.data() || {};
-        const storeTenantId = normalizeAnswerlatticeScopeDocumentId(storeData.tenantId ?? storeData.tId);
-        if (storeTenantId !== scope.tenantId) {
+        if (!isAnswerlatticeStoreInScope(storeData, scope, storeSnap.id)) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
@@ -176,8 +175,7 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
         }
 
         const storeData = storeSnap.data() || {};
-        const storeTenantId = normalizeAnswerlatticeScopeDocumentId(storeData.tenantId ?? storeData.tId);
-        if (storeTenantId !== scope.tenantId) {
+        if (!isAnswerlatticeStoreInScope(storeData, scope, storeSnap.id)) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 

@@ -117,6 +117,12 @@ export function buildMenuExtractionRoutingFields(destination: MenuExtractionJobD
   };
 }
 
+export function isMessagingOnboardingMenuExtractionProjectId(
+  value: unknown,
+): value is string {
+  return typeof value === "string" && value.startsWith("msg-onboarding-");
+}
+
 export function normalizeProjectJobSource(value: unknown): "menu_link_import" | "owner_upload" {
   return value === MENU_EXTRACTION_SOURCES.MENU_LINK_IMPORT
     ? MENU_EXTRACTION_SOURCES.MENU_LINK_IMPORT

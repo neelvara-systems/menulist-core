@@ -2,13 +2,14 @@
 
 **Status:** ✅ CORE BUILT — Pre-production verification required
 **Created:** February 20, 2026
+**Last Updated:** July 13, 2026
 **Audience:** CEO, PM, Non-developers
 
 ---
 
 ## Executive Summary
 
-**What:** A global circuit breaker that instantly disables expensive operations when the system is under stress.  
+**What:** An expensive-work circuit breaker for explicitly guarded app workflows and all Gemini calls through the shared MenuList Functions gateway.
 **Why:** A single bug, abuse attempt, or infinite loop could spike Firebase costs in hours. SAFE_MODE bounds that risk.  
 **For Whom:** The MenuList founder/ops team (automatic or manual activation).
 
@@ -23,9 +24,9 @@ The risk is not that the circuit breaker is missing from code. The risk is incom
 1. `ops_config/system` may not exist or may have the wrong SAFE_MODE value.
 2. The `/ops` toggle may not be verified against production Firebase.
 3. GCP Budget Alerts may not be connected to the secret-protected webhook.
-4. Direct expensive Cloud Function entry points may need a final SAFE_MODE coverage audit.
+4. The shared Functions AI-gateway guard still needs deployed-target proof that it rejects provider calls before key/provider access.
 
-SAFE_MODE provides a single switch that immediately reduces system cost to near-zero while keeping core product (menu viewing) operational.
+SAFE_MODE provides one switch that sharply reduces AI/provider and guarded-workflow cost while keeping core product viewing and publishing operational. It is not a global Firestore read/write lock.
 
 ---
 
@@ -64,9 +65,9 @@ SAFE_MODE provides a single switch that immediately reduces system cost to near-
 |----------|--------------------------|
 | AI image generation | Returns 503 "System maintenance" |
 | AI text generation (descriptions, translations) | Returns 503 "System maintenance" |
-| Batch operations | Blocked |
-| Heavy analytics computation | Skipped |
-| Feedback submission | Rate limit tightened (2/min instead of 10/10min) |
+| AI-backed batch operations | Provider calls are blocked; workflow-specific checks may stop earlier |
+| AI-backed analytics computation | Shared Functions gateway rejects Gemini calls before provider I/O; non-AI settlement/maintenance can continue |
+| Unrelated writes and feedback submission | Unaffected; SAFE_MODE is not a global write lock or dynamic rate-limit override |
 | **Menu public viewing** | ✅ UNAFFECTED (cached pages) |
 | **Menu publishing** | ✅ UNAFFECTED (core product) |
 | **OBP pages** | ✅ UNAFFECTED (cached pages) |
@@ -103,6 +104,8 @@ SAFE_MODE provides a single switch that immediately reduces system cost to near-
 - **Zero customer impact:** Public pages unaffected during SAFE_MODE
 - **Fail-open:** If `ops_config/system` doc is unreachable, operations continue normally (don't break the system to protect the system)
 - **No recurring cost:** Only 1 Firestore read per request that checks SAFE_MODE (cached in Cloud Functions warm instances)
+- **Platform authorization:** Manual API toggles require the exact current persisted platform user; stale signed authority is insufficient.
+- **Idempotency:** Repeating the already-current state is a successful no-write operation and does not emit a duplicate alert.
 
 ---
 

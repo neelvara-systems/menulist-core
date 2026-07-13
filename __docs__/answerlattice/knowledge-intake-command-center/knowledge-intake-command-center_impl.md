@@ -1,7 +1,7 @@
 # Knowledge Intake Command Center — Technical Implementation Contract
 
 > **Status:** IMPLEMENTED — day-one owner-triggered implementation
-> **Version:** 2.0.3
+> **Version:** 2.0.4
 > **Created:** 2026-05-31
 > **Audience:** Engineering / QA / Product
 
@@ -22,6 +22,10 @@ The legacy `/answerlattice/kb-generation` route redirects for compatibility, whi
 - Legacy route: `/answerlattice/kb-generation` redirects to `/answerlattice/knowledge-intake`
 
 No MenuList-owned screen should become the long-term Answerlattice intake authority.
+
+The dedicated Answerlattice Functions pipeline treats stored job/article scope as an exact identity contract at generation, publish, embedding dispatch and worker completion. It does not coerce malformed tenant/store aliases. Publishing/embedding transitions are re-read transactionally, and every Gemini provider file uploaded for source generation receives a best-effort retrying delete attempt in the generation `finally` path.
+
+Duplicate-candidate persistence remains compact: `articlesToReview` and article reconciliation metadata store bounded article summaries and IDs. The private reconciliation drawer resolves at most three selected IDs through the scoped article DAL and uses a separate UI-only resolved type for full Tiptap bodies; full article documents are not copied into the ingestion job contract.
 
 ### 1.1 Implemented Route And API Map
 
@@ -464,6 +468,10 @@ Knowledge Intake route catch paths use a shared owner-safe error helper. Known u
 June 28 follow-up, updated July 1: Knowledge Intake secure diagnostics now route through `src/lib/answerlattice/knowledgeIntakeDiagnostics.ts`. The helper logs tenant/store scope, string identifiers, and owner-provided titles such as job IDs, source IDs, review item IDs, ledger IDs, article IDs, and article titles only as presence/length metadata. `npm run verify:answerlattice-runtime-truth` guards every `[Answerlattice Intake]` secure log/error call in the intake routes and core service.
 
 June 29 follow-up: Knowledge Intake route and core-service failure diagnostics now call `logAnswerlatticeKnowledgeIntakeFailure()` with fixed `answerlattice_intake_*` failure codes, bounded source error name/code/status metadata, and the existing job/source/item/article presence-length context instead of passing caught exception objects directly to `secureError()`. Existing rate limits, bounded body parsing, source/media/analyze/review/publish behavior, cache revalidation, AI operation/accounting, and client-safe response mapping are unchanged.
+
+July 11 follow-up: owner-triggered screenshot/OCR and audio/video extraction imports `src/lib/answerlattice/genAiClient.ts` and uses only `ANSWERLATTICE_GEMINI_AI_KEY*`. It no longer reaches the default MenuList Gemini key pool; missing Answerlattice provider configuration fails before extracted source creation and preserves the existing credit-refund path.
+
+July 11 recovery follow-up: if support-credit reservation fails after the media source claim was acquired, the service still rethrows the reservation error but separately observes a failed source-claim recovery write through `answerlattice_intake_media_reservation_recovery_failed` with bounded workspace/job/source/media metadata. The recovery error can no longer disappear while leaving an unobservable claimed source.
 
 Client-side Knowledge Intake failures display fixed operation-specific copy for job load/create, source add, media extraction, analysis, review update, publish, entity search, and URL inspection failures. The client no longer copies route-returned error text into hook/component toasts or state. Paid media refund records, partial-publish job status, and context-bundle lock failures store stable local failure codes/messages instead of raw exception text.
 

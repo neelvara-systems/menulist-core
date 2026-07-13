@@ -5,7 +5,13 @@ import { secureError } from "@lib/security/secureLogger";
 const PUBLIC_CACHE_REVALIDATION_TIMEOUT_MS = 4000;
 const PUBLIC_CACHE_CONTEXT_MAX_LENGTH = 64;
 
-const pendingRevalidations = new Map<string, Promise<void>>();
+type PendingPublicCacheRevalidation = {
+    context: string;
+    promise: Promise<void>;
+    rerunRequested: boolean;
+};
+
+const pendingRevalidations = new Map<string, PendingPublicCacheRevalidation>();
 
 const sanitizePublicCacheContext = (context: string): string => {
     const value = String(context || 'publicClientCache').trim();
@@ -39,6 +45,44 @@ const logPublicClientCacheFailure = (
     );
 };
 
+const executePublicClientCacheRevalidation = async (
+    normalizedStoreId: string,
+    context: string,
+): Promise<void> => {
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => {
+        controller.abort();
+    }, PUBLIC_CACHE_REVALIDATION_TIMEOUT_MS);
+
+    try {
+        const response = await fetch('/api/revalidate/menu', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            credentials: 'same-origin',
+            cache: 'no-store',
+            redirect: 'manual',
+            signal: controller.signal,
+            body: JSON.stringify({ storeId: normalizedStoreId }),
+        });
+
+        if (!response.ok && process.env.NODE_ENV !== 'production') {
+            logPublicClientCacheFailure(context, normalizedStoreId, 'bad_status', {
+                responseStatus: response.status,
+            });
+        }
+    } catch (error) {
+        if (process.env.NODE_ENV !== 'production') {
+            logPublicClientCacheFailure(context, normalizedStoreId, 'request_failed', {
+                errorName: error instanceof Error ? error.name : typeof error,
+            });
+        }
+    } finally {
+        window.clearTimeout(timeout);
+    }
+};
+
 export const getStoreIdFromProjectId = (
     projectId?: string | number | null,
 ): string | null => {
@@ -64,47 +108,33 @@ export const revalidatePublicClientCache = async (
 
     const pending = pendingRevalidations.get(normalizedStoreId);
     if (pending) {
-        return pending;
+        pending.rerunRequested = true;
+        pending.context = context;
+        return pending.promise;
     }
 
-    const revalidation = (async () => {
-        const controller = new AbortController();
-        const timeout = window.setTimeout(() => {
-            controller.abort();
-        }, PUBLIC_CACHE_REVALIDATION_TIMEOUT_MS);
+    const entry: PendingPublicCacheRevalidation = {
+        context,
+        promise: Promise.resolve(),
+        rerunRequested: false,
+    };
 
+    entry.promise = (async () => {
         try {
-            const response = await fetch('/api/revalidate/menu', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                credentials: 'same-origin',
-                cache: 'no-store',
-                redirect: 'manual',
-                signal: controller.signal,
-                body: JSON.stringify({ storeId: normalizedStoreId }),
-            });
-
-            if (!response.ok && process.env.NODE_ENV !== 'production') {
-                logPublicClientCacheFailure(context, normalizedStoreId, 'bad_status', {
-                    responseStatus: response.status,
-                });
-            }
-        } catch (error) {
-            if (process.env.NODE_ENV !== 'production') {
-                logPublicClientCacheFailure(context, normalizedStoreId, 'request_failed', {
-                    errorName: error instanceof Error ? error.name : typeof error,
-                });
-            }
+            do {
+                const iterationContext = entry.context;
+                entry.rerunRequested = false;
+                await executePublicClientCacheRevalidation(normalizedStoreId, iterationContext);
+            } while (entry.rerunRequested);
         } finally {
-            window.clearTimeout(timeout);
-            pendingRevalidations.delete(normalizedStoreId);
+            if (pendingRevalidations.get(normalizedStoreId) === entry) {
+                pendingRevalidations.delete(normalizedStoreId);
+            }
         }
     })();
 
-    pendingRevalidations.set(normalizedStoreId, revalidation);
-    return revalidation;
+    pendingRevalidations.set(normalizedStoreId, entry);
+    return entry.promise;
 };
 
 export const revalidatePublicClientCacheForProject = async (

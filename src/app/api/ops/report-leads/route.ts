@@ -10,7 +10,9 @@ export const dynamic = 'force-dynamic';
 import { DB_COLLECTIONS } from '@constant/database';
 import { FEATURE_FLAGS } from '@config/features';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
+import { getCurrentPlatformUser } from '@lib/auth/currentPlatformUser';
 import { getBoundedOpsStringContext, logOpsFailure } from '@lib/ops/opsDiagnostics';
+import { normalizePublicContactSourcePath } from '@lib/publicContact/contactBoundary';
 import type {
   ReportLeadOpsCost,
   ReportLeadOpsSnapshot,
@@ -184,7 +186,7 @@ function serializeLead(doc: FirebaseFirestore.QueryDocumentSnapshot): ReportLead
     workEmail: cleanOpsText(data.workEmail, 180) || null,
     phoneNumber: cleanOpsText(data.phoneNumber, 40) || null,
     helpTopic: cleanOpsText(data.helpTopic, 80) || null,
-    sourcePath: cleanOpsText(data.sourcePath, 240) || null,
+    sourcePath: normalizePublicContactSourcePath(data.sourcePath),
     messagePreview: cleanOpsText(data.message, 900),
     createdAt: toIso(data.createdOn || data.createdAt),
     modifiedAt: toIso(data.modifiedOn || data.updatedAt),
@@ -262,13 +264,23 @@ export const GET = withAuth(async (request, session) => {
   const { reportStatus, toolId, limit } = query.data;
   const scanLimit = Math.min(Math.max(limit * 4, 40), 120);
   const cost: ReportLeadOpsCost = {
+    authReads: 1,
     enquiryReads: 0,
     writes: 0,
     scanLimit,
-    note: 'Manual refresh only. No realtime listener. Reads recent landingPageEnquiries and filters report leads in memory to avoid new indexes.',
+    note: 'Manual refresh only. No realtime listener. Uses one current-user authorization read, reads recent landingPageEnquiries, and filters report leads in memory to avoid new indexes.',
   };
 
   try {
+    const currentPlatformUser = await getCurrentPlatformUser(session);
+    if (!currentPlatformUser) {
+      logger.security('Authorization Failed - Report Lead Current Platform Role', {
+        ...getBoundedSecurityRouteContext(session, request),
+        endpoint: request.nextUrl.pathname,
+      }, 'high');
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     const snapshot = await firestoreAdmin
       .collection(DB_COLLECTIONS.LANDING_PAGE_ENQUIRIES)
       .orderBy('createdOn', 'desc')

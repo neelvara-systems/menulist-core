@@ -11,19 +11,21 @@ The implementation is code-first and deterministic.
 | Navigation label | `src/constants/campaigncue/navigations.ts` |
 | Overview and output field types | `src/types/campaigncue.ts` |
 | Shared builder | `src/lib/campaigncue/dailyDesk.ts` |
+| Operating loop, freshness, rhythm, and safe-reuse nomination | `src/lib/campaigncue/operatingLoop.ts` |
 | Server overview wiring | `src/lib/campaigncue/server.ts` |
 | Owner UI | `src/components/templates/campaigncue/CampaignCueWorkspaceApp.tsx` |
-| Regression verifier | `scripts/verification/verify-campaigncue-runtime.js` |
+| Regression verifiers | `scripts/verification/verify-campaigncue-runtime.js`, `scripts/verification/verify-campaigncue-operating-loop.ts` |
 
 ## Data Flow
 
 1. `GET /api/campaigncue/workspace` loads the existing bounded overview documents.
 2. `src/lib/campaigncue/server.ts` builds opportunities and source facts.
 3. `buildCampaignCueDecisions()` scores campaign recipes from the same in-memory overview data.
-4. `buildCampaignCueDailyDesk()` selects the top decision, converts decision missing inputs into owner cards, and returns `decision` plus `candidateDecisions`.
-5. `CampaignCueOverview.dailyDesk` is returned to the client.
-6. `CampaignCueWorkspaceApp` renders the first tab as Daily Campaign Desk with "Why this recommendation" evidence.
-7. Local owner mutations call `updateOverview()`, which runs `withFreshDailyDesk()` so the desk updates without another overview fetch.
+4. `buildCampaignCueDailyDesk()` selects the top decision, converts decision missing inputs into owner cards, aligns latest-pack review to its persisted recipe/decision, and returns `decision` plus `candidateDecisions`.
+5. `buildCampaignCueCampaignRhythm()` derives approval/due/result/scheduled/ready/reuse/prepare-next state from the same bounded campaign and schedule arrays.
+6. `CampaignCueOverview.dailyDesk` is returned to the client.
+7. `CampaignCueWorkspaceApp` renders the first tab as Daily Campaign Desk with "Why this recommendation" evidence and Campaign Rhythm.
+8. Local owner mutations call `updateOverview()`, which runs `withFreshDailyDesk()` so the desk updates without another overview fetch.
 
 ## Recipe Contract
 
@@ -41,6 +43,8 @@ The implementation is code-first and deterministic.
 - `retail_new_arrival`
 - `asset_reuse_old_poster`
 - `google_local_visibility_refresh`
+- `local_review_request`
+- `return_customer_reminder`
 
 Each recipe defines:
 
@@ -89,7 +93,7 @@ Existing output text, CTA, destination, policy note, consent note, approval note
 - `localVisibilityCues`
 - `outputPack`
 
-`CampaignCueOutputPack` is the canonical owner output contract. It is derived by `buildCampaignCueOutputPack()` from the same in-memory overview data and carries decision, facts, missing inputs, creative references, channel copy blocks, manual delivery cards, trust report, reuse notes, mini-page/QR brief, calendar/reminder note, result memory, next actions, and `downloadBundle.files`.
+`CampaignCueOutputPack` is the canonical owner output contract. It is derived by `buildCampaignCueOutputPack()` from the same in-memory overview data and carries aligned decision/facts/missing inputs, creative references, channel copy blocks, manual delivery cards, five-check readiness, Campaign Rhythm, trust report, safe-reuse notes, mini-page/QR brief, calendar/reminder note, result memory, next actions, and `downloadBundle.files`.
 
 `CampaignCueWorkspaceApp` renders `OutputPackSummary` and downloads a browser-local ZIP through the protected export flow. The ZIP includes `campaign-pack-summary.md`, `campaign-pack.json`, and the structured files from `outputPack.downloadBundle.files`. It is built locally before the action API is called and downloaded only after the server accepts the export action. It does not create fake PNG/PDF binaries when no rendered editor export exists.
 
@@ -101,6 +105,10 @@ Existing output text, CTA, destination, policy note, consent note, approval note
 
 `CampaignCueCampaign.resultMemory` stores the latest structured result signal and compact useful/not-useful counters. The Opportunity Engine uses those fields to recommend `cue_repeat_worked_before` or `cue_adjust_after_not_useful` without scanning raw events.
 
+`CampaignCueCampaignRhythm` is response-derived state. It prioritizes unresolved approval, time-sensitive due task, missing result receipt, future scheduled task, ready pack, safe reuse, or next recommendation. Safe reuse is nominated only when useful owner results exceed not-useful results and trust is not blocked.
+
+Safe reuse calls the existing campaign-create route with `reuseCampaignId`. The server revalidates the source campaign, resolves the same recipe from current candidates, requires `ready_to_prepare`, and creates a new campaign with current outputs, source snapshot, freshness, trust report, and fresh approval state. Only provenance fields are carried forward.
+
 ## Mutation Behavior
 
 The desk does not add new mutation APIs. It reuses:
@@ -110,7 +118,7 @@ The desk does not add new mutation APIs. It reuses:
 - asset POST for asset metadata
 - location POST for locations
 - campaign POST for pack creation
-- campaign action POST for download/export/schedule/approval/mark-used/result
+- campaign action POST for download/export/schedule/request-approval/approve/reject/mark-used/result
 
 Client mutation responses are merged locally and the daily desk is recomputed from the updated state.
 
@@ -119,6 +127,7 @@ Client mutation responses are merged locally and the daily desk is recomputed fr
 The Home tab label is now Daily desk. The first screen shows:
 
 - one primary action
+- one Campaign Rhythm next action
 - why-this recommendation evidence
 - missing input inbox
 - ready pack controls
@@ -132,6 +141,7 @@ The Home tab label is now Daily desk. The first screen shows:
 - multi-format use list
 - print/photo tasks
 - saved facts
+- pack readiness checks and explicit no-prediction copy
 
 The Start navigation exposes `Inputs` for the Missing Input Inbox. The Operations navigation exposes `Visibility` for local search/profile readiness and manual Google-ready handoff fields.
 

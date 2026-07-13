@@ -3,6 +3,7 @@
 **Date:** February 19, 2026  
 **Audience:** Sales, Marketing (INTERNAL)  
 **Pillar:** 4 of 6
+**Usage status:** Do not use in sales or marketing. The feature is dormant, unscheduled, unmounted, and flag-disabled; the copy below is a concept draft only.
 
 ---
 
@@ -32,4 +33,4 @@ Business owners live with a constant background worry: "Are we still good?" They
 
 ---
 
-**Last Updated:** February 19, 2026
+**Last Updated:** July 13, 2026

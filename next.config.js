@@ -39,8 +39,110 @@ const buildCreatedAt = process.env.NEXT_PUBLIC_BUILD_CREATED_AT || new Date().to
 const skipNextBuildChecks = process.env.NEXT_SKIP_NEXT_BUILD_CHECKS === '1';
 
 class MenuListServerChunkCompatPlugin {
+    getServerOutputPath(outputPath) {
+        return path.basename(outputPath) === 'chunks'
+            ? path.dirname(outputPath)
+            : outputPath;
+    }
+
+    async readJson(filePath, fallback) {
+        try {
+            return JSON.parse(await fs.readFile(filePath, 'utf8'));
+        } catch {
+            return fallback;
+        }
+    }
+
+    async copyServerChunks(outputPath) {
+        const serverOutputPath = this.getServerOutputPath(outputPath);
+        const chunksDir = path.basename(outputPath) === 'chunks'
+            ? outputPath
+            : path.join(serverOutputPath, 'chunks');
+
+        const copyServerChunks = async (sourceDir, relativeDir = '') => {
+            let entries = [];
+            try {
+                entries = await fs.readdir(sourceDir, { withFileTypes: true });
+            } catch {
+                return;
+            }
+
+            await Promise.all(entries.map(async (entry) => {
+                const source = path.join(sourceDir, entry.name);
+                const relativePath = path.join(relativeDir, entry.name);
+
+                if (entry.isDirectory()) {
+                    await copyServerChunks(source, relativePath);
+                    return;
+                }
+
+                if (!entry.isFile() || !entry.name.endsWith('.js')) return;
+
+                const destination = path.join(serverOutputPath, relativePath);
+                if (source === destination) return;
+                await fs.mkdir(path.dirname(destination), { recursive: true });
+                await fs.copyFile(source, destination);
+            }));
+        };
+
+        await copyServerChunks(chunksDir);
+        return serverOutputPath;
+    }
+
+    async ensurePagesRouterCompatibility(serverOutputPath) {
+        // Next's static page-data worker still resolves the reserved Pages
+        // Router modules while checking the default/custom error shell, even
+        // when this repository has no actual Pages Router routes. If Next does
+        // not emit those reserved server modules, provide default shims so the
+        // worker can complete without changing App Router route behavior.
+        const pagesManifestPath = path.join(serverOutputPath, 'pages-manifest.json');
+        const compatibilityPages = {
+            '/_app': {
+                file: 'pages/_app.js',
+                module: 'next/dist/pages/_app',
+            },
+            '/_document': {
+                file: 'pages/_document.js',
+                module: 'next/dist/pages/_document',
+            },
+            '/_error': {
+                file: 'pages/_error.js',
+                module: 'next/dist/pages/_error',
+            },
+        };
+
+        let pagesManifest = await this.readJson(pagesManifestPath, {});
+        let manifestChanged = false;
+
+        await Promise.all(Object.entries(compatibilityPages).map(async ([route, entry]) => {
+            const outputFilePath = path.join(serverOutputPath, entry.file);
+            try {
+                await fs.access(outputFilePath);
+            } catch {
+                await fs.mkdir(path.dirname(outputFilePath), { recursive: true });
+                await fs.writeFile(
+                    outputFilePath,
+                    `"use strict";\nmodule.exports = require(${JSON.stringify(entry.module)});\n`,
+                );
+            }
+
+            if (pagesManifest[route] === entry.file) return;
+            pagesManifest = {
+                ...pagesManifest,
+                [route]: entry.file,
+            };
+            manifestChanged = true;
+        }));
+
+        if (manifestChanged) {
+            await fs.mkdir(path.dirname(pagesManifestPath), { recursive: true });
+            await fs.writeFile(pagesManifestPath, JSON.stringify(pagesManifest, null, 2));
+        }
+    }
+
     async writeRoutesManifest(outputPath) {
         if (!outputPath) return;
+        const serverOutputPath = this.getServerOutputPath(outputPath);
 
         const pageToRoute = (page) => {
             const routeRegex = getNamedRouteRegex(page, true);
@@ -51,16 +153,9 @@ class MenuListServerChunkCompatPlugin {
                 namedRegex: routeRegex.namedRegex,
             };
         };
-        const readJson = async (filePath, fallback) => {
-            try {
-                return JSON.parse(await fs.readFile(filePath, 'utf8'));
-            } catch {
-                return fallback;
-            }
-        };
         const rootDistPaths = [
-            path.dirname(outputPath),
-            path.dirname(path.dirname(outputPath)),
+            path.dirname(serverOutputPath),
+            path.dirname(path.dirname(serverOutputPath)),
         ].filter((candidate, index, candidates) => (
             candidate
             && candidate !== path.dirname(candidate)
@@ -76,13 +171,13 @@ class MenuListServerChunkCompatPlugin {
                 // Continue and create the compatibility manifest.
             }
 
-            const appPathRoutesManifest = await readJson(
+            const appPathRoutesManifest = await this.readJson(
                 path.join(rootDistPath, 'app-path-routes-manifest.json'),
                 {},
             );
-            const serverPagesManifest = await readJson(
+            const serverPagesManifest = await this.readJson(
                 path.join(rootDistPath, 'server', 'pages-manifest.json'),
-                await readJson(path.join(outputPath, 'pages-manifest.json'), {}),
+                await this.readJson(path.join(serverOutputPath, 'pages-manifest.json'), {}),
             );
             if (!Object.keys(appPathRoutesManifest).length && !Object.keys(serverPagesManifest).length) {
                 return;
@@ -144,61 +239,25 @@ class MenuListServerChunkCompatPlugin {
             const outputPath = compiler.options.output.path;
             if (!outputPath) return;
 
-            const chunksDir = path.join(outputPath, 'chunks');
-            const copyServerChunks = async (sourceDir, relativeDir = '') => {
-                let entries = [];
-                try {
-                    entries = await fs.readdir(sourceDir, { withFileTypes: true });
-                } catch {
-                    return;
-                }
-
-                await Promise.all(entries.map(async (entry) => {
-                    const source = path.join(sourceDir, entry.name);
-                    const relativePath = path.join(relativeDir, entry.name);
-
-                    if (entry.isDirectory()) {
-                        await copyServerChunks(source, relativePath);
-                        return;
-                    }
-
-                    if (!entry.isFile() || !entry.name.endsWith('.js')) return;
-
-                    const destination = path.join(outputPath, relativePath);
-                    await fs.mkdir(path.dirname(destination), { recursive: true });
-                    await fs.copyFile(source, destination);
-                }));
-            };
-
-            try {
-                await fs.access(chunksDir);
-            } catch {
-                return;
-            }
-
-            await copyServerChunks(chunksDir);
+            const serverOutputPath = await this.copyServerChunks(outputPath);
+            await this.ensurePagesRouterCompatibility(serverOutputPath);
 
             // Next's page-data collection still resolves the minimal Pages
             // Router compatibility files even though this app is App Router
             // first. In local worker builds the files can be emitted while the
             // pages manifest remains empty, so repair only those special
             // entries when the compiled files exist.
-            const pagesManifestPath = path.join(outputPath, 'pages-manifest.json');
+            const pagesManifestPath = path.join(serverOutputPath, 'pages-manifest.json');
             const specialPages = {
                 '/_app': 'pages/_app.js',
                 '/_document': 'pages/_document.js',
                 '/_error': 'pages/_error.js',
             };
-            let pagesManifest = {};
-            try {
-                pagesManifest = JSON.parse(await fs.readFile(pagesManifestPath, 'utf8'));
-            } catch {
-                pagesManifest = {};
-            }
+            let pagesManifest = await this.readJson(pagesManifestPath, {});
             let manifestChanged = false;
             await Promise.all(Object.entries(specialPages).map(async ([route, file]) => {
                 try {
-                    await fs.access(path.join(outputPath, file));
+                    await fs.access(path.join(serverOutputPath, file));
                 } catch {
                     return;
                 }
@@ -211,19 +270,7 @@ class MenuListServerChunkCompatPlugin {
                 await fs.writeFile(pagesManifestPath, JSON.stringify(pagesManifest, null, 2));
             }
 
-            const appManifestPath = path.join(outputPath, 'app-paths-manifest.json');
-            const normalizeAppRoute = (route) => {
-                const normalized = route.split('/').reduce((pathname, segment, index, segments) => {
-                    if (!segment) return pathname;
-                    if (segment.startsWith('(') && segment.endsWith(')')) return pathname;
-                    if (segment.startsWith('@')) return pathname;
-                    if ((segment === 'page' || segment === 'route') && index === segments.length - 1) {
-                        return pathname;
-                    }
-                    return `${pathname}/${segment}`;
-                }, '');
-                return normalized || '/';
-            };
+            const appManifestPath = path.join(serverOutputPath, 'app-paths-manifest.json');
             const collectAppEntries = async (sourceDir, relativeDir = '') => {
                 let entries = [];
                 try {
@@ -245,18 +292,12 @@ class MenuListServerChunkCompatPlugin {
                     const manifestFile = `app/${relativePath.replace(/\\/g, '/')}`;
                     const rawRoute = `/${relativePath.replace(/\\/g, '/').replace(/\.js$/, '')}`;
                     collected[rawRoute] = manifestFile;
-                    collected[normalizeAppRoute(rawRoute)] = manifestFile;
                 }));
                 return collected;
             };
-            const emittedAppEntries = await collectAppEntries(path.join(outputPath, 'app'));
+            const emittedAppEntries = await collectAppEntries(path.join(serverOutputPath, 'app'));
             if (Object.keys(emittedAppEntries).length) {
-                let appManifest = {};
-                try {
-                    appManifest = JSON.parse(await fs.readFile(appManifestPath, 'utf8'));
-                } catch {
-                    appManifest = {};
-                }
+                let appManifest = await this.readJson(appManifestPath, {});
                 let appManifestChanged = false;
                 for (const [route, file] of Object.entries(emittedAppEntries)) {
                     if (appManifest[route]) continue;
@@ -269,7 +310,7 @@ class MenuListServerChunkCompatPlugin {
                 }
             }
 
-            await this.writeRoutesManifest(outputPath);
+            await this.writeRoutesManifest(serverOutputPath);
         });
 
         compiler.hooks.done.tapPromise('MenuListServerChunkCompatPluginRoutesManifest', async () => {
@@ -281,6 +322,10 @@ class MenuListServerChunkCompatPlugin {
 
 
 const nextConfig = {
+    poweredByHeader: false,
+    // Allows CI and local release audits to run concurrently without sharing
+    // Next's mutable build output. Production keeps the default `.next` path.
+    distDir: process.env.NEXT_DIST_DIR || '.next',
     env: {
         NEXT_PUBLIC_BUILD_ID: process.env.NEXT_PUBLIC_BUILD_ID || process.env.VERCEL_GIT_COMMIT_SHA || 'local',
         NEXT_PUBLIC_ENV: process.env.NEXT_PUBLIC_ENV || process.env.VERCEL_ENV || process.env.NODE_ENV || 'development',

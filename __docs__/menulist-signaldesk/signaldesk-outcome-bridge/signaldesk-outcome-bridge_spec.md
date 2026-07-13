@@ -1,7 +1,8 @@
 # SignalDesk Outcome Bridge - Specification
 
-**Status:** Initial planning spec
+**Status:** Implemented runtime contract; local emulator verified
 **Created:** June 23, 2026
+**Runtime reconciled:** July 13, 2026
 
 ## Objective
 
@@ -27,16 +28,11 @@ Measure whether SignalDesk activity leads to meaningful MenuList outcomes while 
 
 | Event | Meaning |
 | --- | --- |
-| `current_list_received` | Prospect submitted or shared a current list/menu/service list. |
+| `route_created` | Governed MenuList route was created. |
+| `upload_started` | Owner began the MenuList input flow. |
 | `preview_prepared` | MenuList preview was prepared for review. |
-| `owner_approved` | Owner approved core public output. |
-| `public_link_published` | MenuList public link went live. |
-| `qr_downloaded` | QR or share material was downloaded or prepared. |
-| `whatsapp_link_copied` | WhatsApp/share link was copied from MenuList surface. |
-| `google_profile_placement_marked_done` | Operator marked profile/menu link placement as complete. |
-| `paid_plan_started` | Prospect became a paid MenuList account. |
-| `partner_lead_created` | Partner/referral opportunity was created. |
-| `multi_location_review_started` | Multi-location opportunity entered review. |
+| `published` | MenuList public output was published. |
+| `two_surface_activation` | Owner-reviewed activation evidence covers at least two distinct surfaces. |
 
 ## Requirements
 
@@ -46,7 +42,7 @@ Measure whether SignalDesk activity leads to meaningful MenuList outcomes while 
 | OUT-002 | Outcome events must be append-only. |
 | OUT-003 | Outcome summaries must be derived from events, not hand-edited. |
 | OUT-004 | MenuList writes must happen only through approved MenuList systems. |
-| OUT-005 | Attribution must handle multiple touches without overwriting history. |
+| OUT-005 | Each accepted event must create one immutable direct attribution touch without overwriting history. |
 | OUT-006 | Operator-entered outcomes require evidence note or linked MenuList record. |
 | OUT-007 | Route tokens must not expose internal target IDs publicly. |
 
@@ -62,4 +58,6 @@ Measure whether SignalDesk activity leads to meaningful MenuList outcomes while 
 - Approved email/export action can include a scoped route token.
 - MenuList outcome event can be linked back to SignalDesk target and action.
 - Duplicate outcome events do not inflate summaries.
+- The same idempotency key with changed facts fails closed.
+- Exact retries remain duplicates after route revocation, while new events are rejected.
 - SignalDesk cannot update MenuList store/menu truth through this bridge.

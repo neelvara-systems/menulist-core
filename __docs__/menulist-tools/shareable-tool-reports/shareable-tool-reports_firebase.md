@@ -63,14 +63,14 @@ Source tools can keep their existing optional consented handoff through `/api/pu
 
 | Resource | Current behavior |
 | --- | --- |
-| Firestore reads | Reads recent `landingPageEnquiries` through `/api/ops/report-leads` on manual refresh |
+| Firestore reads | 1 exact `users/{userId}` read for current authorization, then a bounded recent `landingPageEnquiries` query through `/api/ops/report-leads` on manual refresh |
 | Firestore writes | 0 writes |
 | Realtime listeners | 0 |
 | Storage operations | 0 |
 | Cloud Functions | 0 |
 | AI/provider calls | 0 |
 
-The API caps the scan, defaults to a small manual-refresh result set, and filters `shareable_tool_report` leads in memory to avoid a new composite index. It does not mutate lead status, create report history, or write canonical business truth.
+The API caps the enquiry scan at 120 returned documents, defaults to a small manual-refresh result set, and filters `shareable_tool_report` leads in memory to avoid a new composite index. A successful refresh therefore performs 1 current-user document read plus the enquiry-query reads (including Firestore's minimum query charge when no documents match). The response cost object reports the exact authorization read separately from the number of enquiry documents returned. It does not mutate lead status, create report history, or write canonical business truth.
 
 ---
 

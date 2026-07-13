@@ -1,7 +1,8 @@
 # SignalDesk Outcome Bridge - Feature Doc Set
 
-**Status:** Initial feature doc set
+**Status:** Runtime implemented; local emulator verified; production producer wiring pending external deployment verification
 **Created:** June 23, 2026
+**Runtime reconciled:** July 13, 2026
 **Parent:** [MenuList SignalDesk](../README.md)
 **Audience:** Internal growth operators and future implementers
 
@@ -35,12 +36,11 @@ This feature must not write MenuList business truth directly.
 
 MenuList remains the authority for stores, menus, owner approval, public URLs, billing, and onboarding state. SignalDesk records growth-side route and attribution events only.
 
-## Build Gate
+## Production Gate
 
-Do not wire this bridge to production MenuList flows until:
+The repository runtime now enforces scoped, expiring, revocable hash-only route tokens; strict signed payloads; transactional idempotency; direct attribution touches; and the MenuList truth boundary. Production clearance still requires:
 
-- route-token scope and expiry are defined,
-- outcome event schema is stable,
-- duplicate attribution rules are documented,
-- MenuList write boundaries are enforced,
-- privacy review is complete.
+- deploy-time secret configuration for `MENULIST_SIGNALDESK_OUTCOME_BRIDGE_SECRET`,
+- an approved MenuList producer using the documented raw-body HMAC contract,
+- live retry/replay smoke testing against the deployed route,
+- privacy and retention approval for outcome and attribution history.

@@ -1,9 +1,9 @@
 # Answerlattice — External Workflow Integrations
 
 > **Status:** ✅ IMPLEMENTED — Enabled with guards
-> **Version:** 1.1.0
+> **Version:** 1.2.0
 > **Created:** 2026-03-09
-> **Last Updated:** 2026-05-24
+> **Last Updated:** 2026-07-13
 > **Feature Flag:** `ENABLE_ANSWERLATTICE_WORKFLOW_INTEGRATIONS` (enabled)
 > **Expansion Item:** #7 in [answerlattice-expansion-tracker.md](../answerlattice-expansion-tracker.md)
 > **Doctrine Check:** ✅ Allowed — Freeze §2 explicitly permits "New integrations without breaking invariants"
@@ -32,7 +32,7 @@ Answerlattice = **event producer only**. It never embeds external workflows. It 
 ## Architecture Summary
 
 ```
-Answerlattice Governance Events (nightly batch + real-time triggers)
+Answerlattice Governance Events (nightly scheduler + owner test route)
      │
      ▼
 Integration Event Bus (answerlattice_integrationEvents collection)
@@ -51,7 +51,7 @@ Delivery Log (answerlattice_integrationDeliveryLogs)
 
 **4 internal components:**
 
-1. Integration Event Bus (append-only Firestore collection)
+1. Integration Event Bus (immutable event facts with transactional lifecycle fields)
 2. Integration Config Store (per-tenant settings)
 3. Adapter Library (stateless, pluggable)
 4. Delivery + Retry System (Cloud Function + logs)
@@ -80,10 +80,10 @@ Delivery Log (answerlattice_integrationDeliveryLogs)
 | --- | -------------------------------------------------------------------------- | ---------------------------------------------------- |
 | 1   | **Event producer only** — no bidirectional sync, no workflow orchestration | Protects 3-year freeze. Prevents bloat.              |
 | 2   | **2 self-service adapters at launch** — Slack and Email; Linear/GitHub controlled rollout | Avoids half-safe issue tracker token handling while keeping adapter code ready. |
-| 3   | **Append-only event log** — write once, never update                       | Firebase cost optimal. Audit trail built-in.         |
+| 3   | **Immutable event facts + lifecycle status** — identity/payload stay fixed; processing status advances transactionally | Preserves the trigger contract while making delivery state observable. |
 | 4   | **Cloud Function onCreate trigger** — not polling                          | Zero cost when idle. Scales automatically.           |
 | 5   | **Per-tenant config** — event filters per integration                      | Founders control what goes where. No spam.           |
-| 6   | **3 retries then drop** — with delivery log                                | Matches industry standard. Never blocks main system. |
+| 6   | **3 total attempts for explicit retryable responses** — each attempt has a deterministic create-only audit row | Bounds provider work without blindly replaying ambiguous deliveries; external provider actions are not claimed to be exactly-once. |
 | 7   | **Reuses existing SMTP** — same nodemailer as lifecycle messaging          | Zero new infrastructure for email.                   |
 | 8   | **Secrets stay server-side** — raw webhook/token config is not returned to the browser | Owner setup without public secret exposure.          |
 | 9   | **Runs in Answerlattice Firebase project** — functions-answerlattice/                | Follows multi-product separation playbook.           |
@@ -104,8 +104,8 @@ Delivery Log (answerlattice_integrationDeliveryLogs)
 ## Dependencies
 
 - Answerlattice nightly scheduler (event source for governance events)
-- Signal emitter (event source for real-time events)
-- Existing SMTP infrastructure (email adapter reuse)
+- Owner test route (controlled persisted event source)
+- Answerlattice-scoped SMTP secrets (`ANSWERLATTICE_SMTP_*`)
 - Answerlattice Firestore project (separate from MenuList)
 
 ---
@@ -118,7 +118,7 @@ Delivery Log (answerlattice_integrationDeliveryLogs)
 | 100 tenants   | ~10,000      | ~$0.08         | ~$0.05  | **~$0.13** |
 | 1,000 tenants | ~100,000     | ~$0.80         | ~$0.50  | **~$1.30** |
 
-Negligible. Dominated by low-volume Slack/email delivery and existing SMTP cost.
+Negligible. Dominated by low-volume Slack/email delivery and the separately provisioned SMTP provider cost.
 
 ---
 
@@ -126,5 +126,6 @@ Negligible. Dominated by low-volume Slack/email delivery and existing SMTP cost.
 
 | Date       | Version | Change                                                                      |
 | ---------- | ------- | --------------------------------------------------------------------------- |
+| 2026-07-13 | 1.2.0 | Reconciled exact event claims, payload-bound idempotency, partial-delivery failure, single circuit probes, product-scoped SMTP secrets, and actual bounded retry behavior. |
 | 2026-05-24 | 1.1.0 | Updated production scope to Slack/email self-service, digest-first emissions, TTL retention, delivery health, and controlled-rollout Linear/GitHub adapters. |
 | 2026-03-09 | 1.0.0   | Initial documentation from ChatGPT analysis + codebase audit + web research |

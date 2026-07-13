@@ -11,19 +11,23 @@
  */
 
 import * as logger from 'firebase-functions/logger';
+import { parseExactAnswerlatticeScope } from '../answerlattice/scopeBoundary';
 import { EmailAdapter } from './adapters/emailAdapter';
 import { GithubAdapter } from './adapters/githubAdapter';
 import { LinearAdapter } from './adapters/linearAdapter';
 import { SlackAdapter } from './adapters/slackAdapter';
-import { getIntegrationConfig, isAdapterAvailable, recordDeliveryFailure, recordDeliverySuccess } from './configStore';
-import { logDeliveryAttempt, updateEventStatus, updateIntegrationHealth } from './deliveryLogger';
+import { claimCircuitBreakerProbe, getIntegrationConfig, isAdapterAvailable, recordDeliveryFailure, recordDeliverySuccess } from './configStore';
+import { claimIntegrationEvent, logDeliveryAttempt, rejectInvalidIntegrationEvent, updateEventStatus, updateIntegrationHealth } from './deliveryLogger';
+import {
+    isClaimableIntegrationEventDocument,
+    resolveIntegrationEventCompletionStatus,
+    shouldIntegrationAdapterReceiveEvent,
+} from './eventDeliveryState';
 import { consumeAdapterDailySlot, consumeAdapterMinuteSlot, filterEmailRecipientsByDailyLimit } from './rateLimiter';
 import {
     ADAPTER_TYPES,
     AdapterConfig,
     AdapterType,
-    EVENT_SEVERITY,
-    INTEGRATION_EVENT_TYPES,
     IIntegrationAdapter,
     INTEGRATION_LIMITS,
     DeliveryResult,
@@ -58,16 +62,10 @@ function getAdapterConfig(config: IntegrationConfig, adapterType: AdapterType): 
 }
 
 function isValidEvent(event: IntegrationEvent): boolean {
-    const eventTypes = new Set<string>(Object.values(INTEGRATION_EVENT_TYPES));
-    const severities = new Set<string>(Object.values(EVENT_SEVERITY));
     return Boolean(
         event
-        && Number.isFinite(Number(event.tId))
-        && Number.isFinite(Number(event.sId))
-        && Number(event.tId) > 0
-        && Number(event.sId) > 0
-        && eventTypes.has(event.eventType)
-        && severities.has(event.severity)
+        && parseExactAnswerlatticeScope(event.tId, event.sId) !== null
+        && isClaimableIntegrationEventDocument(event, event)
     );
 }
 
@@ -80,9 +78,10 @@ function getEventProcessorStringContext(label: string, value: unknown): Record<s
 }
 
 function getEventProcessorScopeContext(event: Partial<IntegrationEvent>): Record<string, boolean> {
+    const scope = parseExactAnswerlatticeScope(event.tId, event.sId);
     return {
-        hasTenantScope: Number.isFinite(Number(event.tId)) && Number(event.tId) > 0,
-        hasStoreScope: Number.isFinite(Number(event.sId)) && Number(event.sId) > 0,
+        hasTenantScope: scope !== null,
+        hasStoreScope: scope !== null,
     };
 }
 
@@ -117,9 +116,9 @@ async function updateEventStatusWithDiagnostics(
     eventId: string,
     status: 'processing' | 'delivered' | 'failed',
     event: Partial<IntegrationEvent>,
-): Promise<void> {
+): Promise<boolean> {
     try {
-        await updateEventStatus(eventId, status);
+        return await updateEventStatus(eventId, status, event as IntegrationEvent);
     } catch (error) {
         logEventProcessorFailure('answerlattice_integration_event_status_update_failed', error, {
             ...getEventProcessorStringContext('eventId', eventId),
@@ -127,6 +126,7 @@ async function updateEventStatusWithDiagnostics(
             eventType: event.eventType,
             targetStatus: status,
         });
+        return false;
     }
 }
 
@@ -200,18 +200,36 @@ async function recordDeliveryFailureWithDiagnostics(
     event: IntegrationEvent,
     eventId: string,
     adapterType: AdapterType,
-    currentFailures: number,
 ): Promise<void> {
     try {
-        await recordDeliveryFailure(event.tId, event.sId, adapterType, currentFailures);
+        await recordDeliveryFailure(event.tId, event.sId, adapterType);
     } catch (error) {
         logEventProcessorFailure('answerlattice_integration_delivery_failure_record_failed', error, {
             ...getEventProcessorStringContext('eventId', eventId),
             ...getEventProcessorScopeContext(event),
             eventType: event.eventType,
             adapter: adapterType,
-            currentFailures,
         });
+    }
+}
+
+async function claimCircuitBreakerProbeWithDiagnostics(
+    config: IntegrationConfig,
+    event: IntegrationEvent,
+    eventId: string,
+    adapterType: AdapterType,
+): Promise<boolean> {
+    if (!config.circuitBreaker?.[adapterType]?.disabledAt) return true;
+    try {
+        return await claimCircuitBreakerProbe(event.tId, event.sId, adapterType);
+    } catch (error) {
+        logEventProcessorFailure('answerlattice_integration_circuit_breaker_probe_claim_failed', error, {
+            ...getEventProcessorStringContext('eventId', eventId),
+            ...getEventProcessorScopeContext(event),
+            eventType: event.eventType,
+            adapter: adapterType,
+        });
+        return false;
     }
 }
 
@@ -243,35 +261,86 @@ export async function processEvent(
             eventType: event?.eventType,
             severity: event?.severity,
         });
-        await updateEventStatusWithDiagnostics(eventId, 'failed', event || {});
+        try {
+            await rejectInvalidIntegrationEvent(eventId);
+        } catch (error) {
+            logEventProcessorFailure('answerlattice_integration_invalid_event_rejection_failed', error, {
+                ...getEventProcessorStringContext('eventId', eventId),
+            });
+        }
+        return result;
+    }
+
+    const claimed = await claimIntegrationEvent(eventId, event);
+    if (!claimed) {
+        logger.info('[Answerlattice Integration] Duplicate or non-pending event skipped', {
+            ...getEventProcessorStringContext('eventId', eventId),
+            ...getEventProcessorScopeContext(event),
+            eventType: event.eventType,
+        });
         return result;
     }
 
     // Read tenant integration config
-    const config = await getIntegrationConfig(event.tId, event.sId);
-
-    // Update event to processing (will be overridden to delivered/failed after dispatch)
-    await updateEventStatusWithDiagnostics(eventId, 'processing', event);
+    let config: IntegrationConfig;
+    try {
+        config = await getIntegrationConfig(event.tId, event.sId);
+    } catch (error) {
+        logEventProcessorFailure('answerlattice_integration_config_load_failed', error, {
+            ...getEventProcessorStringContext('eventId', eventId),
+            ...getEventProcessorScopeContext(event),
+            eventType: event.eventType,
+        });
+        await updateEventStatusWithDiagnostics(eventId, 'failed', event);
+        return result;
+    }
 
     const adapterTypes = Object.values(ADAPTER_TYPES) as AdapterType[];
-    let anyDelivered = false;
     let anyAttempted = false;
 
     for (const adapterType of adapterTypes) {
-        // Check adapter availability (enabled + not circuit-broken)
-        if (!isAdapterAvailable(config, adapterType)) continue;
-
         const adapterConfig = getAdapterConfig(config, adapterType);
         if (!adapterConfig) continue;
 
         // Check event filter — does this adapter want this event type?
-        const filters = (adapterConfig as any).eventFilters as string[] | undefined;
-        if (filters && filters.length > 0 && !filters.includes(event.eventType)) continue;
+        const filters = adapterConfig.eventFilters;
+        if (!shouldIntegrationAdapterReceiveEvent({
+            adapterType,
+            eventType: event.eventType,
+            eventFilters: filters,
+            isOwnerConnectionTest: event.payload.test === true && event.payload.runLogId === 'manual-test',
+        })) continue;
 
         anyAttempted = true;
         const adapter = adapterRegistry[adapterType];
-        const cbState = config.circuitBreaker?.[adapterType];
-        const currentFailures = cbState?.consecutiveFailures || 0;
+
+        if (!isAdapterAvailable(config, adapterType)) {
+            const circuitBreakerResult: DeliveryResult = {
+                success: false,
+                retryable: false,
+                error: 'Circuit breaker is open',
+                durationMs: 0,
+            };
+            await logDeliveryAttempt({
+                eventId,
+                tId: event.tId,
+                sId: event.sId,
+                adapter: adapterType,
+                attempt: 0,
+                result: circuitBreakerResult,
+            });
+            await updateIntegrationHealth({
+                eventId,
+                eventType: event.eventType,
+                tId: event.tId,
+                sId: event.sId,
+                adapter: adapterType,
+                status: 'failed',
+                result: circuitBreakerResult,
+            });
+            result.failed++;
+            continue;
+        }
 
         let delivered = false;
         let deliveryConfig: AdapterConfig = adapterConfig;
@@ -333,8 +402,37 @@ export async function processEvent(
             continue;
         }
 
+        const probeClaimed = await claimCircuitBreakerProbeWithDiagnostics(config, event, eventId, adapterType);
+        if (!probeClaimed) {
+            const probeResult: DeliveryResult = {
+                success: false,
+                retryable: false,
+                error: 'Circuit breaker probe unavailable',
+                durationMs: 0,
+            };
+            await logDeliveryAttempt({
+                eventId,
+                tId: event.tId,
+                sId: event.sId,
+                adapter: adapterType,
+                attempt: 0,
+                result: probeResult,
+            });
+            await updateIntegrationHealth({
+                eventId,
+                eventType: event.eventType,
+                tId: event.tId,
+                sId: event.sId,
+                adapter: adapterType,
+                status: 'failed',
+                result: probeResult,
+            });
+            result.failed++;
+            continue;
+        }
+
         if (adapterType === ADAPTER_TYPES.EMAIL) {
-            const recipients = Array.isArray((adapterConfig as any).recipients) ? (adapterConfig as any).recipients : [];
+            const recipients = config.email.recipients;
             const allowedRecipients = await filterEmailRecipientsByDailyLimitWithDiagnostics(event, recipients);
             if (allowedRecipients.length === 0) {
                 const rateLimitResult = {
@@ -363,7 +461,7 @@ export async function processEvent(
                 result.failed++;
                 continue;
             }
-            deliveryConfig = { ...(adapterConfig as any), recipients: allowedRecipients } as AdapterConfig;
+            deliveryConfig = { ...config.email, recipients: allowedRecipients };
         }
 
         // Attempt delivery with retries
@@ -379,7 +477,25 @@ export async function processEvent(
                 await sleep(delay);
             }
 
-            const deliveryResult = await adapter.send(event, deliveryConfig);
+            const deliveryStartedAt = Date.now();
+            let deliveryResult: DeliveryResult;
+            try {
+                deliveryResult = await adapter.send(event, deliveryConfig);
+            } catch (error) {
+                logEventProcessorFailure('answerlattice_integration_adapter_unexpected_failure', error, {
+                    ...getEventProcessorStringContext('eventId', eventId),
+                    ...getEventProcessorScopeContext(event),
+                    eventType: event.eventType,
+                    adapter: adapterType,
+                    attempt,
+                });
+                deliveryResult = {
+                    success: false,
+                    retryable: false,
+                    error: 'Adapter delivery failed',
+                    durationMs: Math.max(0, Date.now() - deliveryStartedAt),
+                };
+            }
             finalDeliveryResult = deliveryResult;
 
             // Log the attempt
@@ -405,22 +521,25 @@ export async function processEvent(
 
             if (deliveryResult.success) {
                 delivered = true;
-                // Reset circuit breaker on success
-                if (currentFailures > 0) {
-                    await recordDeliverySuccessWithDiagnostics(event, eventId, adapterType);
-                }
+                // Serialize the reset with concurrent failure records. The
+                // config-store transaction is a no-op when already clean.
+                await recordDeliverySuccessWithDiagnostics(event, eventId, adapterType);
+                break;
+            }
+
+            if (deliveryResult.retryable !== true) {
+                await recordDeliveryFailureWithDiagnostics(event, eventId, adapterType);
                 break;
             }
 
             // If last attempt failed, record failure for circuit breaker
             if (attempt === INTEGRATION_LIMITS.MAX_DELIVERY_ATTEMPTS) {
-                await recordDeliveryFailureWithDiagnostics(event, eventId, adapterType, currentFailures);
+                await recordDeliveryFailureWithDiagnostics(event, eventId, adapterType);
             }
         }
 
         if (delivered) {
             result.delivered++;
-            anyDelivered = true;
             await updateIntegrationHealth({
                 eventId,
                 eventType: event.eventType,
@@ -446,7 +565,7 @@ export async function processEvent(
 
     // Update final event status
     if (anyAttempted) {
-        const finalStatus = anyDelivered ? 'delivered' : 'failed';
+        const finalStatus = resolveIntegrationEventCompletionStatus(result, true);
         await updateEventStatusWithDiagnostics(eventId, finalStatus, event);
     } else {
         logger.info('[Answerlattice Integration] No enabled adapters for event', {

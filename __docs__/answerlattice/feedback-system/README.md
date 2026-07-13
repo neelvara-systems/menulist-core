@@ -1,7 +1,7 @@
 # Feedback System — Feature Documentation
 
 > **Status:** IMPLEMENTED
-> **Last Updated:** 2026-05-31
+> **Last Updated:** 2026-07-11
 > **Parent Feature:** Help Center
 > **Audit Type:** Codebase-first, every file read
 
@@ -34,7 +34,7 @@ It also includes a generic content feedback system that handles likes/dislikes f
 
 ### Feedback Submission Components
 - `src/components/templates/main-app/helpCenter/ShareFeedbackView.tsx` — selectable feedback-category flow with direct submit
-- `src/components/templates/main-app/helpCenter/GeneralFeedback.tsx` — Step 1: Star rating + comment (30 lines)
+- `src/components/templates/main-app/helpCenter/GeneralFeedback.tsx` — Step 1: Star rating + bounded comment
 - `src/components/templates/main-app/helpCenter/FeatureUsage.tsx` — Product-area issues checklist
 - `src/components/templates/main-app/helpCenter/FeatureRequests.tsx` — Feature request and support-improvement votes
 - `src/app/(answerlattice)/answerlattice/help/page.tsx` — authenticated Answerlattice Help Center route with Share Feedback tab
@@ -47,12 +47,13 @@ It also includes a generic content feedback system that handles likes/dislikes f
 
 ### Database Layer
 - `src/database/feedback/index.ts` — Help Center feedback DAL, owner-scoped queries, Product Surface assignment, and feedback signal emission
-- `src/database/feedback/genericFeedback.ts` — Unified content feedback router (131 lines)
-- `src/database/contentFeedback/index.ts` — Article/changelog feedback with comments (68 lines)
+- `src/lib/answerlattice/feedbackBoundary.ts` — exact submission, persisted-record, and document-ID runtime boundary shared by the DAL and Help Center controls
+- `src/database/feedback/genericFeedback.ts` — Unified content feedback router
+- `src/database/contentFeedback/index.ts` — Atomic article/changelog counter and actor-audit feedback DAL
 - `src/lib/answerlattice/signalEmitter.ts` — non-blocking Answerlattice signal emission
 
 ### Types
-- `src/types/feedback.ts` — Feedback interface (17 lines)
+- `src/types/feedback.ts` — Normalized persisted Feedback interface
 - `src/types/answerlattice/index.ts` — `ANSWERLATTICE_SIGNAL_TYPE.FEEDBACK`
 
 ### Hooks
@@ -82,6 +83,9 @@ It also includes a generic content feedback system that handles likes/dislikes f
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-07-11 | 1.7.0 | Partitioned browser reaction acknowledgement by tenant, store, user and content type; added an identity-bearing runtime envelope, invalid-cache eviction, bounded null-prototype maps and workspace-switch state reset |
+| 2026-07-11 | 1.6.0 | Coupled article/changelog counters and actor audit rows in one transaction, made audit history exact-append and immutable at its cap, normalized audit reads, and blocked duplicate in-flight UI mutations |
+| 2026-07-11 | 1.5.0 | Added exact runtime normalization, bounded shared field lists/text, fail-closed persisted-record reads, payload-shape Firestore rules, field-confined support updates, and dedicated rules/runtime regression gates |
 | 2026-05-31 | 1.4.0 | Added optional Product Surface sorting/assignment for feedback review, Support Board surface carry-through, and compact widget-feedback context metadata |
 | 2026-05-31 | 1.3.0 | Added public `/product/feedback-review` page and homepage/product preview treatment for Feedback Review |
 | 2026-05-31 | 1.2.0 | Added owner-scoped `/answerlattice/feedback`, feedback signal emission, Support Board signal import, end-user create/self-read rules, and Answerlattice feedback indexes |

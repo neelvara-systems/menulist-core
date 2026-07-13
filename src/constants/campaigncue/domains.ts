@@ -3,6 +3,7 @@ import {
     getActiveProductDomains,
     getProductDeploymentTarget,
 } from "@constant/deploymentTargets";
+import { normalizeRequestAuthority } from "@lib/routing/hostAuthority";
 
 // Public website files live under /sites/campaigncue. Owner workspace files
 // live under /campaigncue so CampaignCue follows the Answerlattice separation
@@ -29,7 +30,8 @@ const normalizePathname = (pathname?: string | null): string => (
 );
 
 export function isCampaignCueProductHostname(hostname?: string | null): boolean {
-    return Boolean(hostname && ACTIVE_CAMPAIGNCUE_PRODUCT_DOMAIN_SET.has(hostname.split(":")[0].toLowerCase()));
+    const normalizedHost = normalizeRequestAuthority(hostname)?.hostname;
+    return Boolean(normalizedHost && ACTIVE_CAMPAIGNCUE_PRODUCT_DOMAIN_SET.has(normalizedHost));
 }
 
 export function isCampaignCueRuntimeRoute(pathname?: string | null, hostname?: string | null): boolean {

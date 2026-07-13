@@ -4,7 +4,7 @@ import { BillingInterval, Currency, Plan, PlanType, PurchaseIntent } from '@data
 import PlatformFeaturesList from '@data/PlatformFeaturesList';
 import { CustomePlanForB2B, getB2BPlansList, getB2CPlansList } from '@data/PlatformPlansList';
 import { getBoundedPaymentStringContext, logPaymentFailure } from '@hook/paymentDiagnostics';
-import usePaymentHandler from '@hook/usePaymentHandler';
+import usePaymentHandler, { isPaymentCheckoutDismissedError } from '@hook/usePaymentHandler';
 import { Switch } from '@shadcncomponents/switch';
 import { useToast } from '@shadcnhooks/use-toast';
 import { FirestoreSubscriptionDoc } from '@type/razorpay';
@@ -178,6 +178,7 @@ const PricingPageRenderer: React.FC<{ welcomeTenantName?: string | null, activeS
         })
             .catch((error) => {
                 descardPaymentFlow()
+                if (isPaymentCheckoutDismissedError(error)) return;
                 logPaymentFailure('payment_pricing_post_onboarding_failed', error, buildPricingPaymentLogContext('post_onboarding_start', {
                     ...getBoundedPaymentStringContext('planId', purchaseIntent.plan?.planId),
                 }));
@@ -198,6 +199,7 @@ const PricingPageRenderer: React.FC<{ welcomeTenantName?: string | null, activeS
             })
                 .catch((error) => {
                     descardPaymentFlow();
+                    if (isPaymentCheckoutDismissedError(error)) return;
                     logPaymentFailure('payment_pricing_card_click_failed', error, buildPricingPaymentLogContext('payment_card_click', {
                         ...getBoundedPaymentStringContext('planId', plan.planId),
                     }));

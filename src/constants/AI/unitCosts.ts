@@ -1,4 +1,5 @@
 import { AI_ACTIONS_TYPES } from "@constant/common";
+import { CONTENT_CREDIT_OPERATION_COSTS } from "@data/shared/contentCreditPolicy";
 
 // ═══════════════════════════════════════════════════════════════
 // USD → INR CONVERSION (update periodically)
@@ -33,12 +34,14 @@ export const GEMINI_COST_USD: Record<string, number> = {
     [AI_ACTIONS_TYPES.ANSWERLATTICE_TRANSLATION]: 0.0020, // KB article translation
     [AI_ACTIONS_TYPES.ANSWERLATTICE_FAQ_GENERATION]: 0.0012, // Article-backed FAQ suggestion generation
     [AI_ACTIONS_TYPES.ANSWERLATTICE_WIDGET_SEARCH]: 0.0016, // Public widget answer generation and supporting provider steps
+    [AI_ACTIONS_TYPES.ANSWERLATTICE_SUPPORT_SEARCH]: 0.0016, // Provider-backed Answerlattice help/widget fallback
     [AI_ACTIONS_TYPES.ANSWERLATTICE_KB_EMBEDDING]: 0.0002, // Answerlattice KB article/query embedding
     [AI_ACTIONS_TYPES.ANSWERLATTICE_DRAFT_GENERATION]: 0.0016, // Canonical answer draft generation from support signals
     [AI_ACTIONS_TYPES.ANSWERLATTICE_TICKET_KNOWLEDGE_EXTRACTION]: 0.0016, // Resolved ticket cluster extraction
     [AI_ACTIONS_TYPES.ANSWERLATTICE_ONBOARDING_BOOTSTRAP]: 0.0016, // Entity/draft bootstrap provider calls
     [AI_ACTIONS_TYPES.ANSWERLATTICE_ENTITY_EXTRACTION]: 0.0016, // Article save ontology/entity extraction
     [AI_ACTIONS_TYPES.ANSWERLATTICE_FRICTION_INSIGHT]: 0.0016, // Weekly friction insight generation
+    [AI_ACTIONS_TYPES.ANSWERLATTICE_ANSWER_TEST]: 0.0016, // Owner-triggered full-runtime support answer test
     [AI_ACTIONS_TYPES.ANSWERLATTICE_INTAKE_OCR]: 0.0025, // Screenshot/UI OCR for source intake
     [AI_ACTIONS_TYPES.ANSWERLATTICE_INTAKE_TRANSCRIPTION]: 0.0060, // Short audio/video transcription for source intake
     [AI_ACTIONS_TYPES.ANSWERLATTICE_INTAKE_EMBEDDING]: 0.0002, // Intake-published article embedding
@@ -55,14 +58,16 @@ export const GEMINI_COST_USD: Record<string, number> = {
 };
 
 // ═══════════════════════════════════════════════════════════════
-// INTERNAL UNIT COSTS (abstract units for capacity tracking)
+// CONTENT CREDIT COSTS
 //
 // Calibrated so: 250 units ≈ enough for a typical store's first
 // month of active AI usage (descriptions + 20 images + 3 languages)
 //
 // 1 unit ≈ ₹12 at ₹2,999 per 250-unit pack
 //
-// NEVER expose these values to customers.
+// Eligible owner-operation rates are public so credit packs and referral
+// rewards have concrete meaning. Provider cost, margin, and overdraft remain
+// internal and must never be exposed.
 // @see __docs__/ai-enhancement-packs/ai-enhancement-packs_impl.md
 // ═══════════════════════════════════════════════════════════════
 export const AI_UNIT_COSTS: Record<string, number> = {
@@ -85,12 +90,14 @@ export const AI_UNIT_COSTS: Record<string, number> = {
     [AI_ACTIONS_TYPES.ANSWERLATTICE_TRANSLATION]: 0, // Answerlattice/control-plane operation — not MenuList owner pack usage
     [AI_ACTIONS_TYPES.ANSWERLATTICE_FAQ_GENERATION]: 0, // Answerlattice/control-plane operation — owner-triggered but not MenuList pack usage
     [AI_ACTIONS_TYPES.ANSWERLATTICE_WIDGET_SEARCH]: 0, // Answerlattice public support operation — logged, not charged to support credits
+    [AI_ACTIONS_TYPES.ANSWERLATTICE_SUPPORT_SEARCH]: 1, // One provider-backed support fallback request
     [AI_ACTIONS_TYPES.ANSWERLATTICE_KB_EMBEDDING]: 0, // Publishing support infrastructure — logged, not charged separately
     [AI_ACTIONS_TYPES.ANSWERLATTICE_DRAFT_GENERATION]: 0, // Nightly canonical draft support operation — logged for cost visibility
     [AI_ACTIONS_TYPES.ANSWERLATTICE_TICKET_KNOWLEDGE_EXTRACTION]: 0, // Nightly ticket knowledge support operation — logged for cost visibility
     [AI_ACTIONS_TYPES.ANSWERLATTICE_ONBOARDING_BOOTSTRAP]: 0, // Founder onboarding support operation — logged for cost visibility
     [AI_ACTIONS_TYPES.ANSWERLATTICE_ENTITY_EXTRACTION]: 0, // Article save ontology/entity extraction — logged for cost visibility
     [AI_ACTIONS_TYPES.ANSWERLATTICE_FRICTION_INSIGHT]: 0, // Weekly insight support operation — logged for cost visibility
+    [AI_ACTIONS_TYPES.ANSWERLATTICE_ANSWER_TEST]: 1, // Owner-triggered full-runtime QA; deterministic-only tests remain free
     [AI_ACTIONS_TYPES.ANSWERLATTICE_INTAKE_OCR]: 1, // Answerlattice support-credit operation, charged in Answerlattice credit ledger
     [AI_ACTIONS_TYPES.ANSWERLATTICE_INTAKE_TRANSCRIPTION]: 2, // Answerlattice support-credit operation, charged in Answerlattice credit ledger
     [AI_ACTIONS_TYPES.ANSWERLATTICE_INTAKE_EMBEDDING]: 0, // Publishing support infrastructure — logged, not charged separately
@@ -100,13 +107,13 @@ export const AI_UNIT_COSTS: Record<string, number> = {
     [AI_ACTIONS_TYPES.CAMPAIGN_CAPTION]: 1, // Tiny owner-requested campaign copy generation
     [AI_ACTIONS_TYPES.MENU_CARD_EXPORT_DESIGN_ADVISOR]: 1, // Pro/Premium print-layout recommendation
     [AI_ACTIONS_TYPES.REVIEW_REPLY_SUGGESTION]: 1, // Owner-requested review reply draft
-    [AI_ACTIONS_TYPES.REWRITE_DESCRIPTION]: 1, // ₹12 charge vs ₹0.13 cost → ~99x margin
-    [AI_ACTIONS_TYPES.IMAGE_GENERATION]: 5, // ₹60 charge vs ₹3.38 cost → ~18x margin
-    [AI_ACTIONS_TYPES.BATCH_IMAGE_GENERATION]: 5, // Per image in batch
-    [AI_ACTIONS_TYPES.LANGUAGE_ADDITION]: 3, // ₹36 charge vs ₹0.37 cost → ~97x margin
-    [AI_ACTIONS_TYPES.ITEM_TRANSLATION]: 1, // ₹12 charge vs ₹0.04 cost → ~300x margin
-    [AI_ACTIONS_TYPES.IMAGE_TRANSLATION]: 5, // ₹60 charge vs ₹3.80 cost → ~16x margin
-    [AI_ACTIONS_TYPES.IMAGE_EDITING]: 5, // Same as image generation
+    [AI_ACTIONS_TYPES.REWRITE_DESCRIPTION]: CONTENT_CREDIT_OPERATION_COSTS.DESCRIPTION_REWRITE,
+    [AI_ACTIONS_TYPES.IMAGE_GENERATION]: CONTENT_CREDIT_OPERATION_COSTS.GENERATED_MENU_IMAGE,
+    [AI_ACTIONS_TYPES.BATCH_IMAGE_GENERATION]: CONTENT_CREDIT_OPERATION_COSTS.GENERATED_MENU_IMAGE,
+    [AI_ACTIONS_TYPES.LANGUAGE_ADDITION]: CONTENT_CREDIT_OPERATION_COSTS.LANGUAGE_ADDITION,
+    [AI_ACTIONS_TYPES.ITEM_TRANSLATION]: CONTENT_CREDIT_OPERATION_COSTS.ITEM_TRANSLATION,
+    [AI_ACTIONS_TYPES.IMAGE_TRANSLATION]: CONTENT_CREDIT_OPERATION_COSTS.IMAGE_TRANSLATION,
+    [AI_ACTIONS_TYPES.IMAGE_EDITING]: CONTENT_CREDIT_OPERATION_COSTS.IMAGE_EDIT,
 };
 
 /**

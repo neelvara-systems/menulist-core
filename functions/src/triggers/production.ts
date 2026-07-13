@@ -14,7 +14,7 @@ import { QueryDocumentSnapshot } from 'firebase-admin/firestore';
 import * as functions from 'firebase-functions';
 import { FirestoreEvent, onDocumentCreated, onDocumentUpdated } from 'firebase-functions/v2/firestore';
 import { FUNCTION_OPTIONS } from '../config/secrets';
-import { finalizePublishLogic } from '../logic/finalizePublish';
+import { dispatchPublishingEmbeddingTasks, finalizePublishingJob } from '../logic/kbPublishingLifecycle';
 import { processMenuImagesJobLogic } from '../logic/processMenuImagesJob';
 import { startGenerationLogic } from '../logic/startGeneration';
 import {
@@ -56,24 +56,34 @@ export const startGeneration = onDocumentCreated(
     },
 );
 
+// Shared-mode compatibility retry. Dedicated Answerlattice remains the active runtime.
+export const retryGeneration = onDocumentUpdated(
+    { ...FUNCTION_OPTIONS.aiEventTrigger, document: `${INGESTION_JOB_COLLECTION}/{jobId}` },
+    async (event) => {
+        const before = event.data?.before.data() as IngestionJob | undefined;
+        const after = event.data?.after.data() as IngestionJob | undefined;
+        if (!before || !after) return;
+        if (before.status !== INGESTION_JOB_STATUS.FAILED || after.status !== INGESTION_JOB_STATUS.PENDING) return;
+        await startGenerationLogic(event.params.jobId, after);
+    },
+);
+
 // STEP 8 - KB Ingestion: Triggered when ingestion job doc is updated (finalize publish)
 export const finalizePublish = onDocumentUpdated(
     { ...FUNCTION_OPTIONS.aiEventTrigger, document: `${INGESTION_JOB_COLLECTION}/{jobId}` },
     async (event) => {
         const logger = functions.logger;
-        const before = event.data?.before.data() as IngestionJob;
-        const after = event.data?.after.data() as IngestionJob;
+        const after = event.data?.after.data() as IngestionJob | undefined;
         const jobId = event.params.jobId;
 
-        if (!before || !after) {
+        if (!after) {
             logger.info('[finalizePublish] No data change detected.', getTriggerJobContext(jobId, 'finalizePublish'));
             return null;
         }
 
-        if (after.status !== INGESTION_JOB_STATUS.PUBLISHING || before.articlesEmbeddedCount === after.articlesEmbeddedCount) {
-            return null;
-        }
-        await finalizePublishLogic(after, jobId);
+        if (after.status !== INGESTION_JOB_STATUS.PUBLISHING) return null;
+        await dispatchPublishingEmbeddingTasks(jobId, after);
+        await finalizePublishingJob(jobId);
         return null;
     },
 );

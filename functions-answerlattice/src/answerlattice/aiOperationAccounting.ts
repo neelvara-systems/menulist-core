@@ -4,8 +4,10 @@ import { ANSWERLATTICE_EMBEDDING_MODEL, ANSWERLATTICE_TEXT_MODEL } from '../cons
 import { DB_COLLECTIONS } from '../constants/database';
 import { firestoreAdmin as db } from '../firebaseAdmin';
 import { answerlatticeGenAIClient } from '../genAiClient';
+import { sanitizeForFirestore as sanitizeFirestoreValue } from '../lib/sanitizeForFirestore';
 
 export const ANSWERLATTICE_AI_ACTIONS = {
+    KB_GENERATION: 'answerlattice_kb_generation',
     KB_EMBEDDING: 'answerlattice_kb_embedding',
     DRAFT_GENERATION: 'answerlattice_draft_generation',
     TICKET_KNOWLEDGE_EXTRACTION: 'answerlattice_ticket_knowledge_extraction',
@@ -52,20 +54,9 @@ const GEMINI_MODEL = ANSWERLATTICE_TEXT_MODEL;
 const EMBEDDING_MODEL = ANSWERLATTICE_EMBEDDING_MODEL;
 
 const sanitizeForFirestore = (value: any): any => {
-    if (value === undefined) return null;
-    if (value === null) return null;
-    if (value instanceof Date) return Timestamp.fromDate(value);
-    if (Array.isArray(value)) return value.map(sanitizeForFirestore);
-    if (value && typeof value === 'object') {
-        if (typeof value.toDate === 'function' && typeof value.seconds === 'number') return value;
-        if (value.constructor?.name && String(value.constructor.name).includes('FieldValue')) return value;
-        return Object.fromEntries(
-            Object.entries(value)
-                .filter(([, nested]) => typeof nested !== 'function')
-                .map(([key, nested]) => [key, sanitizeForFirestore(nested)]),
-        );
-    }
-    return value;
+    return sanitizeFirestoreValue(value, {
+        dateTransform: (date) => Timestamp.fromDate(date),
+    });
 };
 
 export const estimateTokenCount = (value: string): number => {
@@ -245,6 +236,7 @@ export const recordGeminiCallOperation = async (params: {
 export const recordEmbeddingOperation = async (params: {
     articleId?: string;
     dimensions?: number;
+    model?: string;
     processingTime?: number;
     sId: number;
     source: string;
@@ -262,7 +254,7 @@ export const recordEmbeddingOperation = async (params: {
             articleId: params.articleId || null,
             embeddingDimensions: Number(params.dimensions || 0),
         },
-        model: EMBEDDING_MODEL,
+        model: params.model || EMBEDDING_MODEL,
         processingTime: params.processingTime,
         promptTokenCount: usageMetadata.promptTokenCount,
         sId: params.sId,

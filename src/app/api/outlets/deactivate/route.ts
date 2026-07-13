@@ -23,6 +23,11 @@ import { checkRateLimit } from "@lib/rateLimit";
 import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
 import { validateAPIInput } from "@lib/security/inputValidation";
 import { touchDigitalScreenContentVersionForStoreServer } from "@lib/screen/serverScreenInvalidation";
+import {
+    getOutletSlugClaimDocumentId,
+    isValidOutletSlugClaimCandidate,
+    writeReleasedOutletSlugClaim,
+} from "@lib/routing/outletSlugClaim";
 import { revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -155,6 +160,14 @@ export const POST = withAuth(async (request, session) => {
             ) {
                 throw new InvalidOutletTargetError();
             }
+            const freshOutletSlug = typeof freshTarget?.outletSlug === 'string'
+                ? freshTarget.outletSlug.toLowerCase()
+                : '';
+            const outletSlugClaimRef = freshOutletSlug && isValidOutletSlugClaimCandidate(freshOutletSlug)
+                ? db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
+                    .doc(getOutletSlugClaimDocumentId(tenantDocumentId, freshOutletSlug))
+                : null;
+            const outletSlugClaimSnap = outletSlugClaimRef ? await tx.get(outletSlugClaimRef) : null;
             const freshStoresList = freshTenantSnap.data()?.storesList || [];
             const updatedStoresList = freshStoresList.map((s: any) =>
                 Number(s.storeId) === Number(outletStoreId) ? { ...s, active: false } : s
@@ -177,6 +190,17 @@ export const POST = withAuth(async (request, session) => {
                     },
                 },
             }, { merge: true });
+            if (
+                outletSlugClaimRef
+                && (!outletSlugClaimSnap?.exists || String(outletSlugClaimSnap.data()?.storeId || '') === outletStoreDocumentId)
+            ) {
+                writeReleasedOutletSlugClaim(tx, {
+                    claimRef: outletSlugClaimRef,
+                    outletSlug: freshOutletSlug,
+                    storeId: outletStoreDocumentId,
+                    tenantId: tenantDocumentId,
+                }, now);
+            }
             tx.update(db.doc(`${DB_COLLECTIONS.TENANTS}/${tenantDocumentId}`), { storesList: updatedStoresList });
         });
 

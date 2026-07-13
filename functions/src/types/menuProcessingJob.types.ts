@@ -64,7 +64,7 @@ export interface MenuImageProcessingJob {
         name: string;
         size: number;
         type: string;
-        url: string;   // HTTPS URL or data:base64 URI
+        url: string;   // Validated Firebase Storage HTTPS URL
     }[];
     targetLanguages: {
         code: string;
@@ -156,9 +156,11 @@ export interface MenuImageProcessingJob {
         processingTime: number;
         batchResults?: {
             batchIndex: number;
+            failedFileIndices?: number[];
             success: boolean;
             filesProcessed: number;
         }[];
+        partialResult?: boolean;
         // Extraction provenance (P0 hardening — Mar 2026)
         /** Raw AI response text per batch (truncated to 10KB each for doc size safety) */
         rawBatchResponses?: {
@@ -206,7 +208,8 @@ export interface MenuImageProcessingJob {
     // TRANSACTION (Cost tracking)
     // ─────────────────────────────────────────────────────────────
     transaction?: {
-        transactionId: string;
+        transactionId: string | null;
+        recorded: boolean;
         totalCredits: number;
         totalCharge: number;
         unitsConsumed?: number;
@@ -246,7 +249,8 @@ export interface MenuImageProcessingJob {
     // ─────────────────────────────────────────────────────────────
     // TENANT ISOLATION
     // ─────────────────────────────────────────────────────────────
-    sId: string;
-    tId: string;
-    uId: string;
+    /** Required for project/public jobs; messaging onboarding is pre-tenant. */
+    sId?: string;
+    tId?: string;
+    uId?: string;
 }

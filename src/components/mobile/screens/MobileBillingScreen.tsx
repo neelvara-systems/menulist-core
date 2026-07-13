@@ -3,10 +3,11 @@
 import { AIEnhancementPack, Currency, Plan } from '@data/common';
 import { isFeatureEnabled } from '@config/features';
 import { aiEnhancementPacksList, getB2BPlansList, getB2CPlansList } from '@data/PlatformPlansList';
+import { getContentCreditOutcomeExamples } from '@data/shared/contentCreditPolicy';
 import { getActiveSubscriptionForStore } from '@database/subscriptions';
 import { getBillingHistoryForStore } from '@database/subscriptions/paymentTransactions';
 import { getBoundedPaymentStringContext, logPaymentFailure } from '@hook/paymentDiagnostics';
-import usePaymentHandler from '@hook/usePaymentHandler';
+import usePaymentHandler, { isPaymentCheckoutDismissedError } from '@hook/usePaymentHandler';
 import { AUTH_ACCOUNT_REQUEST_POLICY, readAuthAccountResponse } from '@lib/auth/accountClientResponses';
 import { refreshFirebaseAuthClaims } from '@lib/auth/firebaseAuthSync';
 import { formatBillingHistoryEvents } from '@lib/billing/billingHistoryFormatter';
@@ -193,7 +194,8 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
             }
             Toast.show({ content: t('planUpdated'), duration: 2000 });
             await refetchSubscription();
-        } catch (err: any) {
+        } catch (err) {
+            if (isPaymentCheckoutDismissedError(err)) return;
             logPaymentFailure('payment_mobile_billing_plan_update_failed', err, buildMobileBillingPaymentLogContext('plan_update', {
                 ...getBoundedPaymentStringContext('targetPlanId', plan.planId),
             }));
@@ -218,7 +220,8 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
             await onUpgradePlan(sub, currentSubscriptionPlan, currency, nextPaidLocationCount);
             Toast.show({ content: `Paid locations updated to ${nextPaidLocationCount}.`, duration: 2000 });
             await refetchSubscription();
-        } catch (err: any) {
+        } catch (err) {
+            if (isPaymentCheckoutDismissedError(err)) return;
             logPaymentFailure('payment_mobile_billing_paid_location_failed', err, buildMobileBillingPaymentLogContext('add_paid_location', {
                 ...getBoundedPaymentStringContext('targetPlanId', currentSubscriptionPlan.planId),
                 quantity: nextPaidLocationCount,
@@ -245,7 +248,8 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                         : (previous.topUpCredits || 0) + pack.creditAmount,
                 }
                 : previous);
-        } catch (err: any) {
+        } catch (err) {
+            if (isPaymentCheckoutDismissedError(err)) return;
             logPaymentFailure('payment_mobile_billing_credit_pack_failed', err, buildMobileBillingPaymentLogContext('credit_pack_purchase', {
                 ...getBoundedPaymentStringContext('packId', packId),
             }));
@@ -329,7 +333,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
     const fetchHistory = async () => {
         try {
             const historyStoreId = Number(sub?.storeId || billingStoreId || session?.user?.storeId);
-            const raw = await getBillingHistoryForStore(Number(session?.user?.tenantId), historyStoreId);
+            const raw = await getBillingHistoryForStore(session?.user?.tenantId, historyStoreId);
             const formatted = formatBillingHistoryEvents(raw);
             setBillingHistory(formatted);
             setShowHistory(true);
@@ -859,14 +863,22 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                         <Flex gap={12} vertical>
                             {aiEnhancementPacksList.map((pack: AIEnhancementPack) => {
                                 const price = (pack as any)[`price${currency}`]?.price;
+                                const examples = getContentCreditOutcomeExamples(pack.creditAmount);
                                 return (
                                     <Card key={pack.packId} onClick={() => handleBuyCredits(pack.packId)}>
-                                        <Flex align="center" justify="space-between">
-                                            <Flex gap={4} vertical>
+                                        <Flex align="flex-start" gap={12} justify="space-between">
+                                            <Flex gap={3} style={{ flex: '1 1 0', minWidth: 0 }} vertical>
                                                 <Text strong>{pack.name}</Text>
                                                 <Text type="secondary">{pack.description || 'Enhancement Pack'}</Text>
+                                                <Text strong>{t('creditPackAmount', { credits: pack.creditAmount })}</Text>
+                                                <Text type="secondary">
+                                                    {t('creditPackExample', {
+                                                        descriptions: examples.descriptionRewrites,
+                                                        images: examples.generatedMenuImages,
+                                                    })}
+                                                </Text>
                                             </Flex>
-                                            <Text>{price ? formatCurrency(price, currency) : 'N/A'}</Text>
+                                            <Text style={{ flexShrink: 0 }}>{price ? formatCurrency(price, currency) : 'N/A'}</Text>
                                         </Flex>
                                     </Card>
                                 );

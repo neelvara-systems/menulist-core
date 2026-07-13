@@ -6,6 +6,7 @@ import {
     type AnswerlatticeFaqSource,
     type AnswerlatticeFaqStatus,
     type AnswerlatticeGeneratedFaq,
+    type AnswerlatticePublicFaq,
 } from '@type/answerlattice';
 import { z } from 'zod';
 import { normalizeAnswerlatticeFaqId } from './faqIdBoundary';
@@ -22,6 +23,9 @@ const MAX_QUESTION_LENGTH = 240;
 const MAX_ANSWER_LENGTH = 2000;
 const MAX_TAGS = 20;
 const MAX_ENTITY_IDS = 25;
+const MAX_PUBLIC_FEEDBACK_COUNT = 1_000_000_000;
+
+const PUBLIC_FAQ_KEYS = ['id', 'question', 'answer', 'articleId', 'tags', 'likes', 'dislikes'] as const;
 
 const CONTROL_TEXT_PATTERN = /[\u0000-\u001f\u007f]/g;
 
@@ -44,6 +48,135 @@ export const normalizeFaqSource = (value: unknown): AnswerlatticeFaqSource => {
     return Object.values(ANSWERLATTICE_FAQ_SOURCE).includes(value as AnswerlatticeFaqSource)
         ? value as AnswerlatticeFaqSource
         : ANSWERLATTICE_FAQ_SOURCE.MANUAL;
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> => (
+    Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+);
+
+const normalizePublicFeedbackCount = (value: unknown): number | null => {
+    return typeof value === 'number'
+        && Number.isSafeInteger(value)
+        && value >= 0
+        && value <= MAX_PUBLIC_FEEDBACK_COUNT
+        ? value
+        : null;
+};
+
+export const normalizeAnswerlatticePublicFaq = (value: unknown): AnswerlatticePublicFaq | null => {
+    if (!isRecord(value)
+        || !(PUBLIC_FAQ_KEYS as readonly string[]).every(key => Object.prototype.hasOwnProperty.call(value, key))
+        || Object.keys(value).some(key => !(PUBLIC_FAQ_KEYS as readonly string[]).includes(key))) {
+        return null;
+    }
+
+    const id = normalizeAnswerlatticeFaqId(value.id);
+    const question = normalizeFaqText(value.question, MAX_QUESTION_LENGTH);
+    const answer = normalizeFaqText(value.answer, MAX_ANSWER_LENGTH);
+    const articleId = value.articleId === null
+        ? null
+        : normalizeAnswerlatticeKbArticleId(value.articleId);
+    const likes = normalizePublicFeedbackCount(value.likes);
+    const dislikes = normalizePublicFeedbackCount(value.dislikes);
+    if (!id || !question || !answer || (value.articleId !== null && !articleId) || likes === null || dislikes === null) {
+        return null;
+    }
+
+    if (!Array.isArray(value.tags)) return null;
+    const tags = normalizeSurfaceList(value.tags, MAX_TAGS, 64);
+    if (tags.length !== value.tags.length) return null;
+
+    return { id, question, answer, articleId, tags, likes, dislikes };
+};
+
+export const normalizeAnswerlatticePublicFaqList = (value: unknown): AnswerlatticePublicFaq[] | null => {
+    if (!Array.isArray(value) || value.length > ANSWERLATTICE_FAQ_PUBLIC_LIMIT) return null;
+    const faqs = value.map(normalizeAnswerlatticePublicFaq);
+    return faqs.every((faq): faq is AnswerlatticePublicFaq => faq !== null) ? faqs : null;
+};
+
+export const projectAnswerlatticePublicFaq = (
+    value: unknown,
+    documentId: unknown,
+    scope: { tId: number; sId: number },
+): AnswerlatticePublicFaq | null => {
+    if (!isRecord(value)
+        || value.pId !== PRODUCT_IDS.ANSWERLATTICE
+        || value.tId !== scope.tId
+        || value.sId !== scope.sId
+        || value.status !== ANSWERLATTICE_FAQ_STATUS.PUBLISHED
+        || value.active !== true) {
+        return null;
+    }
+
+    return normalizeAnswerlatticePublicFaq({
+        id: documentId,
+        question: value.question,
+        answer: value.answer,
+        articleId: value.articleId ?? null,
+        tags: value.tags ?? [],
+        likes: value.likes ?? 0,
+        dislikes: value.dislikes ?? 0,
+    });
+};
+
+export const normalizeAnswerlatticeRetrievalFaq = (
+    value: unknown,
+    documentId: unknown,
+    scope: { tId: number; sId: number },
+): AnswerlatticeFaq | null => {
+    if (!isRecord(value)
+        || value.pId !== PRODUCT_IDS.ANSWERLATTICE
+        || value.tId !== scope.tId
+        || value.sId !== scope.sId
+        || value.status !== ANSWERLATTICE_FAQ_STATUS.PUBLISHED
+        || value.active !== true
+        || !Object.values(ANSWERLATTICE_FAQ_SOURCE).includes(value.source as AnswerlatticeFaqSource)) {
+        return null;
+    }
+
+    const id = normalizeAnswerlatticeFaqId(documentId);
+    const question = normalizeFaqText(value.question, MAX_QUESTION_LENGTH);
+    const answer = normalizeFaqText(value.answer, MAX_ANSWER_LENGTH);
+    const articleId = value.articleId === null || value.articleId === undefined
+        ? null
+        : normalizeAnswerlatticeKbArticleId(value.articleId);
+    if (!id || !question || !answer || (value.articleId !== null && value.articleId !== undefined && !articleId)) {
+        return null;
+    }
+
+    if (!Array.isArray(value.tags) || !Array.isArray(value.contextKeys) || !Array.isArray(value.entityIds)) return null;
+    const tags = normalizeSurfaceList(value.tags, MAX_TAGS, 64);
+    const contextKeys = normalizeContextKeys(value.contextKeys);
+    const entityIds = normalizeAnswerlatticeResolvedEntityIds(value.entityIds, MAX_ENTITY_IDS);
+    if (tags.length !== value.tags.length
+        || contextKeys.length !== value.contextKeys.length
+        || entityIds.length !== value.entityIds.length) return null;
+
+    const articleTitle = value.articleTitle === null || value.articleTitle === undefined
+        ? null
+        : normalizeFaqText(value.articleTitle, 240);
+    if (value.articleTitle !== null && value.articleTitle !== undefined && !articleTitle) return null;
+
+    return {
+        id,
+        pId: PRODUCT_IDS.ANSWERLATTICE,
+        tId: scope.tId,
+        sId: scope.sId,
+        question,
+        answer,
+        status: ANSWERLATTICE_FAQ_STATUS.PUBLISHED,
+        source: value.source as AnswerlatticeFaqSource,
+        active: true,
+        articleId,
+        articleTitle,
+        entityIds,
+        contextKeys,
+        tags,
+        ...(typeof value.sortOrder === 'number' && Number.isSafeInteger(value.sortOrder) && value.sortOrder >= 0
+            ? { sortOrder: value.sortOrder }
+            : {}),
+    };
 };
 
 const FaqSaveSchema = z.object({

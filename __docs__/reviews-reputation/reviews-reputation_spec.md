@@ -38,7 +38,7 @@
 | ---------------------------- | ----------------------------------- |
 | A reviews management tool    | Creates cognitive load              |
 | A reputation dashboard       | Dashboards invite monitoring        |
-| An AI reply generator        | AI replies break authenticity       |
+| An automatic reply publisher | Removes owner approval and authority |
 | A sentiment analyzer         | Analytics create obsession          |
 | A review solicitation system | Review gating is illegal (FTC 2024) |
 
@@ -159,22 +159,20 @@ Review (public) ← Reviews & Reputation ← THIS FEATURE
 
 | Feature                  | Reason               | Doctrine Reference   |
 | ------------------------ | -------------------- | -------------------- |
-| AI reply generation      | Breaks authenticity  | Pre-Rejected Feature |
+| AI auto-posted replies   | Removes owner approval | Product boundary |
 | Sentiment dashboard      | Creates obsession    | Law 7                |
 | Rating analytics         | Invites monitoring   | Law 7                |
 | Review volume tracking   | Dashboard mentality  | Law 7                |
 | Competitive benchmarking | Comparison = anxiety | Law 3                |
 | Review gating            | FTC violation        | Legal compliance     |
-| Reply templates          | Breaks authenticity  | Core Doctrine        |
+| Automatic reply templates | Removes owner review | Core Doctrine       |
 | Performance metrics      | Invites analysis     | Law 2                |
 
 ### Compliance Requirements
 
 | Regulation                      | Requirement                     | Our Approach                  |
 | ------------------------------- | ------------------------------- | ----------------------------- |
-| FTC Consumer Review Rule (2024) | No review suppression or gating | ✅ Read-only, no manipulation |
-| Google Reviews Policy (2025)    | No review solicitation gaming   | ✅ No solicitation features   |
-| FTC Penalties                   | Up to $51,744 per violation     | ✅ Full compliance by design  |
+| Review-platform and consumer-protection requirements | No suppression, gating, solicitation gaming, or unsupported legal claims | Requires current legal/provider review before implementation or launch |
 
 ---
 

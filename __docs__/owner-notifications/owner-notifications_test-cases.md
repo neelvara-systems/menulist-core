@@ -1,7 +1,7 @@
 # Owner Notifications - Test Cases
 
 **Status:** Implemented source-gate coverage; provider and manual recovery smokes require a configured non-production environment
-**Date:** 2026-06-02
+**Date:** 2026-07-13
 
 ## Test Matrix
 
@@ -47,6 +47,17 @@
 | Ops dashboard | Manual email system send | Creates a new manual override event and sends only to the entered email. |
 | Ops dashboard | Manual WhatsApp while channel disabled | Event is skipped by channel flags; platform can record manual handoff after external send. |
 | Ops dashboard | Manual handoff record | Writes a delivery row with masked/hashed destination and manual audit fields. |
+| Ops current authorization | Signed platform session after persisted role downgrade/revocation | GET and POST return `403` before owner-notification data, provider, or mutation work. |
+| Ops malformed lifecycle | Persisted delete/disable/block marker is a string or malformed nested object | Current-platform authorization fails closed before owner-notification work. |
+| Retry claim refusal | Missing, wrong-product, partial, skipped, processing, delivered, or exhausted event | API returns `404` or `409`; it never returns `ok: true`. |
+| Persisted enum drift | Event/delivery role, status, or channel is unknown | Platform DTO labels the field `invalid`; it does not relabel corrupt data as a valid state. |
+| Delivery detail order | More than 12 delivery attempts exist | Detail returns the newest 12 by `createdAt DESC`. |
+| Manual action replay | Same bounded `actionId` is submitted twice | Manual send does not create/process a second queue event; manual handoff adds no second delivery or event-marker write. |
+| Scope fallback failure | Canonical store miss succeeds and legacy fallback read fails | Cost reports the completed canonical read and detail exposes only the fixed resolution error code. |
+| Ops limiter outage | Shared limiter provider unavailable | GET and POST return `503` with `Retry-After`; no Firestore business read, provider call, or recovery write runs. |
+| Ops bounded counts | History grows beyond the recent scan cap | Refresh reads at most 90 event documents; displayed status counts describe that same product-scoped recent window. |
+| Ops product filtering | Delivery query returns a row whose `productId` differs from the selected event | The billed row is excluded from the response. |
+| Ops manual handoff concurrency | Source event is deleted or changes product before handoff commit | Transaction returns not found; neither delivery nor event marker commits and the event is not recreated. |
 
 ## Manual Verification Flow
 
@@ -87,6 +98,8 @@ The source gate validates:
 - Current migration map coverage
 - Platform dashboard response parsing, request policy, bounded action bodies, and recovery-action guards
 - Owner notification app-side and Functions WhatsApp response parsing caps
+- Current persisted platform authorization on GET and POST, fail-closed read/action limiters, bounded product-scoped recent counts, exact scope-read accounting, and transactional manual handoff
+- `npm run test:notification-ops-snapshot-boundary` behavior for recent-window ordering, filters, counts, and product isolation
 
 Provider dry-run coverage remains manual because it depends on non-production SMTP, WhatsApp template/session setup, and platform-user access to `/ops/owner-notifications`.
 

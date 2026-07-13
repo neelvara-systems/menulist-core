@@ -42,7 +42,7 @@ const WorkspaceProfileSchema = z.object({
     primarySurfaces: z.array(z.string().trim().min(1).max(80)).max(8).default([]),
     timeZone: z.string().trim().max(80).optional(),
     businessDayEndTime: z.string().trim().regex(/^([01]\d|2[0-3]):([0-5]\d)$/).optional(),
-});
+}).strict();
 
 const resolveSessionScope = (session: any): { tenantId: number; storeId: number } | null => {
     const scope = resolveAnswerlatticeSessionScope(session);

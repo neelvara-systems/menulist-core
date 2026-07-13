@@ -19,6 +19,7 @@
 import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
 import { apiCallComposer } from '@lib/apiHelper/apiCallComposer';
+import { replaceUndefined } from '@lib/apiHelper';
 import getActiveSession from '@lib/auth/getActiveSession';
 import { firebaseClient } from '@lib/firebase/firebaseClient';
 import { secureError } from '@lib/security/secureLogger';
@@ -77,29 +78,6 @@ const logOwnerControlUsageFailure = (
         sourceErrorCode: getOwnerControlErrorCode(error),
     });
 };
-
-/**
- * Sanitize object for Firestore (replace undefined with null)
- */
-function sanitizeForFirestore<T extends Record<string, any>>(obj: T): T {
-    const result = {} as T;
-    for (const key in obj) {
-        const value = obj[key];
-        if (value === undefined) {
-            (result as any)[key] = null;
-        } else if (value && typeof value === 'object' && !Array.isArray(value) && !(value as any).toDate) {
-            // Skip Firestore Timestamps (they have toDate method)
-            (result as any)[key] = sanitizeForFirestore(value as Record<string, any>);
-        } else if (Array.isArray(value)) {
-            (result as any)[key] = value.map(item =>
-                (item && typeof item === 'object') ? sanitizeForFirestore(item) : item
-            );
-        } else {
-            (result as any)[key] = value;
-        }
-    }
-    return result;
-}
 
 const COLLECTION = DB_COLLECTIONS.OWNER_CONTROL_USAGE;
 
@@ -259,7 +237,7 @@ async function executeTrackingWrite(
                 lastUpdatedAt: Timestamp.fromDate(now),
             };
 
-            await setDoc(docRef, sanitizeForFirestore(initialData));
+            await setDoc(docRef, replaceUndefined(initialData));
         }
 
     } catch (error) {

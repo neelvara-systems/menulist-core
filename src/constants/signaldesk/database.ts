@@ -79,6 +79,7 @@ export const SIGNALDESK_COLLECTIONS = {
     CONTENT_DISTRIBUTION_DRAFTS: "signaldeskContentDistributionDrafts",
     CONTENT_CALENDAR_ITEMS: "signaldeskContentCalendarItems",
     CONTENT_PERFORMANCE_SUMMARIES: "signaldeskContentPerformanceSummaries",
+    PROOF_PERMISSIONS: "signaldeskProofPermissions",
     TRUST_PARTNER_PROFILES: "signaldeskTrustPartnerProfiles",
     TRUST_PARTNER_NICHE_TESTS: "signaldeskTrustPartnerNicheTests",
     TRUST_PARTNER_DEALS: "signaldeskTrustPartnerDeals",

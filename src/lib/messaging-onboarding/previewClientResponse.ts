@@ -1,15 +1,22 @@
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
+import {
+  isMessagingPreviewViewableState,
+  normalizeMessagingPreviewCounter,
+  normalizeMessagingPreviewMenuData,
+  normalizeMessagingPreviewPublishedResult,
+  normalizeMessagingPreviewScore,
+  type MessagingPreviewMenuData,
+  type MessagingPreviewPublishedResult,
+  type MessagingPreviewViewableState,
+} from './previewResponseBoundary';
+
+export type {
+  MessagingPreviewLocalizedText,
+  MessagingPreviewPublishedResult,
+} from './previewResponseBoundary';
 
 export const MESSAGING_PREVIEW_RESPONSE_JSON_MAX_BYTES = 2 * 1024 * 1024;
-
-export type MessagingPreviewPublishedResult = {
-  dashboardUrl: string;
-  projectId?: string;
-  publicUrl: string;
-  storeId?: number;
-  tenantId?: number;
-};
 
 export type MessagingPreviewData = {
   address: string;
@@ -18,12 +25,12 @@ export type MessagingPreviewData = {
   businessType: string;
   correctionCount: number;
   maxCorrections: number;
-  menuData?: any;
+  menuData?: MessagingPreviewMenuData;
   phone: string;
   publishedResult?: MessagingPreviewPublishedResult | null;
   qualityScore?: number | null;
   sessionId: string;
-  state: string;
+  state: MessagingPreviewViewableState;
 };
 
 export type MessagingPreviewApproveResponse = {
@@ -40,64 +47,111 @@ export type MessagingPreviewFixResponse = {
 
 type MessagingPreviewResponseKind = 'preview_load' | 'approve' | 'fix';
 type MessagingPreviewResponseLogContext = Record<string, boolean | number | string | undefined>;
-type MessagingPreviewClientError = Error & {
+class MessagingPreviewClientError extends Error {
   code?: string;
   maxReached?: boolean;
   retryAfter?: number;
   status?: number;
-};
+
+  constructor() {
+    super('Messaging preview request failed');
+    this.name = 'MessagingPreviewClientError';
+  }
+}
 
 const isRecord = (value: unknown): value is Record<string, unknown> => (
   Boolean(value) && typeof value === 'object' && !Array.isArray(value)
 );
 
-const isNullableRecord = (value: unknown): value is Record<string, unknown> | null => (
-  value === null || isRecord(value)
+const normalizeClientString = (value: unknown, maxLength: number): string | null => (
+  typeof value === 'string' && value.length <= maxLength && !value.includes('\0')
+    ? value
+    : null
 );
 
-const isPublishedResult = (value: unknown): value is MessagingPreviewPublishedResult => (
-  isRecord(value)
-  && typeof value.publicUrl === 'string'
-  && typeof value.dashboardUrl === 'string'
-);
-
-const isPreviewData = (value: unknown): value is MessagingPreviewData => (
-  isRecord(value)
-  && typeof value.sessionId === 'string'
-  && typeof value.state === 'string'
-  && typeof value.businessName === 'string'
-  && typeof value.businessType === 'string'
-  && typeof value.businessCategory === 'string'
-  && typeof value.phone === 'string'
-  && typeof value.address === 'string'
-  && (value.menuData === undefined || isNullableRecord(value.menuData))
-  && (value.qualityScore === undefined || value.qualityScore === null || Number.isFinite(Number(value.qualityScore)))
-  && (value.publishedResult === undefined || value.publishedResult === null || isPublishedResult(value.publishedResult))
-  && Number.isFinite(Number(value.correctionCount))
-  && Number.isFinite(Number(value.maxCorrections))
-);
-
-const isApproveResponse = (value: unknown): value is MessagingPreviewApproveResponse => (
-  isRecord(value)
-  && value.success === true
-  && isPublishedResult(value.publishedResult)
-);
-
-const isFixResponse = (value: unknown): value is MessagingPreviewFixResponse => (
-  isRecord(value)
-  && value.success === true
-  && Number.isFinite(Number(value.correctionNumber))
-  && Number.isFinite(Number(value.maxCorrections))
-  && typeof value.message === 'string'
-);
-
-const isExpectedResponse = (
-  kind: MessagingPreviewResponseKind,
+const normalizeApproveResponse = (
   payload: unknown,
-): payload is MessagingPreviewData | MessagingPreviewApproveResponse | MessagingPreviewFixResponse => {
-  if (kind === 'preview_load') return isPreviewData(payload);
-  if (kind === 'approve') return isApproveResponse(payload);
-  return isFixResponse(payload);
+): MessagingPreviewApproveResponse | null => {
+  if (!isRecord(payload)) return null;
+  const publishedResult = normalizeMessagingPreviewPublishedResult(payload.publishedResult);
+  return payload.success === true && publishedResult
+    ? { publishedResult, success: true }
+    : null;
+};
+
+const normalizeFixResponse = (
+  payload: unknown,
+): MessagingPreviewFixResponse | null => {
+  if (!isRecord(payload)) return null;
+  const correctionNumber = normalizeMessagingPreviewCounter(payload.correctionNumber);
+  const maxCorrections = normalizeMessagingPreviewCounter(payload.maxCorrections);
+  const message = normalizeClientString(payload.message, 500);
+  return payload.success === true
+    && correctionNumber !== null
+    && maxCorrections !== null
+    && message !== null
+    ? { correctionNumber, maxCorrections, message, success: true }
+    : null;
+};
+
+const normalizePreviewData = (payload: unknown): MessagingPreviewData | null => {
+  if (!isRecord(payload)) return null;
+  const sessionId = normalizeClientString(payload.sessionId, 160);
+  const businessName = normalizeClientString(payload.businessName, 100);
+  const businessType = normalizeClientString(payload.businessType, 50);
+  const businessCategory = normalizeClientString(payload.businessCategory, 160);
+  const phone = normalizeClientString(payload.phone, 80);
+  const address = normalizeClientString(payload.address, 200);
+  const correctionCount = normalizeMessagingPreviewCounter(payload.correctionCount);
+  const maxCorrections = normalizeMessagingPreviewCounter(payload.maxCorrections);
+  const state = isMessagingPreviewViewableState(payload.state) ? payload.state : null;
+  const menuData = payload.menuData === undefined
+    ? undefined
+    : normalizeMessagingPreviewMenuData(payload.menuData);
+  const qualityScore: number | null | undefined = payload.qualityScore === undefined
+    ? undefined
+    : payload.qualityScore === null
+      ? null
+      : normalizeMessagingPreviewScore(payload.qualityScore);
+  const publishedResult: MessagingPreviewPublishedResult | null | undefined =
+    payload.publishedResult === undefined
+      ? undefined
+      : payload.publishedResult === null
+        ? null
+        : normalizeMessagingPreviewPublishedResult(payload.publishedResult);
+
+  if (
+    sessionId === null
+    || businessName === null
+    || businessType === null
+    || businessCategory === null
+    || phone === null
+    || address === null
+    || correctionCount === null
+    || maxCorrections === null
+    || state === null
+    || menuData === null
+    || qualityScore === null && payload.qualityScore !== null
+    || publishedResult === null && payload.publishedResult !== null
+    || state === 'LIVE' && !publishedResult
+  ) {
+    return null;
+  }
+
+  return {
+    address,
+    businessCategory,
+    businessName,
+    businessType,
+    correctionCount,
+    maxCorrections,
+    ...(menuData ? { menuData } : {}),
+    phone,
+    ...(publishedResult ? { publishedResult } : {}),
+    ...(qualityScore !== undefined ? { qualityScore } : {}),
+    sessionId,
+    state,
+  };
 };
 
 const getMessagingPreviewResponseLogContext = (
@@ -119,8 +173,11 @@ const getRejectedResponseCode = (payload: unknown): string => {
 
 const getRetryAfter = (payload: unknown): number | undefined => {
   if (!isRecord(payload)) return undefined;
-  const retryAfter = Number(payload.retryAfter);
-  return Number.isFinite(retryAfter) ? retryAfter : undefined;
+  return typeof payload.retryAfter === 'number'
+    && Number.isSafeInteger(payload.retryAfter)
+    && payload.retryAfter > 0
+    ? payload.retryAfter
+    : undefined;
 };
 
 const createMessagingPreviewClientError = (
@@ -128,7 +185,7 @@ const createMessagingPreviewClientError = (
   code: string,
   payload: unknown = null,
 ): MessagingPreviewClientError => {
-  const error = new Error('Messaging preview request failed') as MessagingPreviewClientError;
+  const error = new MessagingPreviewClientError();
   error.code = code.slice(0, 64);
   error.status = response.status;
   error.maxReached = isRecord(payload) && payload.maxReached === true;
@@ -137,12 +194,12 @@ const createMessagingPreviewClientError = (
 };
 
 export const getMessagingPreviewClientStatus = (error: unknown): number | undefined => {
-  const status = Number((error as MessagingPreviewClientError | undefined)?.status);
-  return Number.isFinite(status) ? status : undefined;
+  const status = error instanceof MessagingPreviewClientError ? error.status : undefined;
+  return typeof status === 'number' && Number.isSafeInteger(status) ? status : undefined;
 };
 
 export const isMessagingPreviewMaxReachedError = (error: unknown): boolean => (
-  Boolean((error as MessagingPreviewClientError | undefined)?.maxReached)
+  error instanceof MessagingPreviewClientError && error.maxReached === true
 );
 
 const readMessagingPreviewJson = async (
@@ -164,9 +221,10 @@ const readMessagingPreviewJson = async (
   }
 };
 
-const readMessagingPreviewResponse = async <T extends MessagingPreviewData | MessagingPreviewApproveResponse | MessagingPreviewFixResponse>(
+const readMessagingPreviewResponse = async <T>(
   response: Response,
   kind: MessagingPreviewResponseKind,
+  normalize: (payload: unknown) => T | null,
 ): Promise<T> => {
   const payload = await readMessagingPreviewJson(response, kind);
 
@@ -174,7 +232,8 @@ const readMessagingPreviewResponse = async <T extends MessagingPreviewData | Mes
     throw createMessagingPreviewClientError(response, getRejectedResponseCode(payload), payload);
   }
 
-  if (!isExpectedResponse(kind, payload)) {
+  const normalizedPayload = normalize(payload);
+  if (!normalizedPayload) {
     const error = createMessagingPreviewClientError(
       response,
       'MESSAGING_PREVIEW_RESPONSE_INVALID',
@@ -191,17 +250,29 @@ const readMessagingPreviewResponse = async <T extends MessagingPreviewData | Mes
     throw error;
   }
 
-  return payload as T;
+  return normalizedPayload;
 };
 
 export const readMessagingPreviewDataResponse = (
   response: Response,
-): Promise<MessagingPreviewData> => readMessagingPreviewResponse<MessagingPreviewData>(response, 'preview_load');
+): Promise<MessagingPreviewData> => readMessagingPreviewResponse(
+  response,
+  'preview_load',
+  normalizePreviewData,
+);
 
 export const readMessagingPreviewApproveResponse = (
   response: Response,
-): Promise<MessagingPreviewApproveResponse> => readMessagingPreviewResponse<MessagingPreviewApproveResponse>(response, 'approve');
+): Promise<MessagingPreviewApproveResponse> => readMessagingPreviewResponse(
+  response,
+  'approve',
+  normalizeApproveResponse,
+);
 
 export const readMessagingPreviewFixResponse = (
   response: Response,
-): Promise<MessagingPreviewFixResponse> => readMessagingPreviewResponse<MessagingPreviewFixResponse>(response, 'fix');
+): Promise<MessagingPreviewFixResponse> => readMessagingPreviewResponse(
+  response,
+  'fix',
+  normalizeFixResponse,
+);

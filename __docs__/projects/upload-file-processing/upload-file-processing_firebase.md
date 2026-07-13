@@ -31,7 +31,7 @@
 | Operation | Collection | Trigger | Frequency | Docs Written | Fields | Notes |
 |-----------|-----------|---------|-----------|-------------|--------|-------|
 | Save uploaded file URLs | `projects/{tId}/{sId}/{projectId}` | After upload to Storage | Per upload batch | 1 | files[] array merge | `updateProject()` with file URLs. Uses `requestBodyComposer` for timestamps. File: `src/database/projects/index.ts:382` |
-| Sync to summary | `platformSummary/projects_{sId}` | With project update | Per upload | 1 | merge update | `syncProjectToSummary()` lightweight metadata. File: `src/database/projects/index.ts:230` |
+| Summary write | — | Normal file/content upload | Per upload | 0 | — | Uploading files changes the full project only; summary metadata is updated separately only when an owner-facing metadata field changes. |
 
 ### Deletes
 
@@ -105,7 +105,7 @@
 | Function | File | Operation Type |
 |----------|------|---------------|
 | `updateProject` | `src/database/projects/index.ts:382` | Write (setDoc merge) |
-| `syncProjectToSummary` | `src/database/projects/index.ts:230` | Write (setDoc merge) |
+| `updateProjectMetadata` | `src/database/projects/index.ts` | Transactional summary metadata merge when metadata actually changes |
 | `uploadProjectFile` | `src/database/projects/index.ts:274` | Storage upload |
 
 ## API Routes & Their Firebase Impact

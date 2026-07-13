@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import type { ComponentProps } from 'react';
+import { type ComponentProps, useEffect, useState } from 'react';
+import { LuMenu, LuX } from 'react-icons/lu';
 
 type NeelvaraNavItem = {
     label: string;
@@ -57,26 +58,62 @@ export function SiteHeaderNav({
     items: NeelvaraNavItem[];
 }) {
     const pathname = usePathname();
+    const [isOpen, setIsOpen] = useState(false);
     const basePath = getNeelvaraBasePath(pathname || '/');
     const currentPath = normalizeNeelvaraPath(pathname || '/');
 
-    return (
-        <nav aria-label="Neelvara navigation">
-            {items.map((item) => {
-                const active = isActivePath(currentPath, item);
-                const targetHref = item.href === '/' ? basePath || '/' : `${basePath}${item.href}`;
+    useEffect(() => {
+        setIsOpen(false);
+    }, [pathname]);
 
-                return (
-                    <Link
-                        key={item.href}
-                        href={targetHref}
-                        aria-current={active ? 'page' : undefined}
-                    >
-                        {item.label}
-                    </Link>
-                );
-            })}
-        </nav>
+    useEffect(() => {
+        if (!isOpen) return undefined;
+
+        const handleEscape = (event: globalThis.KeyboardEvent) => {
+            if (event.key !== 'Escape') return;
+            setIsOpen(false);
+            document.getElementById('neelvara-nav-toggle')?.focus();
+        };
+
+        document.addEventListener('keydown', handleEscape);
+        return () => document.removeEventListener('keydown', handleEscape);
+    }, [isOpen]);
+
+    return (
+        <>
+            <button
+                aria-controls="neelvara-primary-navigation"
+                aria-expanded={isOpen}
+                aria-label={isOpen ? 'Close navigation menu' : 'Open navigation menu'}
+                className="nv-nav-toggle"
+                id="neelvara-nav-toggle"
+                onClick={() => setIsOpen((current) => !current)}
+                type="button"
+            >
+                {isOpen ? <LuX aria-hidden="true" /> : <LuMenu aria-hidden="true" />}
+            </button>
+            <nav
+                aria-label="Neelvara navigation"
+                className={`nv-header-nav${isOpen ? ' is-open' : ''}`}
+                id="neelvara-primary-navigation"
+            >
+                {items.map((item) => {
+                    const active = isActivePath(currentPath, item);
+                    const targetHref = item.href === '/' ? basePath || '/' : `${basePath}${item.href}`;
+
+                    return (
+                        <Link
+                            key={item.href}
+                            href={targetHref}
+                            aria-current={active ? 'page' : undefined}
+                            onClick={() => setIsOpen(false)}
+                        >
+                            {item.label}
+                        </Link>
+                    );
+                })}
+            </nav>
+        </>
     );
 }
 

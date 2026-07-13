@@ -78,12 +78,11 @@ Business Settings Page (no storeId = new store)
 getPlatformSummary() → get next storeId
     ↓
 addStore(changesToUpload)
-    ├── Creates store doc              → stores/{newSId}
-    ├── Updates platform summary count → platformSummary/summary
-    └── Syncs to storesSummary         → platformSummary/storesSummary
-    ↓
-updateTenantsStoreslist(tenantData)
-    └── Appends {storeId, name} to tenant.storesList
+    ├── Reserves a collision-checked ID → platformSummary/summary
+    └── One transaction
+        ├── Creates store doc           → stores/{newSId}
+        ├── Syncs summary row           → platformSummary/storesSummary
+        └── Upserts current list entry  → tenants/{tId}.storesList
 ```
 
 **What this creates:**
@@ -294,14 +293,12 @@ Step 1: Outlet Details Form
     ├── Contact person
     └── Currency (inherited from master by default)
     ↓
-Step 2: System creates outlet (orchestrated sequence):
-    ├── 2a. addStore({ ...outletDetails, tenantId })          → stores/{newSId}
-    ├── 2b. Set isMaster: false on new store
-    ├── 2c. updateTenantsStoreslist({ storesList: [..., { storeId, name }] })
-    ├── 2d. addProject({ name: "Menu" }) for new store        → projects/{tId}/{newSId}/{pId}
-    ├── 2e. setProjectAsMaster(masterProjectId) if not already master
-    ├── 2f. linkStoreToMaster(newProjectId, masterProjectId)  → Links + snapshot + overrides
-    └── 2g. Create outlet user account (or assign existing user to outlet)
+Step 2: System creates outlet through authenticated `POST /api/outlets/create`:
+    ├── 2a. Claims a tenant-scoped outlet slug and allocates IDs in the transaction
+    ├── 2b. Creates the outlet store with `isMaster: false`
+    ├── 2c. Updates the current tenant `storesList` and `storesSummary` atomically
+    ├── 2d. Creates/links the default outlet project and master snapshot
+    └── 2e. Updates owner access and provider quantity with explicit compensation boundaries
     ↓
 Step 3: Success confirmation
     ├── "Outlet created and linked to master menu"

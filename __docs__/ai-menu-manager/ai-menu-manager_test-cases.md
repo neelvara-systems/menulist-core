@@ -2,7 +2,7 @@
 
 **Status:** Current QA plan
 **Audience:** Engineering, QA, product review
-**Last Updated:** July 10, 2026
+**Last Updated:** July 13, 2026
 
 ---
 
@@ -16,6 +16,74 @@ Every passing test should confirm four things:
 2. The card shows the owner what will change before risky work applies.
 3. Approved work reuses the correct MenuList mutation path.
 4. Firebase writes remain compact and bounded.
+
+### AMM-IDEMPOTENCY-001: Server-backed proposal retry identity
+
+**Given** an existing deterministic proposal with the exact session, tenant, store, project, action, patch hash, idempotency key, card ID, card action, and duplicated scope.
+**When** the same command is retried.
+**Then** the route returns the authoritative persisted card without another proposal or compact-session write.
+
+**Given** the same deterministic proposal ID is already bound to another daily session or incompatible command identity.
+**When** the command pre-read or transaction observes it.
+**Then** the route returns fixed `409 Request conflict`, and neither the current compact session nor the existing proposal is mutated.
+
+### AMM-SESSION-INTEGRITY-001: Compact session runtime projection
+
+**Given** a compact session loaded from Firestore, Admin SDK, or a browser snapshot.
+**When** it contains invalid top-level deterministic identity.
+**Then** the session is rejected before cards, receipts, counters, or patches are used.
+
+**When** top-level identity is valid but nested messages, summaries, receipts, artifacts, cards, operations, patch metadata, or timestamps are malformed.
+**Then** invalid nested rows are discarded and valid bounded rows remain usable.
+
+**And** every copy of a duplicated pending-operation ID is discarded.
+**And** cross-session, cross-tenant, cross-store, cross-project, unknown-action, incoherent kind/status, incomplete patch/hash, malformed group-size, and unbounded nested values fail closed.
+**And** the production single-card shape with `commandGroupSize: 1` and no group ID remains compatible.
+**And** malformed, negative, non-integer, unknown, or oversized counters cannot be persisted through Firestore rules and normalize to zero if legacy/Admin data is encountered.
+**And** receipts have bounded title/message text and exact ISO-derived identity.
+
+Regression commands:
+
+- `npm run test:ai-menu-manager:session-integrity`
+- `npm run test:ai-menu-manager:rules`
+- `npm run test:ai-menu-manager:emulator`
+- `npm run verify:ai-menu-manager`
+
+### AMM-PROPOSAL-INTEGRITY-001: Server proposal runtime projection
+
+**Given** a persisted server-backed proposal with malformed or mismatched document identity, scope, duplicated card truth, status, patch/hash, approval record, execution directive, base snapshot, receipt, idempotency keys, or timestamps.
+**When** inbox hydration, command retry, cancellation, approval, or completion reads the proposal.
+**Then** inbox omits the row and mutation transactions fail with `Invalid proposal data` before writing proposal, project, or compact-session truth.
+
+**Given** a valid legacy proposal whose tenant/store scope values use numeric Firestore encoding.
+**When** the proposal is normalized.
+**Then** semantic scope identity is canonicalized to document-ID strings without weakening tenant/store/project equality.
+
+Regression commands:
+
+- `npm run test:ai-menu-manager:proposal-integrity`
+- `npm run test:ai-menu-manager:emulator`
+- `npm run verify:ai-menu-manager`
+
+### AMM-PROJECT-INTEGRITY-001: Selected project runtime projection
+
+**Given** a scoped or legacy project document whose persisted project identity conflicts with its Firestore path, or whose files, extracted data, categories, items, languages, attributes, aliases, images, time slots, menu settings, or design containers have malformed runtime shape.
+**When** command/composer context, stale-approval comparison, direct client patch application, already-applied verification, or completion verification reads the project.
+**Then** AI Menu Manager rejects the project before using it or writing proposal/session truth.
+
+**And** the guard enforces a separate 100-file AMM runtime cap and the existing menu/language/attribute caps instead of silently truncating execution truth; the 15-file pending-upload limit is not treated as a lifetime project limit.
+**And** item and category IDs are unique across the project; attribute IDs are unique inside each item.
+**And** valid legacy string project names and empty projects remain compatible.
+**And** unrelated Project fields remain untouched for their owning product surfaces.
+**And** request, operation, selected-project, and approved-directive project identities must match before context, patch application, or already-applied acknowledgement.
+**And** malformed composer project truth produces no selectable entities instead of crashing the editor surface.
+**And** patch verification requires every matching occurrence to satisfy the approved update, so ambiguous duplicate rows cannot overwrite a failed comparison.
+
+Regression commands:
+
+- `npm run test:ai-menu-manager:project-integrity`
+- `npm run test:ai-menu-manager:emulator`
+- `npm run verify:ai-menu-manager`
 
 ---
 
@@ -425,6 +493,22 @@ For a linked outlet or HQ menu, the card must show:
 **Then** the completion route verifies proposal status, idempotency key, action type, selected store/project scope, `executionId`, `patchHash`, and resulting project marker.
 **And** a modified patch, stale base marker, or mismatched scope cannot mark the proposal executed.
 
+### AMM-EXEC-005A: Server Inbox Rejects Foreign Or Duplicate Proposal Pointers
+
+**Given** a valid compact session contains the same proposal pointer twice and a pointer to a proposal from another session, tenant, store, or project.
+**When** the server-backed inbox hydrates protected proposal detail.
+**Then** normalized proposal IDs are deduplicated before `getAll()`.
+**And** only the proposal whose document ID, proposal ID, card ID, session ID, tenant, store, project, and card scope all match is returned.
+
+### AMM-EXEC-005C: Concurrent Completion Converges On Persisted Truth
+
+**Given** one approved server-backed proposal is executing.
+**When** two completion attempts race with different terminal results.
+**Then** one transaction persists the terminal proposal and compact receipt.
+**And** both callers return the same persisted status and receipt ID.
+**And** the compact session contains one receipt and one execution increment at most.
+**And** a mismatched execution directive cannot replay or replace the terminal result.
+
 ### AMM-EXEC-005B: Receipt Completion Failure After Successful Save
 
 **Given** an approved client project mutation saved through the existing project update path.
@@ -644,27 +728,44 @@ The unresolved cards must be available through the current compact summary, dete
 Submitting the same command twice with the same idempotency key must not create duplicate compact pending operations or proposal docs.
 Approving the same card twice with the same idempotency key must not execute the project mutation twice.
 
-### AMM-COST-009: Completion Uses Loaded Session Snapshot
+### AMM-COST-008A: Compact Session Identity Is Deterministic
 
-For normal deterministic selected-project cards, completion and cancel must reuse the compact session already loaded in the open AMM screen.
-They must not transaction-read the session again before writing the receipt/pending-card update.
+New direct-client sessions must use the exact v2 document ID derived from normalized tenant, store, UTC session date, and bounded project ID.
+A caller-supplied arbitrary legacy ID or mismatched v2 ID must fail before creating or merging a session document.
+Firestore rules must reject new arbitrary IDs without performing a dependent document read, while allowing an existing legacy hashed session to update under unchanged tenant/store/project/date scope during retention.
+Impossible calendar dates must fail request validation before a session read.
+
+### AMM-COST-008B: Concurrent Command Merge Does Not Lose Pending Truth
+
+A new direct-client command must transactionally re-read the compact session before merging pending operations, messages, receipts, and counters.
+Two tabs submitting against the same loaded snapshot must retain both distinct command groups; a racing duplicate must return the persisted matching group without a second write.
+An immediate duplicate already present in the loaded snapshot must be confirmed by one current-session read before returning, with no Firestore write or planner/provider call.
+
+### AMM-COST-009: Completion And Cancel Merge Current Session Truth
+
+For normal deterministic selected-project cards, completion and cancel must transactionally re-read the exact compact session before writing the receipt/pending-card update.
+Two tabs completing or cancelling different cards must preserve the other tab's pending operations and receipts rather than overwriting from either loaded snapshot.
+
+### AMM-COST-009A: Completion Uses Canonical Persisted Operations
+
+A caller-supplied operation body is only a reference to the pending operation ID. Single completion must derive card kind, allowed manual completion, action, title and project from the one current persisted operation. Group completion must reject duplicate requested IDs, missing operations, partial groups, duplicate persisted IDs and inconsistent group-size metadata. Rejection must leave pending operations, receipts and counters unchanged and must not add a Firestore read/write beyond the existing completion transaction.
 
 ### AMM-COST-010: Related Approved Patches Merge
 
 When an owner approves a safe related batch, AMM should produce one project mutation instead of many sequential saves.
 The test should cover bulk price, batch availability, and description repair.
 
-### AMM-COST-010: Job Polling Is Bounded
+### AMM-COST-011: Job Polling Is Bounded
 
 Active job cards may poll while visible.
 Polling must stop when the card is hidden, the screen is backgrounded, the route changes, or the job reaches terminal status.
 
-### AMM-COST-011: Storage Lifecycle Preferred
+### AMM-COST-012: Storage Lifecycle Preferred
 
 Generated drafts, debug artifacts, raw provider traces, and upload review artifacts must have a retention marker.
 Cleanup must use Storage lifecycle rules or existing consolidated cleanup discipline, not a standalone AMM scheduler.
 
-### AMM-COST-012: Mobile Local Actions Stay Local
+### AMM-COST-013: Mobile Local Actions Stay Local
 
 Mobile QR, menu kit, print asset, customer app link, feedback link, digital screen link, POS setup copy, and native share/download actions must not create Firestore writes unless a durable AMM proposal/receipt is explicitly required.
 
@@ -918,7 +1019,7 @@ Required implementation checks:
 - every protected route has auth, tenant validation, Zod validation, and rate limiting where required.
 - project writes preserve cache invalidation.
 - compact session/proposal arrays enforce max lengths.
-- deterministic command, completion, and cancel use the loaded compact session snapshot instead of extra AMM session transaction reads.
+- deterministic command uses the loaded snapshot for immediate duplicate suppression and a current-session transaction read for concurrency-safe merge; completion and cancel also merge against a transaction-local session read.
 - retry-safe command/proposal/approval paths do not duplicate writes.
 - active inbox loading does not scan historical sessions.
 - active job polling is bounded and stops on hidden/backgrounded state.

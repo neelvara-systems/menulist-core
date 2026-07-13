@@ -1,8 +1,8 @@
 # Answerlattice — Core Doctrine
 
 > **Status:** LOCKED
-> **Version:** 1.0.0
-> **Last Updated:** 2026-03-02
+> **Version:** 1.0.1
+> **Last Updated:** 2026-07-11
 > **Authority:** Binding for all product, engineering, sales decisions
 > **Source:** ChatGPT strategic session + Cascade codebase validation
 > **Freeze Duration:** 3 years (additive-only changes permitted)
@@ -111,7 +111,9 @@ No surface feature expansion during infrastructure build.
 
 ---
 
-## Current State Assessment (Honest)
+## Original Current-State Assessment (March 2, 2026 Snapshot)
+
+The following table is preserved as the source-state snapshot that justified the doctrine. It is historical evidence, not the current implementation inventory.
 
 | Dimension | Score | Reality |
 |-----------|:-----:|---------|
@@ -123,6 +125,22 @@ No surface feature expansion during infrastructure build.
 | Infrastructure readiness | 4/10 | Clean DAL but no ontology, no governance, no canonical objects |
 
 **Summary:** System is 70% SupportOS, 30% Answerlattice. Must shift toward knowledge-first.
+
+### Source-State Update (July 11, 2026)
+
+The controlled evolution described above is now implemented in source across all five pillars:
+
+| Dimension | Current source state | Evidence boundary |
+|-----------|----------------------|-------------------|
+| Knowledge modeling | Product ontology, entities, relations, candidates, and entity search index are implemented. | `src/database/answerlattice/entities.ts`, `src/lib/answerlattice/entityExtraction.ts`, `src/components/templates/answerlattice/governance/EntityManagementDashboard.tsx` |
+| Canonical authority | Canonical-first retrieval and version/scoped answers are implemented. Browser clients can read canonical truth but cannot create or update it directly. | `src/lib/answerlattice/canonicalRetrieval.ts`, `src/lib/answerlattice/governanceServer.ts`, `firestore-answerlattice.rules` |
+| Governance | Proposal approval, rejection, canonical apply, drift validation, entity merge, audit, cache version, source version, and bundle invalidation run through server-owned transactions. | `/api/answerlattice/governance/actions`, `src/lib/answerlattice/governanceServer.ts` |
+| Drift and release binding | Four drift classes, release-aware review, explicit drift validation, safe stale-context invalidation, and a fixed review fallback that stops before FAQ or RAG are implemented. Drifted or review-required canonical answers are not retrievable as current truth. | `src/lib/answerlattice/driftDetection.ts`, `src/lib/answerlattice/canonicalRetrieval.ts`, `src/lib/search/searchCore.ts`, `src/components/templates/answerlattice/governance/DriftDashboard.tsx`, Answerlattice scheduler |
+| Signal mutation | Signals and resolved-ticket patterns create reviewable proposals; AI may draft but cannot publish. | `functions-answerlattice/src/answerlattice/answerlatticeNightly.ts`, `functions-answerlattice/src/answerlattice/resolutionExtractor.ts` |
+| Runtime distribution | Approved context can be served through canonical cache versions and compiled public/private bundles. | `src/lib/answerlattice/instantCache.ts`, `src/lib/answerlattice/contextBundleBuilderServer.ts` |
+| Infrastructure separation | Dedicated Answerlattice Firebase clients, Admin runtime, rules, indexes, Functions, QA project, and production project are defined. | `firebase-answerlattice.json`, `firestore-answerlattice.rules`, `functions-answerlattice/`, `src/constants/deploymentTargets.ts` |
+
+**Certification boundary:** This table records current source implementation. It does not prove that the latest rules or app code are deployed, that provider credentials work on a target host, or that production browser/device certification is complete. Those remain release evidence gates.
 
 ---
 
@@ -141,4 +159,5 @@ If it doesn't → it's just a tool.
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-07-11 | 1.0.1 | Preserved the original assessment as historical evidence and added a current source-state implementation update with an explicit deployment/certification boundary |
 | 2026-03-02 | 1.0.0 | Initial doctrine from ChatGPT strategic session + Cascade validation |

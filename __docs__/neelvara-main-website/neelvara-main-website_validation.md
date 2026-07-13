@@ -2,15 +2,140 @@
 
 **Status:** Validated; pending owner/legal launch review
 **Implementation date:** June 20, 2026
-**Last cross-check:** July 5, 2026
+**Last cross-check:** July 11, 2026
 **Runtime:** Shared Next.js/Vercel app under `src/app/sites/neelvara/`
 **Local QA URL:** `http://localhost:3000/__neelvara`
 
 ---
 
+## July 11, 2026 Cross-Page Reference-Led Relayout
+
+- Removed the decorative company-routing studio mock, marquee, bento/reference tabs, spotlight grid, and duplicate quote treatment from the public homepage flow.
+- Replaced the mock dashboard with one factual company reference panel containing only the current operated products, company inbox, and country.
+- Rebuilt the homepage around a split hero, compact entity ledger, unframed operating principles, canonical relationship statement, two product cards, boundary table, contact directory, and final CTA.
+- Rebuilt About, Legal, Privacy, and Terms around a shared split hero and consistent horizontal content rows; duplicate summary-card grids and alternating row directions were removed.
+- Products and Contact retain their product-specific flows while using the same factual reference-summary treatment.
+- Scroll reveals now use IntersectionObserver only, with shorter distance/duration and reduced-motion fallback; no window scroll handler is attached.
+- Rendered checks at `1440x1000` and `390x844` cover Home, Products, About, Contact, Legal, Privacy, and Terms. All routes have zero horizontal overflow, zero stuck reveal states after entry, and no browser warnings or errors.
+
+---
+
+## July 11, 2026 Logo Canvas And Small-Size Asset Hardening
+
+- Preserved all three canonical SVG path `d` values byte-for-byte, including their relative sizes, positions, overlap, and angles.
+- Replaced the uneven `0 0 578 328` master canvas with the optically balanced `68 0 487 320` viewBox. The visible path bounds now retain approximately equal transparent padding on the left/right and top/bottom without applying path transforms.
+- Added `scripts/website-assets/generate-neelvara-logo-assets.js` as the canonical generator for the transparent compatibility PNG, square favicon SVG, `16x16` and `32x32` favicon PNGs, touch/manifest icons, generic app icon, and `1200x630` Open Graph image.
+- Added `scripts/verification/verify-neelvara-logo-assets.js` to lock the three paths and approved palette, reject embedded rasters/transforms, check all PNG dimensions and transparent corners, verify optical centering and tiny-size contrast, and confirm manifest, metadata, structured-data, header/footer, and 404 references.
+- The SVG favicon keeps the exact path geometry and approved gradient colors while using only favicon-specific fill-opacity and outline-strength adjustments for legibility at `16-32px`.
+- Generated visual inspection passes for the master PNG, `16px`/`32px` favicons, `96px` app icon, and Open Graph image.
+- Rendered homepage checks pass at `1280x720` and `390x844`: header/footer marks resolve from `/neelvara-logo.svg`, all metadata icon links are present, no images are broken, and document width equals scroll width.
+- Rendered static 404 check passes at `390x844`: the true `404` page uses the `487x320` master SVG, optimized SVG favicon, `noindex`, and no horizontal overflow.
+- Dedicated logo verification, script syntax, strict TypeScript, focused Neelvara lint, dependency freeze, documentation links, documented npm commands, environment targets, scoped diff integrity, and all 15 local route/asset HTTP checks pass.
+
+---
+
+## July 11, 2026 Cross-Page Section Layout Cross-Check
+
+- Audited all 52 rendered sections across Home, Products, About, Contact, Legal, Privacy, and Terms at desktop `1440x1000` and mobile `390x844` widths.
+- Confirmed Home product cards, company/contact directories, and shared three-card highlight grids fill their declared tracks without unused columns.
+- Found and removed two Products-page three-column assumptions that were rendering only two products: the product map wasted `254px` and the detail grid left an entire third track empty.
+- Rebuilt the Products product map as a full-width header, one company-information root strip, and two equal compact product nodes. Removed duplicated summary copy from the map because the two detail cards already carry the canonical summaries.
+- Products desktop now renders two `591px` map nodes and two `591px` detail cards with zero unused grid width. Mobile renders one `354px` column with full-size targets.
+- Kept the shared About/Legal/Privacy/Terms information panels, Contact support panels, page heroes, quote, and final-action bands because rendered review confirmed balanced columns, purposeful framing, and no forced empty height.
+- All 14 route/viewport combinations have zero horizontal overflow, broken images, CampaignCue references, unused repeated-grid width, or pending reached reveal targets. Akshar resolves site-wide with Inter/system fallback.
+
+---
+
+## July 11, 2026 Home Product Layout Redesign
+
+- Replaced the oversized split glass panel, forced `420px` summary column, `5rem` title, and table-like product rows with an unframed section header and two individual product cards.
+- Preserved the approved `Current products` / `Operated products` hierarchy, product summaries, lineup, canonical logos, and destination URLs.
+- Added named visit actions while keeping the complete product card as the link.
+- MenuList accents reuse `#29AAE3` to `#0051D2`; Answerlattice accents reuse `#25B9A6` to `#08513E`, matching the canonical logo gradients without recoloring either mark.
+- Desktop `1440x1000` renders two equal `591x306` cards in a `645px` full-width section. Mobile `390x844` renders two stacked `350x277` cards. Narrow mobile `320x720` renders two `292x297` cards with headings and actions fitting their containers.
+- All three rendered widths have no horizontal overflow, undersized product links, broken images, pending reached reveal targets, or console warnings/errors.
+- Repository TypeScript, focused Neelvara lint, environment-target readiness, route smoke, documentation links, content contracts, and diff integrity pass.
+
+---
+
+## July 11, 2026 Answerlattice Logo Source Correction
+
+- Removed Neelvara's cropped, recolored two-stroke Answerlattice approximation.
+- Reused `src/components/atoms/answerlatticeLogoMark/index.tsx`, the exact shared component rendered by the Answerlattice website header and footer.
+- Preserved the canonical `0 0 8367 5131` viewBox, path geometry, overlap details, filters, stroke widths, and green gradient stops; Neelvara only controls the rendered tile size.
+- Assigned each Neelvara placement a unique SVG ID prefix so the two Answerlattice marks on the Products page cannot collide.
+- Runtime comparison against the local Answerlattice header confirms exact matches for all six paths, six filters, two gradients, stroke widths, overlap fills, and gradient stops.
+- Desktop `1440x900` and mobile `390x844` checks pass on Home and Products with the canonical mark rendered at approximately `44x27`, no horizontal overflow, no broken images, no pending reached reveal targets, and no console warnings or errors.
+- Focused Neelvara/mark lint, environment-target readiness, documentation links, logo-source integrity, and diff integrity pass.
+- The repository-wide TypeScript command was rerun during the later Home Product Layout cross-check and passes on the current worktree.
+
+---
+
+## July 11, 2026 Final CampaignCue Removal Cross-Check
+
+- Re-ran source and rendered scans across Home, Products, About, Contact, Legal, Privacy, Terms, 404, manifest, metadata, JSON-LD, sitemap, robots, security.txt, logos, icons, and Akshar font assets.
+- Confirmed the local Neelvara runtime exposes only MenuList and Answerlattice; all CampaignCue names, URLs, logo paths, campaign-context wording, and structured-data values are absent.
+- Fixed a shared-global-CSS conflict that made the mobile menu toggle visible beside desktop navigation; the scoped desktop rule now wins, while the toggle remains a 44px mobile control below 900px.
+- Added a 44px minimum width to desktop primary navigation links so short labels remain full-size interaction targets.
+- Desktop `1440x900`, mobile `390x844`, and narrow mobile `320x720` checks pass without overflow, broken images, non-Akshar content, console warnings/errors, or hidden reached reveal targets.
+- Root -> missing route -> root returns `200 -> 404 -> 200`; all seven pages and trust routes return their expected statuses.
+- Focused TypeScript, lint, environment-target, documentation-link, naming, and diff-integrity gates pass.
+- The public preview at `https://neelvara.menulist.online` still serves the old CampaignCue reference and link because this worktree has not been deployed. No Vercel deployment was run.
+
+---
+
+## July 10, 2026 CampaignCue Public Reference Withdrawal
+
+CampaignCue is intentionally unpublished from the Neelvara website for now.
+
+- Removed CampaignCue from the active product lineup, relationship sentence, product cards, product-logo rendering, support/contact copy, metadata keywords, structured data, marquee, manifest, and static 404 shortcuts.
+- Removed CampaignCue-derived campaign/reusable-context wording so the public narrative now reflects MenuList and Answerlattice only.
+- Kept the CampaignCue product runtime, product website, deployment constants, and assets outside Neelvara unchanged.
+- Runtime source scan across `src/app/sites/neelvara`, `src/constants/neelvara`, and `public/neelvara.webmanifest` returns zero CampaignCue references.
+- Rendered HTML scan across Home, Products, About, Contact, Legal, Privacy, Terms, the static 404, and the webmanifest returns zero CampaignCue references.
+- Browser checks confirm two product cards/links only, no CampaignCue value in JSON-LD, no broken images, no horizontal overflow, and no console warnings or errors.
+
+---
+
+## July 10, 2026 End-to-End Readiness Cross-Check
+
+The complete Neelvara public surface was rechecked across source, route behavior, rendered responsive layouts, keyboard access, content, metadata, motion, static trust files, product destinations, and current public DNS.
+
+Corrections applied:
+
+- Added a keyboard-accessible mobile navigation menu so Products, About, and Contact remain available below the desktop breakpoint.
+- Added a visible-on-focus skip link and a focusable `main-content` target to every standard Neelvara page and the static 404 response.
+- Restored browser zoom (`maximum-scale=5`, `user-scalable=yes`) and added the missing level-two heading for secondary-page highlight cards.
+- Corrected mobile secondary panels to one column so list content cannot remain clipped by the desktop grid.
+- Raised static 404 recovery/product links to the 44px touch-target minimum.
+- Removed duplicated decorative marquee content from the accessibility tree.
+- Unified public copy around company reference, product websites, and product apps; removed the inaccurate `Owner apps` label and tightened About/Products metadata wording.
+- Rewrote bare Neelvara homepage aliases to `/sites/neelvara` so the root remains `200` after the catch-all route returns a real `404`.
+- Added fast-scroll reveal recovery so already-reached sections cannot stay transparent after a scrollbar jump, Page Down, or anchor movement.
+
+Current verification:
+
+- Root/catch-all sequence: `/__neelvara` `200`, missing route `404`, root `200`, `/__neelvara/home` `200`.
+- All public pages, `robots.txt`, `sitemap.xml`, and `/.well-known/security.txt`: local `200`; unmatched route: local `404`.
+- Rendered widths `320`, `390`, and desktop: no horizontal overflow, clipped secondary content, broken images, or undersized visible controls.
+- Mobile menu opens, exposes all primary links, closes on route change, and returns focus on Escape.
+- Skip link is the first keyboard target and moves focus to the main region.
+- Akshar is the resolved font across Neelvara content; Inter/system remains fallback only.
+- Fast jump from the top to the end of Home changes all 11 reveal targets to visible; no reached target remains pending.
+- Reduced-motion CSS keeps reveal targets visible and disables transitions and ambient motion.
+- TypeScript, focused lint, env-target readiness verification, and diff integrity pass.
+
+Public-launch verdict:
+
+- **Code/local runtime:** ready after this pass.
+- **Public production:** not ready. `neelvara.com` and `www.neelvara.com` do not currently resolve; the three `@neelvara.com` contact addresses therefore cannot be treated as verified; owner/CA/legal approval and trademark evidence remain pending; and no Vercel deployment was requested in this session.
+- **Preview:** `https://neelvara.menulist.online` is publicly reachable, but it does not include this worktree until a later explicitly approved deployment.
+
+---
+
 ## July 5, 2026 Viewport Reveal Stabilization
 
-The Neelvara viewport-entry reveal layer was aligned with the smoother Answerlattice and CampaignCue public-site reveal model.
+The Neelvara viewport-entry reveal layer was aligned with the shared product-site reveal model.
 
 Applied changes:
 
@@ -94,7 +219,7 @@ Applied changes:
 - Products and Contact now use the same two-column page hero and current-color Prism panel pattern as the secondary pages.
 - About, Legal, Privacy, and Terms inherit the shared secondary-page Prism hero, alternating glass section rhythm, and compact page panels.
 - Static not-found output now uses the same light Prism mesh/glass treatment and product-shortcut recovery links.
-- Neelvara global CSS is imported from `src/app/layout.tsx`, matching the existing Answerlattice/CampaignCue product-site CSS pattern so the Neelvara styles are emitted inside `/_next/static/css/app/layout.css`.
+- Neelvara global CSS is imported from `src/app/layout.tsx`, matching the existing product-site CSS pattern so the Neelvara styles are emitted inside `/_next/static/css/app/layout.css`.
 - Generic presentation selectors such as `glass`, `serif`, `mono`, and `gradient-text` are scoped under `.neelvara-site` so the root CSS import does not leak Neelvara styling into other app surfaces.
 - Brand gradients and inline color chips now use the actual Neelvara logo palette: `#6F86E2`, `#9FC6F6`, `#8798E7`, `#B7ACEF`, `#A9C2F5`, `#D0C8F4`, and `#D9CBF3`; the older saturated site gradient colors are not present in Neelvara source, rendered HTML, or the emitted CSS asset.
 - No product funnel, pricing, lead form, analytics, auth, API route, Firebase runtime, cookie banner, Vercel deploy, or production build was added.
@@ -149,7 +274,9 @@ Applied changes:
 - Added `src/app/sites/neelvara/ProductLogo.tsx`.
 - Replaced the small Answerlattice product tile mark with a compact no-filter SVG variant for Neelvara product rows.
 - Reused the same product-logo renderer on `/__neelvara` and `/__neelvara/products`.
-- Kept MenuList and CampaignCue product marks unchanged.
+- Kept the MenuList product mark unchanged and reused the existing Answerlattice mark geometry.
+
+This compact no-filter variant was superseded on July 11, 2026 by direct reuse of the canonical Answerlattice header/footer component.
 
 Verification completed in this pass:
 
@@ -230,7 +357,7 @@ The latest external content audit was accepted where it matched repo truth and t
 Applied changes:
 
 - Homepage changed from reference-sheet/product-count framing to problem-first company framing.
-- Relationship language changed to `MenuList, Answerlattice, and CampaignCue are operated by Neelvara Systems.`
+- Relationship language changed to `MenuList and Answerlattice are operated by Neelvara Systems.`
 - Products page rebuilt around operated products, product boundaries, and company-to-product routing.
 - Contact page rebuilt as routing: company inboxes, product support links, before-you-contact guidance, and country of operation.
 - Privacy and Terms now carry `Last updated: June 26, 2026` and page-specific policy sections.
@@ -272,11 +399,6 @@ External product-link check:
 
 - `https://menulist.ai`: HTTP 200
 - `https://answerlattice.com`: HTTP 200
-- `https://campaigncue.ai`: DNS did not resolve from this environment
-- `https://campaigncue.menulist.online`: HTTP 200 and routes to `x-product-id: campaigncue`
-
-Launch blocker: Neelvara currently links to the repo production CampaignCue target, `https://campaigncue.ai`. DNS for that production domain must be configured, or the product deployment target must be intentionally changed in a separate deployment-target review.
-
 Owner-side launch blocker: configure and verify SPF, DKIM, and DMARC for `neelvara.com` contact inboxes before treating email trust as complete.
 
 ---
@@ -288,22 +410,22 @@ The Neelvara site was recalibrated against the approved blue-rooted Neelvara bra
 | Check | Status | Evidence |
 | --- | --- | --- |
 | Neelvara palette tokens present | Pass | `styles.css` defines `#071323`, `#1457D9`, `#2384FF`, `#2737C8`, `#6542E8`, `#F7F9FC`, `#EEF3FA`, and `#5D6678` |
-| Brand ratio preserved | Pass | Ice-white page canvas and pale surfaces dominate; navy product band and blue CTAs are controlled accents |
+| Brand ratio preserved | Pass | Ice-white page canvas and pale surfaces dominate; the light product band, blue/green product accents, and blue CTAs remain controlled accents |
 | Uploaded logo applied | Pass | Header/footer, favicon metadata, manifest, Organization JSON-LD, and OG metadata use the uploaded glass-prism logo source or derivatives with no visible frame |
 | Warm palette removed | Pass | Runtime styles and public SVG assets no longer use rose, peach, amber, cyan-heavy, or pure-purple branding |
 | Mesh and grain layers present | Pass | `src/app/sites/neelvara/styles.css` defines `.nv-page-mesh` and `.nv-grain` |
 | Shared glass primitive present | Pass | `styles.css` defines `.glass` and spotlight cards reuse the same fill/stroke/blur treatment |
 | Akshar typography present | Pass | `styles.css` self-hosts Akshar and uses it as the primary font across display headings, body copy, buttons, labels, legal pages, product cards, and page chrome, with Inter only as fallback |
 | Floating glass nav present | Pass | `src/app/sites/neelvara/content.tsx` renders `nv-header-inner glass` |
-| Home page rebuilt in company-site section order | Pass | Home includes hero, studio mock, marquee, ledger, problem-first bento, spotlight cards, quote, comparison table, product lineup, contact routes, CTA, and footer |
+| Home page rebuilt in company-site section order | Pass | Home includes hero, marquee, ledger, problem-first bento, spotlight cards, quote, comparison table, product lineup, contact routes, CTA, and footer |
 | Secondary pages redesigned | Pass | `SecondaryPage` renders mesh/glass page hero, current-color Prism panel, spotlight cards, glass text panels, policy dates where needed, and page-specific final CTAs for About, Legal, Privacy, and Terms |
 | Custom Products page | Pass | `/products` explains operated products, product boundaries, focus chips, direct product-site CTAs, and uses the shared Prism page panel |
 | Custom Contact page | Pass | `/contact` routes company inboxes, product support links, before-you-contact guidance, country of operation, and uses the shared Prism page panel |
 | Product/legal boundary preserved | Pass | No pricing, checkout, lead form, account, API route, Firebase, analytics, or owner app surface added |
-| Small-phone hero behavior | Pass | `styles.css` hides the large hero mock under `640px`; CDP audit at `375x812` shows ledger top at `688px` and no overflow |
+| Homepage transition | Pass | Hero leads directly into the compact entity ledger without a decorative or duplicate company-reference panel |
 | Solid CTA contrast | Pass | Primary CTA uses white text on Neel blue/indigo gradient |
-| Desktop first viewport | Pass | CDP audit at `1440x1000` shows ledger top at `925px`, no horizontal overflow |
-| Direct CampaignCue SVG render | Pass | Home and Products HTML now use `src="/campaigncue-icon.svg"` directly and do not emit `/_next/image` optimizer URLs |
+| Desktop first viewport | Pass | Rendered audit at `1440x1000` shows the hero and ledger meeting at approximately `647px`, with no horizontal overflow |
+| Mobile first viewport | Pass | Rendered audit at `390x844` shows the hero and ledger meeting at approximately `593px`; the ledger is visible without horizontal overflow |
 
 Screenshots captured:
 
@@ -355,11 +477,11 @@ Screenshots captured:
 | Public-facing copy | Pass | Homepage no longer exposes internal UI/design critique language |
 | Text overlap guards | Pass | CSS uses `min-width: 0`, responsive clamps, and wrapping rules |
 | Mobile breakpoint coverage | Pass | Browser checks at 390px and 320px |
-| Public lineup positioning | Pass | Runtime copy shows MenuList, Answerlattice, and CampaignCue as products operated by Neelvara Systems without the old MenuList-only relationship line |
-| Product links | Pass | Home and Products page link to `https://menulist.ai`, `https://answerlattice.com`, and `https://campaigncue.ai` |
-| Product logos | Pass | Home product rows render the MenuList logo mark, Answerlattice logo mark, and CampaignCue icon from existing repo assets/components |
-| Product link affordance | Pass | Linked product rows show an external-link icon on desktop and mobile |
-| Product section visual strength | Pass | Home product section uses a dark product band with actual product marks and direct product links |
+| Public lineup positioning | Pass | Runtime copy shows MenuList and Answerlattice as the products currently published on Neelvara |
+| Product links | Pass | Home and Products page link only to `https://menulist.ai` and `https://answerlattice.com` |
+| Product logos | Pass | Home product cards render the MenuList and canonical Answerlattice logo marks from existing repo components |
+| Product link affordance | Pass | Linked product cards show a named visit action and external-link icon on desktop and mobile |
+| Product section visual strength | Pass | Home uses a full-width light product band with an unframed section header, two equal product cards, logo-color accents, and direct product links |
 | Reference presentation depth | Pass | Home page uses the company-routing hero mock, entity ledger, bento grid, spotlight cards, quote, product band, and contact-routing cards |
 | Viewport reveal motion | Pass | Section-level `nv-reveal` blocks appear once through a local IntersectionObserver, with reduced-motion fallback and no global smooth-scroll layer |
 | Internal alias scope | Pass | `/nv` is documented as private alias context only, not a canonical Neelvara URL or product-code alias |
@@ -394,6 +516,8 @@ Additional applied outcome: the latest external audit removed internal reference
 
 Additional applied outcome: a follow-up polish pass changed the hero artifact from a numeric product-total proof to company routing, and changed the homepage bento boundary list from positive/negative checks to affirmative company, product-site, contact, and policy routing.
 
+Additional applied outcome: the July 11 homepage simplification removed that routing artifact entirely so visitors reach the company, product, and contact summary sooner.
+
 Additional applied outcome: the July 4 content polish replaced generic portfolio/problem framing with infrastructure wording around maintained information sources, product boundaries, company reference, and routing.
 
 ---
@@ -423,7 +547,7 @@ Audit date: June 20, 2026.
 | Runtime privacy copy scoped | Pass | `/privacy` identifies technical request logs, visitor-initiated email data, and product-policy exclusions |
 | Runtime terms copy scoped | Pass | `/terms` keeps checkout, subscriptions, product onboarding, refunds, cancellation, payment, warranty, and service availability on product sites |
 | Runtime contact copy scoped | Pass | `/contact` warns not to send PAN, residential address, private registration records, or sensitive documents unless requested by the legal/privacy inbox |
-| Structured data scoped | Pass | Rendered JSON-LD uses `knowsAbout` for MenuList, Answerlattice, and CampaignCue and does not use `owns` |
+| Structured data scoped | Pass | Rendered JSON-LD uses `knowsAbout` for MenuList and Answerlattice and does not use `owns` |
 
 Targeted legal route checks on local runtime:
 
@@ -494,7 +618,7 @@ Rendered link checks confirmed local internal links keep the `/__neelvara` prefi
 
 Rendered content checks confirmed all public pages include the current-public-lineup relationship wording and do not expose the old MenuList-only relationship sentence.
 
-Rendered product-link checks confirmed the Products page exposes MenuList, Answerlattice, and CampaignCue canonical production URLs.
+Rendered product-link checks confirmed the Products page exposes only MenuList and Answerlattice canonical production URLs.
 
 Rendered product-boundary checks confirmed no exact public-page hits for private, reserved, or unapproved names: Canonica, GrowthOS, Growth Kits, KitStamp, SurfaceOS, MyCodex, or SignalDesk. The same rendered sweep found no `future products`, `product portfolio`, or standalone `portfolio` wording.
 
@@ -527,16 +651,15 @@ Additional measured evidence:
 - mobile 320x720 document width: `320px`, scroll width: `320px`
 - Neelvara cookie banner check: no banner is mounted
 - visible touch-target check: no small visible targets across all tested routes/viewports
-- large hero mock is hidden on small phones by design; desktop/tablet retains the full studio mock
+- homepage hero flows directly into the compact entity ledger on all viewports
 - active nav check: primary header nav exposes Products, About, and Contact; Legal, Privacy, and Terms remain available through footer/legal links
-- current-public-lineup check: Home and Products show MenuList, Answerlattice, and CampaignCue
-- stale relationship check: no public route renders the old MenuList-only relationship sentence
+- current-public-lineup check: Home and Products show MenuList and Answerlattice only
+- unpublished-product check: no public route renders CampaignCue
 - 404 check: unmatched Neelvara routes return HTTP `404`, `noindex`, and a plain Neelvara-branded page
 - desktop screenshot: `tmp/neelvara-blue-palette-desktop-2026-06-28.png`
 - mobile screenshot: `tmp/neelvara-blue-palette-mobile-390-2026-06-28.png`
 - SVG logo desktop screenshot: `tmp/neelvara-svg-logo-clean-desktop-2026-06-29.png`
 - SVG logo mobile screenshot: `tmp/neelvara-svg-logo-clean-mobile-390-2026-06-29.png`
-- product-logo render check: Home and Products HTML use direct `/campaigncue-icon.svg` and no `/_next/image` optimizer URL
 
 ---
 

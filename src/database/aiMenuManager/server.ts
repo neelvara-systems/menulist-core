@@ -2,6 +2,7 @@ import { DB_COLLECTIONS } from '@constant/database';
 import { admin, firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { buildAiMenuManagerReceipt } from '@lib/ai-menu-manager/receiptBuilder';
 import { sanitizeAiMenuManagerFirestoreValue } from '@lib/ai-menu-manager/firestoreSanitize';
+import { buildAiMenuManagerContextBaseHash, buildAiMenuManagerContextPacket } from '@lib/ai-menu-manager/contextPacket';
 import {
     normalizeAiMenuManagerProjectId,
     normalizeAiMenuManagerProposalId,
@@ -18,9 +19,13 @@ import type {
     AiMenuManagerReceipt,
     AiMenuManagerSessionDoc,
 } from '@type/aiMenuManager';
-import { buildExecutionId } from '@lib/ai-menu-manager/idempotency';
+import { buildExecutionId, isDailySessionIdForScope } from '@lib/ai-menu-manager/idempotency';
 import { assertAiMenuManagerPatchAllowedForAction } from '@lib/ai-menu-manager/patchPolicy';
+import { normalizeAiMenuManagerSessionSnapshot } from '@lib/ai-menu-manager/sessionIntegrity';
+import { normalizeAiMenuManagerProposalSnapshot } from '@lib/ai-menu-manager/proposalIntegrity';
+import { normalizeAiMenuManagerProjectSnapshot } from '@lib/ai-menu-manager/projectIntegrity';
 import { projectContainsAiMenuManagerPatch } from '@lib/ai-menu-manager/actions/projectPatches';
+import type { Transaction } from 'firebase-admin/firestore';
 
 const MAX_COMPACT_MESSAGES = 20;
 const MAX_PENDING_SUMMARIES = 25;
@@ -90,6 +95,18 @@ function requireProposalRef(proposalId: string) {
     return ref;
 }
 
+function requireAiMenuManagerSessionData(value: unknown): AiMenuManagerSessionDoc {
+    const session = normalizeAiMenuManagerSessionSnapshot(value);
+    if (!session) throw new Error('Invalid session data');
+    return session;
+}
+
+function requireAiMenuManagerProposalData(value: unknown, proposalId: string): AiMenuManagerProposalDoc {
+    const proposal = normalizeAiMenuManagerProposalSnapshot(value, proposalId);
+    if (!proposal) throw new Error('Invalid proposal data');
+    return proposal;
+}
+
 function timestampToDate(value: unknown): Date | null {
     if (!value) return null;
     if (value instanceof Date) return value;
@@ -131,6 +148,95 @@ function isProposalApprovalExpired(proposal: AiMenuManagerProposalDoc) {
     return createdAt ? Date.now() - createdAt.getTime() > PROPOSAL_APPROVAL_TTL_MS : false;
 }
 
+function assertAiMenuManagerProposalIdentity(params: {
+    proposal: AiMenuManagerProposalDoc;
+    proposalId: string;
+    scope: { tId: string; sId: string };
+}) {
+    const { proposal, proposalId, scope } = params;
+    if (
+        proposal.proposalId !== proposalId
+        || proposal.cardPayload?.cardId !== proposalId
+        || String(proposal.tId) !== scope.tId
+        || String(proposal.sId) !== scope.sId
+        || String(proposal.scope?.tId) !== scope.tId
+        || String(proposal.scope?.sId) !== scope.sId
+        || String(proposal.cardPayload?.scope?.tId) !== scope.tId
+        || String(proposal.cardPayload?.scope?.sId) !== scope.sId
+        || String(proposal.scope?.projectId || '') !== String(proposal.projectId || '')
+        || String(proposal.cardPayload?.scope?.projectId || '') !== String(proposal.projectId || '')
+    ) {
+        throw new Error('Proposal identity mismatch');
+    }
+}
+
+export function assertAiMenuManagerCommandProposalIdentity(params: {
+    existing: AiMenuManagerProposalDoc;
+    expected: AiMenuManagerProposalDoc;
+}) {
+    const scope = requireAiMenuManagerScopeDocumentIds(params.expected);
+    const projectId = normalizeAiMenuManagerProjectId(params.expected.projectId);
+    if (!projectId) throw new Error('Proposal identity mismatch');
+
+    assertAiMenuManagerProposalIdentity({
+        proposal: params.existing,
+        proposalId: params.expected.proposalId,
+        scope,
+    });
+    const expectedIdempotencyKey = params.expected.idempotencyKeys[0];
+    if (
+        params.existing.sessionId !== params.expected.sessionId
+        || String(params.existing.projectId || '') !== projectId
+        || params.existing.actionType !== params.expected.actionType
+        || String(params.existing.patchHash || '') !== String(params.expected.patchHash || '')
+        || !expectedIdempotencyKey
+        || !params.existing.idempotencyKeys.includes(expectedIdempotencyKey)
+        || params.existing.cardPayload?.actionType !== params.expected.cardPayload.actionType
+    ) {
+        throw new Error('Proposal identity mismatch');
+    }
+}
+
+function assertAiMenuManagerSessionMatchesProposal(
+    session: AiMenuManagerSessionDoc | null,
+    proposal: AiMenuManagerProposalDoc,
+) {
+    if (!session) return;
+    if (
+        session.sessionId !== proposal.sessionId
+        || String(session.tId) !== String(proposal.tId)
+        || String(session.sId) !== String(proposal.sId)
+        || String(session.projectId || '') !== String(proposal.projectId || '')
+    ) {
+        throw new Error('Session identity mismatch');
+    }
+}
+
+function assertAiMenuManagerSessionIdentity(params: {
+    session: AiMenuManagerSessionDoc;
+    sessionId: string;
+    sessionDate: string;
+    scope: { tId: string; sId: string };
+    projectId: string;
+}) {
+    if (
+        params.session.sessionId !== params.sessionId
+        || String(params.session.tId) !== params.scope.tId
+        || String(params.session.sId) !== params.scope.sId
+        || String(params.session.projectId || '') !== params.projectId
+        || params.session.sessionDate !== params.sessionDate
+        || !isDailySessionIdForScope({
+            sessionId: params.sessionId,
+            tId: params.scope.tId,
+            sId: params.scope.sId,
+            projectId: params.projectId,
+            sessionDate: params.sessionDate,
+        })
+    ) {
+        throw new Error('Session identity mismatch');
+    }
+}
+
 export async function getAiMenuManagerProject(params: {
     tId: string | number;
     sId: string | number;
@@ -143,16 +249,40 @@ export async function getAiMenuManagerProject(params: {
 
     const scopedSnap = await scopedRef.get();
     if (scopedSnap.exists) {
-        return { ...(scopedSnap.data() as Project), projectId: scopedSnap.id };
+        return normalizeAiMenuManagerProjectSnapshot(scopedSnap.data(), scopedSnap.id);
     }
 
     const legacySnap = await firestoreAdmin.collection(DB_COLLECTIONS.PROJECTS).doc(projectId).get();
     if (legacySnap.exists) {
-        const legacyProject = { ...(legacySnap.data() as Project), projectId: legacySnap.id };
+        const legacyProject = normalizeAiMenuManagerProjectSnapshot(legacySnap.data(), legacySnap.id);
+        if (!legacyProject) return null;
         return legacyProjectMatchesScope(legacyProject, params) ? legacyProject : null;
     }
 
     return null;
+}
+
+async function getAiMenuManagerProjectInTransaction(
+    transaction: Transaction,
+    params: { tId: string | number; sId: string | number; projectId: string },
+): Promise<Project | null> {
+    const projectId = normalizeAiMenuManagerProjectId(params.projectId);
+    const scope = getAiMenuManagerScopeDocumentIds(params);
+    const scopedRef = getProjectRef(params);
+    if (!projectId || !scope || !scopedRef) return null;
+
+    const scopedSnap = await transaction.get(scopedRef);
+    if (scopedSnap.exists) {
+        return normalizeAiMenuManagerProjectSnapshot(scopedSnap.data(), scopedSnap.id);
+    }
+
+    const legacyRef = firestoreAdmin.collection(DB_COLLECTIONS.PROJECTS).doc(projectId);
+    const legacySnap = await transaction.get(legacyRef);
+    if (!legacySnap.exists) return null;
+
+    const legacyProject = normalizeAiMenuManagerProjectSnapshot(legacySnap.data(), legacySnap.id);
+    if (!legacyProject) return null;
+    return legacyProjectMatchesScope(legacyProject, params) ? legacyProject : null;
 }
 
 export async function getAiMenuManagerSession(sessionId: string) {
@@ -160,7 +290,7 @@ export async function getAiMenuManagerSession(sessionId: string) {
     if (!sessionRef) return null;
 
     const snap = await sessionRef.get();
-    return snap.exists ? snap.data() as AiMenuManagerSessionDoc : null;
+    return snap.exists ? normalizeAiMenuManagerSessionSnapshot(snap.data()) : null;
 }
 
 export async function getAiMenuManagerProposal(proposalId: string) {
@@ -168,7 +298,7 @@ export async function getAiMenuManagerProposal(proposalId: string) {
     if (!proposalRef) return null;
 
     const snap = await proposalRef.get();
-    return snap.exists ? snap.data() as AiMenuManagerProposalDoc : null;
+    return snap.exists ? normalizeAiMenuManagerProposalSnapshot(snap.data(), snap.id) : null;
 }
 
 function buildPendingSummary(card: AiMenuManagerCardPayload) {
@@ -236,20 +366,45 @@ export async function persistAiMenuManagerCommand(params: {
     card: AiMenuManagerCardPayload;
     proposal: AiMenuManagerProposalDoc;
     replaceOperationId?: string;
-}) {
+}): Promise<AiMenuManagerProposalDoc> {
     const projectId = normalizeAiMenuManagerProjectId(params.projectId);
     if (!projectId) throw new Error('Invalid project ID');
     const scope = requireAiMenuManagerScopeDocumentIds(params);
+    if (!isDailySessionIdForScope({
+        sessionId: params.sessionId,
+        tId: scope.tId,
+        sId: scope.sId,
+        projectId,
+        sessionDate: params.sessionDate,
+    })) {
+        throw new Error('Session identity mismatch');
+    }
 
     const sessionRef = requireSessionRef(params.sessionId);
     const proposalRef = requireProposalRef(params.proposal.proposalId);
 
-    await firestoreAdmin.runTransaction(async (transaction) => {
+    return firestoreAdmin.runTransaction(async (transaction) => {
         const sessionSnap = await transaction.get(sessionRef);
         const proposalSnap = await transaction.get(proposalRef);
-        if (proposalSnap.exists) return;
+        if (proposalSnap.exists) {
+            const existingProposal = requireAiMenuManagerProposalData(proposalSnap.data(), proposalSnap.id);
+            assertAiMenuManagerCommandProposalIdentity({
+                existing: existingProposal,
+                expected: params.proposal,
+            });
+            return existingProposal;
+        }
 
-        const existingSession = sessionSnap.exists ? sessionSnap.data() as AiMenuManagerSessionDoc : null;
+        const existingSession = sessionSnap.exists ? requireAiMenuManagerSessionData(sessionSnap.data()) : null;
+        if (existingSession) {
+            assertAiMenuManagerSessionIdentity({
+                session: existingSession,
+                sessionId: params.sessionId,
+                sessionDate: params.sessionDate,
+                scope,
+                projectId,
+            });
+        }
         const existingPending = (existingSession?.pendingCardSummaries || [])
             .filter((entry) => (
                 entry.proposalId !== params.proposal.proposalId
@@ -312,6 +467,7 @@ export async function persistAiMenuManagerCommand(params: {
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         }));
+        return params.proposal;
     });
 }
 
@@ -336,20 +492,43 @@ export async function getAiMenuManagerInbox(params: {
         || String(session.tId) !== scope.tId
         || String(session.sId) !== scope.sId
         || String(session.projectId) !== String(params.projectId)
+        || !isDailySessionIdForScope({
+            sessionId: params.sessionId,
+            tId: scope.tId,
+            sId: scope.sId,
+            projectId: params.projectId,
+            sessionDate: session.sessionDate,
+        })
     ) {
         return { session: null, cards: [], receipts: [] };
     }
 
-    const proposalIds = (session.pendingCardSummaries || [])
+    const projectId = normalizeAiMenuManagerProjectId(params.projectId);
+    if (!projectId) return { session: null, cards: [], receipts: [] };
+
+    const proposalIds = Array.from(new Set((session.pendingCardSummaries || [])
         .map((entry) => normalizeAiMenuManagerProposalId(entry.proposalId))
         .filter((proposalId): proposalId is string => Boolean(proposalId))
-        .slice(0, MAX_PENDING_SUMMARIES);
+    )).slice(0, MAX_PENDING_SUMMARIES);
     const proposalRefs = proposalIds.map((proposalId) => requireProposalRef(proposalId));
     const proposalSnaps = proposalRefs.length ? await firestoreAdmin.getAll(...proposalRefs) : [];
 
     const cards = proposalSnaps
         .filter((snap) => snap.exists)
-        .map((snap) => snap.data() as AiMenuManagerProposalDoc)
+        .map((snap) => ({ proposal: normalizeAiMenuManagerProposalSnapshot(snap.data(), snap.id), proposalId: snap.id }))
+        .filter((entry): entry is { proposal: AiMenuManagerProposalDoc; proposalId: string } => Boolean(entry.proposal))
+        .filter(({ proposal, proposalId }) => (
+            proposal.proposalId === proposalId
+            && proposal.sessionId === params.sessionId
+            && String(proposal.tId) === scope.tId
+            && String(proposal.sId) === scope.sId
+            && String(proposal.projectId) === projectId
+            && proposal.cardPayload?.cardId === proposalId
+            && String(proposal.cardPayload?.scope?.tId) === scope.tId
+            && String(proposal.cardPayload?.scope?.sId) === scope.sId
+            && String(proposal.cardPayload?.scope?.projectId) === projectId
+        ))
+        .map(({ proposal }) => proposal)
         .filter((proposal) => ['pending_approval', 'manual_task', 'answered'].includes(proposal.status))
         .map((proposal) => proposal.cardPayload);
 
@@ -374,13 +553,12 @@ export async function updateAiMenuManagerProposalStatus(params: {
     return firestoreAdmin.runTransaction(async (transaction) => {
         const proposalSnap = await transaction.get(proposalRef);
         if (!proposalSnap.exists) throw new Error('Proposal not found');
-        const proposal = proposalSnap.data() as AiMenuManagerProposalDoc;
+        const proposal = requireAiMenuManagerProposalData(proposalSnap.data(), proposalSnap.id);
         const sessionRef = getSessionRef(proposal.sessionId);
         const sessionSnap = sessionRef ? await transaction.get(sessionRef) : null;
-        const session = sessionSnap && sessionSnap.exists ? sessionSnap.data() as AiMenuManagerSessionDoc : null;
-        if (String(proposal.tId) !== scope.tId || String(proposal.sId) !== scope.sId) {
-            throw new Error('Forbidden');
-        }
+        const session = sessionSnap && sessionSnap.exists ? requireAiMenuManagerSessionData(sessionSnap.data()) : null;
+        assertAiMenuManagerProposalIdentity({ proposal, proposalId: params.proposalId, scope });
+        assertAiMenuManagerSessionMatchesProposal(session, proposal);
 
         const nextStatus = params.status;
         const isManualTaskClose = proposal.status === 'manual_task'
@@ -470,13 +648,12 @@ export async function approveAiMenuManagerProposal(params: {
     return firestoreAdmin.runTransaction(async (transaction) => {
         const proposalSnap = await transaction.get(proposalRef);
         if (!proposalSnap.exists) throw new Error('Proposal not found');
-        const proposal = proposalSnap.data() as AiMenuManagerProposalDoc;
+        const proposal = requireAiMenuManagerProposalData(proposalSnap.data(), proposalSnap.id);
         const sessionRef = getSessionRef(proposal.sessionId);
         const sessionSnap = sessionRef ? await transaction.get(sessionRef) : null;
-        const session = sessionSnap && sessionSnap.exists ? sessionSnap.data() as AiMenuManagerSessionDoc : null;
-        if (String(proposal.tId) !== scope.tId || String(proposal.sId) !== scope.sId) {
-            throw new Error('Forbidden');
-        }
+        const session = sessionSnap && sessionSnap.exists ? requireAiMenuManagerSessionData(sessionSnap.data()) : null;
+        assertAiMenuManagerProposalIdentity({ proposal, proposalId: params.proposalId, scope });
+        assertAiMenuManagerSessionMatchesProposal(session, proposal);
         if (proposal.executionDirective && ['approved', 'executing'].includes(proposal.status)) {
             const directiveExpiry = timestampToDate(proposal.executionDirective.expiresAt);
             if (directiveExpiry && directiveExpiry.getTime() < Date.now()) {
@@ -492,6 +669,24 @@ export async function approveAiMenuManagerProposal(params: {
         }
         if (isProposalApprovalExpired(proposal)) {
             throw new Error('Proposal expired');
+        }
+        if (proposal.projectId && proposal.baseProjectHash) {
+            const currentProject = await getAiMenuManagerProjectInTransaction(transaction, {
+                tId: scope.tId,
+                sId: scope.sId,
+                projectId: proposal.projectId,
+            });
+            if (!currentProject) {
+                throw new Error('Menu changed');
+            }
+            const currentContext = buildAiMenuManagerContextPacket({
+                expectedProjectId: proposal.projectId,
+                project: currentProject,
+                storeName: proposal.scope.label,
+            });
+            if (buildAiMenuManagerContextBaseHash(currentContext) !== proposal.baseProjectHash) {
+                throw new Error('Menu changed');
+            }
         }
         assertAiMenuManagerPatchAllowedForAction({
             actionType: proposal.actionType,
@@ -554,8 +749,8 @@ export async function completeAiMenuManagerProposal(params: {
     proposalId: string;
     tId: string | number;
     sId: string | number;
-    projectId?: string;
-    actionType?: string;
+    projectId: string;
+    actionType: string;
     executionId: string;
     patchHash: string;
     result: 'executed' | 'failed';
@@ -563,66 +758,71 @@ export async function completeAiMenuManagerProposal(params: {
     idempotencyKey: string;
 }) {
     const scope = requireAiMenuManagerScopeDocumentIds(params);
-    const proposal = await getAiMenuManagerProposal(params.proposalId);
-    if (!proposal) throw new Error('Proposal not found');
-    if (String(proposal.tId) !== scope.tId || String(proposal.sId) !== scope.sId) {
-        throw new Error('Forbidden');
-    }
-    if (proposal.projectId && String(proposal.projectId) !== String(params.projectId || '')) {
-        throw new Error('Scope mismatch');
-    }
-    if (params.actionType && params.actionType !== proposal.actionType) {
-        throw new Error('Action type mismatch');
-    }
-    if (proposal.executionDirective?.executionId && proposal.executionDirective.executionId !== params.executionId) {
-        throw new Error('Execution id mismatch');
-    }
-    if (proposal.patchHash !== params.patchHash) {
-        throw new Error('Patch hash mismatch');
-    }
-    if (proposal.receipt && ['executed', 'failed', 'manual_task'].includes(proposal.status)) {
-        return {
-            status: proposal.status,
-            receipt: proposal.receipt,
-            verified: proposal.status === 'executed',
-        };
-    }
-    if (proposal.status !== 'executing') {
-        throw new Error('Proposal is not executing');
-    }
-    const directiveExpiry = timestampToDate(proposal.executionDirective?.expiresAt);
-    if (directiveExpiry && directiveExpiry.getTime() < Date.now()) {
-        throw new Error('Execution directive expired');
-    }
-
-    let verified = false;
-    if (params.result === 'executed' && proposal.patch && proposal.projectId) {
-        const project = await getAiMenuManagerProject({
-            tId: proposal.tId,
-            sId: proposal.sId,
-            projectId: proposal.projectId,
-        });
-        verified = project ? projectContainsAiMenuManagerPatch(project, proposal.patch) : false;
-    }
-
-    const nextStatus: AiMenuManagerProposalStatus = params.result === 'executed' && verified ? 'executed' : 'failed';
-    const receipt: AiMenuManagerReceipt = buildAiMenuManagerReceipt({
-        proposalId: proposal.proposalId,
-        actionType: proposal.actionType,
-        projectId: proposal.projectId,
-        status: nextStatus === 'executed' ? 'executed' : 'failed',
-        title: proposal.cardPayload?.title || proposal.beforeAfterSummary?.title || 'Menu Manager update',
-        message: params.message || (nextStatus === 'executed' ? 'Change applied.' : 'The approved change could not be verified.'),
-    });
-
     const proposalRef = requireProposalRef(params.proposalId);
-    const sessionRef = getSessionRef(proposal.sessionId);
-    await firestoreAdmin.runTransaction(async (transaction) => {
-        const sessionSnap = sessionRef ? await transaction.get(sessionRef) : null;
-        const session = sessionSnap && sessionSnap.exists ? sessionSnap.data() as AiMenuManagerSessionDoc : null;
+    return firestoreAdmin.runTransaction(async (transaction) => {
         const currentProposalSnap = await transaction.get(proposalRef);
-        const currentProposal = currentProposalSnap.exists ? currentProposalSnap.data() as AiMenuManagerProposalDoc : null;
-        if (currentProposal?.receipt && ['executed', 'failed', 'manual_task'].includes(currentProposal.status)) return;
+        if (!currentProposalSnap.exists) throw new Error('Proposal not found');
+        const proposal = requireAiMenuManagerProposalData(currentProposalSnap.data(), currentProposalSnap.id);
+        assertAiMenuManagerProposalIdentity({ proposal, proposalId: params.proposalId, scope });
+        if (String(proposal.projectId || '') !== params.projectId) {
+            throw new Error('Scope mismatch');
+        }
+        if (proposal.actionType !== params.actionType) {
+            throw new Error('Action type mismatch');
+        }
+        if (
+            !proposal.executionDirective
+            || proposal.executionDirective.proposalId !== proposal.proposalId
+            || proposal.executionDirective.executionId !== params.executionId
+            || proposal.executionDirective.actionType !== proposal.actionType
+            || proposal.executionDirective.patchHash !== params.patchHash
+            || proposal.patchHash !== params.patchHash
+            || String(proposal.executionDirective.scope?.tId) !== scope.tId
+            || String(proposal.executionDirective.scope?.sId) !== scope.sId
+            || String(proposal.executionDirective.scope?.projectId || '') !== params.projectId
+        ) {
+            throw new Error('Execution directive mismatch');
+        }
+        if (proposal.receipt && ['executed', 'failed', 'manual_task'].includes(proposal.status)) {
+            return {
+                status: proposal.status,
+                receipt: proposal.receipt,
+                verified: proposal.status === 'executed',
+            };
+        }
+        if (proposal.status !== 'executing') {
+            throw new Error('Proposal is not executing');
+        }
+        const directiveExpiry = timestampToDate(proposal.executionDirective.expiresAt);
+        if (!directiveExpiry || directiveExpiry.getTime() < Date.now()) {
+            throw new Error('Execution directive expired');
+        }
+
+        let verified = false;
+        if (params.result === 'executed' && proposal.patch && proposal.projectId) {
+            const project = await getAiMenuManagerProjectInTransaction(transaction, {
+                tId: proposal.tId,
+                sId: proposal.sId,
+                projectId: proposal.projectId,
+            });
+            verified = project
+                ? projectContainsAiMenuManagerPatch(project, proposal.patch, proposal.projectId)
+                : false;
+        }
+
+        const sessionRef = getSessionRef(proposal.sessionId);
+        const sessionSnap = sessionRef ? await transaction.get(sessionRef) : null;
+        const session = sessionSnap && sessionSnap.exists ? requireAiMenuManagerSessionData(sessionSnap.data()) : null;
+        assertAiMenuManagerSessionMatchesProposal(session, proposal);
+        const nextStatus: AiMenuManagerProposalStatus = params.result === 'executed' && verified ? 'executed' : 'failed';
+        const receipt: AiMenuManagerReceipt = buildAiMenuManagerReceipt({
+            proposalId: proposal.proposalId,
+            actionType: proposal.actionType,
+            projectId: proposal.projectId,
+            status: nextStatus === 'executed' ? 'executed' : 'failed',
+            title: proposal.cardPayload?.title || proposal.beforeAfterSummary?.title || 'Menu Manager update',
+            message: params.message || (nextStatus === 'executed' ? 'Change applied.' : 'The approved change could not be verified.'),
+        });
 
         const idempotencyKeys = [
             params.idempotencyKey,
@@ -659,7 +859,7 @@ export async function completeAiMenuManagerProposal(params: {
                 updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             }), { merge: true });
         }
-    });
 
-    return { status: nextStatus, receipt, verified };
+        return { status: nextStatus, receipt, verified };
+    });
 }

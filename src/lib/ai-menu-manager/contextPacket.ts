@@ -6,6 +6,7 @@ import {
     buildAiMenuManagerTenantBaseUrl,
 } from './localExportUrls';
 import { hashStableValue } from './idempotency';
+import { normalizeAiMenuManagerProjectSnapshot } from './projectIntegrity';
 
 export interface AiMenuManagerContextItem {
     id: string;
@@ -123,6 +124,7 @@ function normalizePinnedItemId(value: unknown): string | undefined {
 }
 
 export function buildAiMenuManagerContextPacket(params: {
+    expectedProjectId?: string;
     project: Project;
     storePublicContext?: {
         customDomain?: string;
@@ -132,7 +134,11 @@ export function buildAiMenuManagerContextPacket(params: {
     storeName: string;
     businessType?: string;
 }): AiMenuManagerContextPacket {
-    const { project } = params;
+    const expectedProjectId = params.expectedProjectId ?? params.project.projectId;
+    const project = typeof expectedProjectId === 'string'
+        ? normalizeAiMenuManagerProjectSnapshot(params.project, expectedProjectId)
+        : null;
+    if (!project) throw new Error('Invalid project data');
     const defaultLanguage = project.defaultLanguage || project.languages?.[0] || 'en';
     const projectId = project.projectId || '';
     const categories: AiMenuManagerContextCategory[] = [];

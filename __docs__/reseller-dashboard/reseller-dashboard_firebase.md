@@ -62,6 +62,8 @@ June 30 reseller mutation/security-log boundary hardening is Firebase-cost neutr
 
 June 29 onboarding Auth rollback diagnostics are cost-neutral in the success path. If a newly created Firebase Auth owner account must be rolled back after the Firestore onboarding transaction fails, the route still attempts the same `deleteUser()` cleanup. Failed cleanup now logs bounded `reseller_onboard_auth_cleanup_failed` diagnostics only. This adds no Firestore reads/writes/deletes, no Firebase Auth operations beyond the already-attempted rollback delete, no Razorpay calls, cache invalidations, rules, indexes, schema fields, owner-facing settings, or deploy requirements.
 
+July 11 owner single-claim concurrency boundary adds one authoritative owner-document read at the start of the existing tenant/store creation transaction. Existing unlinked owners must still have the expected email/Auth UID and no tenant/store; new owners require the deterministic Auth UID document to remain absent. Competing onboardings therefore conflict before tenant/store writes, and the loser returns 409. Auth rollback now deletes a request-created identity only when `users/{authUid}` is still absent, so it cannot remove an identity a competing transaction has bound. Successful onboarding retains the same writes and adds one transaction read; no rules, indexes, Functions or deploy action changed.
+
 June 29 browser response-parse hardening is Firebase-cost neutral. `src/hooks/useResellerDashboard.ts` caps profile, clients, and monthly-summary response JSON at 64KB, uses `no-store`, same-origin credentials, and manual redirect handling before parsing those route responses, logs `reseller_dashboard_response_parse_failed` / `reseller_dashboard_response_invalid` with bounded phase/status metadata, and rejects malformed successful responses through fixed local load errors. This adds no Firestore reads/writes/deletes, Storage operations, Firebase Auth changes, route calls, cache invalidations, rules, indexes, schema changes, Cloud Function logic, owner-facing settings, Firebase deploy requirement, or Vercel deploy action.
 
 June 30 platform reseller management request/response hardening is Firebase-cost neutral. Desktop and mobile platform management callers send `/api/reseller/manage` and `/api/reseller/monthly-summary` requests with no-store cache, same-origin credentials, and manual redirect handling, cap response JSON at 64KB, log `desktop_reseller_management_response_parse_failed` / `mobile_reseller_management_response_parse_failed` for malformed or oversized responses, and require valid profile-list, monthly-summary, and save acknowledgement shapes before platform UI state updates. This adds no Firestore reads/writes/deletes beyond existing valid reseller management reads/writes, Storage operations, Firebase Auth changes beyond existing valid profile creation, new route calls, reseller profile writes beyond existing valid saves, monthly summary reads beyond existing valid loads, rules, indexes, schema changes, Cloud Function logic, owner-facing settings, Firebase deploy requirement, or Vercel deploy action.
@@ -78,12 +80,14 @@ June 30 reseller copy acknowledgement hardening is browser-local and Firebase-co
 
 ### 3.3 Confirm Offline Payment
 
-| Operation               | Collection             | Type  | Count       | Notes                  |
-| ----------------------- | ---------------------- | ----- | ----------- | ---------------------- |
-| Read subscription       | `subscriptions`        | READ  | 1           | Verify ownership       |
-| Update subscription     | `subscriptions`        | WRITE | 1           | Set active + confirmed |
-| Sync store entitlement  | `stores`, `platformSummary`, `subscriptions` | WRITE | 2-3 | Mirrors active plan and invalidates public/assistant cache |
-| **Total**               |                        |       | **1R + 3-4W** |                      |
+| Operation | Collection | Type | Count | Notes |
+| --- | --- | --- | ---: | --- |
+| Re-read current authority | `resellerProfiles` or `users` | READ | 1 | Exact active reseller identity or current platform authority |
+| Transactionally read subscription | `subscriptions` | READ | 1 | Exact ownership/product/scope/manual/pending admission |
+| Confirm subscription | `subscriptions` | WRITE | 0-1 | One write on first confirmation; no write for an idempotent replay |
+| Reconcile entitlement/referral | `stores`, `platformSummary`, `subscriptions`, referral settlement state | READ/WRITE | state-dependent | Existing safe repair paths run after both first success and replay; public/assistant cache invalidation follows entitlement truth |
+
+Concurrent confirmations serialize on the subscription document. Only one request appends the active status. A retry after a committed response loss returns `alreadyConfirmed: true` and reruns idempotent derived-state repair instead of returning a false failure. Cancelled, expired, completed, past-due, online, foreign-reseller, wrong-product, incoherent-scope, malformed amount/currency, and oversized-history documents are not mutated.
 
 ### 3.4 List Reseller Clients
 
@@ -189,7 +193,7 @@ These diagnostics do not add Firestore reads, writes, deletes, Storage operation
 | `getResellerProfile()`         | resellerProfiles                                                                               | 1-2R       | `src/database/reseller/index.ts`         |
 | `renewResellerLicense()`       | subscriptions, resellerTransactions, resellerProfiles                                           | 1R + 2-3W  | `src/app/api/reseller/renew/route.ts`    |
 | `addManualLocationCapacity()`  | subscriptions, resellerTransactions, resellerProfiles                                           | 1R + 3W    | `src/app/api/reseller/add-location-capacity/route.ts` |
-| `reseller_license_expiry` | subscriptions, resellerProfiles, stores, platformSummary, HTTP cache revalidation, OBA Redis cache | Capped query + bounded writes | `functions/src/schedulers/menulistMaintenanceScheduler.ts` |
+| `reseller_license_expiry` | subscriptions, resellerProfiles, stores, platformSummary, HTTP cache revalidation, OBA Redis cache | Up to five 100-row expiry pages; one subscription/profile transaction per confirmed expiry; bounded pending-entitlement retry pages; current-active entitlement transaction and cache invalidation | `functions/src/schedulers/menulistMaintenanceScheduler.ts` |
 
 ---
 

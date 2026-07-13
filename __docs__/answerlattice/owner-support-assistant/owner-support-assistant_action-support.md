@@ -1,6 +1,6 @@
 # Owner Support Assistant - Action Support Architecture
 
-> **Status:** DOCS FROZEN
+> **Status:** DEFERRED TARGET CONTRACT - no action runtime exists
 > **Created:** 2026-06-07
 > **Purpose:** Long-term owner-confirmed action contract for tickets, replies, unanswered-question review, and product-boundary-safe business actions.
 

@@ -1,7 +1,7 @@
 # Knowledge Base — Firebase Cost & Operations Tracking
 
-> **Version:** 1.1.2
-> **Last Updated:** 2026-07-06
+> **Version:** 1.2.0
+> **Last Updated:** 2026-07-13
 > **Audience:** Developers, Ops
 > **Source:** Codebase forensic audit
 
@@ -17,9 +17,9 @@
 | **DB_COLLECTIONS constant** | `DB_COLLECTIONS.KB_ARTICLES`                       |
 | **Doc ID**                  | Auto-generated                                     |
 | **Scoping**                 | `tId + sId` for current Answerlattice workspaces; legacy global data only via filtered fallback |
-| **Avg Doc Size**            | 5-50 KB (content ~2-40KB + embedding ~3KB)         |
+| **Avg Doc Size**            | 5-55 KB during migration (content plus v1/v2 vectors) |
 | **Growth Rate**             | Slow (manual creation + AI generation)             |
-| **Vector Index**            | `embedding` field, 768 dimensions, COSINE distance |
+| **Vector Index**            | Active `embeddingV2`, 768 dimensions, COSINE; legacy `embedding` retained for rollback |
 
 ### 1.2 kb_categories
 
@@ -88,7 +88,7 @@
 | Step                   | Reads | Writes |      Gemini Calls      |
 | ---------------------- | :---: | :----: | :--------------------: |
 | Save article content   |   0   |   1    |           0            |
-| Generate embedding     |   0   |   1    | 1 (text-embedding-004) |
+| Generate active embedding |   0   |   1    | 1 (`gemini-embedding-2`); a legacy call occurs only when rollback coverage is missing/stale during migration |
 | Update parent metadata |   0   |   1    |           0            |
 | **Total**              | **0** | **3**  |         **1**          |
 
@@ -130,7 +130,9 @@ July 6 article AI route scope hardening is cost-neutral. FAQ generation, article
 
 | Collection    | Fields                                          | Purpose                          |
 | ------------- | ----------------------------------------------- | -------------------------------- |
-| `kb_articles` | `status ASC` + Vector(`embedding`, 768, COSINE) | **Vector search** (RAG pipeline) |
+| `kb_articles` | `pId+tId+sId+status+active` + Vector(`embeddingV2`, 768, COSINE) | **Active v2 vector search** |
+| `kb_articles` | `pId+tId+sId+status+active` + Vector(`embedding`, 768, COSINE) | **Legacy rollback search** |
+| `kb_articles` | `pId+status+active` | Bounded v2 migration scan |
 | `kb_articles` | `categoryId ASC`                                | Get articles by category         |
 | `kb_articles` | `sectionId ASC`                                 | Get articles by section          |
 | `kb_articles` | `jobId ASC`                                     | Get articles by generation job   |
@@ -160,10 +162,14 @@ July 6 article AI route scope hardening is cost-neutral. FAQ generation, article
 | Firestore reads                             | ~18,400  | $0.007            |
 | Firestore writes                            | ~115     | $0.0001           |
 | Firestore storage (200 articles × 20KB avg) | ~4 MB    | ~$0.0004          |
-| Gemini embeddings (20 articles/mo)          | 20 calls | ~$0.001           |
+| Gemini v2 embeddings (20 articles/mo)       | 20 calls | Provider list price at execution time; operation accounting records actual model/tokens |
 | **Total**                                   |          | **~$0.008/month** |
 
 **At 1,000 stores:** Vector search reads dominate → ~$0.70/month
+
+### Embedding v2 migration operations
+
+`answerlatticeNightly` runs `embedding_v2_migration` inside the existing scheduler. Each run scans at most 101 published active article documents, processes at most 100 with provider concurrency 3, and writes each missing/stale v2 vector once. It also writes one durable migration-state document per batch. Existing exact v2 vectors are reused without a provider call or article write. During rollback coverage, new/changed articles may make one additional v1 embedding call; v1 failure is non-blocking once the required v2 vector succeeds.
 
 ---
 

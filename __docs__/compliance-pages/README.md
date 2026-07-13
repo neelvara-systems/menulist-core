@@ -42,7 +42,8 @@ Static privacy policy, terms, and refund policy pages served on custom domains (
 | `src/lib/compliance/sanitizer.ts`                      | Content sanitization for custom overrides              |
 | `src/lib/auth/browserRequestPolicy.ts`                 | Shared authenticated browser request boundary          |
 | `src/app/api/compliance/route.ts`                      | GET/POST compliance data (withAuth + Zod)              |
-| `src/database/compliance/index.ts`                     | DAL functions (CRUD)                                   |
+| `src/database/compliance/server.ts`                    | Server-only override read/write/reset DAL               |
+| `scripts/verification/test-compliance-pages-rules.ts`  | Public-read and server-only-write rules regression      |
 | `src/config/features.ts`                               | `ENABLE_COMPLIANCE_PAGES` flag                         |
 | `src/app/client/[[...slug]]/page.tsx`                  | Route intercept for `/privacy`, `/terms`, and `/refund` |
 | `src/app/client/obp/OBPResolvedSurface.tsx`            | OBP policy links                                       |

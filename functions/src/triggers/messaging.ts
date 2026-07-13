@@ -13,6 +13,7 @@ import { onDocumentUpdated } from 'firebase-functions/v2/firestore';
 import { onRequest } from 'firebase-functions/v2/https';
 import { FUNCTION_OPTIONS, SECRET_GROUPS } from '../config/secrets';
 import { handleExtractionJobUpdate, messagingOnboardingWebhook } from '../messagingOnboarding';
+import { isMessagingOnboardingMenuExtractionProjectId } from '../sharedData/menuExtractionJob';
 import { MENU_IMAGE_PROCESSING_JOBS_COLLECTION } from '../types';
 
 const MSG_EXTRACTION_WATCHER_FAILED = 'MSG_EXTRACTION_WATCHER_FAILED';
@@ -79,6 +80,7 @@ export const messagingOnboarding = onRequest(
 export const msgExtractionWatcher = onDocumentUpdated(
     {
         ...FUNCTION_OPTIONS.base,
+        retry: true,
         timeoutSeconds: 540,
         secrets: Array.from(new Set([
             ...SECRET_GROUPS.WHATSAPP_OUTBOUND,
@@ -92,7 +94,7 @@ export const msgExtractionWatcher = onDocumentUpdated(
         if (!before || !after) return;
 
         // Early return for non-messaging-onboarding jobs (cost: ~zero)
-        if (!after.projectId?.startsWith('msg-onboarding-')) return;
+        if (!isMessagingOnboardingMenuExtractionProjectId(after.projectId)) return;
 
         try {
             await handleExtractionJobUpdate(event.params.jobId, before, after);
@@ -102,6 +104,7 @@ export const msgExtractionWatcher = onDocumentUpdated(
                 ...getMessagingTriggerStringContext('jobId', event.params.jobId),
                 ...getMessagingTriggerErrorContext(error),
             });
+            throw error;
         }
     },
 );

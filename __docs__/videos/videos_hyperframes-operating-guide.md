@@ -8,7 +8,17 @@
 
 This document turns the current HyperFrames docs and local production learnings into a MenuList-specific operating guide.
 
+Founder-approved creative authority: [MenuList Founder-Approved Video Production Standard](./videos_founder-approved-production-standard.md). Read that standard first. This operating guide controls the HyperFrames implementation and QA process; the founder-approved standard controls the permanent message, typography, visual, motion, logo, audio, and iteration defaults established through review.
+
 Use it before creating, editing, rendering, or reviewing any MenuList video. The goal is not only a valid MP4. The goal is a production asset that stays truthful to MenuList positioning, is easy for non-technical SMB owners to understand, and passes a repeatable local quality gate.
+
+Conversion authority:
+
+- [launch-video conversion research](./videos_launch-video-conversion-research.md);
+- [required conversion brief template](./videos_conversion-brief-template.md);
+- [active campaign measurement ledger](./videos_campaign-measurement-ledger.md).
+
+HyperFrames controls how the asset is produced. The conversion brief controls why that exact version exists, where it sends the owner, and how it will be judged.
 
 ## Source Docs Reviewed
 
@@ -17,6 +27,7 @@ HyperFrames docs reviewed on July 10, 2026:
 - Prompt Guide: https://hyperframes.heygen.com/guides/prompting
 - Quickstart: https://hyperframes.heygen.com/quickstart
 - Skills catalog: https://hyperframes.heygen.com/guides/skills
+- Official GitHub skills directory: https://github.com/heygen-com/hyperframes/tree/main/skills
 - The Pipeline: https://hyperframes.heygen.com/guides/pipeline
 - Compositions: https://hyperframes.heygen.com/concepts/compositions
 - Data Attributes: https://hyperframes.heygen.com/concepts/data-attributes
@@ -39,11 +50,13 @@ HyperFrames docs reviewed on July 10, 2026:
 
 Use HyperFrames only for MenuList video work by default.
 
-Current skill state as of July 10, 2026:
+Working renders, snapshots, encoded-QA frames, voice auditions, and audio intermediates are reproducible scratch output and stay ignored. Promote only the current reviewed MP4 to the project's `deliverables/` folder. Do not retain one source project per visual or audio experiment; update the active composition and preserve decisions in its README and the founder standard.
+
+Current skill state as of July 11, 2026:
 
 ```text
 npx hyperframes skills check
-Installed skills are up to date: 20 current.
+Installed skills are up to date: 20 current, 0 outdated, 0 missing.
 ```
 
 Keep skills current before significant video work:
@@ -56,6 +69,39 @@ npx hyperframes skills update
 ```
 
 HyperFrames requires Node 22 or newer and FFmpeg. Use Node 22 only for HyperFrames work; do not change the MenuList app runtime.
+
+The current Mac has HyperFrames `0.7.52`, Node `22.23.1`, FFmpeg `7.1`, local headless Chrome, and `whisper-cpp`. Local rendering and Talking Head Recut are ready. Optional Kokoro, MusicGen, `uvx`, `gh`, Figma credentials, Docker, and Lambda are not required for the current launch queue.
+
+## Skill Routing And Local Cost
+
+HyperFrames is Apache 2.0 licensed and local rendering has no HyperFrames per-render fee. MenuList's default music and sting are generated locally; third-party fonts, stock media, models, Figma, hosted generation, and AWS retain their own licensing or pricing.
+
+All 20 official skills are installed and current. Use the smallest matching workflow:
+
+| Skill | MenuList use | Local decision |
+| --- | --- | --- |
+| `hyperframes` | Route every video request | Mandatory, local |
+| `hyperframes-core` | Composition contract and deterministic timing | Mandatory, local |
+| `hyperframes-creative` | MenuList frame/design direction | Mandatory, local |
+| `hyperframes-animation` | Scene choreography and transitions | Mandatory, local |
+| `hyperframes-keyframes` | Logo draw, wordmark, cursor, masks, FLIP | Use for detailed motion, local |
+| `hyperframes-cli` | Check, snapshot, render, transcribe, QA | Mandatory, local; no Lambda |
+| `hyperframes-registry` | Reusable reviewed blocks | Selective, local |
+| `media-use` | Adopt/freeze media, provenance, audio operations | Use local/adopt mode; hosted providers are opt-in |
+| `figma` | Import approved Figma source | Conditional; credentials absent |
+| `product-launch-video` | The 12 MenuList campaign videos | Default orchestrator, local with repo assets |
+| `website-to-video` | Truthful website/UI tour or capture utility | Selective, local for accessible pages |
+| `general-video` | Unusual custom composition | Fallback, local |
+| `motion-graphics` | Logo sting, six-second bumper, CTA, alpha overlay | High-value supporting workflow, local |
+| `talking-head-recut` | Founder footage with designed proof cards | Ready locally with Whisper/FFmpeg |
+| `embedded-captions` | Founder/customer social captions | Local after `uvx`/WhisperX setup |
+| `music-to-video` | Unnarrated music-led teaser | Selective with an original MenuList-generated track |
+| `faceless-explainer` | AI-era public-truth education | Selective; not a product-launch substitute |
+| `pr-to-video` | Internal technical release video | Low priority; install `gh` only when needed |
+| `slideshow` | Investor or sales presentation | Local deck workflow, not MP4 production |
+| `remotion-to-hyperframes` | Port supplied legacy Remotion source | Not for new MenuList assets |
+
+Do not install optional local models merely because the Mac can run them. Keep the current Indian-English Tara/founder-voice path and original locally generated BGM. Install `uvx`, `gh`, Figma access, Kokoro, MusicGen, Docker, or cloud rendering only when a matching approved job requires it.
 
 ## MenuList Production Doctrine
 
@@ -104,6 +150,12 @@ For a new MenuList video, specify:
 - Tone: calm, operational, owner-focused, low-hype.
 - Assets: exact logo, product screen, capture, audio, BGM, and mockup paths when available.
 - Guardrails: no unsupported platform claims, no AI magic framing, no fake outcomes.
+- Funnel stage: awareness, setup relief, trust, product understanding, evaluation, or high-intent conversion.
+- Belief change: one sentence describing what the owner should understand afterward.
+- Proof moment: the exact product action or state shown on screen.
+- Linked action and destination: one CTA and one route.
+- Primary and guard metrics: the deepest reliable outcome plus the quality signal that must not worsen.
+- Asset id and `utm_content`: unique identity for this version.
 
 For iteration, do not re-prompt from scratch. Use editor-style requests:
 
@@ -111,8 +163,29 @@ For iteration, do not re-prompt from scratch. Use editor-style requests:
 - Reduce background visual noise.
 - Move captions above the phone mockup.
 - Make approval state clearer at 12 seconds.
-- Replace BGM with the approved FreeToUse track.
+- Rebuild BGM from the approved original MenuList brand-bed script.
 - Render a draft and extract frames at the exact scene midpoints.
+
+When creating an A/B variant, change only the declared test variable. Do not silently change the hook, voice, proof order, CTA, destination, and music in one test.
+
+## MenuList Extended Production Workflow
+
+Use this workflow for every new public, website, sales, social, or paid MenuList video:
+
+| Step | Output | Gate |
+| --- | --- | --- |
+| -1. Conversion brief | Project `conversion.md` based on the shared template; ledger row | One audience, problem, belief change, proof moment, CTA, destination, metric, asset id, and paid status are locked |
+| 0. HyperFrames setup | `hyperframes.json` and locked format | Duration, aspect, message, language, and production mode are known |
+| 1. Source capture | `capture/` and asset inventory | Only truthful, approved, fictional, or permissioned source material is admitted |
+| 2. Design system | `DESIGN.md` or `frame.md` | MenuList visual doctrine and real brand assets are locked |
+| 3. Story/script | `STORYBOARD.md` and `SCRIPT.md`/`script.txt` | Every beat supports the conversion belief and proof moment |
+| 4. Audio/visual direction | Frozen local audio and enriched storyboard | Voice, music, captions, timing, and UI focus support owner comprehension |
+| 5. Composition build | HyperFrames compositions and assembled `index.html` | Seek-safe timeline, readable UI, and truthful state changes |
+| 6. QA/render | Review frames, checks, MP4, `ffprobe` proof | Technical, claim, visual, audio, and conversion scorecards pass |
+| 7. Distribution package | Native aspect exports, thumbnail, captions, UTM link, ledger update | Publish owner, destination, version identity, and paid eligibility are explicit |
+| 8. Learning loop | Ledger results and one-variable decision | Keep, iterate, scale, or retire based on qualified outcomes rather than views alone |
+
+Step -1 and Steps 7-8 are MenuList additions to the HyperFrames production workflow. Do not omit them because the MP4 already renders correctly.
 
 ## Required Project Artifacts
 
@@ -120,12 +193,13 @@ For serious MenuList videos, use the HyperFrames 7-step artifact model.
 
 | Artifact | Required when | MenuList requirement |
 | --- | --- | --- |
+| `conversion.md` | Every public, sales, website, social, or paid version | Asset id, funnel job, proof, CTA, destination, metrics, UTM identity, and paid eligibility |
 | `capture/` | Website/product capture or external reference | Use only truthful MenuList/product/brand source material |
 | `DESIGN.md` | Every reusable project | Include MenuList colors, typography, visual guardrails, no-hype rules |
 | `SCRIPT.md` or `script.txt` | Every voiced video | Exact words to record or synthesize |
 | `STORYBOARD.md` | Any video with 3+ beats | Beat-by-beat timing, frame plan, assets, transitions, SFX |
 | `assets/` | Every project | Local frozen media, logo, music, voice, SFX, mockups |
-| `assets/music/LICENSES.md` | Any BGM use | Source URL, local file, license notes, attribution notes |
+| `assets/music/ORIGIN.md` | Any BGM use | Build script, source process, local hash, and third-party-free declaration |
 | `assets/mix/` | Any mixed audio | Voice/BGM/SFX master and mix notes |
 | `compositions/` | Multi-beat or reusable scenes | Prefer one composition per coherent beat once the video grows |
 | `snapshots/` or QA frames | Before final handoff | Exact timestamp frame checks |
@@ -205,7 +279,7 @@ For UI-heavy MenuList clips, prefer crisp CSS/UI mockups and captured product im
 Current local preference:
 
 - Use local Kokoro TTS for review drafts unless founder voice is available.
-- Use approved local BGM files with license ledger.
+- Use the original locally synthesized MenuList BGM and retain its build script and hashes.
 - Mix voice above BGM with sidechain ducking.
 - Normalize review/final audio around `-14 LUFS` with true peak around `-2 dBTP`.
 - Generate captions when the cut is intended for social or silent autoplay.
@@ -260,6 +334,11 @@ Do not hand off a MenuList video until this gate passes:
 - Every claim passes MenuList claim boundaries.
 - AI-related scenes show owner approval before public changes.
 - Unsupported platforms are not shown as automatically updated.
+- `conversion.md` exists and matches the final edit.
+- The final frame and companion post use one linked action and one destination.
+- The version has a unique asset id and `utm_content` value in the campaign ledger.
+- The chosen primary metric is deeper than views where product milestones are available.
+- Paid eligibility is explicitly `eligible` or `blocked`; absence of tracking means blocked, not assumed ready.
 
 Warnings may be accepted for internal review only when they are understood and documented. Dense single-file timeline warnings should be fixed before scaling the same project into a master launch asset.
 
@@ -276,6 +355,15 @@ Aspect ratio:
 Audience:
 One message:
 CTA:
+Funnel stage:
+Belief change:
+Proof moment:
+Linked destination:
+Primary metric:
+Guard metric:
+Asset id:
+UTM content:
+Paid eligibility:
 
 MenuList positioning:
 One approved customer link for menu, services, and business details.
@@ -294,15 +382,18 @@ Avoid:
 AI magic, robot visuals, guaranteed growth/ranking claims, automatic external-platform updates, fake testimonials, fake customer logos, cluttered dashboards.
 
 Deliver:
-DESIGN.md, script, storyboard if 3+ beats, local assets, mixed audio, rendered MP4, QA frames, ffprobe proof, and production notes.
+conversion.md, DESIGN.md, script, storyboard if 3+ beats, local assets, mixed audio, rendered MP4, QA frames, ffprobe proof, production notes, native distribution package, and campaign-ledger update.
 ```
 
 ## Best Next Improvements For MenuList Videos
 
-1. Move from single-file draft timelines to beat-level sub-compositions for the 75-second hero film and 2-3 minute demo.
-2. Add `STORYBOARD.md` to every new serious video project before coding animation.
-3. Use exact word-level transcript timing for longer voiceover videos.
-4. Capture approved product UI screenshots from the live app and replace CSS-only mockups where accuracy matters.
-5. Use HyperFrames snapshot frames before every render review.
-6. Create separate 16:9, 9:16, and 1:1 source projects when the layout materially differs, instead of relying only on crops.
-7. Render final approved cuts in `high` quality and optionally 4K after the 1080p version is approved.
+1. Produce the native 9:16 Owner Ease V4 before adding another story.
+2. Create the declared hook-only Owner Ease variant without changing body, CTA, voice, or destination.
+3. Add consent-aware create-menu milestone attribution through private preview, claim, and first approved publish before paid scale.
+4. Move from single-file draft timelines to beat-level sub-compositions for the 75-second hero film and 2-3 minute demo.
+5. Add `STORYBOARD.md` and `conversion.md` to every new serious video project before coding animation.
+6. Use exact word-level transcript timing for longer voiceover videos.
+7. Capture approved product UI screenshots from the live app and replace CSS-only mockups where accuracy matters.
+8. Use HyperFrames snapshot frames before every render review.
+9. Create separate 16:9, 9:16, and 1:1 source projects when the layout materially differs, instead of relying only on crops.
+10. Render final approved cuts in `high` quality and optionally 4K after the 1080p version is approved.

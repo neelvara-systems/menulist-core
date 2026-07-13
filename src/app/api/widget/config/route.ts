@@ -23,6 +23,7 @@ import {
     ANSWERLATTICE_WIDGET_REMOTE_CONFIG_TTL_SECONDS,
     normalizeWidgetConfig,
 } from '@lib/answerlattice/widgetConfig';
+import { createAnswerlatticeWidgetRuntimeAuthorization } from '@lib/answerlattice/widgetRuntimeTokenServer';
 import {
     generateETag,
     handlePublicApiCorsPreflight,
@@ -36,9 +37,13 @@ import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { NextRequest, NextResponse } from 'next/server';
+import { getClientIp, hashPublicRateLimitValue } from 'src/middleware/publicApi';
 
 const WIDGET_AUTH_CACHE_TTL_MS = 15_000;
-const CONFIG_CACHE_TTL_MS = ANSWERLATTICE_WIDGET_REMOTE_CONFIG_TTL_SECONDS * 1000;
+const CONFIG_CACHE_TTL_MS = Math.min(
+    ANSWERLATTICE_WIDGET_REMOTE_CONFIG_TTL_SECONDS * 1000,
+    WIDGET_AUTH_CACHE_TTL_MS,
+);
 const MAX_RUNTIME_CONFIG_CACHE_ENTRIES = 500;
 
 type RuntimeConfigCacheEntry = {
@@ -105,6 +110,7 @@ const hasActivePredictiveTriggers = async (
         .get();
     if (!snap.exists) return false;
     const data = snap.data() || {};
+    if (data.pId !== PRODUCT_IDS.ANSWERLATTICE || data.tId !== tId || data.sId !== sId) return false;
     if (Number(data.activeTriggerCount || 0) > 0) return true;
     if (data.activeTriggerCount === undefined && data.triggers && typeof data.triggers === 'object') {
         return Object.values(data.triggers).some((trigger: any) => trigger?.status === 'active');
@@ -189,6 +195,25 @@ export async function GET(request: NextRequest) {
             return withPublicApiCors(NextResponse.json({ error: 'Invalid API key' }, { status: 401 }), request);
         }
 
+        const rateLimitConfig = getRateLimitForFeature('PUBLIC_API');
+        const preAuthRateLimit = await checkRateLimit({
+            key: `widget-config-preauth:${hashPublicRateLimitValue(getClientIp(request))}`,
+            limit: Math.max(rateLimitConfig.limit * 4, 120),
+            window: rateLimitConfig.window,
+            failClosedOnProviderError: true,
+        });
+        if (!preAuthRateLimit.allowed) {
+            const providerUnavailable = preAuthRateLimit.reason === 'provider_unavailable';
+            const retryAfter = Math.max(Math.ceil((preAuthRateLimit.resetAt - Date.now()) / 1000), 1);
+            return withPublicApiCors(NextResponse.json(
+                { error: providerUnavailable ? 'Widget config temporarily unavailable' : 'Rate limit exceeded' },
+                {
+                    status: providerUnavailable ? 503 : 429,
+                    headers: { 'Cache-Control': 'no-store', 'Retry-After': String(retryAfter) },
+                },
+            ), request);
+        }
+
         const requestOrigin = request.headers.get('origin') || request.nextUrl.origin;
         const cacheKey = buildCacheKey(apiKey, requestOrigin);
         const cached = runtimeConfigCache.get(cacheKey);
@@ -200,35 +225,22 @@ export async function GET(request: NextRequest) {
         }
 
         const apiKeyRateLimitId = hashApiKey(apiKey).slice(0, 16);
-        const rateLimitConfig = getRateLimitForFeature('PUBLIC_API');
         const rateLimitResult = await checkRateLimit({
             key: `widget-config:${apiKeyRateLimitId}`,
             limit: rateLimitConfig.limit,
             window: rateLimitConfig.window,
+            failClosedOnProviderError: true,
         });
-        if (
-            rateLimitResult.allowed
-            && FEATURE_FLAGS.ENABLE_RATE_LIMITING
-            && rateLimitResult.current === 0
-            && rateLimitResult.remaining === rateLimitConfig.limit
-        ) {
-            return withPublicApiCors(NextResponse.json(
-                { error: 'Widget config temporarily unavailable' },
-                {
-                    status: 503,
-                    headers: { 'Cache-Control': 'no-store' },
-                }
-            ), request);
-        }
         if (!rateLimitResult.allowed) {
-            const retryAfter = Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000);
+            const providerUnavailable = rateLimitResult.reason === 'provider_unavailable';
+            const retryAfter = Math.max(Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000), 1);
             return withPublicApiCors(NextResponse.json(
-                { error: 'Rate limit exceeded' },
+                { error: providerUnavailable ? 'Widget config temporarily unavailable' : 'Rate limit exceeded' },
                 {
-                    status: 429,
+                    status: providerUnavailable ? 503 : 429,
                     headers: {
                         'Cache-Control': 'no-store',
-                        'Retry-After': String(Math.max(retryAfter, 1)),
+                        'Retry-After': String(retryAfter),
                     },
                 }
             ), request);
@@ -257,9 +269,15 @@ export async function GET(request: NextRequest) {
         }
 
         const { storeData, storeId } = authResult;
-        const tId = Number(storeData.tenantId || storeData.tId);
-        const sId = Number(storeData.id || storeId);
-        if (!Number.isFinite(tId) || !Number.isFinite(sId) || tId <= 0 || sId <= 0) {
+        const tId = Number(storeData.tId ?? storeData.tenantId);
+        const sId = Number(storeData.sId ?? storeData.storeId ?? storeData.id ?? storeId);
+        if (
+            !Number.isSafeInteger(tId)
+            || !Number.isSafeInteger(sId)
+            || tId <= 0
+            || sId <= 0
+            || String(sId) !== storeId
+        ) {
             logRuntimeFailure('answerlattice_widget_config_invalid_workspace_context', undefined, {
                 ...getBoundedRuntimeStringContext('storeId', storeId),
             });
@@ -268,6 +286,33 @@ export async function GET(request: NextRequest) {
 
         if (!isRequestOriginAllowed(requestOrigin, storeData.widgetAllowedOrigins)) {
             return withPublicApiCors(NextResponse.json({ error: 'Origin not allowed' }, { status: 403 }), request);
+        }
+
+        const runtimeAuthorizationRequired = Array.isArray(storeData.widgetAllowedOrigins)
+            && storeData.widgetAllowedOrigins.length > 0;
+        let runtimeAuthorization: { token: string; expiresAt: number } | null = null;
+        if (runtimeAuthorizationRequired) {
+            try {
+                const authorization = createAnswerlatticeWidgetRuntimeAuthorization({
+                    apiKey,
+                    tId,
+                    sId,
+                    origin: requestOrigin,
+                });
+                runtimeAuthorization = {
+                    token: authorization.token,
+                    expiresAt: authorization.expiresAt,
+                };
+            } catch (authorizationError) {
+                logRuntimeFailure('answerlattice_widget_runtime_authorization_failed', authorizationError, {
+                    ...getBoundedRuntimeStringContext('tenantId', tId),
+                    ...getBoundedRuntimeStringContext('storeId', sId),
+                });
+                return withPublicApiCors(NextResponse.json(
+                    { error: 'Widget config temporarily unavailable' },
+                    { status: 503, headers: { 'Cache-Control': 'no-store' } },
+                ), request);
+            }
         }
 
         const runtimeStatus = getWidgetRuntimeStatusFromStoreData(storeData);
@@ -304,6 +349,13 @@ export async function GET(request: NextRequest) {
                 predictiveSupport,
                 contextBundles: Boolean(bundleConfig),
             },
+            runtimeAuthorization: runtimeAuthorizationRequired
+                ? {
+                    required: true,
+                    token: runtimeAuthorization?.token,
+                    expiresAt: runtimeAuthorization?.expiresAt,
+                }
+                : { required: false },
             bundles: bundleConfig,
         };
         const etag = generateETag(body);

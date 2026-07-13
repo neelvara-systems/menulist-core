@@ -1,8 +1,8 @@
 # MenuList Main Website (menulist.ai)
 
-**Version:** 3.6.108 (Homepage Preview Source Selector)
+**Version:** 3.6.111 (Header Interaction Hardening)
 **Status:** ✅ IMPLEMENTED — Canonical
-**Last Updated:** July 7, 2026
+**Last Updated:** July 11, 2026
 **Workflow:** `.codex/workflows/website.md`
 
 ---
@@ -13,7 +13,21 @@ The current implementation is the only default MenuList marketing website.
 
 | Canonical Version | Name | Core Message | Status |
 | ----------------- | ---- | ------------ | ------ |
-| **3.6.108** | **Homepage Preview Source Selector** | **The homepage preview bridge now lets owners switch between photo, owned-link, and typed-list examples before opening the signed-in setup flow.** | **ACTIVE** |
+| **3.6.111** | **Header Interaction Hardening** | **The shared website header keeps Features, Resources, and the mobile drawer usable across hover, keyboard, consent-banner, and short-phone states.** | **ACTIVE** |
+
+Version 3.6.111 hardens the shared website header interactions without changing navigation labels, routes, or website copy. `Header.tsx` now lets desktop Features and Resources dropdowns close with Escape, lets the mobile drawer close with Escape, marks the drawer as a dialog, and keeps the scrollable drawer nav separate from the bottom CTA. `website.css` adds Resources dropdown scroll containment, shared hover bridges for desktop dropdown pointer travel, drawer safe-area CTA styling, and drawer isolation above the public analytics consent banner. This is static website header/CSS/docs work only; feature routes, locale copy, discovery files, owner dashboard runtime, customer menu/OBP runtime, Firebase rules, Cloud Functions, production build, Vercel deploy, and DNS were not changed.
+
+**Public contact delivery boundary (July 13, 2026):** `/api/public/contact` fails closed with `503` when its configured contact-form rate limiter cannot establish admission, while other public endpoints retain their explicit availability policy. Turnstile verification uses the fixed Cloudflare endpoint with manual redirects, an 8-second abort deadline, bounded response parsing, and timer cleanup. Accepted enquiry rows store source/referrer paths without query strings or fragments and preserve valid zero report counts. The path still performs at most one `landingPageEnquiries` write after bounded JSON, schema, honeypot, and Turnstile checks; no report body, raw IP, Turnstile token, or URL query is persisted. The unused client-side enquiry DAL has been retired, so maintained writes stay behind this validated route and maintained platform reads stay behind the bounded current-authorization Ops route.
+
+Version 3.6.110 remains Feature Dropdown Workflow Rows and is preserved below as the previous website version note.
+
+Version 3.6.110 refines the desktop Features dropdown into workflow rows instead of three vertical columns. `websiteFeatureNavGroups` now keeps Start focused on Menu Import, Menu Content Prep, and Featured Choices, while Menu Quality Validation moves into Operate with Activity View, Business Health, Customer Feedback Loop, Public Discovery, AI Menu Manager, and Owner PWA Dashboard. Desktop CSS now renders Feature overview, Start, Publish, Operate, and the proof CTA as stacked rows with three-card wrapping where possible; mobile keeps the same shared accordion source. The mobile drawer layer also sits above the public analytics consent banner so the hamburger remains a true full-screen menu when consent has not yet been answered. This is static website navigation/CSS/docs work only; feature routes, locale copy, discovery files, owner dashboard runtime, customer menu/OBP runtime, Firebase rules, Cloud Functions, production build, Vercel deploy, and DNS were not changed.
+
+Version 3.6.109 remains WhatsApp Intake Fail-Closed Boundary and is preserved below as the previous website version note.
+
+Version 3.6.109 removes the hardcoded test-number action from `/whatsapp`. The route remains discoverable as an informational view of the WhatsApp-first flow, but its English/Hindi availability copy now states that provider intake is not open and both primary actions route to `/create-menu`. Metadata and LLM discovery copy use the same boundary. `npm run verify:website-public-copy-boundary` rejects the removed test number, a page-local `wa.me` onboarding action, missing `/create-menu` fallback, or missing availability copy. This is public website component/locale/metadata/discovery/docs/verifier hardening only; Messaging Onboarding Functions logic, target flags, Meta secrets, webhook configuration, owner dashboard runtime, customer menu/OBP runtime, Firebase rules, Cloud Functions, Vercel deployment, production build, and DNS were not changed.
+
+Version 3.6.108 remains Homepage Preview Source Selector and is preserved below as the previous website version note.
 
 Version 3.6.108 turns `CreateMenuPreviewSection` into a small browser-local proof selector for the three owner inputs that matter most before signup: a photo of the current list, an owned public link, or typed items/services/prices. The preview panel updates the sample private-preview output without uploading files, reading URLs, reserving slugs, calling providers, creating drafts, or changing the authenticated `/create-menu` flow. Guardrails remain visible: account before processing, five preview attempts per day, 24-hour draft expiry, and review before anything becomes public. This is public website component/CSS/locale/docs work only; `/create-menu` upload/link runtime, preview processing, auth, pricing/payment, owner dashboard, customer menu/OBP runtime, Firebase rules, Cloud Functions, Vercel deployment, production build, and DNS were not changed.
 
@@ -107,7 +121,7 @@ Version 3.6.83 validates the external ChatGPT technical SEO review against live 
 
 Version 3.6.82 remains WhatsApp Test CTA Activation and is preserved below as the previous website version note.
 
-Version 3.6.82 switches the `/whatsapp` primary and final CTAs from the earlier `/create-menu` fallback to a prefilled click-to-WhatsApp link for the supplied test onboarding number `+1 555 657 1424` (`https://wa.me/15556571424`). The prefilled message starts from the same broad SMB current-list promise: menu, service list, rate card, catalog, package list, or price list. Production launch still needs the final public WhatsApp account, response owner, operating hours, and tracking decision. This is public website component/locale/docs work only; messaging-onboarding Functions runtime, provider secrets, webhook configuration, extraction/publish behavior, auth, owner dashboard runtime, customer menu/OBP runtime, pricing/payment, Firebase rules, Cloud Functions, Vercel deployment, and outbound WhatsApp outreach were not changed.
+Version 3.6.82 temporarily moved `/whatsapp` from the `/create-menu` fallback to a supplied test-number action. Version 3.6.109 removed that public action because checked-in Functions targets remain provider-disabled. This historical note is not an operating instruction or current route contract.
 
 Version 3.6.81 remains WhatsApp Onboarding Campaign Page and is preserved below as the previous website version note.
 
@@ -908,6 +922,7 @@ Protected scope:
 
 | Version | Date | Changes |
 | ------- | ---- | ------- |
+| 3.6.111 | July 11, 2026 | Hardened the shared header interactions: desktop Features and Resources dropdowns now close on Escape, Resources gets the same scroll containment and pointer-travel bridge as Features, and the mobile drawer is a dialog with Escape close, safe-area CTA spacing, and layering above the consent banner. |
 | 3.6.96 | June 30, 2026 | Hardened `/create-menu` upload/link, preview polling, and claim browser requests with same-origin credentials, no-store cache policy, and manual redirect handling before bounded response parsing. |
 | 3.6.95 | June 30, 2026 | Hardened `/create-menu/success` Copy Link to fall through from rejected Clipboard API writes to acknowledged textarea fallback before copied state or starter activation signals. |
 | 3.6.94 | June 29, 2026 | Added a category-based homepage switching comparison for PDFs/screenshots, QR-only pages, website builders, and link pages without changing pricing/payment or product runtime. |

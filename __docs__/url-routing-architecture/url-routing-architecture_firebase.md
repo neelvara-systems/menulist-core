@@ -9,13 +9,19 @@
 
 ## Overview
 
-URL Routing Architecture **reduces** total Firebase reads across all public surfaces through 6 targeted optimizations. The feature itself adds zero additional writes.
+URL Routing Architecture reduces repeated public-render reads through targeted caches and summary documents, while correctness-sensitive tenant and subdomain decisions use canonical reads. Subdomain allocation now adds bounded claim-ledger reads and writes so concurrent onboarding, owner assignment, and platform rename cannot commit the same public host.
 
 The June 29, 2026 custom-domain limiter hardening adds no Firebase reads, writes, deletes, indexes, or Cloud Functions. `/api/domain` keeps the same Vercel/provider and store update behavior, but the domain-management rate limiter stores only HMAC-hashed owner/store key material instead of raw identifiers.
 
 The July 6, 2026 custom-domain session document-ID boundary adds no Firebase reads, writes, deletes, indexes, or Cloud Functions. `/api/domain` keeps the same valid add/status/remove provider calls, store reads/writes, and public cache invalidation, but validates authenticated session tenant/store IDs with the shared Firestore document-ID guard before permission checks, limiter keys, store refs, Vercel-flow diagnostics, and `revalidateMenuCache`.
 
 The July 6, 2026 Admin subdomain rename rate-limit and scope boundary adds no Firebase reads, writes, deletes, indexes, or Cloud Functions for valid requests. `/api/admin/subdomains/rename` keeps the same platform-only public-routing mutation, collision checks, store summary update, audit log, public cache invalidation, screen invalidation, and Owner Business Assistant packet invalidation, but applies `ADMIN_SUBDOMAIN_RENAME_MUTATION` before body parsing and validates tenant/store scope with exact positive Firestore document IDs before store reads or writes. Rejected malformed or rate-limited attempts stop before Firestore work.
+
+The July 11, 2026 durable subdomain claim boundary changes valid allocation and rename cost intentionally. `src/lib/routing/subdomainClaim.ts` reads one deterministic `platformSummary/subdomainClaim_{subdomain}` document plus bounded canonical-owner and active-history compatibility queries inside the same transaction. Owner assignment writes the canonical store, `platformSummary/storesSummary`, and current claim; changing an unpublished owner's prior slug may also mark the old claim released. Platform rename performs an initial scoped store read, repeats that store read transactionally, writes the store, summary, current claim, old redirect claim, and `subdomainRenameLog` audit document. No new collection or composite index is required. Rate-limited, malformed, unauthorized, reserved, and unavailable requests stop before mutation.
+
+The July 11, 2026 tenant-scoped outlet slug claim boundary applies the same transactional uniqueness model to multi-location path segments. `src/lib/routing/outletSlugClaim.ts` partitions deterministic claim IDs by exact tenant document ID, so `pune` can exist in different tenants but cannot be committed by two active outlets in one tenant. Create and rename perform bounded current/history compatibility queries inside the transaction and write current/redirect claims with canonical store, tenant-list, and summary state. Deactivation releases the current claim atomically. The existing lookup indexes/queries are reused; no new collection, composite index, rules, Functions, or Firebase deployment is required.
+
+The July 13, 2026 durable custom-domain boundary intentionally adds canonical correctness reads and claim writes. Each owner transaction reads `tenants/{tId}`, `stores/{sId}`, `platformSummary/customDomainClaim_{domain}`, and a `stores.customDomain` query capped at two rows. POST repeats that set during finalization and may read the prior claim plus prior-domain query during replacement. GET repeats the set only when explicit provider truth changes verification and now performs two bounded Vercel reads (DNS configuration plus configured-project membership); this adds no Firestore operation. DELETE performs one set before clearing routing fields. Claim writes progress through request-unique `reserved`, `current`, bounded `releasing`, and `released` states. No new collection or composite index is required because claims use deterministic documents in `platformSummary` and reuse the existing custom-domain query. These are Admin SDK app-route operations; no Firestore-rule or Firebase deploy change is required.
 
 The June 29, 2026 subdomain-check limiter hardening adds no Firebase reads, writes, deletes, indexes, or Cloud Functions. `/api/subdomain/check` keeps the same `DATA_READ` cheap-fail gate and active-store availability lookup, but the limiter stores only HMAC-hashed owner/tenant/store key material instead of raw identifiers.
 
@@ -51,7 +57,7 @@ The July 5, 2026 public language parameter parse fallback adds no Firebase reads
 
 The July 5, 2026 deleted-project slug reservation fail-closed update adds no Firebase reads, writes, deletes, indexes, Cloud Functions, live provider calls, cache invalidations, or deploy steps. The existing create/rename/duplicate reservation query is unchanged. If that query fails, creation and duplication treat the proposed slug as reserved and append a unique suffix, while rename and no-slug backfill refuse the new slug through the same path used for a confirmed 90-day reservation. This preserves QR/public URL permanence without changing normal valid slug creation, confirmed reservation handling, summary schema, or public resolver behavior.
 
-The July 5, 2026 tenant sitemap lookup diagnostic cap adds no Firebase reads, writes, deletes, indexes, Cloud Functions, live provider calls, cache invalidations, or deploy steps. Existing master-store, projects-summary, and stores-summary reads remain unchanged; failed lookup paths still return an empty sitemap or omit project/outlet entries. The change only caps repeated `tenant_sitemap_*_failed` diagnostics and records fallback-policy labels with bounded presence/length metadata.
+The July 5, 2026 tenant sitemap lookup diagnostic cap added no Firebase reads, writes, deletes, indexes, Cloud Functions, live provider calls, cache invalidations, or deploy steps at that time. The July 10, 2026 identity-boundary correction later replaced sitemap/Brand-OBP/OBP-mode `storesSummary` reads with tenant-filtered canonical `stores` queries because a client-writable summary cannot be public tenant or store authority. Failed lookup paths still return an empty sitemap or omit project/outlet entries, and bounded `tenant_sitemap_*_failed` diagnostics remain.
 
 ### Cost Optimization Summary (Implemented Feb 19, 2026)
 
@@ -59,7 +65,7 @@ The July 5, 2026 tenant sitemap lookup diagnostic cap adds no Firebase reads, wr
 | ----- | ------------------------------------------------------------- | --------------- | --------------------- | ------------------------------- |
 | OPT-1 | Eliminate redundant `getStoreById()` in OBP                   | OBP             | **1 read**            | ~3.6M reads/year                |
 | OPT-2 | `checkHasPublishedMenu` uses projectsSummary                  | OBP             | **N→1 reads**         | Variable                        |
-| OPT-3 | `countActiveStoresForTenant` uses storesSummary               | OBP             | **N→1 reads**         | Variable                        |
+| OPT-3 | `countActiveStoresForTenant` uses cached tenant-filtered canonical stores (correctness boundary) | OBP | summary optimization intentionally removed | Security/correctness over denormalized-read savings |
 | OPT-5 | Eliminate redundant `getStoreById()` in menu page             | Client Menu     | **1 read**            | ~3.6M reads/year                |
 | OPT-6 | Add `unstable_cache` to digital screen SSR                    | Digital Screens | **4 reads/SSR**       | ~5.8M reads/year (1K screens)   |
 | CDN   | `s-maxage=60, stale-while-revalidate=300` on all client pages | All             | **~80% reduction**    | Massive                         |
@@ -72,7 +78,8 @@ The July 5, 2026 tenant sitemap lookup diagnostic cap adds no Firebase reads, wr
 
 | Operation                 | Collection                         | When                                | Cost Impact                                                        |
 | ------------------------- | ---------------------------------- | ----------------------------------- | ------------------------------------------------------------------ |
-| Store subdomain lookup    | `stores` (WHERE subdomain)         | Every visit via subdomain           | **1 read** — cached 60s via `unstable_cache`                       |
+| Store subdomain lookup    | `stores` (WHERE subdomain) + referenced `tenants/{tId}` eligibility | Every visit via subdomain | **2 reads on a cold unique hit** — store is the rendered payload; tenant is eligibility-only; cached 60s via `unstable_cache` |
+| Store custom-domain lookup | `stores` (WHERE customDomain + verified + active) + referenced `tenants/{tId}` eligibility | Every visit via a verified custom domain | **2 reads on a cold unique hit** — duplicate store rows fail closed; tenant is never rendered; cached 60s |
 | Project list from summary | `platformSummary/projects_{sId}`   | Every menu page visit               | **1 read** — replaces N legacy metadata reads (ADR-10). Cached 60s |
 | Full project data         | `projects/{tId}/{sId}/{projectId}` | After project selected from summary | **1 read** — inside `getCachedProject`, cached 60s                 |
 | Decision Blocks           | `decisionBlocks/{tId}_{sId}_{pId}` | After project resolved              | **1 read** — optional enhancement, cached 60s                      |
@@ -81,19 +88,21 @@ The July 5, 2026 tenant sitemap lookup diagnostic cap adds no Firebase reads, wr
 
 | Operation                           | Collection                             | When                                         | Cost Impact                                                        |
 | ----------------------------------- | -------------------------------------- | -------------------------------------------- | ------------------------------------------------------------------ |
-| Multi-store brand detection (OPT-3) | `platformSummary/storesSummary`        | OBP root for master stores only              | **1 read** — uses summary doc, not stores scan. Cached 60s         |
+| Multi-store brand detection (OPT-3) | `stores` (WHERE tenantId)              | OBP root for master stores only              | **N canonical rows** — cached 60s; client-writable summary is not public authority |
 | Has published menu (OPT-2)          | `platformSummary/projects_{sId}`       | OBP page (single-store)                      | **1 read** — uses projectsSummary, not legacy metadata. Cached 60s |
 | Outlet routing lookup               | `stores` (WHERE tenantId + outletSlug) | Slug might be outlet (master + MULTI_OUTLET) | **0-1 read** — cached 60s, only multi-store brands                 |
-| Subdomain availability check        | `stores` (WHERE subdomain)             | Owner checks availability on desktop/mobile  | **0-1 reads** — authenticated `DATA_READ` gate runs before permission and store lookup; rate-limited checks perform no Firestore reads |
+| Subdomain availability check        | Canonical `stores/{sId}` + `platformSummary` claim + bounded `stores` owner/history queries | Main-location owner checks availability on desktop/mobile | One canonical owner-store read, one deterministic claim read, and two bounded collision/history queries in a read-only transaction; rate-limited, unauthorized, invalid, or explicit-outlet checks stop first |
 | Brand OBP outlet list               | `stores` (WHERE tenantId + active)     | Brand OBP store selector (multi-store)       | **N reads** — cached 60s, only multi-store brands                  |
-| Custom domain verify                | Vercel API (not Firestore)             | Owner clicks "Check Verification"            | **0 Firestore reads** — Vercel API only                            |
+| Custom domain status                | Canonical tenant/store + deterministic claim + bounded store-domain query, then Vercel | Owner opens/clicks verification | **4 Firestore reads normally; up to 8 when verification changes** because the post-provider transaction rechecks the exact current scope before writing |
 | MyCodex host classification         | None                                   | Requests to `menulist.digital`               | **0 Firestore reads** — product-domain registry + local markdown   |
 | MyCodex crawler restriction         | None                                   | MyCodex pages and `robots.txt`               | **0 Firestore reads** — metadata, headers, and static text only    |
 | MyCodex PWA manifest/assets         | None                                   | Install metadata and app icons               | **0 Firestore reads** — static manifest, icons, splash files, and service worker only |
 
-**Net public page read impact:** Same as before for single-store (cached). Multi-store adds 0-1 conditional read (cached 60s).
+**Net public page read impact:** A cold unique public store hit now includes one canonical tenant eligibility read in addition to the store query. The combined helper remains cached for 60 seconds, and tenant data is not returned to rendering. Multi-store routing adds its existing conditional canonical reads.
 
 CDN cache headers (`s-maxage=60, stale-while-revalidate=300`) will **reduce** total reads by serving cached HTML at Vercel Edge.
+
+The July 11, 2026 legacy master-store compatibility reads apply only when the canonical store lacks an `isMaster` marker. That fallback issues at most four `stores` queries (`tenantId` and `tId`, each with exact string and numeric tenant values), each capped at `.limit(2)`, and allows assignment only when the current store is the sole result after deduplication. Explicit masters and outlets do not run those topology queries; rejected outlets add no writes. This adds no collection, composite index, Firestore/Storage rule, Cloud Function, or Firebase deploy target.
 
 ---
 
@@ -101,13 +110,18 @@ CDN cache headers (`s-maxage=60, stale-while-revalidate=300`) will **reduce** to
 
 | Operation                           | Collection                       | When                                             | Cost Impact                                                              |
 | ----------------------------------- | -------------------------------- | ------------------------------------------------ | ------------------------------------------------------------------------ |
-| Store slug on project creation      | `platformSummary/projects_{sId}` | Every `addProject()` call                        | **0 additional** — slug added to existing `syncProjectToSummary()` write |
+| Store slug on project creation      | `platformSummary/projects_{sId}` | Every `addProject()` call                        | **0 additional writes** — slug is included in the atomic project/summary creation transaction |
 | Update slug on rename               | `platformSummary/projects_{sId}` | Every `updateProjectMetadata()` with name change | **0 additional** — slug update part of existing summary sync             |
 | Store outletSlug on outlet creation | `stores/{sId}`                   | Every outlet creation                            | **0 additional** — outletSlug added to existing store doc creation       |
+| Claim owner subdomain               | `platformSummary/subdomainClaim_{subdomain}` | Onboarding or owner assignment | **1 current-claim write** in the same transaction as canonical store creation/update; an old unpublished claim may also be released |
+| Preserve admin rename redirect      | `platformSummary/subdomainClaim_{oldSubdomain}` | Platform legal/support rename | **1 redirect-claim write** in the same transaction as the new current claim, canonical store, summary, and audit writes |
+| Reserve/connect custom domain       | `platformSummary/customDomainClaim_{domain}` + `stores/{sId}` | `POST /api/domain` | **1 reservation claim write, then 1 store + 1 current-claim write**; replacement adds old `releasing` and later `released` claim writes |
+| Reconcile custom-domain verification | `stores/{sId}` | `GET /api/domain` only when explicit provider truth differs | **0 writes when unchanged; 1 store write on configured or explicitly misconfigured transition** |
+| Remove custom domain                | `platformSummary/customDomainClaim_{domain}` + `stores/{sId}` | `DELETE /api/domain` | **1 releasing claim + 1 store write, then 1 released-claim write after successful/404 provider cleanup** |
 | MyCodex domain registration         | None                             | Static deployment-domain configuration           | **0 writes** — no Firestore document mutation                            |
 | MyCodex PWA registration/assets     | None                             | Static install metadata and offline shell        | **0 writes** — no Firestore document mutation                            |
 
-**Net write impact: ZERO additional writes.**
+**Net write impact:** bounded claim-ledger writes are now part of valid subdomain allocation and rename. Public page rendering adds no claim writes.
 
 ---
 

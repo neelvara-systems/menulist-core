@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { getRateLimitForFeature, type RateLimitFeature } from '@lib/rateLimit/configs';
 import { checkRateLimit } from '@lib/rateLimit';
 import { logger } from '@lib/monitoring/logger';
-import { canUserAccessStore } from '@lib/multiOutlet/storeSwitchAccess';
+import { canUserAccessStore, normalizeStoreSwitchStoreId } from '@lib/multiOutlet/storeSwitchAccess';
 import { getBoundedSecurityRouteContext, getBoundedSecurityStringContext } from '@lib/security/securityDiagnostics';
 import { verifyTenantAccess } from '@/middleware/auth';
 import { hashPublicRateLimitValue } from 'src/middleware/publicApi';
@@ -13,11 +13,6 @@ export const getOwnerAssistantSessionScope = (session: any) => {
   const sId = session?.sId || session?.user?.storeId;
   const userId = session?.uId || session?.user?.id;
   return { tId, sId, userId };
-};
-
-const normalizeStoreId = (value: unknown) => {
-  const parsed = Number(value);
-  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
 };
 
 const buildSessionUserForStoreAccess = (session: any, fallbackStoreId: string | number) => ({
@@ -40,7 +35,13 @@ export const resolveOwnerAssistantSelectedStoreScope = (
     };
   }
 
-  const selectedStoreId = normalizeStoreId(requestedStoreId);
+  const hasRequestedStoreId = requestedStoreId !== undefined && requestedStoreId !== null && requestedStoreId !== '';
+  const selectedStoreId = hasRequestedStoreId ? normalizeStoreSwitchStoreId(requestedStoreId) : null;
+  if (hasRequestedStoreId && !selectedStoreId) {
+    return {
+      error: NextResponse.json({ error: 'Invalid request' }, { status: 400 }),
+    };
+  }
   if (!selectedStoreId || String(selectedStoreId) === String(sId)) {
     return { tId, sId, userId };
   }

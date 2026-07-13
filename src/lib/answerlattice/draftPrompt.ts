@@ -77,6 +77,7 @@ export interface DraftPromptInput {
     signalExamples: string[];
     existingAnswerSummaries?: string[];
     relatedArticleTitles?: string[];
+    mode?: 'new_answer' | 'refine_existing';
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -118,7 +119,9 @@ export function buildDraftUserPrompt(input: DraftPromptInput): string {
     }
 
     parts.push('');
-    parts.push('Generate a canonical answer draft for this knowledge gap. Return JSON only.');
+    parts.push(input.mode === 'refine_existing'
+        ? 'Generate a complete replacement draft for the existing canonical answer. Preserve confirmed facts, address the support signals, and do not invent new product behavior. Return JSON only.'
+        : 'Generate a canonical answer draft for this knowledge gap. Return JSON only.');
 
     return parts.join('\n');
 }
@@ -157,10 +160,16 @@ export function parseDraftResponse(rawResponse: string | null): ParsedDraftRespo
         if (!parsed.structuredSummary || typeof parsed.structuredSummary !== 'string') return null;
         if (!parsed.detailedExplanation || typeof parsed.detailedExplanation !== 'string') return null;
 
+        const title = parsed.title.trim().slice(0, 180);
+        const detailedExplanation = parsed.detailedExplanation.trim().slice(0, 24_000);
+        if (!title || !detailedExplanation) return null;
+
         // Enforce structuredSummary length
-        const summary = parsed.structuredSummary.length > 500
-            ? parsed.structuredSummary.substring(0, 497) + '...'
-            : parsed.structuredSummary;
+        const normalizedSummary = parsed.structuredSummary.trim();
+        if (!normalizedSummary) return null;
+        const summary = normalizedSummary.length > 500
+            ? normalizedSummary.substring(0, 497) + '...'
+            : normalizedSummary;
 
         // Parse procedure if present
         let procedure: AnswerlatticeProcedure | null = null;
@@ -198,11 +207,11 @@ export function parseDraftResponse(rawResponse: string | null): ParsedDraftRespo
         }
 
         return {
-            title: parsed.title.substring(0, 200),
+            title,
             structuredSummary: summary,
-            detailedExplanation: parsed.detailedExplanation,
-            edgeCases: typeof parsed.edgeCases === 'string' ? parsed.edgeCases : null,
-            constraints: typeof parsed.constraints === 'string' ? parsed.constraints : null,
+            detailedExplanation,
+            edgeCases: typeof parsed.edgeCases === 'string' ? parsed.edgeCases.trim().slice(0, 8_000) || null : null,
+            constraints: typeof parsed.constraints === 'string' ? parsed.constraints.trim().slice(0, 8_000) || null : null,
             procedure,
         };
     } catch {

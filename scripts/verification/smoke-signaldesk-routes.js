@@ -80,6 +80,11 @@ async function expectAlias(pathname, rewritePath) {
 async function main() {
   for (const pathname of [
     "/signaldesk",
+    "/signaldesk/signin",
+    "/signaldesk/opportunities",
+    "/signaldesk/conversations",
+    "/signaldesk/activations",
+    "/signaldesk/controls",
     "/signaldesk/content",
     "/signaldesk/partners",
     "/signaldesk/settings",
@@ -92,13 +97,16 @@ async function main() {
   await expectAlias("/sd/app", "/signaldesk");
   await expectAlias("/sd/content", "/signaldesk/content");
   await expectAlias("/sd/app/content", "/signaldesk/content");
+  await expectAlias("/sd/opportunities", "/signaldesk/opportunities");
+  await expectAlias("/sd/app/activations", "/signaldesk/activations");
+  await expectAlias("/sd/signin", "/signaldesk/signin");
 
   const publicAlias = await request("/sd", { host: PUBLIC_HOST, method: "HEAD" });
   assert(publicAlias.status === 404, "/sd alias is not exposed on public MenuList host", `received ${publicAlias.status}`);
 
   const privatePage = await request("/signaldesk");
   assert(privatePage.status === 200, "/signaldesk unauthenticated page returns local dev shell", `received ${privatePage.status}`);
-  assert(/\/signin\?callbackUrl=%2Fsignaldesk|NEXT_REDIRECT/.test(privatePage.body), "/signaldesk unauthenticated page redirects to sign-in");
+  assert(privatePage.body.includes("/signaldesk/signin?callbackUrl=%2Fsignaldesk"), "/signaldesk unauthenticated page redirects to the isolated SignalDesk sign-in");
   [
     "MENULIST_SIGNALDESK_SMTP_PASS",
     "MENULIST_SIGNALDESK_META_ACCESS_TOKEN",
@@ -110,7 +118,7 @@ async function main() {
 
   const aliasPage = await request("/sd", { host: ALIAS_HOST });
   assert(aliasPage.status === 200, "/sd unauthenticated alias returns local dev shell", `received ${aliasPage.status}`);
-  assert(/\/sd\/signin\?callbackUrl=%2Fsd|NEXT_REDIRECT/.test(aliasPage.body), "/sd unauthenticated alias redirects to /sd/signin");
+  assert(aliasPage.body.includes("/sd/signin?callbackUrl=%2Fsd"), "/sd unauthenticated alias redirects to /sd/signin");
 
   const overview = await request("/api/signaldesk/overview");
   assert(overview.status === 401, "Overview API rejects unauthenticated requests", `received ${overview.status}`);
@@ -141,6 +149,12 @@ async function main() {
     method: "POST",
   });
   assert(unknownWebhook.status === 404, "Unknown webhook provider returns 404", `received ${unknownWebhook.status}`);
+
+  const unsignedOutcome = await request("/api/signaldesk/outcomes", {
+    body: JSON.stringify({ eventId: "smoke-outcome" }),
+    method: "POST",
+  });
+  assert(unsignedOutcome.status === 400, "Outcome bridge rejects missing signature", `received ${unsignedOutcome.status}`);
 
   console.log(`SignalDesk route/API smoke passed (${results.length} checks)`);
 }

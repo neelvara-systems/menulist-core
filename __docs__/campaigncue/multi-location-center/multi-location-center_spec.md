@@ -2,7 +2,7 @@
 
 ## Summary
 
-Multi-Location Center lets a business create one campaign idea and localize it by branch, city, service availability, opening hours, price, inventory, approval state, and channel connection.
+Multi-Location Center lets a business create one campaign idea and localize it by branch, city, service availability, opening hours, price, inventory, approval state, and manual channel readiness.
 
 ## Goals
 
@@ -15,11 +15,11 @@ Multi-Location Center lets a business create one campaign idea and localize it b
 
 | Requirement | Acceptance |
 | --- | --- |
-| Location facts | Campaign outputs use the selected location's facts, address, hours, prices, services, and channel connections. |
+| Location facts | Campaign outputs use the selected location's facts, address, hours, prices, services, and manual channel readiness. |
 | Group campaigns | A central campaign can create localized drafts for multiple locations. |
 | Overrides | Local managers can request or apply allowed changes. |
 | Approval state | Approval is tracked per location and output version. |
-| Publish status | Channel readiness and publish/manual status is per location. |
+| Use status | Channel readiness, manual handoff, approval, and any separately enabled provider status is per location. |
 | Location analytics | Results can be viewed by location and rolled up by group. |
 
 ## Non-Goals
@@ -31,6 +31,5 @@ Multi-Location Center lets a business create one campaign idea and localize it b
 ## Risks
 
 - Wrong location facts can create customer-facing errors.
-- Bulk publishing can increase provider quota and Firebase cost.
+- Any separately enabled bulk provider publishing can increase provider quota and Firebase cost.
 - Location-level permissions need strict enforcement.
-

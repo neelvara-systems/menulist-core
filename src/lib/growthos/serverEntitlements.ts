@@ -1,15 +1,16 @@
 import { getActiveSubscriptionForStoreServer } from "@database/subscriptions/server";
 import { readGrowthOSStoreDataServer } from "@database/growthos/server";
 import { evaluateGrowthOSEntitlement } from "@lib/growthos/entitlements";
+import { normalizeStoreSwitchStoreId } from "@lib/multiOutlet/storeSwitchAccess";
 import type { GrowthOSEntitlementResult } from "@lib/growthos/entitlements";
 
 export async function evaluateGrowthOSServerEntitlement(params: {
     session: any;
     storeData?: any;
 }): Promise<GrowthOSEntitlementResult> {
-    const tenantId = Number(params.session?.tId);
-    const storeId = Number(params.session?.sId);
-    const storeData = params.storeData || (Number.isFinite(storeId) ? await readGrowthOSStoreDataServer(storeId) : null);
+    const tenantId = normalizeStoreSwitchStoreId(params.session?.tId);
+    const storeId = normalizeStoreSwitchStoreId(params.session?.sId);
+    const storeData = params.storeData || (storeId ? await readGrowthOSStoreDataServer(storeId) : null);
     const preliminary = evaluateGrowthOSEntitlement({
         storeDetails: storeData,
         storeId,
@@ -18,7 +19,7 @@ export async function evaluateGrowthOSServerEntitlement(params: {
         return preliminary;
     }
 
-    const activeSubscription = Number.isFinite(tenantId) && Number.isFinite(storeId)
+    const activeSubscription = tenantId && storeId
         ? await getActiveSubscriptionForStoreServer(tenantId, storeId)
         : null;
 

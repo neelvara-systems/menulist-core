@@ -236,6 +236,27 @@ export const FORBIDDEN_TRANSITIONS: Array<{
     },
   ];
 
+/**
+ * Canonical state graph from messaging-onboarding_spec.md.
+ *
+ * The denylist above preserves owner-facing diagnostics for historically
+ * important violations. Runtime authorization is allowlist-based: an omitted
+ * edge is forbidden by default.
+ */
+export const ALLOWED_TRANSITIONS: Readonly<Record<MessagingOnboardingState, readonly MessagingOnboardingState[]>> = {
+  COLLECTING_INPUT: ["VALIDATING_ASSETS", "EXPIRED", "COOLDOWN"],
+  VALIDATING_ASSETS: ["PROCESSING_MENU", "AWAITING_MORE_UPLOADS", "FAILED", "COOLDOWN"],
+  AWAITING_MORE_UPLOADS: ["VALIDATING_ASSETS", "EXPIRED", "COOLDOWN"],
+  PROCESSING_MENU: ["PREVIEW_READY", "FAILED", "COOLDOWN"],
+  PREVIEW_READY: ["AWAITING_APPROVAL", "COLLECTING_INPUT", "EXPIRED", "COOLDOWN"],
+  AWAITING_APPROVAL: ["PUBLISHING", "COLLECTING_INPUT", "EXPIRED", "COOLDOWN"],
+  PUBLISHING: ["LIVE", "AWAITING_APPROVAL", "FAILED"],
+  FAILED: ["COLLECTING_INPUT", "EXPIRED", "COOLDOWN"],
+  LIVE: [],
+  EXPIRED: [],
+  COOLDOWN: [],
+};
+
 /** Check if a state transition is forbidden */
 export function isTransitionForbidden(
   from: MessagingOnboardingState,
@@ -244,7 +265,10 @@ export function isTransitionForbidden(
   const forbidden = FORBIDDEN_TRANSITIONS.find(
     (t) => t.from === from && t.to === to,
   );
-  return forbidden ? forbidden.reason : null;
+  if (forbidden) return forbidden.reason;
+  return ALLOWED_TRANSITIONS[from].includes(to)
+    ? null
+    : `Transition ${from} to ${to} is not allowed by the session state machine`;
 }
 
 // ═══════════════════════════════════════════════════════════════

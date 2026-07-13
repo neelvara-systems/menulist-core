@@ -54,9 +54,14 @@ async function readVercelDomainResponseData<T>(
     response: Response,
     path: string,
     options: RequestInit,
-): Promise<T> {
+): Promise<{ data: T; parsed: boolean }> {
     try {
-        return await readJsonResponseWithLimit<T>(response, VERCEL_DOMAIN_RESPONSE_JSON_MAX_BYTES);
+        const data = await readJsonResponseWithLimit<T>(response, VERCEL_DOMAIN_RESPONSE_JSON_MAX_BYTES);
+        if (data === null) throw new Error(VERCEL_DOMAIN_PROVIDER_RESPONSE_PARSE_FAILED);
+        return {
+            data,
+            parsed: true,
+        };
     } catch (error) {
         secureError(
             '[Vercel Domain] Provider response parse failed',
@@ -66,7 +71,7 @@ async function readVercelDomainResponseData<T>(
                 sourceErrorName: error instanceof Error ? error.name : typeof error,
             },
         );
-        return {} as T;
+        return { data: {} as T, parsed: false };
     }
 }
 
@@ -88,9 +93,8 @@ export async function vercelDomainFetch<T = any>(
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), VERCEL_DOMAIN_PROVIDER_TIMEOUT_MS);
 
-    let response: Response;
     try {
-        response = await fetch(url, {
+        const response = await fetch(url, {
             ...options,
             redirect: 'manual',
             signal: controller.signal,
@@ -100,12 +104,15 @@ export async function vercelDomainFetch<T = any>(
                 ...options.headers,
             },
         });
+        const responseData = await readVercelDomainResponseData<T>(response, path, options);
+        return {
+            ok: response.ok && responseData.parsed,
+            status: response.ok && !responseData.parsed ? 502 : response.status,
+            data: responseData.data,
+        };
     } finally {
         clearTimeout(timeout);
     }
-
-    const data = await readVercelDomainResponseData<T>(response, path, options);
-    return { ok: response.ok, status: response.status, data };
 }
 
 export async function addDomainToVercelProject(domain: string): Promise<VercelDomainApiResult> {
@@ -119,6 +126,10 @@ export async function getVercelDomainConfig(domain: string): Promise<VercelDomai
     return vercelDomainFetch(`/v6/domains/${encodeVercelPathSegment(domain)}/config`);
 }
 
+export async function getVercelProjectDomain(domain: string): Promise<VercelDomainApiResult> {
+    return vercelDomainFetch(`/v9/projects/${encodeVercelPathSegment(getVercelDomainProjectId())}/domains/${encodeVercelPathSegment(domain)}`);
+}
+
 export async function removeDomainFromVercelProject(domain: string): Promise<VercelDomainApiResult> {
     return vercelDomainFetch(`/v9/projects/${encodeVercelPathSegment(getVercelDomainProjectId())}/domains/${encodeVercelPathSegment(domain)}`, {
         method: 'DELETE',
@@ -127,4 +138,8 @@ export async function removeDomainFromVercelProject(domain: string): Promise<Ver
 
 export function isVercelDomainConfigured(config: any): boolean {
     return config?.misconfigured === false;
+}
+
+export function isVercelDomainExplicitlyMisconfigured(config: any): boolean {
+    return config?.misconfigured === true;
 }

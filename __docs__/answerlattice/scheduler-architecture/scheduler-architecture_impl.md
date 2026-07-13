@@ -6,7 +6,7 @@
 - `functions-answerlattice/src/answerlattice/answerlatticeMasterScheduler.ts` owns the scheduler task registry, task lease, tenant-date locks, and scheduler state.
 - `functions-answerlattice/src/answerlattice/answerlatticeNightly.ts` owns the governance batch and accepts a pre-filtered `tenantScope`.
 - `functions-answerlattice/src/answerlattice/schedulerTime.ts` mirrors the MenuList runtime-timezone settlement pattern for Answerlattice.
-- `functions-answerlattice/src/answerlattice/tenantSummary.ts` stores scheduler metadata in `platformSummary/answerlatticeTenantsSummary`.
+- `functions-answerlattice/src/answerlattice/tenantSummary.ts` reads the legacy `platformSummary/answerlatticeTenantsSummary` document and up to 64 deterministic `answerlatticeTenantsSummaryShard_*` documents. New writes use shards; the root is read-only migration input.
 - `src/app/api/answerlattice/workspace-profile/route.ts` persists timezone/EOD settings behind Answerlattice management scope, returns no-store owner responses, and syncs the scheduler registry.
 - `src/app/api/answerlattice/operations/status/route.ts` exposes owner-safe scheduler status from one store doc, two platformSummary docs, and five capped run logs.
 - `src/components/templates/answerlattice/AnswerlatticeSettings.tsx` lets owners set workspace timezone and support-day end time.
@@ -18,7 +18,7 @@
 Cloud Scheduler -> answerlatticeNightly export
   -> runAnswerlatticeMasterScheduler()
   -> governance_nightly task lease
-  -> read platformSummary/answerlatticeTenantsSummary
+  -> merge legacy answerlatticeTenantsSummary + populated registry shards
   -> filter tenants by local EOD settlement window
   -> acquire per-tenant/date lock
   -> runAnswerlatticeNightly({ tenantScope })
@@ -46,6 +46,12 @@ Master scheduler task diagnostics use fixed failure codes and bounded source met
 Governance batch diagnostics use fixed scheduler failure codes and bounded metadata. `runAnswerlatticeNightly()` still writes the structured run log and per-tenant task diagnostics, but diagnostic `error` values are fixed local codes, human `errorMessages` use `scoped`/`global` instead of raw tenant/store IDs, logger payloads use source error name/code/status plus scope booleans, and workflow summary event payloads carry bounded diagnostic strings instead of raw diagnostic objects.
 
 Workflow integration adapter checks are part of those governance diagnostics. If Step 13 cannot read a tenant's integration config, the tenant workflow integration task is recorded as failed with `ANSWERLATTICE_INTEGRATION_ADAPTER_CHECK_FAILED`; the scheduler run continues, and a legitimate disabled/no-config adapter remains a skipped task.
+
+Tenant-summary selection is an exact persisted contract. The legacy root is merged first and shard entries override it, including inactive compensation tombstones. Each resulting `tenants.{tId}_{sId}` entry must have `pId='AL'`, a map key that matches its embedded tenant/store identity, `active: true`, `hasEntities: true`, and positive safe-integer scope. Canonical legacy numeric strings such as `"11"` are normalized for read compatibility, while leading-zero, exponent, decimal, unsafe, partial, cross-product or key-mismatched identity is excluded. Invalid/empty selection falls back to the bounded entity scan and sharded backfill.
+
+The manual trigger accepts POST JSON only, requires the Answerlattice-specific bearer secret, and requires either an exact `tId/sId` pair or explicit `forceAllTenants: true`. Empty bodies and unknown fields fail closed. Every acquired tenant lease is settled independently with `Promise.allSettled`; a missing tenant result or thrown nightly batch marks that tenant failed rather than falsely completed.
+
+Registry writers no longer default every merge to active. Onboarding and entity-created/entity-scan paths explicitly set `active: true`; onboarding keeps `hasEntities: false` until entity creation/promotion explicitly changes it to true. Workspace-profile updates omit lifecycle fields, preserving the current active/entity state while updating timezone/EOD metadata. Optional fields are omitted rather than writing `undefined`.
 
 AI provider health diagnostics use fixed codes. `functions-answerlattice/src/answerlattice/aiProviderHealth.ts` still runs the daily Gemini smoke check and writes `platformSummary/answerlatticeAiProviderHealth`, but failed checks store `ANSWERLATTICE_AI_PROVIDER_HEALTH_CHECK_FAILED` or `ANSWERLATTICE_AI_PROVIDER_HEALTH_UNEXPECTED_RESPONSE` plus source error name/code/status metadata. The thrown scheduler error is the same fixed code, not provider/runtime exception text.
 

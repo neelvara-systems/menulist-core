@@ -1,6 +1,7 @@
 'use client';
 
 import { useOwnerReferral } from '@hook/useOwnerReferral';
+import { getContentCreditOutcomeExamples } from '@data/shared/contentCreditPolicy';
 import { Button, Divider, Empty, Flex, List, Modal, Tag, Typography, message } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useState } from 'react';
@@ -12,6 +13,8 @@ export default function OwnerReferralModal() {
     const t = useTranslations('OwnerReferral');
     const [open, setOpen] = useState(false);
     const referral = useOwnerReferral();
+    const referrerExamples = getContentCreditOutcomeExamples(referral.data?.policy.referrerCredits || 0);
+    const referredExamples = getContentCreditOutcomeExamples(referral.data?.policy.referredCredits || 0);
 
     const openModal = () => {
         setOpen(true);
@@ -62,14 +65,30 @@ export default function OwnerReferralModal() {
                     </Empty>
                 ) : (
                     <Flex gap={16} vertical>
-                        <Flex gap={12} wrap="wrap">
-                            <Flex align="center" gap={8}>
-                                <LuGift size={19} />
-                                <Text><strong>{t('yourBusiness')}:</strong> {referral.data.policy.referrerCredits} {t('credits')}</Text>
+                        <Flex gap={12} vertical>
+                            <Flex gap={4} vertical>
+                                <Flex align="center" gap={8}>
+                                    <LuGift size={19} />
+                                    <Text><strong>{t('yourBusiness')}:</strong> {referral.data.policy.referrerCredits} {t('credits')}</Text>
+                                </Flex>
+                                <Text type="secondary">
+                                    {t('creditExample', {
+                                        descriptions: referrerExamples.descriptionRewrites,
+                                        images: referrerExamples.generatedMenuImages,
+                                    })}
+                                </Text>
                             </Flex>
-                            <Flex align="center" gap={8}>
-                                <LuGift size={19} />
-                                <Text><strong>{t('invitedBusiness')}:</strong> {referral.data.policy.referredCredits} {t('credits')}</Text>
+                            <Flex gap={4} vertical>
+                                <Flex align="center" gap={8}>
+                                    <LuGift size={19} />
+                                    <Text><strong>{t('invitedBusiness')}:</strong> {referral.data.policy.referredCredits} {t('credits')}</Text>
+                                </Flex>
+                                <Text type="secondary">
+                                    {t('creditExample', {
+                                        descriptions: referredExamples.descriptionRewrites,
+                                        images: referredExamples.generatedMenuImages,
+                                    })}
+                                </Text>
                             </Flex>
                         </Flex>
                         <Text type="secondary">
@@ -97,9 +116,7 @@ export default function OwnerReferralModal() {
                                 renderItem={(item) => {
                                     const status = item.status === 'issued'
                                         ? { color: 'success', label: t('status.issued') }
-                                        : item.status === 'waiting_for_both_payments'
-                                            ? { color: 'processing', label: t('status.waitingForBothPayments') }
-                                            : { color: 'default', label: t('status.waitingForPayment') };
+                                        : { color: 'default', label: t('status.waitingForPayment') };
                                     return (
                                         <List.Item extra={<Tag color={status.color}>{status.label}</Tag>}>
                                             <List.Item.Meta

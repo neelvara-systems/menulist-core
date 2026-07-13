@@ -40,7 +40,7 @@ export type CampaignCueOpportunityStatus = "open" | "accepted" | "dismissed";
 export type CampaignCueCampaignStatus = "draft" | "generated" | "scheduled" | "used" | "archived";
 export type CampaignCueTrustGate = "clear" | "warning" | "needs_fix" | "blocked";
 export type CampaignCueTrustSeverity = "info" | "warning" | "needs_fix" | "blocked";
-export type CampaignCueMetricConfidence = "observed" | "imported" | "manual" | "estimated";
+export type CampaignCueMetricConfidence = "observed" | "imported" | "manual" | "estimated" | "owner_reported";
 export type CampaignCueProviderMode = "manual_export" | "manual_handoff" | "brief_only" | "disabled";
 export type CampaignCueOutputMode = "draft" | "manual_export" | "manual_handoff" | "brief" | "schedule_task";
 export type CampaignCueDecisionStatus = "ready_to_prepare" | "needs_owner_input" | "safe_evergreen_only" | "blocked";
@@ -92,6 +92,7 @@ export interface CampaignCueWorkspace extends CampaignCueTimestamped {
         locationIds?: string[];
         joinedAt?: unknown;
     }>;
+    patternCueSource?: CampaignCueSourceInput;
 }
 
 export interface CampaignCueLocation extends CampaignCueTimestamped {
@@ -111,6 +112,47 @@ export interface CampaignCueBrandPlaybook {
     avoidList: string[];
     productFocus: string[];
     typographyNotes?: string;
+}
+
+export type CampaignCueBusinessState = "normal" | "quiet" | "busy" | "closed";
+export type CampaignCueCapacityStatus = "unknown" | "available" | "limited" | "full";
+export type CampaignCueStockStatus = "unknown" | "available" | "low" | "unavailable";
+export type CampaignCueCommercialGateStatus = "ready" | "needs_review" | "blocked";
+export type CampaignCueExperimentVariable = "channel" | "timing" | "offer" | "photo" | "cta" | "format";
+
+export interface CampaignCueOperatingPulse {
+    businessState: CampaignCueBusinessState;
+    capacityStatus: CampaignCueCapacityStatus;
+    stockStatus: CampaignCueStockStatus;
+    localMoment?: string;
+    note?: string;
+    validUntil?: unknown;
+    updatedAt?: unknown;
+}
+
+export interface CampaignCueCommercialPolicy {
+    promotionsAllowed: boolean;
+    discountsAllowed: boolean;
+    discountApprovalRequired: boolean;
+    maxDiscountPercent?: number;
+    minimumPromotedPrice?: number;
+    currencyCode: string;
+    doNotPromote: string[];
+}
+
+export interface CampaignCuePresenceProfile {
+    googleBusinessProfileUrl?: string;
+    googleReviewUrl?: string;
+    appleBusinessConnectUrl?: string;
+    instagramUrl?: string;
+    facebookUrl?: string;
+    whatsappCatalogUrl?: string;
+}
+
+export interface CampaignCueLanguagePolicy {
+    sourceLocale: string;
+    targetLocales: string[];
+    protectedFactReviewRequired: true;
 }
 
 export interface CampaignCueBusinessBrain extends CampaignCueTimestamped {
@@ -139,6 +181,10 @@ export interface CampaignCueBusinessBrain extends CampaignCueTimestamped {
         items: CampaignCueCatalogItem[];
         services: CampaignCueCatalogItem[];
     };
+    operatingPulse: CampaignCueOperatingPulse;
+    commercialPolicy: CampaignCueCommercialPolicy;
+    presence: CampaignCuePresenceProfile;
+    languagePolicy: CampaignCueLanguagePolicy;
     sourceConfidence: number;
     readiness: {
         status: CampaignCueReadinessStatus;
@@ -172,16 +218,49 @@ export interface CampaignCueSourceSnapshot extends CampaignCueTimestamped {
     verticalRisks: string[];
 }
 
+export type CampaignCuePatternCuePlatform = "instagram" | "tiktok" | "youtube" | "other";
+export type CampaignCuePatternCueRightsStatus = "reference_only" | "owner_authorized";
+export type CampaignCuePatternCueHookType =
+    | "question"
+    | "curiosity"
+    | "demonstration"
+    | "offer"
+    | "story"
+    | "direct_benefit";
+export type CampaignCuePatternCueFormat = "talking_head" | "demonstration" | "montage" | "screen_recording" | "mixed";
+export type CampaignCuePatternCuePacing = "calm" | "steady" | "fast";
+
+export interface CampaignCuePatternCueObservation {
+    schemaVersion: 1;
+    sourceUrl: string;
+    sourceHash: string;
+    platform: CampaignCuePatternCuePlatform;
+    rightsStatus: CampaignCuePatternCueRightsStatus;
+    analysisMode: "deterministic" | "model_candidate";
+    hookType: CampaignCuePatternCueHookType;
+    format: CampaignCuePatternCueFormat;
+    pacing: CampaignCuePatternCuePacing;
+    durationBand: "under_15_seconds" | "15_to_30_seconds" | "31_to_60_seconds" | "over_60_seconds" | "unknown";
+    structure: string[];
+    visualBeats: string[];
+    ctaPattern: "book" | "call" | "message" | "visit" | "link" | "comment" | "none";
+    candidateHooks: string[];
+    ownerTakeaway?: string;
+    adaptationGuardrails: string[];
+    summary: string;
+}
+
 export interface CampaignCueSourceInput extends CampaignCueTimestamped {
     id: string;
     workspaceId: string;
-    sourceType: "manual_note" | "menu_link" | "booking_link" | "offer" | "event" | "upload_metadata";
+    sourceType: "manual_note" | "menu_link" | "booking_link" | "offer" | "event" | "upload_metadata" | "inspiration_pattern";
     label: string;
     value: string;
     status: "active" | "needs_review" | "archived";
     confidence: CampaignCueMetricConfidence;
     sourceRefs: string[];
     facts: CampaignCueSourceFact[];
+    patternCue?: CampaignCuePatternCueObservation;
     expiresAt?: unknown;
 }
 
@@ -213,7 +292,9 @@ export interface CampaignCueOpportunity extends CampaignCueTimestamped {
         | "asset_rights"
         | "local_variant"
         | "outcome_followup"
-        | "local_visibility";
+        | "local_visibility"
+        | "review_request"
+        | "retention";
     priority: number;
     channels: CampaignCueChannel[];
     sourceReferences: string[];
@@ -290,6 +371,13 @@ export interface CampaignCueCampaign extends CampaignCueTimestamped {
         missingInputIds: string[];
         deliveryCardIds: string[];
         resultQuestion: string;
+        patternCueSourceInputId?: string;
+        patternCueSourceHash?: string;
+        reusedFromCampaignId?: string;
+        reuseMode?: "rebuild_from_current_truth";
+        freshness?: CampaignCuePackFreshness;
+        commercialGate?: CampaignCueCommercialGate;
+        experiment?: CampaignCueExperimentSuggestion;
     };
     resultMemory?: {
         lastSignalId?: string;
@@ -297,7 +385,47 @@ export interface CampaignCueCampaign extends CampaignCueTimestamped {
         lastRecordedAt?: unknown;
         usefulCount?: number;
         notUsefulCount?: number;
+        lastReceipt?: CampaignCueResultReceipt;
     };
+}
+
+export interface CampaignCueResultMetrics {
+    replies?: number;
+    calls?: number;
+    bookings?: number;
+    orders?: number;
+    walkIns?: number;
+    linkClicks?: number;
+}
+
+export interface CampaignCueResultReceipt {
+    signalId?: string;
+    channel?: CampaignCueChannel;
+    usedAt?: unknown;
+    metrics: CampaignCueResultMetrics;
+    evidenceNote?: string;
+    experimentVariable?: CampaignCueExperimentVariable;
+    confidence: "owner_reported";
+    recordedAt?: unknown;
+}
+
+export interface CampaignCuePackFreshness {
+    sourceHash: string;
+    status: "current" | "stale" | "expired" | "unknown";
+    validatedAt?: unknown;
+    expiresAt?: unknown;
+    recheckActions: Array<"download" | "export" | "mark_used" | "schedule">;
+}
+
+export interface CampaignCueCommercialGate {
+    status: CampaignCueCommercialGateStatus;
+    findings: string[];
+}
+
+export interface CampaignCueExperimentSuggestion {
+    variable: CampaignCueExperimentVariable;
+    instruction: string;
+    reason: string;
 }
 
 export interface CampaignCueTrustFinding {
@@ -357,6 +485,10 @@ export interface CampaignCueSchedule extends CampaignCueTimestamped {
     scheduledAt: unknown;
     timezone: string;
     note: string;
+    taskType?: "post" | "print" | "staff_share" | "follow_up" | "result_check";
+    assigneeLabel?: string;
+    completionNote?: string;
+    completedAt?: unknown;
 }
 
 export interface CampaignCueAnalyticsSummary extends CampaignCueTimestamped {
@@ -474,6 +606,9 @@ export interface CampaignCueDecision {
     recommendedOutputs: CampaignCueDecisionRecommendedOutput[];
     trustPreflight: CampaignCueDecisionTrustPreflight;
     ownerPrimaryActionLabel: string;
+    commercialGate?: CampaignCueCommercialGate;
+    experiment?: CampaignCueExperimentSuggestion;
+    pulseEvidence?: string[];
 }
 
 export interface CampaignCueDailyDeskTask {
@@ -528,7 +663,75 @@ export interface CampaignCueLocalVisibilityCue {
     sourceReferences: string[];
 }
 
+export interface CampaignCuePresencePassportItem {
+    id: string;
+    label: string;
+    destination?: string;
+    status: "ready" | "needs_review" | "missing";
+    manualAction: string;
+}
+
 export type CampaignCueOutputPackStatus = "ready" | "needs_input" | "needs_review" | "blocked";
+
+export interface CampaignCuePackReadinessCheck {
+    id: "facts" | "trust" | "freshness" | "approval" | "delivery";
+    label: string;
+    detail: string;
+    status: CampaignCueOutputPackStatus;
+    points: 0 | 10 | 20;
+}
+
+export interface CampaignCuePackReadiness {
+    label: "Pack readiness";
+    score: number;
+    status: CampaignCueOutputPackStatus;
+    summary: string;
+    checks: CampaignCuePackReadinessCheck[];
+    predictionBoundary: "readiness_only_no_engagement_prediction";
+}
+
+export interface CampaignCueCampaignReuseCandidate {
+    campaignId: string;
+    title: string;
+    recipeId: string;
+    reason: string;
+    positiveEvidence: string[];
+    actionLabel: "Reuse safely";
+    mode: "rebuild_from_current_truth";
+}
+
+export interface CampaignCueCampaignRhythm {
+    status:
+        | "approval_due"
+        | "result_due"
+        | "task_due"
+        | "scheduled"
+        | "reuse_ready"
+        | "pack_ready"
+        | "prepare_next";
+    title: string;
+    detail: string;
+    primaryAction: {
+        label: string;
+        targetTab: CampaignCueDailyDeskActionTarget;
+        kind: CampaignCueDailyDeskTaskKind;
+    };
+    dueTaskCount: number;
+    scheduledTaskCount: number;
+    nextScheduledAt?: unknown;
+    approvalCampaignId?: string;
+    resultCampaignId?: string;
+    reuseCandidate?: CampaignCueCampaignReuseCandidate;
+    suggestedUse: string;
+    followUp: string;
+    costPolicy: {
+        firestoreReads: 0;
+        firestoreWrites: 0;
+        providerCalls: 0;
+        summary: string;
+    };
+}
+
 export type CampaignCueOutputPackCopyChannel =
     | CampaignCueChannel
     | "email_sms"
@@ -546,6 +749,58 @@ export type CampaignCueOutputPackFileType =
     | "pdf_brief"
     | "link_brief";
 export type CampaignCueOutputPackExportFormat = "png" | "jpeg" | "pdf_flattened" | "text_brief";
+export type CampaignCueAIAssistStage =
+    | "source_intake"
+    | "missing_input"
+    | "pack_drafting"
+    | "trust_explainer"
+    | "result_interpreter"
+    | "photo_coach";
+export type CampaignCueAIAssistAuthority =
+    | "deterministic"
+    | "model_candidate_only"
+    | "owner_approval_required";
+export type CampaignCueAIAssistCostTier = "none" | "low" | "vision" | "premium";
+
+export interface CampaignCueAIAssistItem {
+    id: string;
+    stage: CampaignCueAIAssistStage;
+    label: string;
+    ownerValue: string;
+    currentInput: string;
+    suggestedAction: string;
+    targetTab: CampaignCueDailyDeskActionTarget;
+    status: CampaignCueOutputPackStatus;
+    authority: CampaignCueAIAssistAuthority;
+    providerCallAllowed: boolean;
+    costTier: CampaignCueAIAssistCostTier;
+    sourceReferences: string[];
+    guardrails: string[];
+}
+
+export interface CampaignCueAIAssistancePlan {
+    status: CampaignCueOutputPackStatus;
+    items: CampaignCueAIAssistItem[];
+    nextBestAction: {
+        label: string;
+        targetTab: CampaignCueDailyDeskActionTarget;
+        detail: string;
+    };
+    costPolicy: {
+        firestoreReads: 0;
+        firestoreWrites: 0;
+        firestoreDeletes: 0;
+        storageWrites: 0;
+        providerCalls: 0;
+        summary: string;
+    };
+    providerPolicy: {
+        modelDecidesCampaign: false;
+        modelMutatesFacts: false;
+        ownerApprovalRequired: true;
+        summary: string;
+    };
+}
 
 export interface CampaignCueOutputPackMissingInput {
     type: CampaignCueDailyDeskMissingInputType;
@@ -630,12 +885,31 @@ export interface CampaignCueOutputPack {
         instructions: CampaignCueOutputPackCopyBlock[];
     };
     deliveryCards: CampaignCueOutputPackDeliveryCard[];
+    readiness: CampaignCuePackReadiness;
     trustReport: {
         status: "ready" | "needs_review" | "blocked";
         checked: string[];
         warnings: string[];
         blockedReasons: string[];
     };
+    freshness: CampaignCuePackFreshness;
+    commercialSafety: CampaignCueCommercialGate;
+    language: {
+        sourceLocale: string;
+        targetLocales: string[];
+        protectedFactReviewRequired: true;
+        manualNote: string;
+    };
+    presencePassport: {
+        status: CampaignCueOutputPackStatus;
+        profiles: CampaignCuePresencePassportItem[];
+    };
+    staffExecution: {
+        assigneeLabel?: string;
+        steps: string[];
+        completionPrompt: string;
+    };
+    learning: CampaignCueExperimentSuggestion;
     reuse: {
         assetLibraryRefs: string[];
         cueLayersSourcePackageRefs: string[];
@@ -656,10 +930,12 @@ export interface CampaignCueOutputPack {
         followUp: string;
         resultReminder: string;
     };
+    rhythm: CampaignCueCampaignRhythm;
     resultMemory: {
         question: string;
         options: CampaignCueDailyDeskResultSignal[];
     };
+    aiAssistance: CampaignCueAIAssistancePlan;
     nextActions: CampaignCueDailyDeskTask[];
     downloadBundle: {
         rootFolder: string;
@@ -716,6 +992,8 @@ export interface CampaignCueDailyDesk {
     packReview?: CampaignCueCampaignPackReview;
     outputPack?: CampaignCueOutputPack;
     readyPack?: CampaignCueDailyDeskPackSummary;
+    aiAssistance: CampaignCueAIAssistancePlan;
+    rhythm: CampaignCueCampaignRhythm;
     resultPrompt?: CampaignCueDailyDeskTask;
     approvalPrompt?: CampaignCueDailyDeskTask;
     locationPrompt?: CampaignCueDailyDeskTask;
@@ -746,6 +1024,7 @@ export interface CampaignCueOverview {
     deliveryPolicy: CampaignCueDeliveryPolicy;
     dailyDesk: CampaignCueDailyDesk;
     launchReadiness: CampaignCueLaunchReadiness;
+    sourceHash: string;
     sourceFacts: CampaignCueSourceFact[];
     cost: {
         readsPerLoad: number;

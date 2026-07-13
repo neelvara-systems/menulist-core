@@ -8,7 +8,7 @@ import PageProofStrip from '../components/PageProofStrip';
 
 export const metadata: Metadata = {
     title: 'Security and Ops One-Pager',
-    description: 'A shareable AnswerLattice security and operations summary covering allowed origins, blocked routes, safe context, safe source intake, team roles, manual screenshot attachments, hashed keys, approval, rate limits, and incident contact.',
+    description: 'A shareable AnswerLattice security and operations summary covering allowed origins, signed context, evidence links, source intake, team roles, hashed keys, approval, bounded export, and rate limits.',
     alternates: { canonical: '/security-one-pager' },
 };
 
@@ -27,10 +27,13 @@ const ONE_PAGER = [
     ['Allowed origins', 'Restrict widget runtime config to the product and staging domains where AnswerLattice should run.'],
     ['Blocked routes', 'Hide the widget from auth, payment, admin, internal help, or other sensitive paths.'],
     ['Safe page context', 'Send path, title, feature, workflow, role, and locale. Legacy fields are public-label compatibility only. Do not send secrets or raw customer records.'],
+    ['Verified visitor context', 'For plan- or role-sensitive support, sign a short-lived token on your server. AnswerLattice stores the public key only and never accepts workspace scope from token claims.'],
+    ['External evidence links', 'Allow exact HTTPS diagnostic hosts and attach at most three links. AnswerLattice does not fetch, embed, or use linked content as answer truth.'],
     ['Safe source intake', 'Import only owner-selected public pages, supported files, screenshots, or short recordings. Raw media is not retained by default, and generated output requires owner review.'],
     ['Screenshot attachments', 'Screenshots are user-initiated upload or paste only. The widget does not automatically capture the host app screen or scrape the DOM.'],
     ['Widget key handling', 'AnswerLattice validates widget keys by hash and can copy recoverable widget keys only from encrypted server-side key material.'],
     ['Owner approval', 'Drafts, generated answers, and mutation proposals do not become official support truth until reviewed.'],
+    ['Support-truth export', 'Authorized owners can export a complete bounded package of approved knowledge. Tickets, chats, visitor details, keys, credentials, and audit logs are excluded.'],
     ['Runtime rate limits', 'Public widget config, search, feedback, predictive, and API paths are bounded and validated before expensive work.'],
     ['Tenant scope', 'Dashboard and runtime reads resolve AnswerLattice workspace scope server-side; client context is never trusted as tenant identity.'],
     ['Team access', 'Workspace members use AnswerLattice-specific roles and owner-managed reset controls for support work.'],
@@ -97,6 +100,9 @@ export default function AnswerlatticeSecurityOnePagerPage() {
                         The full security page covers hosted help, compiled context, scoped workspaces, role-scoped team access, ticket debugging context, and scheduler boundaries.
                     </p>
                     <div className="mt-8 flex flex-wrap justify-center gap-3">
+                        <AnswerlatticeLink basePath={basePath} href="/trust" className="rounded-xl border border-white/[0.12] px-6 py-3 text-sm font-semibold text-[#d6d6ef] hover:border-white/[0.24]">
+                            Review trust facts
+                        </AnswerlatticeLink>
                         <AnswerlatticeLink basePath={basePath} href="/security" className="rounded-xl border border-white/[0.12] px-6 py-3 text-sm font-semibold text-[#d6d6ef] hover:border-white/[0.24]">
                             Open full security page
                         </AnswerlatticeLink>

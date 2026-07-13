@@ -12,6 +12,8 @@ Required checks:
 ```bash
 npm run verify:shareable-tool-reports
 npm run verify:report-leads-boundary
+npm run test:current-platform-user
+npm run test:current-platform-user:emulator
 npm run verify:social-bio-link-check
 npx tsc --noEmit --pretty false
 ```
@@ -48,6 +50,8 @@ The V0 verifier checks:
 - setup job list is derived from visible report gaps and included in report text, source metadata, and Report Leads triage
 - contact route validates, sanitizes, normalizes source timestamps, and stores report lead metadata on the existing enquiry write
 - Report Leads ops monitor is platform-admin only, manual-refresh, response-bounded, and read-only
+- Report Leads re-proves current persisted platform role, lifecycle, identity, and revocation state before reading lead PII
+- Report Leads exposes one current-user authorization read separately from bounded enquiry reads in its cost DTO
 - Social Bio tool exposes Copy public report link
 - all current public tools expose Copy public report link
 - report evidence text is preserved

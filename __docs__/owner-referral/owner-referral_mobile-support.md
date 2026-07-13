@@ -3,7 +3,7 @@
 **Feature:** Owner Referral
 **Decision:** Supported inside the existing Mobile Share tab
 **Status:** Implemented behind disabled rollout controls; device/payment QA pending
-**Last updated:** July 10, 2026
+**Last updated:** July 11, 2026
 
 ---
 
@@ -25,7 +25,7 @@ No bottom-navigation item, dashboard card, Billing shortcut, or standalone mobil
 
 Add one compact action inside `MobileShareScreen` after the existing customer-link sharing controls:
 
-**Invite another business**
+**Invite a business owner you know**
 
 Selecting it opens `MobileOwnerReferralSheet` inside `MobileShell`.
 
@@ -44,7 +44,7 @@ There is no referral-count, plan-tier, category, geography, owner-identity, rese
 
 ### Header
 
-- title: `Invite another business`;
+- title: `Invite a business owner you know`;
 - close icon with accessible label;
 - current mobile sheet behavior;
 - no route change or nested navigation.
@@ -57,6 +57,10 @@ There is no referral-count, plan-tier, category, geography, owner-identity, rese
 | Invited business | 50 credits |
 
 Supporting copy:
+
+> 100 credits: up to 20 generated menu images or 100 description rewrites.
+
+> 50 credits: up to 10 generated menu images or 50 description rewrites.
 
 > Credits are added after both MenuList subscriptions are paid.
 
@@ -109,8 +113,8 @@ Statuses:
 
 | Status | Mobile copy |
 | --- | --- |
-| `attributed` | Waiting for payment |
-| `payment_pending` | Waiting for both payments |
+| `attributed` | Their payment pending |
+| `payment_pending` | Their payment pending |
 | `reward_issued` | Credits added |
 
 Long business names use two lines, then ellipsis with an accessible full label.
@@ -132,9 +136,9 @@ Long business names use two lines, then ellipsis with an accessible full label.
 
 Do not imply that a sent message was delivered or opened.
 
-### Waiting for Payment
+### Their Payment Pending
 
-> Waiting for payment
+> Their payment pending
 
 > Credits are added after both MenuList subscriptions are paid.
 
@@ -192,17 +196,17 @@ Mobile must not create:
 
 Required strings:
 
-- Invite another business
+- Invite a business owner you know
 - Share
 - WhatsApp
 - Copy link
 - Link copied
 - Your business receives 100 credits
 - Invited business receives 50 credits
+- Exact generated-image and description-rewrite examples
 - Both subscriptions must be paid
 - No referral limit
-- Waiting for payment
-- Waiting for both payments
+- Their payment pending
 - Credits added
 
 Forbidden strings:

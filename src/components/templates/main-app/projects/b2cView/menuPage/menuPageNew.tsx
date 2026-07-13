@@ -2485,22 +2485,21 @@ function MenuPageNew({
                                                                     }}
                                                                     data-image-container={item.id}
                                                                 >
-                                                                    {!itemImageUrl && (
-                                                                        <div
-                                                                            aria-hidden="true"
-                                                                            style={{
-                                                                                alignItems: 'center',
-                                                                                color: moodConfig.bodyColor,
-                                                                                display: 'flex',
-                                                                                inset: 0,
-                                                                                justifyContent: 'center',
-                                                                                opacity: 0.28,
-                                                                                position: 'absolute',
-                                                                            }}
-                                                                        >
-                                                                            <LuImage size={imageOnTop ? 22 : 18} />
-                                                                        </div>
-                                                                    )}
+                                                                    <div
+                                                                        aria-hidden="true"
+                                                                        data-image-fallback={item.id}
+                                                                        style={{
+                                                                            alignItems: 'center',
+                                                                            color: moodConfig.bodyColor,
+                                                                            display: 'flex',
+                                                                            inset: 0,
+                                                                            justifyContent: 'center',
+                                                                            opacity: 0,
+                                                                            position: 'absolute',
+                                                                        }}
+                                                                    >
+                                                                        <LuImage size={imageOnTop ? 22 : 18} />
+                                                                    </div>
                                                                     {itemImageUrl && (
                                                                         <Image
                                                                             src={itemImageUrl}
@@ -2511,6 +2510,8 @@ function MenuPageNew({
                                                                             onError={(e) => {
                                                                                 // G04 Runtime Fallback: Keep the reserved slot to avoid scroll jumps.
                                                                                 e.currentTarget.style.opacity = '0';
+                                                                                const fallback = e.currentTarget.parentElement?.querySelector<HTMLElement>('[data-image-fallback]');
+                                                                                if (fallback) fallback.style.opacity = '0.28';
                                                                             }}
                                                                         />
                                                                     )}

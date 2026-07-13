@@ -21,13 +21,9 @@ const NOTIFICATION_TRIGGER_REQUEST_POLICY = {
 };
 
 interface TriggerNotificationParams {
-    eventType: string;
-    recipientEmail: string;
-    recipientName?: string;
-    referenceId: string;
-    metadata?: Record<string, any>;
-    productId?: string;
-    skipDedup?: boolean;
+    eventType: 'TICKET_CREATED' | 'TICKET_REPLY' | 'TICKET_STATUS_CHANGED';
+    ticketId: string;
+    messageId?: string;
 }
 
 const createNotificationTriggerResponseError = (

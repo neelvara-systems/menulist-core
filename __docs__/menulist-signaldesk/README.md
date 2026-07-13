@@ -3,7 +3,7 @@
 **Project:** MenuList SignalDesk
 **Status:** Internal workflow, internal team access management, connector settings, governed source/research/content/partner rails, solo-founder Operating Layer, and bounded Revenue Operating Layer implemented for internal testing; paid campaigns, paid external adapters, provider send, auto-publish, proposal/calendar/payment providers, and Firebase deploy remain blocked or skipped
 **Created:** June 23, 2026
-**Last Updated:** July 10, 2026
+**Last Updated:** July 11, 2026
 **Owner:** Danny and MenuList marketing/growth team
 **Audience:** Internal only
 
@@ -16,6 +16,10 @@ MenuList SignalDesk is the private growth control room for MenuList acquisition 
 It should let Danny and the growth team observe, monitor, and approve while the system researches, dedupes, scores, prepares evidence, drafts controlled messages, routes replies, suppresses risk, and measures whether the prospect became a real MenuList outcome.
 
 It is not a public product, not a MenuList owner/customer feature, not a generic CRM, and not an autonomous outbound machine.
+
+## AI Credential Boundary
+
+SignalDesk AI assist uses only `MENULIST_SIGNALDESK_GEMINI_AI_KEY*` through a product-scoped key manager. It reuses the maintained Gemini retry gateway implementation, but it does not consume MenuList `GEMINI_AI_KEY*` or Answerlattice credentials. The separate `ai-worker` kill switch, model-route approval, provider budget, and action rate limit remain the runtime controls.
 
 ## Source Inputs
 
@@ -79,6 +83,8 @@ Do not start with:
 | [Founder Distribution Research](./menulist-signaldesk_founder-distribution-research-2026-06-24.md) | Cross-checks founder/community workflows, fast-growth startup patterns, restaurant/SMB signals, and platform safety policies to define what MenuList should automate next. |
 | [Social Channel Market Research And Next Plan](./menulist-signaldesk_social-channel-market-research-and-next-plan-2026-07-10.md) | Current X, Reddit, Instagram, YouTube, Google, Bengaluru/India, customer-friction, and vendor-landscape evidence translated into one 30-day activation trial. |
 | [Social Channel Market Brief](./menulist-signaldesk_social-channel-market-brief-2026-07-10.html) | Self-contained visual competitive brief covering channel roles, market pressure, trial controls, and sources. |
+| [AI Sales, Marketing, And Distribution Research](./menulist-signaldesk_ai-sales-marketing-distribution-research-2026-07-11.md) | Current deep research into AI account research, signals, outbound, inbound, calls, proposals, content, creators, paid media, discovery, lifecycle, attribution, and governance, cross-checked against SignalDesk runtime truth. |
+| [AI Revenue Workflow Market Brief](./menulist-signaldesk_ai-revenue-workflow-market-brief-2026-07-11.html) | Self-contained executive brief comparing five AI revenue operating models, practitioner reality, SignalDesk coverage, rollout gates, and sources. |
 | [Bengaluru Activation Trial Operating Pack](./menulist-signaldesk_bengaluru-activation-trial-operating-pack-2026-07-10.md) | Approved zero-spend operating envelope, source-policy split, 25-row candidate board, evidence packet, draft-only scripts, preview checklist, stop rules, and external blockers. |
 | [MenuList Activation Concierge](../menulist-activation-concierge/README.md) | Separate MenuList-side doc set for upload, preview, publish, two-surface activation, proof eligibility, and the SignalDesk outcome-observer boundary. |
 | [SignalDesk Foundation](./signaldesk-foundation/README.md) | First per-feature doc set for access, roles, audit, and kill switches. |
@@ -242,3 +248,7 @@ Approved sources
 | 3.6 | 2026-07-10 | Wired the first-trial operating loop: held zero-budget Bengaluru defaults, interested-reply revenue qualification, automatic outcome-to-activation projection, read-time seven-day stall detection, recovery-only watch recheck, and a revenue/attention/spend-aware founder brief. |
 | 3.7 | 2026-07-10 | Cross-check closed pod-approval, published-only win, and long outcome-history defects: research/recommendations stay held, founder review is explicit, envelopes require approval evidence, only two-surface activation wins, and indexed earliest/latest/terminal outcome reads preserve lifecycle truth. |
 | 3.8 | 2026-07-10 | Operationalized the approved zero-spend Bengaluru trial: evidence-only public research is separate from permissioned contact, first-trial search and experiment defaults match the 25-candidate plan, Google Places and the trust-partner test default to zero approval/spend, and the maintained operating pack records the field workflow and blockers. |
+| 3.9 | 2026-07-11 | Added current AI sales, marketing, distribution, lifecycle, and governance research plus a visual market brief; cross-check found no new generic agent or CRM layer is justified before the permissioned Bengaluru proof loop, so AI remains in shadow and prepare-and-approve modes. |
+| 4.0 | 2026-07-11 | Implemented measurable AI shadow review using existing provider-run and model-evaluation records: founder accept/edit/reject/hold decisions, replacement-safe cumulative rates, founder-attention summaries, audit/timeline evidence, desktop controls, hard mobile blocking, verifier coverage, and emulator E2E; no send, publish, spend, new collection, or MenuList truth authority was added. |
+| 4.1 | 2026-07-11 | Implemented founder-triggered AI Volume Mode: up to five targets and three tasks, fast Gemini generation, independent critic, bounded same-provider escalation, founder cost maximum, paid-request idempotency, partial-failure evidence, parent/child workspace visibility, and no external-action authority. |
+| 4.2 | 2026-07-11 | Cross-check fixed expired AI Volume parents end to end: desktop persists/reuses the bounded retry payload, server reconstructs child/call/cost evidence, terminal status finalizes without provider calls, stable interruption evidence remains, and an old parent cannot release another batch's lock. |

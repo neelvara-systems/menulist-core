@@ -2,7 +2,7 @@
 
 import type { IconType } from 'react-icons';
 import type { ComponentProps } from 'react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import {
     LuBell,
     LuBookOpen,
@@ -45,6 +45,7 @@ const NAV_LINKS = [
 const MOBILE_OTHER_LINKS = [
     ...NAV_LINKS.filter((link) => link.href !== '/product'),
     { label: 'Pre-Onboarding', href: '/pre-onboarding' },
+    { label: 'Trust and Data Handling', href: '/trust' },
     { label: 'Security', href: '/security' },
     { label: 'Developers', href: '/developers' },
     { label: 'Comparisons', href: '/comparisons' },
@@ -133,6 +134,7 @@ const MOBILE_NAV_ICONS: Record<string, IconType> = {
     '/pre-onboarding': LuFileInput,
     '/updates': LuBell,
     '/contact': LuMail,
+    '/trust': LuShieldCheck,
     '/get-started': LuRocket,
 };
 
@@ -227,6 +229,13 @@ export default function AnswerlatticeHeader({ basePath = '' }: { basePath?: stri
             setIsDrawerMounted(false);
         }, DRAWER_TRANSITION_MS);
     }, [isDrawerMounted]);
+
+    const handleDesktopDropdownKeyDown = useCallback((event: ReactKeyboardEvent<HTMLDivElement>) => {
+        if (event.key !== 'Escape') return;
+        const activeElement = document.activeElement;
+        if (activeElement instanceof HTMLElement) activeElement.blur();
+    }, []);
+
     const L = (props: HeaderLinkProps) => (
         <AnswerlatticeLink basePath={basePath} {...props} />
     );
@@ -263,13 +272,16 @@ export default function AnswerlatticeHeader({ basePath = '' }: { basePath?: stri
         <>
             <header className="fixed top-0 left-0 right-0 z-50 border-b border-white/[0.06] bg-[var(--al-header-bg)] backdrop-blur-xl">
                 <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
-                    <L href="/" className="flex items-center gap-2">
+                    <L href="/" className="flex min-h-11 items-center gap-2">
                         <AnswerlatticeLogoMark idPrefix="answerlattice-header" height={32} />
                         <span className="text-lg font-semibold tracking-tight text-white">AnswerLattice</span>
                     </L>
 
                     <nav className="hidden items-center gap-5 xl:flex">
-                        <div className="group/product relative flex h-16 items-center">
+                        <div
+                            className="al-header-product-menu group/product relative flex h-16 items-center"
+                            onKeyDown={handleDesktopDropdownKeyDown}
+                        >
                             <L
                                 href="/product"
                                 className="inline-flex h-16 items-center gap-1 text-sm font-medium text-[#a0a0c0] transition-colors hover:text-white focus:outline-none focus-visible:text-white"
@@ -280,6 +292,7 @@ export default function AnswerlatticeHeader({ basePath = '' }: { basePath?: stri
 
                             <div
                                 className="
+                                    al-header-product-menu__panel
                                     absolute left-1/2 top-full z-[80] w-[min(62rem,calc(100vw-3rem))]
                                     -translate-x-1/2 pt-3
                                     origin-top scale-95 opacity-0
@@ -398,7 +411,11 @@ export default function AnswerlatticeHeader({ basePath = '' }: { basePath?: stri
                             }
 
                             return (
-                                <div key={link.href} className="group/resources relative flex h-16 items-center">
+                                <div
+                                    key={link.href}
+                                    className="al-header-resource-menu group/resources relative flex h-16 items-center"
+                                    onKeyDown={handleDesktopDropdownKeyDown}
+                                >
                                     <L
                                         href="/resources"
                                         className="inline-flex h-16 items-center gap-1 text-sm font-medium text-[#a0a0c0] transition-colors hover:text-white focus:outline-none focus-visible:text-white"
@@ -409,6 +426,7 @@ export default function AnswerlatticeHeader({ basePath = '' }: { basePath?: stri
 
                                     <div
                                         className="
+                                            al-header-resource-menu__panel
                                             absolute left-1/2 top-full z-[80] w-[min(54rem,calc(100vw-3rem))]
                                             -translate-x-1/2 pt-3
                                             origin-top scale-95 opacity-0
@@ -541,17 +559,18 @@ export default function AnswerlatticeHeader({ basePath = '' }: { basePath?: stri
                 <>
                     <div
                         aria-hidden="true"
-                        className={`al-mobile-drawer-backdrop fixed inset-0 z-[90] bg-black/55 backdrop-blur-sm ${isDrawerVisible ? 'al-mobile-drawer-backdrop--open' : ''}`}
+                        className={`al-mobile-drawer-backdrop fixed inset-0 z-[2147483100] bg-black/55 backdrop-blur-sm ${isDrawerVisible ? 'al-mobile-drawer-backdrop--open' : ''}`}
                         onClick={closeDrawer}
                     />
                     <aside
                         aria-label="AnswerLattice navigation"
                         aria-modal="true"
-                        className={`al-mobile-drawer fixed bottom-0 right-0 top-0 z-[100] flex w-[min(360px,88vw)] flex-col border-l border-white/[0.08] bg-[var(--al-bg)] shadow-2xl shadow-black/60 ${isDrawerVisible ? 'al-mobile-drawer--open' : ''}`}
+                        className={`al-mobile-drawer fixed bottom-0 right-0 top-0 z-[2147483200] flex max-h-[100dvh] w-full flex-col overflow-hidden bg-[var(--al-bg)] shadow-2xl shadow-black/60 sm:w-[min(420px,92vw)] sm:border-l sm:border-white/[0.08] ${isDrawerVisible ? 'al-mobile-drawer--open' : ''}`}
+                        data-lenis-prevent
                         role="dialog"
                     >
                         <div className="flex h-16 shrink-0 items-center justify-between border-b border-white/[0.06] px-5 pt-[env(safe-area-inset-top)]">
-                            <L href="/" className="flex items-center gap-2" onClick={closeDrawer}>
+                            <L href="/" className="flex min-h-11 items-center gap-2" onClick={closeDrawer}>
                                 <AnswerlatticeLogoMark idPrefix="answerlattice-drawer" height={30} />
                                 <span className="text-lg font-semibold tracking-tight text-white">AnswerLattice</span>
                             </L>
@@ -565,7 +584,7 @@ export default function AnswerlatticeHeader({ basePath = '' }: { basePath?: stri
                             </button>
                         </div>
 
-                        <nav className="flex-1 overflow-y-auto px-5 py-4">
+                        <nav className="al-mobile-drawer__nav flex-1 overflow-y-auto px-5 py-4" data-lenis-prevent-touch>
                             <div className="space-y-5">
                                 <section aria-label="Product navigation">
                                     <p className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-[#6b6b8a]">
@@ -643,7 +662,7 @@ export default function AnswerlatticeHeader({ basePath = '' }: { basePath?: stri
                             </div>
                         </nav>
 
-                        <div className="shrink-0 border-t border-white/[0.06] bg-[var(--al-bg)] px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-4">
+                        <div className="al-mobile-drawer__cta shrink-0 border-t border-white/[0.06] bg-[var(--al-bg)] px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-4">
                             <div className="mb-3 flex justify-center">
                                 <AnswerlatticeThemeSwitcher />
                             </div>

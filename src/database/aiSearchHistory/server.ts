@@ -4,24 +4,35 @@ import { getAnswerlatticeRetentionFields } from '@lib/answerlattice/dataRetentio
 import { normalizeAnswerlatticeScopeDocumentId } from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirestoreAdmin as firestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { createRuntimeId } from '@lib/runtime/randomId';
-import { AiSearchHistory } from '@type/aiSearchHistory';
+import { sanitizeForFirestore } from '@lib/firestore/sanitizeForFirestore';
+import { AiSearchHistory, AiSearchHistoryReference } from '@type/aiSearchHistory';
 import LoginUserType from '@type/loginUser';
+import { createHash } from 'crypto';
 
 const COLLECTION = DB_COLLECTIONS.AI_SEARCH_HISTORY;
 const MAX_QUERY_CHARS = 500;
 const MAX_ANSWER_CHARS = 12000;
 const MAX_REFERENCE_COUNT = 8;
-const MAX_REFERENCE_STRING_CHARS = 4000;
-const MAX_NESTED_ARRAY_ITEMS = 25;
-const MAX_NESTED_DEPTH = 4;
-const SEARCH_HISTORY_OMIT_KEYS = new Set([
-    'embedding',
-    'embeddingVector',
-    'contentEmbedding',
-    'rawEmbedding',
-    'vector',
-    '_vector',
-]);
+
+type AiSearchHistoryWritePayload = Omit<AiSearchHistory, 'id'> & {
+    pId: typeof PRODUCT_IDS.ANSWERLATTICE;
+    tId: number;
+    sId: number;
+    uId: string;
+    modifiedOn: Date;
+    createdOn: unknown;
+    createdBy: string;
+    traceId: string;
+    requestId: string;
+    expiresAt: unknown;
+    retentionDays: number;
+};
+
+type AiSearchHistoryWriteInput = Omit<AiSearchHistory, 'id'> & {
+    createdBy?: unknown;
+    traceId?: unknown;
+    requestId?: unknown;
+};
 
 type AiSearchHistoryScope = {
     tId: number;
@@ -37,67 +48,61 @@ const getAiSearchHistoryScope = (source: { tId?: unknown; sId?: unknown } | null
     return { tId, sId };
 };
 
-const sanitizeForFirestore = (value: any): any => {
-    if (value === undefined) return null;
-    if (value === null) return null;
-    if (value instanceof Date) return value;
-    if (typeof value?.toDate === 'function' || typeof value?.toMillis === 'function') return value;
-    if (Array.isArray(value)) return value.map(sanitizeForFirestore);
-    if (typeof value === 'object') {
-        const result: Record<string, any> = {};
-        Object.entries(value).forEach(([key, nestedValue]) => {
-            result[key] = sanitizeForFirestore(nestedValue);
-        });
-        return result;
-    }
-    return value;
-};
-
 const truncateString = (value: unknown, maxLength: number): unknown => {
     if (typeof value !== 'string') return value;
     return value.length > maxLength ? value.slice(0, maxLength) : value;
 };
 
-const compactNestedValue = (value: any, depth = 0): any => {
-    if (value === undefined || value === null) return value;
-    if (value instanceof Date) return value;
-    if (typeof value?.toDate === 'function' || typeof value?.toMillis === 'function') return value;
-    if (typeof value === 'string') return truncateString(value, MAX_REFERENCE_STRING_CHARS);
-    if (typeof value !== 'object') return value;
-    if (depth >= MAX_NESTED_DEPTH) return null;
-    if (Array.isArray(value)) {
-        return value
-            .slice(0, MAX_NESTED_ARRAY_ITEMS)
-            .map((item) => compactNestedValue(item, depth + 1));
-    }
+const hashSearchCacheKey = (value: unknown): string => (
+    createHash('sha256').update(String(value || '')).digest('hex')
+);
 
-    const result: Record<string, any> = {};
-    Object.entries(value).forEach(([key, nestedValue]) => {
-        if (SEARCH_HISTORY_OMIT_KEYS.has(key)) return;
-        result[key] = compactNestedValue(nestedValue, depth + 1);
-    });
-    return result;
+const compactSearchReference = (value: unknown): AiSearchHistoryReference | null => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    const source = value as Record<string, unknown>;
+    if (typeof source.id !== 'string' || !source.id.trim() || source.id.length > 180) return null;
+    const boundedString = (key: string, maxLength = 240): string | undefined => (
+        typeof source[key] === 'string' ? (source[key] as string).slice(0, maxLength) : undefined
+    );
+    const score = Number(source.similarityScore);
+    return {
+        id: source.id,
+        ...(boundedString('title') !== undefined ? { title: boundedString('title') } : {}),
+        ...(boundedString('url', 500) !== undefined ? { url: boundedString('url', 500) } : {}),
+        ...(boundedString('categoryId', 180) !== undefined ? { categoryId: boundedString('categoryId', 180) } : {}),
+        ...(boundedString('sectionId', 180) !== undefined ? { sectionId: boundedString('sectionId', 180) } : {}),
+        ...(boundedString('categoryTitle') !== undefined ? { categoryTitle: boundedString('categoryTitle') } : {}),
+        ...(boundedString('sectionTitle') !== undefined ? { sectionTitle: boundedString('sectionTitle') } : {}),
+        ...(Number.isFinite(score) ? { similarityScore: Math.max(0, Math.min(1, score)) } : {}),
+    };
 };
 
 const compactAiSearchHistoryPayload = (
-    data: Omit<AiSearchHistory, 'id'> | Partial<AiSearchHistory>
-) => {
-    const payload: Record<string, any> = {
+    data: AiSearchHistoryWriteInput
+): Omit<AiSearchHistory, 'id'> => {
+    const query = truncateString(data.query, MAX_QUERY_CHARS);
+    const craftedAnswer = truncateString(data.craftedAnswer, MAX_ANSWER_CHARS);
+    const generatedQueryFromImage = truncateString(data.generatedQueryFromImage, MAX_QUERY_CHARS);
+    const imageUrl = truncateString(data.imageUrl, 1000);
+    const payload: Omit<AiSearchHistory, 'id'> = {
         ...data,
-        query: truncateString((data as any).query, MAX_QUERY_CHARS),
-        craftedAnswer: truncateString((data as any).craftedAnswer, MAX_ANSWER_CHARS),
-        generatedQueryFromImage: truncateString((data as any).generatedQueryFromImage, MAX_QUERY_CHARS),
-        imageUrl: truncateString((data as any).imageUrl, 1000),
+        cacheKey: hashSearchCacheKey(data.cacheKey),
+        query: typeof query === 'string' ? query : '',
+        craftedAnswer: typeof craftedAnswer === 'string' ? craftedAnswer : '',
+        references: Array.isArray(data.references) ? data.references : [],
+        ...(typeof generatedQueryFromImage === 'string' ? { generatedQueryFromImage } : {}),
+        ...(typeof imageUrl === 'string' ? { imageUrl } : {}),
     };
 
-    if (Array.isArray((data as any).references)) {
-        payload.references = (data as any).references
+    if (Array.isArray(data.references)) {
+        payload.references = data.references
             .slice(0, MAX_REFERENCE_COUNT)
-            .map((reference: any) => compactNestedValue(reference));
+            .map(compactSearchReference)
+            .filter((reference): reference is AiSearchHistoryReference => Boolean(reference));
     }
 
-    if (Array.isArray((data as any).matchedEntityIds)) {
-        payload.matchedEntityIds = (data as any).matchedEntityIds
+    if (Array.isArray(data.matchedEntityIds)) {
+        payload.matchedEntityIds = data.matchedEntityIds
             .filter((id: unknown): id is string => typeof id === 'string' && Boolean(id.trim()))
             .slice(0, 50);
     }
@@ -105,31 +110,39 @@ const compactAiSearchHistoryPayload = (
     return payload;
 };
 
-const composeAiSearchHistory = (data: Omit<AiSearchHistory, 'id'> | Partial<AiSearchHistory>) => {
+const composeAiSearchHistory = (data: AiSearchHistoryWriteInput): AiSearchHistoryWritePayload => {
     const now = new Date();
-    const traceId = (data as any).traceId || createTraceId();
+    const traceId = typeof data.traceId === 'string'
+        ? data.traceId
+        : createTraceId();
     const compactData = compactAiSearchHistoryPayload(data);
     const scope = getAiSearchHistoryScope(data);
     if (!scope) {
         throw new Error('Answerlattice search history scope is not available.');
     }
 
-    return sanitizeForFirestore({
+    const writePayload: AiSearchHistoryWritePayload = {
         ...compactData,
         pId: PRODUCT_IDS.ANSWERLATTICE,
         tId: scope.tId,
         sId: scope.sId,
         uId: data.uId || 'system',
         modifiedOn: now,
-        createdOn: (data as any).createdOn || now,
-        createdBy: (data as any).createdBy || data.uId || 'system',
+        createdOn: data.createdOn || now,
+        createdBy: typeof data.createdBy === 'string'
+            ? data.createdBy
+            : data.uId || 'system',
         traceId,
-        requestId: (data as any).requestId || traceId,
+        requestId: typeof data.requestId === 'string'
+            ? data.requestId
+            : traceId,
         ...getAnswerlatticeRetentionFields('aiSearchHistory', now),
-    });
+    };
+
+    return sanitizeForFirestore(writePayload);
 };
 
-export const addAiSearchHistoryServer = async (data: Omit<AiSearchHistory, 'id'>) => {
+export const addAiSearchHistoryServer = async (data: AiSearchHistoryWriteInput) => {
     const submitData = composeAiSearchHistory(data);
     const docRef = await firestoreAdmin.collection(COLLECTION).add(submitData);
     return { ...submitData, id: docRef.id } as AiSearchHistory;
@@ -143,7 +156,8 @@ export const findCachedSearchByCacheKeyServer = async (
     if (!scope) return null;
 
     const snapshot = await firestoreAdmin.collection(COLLECTION)
-        .where('cacheKey', '==', cacheKey)
+        .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
+        .where('cacheKey', '==', hashSearchCacheKey(cacheKey))
         .where('tId', '==', scope.tId)
         .where('sId', '==', scope.sId)
         .orderBy('createdOn', 'desc')
@@ -153,5 +167,52 @@ export const findCachedSearchByCacheKeyServer = async (
     if (snapshot.empty) return null;
 
     const docSnapshot = snapshot.docs[0];
-    return { ...docSnapshot.data(), id: docSnapshot.id } as AiSearchHistory;
+    const data = docSnapshot.data();
+    const query = typeof data.query === 'string' ? data.query : '';
+    const storedCacheKey = typeof data.cacheKey === 'string' ? data.cacheKey : '';
+    const references = Array.isArray(data.references)
+        ? data.references.map(compactSearchReference).filter((reference): reference is AiSearchHistoryReference => Boolean(reference))
+        : [];
+    if (
+        data.pId !== PRODUCT_IDS.ANSWERLATTICE
+        || Number(data.tId) !== scope.tId
+        || Number(data.sId) !== scope.sId
+        || !query
+        || query.length > MAX_QUERY_CHARS
+        || !/^[a-f0-9]{64}$/.test(storedCacheKey)
+        || typeof data.craftedAnswer !== 'string'
+        || !data.craftedAnswer.trim()
+        || data.craftedAnswer.length > MAX_ANSWER_CHARS
+        || !Array.isArray(data.references)
+        || data.references.length > MAX_REFERENCE_COUNT
+        || references.length !== data.references.length
+    ) {
+        return null;
+    }
+
+    return {
+        id: docSnapshot.id,
+        query,
+        cacheKey: storedCacheKey,
+        craftedAnswer: data.craftedAnswer,
+        references,
+        tId: scope.tId,
+        sId: scope.sId,
+        ...(typeof data.uId === 'string' ? { uId: data.uId } : {}),
+        ...(data.createdOn ? { createdOn: data.createdOn } : {}),
+        ...(data.modifiedOn ? { modifiedOn: data.modifiedOn } : {}),
+        ...(typeof data.canonical === 'boolean' ? { canonical: data.canonical } : {}),
+        ...(typeof data.canonicalAnswerId === 'string' ? { canonicalAnswerId: data.canonicalAnswerId } : {}),
+        ...(typeof data.faqAnswerId === 'string' ? { faqAnswerId: data.faqAnswerId } : {}),
+        ...(typeof data.answerSource === 'string' ? { answerSource: data.answerSource } : {}),
+        ...(typeof data.fallbackReason === 'string' ? { fallbackReason: data.fallbackReason } : {}),
+        ...(typeof data.confidence === 'string' ? { confidence: data.confidence } : {}),
+        ...(Array.isArray(data.matchedEntityIds)
+            ? { matchedEntityIds: data.matchedEntityIds.filter((id: unknown): id is string => typeof id === 'string').slice(0, 50) }
+            : {}),
+        ...(data.sourceVersions && typeof data.sourceVersions === 'object' && !Array.isArray(data.sourceVersions)
+            ? { sourceVersions: data.sourceVersions }
+            : {}),
+        ...(typeof data.mountContext === 'string' ? { mountContext: data.mountContext } : {}),
+    };
 };

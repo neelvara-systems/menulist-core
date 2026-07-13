@@ -89,7 +89,7 @@ Upload your current docs. You can always update articles later, and Answerlattic
 Yes. Each new import goes through the same pipeline — upload, generate, publish, bootstrap.
 
 ### What happens if entity extraction finds something wrong?
-Low-confidence entities are placed in a review queue for you to check. Only high-confidence entities are auto-promoted. You can always deprecate or edit any entity.
+Every detected entity candidate is placed in a review queue. Nothing is promoted from model confidence alone. Promote a candidate when it represents real product truth; you can later edit or deprecate the resulting entity through the governed entity tools.
 
 ---
 

@@ -302,7 +302,7 @@ Restaurant screens operate in:
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
 │   page.tsx (Server Component)                               │
-│     ↓ getScreenDataByToken(token)     [2 valid / 3 fallback] │
+│     ↓ getScreenDataByTokenServer(token) [2 valid / 3 fallback] │
 │     ↓ screen.menuProjection or fallback [0-1+ reads]        │
 │     ↓ generateScreenSlides()          [slide stack]          │
 │     ↓ Read ?mode= query parameter                           │
@@ -348,7 +348,7 @@ Both share:
 
 > **Non-Negotiable Rule:** Menu Board shows ALL available items with prices. No confidence gate. No filtering. The full menu = the truth.
 
-Menu Board uses the same menu data resolver (`screen.menuProjection` when valid, `getMenuItemsForScreen()` fallback when stale/missing) but renders ALL available items, not just top 3:
+Menu Board uses the same server menu data resolver (`screen.menuProjection` when valid, `getMenuItemsForScreenServer()` fallback when stale/missing) but renders ALL available items, not just top 3:
 
 | Data            | Source                          | Behavior                                          |
 | --------------- | ------------------------------- | ------------------------------------------------- |

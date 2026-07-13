@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { DB_COLLECTIONS } from '@constant/database';
 import { getStoreContextName } from '@lib/businessIdentity/names';
-import { canManageBillingMutation } from "@lib/billing/billingAccess";
+import { canManageAnswerlatticeBillingMutation, canManageBillingMutation } from "@lib/billing/billingAccess";
 import {
     createProductInitialSubscription,
     resolveBillingScopeFromSession,
@@ -123,21 +123,8 @@ export const POST = withAuth(async (request, session) => {
 
         const { tenantId, storeId } = scope;
 
-        if (!isAnswerlatticeBillingProduct(productId) && !verifyTenantAccess(session, tenantId, storeId, request)) {
-            return NextResponse.json(
-                { error: 'Forbidden - Access denied' },
-                { status: 403 }
-            );
-        }
-
-        if (!isAnswerlatticeBillingProduct(productId) && !(await canManageBillingMutation(session, request, '/api/razorpay/create-subscription'))) {
-            return NextResponse.json(
-                { error: 'Forbidden - Access denied' },
-                { status: 403 }
-            );
-        }
-
-        // 🔒 RATE LIMITING: Prevent subscription spam (centralized config)
+        // Rate-limit before current-role/store authorization reads so denied
+        // callers cannot turn the permission boundary into an unbounded read path.
         const rateLimitConfig = getRateLimitForFeature('PAYMENT_SUBSCRIPTION');
         const userRateLimitHash = hashPublicRateLimitValue(userId);
         const tenantRateLimitHash = hashPublicRateLimitValue(tenantId);
@@ -160,6 +147,27 @@ export const POST = withAuth(async (request, session) => {
                 error: 'Too many subscription attempts. Please try again later.',
                 resetAt: rateLimitResult.resetAt
             }, { status: 429 });
+        }
+
+        if (isAnswerlatticeBillingProduct(productId) && !(await canManageAnswerlatticeBillingMutation(session, request))) {
+            return NextResponse.json(
+                { error: 'Forbidden - Access denied' },
+                { status: 403 }
+            );
+        }
+
+        if (!isAnswerlatticeBillingProduct(productId) && !verifyTenantAccess(session, tenantId, storeId, request)) {
+            return NextResponse.json(
+                { error: 'Forbidden - Access denied' },
+                { status: 403 }
+            );
+        }
+
+        if (!isAnswerlatticeBillingProduct(productId) && !(await canManageBillingMutation(session, request, '/api/razorpay/create-subscription'))) {
+            return NextResponse.json(
+                { error: 'Forbidden - Access denied' },
+                { status: 403 }
+            );
         }
 
         // 2. Extract validated data

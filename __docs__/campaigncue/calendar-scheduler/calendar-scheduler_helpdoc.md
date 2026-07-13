@@ -6,18 +6,17 @@ Calendar Scheduler helps plan when campaign outputs should be downloaded, export
 
 ## How To Use It
 
-1. Open an approved campaign pack.
-2. Choose the channels to schedule.
-3. Pick date and time.
-4. Confirm the manual task details.
-5. Save the schedule.
-6. Watch the calendar for scheduled, due, completed, failed, or cancelled manual-task status.
+1. Open a campaign pack that is not blocked by trust, freshness, or required approval.
+2. Choose **Schedule task**.
+3. Pick the local date and time. CampaignCue does not choose a best posting time for you.
+4. Optionally add an owner/staff label and choose post, print, staff share, follow-up, or result check.
+5. Save the manual reminder.
+6. Return to Calendar when the reminder becomes due, complete the work outside CampaignCue, and record the campaign result.
 
 ## Status Meanings
 
-- `Draft`: not ready to schedule.
-- `Needs approval`: owner approval is still required.
 - `Scheduled`: ready for the planned time.
-- `Manual task`: owner or agency must complete outside CampaignCue.
-- `Completed`: owner or agency marked the manual task done.
-- `Failed`: the manual task could not be completed and needs review.
+- `Due`: the planned time has passed; owner or agency still completes the task outside CampaignCue.
+- `Completed`, `Failed`, or `Cancelled`: supported data states for future controlled updates; the current Calendar UI does not write these transitions.
+
+Scheduling creates a reminder only. It does not post to Google, Instagram, Facebook, WhatsApp, or any other provider.

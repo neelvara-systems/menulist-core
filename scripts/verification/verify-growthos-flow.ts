@@ -8,6 +8,7 @@ import { computeGrowthOSReadiness, isGrowthOSKitExpired } from "../../src/lib/gr
 import { evaluateGrowthOSEntitlement } from "../../src/lib/growthos/entitlements";
 import { guardGrowthOSReviewReply } from "../../src/lib/growthos/reviewGuard";
 import { getGrowthOSTodayTriggerState } from "../../src/lib/growthos/todayTrigger";
+import { normalizeStoreSwitchStoreId } from "../../src/lib/multiOutlet/storeSwitchAccess";
 import {
     buildGrowthOSSourceFacts,
     hashGrowthOSSourceFacts,
@@ -369,6 +370,7 @@ const unsafeReply = guardGrowthOSReviewReply({
 });
 const growthOSSchemas = fs.readFileSync(path.resolve("src/lib/validation/growthosSchemas.ts"), "utf8");
 const growthOSServerDal = fs.readFileSync(path.resolve("src/database/growthos/server.ts"), "utf8");
+const growthOSServerEntitlements = fs.readFileSync(path.resolve("src/lib/growthos/serverEntitlements.ts"), "utf8");
 const growthOSKitReadBlock = growthOSServerDal.slice(
     growthOSServerDal.indexOf("export async function readGrowthOSKitServer"),
     growthOSServerDal.indexOf("function statusForExportMethod"),
@@ -497,6 +499,23 @@ const growthOSReviewSuggestRoute = fs.readFileSync(path.resolve("src/app/api/gro
 assertCheck(FEATURE_FLAGS.ENABLE_GROWTHOS_ADDON === true, "GrowthOS master flag is enabled");
 assertCheck(FEATURE_FLAGS.GROWTHOS_ADDON_ACCESS === "paid", "GrowthOS access defaults to paid plan gate");
 assertCheck(FEATURE_FLAGS.GROWTHOS_DIRECT_POSTING === "disabled", "direct posting remains disabled");
+assertCheck(normalizeStoreSwitchStoreId(101) === 101, "GrowthOS server entitlement scope accepts exact positive numeric IDs");
+assertCheck(normalizeStoreSwitchStoreId(null) === null, "GrowthOS server entitlement scope rejects pre-onboarding null IDs");
+assertCheck(normalizeStoreSwitchStoreId(0) === null, "GrowthOS server entitlement scope rejects zero IDs");
+assertCheck(normalizeStoreSwitchStoreId("1e3") === null, "GrowthOS server entitlement scope rejects exponent-like IDs");
+assertCheck(
+    growthOSServerEntitlements.includes("const tenantId = normalizeStoreSwitchStoreId(params.session?.tId);"),
+    "GrowthOS server entitlement tenant scope uses the exact positive ID normalizer",
+);
+assertCheck(
+    growthOSServerEntitlements.includes("const storeId = normalizeStoreSwitchStoreId(params.session?.sId);"),
+    "GrowthOS server entitlement store scope uses the exact positive ID normalizer",
+);
+assertCheck(
+    !growthOSServerEntitlements.includes("Number(params.session?.tId)")
+        && !growthOSServerEntitlements.includes("Number(params.session?.sId)"),
+    "GrowthOS server entitlement scope does not coerce null or malformed IDs",
+);
 assertCheck(entitlement.allowed === false && entitlement.reason === "not_paid", "enabled GrowthOS denies stores without Pro or Premium");
 withGrowthOSFlags({
     ENABLE_GROWTHOS_ADDON: false,

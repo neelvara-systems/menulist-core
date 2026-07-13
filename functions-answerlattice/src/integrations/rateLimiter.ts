@@ -8,8 +8,11 @@
 import { createHash } from 'crypto';
 import { Timestamp } from 'firebase-admin/firestore';
 import { DB_COLLECTIONS } from '../constants/database';
+import { parseExactAnswerlatticeScope } from '../answerlattice/scopeBoundary';
 import { firestoreAdmin as db } from '../firebaseAdmin';
-import { AdapterType, INTEGRATION_LIMITS } from './types';
+import { ADAPTER_TYPES, AdapterType, INTEGRATION_LIMITS } from './types';
+
+const ADAPTER_TYPE_SET = new Set<string>(Object.values(ADAPTER_TYPES));
 
 function hashValue(value: string): string {
     return createHash('sha256').update(value).digest('hex').slice(0, 16);
@@ -31,18 +34,29 @@ async function consumeCounter(params: {
     docId: string;
     limit: number;
     expiresAt: Timestamp;
-    metadata?: Record<string, any>;
+    metadata: Record<string, unknown>;
 }): Promise<boolean> {
     const docRef = db.collection(DB_COLLECTIONS.ANSWERLATTICE_INTEGRATION_RATE_LIMITS).doc(params.docId);
 
     return db.runTransaction(async (transaction) => {
         const snap = await transaction.get(docRef);
-        const currentCount = snap.exists ? Number(snap.data()?.count || 0) : 0;
+        if (snap.exists) {
+            const existing = snap.data() || {};
+            for (const [key, expected] of Object.entries(params.metadata)) {
+                if (existing[key] !== expected) {
+                    throw new Error('Answerlattice integration rate counter ownership mismatch');
+                }
+            }
+        }
+        const currentCount = snap.exists ? snap.data()?.count : 0;
+        if (!Number.isSafeInteger(currentCount) || Number(currentCount) < 0) {
+            throw new Error('Answerlattice integration rate counter is invalid');
+        }
         if (currentCount >= params.limit) return false;
 
         transaction.set(docRef, {
-            ...(params.metadata || {}),
-            count: currentCount + 1,
+            ...params.metadata,
+            count: Number(currentCount) + 1,
             expiresAt: params.expiresAt,
             modifiedOn: Timestamp.now(),
         }, { merge: true });
@@ -55,6 +69,9 @@ export async function consumeAdapterMinuteSlot(
     sId: number,
     adapter: AdapterType,
 ): Promise<boolean> {
+    if (!parseExactAnswerlatticeScope(tId, sId) || !ADAPTER_TYPE_SET.has(adapter)) {
+        throw new Error('Answerlattice integration rate-limit scope is invalid');
+    }
     const bucket = minuteBucket();
     return consumeCounter({
         docId: `integrationRateMinute_${tId}_${sId}_${adapter}_${bucket}`,
@@ -69,6 +86,9 @@ export async function consumeAdapterDailySlot(
     sId: number,
     adapter: AdapterType,
 ): Promise<boolean> {
+    if (!parseExactAnswerlatticeScope(tId, sId) || !ADAPTER_TYPE_SET.has(adapter)) {
+        throw new Error('Answerlattice integration rate-limit scope is invalid');
+    }
     const bucket = dayBucket();
     return consumeCounter({
         docId: `integrationRateDaily_${tId}_${sId}_${adapter}_${bucket}`,
@@ -83,13 +103,19 @@ export async function filterEmailRecipientsByDailyLimit(
     sId: number,
     recipients: string[],
 ): Promise<string[]> {
+    if (!parseExactAnswerlatticeScope(tId, sId)) {
+        throw new Error('Answerlattice integration email rate-limit scope is invalid');
+    }
     const bucket = dayBucket();
     const allowed: string[] = [];
+    const normalizedRecipients = Array.from(new Set(
+        recipients
+            .filter((recipient): recipient is string => typeof recipient === 'string')
+            .map((recipient) => recipient.trim().toLowerCase())
+            .filter(Boolean),
+    ));
 
-    for (const recipient of Array.from(new Set(recipients))) {
-        const normalized = recipient.trim().toLowerCase();
-        if (!normalized) continue;
-
+    for (const normalized of normalizedRecipients) {
         const ok = await consumeCounter({
             docId: `integrationEmailDaily_${tId}_${sId}_${hashValue(normalized)}_${bucket}`,
             limit: INTEGRATION_LIMITS.MAX_EMAIL_PER_DAY_PER_RECIPIENT,

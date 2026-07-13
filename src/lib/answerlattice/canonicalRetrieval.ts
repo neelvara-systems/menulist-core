@@ -20,8 +20,16 @@
 
 import { FEATURE_FLAGS } from "@config/features";
 import { DB_COLLECTIONS } from "@constant/database";
+import { PRODUCT_IDS } from "@constant/product";
+import { normalizeAnswerlatticeScopeDocumentId } from "@lib/answerlattice/sessionScope";
 import { answerlatticeFirestoreAdmin } from "@lib/firebase/answerlatticeFirebaseAdmin";
 import { normalizeAnswerlatticeResolvedEntityId } from "@lib/answerlattice/governanceIdBoundary";
+import {
+    parseAnswerlatticeRetrievalCanonicalAnswer,
+    parseAnswerlatticeRetrievalEntity,
+    parseAnswerlatticeRetrievalRelease,
+    parseAnswerlatticeRetrievalSearchIndex,
+} from '@lib/answerlattice/retrievalContracts';
 import { answerlatticeTokenize } from "@lib/answerlattice/tokenizer";
 import { AnswerlatticeAnswerType, AnswerlatticeCanonicalAnswer, AnswerlatticeContextPayload, AnswerlatticeEntity, AnswerlatticeEntityGraphIndex, AnswerlatticeEntitySearchIndex, AnswerlatticeGraphExpansionResult, AnswerlatticeRelease } from "@type/answerlattice";
 
@@ -83,9 +91,82 @@ export interface RetrievalContext {
     currentVersion?: number;
     planId?: string;
     roleId?: string;
+    stateId?: string;
     context?: AnswerlatticeContextPayload;
     preloadedSearchIndex?: AnswerlatticeEntitySearchIndex[];
     preloadedLatestRelease?: AnswerlatticeRelease | null;
+    /** Request-local cache used by bounded answer-test runs to avoid repeated entity-answer queries. */
+    activeAnswerCache?: Map<string, AnswerlatticeCanonicalAnswer[]>;
+}
+
+export type CanonicalScopeDimension = 'plan' | 'role' | 'state';
+
+export interface CanonicalScopeMatch {
+    applicable: boolean;
+    missingContext: CanonicalScopeDimension[];
+    mismatchedContext: CanonicalScopeDimension[];
+}
+
+export const CANONICAL_GOVERNED_FALLBACK_MESSAGES = {
+    canonical_retrieval_unavailable: 'Confirmed support answers are temporarily unavailable. Please open the relevant help page or contact support instead of relying on an unverified answer.',
+    canonical_answer_review_required: 'This answer is being reviewed after a product change. Open the relevant help page or contact support for a confirmed answer.',
+    canonical_scope_context_required: 'A confirmed answer needs product context that is not available in this support session. Open the relevant help page or contact support.',
+    canonical_scope_not_covered: 'A confirmed answer is not available for your current plan, role, or product state. Open the relevant help page or contact support.',
+} as const;
+
+export type CanonicalGovernedFallbackReason = keyof typeof CANONICAL_GOVERNED_FALLBACK_MESSAGES;
+
+export const isCanonicalGovernedFallbackReason = (
+    reason?: string,
+): reason is CanonicalGovernedFallbackReason => Boolean(
+    reason && Object.prototype.hasOwnProperty.call(CANONICAL_GOVERNED_FALLBACK_MESSAGES, reason),
+);
+
+const normalizeScopeValue = (value: unknown): string => String(value || '').trim().toLowerCase();
+
+const normalizeScopeIds = (values: unknown): string[] => (
+    Array.isArray(values)
+        ? Array.from(new Set(values.map(normalizeScopeValue).filter(Boolean)))
+        : []
+);
+
+/**
+ * Canonical scope is an eligibility filter, not a relevance bonus. A restricted
+ * dimension fails closed when its matching runtime context is absent or differs.
+ */
+export function evaluateCanonicalAnswerScope(
+    answer: Partial<AnswerlatticeCanonicalAnswer>,
+    context: Partial<RetrievalContext>,
+): CanonicalScopeMatch {
+    const effectiveValues: Record<CanonicalScopeDimension, string> = {
+        plan: normalizeScopeValue(context.planId || context.context?.plan),
+        role: normalizeScopeValue(context.roleId || context.context?.userRole),
+        state: normalizeScopeValue(context.stateId || context.context?.state),
+    };
+    const restrictions: Record<CanonicalScopeDimension, string[]> = {
+        plan: normalizeScopeIds(answer.scope?.planIds),
+        role: normalizeScopeIds(answer.scope?.roleIds),
+        state: normalizeScopeIds(answer.scope?.stateIds),
+    };
+    const missingContext: CanonicalScopeDimension[] = [];
+    const mismatchedContext: CanonicalScopeDimension[] = [];
+
+    (Object.keys(restrictions) as CanonicalScopeDimension[]).forEach((dimension) => {
+        const allowed = restrictions[dimension];
+        if (allowed.length === 0) return;
+        const actual = effectiveValues[dimension];
+        if (!actual) {
+            missingContext.push(dimension);
+        } else if (!allowed.includes(actual)) {
+            mismatchedContext.push(dimension);
+        }
+    });
+
+    return {
+        applicable: missingContext.length === 0 && mismatchedContext.length === 0,
+        missingContext,
+        mismatchedContext,
+    };
 }
 
 const getAnswerlatticeAdminDb = () => {
@@ -98,34 +179,54 @@ const getAnswerlatticeAdminDb = () => {
 const getEntitySearchIndexServer = async (tId: number, sId: number): Promise<AnswerlatticeEntitySearchIndex[]> => {
     const snapshot = await getAnswerlatticeAdminDb()
         .collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITY_SEARCH_INDEX)
+        .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
         .where('tId', '==', tId)
         .where('sId', '==', sId)
-        .limit(500)
+        .limit(501)
         .get();
 
-    return snapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id } as AnswerlatticeEntitySearchIndex));
+    if (snapshot.size > 500) {
+        throw new Error('Answerlattice entity search index exceeds the supported retrieval boundary.');
+    }
+
+    return snapshot.docs.map((doc) => parseAnswerlatticeRetrievalSearchIndex(
+        { ...doc.data(), id: doc.id },
+        { tId, sId },
+    ));
 };
 
-const getActiveAnswersForEntityServer = async (
+const getActiveAnswersForEntitiesServer = async (
     tId: number,
     sId: number,
-    entityId: string,
+    entityIds: string[],
 ): Promise<AnswerlatticeCanonicalAnswer[]> => {
+    const normalizedEntityIds = Array.from(new Set(entityIds.map(normalizeAnswerlatticeResolvedEntityId).filter((id): id is string => Boolean(id))))
+        .slice(0, 10);
+    if (normalizedEntityIds.length === 0) return [];
     const snapshot = await getAnswerlatticeAdminDb()
         .collection(DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS)
+        .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
         .where('tId', '==', tId)
         .where('sId', '==', sId)
-        .where('scope.entityIds', 'array-contains', entityId)
+        .where('scope.entityIds', 'array-contains-any', normalizedEntityIds)
         .where('status', '==', 'active')
-        .limit(200)
+        .limit(101)
         .get();
 
-    return snapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id } as AnswerlatticeCanonicalAnswer));
+    if (snapshot.size > 100) {
+        throw new Error('Answerlattice canonical answer lookup exceeds the supported retrieval boundary.');
+    }
+
+    return snapshot.docs.map((doc) => parseAnswerlatticeRetrievalCanonicalAnswer(
+        { ...doc.data(), id: doc.id },
+        { tId, sId },
+    ));
 };
 
 const getLatestReleaseServer = async (tId: number, sId: number): Promise<AnswerlatticeRelease | null> => {
     const snapshot = await getAnswerlatticeAdminDb()
         .collection(DB_COLLECTIONS.ANSWERLATTICE_RELEASES)
+        .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
         .where('tId', '==', tId)
         .where('sId', '==', sId)
         .where('status', '==', 'active')
@@ -135,7 +236,7 @@ const getLatestReleaseServer = async (tId: number, sId: number): Promise<Answerl
 
     if (snapshot.empty) return null;
     const doc = snapshot.docs[0];
-    return { ...doc.data(), id: doc.id } as AnswerlatticeRelease;
+    return parseAnswerlatticeRetrievalRelease({ ...doc.data(), id: doc.id }, { tId, sId });
 };
 
 const getEntityByIdServer = async (entityId: string, tId: number, sId: number): Promise<AnswerlatticeEntity | null> => {
@@ -148,9 +249,11 @@ const getEntityByIdServer = async (entityId: string, tId: number, sId: number): 
         .get();
 
     if (!doc.exists) return null;
-    const entity = { ...doc.data(), id: doc.id } as AnswerlatticeEntity;
-    if (Number(entity.tId) !== Number(tId) || Number(entity.sId) !== Number(sId)) return null;
-    return entity;
+    try {
+        return parseAnswerlatticeRetrievalEntity({ ...doc.data(), id: doc.id }, { tId, sId });
+    } catch {
+        return null;
+    }
 };
 
 const getApplicableVersionWindow = (answer: Partial<AnswerlatticeCanonicalAnswer>): { from: number; to: number | null } | null => {
@@ -163,7 +266,7 @@ const getApplicableVersionWindow = (answer: Partial<AnswerlatticeCanonicalAnswer
     return { from, to };
 };
 
-const isRetrievableCanonicalAnswer = (answer: Partial<AnswerlatticeCanonicalAnswer>): answer is AnswerlatticeCanonicalAnswer => {
+const hasCanonicalAnswerRetrievalShape = (answer: Partial<AnswerlatticeCanonicalAnswer>): answer is AnswerlatticeCanonicalAnswer => {
     const entityIds = answer.scope?.entityIds;
     const structuredSummary = answer.content?.structuredSummary;
     return Boolean(answer.id)
@@ -173,6 +276,22 @@ const isRetrievableCanonicalAnswer = (answer: Partial<AnswerlatticeCanonicalAnsw
         && Boolean(getApplicableVersionWindow(answer))
         && typeof structuredSummary === 'string'
         && structuredSummary.trim().length > 0;
+};
+
+const isRetrievableCanonicalAnswer = (answer: Partial<AnswerlatticeCanonicalAnswer>): answer is AnswerlatticeCanonicalAnswer => (
+    hasCanonicalAnswerRetrievalShape(answer)
+    && answer.governance?.driftFlag !== true
+    && answer.governance?.reviewRequired !== true
+);
+
+const canonicalAnswerBelongsToRetrievalScope = (
+    answer: Partial<AnswerlatticeCanonicalAnswer>,
+    context: RetrievalContext,
+): boolean => {
+    const productId = answer.pId;
+    return normalizeAnswerlatticeScopeDocumentId(answer.tId) === normalizeAnswerlatticeScopeDocumentId(context.tId)
+        && normalizeAnswerlatticeScopeDocumentId(answer.sId) === normalizeAnswerlatticeScopeDocumentId(context.sId)
+        && productId === PRODUCT_IDS.ANSWERLATTICE;
 };
 
 const getAnswerConfidenceScore = (answer: Partial<AnswerlatticeCanonicalAnswer>): number => {
@@ -418,7 +537,7 @@ function scoreBySpecificity(
                 }
             }
 
-            // Scope depth (more specific = higher score)
+            // Scope depth ranks answers only after strict scope eligibility.
             const scopeDepth =
                 (answer.scope.planIds?.length ? 10 : 0) +
                 (answer.scope.roleIds?.length ? 10 : 0) +
@@ -445,11 +564,6 @@ function scoreBySpecificity(
 
             // Confidence score
             score += getAnswerConfidenceScore(answer) * 5;
-
-            // Drift penalty
-            if (answer.governance?.driftFlag) {
-                score -= 50;
-            }
 
             // Knowledge Graph: multi-entity coverage boost (Item #11)
             // Answers spanning more expanded entities are inherently more relevant
@@ -607,16 +721,43 @@ export async function attemptCanonicalRetrieval(
 
         // Fetch canonical answers for top matched entities (parallel for latency)
         const topEntityIds = effectiveEntityIds;
-        const answerResults = await Promise.all(
-            topEntityIds.map(entityId => getActiveAnswersForEntityServer(context.tId, context.sId, entityId))
-        );
-        const allAnswers: AnswerlatticeCanonicalAnswer[] = [];
-        for (const answers of answerResults) {
-            if (answers) allAnswers.push(...answers);
+        const answerResults: AnswerlatticeCanonicalAnswer[][] = [];
+        const uncachedEntityIds: string[] = [];
+        topEntityIds.forEach((entityId) => {
+            const cacheKey = `${Number(context.tId)}:${Number(context.sId)}:${entityId}`;
+            const cached = context.activeAnswerCache?.get(cacheKey);
+            if (cached) {
+                answerResults.push(cached);
+            } else {
+                uncachedEntityIds.push(entityId);
+            }
+        });
+        if (uncachedEntityIds.length > 0) {
+            const fetchedAnswers = await getActiveAnswersForEntitiesServer(
+                context.tId,
+                context.sId,
+                uncachedEntityIds,
+            );
+            uncachedEntityIds.forEach((entityId) => {
+                const answersForEntity = fetchedAnswers.filter(answer => answer.scope?.entityIds?.includes(entityId));
+                context.activeAnswerCache?.set(
+                    `${Number(context.tId)}:${Number(context.sId)}:${entityId}`,
+                    answersForEntity,
+                );
+                answerResults.push(answersForEntity);
+            });
         }
-        const retrievableAnswers = allAnswers.filter(isRetrievableCanonicalAnswer);
+        const allAnswersById = new Map<string, AnswerlatticeCanonicalAnswer>();
+        for (const answers of answerResults) {
+            for (const answer of answers || []) {
+                if (answer?.id && canonicalAnswerBelongsToRetrievalScope(answer, context)) {
+                    allAnswersById.set(answer.id, answer);
+                }
+            }
+        }
+        const allAnswers = Array.from(allAnswersById.values()).filter(hasCanonicalAnswerRetrievalShape);
 
-        if (retrievableAnswers.length === 0) {
+        if (allAnswers.length === 0) {
             return {
                 found: false,
                 canonical: false,
@@ -629,13 +770,13 @@ export async function attemptCanonicalRetrieval(
 
         // Filter by version window
         const versionFiltered = currentVersion
-            ? retrievableAnswers.filter(a => {
+            ? allAnswers.filter(a => {
                 const versionWindow = getApplicableVersionWindow(a);
                 if (!versionWindow) return false;
                 const { from, to } = versionWindow;
                 return currentVersion! >= from && (!to || currentVersion! <= to);
             })
-            : retrievableAnswers;
+            : allAnswers;
 
         if (versionFiltered.length === 0) {
             return {
@@ -648,8 +789,73 @@ export async function attemptCanonicalRetrieval(
             };
         }
 
+        const scopeEvaluations = versionFiltered.map(answer => ({
+            answer,
+            match: evaluateCanonicalAnswerScope(answer, { ...context, currentVersion }),
+        }));
+        const scopeMatchedAnswers = scopeEvaluations
+            .filter(item => item.match.applicable)
+            .map(item => item.answer);
+
+        if (scopeMatchedAnswers.length === 0) {
+            const missingContext = scopeEvaluations.some(item => item.match.missingContext.length > 0);
+            return {
+                found: false,
+                canonical: false,
+                matchedEntityIds: topEntityIds,
+                confidence: 'low',
+                fallbackReason: missingContext
+                    ? 'canonical_scope_context_required'
+                    : 'canonical_scope_not_covered',
+                entityDebug: buildEntityDebug(),
+            };
+        }
+
+        // Direct entity matches outrank graph-neighbour answers. A drifted direct
+        // answer cannot be bypassed by a weaker clean answer from graph expansion.
+        const directlyMatchedEntityIds = new Set(matchedEntities.slice(0, 3).map(item => item.entityId));
+        const directlyMatchedAnswers = scopeMatchedAnswers.filter(answer => (
+            answer.scope.entityIds.some(entityId => directlyMatchedEntityIds.has(entityId))
+        ));
+        const governanceRelevantAnswers = directlyMatchedAnswers.length > 0
+            ? directlyMatchedAnswers
+            : scopeMatchedAnswers;
+        const governanceReviewRequired = governanceRelevantAnswers.some(answer => (
+            answer.governance?.driftFlag === true
+            || answer.governance?.reviewRequired === true
+        ));
+        if (governanceReviewRequired) {
+            return {
+                found: false,
+                canonical: false,
+                matchedEntityIds: topEntityIds,
+                confidence: 'low',
+                fallbackReason: 'canonical_answer_review_required',
+                entityDebug: buildEntityDebug(),
+            };
+        }
+
+        const retrievableAnswers = scopeMatchedAnswers.filter(isRetrievableCanonicalAnswer);
+        const directlyRetrievableAnswers = retrievableAnswers.filter(answer => (
+            answer.scope.entityIds.some(entityId => directlyMatchedEntityIds.has(entityId))
+        ));
+        const rankableAnswers = directlyRetrievableAnswers.length > 0
+            ? directlyRetrievableAnswers
+            : retrievableAnswers;
+
+        if (rankableAnswers.length === 0) {
+            return {
+                found: false,
+                canonical: false,
+                matchedEntityIds: topEntityIds,
+                confidence: 'low',
+                fallbackReason: 'no_canonical_answers_for_entities',
+                entityDebug: buildEntityDebug(),
+            };
+        }
+
         // Specificity scoring (with graph expansion entities for multi-entity boost)
-        const ranked = scoreBySpecificity(versionFiltered, {
+        const ranked = scoreBySpecificity(rankableAnswers, {
             ...context,
             currentVersion,
         }, graphExpansion?.expandedEntities);
@@ -660,7 +866,6 @@ export async function attemptCanonicalRetrieval(
         const topEntityScore = matchedEntities[0].score;
         let confidence: CanonicalRetrievalResult['confidence'] = 'high';
         if (topEntityScore < 3) confidence = 'medium';
-        if (bestAnswer.governance?.driftFlag) confidence = 'medium';
 
         // Knowledge Graph: rebuild suggestions now that we have bestAnswer
         if (graphExpansion && FEATURE_FLAGS.ENABLE_ANSWERLATTICE_KNOWLEDGE_GRAPH) {
@@ -699,7 +904,7 @@ export async function attemptCanonicalRetrieval(
             canonical: false,
             matchedEntityIds: [],
             confidence: 'none',
-            fallbackReason: 'retrieval_error',
+            fallbackReason: 'canonical_retrieval_unavailable',
         };
     }
 }

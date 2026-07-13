@@ -7,10 +7,23 @@ export const dynamic = 'force-dynamic';
  */
 
 import { DB_COLLECTIONS } from "@constant/database";
-import { FALLBACK_BUSINESS_TYPE, resolveStoreBusinessCategory } from "@data/shared/businessTypes";
+import {
+  FALLBACK_BUSINESS_TYPE,
+  getBusinessTypeConfig,
+  resolveStoreBusinessCategory,
+} from "@data/shared/businessTypes";
 import { getSuggestionValue } from "@data/shared/extractedBusinessProfile";
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { normalizeMessagingPreviewSessionId } from "@lib/messaging-onboarding/previewRouteBoundary";
+import {
+  isMessagingPreviewViewableState,
+  normalizeMessagingPreviewMenuData,
+  normalizeMessagingPreviewPublishedResult,
+} from "@lib/messaging-onboarding/previewResponseBoundary";
+import {
+  normalizeMessagingPreviewReadSession,
+  type MessagingPreviewReadSession,
+} from "@lib/messaging-onboarding/previewReadSessionBoundary";
 import { checkRateLimit } from "@lib/rateLimit";
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
 import crypto from "crypto";
@@ -21,8 +34,8 @@ import { z } from "zod";
 const db = admin.firestore();
 
 const PreviewQuerySchema = z.object({
-  token: z.string().min(20).max(256),
-});
+  token: z.string().trim().regex(/^[A-Za-z0-9_-]{20,256}$/),
+}).strict();
 
 function getClientIp(request: NextRequest): string {
   return request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
@@ -32,15 +45,22 @@ function getClientIp(request: NextRequest): string {
 
 const getPreviewGetLogContext = (
   sessionId: unknown,
-  session?: Record<string, any> | null,
+  session?: MessagingPreviewReadSession | null,
 ) => ({
   route: "/api/msg-preview/[sessionId]",
   ...getBoundedRuntimeStringContext("sessionId", sessionId),
   ...getBoundedRuntimeStringContext("provider", session?.provider),
-  sessionState: typeof session?.state === "string" ? session.state.slice(0, 64) : undefined,
+  sessionState: session?.state,
   hasPreviewToken: Boolean(session?.previewToken),
-  hasExtractedMenuData: Boolean(session?.extractedMenuData),
+  hasExtractedMenuData: Boolean(session?.menuData),
 });
+
+function tokensMatch(expected: string, provided: string): boolean {
+  const expectedBytes = Buffer.from(expected);
+  const providedBytes = Buffer.from(provided);
+  return expectedBytes.length === providedBytes.length
+    && crypto.timingSafeEqual(expectedBytes, providedBytes);
+}
 
 export async function GET(
   request: NextRequest,
@@ -88,98 +108,124 @@ export async function GET(
     const sessionRef = db
       .collection(DB_COLLECTIONS.MESSAGING_ONBOARDING_SESSIONS)
       .doc(sessionId);
-    const sessionDoc = await sessionRef.get();
+    const viewedAt = admin.firestore.Timestamp.now();
+    const lookup = await db.runTransaction(async (transaction) => {
+      const sessionDoc = await transaction.get(sessionRef);
+      if (!sessionDoc.exists) return { status: "not_found" as const };
+      const rawSession: unknown = sessionDoc.data();
+      const rawState = rawSession && typeof rawSession === "object" && !Array.isArray(rawSession)
+        ? Reflect.get(rawSession, "state")
+        : undefined;
+      if (
+        rawState !== undefined
+        && !isMessagingPreviewViewableState(rawState)
+      ) {
+        return { status: "not_viewable" as const };
+      }
+      const session = normalizeMessagingPreviewReadSession(rawSession, sessionId);
+      if (!session) return { status: "invalid" as const };
+      if (!tokensMatch(session.previewToken, validation.data.token)) {
+        return { status: "invalid_token" as const };
+      }
+      if (session.expiresAtMillis <= viewedAt.toMillis()) {
+        return { status: "expired" as const };
+      }
+      const firstView = session.previewViewedAtMillis === null;
+      if (firstView) {
+        transaction.update(sessionRef, { previewViewedAt: viewedAt, updatedAt: viewedAt });
+      }
+      return { firstView, session, status: "ready" as const };
+    });
 
-    if (!sessionDoc.exists) {
+    if (lookup.status === "not_found") {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
-
-    const session = sessionDoc.data()!;
+    if (lookup.status === "not_viewable") {
+      return NextResponse.json({ error: "Preview not available" }, { status: 404 });
+    }
+    if (lookup.status === "invalid_token") {
+      return NextResponse.json({ error: "Invalid token" }, { status: 403 });
+    }
+    if (lookup.status === "expired") {
+      return NextResponse.json({ error: "Preview expired" }, { status: 410 });
+    }
+    if (lookup.status === "invalid") {
+      logRuntimeFailure(
+        "messaging_preview_persisted_output_invalid",
+        new Error("MESSAGING_PREVIEW_PERSISTED_OUTPUT_INVALID"),
+        failureContext,
+      );
+      return NextResponse.json({ error: "Preview unavailable" }, { status: 503 });
+    }
+    const session = lookup.session;
     failureContext = {
       ...failureContext,
       ...getPreviewGetLogContext(sessionId, session),
     };
-
-    // Validate token matches
-    if (session.previewToken !== validation.data.token) {
-      return NextResponse.json({ error: "Invalid token" }, { status: 403 });
-    }
-
-    // Check session not expired
-    if (session.expiresAt && session.expiresAt.toMillis() < Date.now()) {
-      return NextResponse.json(
-        { error: "Preview expired" },
-        { status: 410 },
+    const menuData = normalizeMessagingPreviewMenuData(session.menuData);
+    const publishedResult = session.publishedResult === null
+      ? null
+      : normalizeMessagingPreviewPublishedResult(session.publishedResult);
+    if (!menuData || (session.publishedResult !== null && !publishedResult)) {
+      logRuntimeFailure(
+        "messaging_preview_persisted_output_invalid",
+        new Error("MESSAGING_PREVIEW_PERSISTED_OUTPUT_INVALID"),
+        failureContext,
       );
+      return NextResponse.json({ error: "Preview unavailable" }, { status: 503 });
     }
 
-    // Check session is in a viewable state
-    const viewableStates = [
-      "PREVIEW_READY",
-      "AWAITING_APPROVAL",
-      "PUBLISHING",
-      "LIVE",
-    ];
-    if (!viewableStates.includes(session.state)) {
-      return NextResponse.json(
-        { error: "Preview not available" },
-        { status: 404 },
-      );
-    }
-
-    if (!session.previewViewedAt) {
-      const viewedAt = admin.firestore.Timestamp.now();
-      sessionRef
-        .set({ previewViewedAt: viewedAt, updatedAt: viewedAt }, { merge: true })
-        .then(() => db.collection(DB_COLLECTIONS.MESSAGING_ONBOARDING_EVENTS)
-	          .add({
-	            eventId: crypto.randomUUID(),
-	            sessionId,
-            provider: session.provider,
+    if (lookup.firstView) {
+      const eventId = crypto.randomUUID();
+      db.collection(DB_COLLECTIONS.MESSAGING_ONBOARDING_EVENTS)
+        .doc(eventId)
+        .set({
+          eventId,
+          sessionId,
+          provider: session.provider,
+          eventType: "PREVIEW_VIEWED",
+          sessionState: session.state,
+          userIdMasked: session.providerUserId.slice(-4),
+          metadata: {},
+          timestamp: viewedAt,
+          expiresAt: admin.firestore.Timestamp.fromMillis(Date.now() + 30 * 24 * 60 * 60 * 1000),
+          sessionAgeMs: Math.max(0, viewedAt.toMillis() - session.createdAtMillis),
+        })
+        .catch((error) => {
+          logRuntimeFailure("messaging_preview_event_write_failed", error, {
+            ...getPreviewGetLogContext(sessionId, session),
             eventType: "PREVIEW_VIEWED",
-            sessionState: session.state,
-            userIdMasked: (session.providerUserId || "").slice(-4),
-            metadata: {},
-            timestamp: viewedAt,
-            expiresAt: admin.firestore.Timestamp.fromMillis(Date.now() + 30 * 24 * 60 * 60 * 1000),
-            sessionAgeMs: session.createdAt
-	              ? Date.now() - session.createdAt.toMillis()
-	              : 0,
-	          }))
-	        .catch((error) => {
-	          logRuntimeFailure("messaging_preview_event_write_failed", error, {
-	            ...getPreviewGetLogContext(sessionId, session),
-	            eventType: "PREVIEW_VIEWED",
-	            metadataKeyCount: 0,
-	          });
-	        });
-	    }
+            metadataKeyCount: 0,
+          });
+        });
+    }
 
-    const extractedProfile = session.extractedBusinessProfile || session.extractedMenuData?.extractedBusinessProfile || null;
-    const resolvedBusinessType = session.detectedBusinessType ||
+    const extractedProfile = session.extractedBusinessProfile;
+    const businessTypeCandidate = session.detectedBusinessType ||
       getSuggestionValue(extractedProfile?.identity?.businessType, "medium") ||
       FALLBACK_BUSINESS_TYPE;
+    const resolvedBusinessType = getBusinessTypeConfig(businessTypeCandidate)?.value
+      || FALLBACK_BUSINESS_TYPE;
     const resolvedBusinessCategory = resolveStoreBusinessCategory(
       resolvedBusinessType,
       session.detectedBusinessCategory || getSuggestionValue(extractedProfile?.identity?.businessCategory, "medium"),
     );
 
-    // Return preview data (sanitized — no tokens or internal fields)
     return NextResponse.json({
       sessionId,
       state: session.state,
       businessName:
-        session.extractedBusinessInfo?.businessName ||
+        session.businessName ||
         getSuggestionValue(extractedProfile?.identity?.businessName, "medium") ||
         "Your Business",
       businessType: resolvedBusinessType,
       businessCategory: resolvedBusinessCategory,
-      phone: session.providerDisplayId || "",
-      address: session.extractedBusinessInfo?.address || getSuggestionValue(extractedProfile?.identity?.addressLine, "medium") || "",
-      menuData: session.extractedMenuData,
+      phone: session.providerDisplayId,
+      address: session.businessAddress || getSuggestionValue(extractedProfile?.identity?.addressLine, "medium") || "",
+      menuData,
       qualityScore: session.qualityScore,
-      publishedResult: session.publishedResult,
-      correctionCount: session.correctionCount || 0,
+      publishedResult,
+      correctionCount: session.correctionCount,
       maxCorrections: 3,
     });
   } catch (error) {

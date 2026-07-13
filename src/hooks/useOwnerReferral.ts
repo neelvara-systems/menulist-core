@@ -3,6 +3,7 @@
 import {
     fetchOwnerReferral,
     getOwnerReferralShareMessage,
+    getOwnerReferralShareTitle,
     type OwnerReferralOwnerResponse,
 } from '@lib/ownerReferral/ownerReferralClient';
 import { useLocale } from 'next-intl';
@@ -57,7 +58,7 @@ export const useOwnerReferral = () => {
     const shareNative = useCallback(async () => {
         if (!data?.inviteUrl || typeof navigator.share !== 'function') return false;
         await navigator.share({
-            title: 'Invite another business to MenuList',
+            title: getOwnerReferralShareTitle(locale),
             text: getOwnerReferralShareMessage(data.inviteUrl, locale),
         });
         return true;

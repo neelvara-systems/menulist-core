@@ -1,7 +1,7 @@
 # Answerlattice Billing
 
-> **Version:** 1.1.1
-> **Last Updated:** 2026-07-05
+> **Version:** 1.2.0
+> **Last Updated:** 2026-07-13
 > **Audience:** Developers / Ops
 
 Answerlattice billing uses the same Razorpay subscription and top-up infrastructure as MenuList, but every payment request carries `productId: 'AL'` and persists Answerlattice subscription, top-up, and transaction data in Answerlattice Firebase.
@@ -29,6 +29,10 @@ Answerlattice requests must include `productId: 'AL'`. The backend resolves Answ
 
 Razorpay plan lookup keys are product-scoped. Answerlattice plans use `AL_...` lookup keys, while MenuList keeps the legacy lookup fallback for existing provider plans. Payment verification also normalizes `productId`, `pId`, `tenantId`, `storeId`, `tId`, and `sId` on the touched subscription document so old records do not lose product ownership metadata during balance or status updates.
 
+## Authorization Boundary
+
+The billing and transactions surfaces require `canManageBilling`. Every authenticated Answerlattice Razorpay mutation re-resolves the current workspace store, user membership, and persisted role; a default Manager, Support Staff user, inactive custom role, or stale session role cannot create or verify subscriptions/top-ups or cancel, pause, resume, or upgrade a subscription. An active custom role may perform those actions only when its current persisted permissions explicitly grant `canManageBilling`. Creation routes apply their existing per-user/workspace rate limit before these authorization reads, and every route completes authorization before provider or financial reads/writes.
+
 ## Key Files
 
 - `src/lib/billing/productBillingPlans.ts`
@@ -43,10 +47,12 @@ Razorpay plan lookup keys are product-scoped. Answerlattice plans use `AL_...` l
 
 Answerlattice transactions raw load-reason diagnostics boundary: `/answerlattice/transactions` keeps fixed owner-facing load failure copy and logs billing-history, support-credit usage, and load-more failures through stable runtime diagnostic codes with bounded tenant/store presence-length metadata only. Raw rejected Promise reasons, provider messages, exception messages, tenant IDs, store IDs, transaction rows, and AI operation rows must not be passed to browser diagnostics.
 
-Answerlattice App Billing Document ID Boundary: shared product-billing adapter create/update/get-by-id/entitlement refs, active-subscription reads, self-service onboarding subscription creation, Knowledge Intake active-license checks, Knowledge Intake support-credit ledger settlement, and AI accounting credit refresh/consumption normalize subscription and intake-usage ledger document IDs through `src/lib/answerlattice/billingDocumentIdBoundary.ts` before Firestore refs. Malformed, reserved, empty, or path-shaped subscription IDs fall back to the store summary or capped tenant/store query where a fallback exists, or fail before onboarding/credit-debit/mutation document refs where no safe fallback exists; malformed ledger IDs return before finalize/refund refs.
+Answerlattice App Billing Document ID Boundary: shared product-billing adapters, client active-subscription/history reads, onboarding, Knowledge Intake, and AI accounting use `src/lib/answerlattice/billingDocumentIdBoundary.ts` for strict subscription/ledger IDs and exact positive numeric tenant/store scope before refs, filters, cache keys, or writes. Whitespace-mutated, reserved, empty, path-shaped, decimal, zero, negative, unsafe, or nonnumeric identifiers fail. Store-summary fallback is accepted only when it is current and matches the requested workspace; embedded IDs cannot replace Firestore document IDs.
 
 ## Verification
 
 - `npx tsc --noEmit --incremental false`
+- `npm run verify:billing-entitlement-boundary`
+- `npm run test:answerlattice-access-user-scope`
 - Local dev route compile: `/answerlattice/billing` served HTTP 200 in Next dev logs.
 - 2026-05-21 local Razorpay test-mode check: MenuList enhancement top-up completed end to end; Answerlattice support-credit order creation reached Razorpay checkout and wrote an Answerlattice-only pending `topups` document with `productId/pId: 'AL'` and tenant/store scope keys (`tenantId/tId` + internal `storeId/sId`).

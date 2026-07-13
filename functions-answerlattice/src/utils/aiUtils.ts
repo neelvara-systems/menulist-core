@@ -1,11 +1,15 @@
 import * as functions from 'firebase-functions';
 import { extractGeminiUsageMetadata, recordEmbeddingOperation } from '../answerlattice/aiOperationAccounting';
-import { ANSWERLATTICE_EMBEDDING_MODEL, ANSWERLATTICE_EMBEDDING_OUTPUT_DIMENSIONALITY } from '../constants/ai';
 import { answerlatticeGenAIClient } from '../genAiClient';
+import {
+    ANSWERLATTICE_ACTIVE_EMBEDDING_CONFIG,
+    ANSWERLATTICE_LEGACY_EMBEDDING_CONFIG,
+    type AnswerlatticeEmbeddingVersion,
+    buildAnswerlatticeEmbeddingRequest,
+    getAnswerlatticeEmbeddingConfig,
+} from '../sharedData/answerlatticeEmbedding';
 import { tiptapToText } from './tiptapUtils';
 
-const EMBEDDING_MODEL = ANSWERLATTICE_EMBEDDING_MODEL;
-const EMBEDDING_OUTPUT_DIMENSIONALITY = ANSWERLATTICE_EMBEDDING_OUTPUT_DIMENSIONALITY;
 const ANSWERLATTICE_EMBEDDING_FAILED_CODE = 'ANSWERLATTICE_ARTICLE_EMBEDDING_FAILED';
 const ANSWERLATTICE_EMBEDDING_FAILED_MESSAGE = 'Embedding generation failed';
 
@@ -51,7 +55,7 @@ const normalizeVector = (input: unknown): number[] => {
  * Uses the Answerlattice GenAI gateway so KB regeneration and publish jobs use
  * product-owned Gemini API credentials while keeping the embedding shape stable.
  */
-export const genrateEmbedding = async (article: {
+type AnswerlatticeEmbeddingArticle = {
     id: string;
     categoryTitle: string;
     sectionTitle?: string;
@@ -60,42 +64,58 @@ export const genrateEmbedding = async (article: {
     tId?: number;
     title: string;
     content: any;
-}): Promise<number[]> => {
+};
+
+export const generateEmbeddingForVersion = async (
+    article: AnswerlatticeEmbeddingArticle,
+    version: AnswerlatticeEmbeddingVersion,
+): Promise<number[]> => {
     const logger = functions.logger;
-    const textToEmbed = [
+    const rawTextToEmbed = [
         article.categoryTitle,
         article.sectionTitle,
         article.title,
         tiptapToText(article.content),
     ].filter(Boolean).join('\n\n');
 
-    if (!textToEmbed.trim()) {
+    if (!rawTextToEmbed.trim()) {
         throw new Error('Article content is empty, cannot generate embedding.');
     }
 
     try {
-        const startedAt = Date.now();
-        const response: any = await answerlatticeGenAIClient.models.embedContent({
-            model: EMBEDDING_MODEL,
-            contents: textToEmbed,
-            config: {
-                outputDimensionality: EMBEDDING_OUTPUT_DIMENSIONALITY,
-                taskType: 'RETRIEVAL_DOCUMENT',
-            },
+        const embeddingConfig = getAnswerlatticeEmbeddingConfig(version);
+        const request = buildAnswerlatticeEmbeddingRequest({
+            content: rawTextToEmbed,
+            purpose: 'document',
+            title: article.title,
+            version,
         });
+        const textToEmbed = request.contents;
+        const startedAt = Date.now();
+        const response: any = await answerlatticeGenAIClient.models.embedContent(request);
         const embeddingValues = normalizeVector(
             response?.embeddings?.[0]?.values
             || response?.predictions?.[0]?.embeddings?.values
             || response?.predictions?.[0]?.values,
         );
 
-        if (!embeddingValues.length) {
-            throw new Error('Google GenAI returned an empty embedding.');
+        if (
+            embeddingValues.length !== embeddingConfig.outputDimensionality
+            || !embeddingValues.some((value) => Number.isFinite(value) && value !== 0)
+        ) {
+            throw new Error('Google GenAI returned an invalid embedding.');
         }
 
-        const tenantId = Number(article.tId);
-        const storeId = Number(article.sId);
-        if (Number.isFinite(tenantId) && Number.isFinite(storeId)) {
+        const tenantId = article.tId;
+        const storeId = article.sId;
+        if (
+            typeof tenantId === 'number'
+            && typeof storeId === 'number'
+            && Number.isSafeInteger(tenantId)
+            && Number.isSafeInteger(storeId)
+            && tenantId > 0
+            && storeId > 0
+        ) {
             await recordEmbeddingOperation({
                 articleId: article.id,
                 dimensions: embeddingValues.length,
@@ -105,6 +125,7 @@ export const genrateEmbedding = async (article: {
                 textToEmbed,
                 tId: tenantId,
                 usageMetadata: extractGeminiUsageMetadata(response, textToEmbed),
+                model: embeddingConfig.model,
             });
         }
 
@@ -116,5 +137,35 @@ export const genrateEmbedding = async (article: {
             ...getEmbeddingErrorContext(error),
         });
         throw new Error(ANSWERLATTICE_EMBEDDING_FAILED_MESSAGE);
+    }
+};
+
+export const genrateEmbedding = async (article: AnswerlatticeEmbeddingArticle): Promise<number[]> => (
+    generateEmbeddingForVersion(article, ANSWERLATTICE_ACTIVE_EMBEDDING_CONFIG.version)
+);
+
+export const generateEmbeddingMigrationVectors = async (
+    article: AnswerlatticeEmbeddingArticle,
+    options: { includeLegacy: boolean },
+): Promise<{ active: number[]; legacy?: number[] }> => {
+    const active = await generateEmbeddingForVersion(
+        article,
+        ANSWERLATTICE_ACTIVE_EMBEDDING_CONFIG.version,
+    );
+    if (!options.includeLegacy) return { active };
+
+    try {
+        const legacy = await generateEmbeddingForVersion(
+            article,
+            ANSWERLATTICE_LEGACY_EMBEDDING_CONFIG.version,
+        );
+        return { active, legacy };
+    } catch (error) {
+        functions.logger.warn('[Answerlattice KB] Legacy embedding dual-write failed', {
+            failureCode: 'ANSWERLATTICE_LEGACY_EMBEDDING_DUAL_WRITE_FAILED',
+            ...getEmbeddingArticleContext(article),
+            ...getEmbeddingErrorContext(error),
+        });
+        return { active };
     }
 };

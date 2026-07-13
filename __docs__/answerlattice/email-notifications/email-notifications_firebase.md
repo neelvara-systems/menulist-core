@@ -23,12 +23,14 @@ Unexpected send-route diagnostics add no Firestore reads/writes. They log stable
 
 | Operation | Collection | Count | Purpose |
 |-----------|-----------|-------|---------|
-| READ | `answerlattice_notificationLogs` | 0-1 | Idempotency check by deterministic event/reference document. Skipped when caller passes `skipDedup`. |
+| TRANSACTION READ | `answerlattice_notificationLogs` | 1 | Claim deterministic event/reference; sent or unexpired in-flight rows fail closed. |
 | READ | `answerlattice_notificationLogs` | 1 | Rate limit check (20/day per recipient) |
-| WRITE | `answerlattice_notificationLogs` | 1 | Log send result (`sent`, `failed`, or `skipped`) |
+| TRANSACTION WRITE | `answerlattice_notificationLogs` | 1 claim + 1 finalization | Lease the external effect before SMTP, then finalize only the matching claim as `sent`, `failed`, or `skipped`. |
 
-**Total per normal ticket notification:** 2 reads + 1 write.
-**Total per status/test notification:** 1 read + 1 write because those calls skip the unnecessary dedupe read.
+The ticket notification authority hardening adds one exact scoped `supportTickets/{ticketId}` Admin read after current `canManageSupport` admission. The browser no longer supplies recipient/template/reference/product/dedupe state. Claim rows may temporarily use `status: sending`, `claimId`, `claimExpiresAt`, and `modifiedAt`; they remain private Admin-written operational state and require no client rule or query-index change. Concurrent exact retries serialize to one active claim. A crashed pre-finalization sender is recoverable after the 15-minute lease; deterministic SMTP Message-ID reduces duplicate-provider ambiguity if delivery succeeds immediately before a finalization outage.
+
+**Retired pre-hardening estimate:** the former check/query/final-write path was documented as 2 reads + 1 write and no longer describes runtime truth.
+**Current ticket-send total:** current Answerlattice access reads plus one exact ticket read; one claim transaction read/write; one recipient-day rate query; and one claim-bound finalization transaction read/write. Duplicate/in-flight attempts stop after the claim transaction read. Notification tests use unique references and follow the same claim/rate/finalize contract. Cost is higher than the retired check-then-write path but prevents an authenticated email relay and concurrent duplicate SMTP effects.
 
 ## Monthly Cost Projections
 

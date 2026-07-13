@@ -43,21 +43,24 @@ When intake implementation begins, the current publish/embedding behavior remain
 
 ## Key Files
 
-### UI Components (21 files)
-- `src/components/templates/platform/KBGeneration/index.tsx` — Main dashboard (155 lines)
-- `src/components/templates/platform/KBGeneration/UploadModal.tsx` — File upload (170 lines)
+### UI Components
+- `src/components/templates/platform/KBGeneration/index.tsx` — Main dashboard
+- `src/components/templates/platform/KBGeneration/UploadModal.tsx` — File upload
 - `src/components/templates/platform/KBGeneration/ReviewModal.tsx` — Article review
 - `src/components/templates/platform/KBGeneration/jobCard/` — Job status cards (4 files)
 - `src/components/templates/platform/KBGeneration/jobHistory/` — Job history (6 files)
 - `src/components/templates/platform/KBGeneration/reconciliation/` — Article reconciliation (4 files)
 
 ### Database Layer
-- `src/database/kb-generation/jobs.ts` — 5 DAL functions (151 lines)
+- `src/database/kb-generation/jobs.ts` — scoped job reads, review writes, retry/cancel, and recoverable deletion
 
 ### Cloud Functions
-- `functions/src/logic/embedArticleWorker.ts` — Article embedding worker
-- `functions/src/logic/regenerateEmbedding.ts` — Single article re-embedding
-- Cloud Function triggers for job processing (Firestore onCreate/onUpdate)
+- `functions-answerlattice/src/logic/` — active dedicated generation, publish, embedding, task, and finalization runtime
+- `functions/src/logic/` — shared emulator/legacy compatibility mirror
+- `embeddingSourceBoundary.ts` — canonical embedding input and source hash
+- `src/data/shared/answerlatticeEmbedding.ts` plus both Functions mirrors — version-locked model, field, dimensions, cache version, and provider request format
+- `functions-answerlattice/src/answerlattice/embeddingV2Migration.ts` — bounded resumable v2 backfill owned by the existing master scheduler
+- `kbPublishingLifecycle.ts` — deterministic task dispatch and durable set-based finalization
 
 ### Types
 - `src/types/knowledgeBase.ts` — IngestionJob, IngestionJobCategory, IngestionJobArticle, etc.
@@ -85,6 +88,8 @@ Upload Files → Create Job (pending)
 
 | Date | Version | Change |
 |------|---------|--------|
-| 2026-05-31 | 1.1.0 | Added successor architecture note pointing to Knowledge Intake Command Center docs |
+| 2026-07-13 | 1.4.0 | Migrated active retrieval to `gemini-embedding-2`/`embeddingV2`, added versioned query-cache isolation, bounded master-scheduler backfill, and temporary legacy dual-write rollback coverage. |
+| 2026-07-12 | 1.3.0 | Aligned dedicated/shared publish and embedding lifecycle, strict durable sets, source-hash reuse, deterministic task identity, and recoverable cleanup docs to runtime truth. |
 | 2026-05-31 | 1.2.0 | Clarified that Knowledge Intake must publish through existing KB/FAQ/search/cache/embedding runtime paths rather than a parallel intake runtime. |
+| 2026-05-31 | 1.1.0 | Added successor architecture note pointing to Knowledge Intake Command Center docs |
 | 2026-03-02 | 1.0.0 | Initial forensic documentation — 21 UI files, 5 DAL functions, 2 Cloud Functions |

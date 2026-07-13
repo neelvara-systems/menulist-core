@@ -1,7 +1,8 @@
 /**
  * Centralized Gemini AI Client with Multi-Key Rotation
  * 
- * All frontend API routes import `genAIClient` from this file.
+ * MenuList/default app API routes import `genAIClient` from this file.
+ * Separate products create scoped gateways with their own credential pools.
  * The gateway transparently handles:
  * - Multi-key rotation on 429 (rate limit) errors
  * - Exponential backoff retry for server errors
@@ -23,6 +24,6 @@
  */
 
 import { createAIGateway } from "./aiGateway";
-import { keyManager } from "./keyManager";
+import { KeyManager } from "./keyManager";
 
-export const genAIClient = createAIGateway(keyManager);
+export const genAIClient = createAIGateway(new KeyManager());

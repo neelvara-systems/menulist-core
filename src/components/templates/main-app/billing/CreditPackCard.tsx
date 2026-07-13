@@ -1,6 +1,8 @@
 import { AIEnhancementPack, Currency } from '@data/common';
+import { getContentCreditOutcomeExamples } from '@data/shared/contentCreditPolicy';
 import { formatCurrency } from '@util/formatters';
 import { Button, Card, Flex, Typography, theme } from 'antd';
+import { useTranslations } from 'next-intl';
 import React from 'react';
 import { LuCoins } from 'react-icons/lu';
 
@@ -14,8 +16,10 @@ type CreditPackCardProps = {
 
 const CreditPackCard: React.FC<CreditPackCardProps> = ({ pack, currency, handleCreditsPurchase }) => {
     const { token } = theme.useToken();
+    const t = useTranslations('Billing');
 
     const price = pack[`price${currency}`].price;
+    const examples = getContentCreditOutcomeExamples(pack.creditAmount);
 
     const planStyles: {
         [key: string]: {
@@ -107,6 +111,13 @@ const CreditPackCard: React.FC<CreditPackCardProps> = ({ pack, currency, handleC
                 <Flex vertical align='center' justify='center'>
                     <Text strong style={{ fontSize: 24, color: currentStyle.color }}>{pack.name}</Text>
                     <Text type="secondary">{pack.description || 'One-time purchase. No expiry.'}</Text>
+                    <Text strong style={{ marginTop: 10 }}>{t('creditPackAmount', { credits: pack.creditAmount })}</Text>
+                    <Text type="secondary">
+                        {t('creditPackExample', {
+                            descriptions: examples.descriptionRewrites,
+                            images: examples.generatedMenuImages,
+                        })}
+                    </Text>
                 </Flex>
                 <Title level={3} style={{ margin: '12px 0' }}>
                     {price !== null ? formatCurrency(price, currency) : 'N/A'}

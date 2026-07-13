@@ -20,8 +20,8 @@ export interface NormalizedMetrics {
   insights?: {
     summary?: string;
     recommendations?: string[];
-    themes?: any[];
-    trends?: any[];
+    themes?: unknown[];
+    trends?: unknown[];
   };
   metadata: {
     source: 'realtime' | 'aggregated' | 'hybrid';
@@ -36,7 +36,7 @@ export interface NormalizedChartData {
   date: string;
   count: number;
   label?: string;
-  [key: string]: any; // Allow additional dynamic properties
+  [key: string]: unknown;
 }
 
 export interface NormalizedKnowledgeGap {
@@ -55,6 +55,76 @@ export interface NormalizedTopQuestion {
 }
 
 type AnalyticsNormalizerLogContext = Record<string, boolean | number | string | null | undefined>;
+type UnknownRecord = Record<string, unknown>;
+
+const UNSAFE_NORMALIZER_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+const DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+const isRecord = (value: unknown): value is UnknownRecord => (
+  Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+);
+
+const normalizeDateKey = (value: unknown): string | null => {
+  if (typeof value !== 'string' || !DATE_KEY_PATTERN.test(value)) return null;
+  const parsed = new Date(`${value}T00:00:00.000Z`);
+  return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value
+    ? value
+    : null;
+};
+
+const normalizeNonNegativeNumber = (value: unknown): number | null => (
+  typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null
+);
+
+const normalizeText = (value: unknown, maxLength: number): string | null => {
+  if (typeof value !== 'string') return null;
+  const normalized = value
+    .replace(/[\u0000-\u001f\u007f]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return normalized ? normalized.slice(0, maxLength) : null;
+};
+
+const normalizeIdentifier = (value: unknown, maxLength: number): string | null => {
+  if (typeof value !== 'string' && typeof value !== 'number') return null;
+  if (typeof value === 'number' && !Number.isSafeInteger(value)) return null;
+  return normalizeText(String(value), maxLength);
+};
+
+const normalizeTextArray = (value: unknown, maxItems: number, maxLength: number): string[] => (
+  Array.isArray(value)
+    ? value.slice(0, maxItems).flatMap((entry) => {
+      const normalized = normalizeText(entry, maxLength);
+      return normalized ? [normalized] : [];
+    })
+    : []
+);
+
+const toTimestampMillis = (value: unknown): number | null => {
+  if (value instanceof Date) return Number.isFinite(value.getTime()) ? value.getTime() : null;
+  if (!isRecord(value)) return null;
+  if (typeof value.toDate === 'function') {
+    try {
+      const date = (value.toDate as () => unknown)();
+      return date instanceof Date && Number.isFinite(date.getTime()) ? date.getTime() : null;
+    } catch {
+      return null;
+    }
+  }
+  if (typeof value.seconds === 'number' && Number.isSafeInteger(value.seconds)) {
+    const millis = value.seconds * 1000;
+    return Number.isFinite(millis) ? millis : null;
+  }
+  return null;
+};
+
+const copySafeRecord = (value: UnknownRecord): UnknownRecord => {
+  const copied: UnknownRecord = {};
+  Object.entries(value).forEach(([key, entry]) => {
+    if (!UNSAFE_NORMALIZER_KEYS.has(key)) copied[key] = entry;
+  });
+  return copied;
+};
 
 const getAnalyticsNormalizerValidationContext = (metrics: unknown): AnalyticsNormalizerLogContext => {
   const record = metrics && typeof metrics === 'object'
@@ -83,42 +153,65 @@ const getAnalyticsNormalizerValidationContext = (metrics: unknown): AnalyticsNor
  * Normalize Firestore document to consistent metrics format
  */
 export function normalizeFirestoreDoc(
-  doc: any,
+  doc: unknown,
   source: 'realtime' | 'aggregated' = 'aggregated'
 ): NormalizedMetrics {
   const today = new Date().toISOString().split('T')[0];
-  const docDate = doc.date || today;
+  const record = isRecord(doc) ? doc : {};
+  const docDate = normalizeDateKey(record.date) || today;
+  const metric = (key: string) => normalizeNonNegativeNumber(record[key]) ?? 0;
+  const summary = normalizeText(isRecord(record.insights) ? record.insights.summary : undefined, 20_000);
+  const recommendations = normalizeTextArray(
+    isRecord(record.insights) ? record.insights.recommendations : undefined,
+    20,
+    1_000,
+  );
+  const insightsRecord = isRecord(record.insights) ? record.insights : null;
+  const insights = summary
+    || recommendations.length > 0
+    || Array.isArray(insightsRecord?.themes)
+    || Array.isArray(insightsRecord?.trends)
+    ? {
+      ...(summary ? { summary } : {}),
+      ...(recommendations.length > 0 ? { recommendations } : {}),
+      ...(Array.isArray(insightsRecord?.themes) ? { themes: insightsRecord.themes.slice(0, 100) } : {}),
+      ...(Array.isArray(insightsRecord?.trends) ? { trends: insightsRecord.trends.slice(0, 100) } : {}),
+    }
+    : undefined;
+  const tenantId = normalizeIdentifier(record.tId, 120) || '';
+  const storeId = normalizeIdentifier(record.sId, 120) || '';
+  const id = normalizeIdentifier(record.id, 500) || `${tenantId}_${storeId}_${docDate}`;
   
   return {
-    id: doc.id || `${doc.tId}_${doc.sId}_${docDate}`,
+    id,
     date: docDate,
     metrics: {
       // Core metrics with safe fallbacks
-      [METRIC_KEYS.TOTAL_CHATS]: Number(doc.totalChats) || 0,
-      [METRIC_KEYS.TODAY_CHATS]: Number(doc.todayChats) || 0,
-      [METRIC_KEYS.SATISFACTION_RATE]: Number(doc.satisfactionRate) || 0,
-      [METRIC_KEYS.AVG_MESSAGES]: Number(doc.avgMessagesPerChat) || 0,
-      [METRIC_KEYS.REGENERATION_RATE]: Number(doc.regenerationRate) || 0,
+      [METRIC_KEYS.TOTAL_CHATS]: metric('totalChats'),
+      [METRIC_KEYS.TODAY_CHATS]: metric('todayChats'),
+      [METRIC_KEYS.SATISFACTION_RATE]: metric('satisfactionRate'),
+      [METRIC_KEYS.AVG_MESSAGES]: metric('avgMessagesPerChat'),
+      [METRIC_KEYS.REGENERATION_RATE]: metric('regenerationRate'),
       
       // Feedback metrics
-      [METRIC_KEYS.POSITIVE_FEEDBACK]: Number(doc.positiveFeedback) || 0,
-      [METRIC_KEYS.NEGATIVE_FEEDBACK]: Number(doc.negativeFeedback) || 0,
-      [METRIC_KEYS.TOTAL_FEEDBACK]: Number(doc.totalFeedback) || 0,
+      [METRIC_KEYS.POSITIVE_FEEDBACK]: metric('positiveFeedback'),
+      [METRIC_KEYS.NEGATIVE_FEEDBACK]: metric('negativeFeedback'),
+      [METRIC_KEYS.TOTAL_FEEDBACK]: metric('totalFeedback'),
       
       // Mode metrics
-      [METRIC_KEYS.QNA_CHATS]: Number(doc.qnaChats) || 0,
-      [METRIC_KEYS.ASSISTANT_CHATS]: Number(doc.assistantChats) || 0,
+      [METRIC_KEYS.QNA_CHATS]: metric('qnaChats'),
+      [METRIC_KEYS.ASSISTANT_CHATS]: metric('assistantChats'),
       
       // Quality metrics
-      [METRIC_KEYS.TOTAL_REGENERATIONS]: Number(doc.totalRegenerations) || 0,
-      [METRIC_KEYS.TOTAL_MESSAGES]: Number(doc.totalMessages) || 0,
+      [METRIC_KEYS.TOTAL_REGENERATIONS]: metric('totalRegenerations'),
+      [METRIC_KEYS.TOTAL_MESSAGES]: metric('totalMessages'),
     },
-    insights: doc.insights || undefined,
+    ...(insights ? { insights } : {}),
     metadata: {
       source,
-      lastUpdated: Date.now(),
-      tenantId: String(doc.tId || ''),
-      storeId: String(doc.sId || ''),
+      lastUpdated: toTimestampMillis(record.lastUpdated ?? record.modifiedOn) ?? Date.now(),
+      tenantId,
+      storeId,
       isToday: docDate === today,
     },
   };
@@ -151,11 +244,14 @@ export function aggregateMetrics(
   }
   
   const aggregated: Record<string, number> = {};
+  const observedCounts: Record<string, number> = {};
   
   // Sum all metrics
   metricsList.forEach(metrics => {
     Object.entries(metrics.metrics).forEach(([key, value]) => {
+      if (!Number.isFinite(value)) return;
       aggregated[key] = (aggregated[key] || 0) + value;
+      observedCounts[key] = (observedCounts[key] || 0) + 1;
     });
   });
   
@@ -168,7 +264,7 @@ export function aggregateMetrics(
   
   averageKeys.forEach(key => {
     if (aggregated[key] !== undefined) {
-      aggregated[key] = Math.round(aggregated[key] / metricsList.length);
+      aggregated[key] = Math.round(aggregated[key] / observedCounts[key]);
     }
   });
   
@@ -179,45 +275,70 @@ export function aggregateMetrics(
  * Normalize chart data for Recharts
  */
 export function normalizeChartData(
-  data: any[],
+  data: unknown,
   dateKey: string = 'date',
   valueKey: string = 'count'
 ): NormalizedChartData[] {
-  return data.map(item => ({
-    date: item[dateKey] || new Date().toISOString().split('T')[0],
-    count: Number(item[valueKey]) || 0,
-    label: item.label || undefined,
-    ...item, // Preserve other properties
-  }));
+  if (!Array.isArray(data)) return [];
+  const today = new Date().toISOString().split('T')[0];
+  return data.flatMap((item) => {
+    if (!isRecord(item)) return [];
+    const normalized: NormalizedChartData = {
+      ...copySafeRecord(item),
+      date: normalizeDateKey(item[dateKey]) || today,
+      count: normalizeNonNegativeNumber(item[valueKey]) ?? 0,
+    };
+    const label = normalizeText(item.label, 500);
+    if (label) normalized.label = label;
+    else delete normalized.label;
+    return [normalized];
+  });
 }
 
 /**
  * Normalize knowledge gaps data
  */
 export function normalizeKnowledgeGaps(
-  gaps: any[]
+  gaps: unknown,
 ): NormalizedKnowledgeGap[] {
-  return gaps.map(gap => ({
-    question: String(gap.question || '').trim(),
-    count: Number(gap.count) || 0,
-    examples: Array.isArray(gap.examples) ? gap.examples.slice(0, 3) : [],
-    severity: determineSeverity(gap.count),
-    lastOccurrence: gap.lastOccurrence || undefined,
-  })).filter(gap => gap.question.length > 0);
+  if (!Array.isArray(gaps)) return [];
+  return gaps.flatMap((gap) => {
+    if (!isRecord(gap)) return [];
+    const question = normalizeText(gap.question, 500);
+    const count = normalizeNonNegativeNumber(gap.count);
+    if (!question || count === null) return [];
+    const lastOccurrence = normalizeDateKey(gap.lastOccurrence);
+    return [{
+      question,
+      count,
+      examples: normalizeTextArray(gap.examples, 3, 1_000),
+      severity: determineSeverity(count),
+      ...(lastOccurrence ? { lastOccurrence } : {}),
+    }];
+  });
 }
 
 /**
  * Normalize top questions data
  */
 export function normalizeTopQuestions(
-  questions: any[]
+  questions: unknown,
 ): NormalizedTopQuestion[] {
-  return questions.map(q => ({
-    question: String(q.question || '').trim(),
-    count: Number(q.count) || 0,
-    category: q.category || undefined,
-    lastAsked: q.lastAsked || undefined,
-  })).filter(q => q.question.length > 0);
+  if (!Array.isArray(questions)) return [];
+  return questions.flatMap((questionRecord) => {
+    if (!isRecord(questionRecord)) return [];
+    const question = normalizeText(questionRecord.question, 500);
+    const count = normalizeNonNegativeNumber(questionRecord.count);
+    if (!question || count === null) return [];
+    const category = normalizeText(questionRecord.category, 120);
+    const lastAsked = normalizeDateKey(questionRecord.lastAsked);
+    return [{
+      question,
+      count,
+      ...(category ? { category } : {}),
+      ...(lastAsked ? { lastAsked } : {}),
+    }];
+  });
 }
 
 // ================================================================
@@ -227,9 +348,10 @@ export function normalizeTopQuestions(
 /**
  * Determine severity based on count
  */
-function determineSeverity(count: number): 'low' | 'medium' | 'high' {
-  if (count >= 10) return 'high';
-  if (count >= 5) return 'medium';
+function determineSeverity(count: unknown): 'low' | 'medium' | 'high' {
+  const normalizedCount = normalizeNonNegativeNumber(count) ?? 0;
+  if (normalizedCount >= 10) return 'high';
+  if (normalizedCount >= 5) return 'medium';
   return 'low';
 }
 
@@ -275,23 +397,30 @@ export function formatMetricValue(
  * Validate normalized metrics structure
  */
 export function validateNormalizedMetrics(
-  metrics: NormalizedMetrics
+  metrics: unknown,
 ): boolean {
   try {
+    if (!isRecord(metrics)) return false;
     // Check required fields
     if (!metrics.id || !metrics.date || !metrics.metrics || !metrics.metadata) {
       return false;
     }
     
     // Check metadata
-    if (!metrics.metadata.tenantId || !metrics.metadata.storeId) {
+    if (!isRecord(metrics.metadata) || !metrics.metadata.tenantId || !metrics.metadata.storeId) {
       return false;
     }
     
     // Check metrics object
-    if (typeof metrics.metrics !== 'object') {
+    if (!isRecord(metrics.metrics)) {
       return false;
     }
+
+    if (Object.values(metrics.metrics).some((value) => normalizeNonNegativeNumber(value) === null)) return false;
+    if (!normalizeDateKey(metrics.date)) return false;
+    if (typeof metrics.id !== 'string' || !metrics.id.trim()) return false;
+    if (typeof metrics.metadata.lastUpdated !== 'number' || !Number.isFinite(metrics.metadata.lastUpdated)) return false;
+    if (!['realtime', 'aggregated', 'hybrid'].includes(String(metrics.metadata.source))) return false;
     
     return true;
   } catch (error) {
@@ -304,11 +433,11 @@ export function validateNormalizedMetrics(
  * Safe get metric value with fallback
  */
 export function getMetricValue(
-  metrics: NormalizedMetrics,
+  metrics: unknown,
   key: string,
   fallback: number = 0
 ): number {
-  return metrics.metrics[key] !== undefined 
-    ? Number(metrics.metrics[key]) 
-    : fallback;
+  const safeFallback = Number.isFinite(fallback) ? fallback : 0;
+  if (!isRecord(metrics) || !isRecord(metrics.metrics)) return safeFallback;
+  return normalizeNonNegativeNumber(metrics.metrics[key]) ?? safeFallback;
 }

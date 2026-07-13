@@ -5,6 +5,8 @@
 **Audit Date:** January 19, 2026  
 **Auditor:** Lead Architect (Cascade)
 
+> **Launch boundary:** Not current launch certification or deploy approval. This document records disabled/reserved GBP Sync evidence only: `ENABLE_GBP_SYNC` remains false, token operations fail closed with `GBP_TOKEN_STORE_DISABLED`, and manual Google handoff is the only current owner path. Current implementation or release approval still requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md), `npm run verify:production-readiness-local`, `npm run verify:public-business-truth`, Google Business Profile API access, OAuth and target-secret setup, provider smoke, scoped deploy evidence, browser/device QA, and production-host smoke.
+
 ---
 
 ## Summary
@@ -77,5 +79,6 @@ _None — all 4 points were valid improvements._
 
 ---
 
-**AUDIT STATUS:** COMPLETE ✅  
-**NEXT STEP:** Stage 2 — Apply doc updates
+**HISTORICAL AUDIT STATUS:** The January 2026 docs-only review was completed and its accepted edits are retained as prior documentation evidence. It does not authorize implementation.
+
+**CURRENT STATUS:** GBP Sync remains disabled; there is no current implementation next step until the launch-boundary prerequisites above are satisfied.

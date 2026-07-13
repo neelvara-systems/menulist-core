@@ -1,18 +1,65 @@
 import { FirestoreSubscriptionDoc } from "@type/razorpay";
 import { Timestamp } from "firebase/firestore";
 
-export const getGracePeriodInfo = (pastDueTimestamp: Timestamp | null | undefined, graceDays: number = 7) => {
-    if (!pastDueTimestamp) return {
+const toValidDate = (value: unknown): Date | null => {
+    if (value instanceof Date) {
+        return Number.isFinite(value.getTime()) ? value : null;
+    }
+    if (!value || typeof value !== 'object') return null;
+
+    try {
+        const toDate = (value as { toDate?: unknown }).toDate;
+        if (typeof toDate === 'function') {
+            const date = toDate.call(value);
+            return date instanceof Date && Number.isFinite(date.getTime()) ? date : null;
+        }
+        const seconds = Number((value as { seconds?: unknown }).seconds);
+        if (Number.isFinite(seconds)) {
+            const date = new Date(seconds * 1000);
+            return Number.isFinite(date.getTime()) ? date : null;
+        }
+    } catch {
+        return null;
+    }
+
+    return null;
+};
+
+const toNonNegativeSafeInteger = (value: unknown): number => {
+    const numericValue = Number(value);
+    if (!Number.isFinite(numericValue) || numericValue < 0) return 0;
+    const integerValue = Math.floor(numericValue);
+    return Number.isSafeInteger(integerValue) ? integerValue : 0;
+};
+
+export const getGracePeriodInfo = (
+    pastDueTimestamp: unknown,
+    graceDays: number = 7,
+    now: Date = new Date(),
+) => {
+    const pastDueDate = toValidDate(pastDueTimestamp);
+    const normalizedGraceDays = Number(graceDays);
+    if (
+        !pastDueDate
+        || !Number.isFinite(normalizedGraceDays)
+        || normalizedGraceDays < 0
+        || !Number.isFinite(now.getTime())
+    ) return {
         remainingDays: 0,
         graceEndsDate: null,
         graceEndsTimestamp: null,
+        hasKnownGracePeriod: false,
     };
 
-    const pastDueDate = pastDueTimestamp.toDate();
-    const graceEndsDate = new Date(pastDueDate.getTime() + graceDays * 24 * 60 * 60 * 1000);
+    const graceEndsDate = new Date(pastDueDate.getTime() + normalizedGraceDays * 24 * 60 * 60 * 1000);
+    if (!Number.isFinite(graceEndsDate.getTime())) return {
+        remainingDays: 0,
+        graceEndsDate: null,
+        graceEndsTimestamp: null,
+        hasKnownGracePeriod: false,
+    };
     const graceEndsTimestamp = Timestamp.fromDate(graceEndsDate);
 
-    const now = new Date();
     const remainingMs = graceEndsDate.getTime() - now.getTime();
     const remainingDays = Math.max(0, Math.ceil(remainingMs / (1000 * 60 * 60 * 24)));
 
@@ -20,15 +67,15 @@ export const getGracePeriodInfo = (pastDueTimestamp: Timestamp | null | undefine
         graceEndsDate,
         graceEndsTimestamp,
         remainingDays,
+        hasKnownGracePeriod: true,
     };
 };
 
-export const getGracePeriodDisplayInfo = (pastDueTimestamp: Timestamp | null | undefined, graceDays: number = 7) => {
+export const getGracePeriodDisplayInfo = (pastDueTimestamp: unknown, graceDays: number = 7) => {
     const gracePeriodInfo = getGracePeriodInfo(pastDueTimestamp, graceDays);
-    if (!pastDueTimestamp || !gracePeriodInfo.graceEndsTimestamp) {
+    if (!gracePeriodInfo.hasKnownGracePeriod || !gracePeriodInfo.graceEndsTimestamp) {
         return {
             ...gracePeriodInfo,
-            hasKnownGracePeriod: false,
             dayLabel: '',
             title: 'Payment recovery',
             summary: 'Grace period details unavailable.',
@@ -58,8 +105,9 @@ export function hasValidSubscriptionAccess(sub: FirestoreSubscriptionDoc | null)
     if (sub.status === 'pending' || sub.status === 'expired' || sub.status === 'completed') return false;
 
     // Paused subs with expired billing cycle → no access (support recovery from billing page)
-    if (sub.status === 'paused' && sub.cycleEndDate) {
-        return sub.cycleEndDate.toMillis() >= Date.now();
+    if (sub.status === 'paused') {
+        const cycleEndDate = toValidDate(sub.cycleEndDate);
+        return Boolean(cycleEndDate && cycleEndDate.getTime() >= Date.now());
     }
 
     // For active/past_due/cancelled — the DAL already ensures cycleEndDate >= now
@@ -73,16 +121,16 @@ export function hasValidSubscriptionAccess(sub: FirestoreSubscriptionDoc | null)
  */
 export function calculateProration(
     sub: FirestoreSubscriptionDoc,
+    now: Date = new Date(),
 ): { proratedAmount: number; fullCycleAmount: number; daysRemaining: number; totalDays: number } {
-    const amount = sub.amount || 0;
-    const now = new Date();
+    const amount = toNonNegativeSafeInteger(sub.amount);
+    const cycleStart = toValidDate(sub.cycleStartDate);
+    const cycleEnd = toValidDate(sub.cycleEndDate);
 
-    if (!sub.cycleEndDate || !sub.cycleStartDate) {
+    if (!cycleStart || !cycleEnd || !Number.isFinite(now.getTime()) || cycleEnd <= cycleStart) {
         return { proratedAmount: amount, fullCycleAmount: amount, daysRemaining: 0, totalDays: 30 };
     }
 
-    const cycleStart = sub.cycleStartDate.toDate();
-    const cycleEnd = sub.cycleEndDate.toDate();
     const totalDays = Math.max(1, Math.ceil((cycleEnd.getTime() - cycleStart.getTime()) / (1000 * 60 * 60 * 24)));
     const daysRemaining = Math.max(0, Math.ceil((cycleEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
     const proratedAmount = Math.round((amount * daysRemaining) / totalDays);
@@ -90,33 +138,50 @@ export function calculateProration(
     return { proratedAmount, fullCycleAmount: amount, daysRemaining, totalDays };
 }
 
-export function calculateRemainingCredits(activeSubscription: FirestoreSubscriptionDoc) {
-
-    const { cycleEndDate, monthlyCreditsAllowance, monthlyCredits, topUpCredits } = activeSubscription;
-
-    if (!activeSubscription) return { unusedThisMonth: 0, monthsRemaining: 0, monthlyCreditsAllowance: 0, totalRemainingCredits: topUpCredits, };
+export function calculateRemainingCredits(
+    activeSubscription: FirestoreSubscriptionDoc | null | undefined,
+    today: Date = new Date(),
+): {
+    monthlyCreditsAllowance: number;
+    monthsRemaining: number;
+    totalRemainingCredits: number;
+    unusedThisMonth: number;
+} {
+    if (!activeSubscription) {
+        return { unusedThisMonth: 0, monthsRemaining: 0, monthlyCreditsAllowance: 0, totalRemainingCredits: 0 };
+    }
+    const monthlyCreditsAllowance = toNonNegativeSafeInteger(activeSubscription.monthlyCreditsAllowance);
+    const monthlyCredits = toNonNegativeSafeInteger(activeSubscription.monthlyCredits);
+    const topUpCredits = toNonNegativeSafeInteger(activeSubscription.topUpCredits);
 
     if (activeSubscription.planType === "MONTH") {
-        return { unusedThisMonth: monthlyCredits, totalRemainingCredits: (monthlyCredits + topUpCredits) };
+        return {
+            unusedThisMonth: monthlyCredits,
+            monthsRemaining: 0,
+            monthlyCreditsAllowance,
+            totalRemainingCredits: monthlyCredits + topUpCredits,
+        };
     }
 
-    const end = new Date(cycleEndDate.seconds * 1000);
-    const today = new Date();
+    const end = toValidDate(activeSubscription.cycleEndDate);
+    if (!end || !Number.isFinite(today.getTime())) {
+        return { unusedThisMonth: 0, monthsRemaining: 0, monthlyCreditsAllowance: 0, totalRemainingCredits: topUpCredits };
+    }
 
     // If subscription is already expired
     if (today > end) return { unusedThisMonth: 0, monthsRemaining: 0, monthlyCreditsAllowance: 0, totalRemainingCredits: topUpCredits, };
 
     // Calculate months remaining (including current month if time left)
-    let monthsRemaining = (end.getFullYear() - today.getFullYear()) * 12 +
-        (end.getMonth() - today.getMonth());
+    let monthsRemaining = (end.getUTCFullYear() - today.getUTCFullYear()) * 12 +
+        (end.getUTCMonth() - today.getUTCMonth());
 
     // If we are before or on the same day as cycleEndDate day → include current month
-    if (today.getDate() <= end.getDate()) {
+    if (today.getUTCDate() <= end.getUTCDate()) {
         monthsRemaining += 1;
     }
 
     // Remaining credits in current month
-    const unusedThisMonth = Math.max(monthlyCredits, 0);
+    const unusedThisMonth = monthlyCredits;
 
     // Last month case → only unused credits
     if (monthsRemaining <= 1) {

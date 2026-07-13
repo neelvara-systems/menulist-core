@@ -1,7 +1,7 @@
 # Answerlattice — External Workflow Integrations — Spec
 
-> **Version:** 1.1.1
-> **Last Updated:** 2026-05-24
+> **Version:** 1.2.0
+> **Last Updated:** 2026-07-13
 > **Audience:** CEO / PM / Clients
 > **Feature Flag:** `ENABLE_ANSWERLATTICE_WORKFLOW_INTEGRATIONS`
 
@@ -32,7 +32,7 @@ Today, these events are visible only inside the Answerlattice governance dashboa
 | Deliver events to configured endpoints | Orchestrate multi-step workflows |
 | Log delivery success/failure | Sync data bidirectionally |
 | Allow founders to filter which events go where | Build automation builders (Zapier-style) |
-| Retry failed deliveries (3 attempts) | Maintain external tool state |
+| Retry explicit provider 429/5xx failures within 3 total attempts | Maintain external tool state |
 
 This keeps the system small, durable, and aligned with the 3-year architecture freeze.
 
@@ -44,21 +44,22 @@ Only high-value governance events. Not raw signal noise.
 
 | Event Type | Source | When | Priority |
 |-----------|--------|------|----------|
-| `drift_detected` | Nightly batch (Step 1) | Canonical answer flagged with drift | High |
-| `mutation_proposed` | Nightly batch (Step 3/5) | Signal cluster → new mutation proposal created | High |
-| `knowledge_gap_detected` | Nightly batch (Step 5) | 5+ recurring fallbacks for same entity, no canonical answer | High |
+| `drift_detected` | Adapter-supported schema; no active direct producer | Reserved for an explicitly wired controlled flow; nightly summary carries aggregate drift counts | High |
+| `mutation_proposed` | Adapter-supported schema; no active direct producer | Reserved for an explicitly wired controlled flow; nightly summary carries proposal counts | High |
+| `knowledge_gap_detected` | Adapter-supported schema; no active direct producer | Reserved for an explicitly wired controlled flow | High |
 | `coverage_drop` | Nightly batch (Step 4) | Canonical coverage KPI drops below 60% | Critical |
-| `article_approved` | Governance UI action | Mutation proposal approved → canonical answer created/updated | Medium |
+| `article_approved` | Adapter-supported schema; no active direct producer | Reserved for an explicitly wired controlled flow | Medium |
 | `ai_failure_recurring` | Nightly batch analysis | Tenant has repeated AI-generation/draft failures in a nightly run | High |
 | `nightly_summary` | End of nightly batch | Summary of all nightly actions (drift, proposals, coverage) | Low |
+
+Current automated production emissions are `coverage_drop`, `ai_failure_recurring`, and `nightly_summary`, plus the owner-controlled test event. The other schemas remain formatter/filter contracts only and must not be marketed as live direct notifications until a producer is wired and tested.
 
 **Event payload structure (universal):**
 
 ```json
 {
-  "eventId": "evt_abc123",
   "eventType": "drift_detected",
-  "timestamp": 1741521600,
+  "createdAt": "Firestore Timestamp",
   "tId": 14,
   "sId": 15,
   "severity": "high",
@@ -73,7 +74,7 @@ Only high-value governance events. Not raw signal noise.
 }
 ```
 
-All payloads include: `eventId`, `eventType`, `timestamp`, `tId`, `sId`, `severity`. The `payload` object varies by event type.
+The Firestore document ID is the event ID; it is not duplicated as an `eventId` field. Every event stores `pId: 'AL'`, `eventType`, `createdAt`, `tId`, `sId`, `severity`, `payload`, and lifecycle `status`. Deterministic nightly emissions also store a payload-bound idempotency fingerprint. The `payload` object varies by event type.
 
 ---
 
@@ -89,7 +90,7 @@ All payloads include: `eventId`, `eventType`, `timestamp`, `tId`, `sId`, `severi
 - Header: emoji + event title
 - Section: key details (entity, drift class, coverage %)
 - Context: severity badge + timestamp
-- Action button: link to Answerlattice governance dashboard
+- Fixed fallback notification text for clients that do not render Block Kit
 
 **Example notification:**
 ```
@@ -102,7 +103,7 @@ Severity: HIGH | 2026-03-09 03:00 UTC
 
 ### 4.2 — Email (Tier A — Must Have)
 
-**Purpose:** Universal fallback for founders not using Slack. Also weekly digest delivery.
+**Purpose:** Universal fallback for founders not using Slack. Also nightly digest delivery.
 
 **Delivery method:** SMTP (reuses existing nodemailer infrastructure from lifecycle messaging).
 
@@ -144,7 +145,7 @@ Severity: HIGH | 2026-03-09 03:00 UTC
 
 > "As a SaaS founder, I want to receive a Slack notification when Answerlattice detects drift in a canonical answer, so I can review and fix it without logging into the Answerlattice dashboard."
 
-> "As a SaaS founder, I want to receive a weekly email digest summarizing all Answerlattice governance activity, so I have passive awareness without active monitoring."
+> "As a SaaS founder, I want to receive a nightly email digest when the scheduler records governance activity, so I have passive awareness without active monitoring."
 
 > "As a SaaS founder, I want to configure which events go to which integration, so I'm not overwhelmed with notifications I don't care about."
 
@@ -189,13 +190,13 @@ When a founder enables an integration:
 | Guardrail | Implementation |
 |-----------|---------------|
 | Rate limiting | Max 20 events per minute per integration per tenant |
-| Retry cap | 3 retries with exponential backoff (1s, 4s, 16s), then drop |
-| Secret storage | Raw webhook/token config stays server-side and is never returned by owner-facing APIs |
+| Retry cap | 3 total adapter attempts (initial + delays of 1s and 4s) only for explicit retryable HTTP 429/5xx responses |
+| Secret storage | Raw webhook/token config stays server-side; email runtime uses Answerlattice-scoped `ANSWERLATTICE_SMTP_*` secrets |
 | Payload sanitization | No PII in event payloads (no user emails, no ticket content) |
 | Circuit breaker | After 10 consecutive failures, disable integration + alert founder |
 | Delivery logging | Every attempt logged (success/failure/retry count/error) |
 | Retention | Events, delivery logs, and rate counters use Firestore TTL |
-| Cost cap | Nightly emits at most one digest plus one critical coverage event per active tenant by default |
+| Cost cap | Nightly emits at most one digest, one critical coverage event, and one recurring-AI-failure event per active tenant |
 | Feature flag | `ENABLE_ANSWERLATTICE_WORKFLOW_INTEGRATIONS` — enabled with caps, circuit breaker, and sanitized delivery |
 
 ---
@@ -210,7 +211,7 @@ Per Answerlattice Non-Goals Charter (doctrine/02):
 - ❌ Notion sync engines
 - ❌ Workflow automation builder (trigger → condition → action chains)
 - ❌ Custom webhook endpoints for arbitrary URLs (v1 — only known adapters)
-- ❌ Event replay UI (events are append-only, debugging via logs)
+- ❌ Event replay UI (event facts remain immutable while lifecycle status advances; debugging uses delivery logs)
 
 ---
 
@@ -240,6 +241,7 @@ Per Answerlattice Non-Goals Charter (doctrine/02):
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-07-13 | 1.2.0 | Aligned active producer coverage, event identity, three-total-attempt retry semantics, partial-delivery failure, circuit-probe serialization, and separate-project SMTP secret requirements with runtime. |
 | 2026-05-24 | 1.1.1 | Aligned repeated-AI-failure trigger wording and daily adapter delivery caps with runtime. |
 | 2026-05-24 | 1.1.0 | Updated production scope to Slack/email, added test notification, health summary, TTL, digest-first event caps, and controlled-rollout status for issue trackers. |
 | 2026-03-09 | 1.0.0 | Initial spec from ChatGPT analysis + codebase audit + web research |

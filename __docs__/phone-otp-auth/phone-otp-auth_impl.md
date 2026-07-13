@@ -10,10 +10,10 @@
 6. `createPhoneOtpChallenge()` normalizes to E.164, stores a server-only challenge with country metadata, and sends WhatsApp OTP.
 7. Owner submits code to `POST /api/auth/phone-otp/verify`.
 8. The verify route rate-limits by IP before reading the body, rejects bodies above 1KB, validates, then rate-limits by challenge hash.
-9. `verifyPhoneOtpChallenge()` checks TTL, attempts, and HMAC hash.
-10. The helper reuses or creates a `users` profile and stores a one-time login token.
+9. `verifyPhoneOtpChallenge()` checks TTL, attempts, and HMAC hash in a transaction that returns an outcome; invalid/expired/too-many errors are thrown only after the transaction commits its status and attempt writes.
+10. A valid code reserves the challenge with a one-minute operation lease before user resolution. The helper then reuses or creates a `users` profile and atomically creates the one-time login token with challenge finalization. A failed side effect releases only its own live reservation back to `pending` (or records expiry).
 11. Browser calls `signIn('credentials', { phoneOtpLoginToken })`.
-12. NextAuth `CredentialsProvider.authorize()` consumes the token, loads the user, applies block-state inheritance, and returns the existing minimal session user shape.
+12. NextAuth `CredentialsProvider.authorize()` consumes the token only after the same transaction reads the exact `users/{userId}` document and confirms the token email binding, then applies block-state inheritance and returns the existing minimal session user shape.
 13. Dashboard login continues to sync Firebase Auth through `/api/auth/set-claims`.
 
 Start-route custom errors are mapped through a client-safe response helper. Invalid phone input can return "Enter a valid phone number."; delivery and unexpected custom failures return "Could not send code. Please try again." while the internal code is logged with secure logging. The route does not return raw `PhoneOtpError.message` text to the browser.
@@ -27,6 +27,8 @@ July 1 acknowledgement follow-up: the start route now returns `action: "start"` 
 July 5 challenge ID boundary: the verify route and `verifyPhoneOtpChallenge()` now share `normalizePhoneOtpChallengeId()` from `src/lib/auth/phoneOtp.ts`. Valid challenge IDs keep the Firestore auto-ID shape created by `createPhoneOtpChallenge()`. Malformed, reserved, or path-shaped challenge IDs fail before challenge-specific throttling, `authPhoneOtpChallenges/{challengeId}` reads, OTP hash comparison, or login-token writes. Valid OTP challenge creation, verification, login-token consumption, WhatsApp delivery, NextAuth credentials login, and Firebase Auth claim sync are unchanged.
 
 Phone OTP User Document ID Boundary: `src/lib/auth/phoneOtp.ts` now validates existing and resolved user document IDs through `normalizePhoneOtpUserDocumentId()` before updating `users/{userId}`, writing the login-token `userId`, or comparing the consumed login token to the resolved auth user. Malformed, reserved, empty, whitespace-mutated, path-shaped, or oversized user IDs fail with the existing user-not-found path before user document refs or token handoff trust. Valid OTP user lookup, deterministic first-time phone user creation, login-token creation, token consumption, NextAuth credentials login, and Firebase Auth claim sync are unchanged.
+
+July 11 transaction/error-contract hardening: Firestore transaction callbacks no longer throw after queuing attempt, expiry, or token-expiry writes because those throws aborted the writes. Invalid attempts now durably reach `too_many_attempts`; valid-code work uses a recoverable verification lease and one atomic login-token/challenge finalization; token consumption reads the exact stored user before its one-time update. `PhoneOtpError` also restores its prototype so route-level `instanceof` mapping returns the intended fixed 400/401 response instead of a generic 500 under transpiled execution.
 
 ## User Resolution
 

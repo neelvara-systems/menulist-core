@@ -35,7 +35,7 @@ Owner clicks Publish
     → If FAILED → triggers alert (via ops-alerting-delivery)
 ```
 
-No new collections. Writes health status to existing store document. Cost: ~0 per healthy publish, 1 write per failure detection.
+No new collections. Each admitted publish uses six canonical user/tenant/store reads and one existing-store health write; failures also use the existing alert cooldown/read and alert write.
 
 ## Key Files
 

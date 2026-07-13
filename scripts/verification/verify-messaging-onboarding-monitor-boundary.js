@@ -33,11 +33,12 @@ function assertOrder(source, tokens, label) {
   }
 }
 
-function verifyProviderRuntimeBoundary(providerRegistry, constants, stagingEnv, productionEnv) {
+function verifyProviderRuntimeBoundary(providerRegistry, constants, webhookHandler, envFiles) {
   [
     'const providerRegistry: Partial<Record<MessagingProvider, () => IMessagingProvider>> = {',
     'whatsapp: () => new WhatsAppAdapter(),',
-    'if (candidate in providerRegistry && providerRegistry[candidate as MessagingProvider])',
+    'if (candidate === "whatsapp" && providerRegistry.whatsapp) return candidate;',
+    'if (candidate === "telegram" && providerRegistry.telegram) return candidate;',
   ].forEach((token) => assertIncludes(providerRegistry, token, 'Messaging onboarding provider registry'));
 
   [
@@ -53,13 +54,26 @@ function verifyProviderRuntimeBoundary(providerRegistry, constants, stagingEnv, 
     'MESSAGING_ONBOARDING_PROVIDERS: readProvidersEnv()',
   ].forEach((token) => assertIncludes(constants, token, 'Messaging onboarding Functions flag defaults'));
 
-  [
-    'ENABLE_MESSAGING_ONBOARDING=false',
-    'MESSAGING_ONBOARDING_PROVIDERS=whatsapp',
-  ].forEach((token) => {
-    assertIncludes(stagingEnv, token, 'Messaging onboarding staging env defaults');
-    assertIncludes(productionEnv, token, 'Messaging onboarding production env defaults');
+  Object.entries(envFiles).forEach(([label, source]) => {
+    [
+      'ENABLE_MESSAGING_ONBOARDING=false',
+      'MESSAGING_ONBOARDING_PROVIDERS=whatsapp',
+    ].forEach((token) => {
+      assertIncludes(source, token, `Messaging onboarding ${label} env defaults`);
+    });
   });
+
+  [
+    'if (!FEATURE_FLAGS.ENABLE_MESSAGING_ONBOARDING) {',
+    'res.status(200).send("OK");',
+    'const provider = getProviderFromWebhookPath(req.path);',
+  ].forEach((token) => assertIncludes(webhookHandler, token, 'Messaging onboarding webhook fail-closed boundary'));
+  assertOrder(webhookHandler, [
+    'if (!FEATURE_FLAGS.ENABLE_MESSAGING_ONBOARDING) {',
+    'res.status(200).send("OK");',
+    'return;',
+    'const provider = getProviderFromWebhookPath(req.path);',
+  ], 'Messaging onboarding webhook disabled-before-provider order');
 }
 
 function verifyRoute(route) {
@@ -258,9 +272,66 @@ function verifyDocsAndPackage(packageJson, opsDoc, auditDoc, docs, changelogDoc)
   ].forEach((token) => assertIncludes(auditDoc, token, 'Production audit messaging onboarding monitor checkpoint'));
 
   const staleProviderRoadmapPattern = /Phase 2|Phase 3|future|Future|deferred|Deferred|post-launch|ready for production|ready for testing|ship ready/i;
-  Object.entries(docs).forEach(([label, content]) => {
+  ['readme', 'spec', 'impl', 'firebase', 'validation', 'marketing'].forEach((label) => {
+    const content = docs[label];
     assertNotMatches(content, staleProviderRoadmapPattern, `Messaging onboarding ${label} active-provider docs`);
   });
+
+  Object.entries(docs).forEach(([label, content]) => {
+    assert(
+      content.slice(0, 2500).includes('**Launch boundary:** Not current launch certification or deploy approval.'),
+      `Messaging onboarding ${label} must carry the shared launch boundary near the top`,
+    );
+  });
+
+  [
+    'Current source registers WhatsApp only, while checked-in Functions environments keep provider processing disabled.',
+    '`/whatsapp` is informational and routes its actions to the signed-in `/create-menu` photo or public-link intake.',
+  ].forEach((token) => {
+    const found = Object.values(docs).filter((content) => content.includes(token)).length;
+    assert(found >= 6, `Messaging onboarding active docs must consistently include ${token}`);
+  });
+
+  [
+    '15556571424',
+    'https://wa.me/15556571424',
+  ].forEach((token) => {
+    Object.entries(docs).forEach(([label, content]) => {
+      assertNotIncludes(content, token, `Messaging onboarding ${label} inactive test-number boundary`);
+    });
+  });
+
+  [
+    'WhatsApp intake is not open yet.',
+    '**CTA Link:** `/create-menu`',
+    'The page must not expose a test number or active `wa.me` onboarding action before provider activation is certified.',
+  ].forEach((token) => assertIncludes(docs.website, token, 'Messaging onboarding website fail-closed boundary'));
+  assertIncludes(
+    docs.help,
+    'To start now, open `/create-menu`, sign in, and upload a photo or provide a permission-confirmed public menu link.',
+    'Messaging onboarding help current intake boundary',
+  );
+  assertNotIncludes(docs.help, '[number to be added]', 'Messaging onboarding help placeholder-number boundary');
+  assertIncludes(
+    docs.marketing,
+    'routes to `/create-menu` while provider intake remains disabled',
+    'Messaging onboarding marketing current CTA boundary',
+  );
+  assertIncludes(
+    docs.validation,
+    '**Status:** HISTORICAL SOURCE VALIDATION — not current target, provider, launch, or deploy certification',
+    'Messaging onboarding validation historical-evidence boundary',
+  );
+  assertIncludes(
+    auditDoc,
+    'Messaging Onboarding active-doc launch-boundary checkpoint',
+    'Production audit Messaging Onboarding active-doc boundary',
+  );
+  assertIncludes(
+    changelogDoc,
+    'Every active feature handoff is source-bounded',
+    'Changelog Messaging Onboarding active-doc boundary',
+  );
 
   [
     '**Launch boundary:** Not current launch certification or deploy approval.',
@@ -326,14 +397,67 @@ function verifyDocsAndPackage(packageJson, opsDoc, auditDoc, docs, changelogDoc)
   ].forEach((token) => assertIncludes(docs.validation, token, 'Messaging onboarding validation launch boundary'));
 }
 
+function verifyOwnerClaimBoundary(files) {
+  [
+    'export const getMessagingOwnerDocumentId = getPhoneUserDocumentId;',
+    "readonly code = 'MESSAGING_OWNER_CLAIM_CONFLICT';",
+    'const snapshot = await transaction.get(ref);',
+    'const hasStoreMappings = Array.isArray(data.stores) && data.stores.length > 0;',
+    'const hasStoreIds = Array.isArray(data.storeIds) && data.storeIds.length > 0;',
+    'const userIsIneligible = (',
+    'data.authDisabled === true',
+    'data.blocked === true',
+    '|| hasStoreMappings',
+  ].forEach((token) => assertIncludes(files.ownerClaim, token, 'Messaging owner claim transaction boundary'));
+
+  [
+    'getPhoneUserDocumentId(phone.e164)',
+    'await userRef.create(userData);',
+  ].forEach((token) => assertIncludes(files.phoneOtp, token, 'Phone OTP canonical owner identity boundary'));
+
+  assertOrder(files.publish, [
+    'const ownerClaim = await readMessagingOwnerClaimInTransaction({',
+    'const core = await createTenantStoreInTransaction(transaction, db, {',
+    'transaction.create(userRef, {',
+  ], 'Messaging publish owner claim-before-business-write order');
+  assertNotIncludes(
+    files.publish,
+    'userRef = db.collection(DB_COLLECTIONS.USERS).doc();',
+    'Messaging publish random owner document exclusion',
+  );
+
+  [
+    'isMessagingOwnerClaimConflictError(publishError)',
+    '{ error: "This phone number is already linked to an owner account." }',
+    '{ status: 409 }',
+  ].forEach((token) => assertIncludes(files.approveRoute, token, 'Messaging publish owner conflict response'));
+
+  assertIncludes(
+    files.packageJson,
+    '"test:messaging-owner-claim:emulator"',
+    'Messaging owner claim emulator package script',
+  );
+}
+
 function verifyMessagingOnboardingMonitorBoundary() {
   const files = {
     packageJson: read('package.json'),
     route: read('src/app/api/ops/messaging-onboarding/route.ts'),
+    approveRoute: read('src/app/api/msg-preview/[sessionId]/approve/route.ts'),
+    ownerClaim: read('src/lib/messaging-onboarding/messagingOwnerClaim.ts'),
+    phoneOtp: read('src/lib/auth/phoneOtp.ts'),
+    publish: read('src/lib/messaging-onboarding/publish.ts'),
     providerRegistry: read('functions/src/messagingOnboarding/providers/providerRegistry.ts'),
     constants: read('functions/src/messagingOnboarding/constants.ts'),
-    stagingEnv: read('.env.staging.example'),
-    productionEnv: read('.env.production.example'),
+    webhookHandler: read('functions/src/messagingOnboarding/webhookHandler.ts'),
+    envFiles: {
+      stagingExample: read('.env.staging.example'),
+      productionExample: read('.env.production.example'),
+      functionsQa: read('functions/.env.menulist-qa'),
+      functionsProduction: read('functions/.env.menulist'),
+      functionsQaExample: read('functions/.env.menulist-qa.example'),
+      functionsProductionExample: read('functions/.env.menulist.example'),
+    },
     monitor: read('src/components/templates/main-app/platform/messagingOnboardingMonitor/index.tsx'),
     types: read('src/lib/ops/messagingOnboardingTypes.ts'),
     mobileShell: read('src/components/mobile/MobileShell.tsx'),
@@ -346,15 +470,21 @@ function verifyMessagingOnboardingMonitorBoundary() {
     firebaseDoc: read('__docs__/messaging-onboarding/messaging-onboarding_firebase.md'),
     validationDoc: read('__docs__/messaging-onboarding/messaging-onboarding_validation.md'),
     marketingDoc: read('__docs__/messaging-onboarding/messaging-onboarding_marketing.md'),
+    helpDoc: read('__docs__/messaging-onboarding/messaging-onboarding_helpdoc.md'),
+    mobileDoc: read('__docs__/messaging-onboarding/messaging-onboarding_mobile-support.md'),
+    runbookDoc: read('__docs__/messaging-onboarding/messaging-onboarding_runbook.md'),
+    testsDoc: read('__docs__/messaging-onboarding/messaging-onboarding_test-cases.md'),
+    websiteDoc: read('__docs__/messaging-onboarding/messaging-onboarding_website.md'),
     auditDoc: read('__docs__/audits/menulist-production-readiness-audit.md'),
     changelogDoc: read('__docs__/changelog.md'),
   };
 
-  verifyProviderRuntimeBoundary(files.providerRegistry, files.constants, files.stagingEnv, files.productionEnv);
+  verifyProviderRuntimeBoundary(files.providerRegistry, files.constants, files.webhookHandler, files.envFiles);
   verifyRoute(files.route);
   verifyMonitor(files.monitor);
   verifyTypes(files.types);
   verifyMobileSurface(files.mobileShell, files.mobileMore, files.mobilePlatformInternal);
+  verifyOwnerClaimBoundary(files);
   verifyDocsAndPackage(files.packageJson, files.opsDoc, files.auditDoc, {
     readme: files.readmeDoc,
     spec: files.specDoc,
@@ -362,6 +492,11 @@ function verifyMessagingOnboardingMonitorBoundary() {
     firebase: files.firebaseDoc,
     validation: files.validationDoc,
     marketing: files.marketingDoc,
+    help: files.helpDoc,
+    mobile: files.mobileDoc,
+    runbook: files.runbookDoc,
+    tests: files.testsDoc,
+    website: files.websiteDoc,
   }, files.changelogDoc);
 
   console.log('Messaging onboarding monitor boundary verifier passed');

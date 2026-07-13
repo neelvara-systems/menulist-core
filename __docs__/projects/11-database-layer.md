@@ -1,10 +1,10 @@
-# 🗄️ Database Layer (DAL)
+# Database Layer (Historical Reference)
 
-**Complete Firestore Data Access Layer**  
-**File**: `src/database/projects/index.ts`  
-**Lines**: 620 total (updated Dec 30, 2025)  
-**Pattern**: Summary Document Pattern + Standard DAL  
-**Major Update**: Migrated from `projectsMetadata` collection to `projectsSummary` document (Dec 30, 2025)
+**Status:** Retained migration-era reference; code snippets below are not current implementation contracts.  
+**Current authority:** `src/database/projects/index.ts` and `__docs__/projects/project-management/`.  
+**Last reviewed:** July 13, 2026.
+
+The current DAL uses scoped `projects/{tId}/{sId}/{projectId}` documents plus `platformSummary/projects_{sId}`. Create, metadata, active, delete, restore, and duplicate lifecycle paths now use atomic batch/transaction boundaries; deterministic default retries cannot overwrite existing menu data; summary metadata merges are transaction-current; current and legacy project reads validate exact document scope; and generated project-image persistence updates only `projectImage`. Do not copy the older sequential `setDoc()` examples in this document into runtime code.
 
 ---
 
@@ -172,7 +172,7 @@ export const addProject = async (data: Partial<ProjectMetadata>) => {
             menu: { mood: DEFAULTS.menu.mood, layout: DEFAULTS.menu.layout },
           },
         },
-      });
+      }, { isNew: true });
 
       // 3. Save to projects collection
       const dataRef = doc(await getDataCollectionRef(), projectId);
@@ -349,7 +349,7 @@ export const updateProjectMetadata = async (
 export const updateProject = async (data: Partial<Project>) => {
   return await apiCallComposer(
     async () => {
-      const updateData = await requestBodyComposer(data);
+      const updateData = await requestBodyComposer(data, { isNew: false });
       await setDoc(await getDataDocRef(data.projectId), updateData, {
         merge: true,
       });
@@ -373,7 +373,7 @@ export const updateProject = async (data: Partial<Project>) => {
 export const publishProject = async (data: Partial<Project>) => {
   return await apiCallComposer(
     async () => {
-      const updatedData = await requestBodyComposer(data);
+      const updatedData = await requestBodyComposer(data, { isNew: false });
 
       // Upload any base64 files to Storage
       if (data.files?.length) {
@@ -660,8 +660,8 @@ export const myFunction = async (data: any) => {
 const updateData = await requestBodyComposer({
   name: "New Name",
   active: true,
-});
-// Adds: { createdOn?, modifiedOn, ...data }
+}, { isNew: false });
+// Adds modifiedOn/modifiedBy without changing creation metadata.
 
 // ❌ WRONG
 const updateData = {
@@ -929,7 +929,7 @@ interface Project {
 const data = await requestBodyComposer({
   ...existingData,
   newField: "value",
-});
+}, { isNew: false });
 
 // 3. Use merge to preserve existing data
 await setDoc(docRef, data, { merge: true });

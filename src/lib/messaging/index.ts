@@ -18,6 +18,10 @@
 
 import { SYSTEM_EMAIL_FROM } from '@constant/urls';
 import { FEATURE_FLAGS } from '@config/features';
+import {
+  normalizeOwnerNotificationNumericScopeDocumentId,
+  normalizeOwnerNotificationReferenceId,
+} from '@data/shared/ownerNotificationDeliveryBoundary';
 import { admin } from '@lib/firebase/firebaseAdmin';
 import {
   getBoundedNotificationStringContext,
@@ -26,6 +30,7 @@ import {
 } from '@lib/notifications/notificationDiagnostics';
 import { getSmtpConfigFromEnv } from '@lib/notifications/smtpConfig';
 import { Timestamp } from 'firebase-admin/firestore';
+import { createHash } from 'crypto';
 import * as nodemailer from 'nodemailer';
 
 const db = admin.firestore();
@@ -59,6 +64,103 @@ export interface LifecycleMessagePayload {
   recipientEmail: string;
   storeName: string;
   metadata?: Record<string, any>;
+}
+
+type AuthoritativeLifecycleRecipient = {
+  email: string;
+  storeName: string;
+};
+
+function getLifecycleDeliveryDocumentId(storeId: string, eventType: string, referenceId: string): string {
+  return `lifecycle_${createHash('sha256')
+    .update(`${storeId}\u0000${eventType}\u0000${referenceId}`)
+    .digest('hex')}`;
+}
+
+async function claimLifecycleDelivery(params: {
+  documentId: string;
+  eventType: string;
+  referenceId: string;
+  storeId: string;
+  tenantId: string;
+}): Promise<boolean> {
+  const ref = db.collection(MESSAGE_LOGS).doc(params.documentId);
+  try {
+    return await db.runTransaction(async (transaction) => {
+      const existing = await transaction.get(ref);
+      if (existing.exists) return false;
+      transaction.create(ref, {
+        eventType: params.eventType,
+        referenceId: params.referenceId,
+        storeId: params.storeId,
+        tenantId: params.tenantId,
+        channel: 'email',
+        status: 'sending',
+        createdAt: Timestamp.now(),
+      });
+      return true;
+    });
+  } catch (error) {
+    logNotificationFailure('lifecycle_message_delivery_claim_failed', error, {
+      ...getBoundedNotificationStringContext('eventType', params.eventType),
+      ...getBoundedNotificationStringContext('storeId', params.storeId),
+      ...getBoundedNotificationStringContext('tenantId', params.tenantId),
+      ...getBoundedNotificationStringContext('referenceId', params.referenceId),
+    });
+    return false;
+  }
+}
+
+async function resolveAuthoritativeLifecycleRecipient(params: {
+  eventType: string;
+  storeId: string;
+  tenantId: string;
+}): Promise<AuthoritativeLifecycleRecipient | null> {
+  const storeScope = normalizeOwnerNotificationNumericScopeDocumentId(params.storeId);
+  const tenantScope = normalizeOwnerNotificationNumericScopeDocumentId(params.tenantId);
+  if (!storeScope || !tenantScope) return null;
+
+  let usedTenantScopedFallback = false;
+  let storeSnapshot = await db.collection('stores').doc(storeScope.documentId).get();
+  if (!storeSnapshot.exists) {
+    usedTenantScopedFallback = true;
+    storeSnapshot = await db
+      .collection('tenants').doc(tenantScope.documentId)
+      .collection('stores').doc(storeScope.documentId)
+      .get();
+  }
+  if (!storeSnapshot.exists) return null;
+
+  const store = storeSnapshot.data();
+  if (!store) return null;
+  const storedTenantScope = normalizeOwnerNotificationNumericScopeDocumentId(store.tenantId ?? store.tId);
+  if (
+    (storedTenantScope && storedTenantScope.numericId !== tenantScope.numericId)
+    || (!storedTenantScope && !usedTenantScopedFallback)
+  ) return null;
+
+  const settings = store.notificationSettings || {};
+  const primaryEmail = settings.primaryEmail || store.contactPersonEmail || store.email;
+  const billingEmail = settings.billingEmail;
+  const isBillingEvent = [
+    'PAYMENT_SUCCESS',
+    'PAYMENT_FAILED',
+    'RENEWAL_REMINDER',
+    'GRACE_PERIOD_STARTED',
+    'SUSPENSION_WARNING',
+    'CREDIT_PURCHASE_SUCCESS',
+    'SUBSCRIPTION_CANCELLED',
+    'SUBSCRIPTION_PAUSED',
+    'SUBSCRIPTION_RESUMED',
+    'SUBSCRIPTION_UPGRADED',
+  ].includes(params.eventType);
+  const email = String((isBillingEvent && billingEmail) || primaryEmail || '').trim();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return null;
+
+  return {
+    email,
+    storeName: String(store.name || store.businessName || 'Your Business'),
+  };
 }
 
 // ================================================================
@@ -235,7 +337,20 @@ async function getTemplate(eventType: string, meta: Record<string, any>): Promis
  * Fire-and-forget safe — always wrap in try/catch.
  */
 export async function sendLifecycleMessage(payload: LifecycleMessagePayload): Promise<boolean> {
-  const { storeId, tenantId, eventType, referenceId, recipientEmail, storeName, metadata = {} } = payload;
+  const { eventType, metadata = {} } = payload;
+  const storeScope = normalizeOwnerNotificationNumericScopeDocumentId(payload.storeId);
+  const tenantScope = normalizeOwnerNotificationNumericScopeDocumentId(payload.tenantId);
+  const referenceId = normalizeOwnerNotificationReferenceId(payload.referenceId);
+  if (!storeScope || !tenantScope || !referenceId || !eventType || eventType !== eventType.trim()) return false;
+
+  const storeId = storeScope.documentId;
+  const tenantId = tenantScope.documentId;
+  const normalizedPayload: LifecycleMessagePayload = {
+    ...payload,
+    storeId,
+    tenantId,
+    referenceId,
+  };
 
   if (!(await isEnabled())) return false;
 
@@ -249,12 +364,12 @@ export async function sendLifecycleMessage(payload: LifecycleMessagePayload): Pr
         storeId,
         referenceId,
         recipientHints: {
-          email: recipientEmail,
-          name: storeName,
+          email: normalizedPayload.recipientEmail,
+          name: normalizedPayload.storeName,
         },
         metadata: {
           ...metadata,
-          storeName,
+          storeName: normalizedPayload.storeName,
         },
         source: {
           runtime: 'next',
@@ -266,7 +381,7 @@ export async function sendLifecycleMessage(payload: LifecycleMessagePayload): Pr
         ? result.sent > 0
         : result.status === 'pending';
     } catch (error) {
-      logNotificationFailure('lifecycle_message_owner_notification_enqueue_failed', error, getLifecycleMessageLogContext(payload));
+      logNotificationFailure('lifecycle_message_owner_notification_enqueue_failed', error, getLifecycleMessageLogContext(normalizedPayload));
       // Fall through to the legacy sender so billing/publish operations keep their
       // current fire-and-forget behavior if the new queue is unavailable.
     }
@@ -282,28 +397,37 @@ export async function sendLifecycleMessage(payload: LifecycleMessagePayload): Pr
   const isCritical = ['PAYMENT_FAILED', 'GRACE_PERIOD_STARTED', 'SUSPENSION_WARNING'].includes(eventType);
   if (!isCritical && await isRateLimited(storeId)) return false;
 
-  // 4. Resolve template
-  const template = await getTemplate(eventType, { ...metadata, storeName });
+  // 4. Resolve the recipient from the authoritative store scope. Caller hints
+  // are never used by the legacy fallback because this path bypasses the shared
+  // recipient resolver only when the migrated engine is unavailable.
+  const recipient = await resolveAuthoritativeLifecycleRecipient({ eventType, storeId, tenantId });
+  if (!recipient) return false;
+
+  // 5. Resolve template
+  const template = await getTemplate(eventType, { ...metadata, storeName: recipient.storeName });
   if (!template) return false;
 
-  // 5. Send via SMTP
-  const result = await sendViaSMTP(recipientEmail, template.subject, template.html);
+  const documentId = getLifecycleDeliveryDocumentId(storeId, eventType, referenceId);
+  if (!await claimLifecycleDelivery({ documentId, eventType, referenceId, storeId, tenantId })) return false;
 
-  // 6. Log
+  // 6. Send via SMTP only after the deterministic transaction claim.
+  const result = await sendViaSMTP(recipient.email, template.subject, template.html);
+
+  // 7. Finalize the claimed delivery row.
   try {
-    await db.collection(MESSAGE_LOGS).add({
+    await db.collection(MESSAGE_LOGS).doc(documentId).set({
       storeId, tenantId, eventType,
       channel: 'email',
       status: result.ok ? 'sent' : 'failed',
-      recipientEmail,
+      recipientEmail: recipient.email,
       subject: template.subject,
       referenceId,
       providerMessageId: result.id || null,
       error: getLifecycleDeliveryError(result),
       createdAt: Timestamp.now(),
-    });
+    }, { merge: true });
   } catch (error) {
-    logNotificationFailure('lifecycle_message_log_write_failed', error, getLifecycleMessageLogContext(payload));
+    logNotificationFailure('lifecycle_message_log_write_failed', error, getLifecycleMessageLogContext(normalizedPayload));
   }
 
   return result.ok;

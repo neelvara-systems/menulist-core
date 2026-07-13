@@ -66,16 +66,14 @@ Per successful OTP send:
 Per verification:
 
 - IP throttle and 1KB body cap happen before challenge lookup or login-token writes.
-- 1 challenge transaction read/update
-- 0-2 user lookup queries depending on whether an existing phone user is found
+- 1 challenge reservation transaction read/update for valid, invalid, or expired attempts
+- bounded existing-user lookup queries in the documented login-identifier order; a missing user also uses one deterministic document read
 - 1 user update or create
-- 1 login-token write
-- 1 challenge merge write
+- 1 final transaction with exact challenge and user reads, plus login-token create and challenge update
 
 Per NextAuth token consumption:
 
-- 1 token transaction read/update
-- 1 user lookup by email
+- 1 transaction with exact token and `users/{userId}` reads, then 1 token update only after the stored email binding matches
 
 The expensive operation is WhatsApp delivery, so send is separately rate-limited by IP and phone hash.
 
@@ -90,3 +88,5 @@ The July 1 acknowledgement hardening adds no Firestore reads/writes/deletes, Fir
 The July 5 challenge ID boundary adds no reads/writes/deletes for valid OTP attempts and does not change valid login behavior. The verify route now validates the Firestore auto-ID challenge shape before challenge-specific throttling, and `verifyPhoneOtpChallenge()` repeats the same `normalizePhoneOtpChallengeId()` guard before `authPhoneOtpChallenges/{challengeId}` transaction reads or login-token writes. Malformed, reserved, or path-shaped challenge IDs fail with the existing fixed invalid-code copy before Firestore work.
 
 Phone OTP User Document ID Boundary adds no reads/writes/deletes for valid OTP attempts and does not change valid login behavior. Existing user profile updates, login-token `userId` writes, and consumed-token user comparisons now validate resolved user document IDs through `normalizePhoneOtpUserDocumentId()` before `users/{userId}` refs or token identity checks. Malformed, reserved, empty, whitespace-mutated, path-shaped, or oversized user IDs fail with the existing user-not-found path before user document refs or login-token trust. This adds no Firestore rules/indexes, Cloud Functions, Firebase deploy requirement, Vercel deploy action, WhatsApp provider call, or owner-facing setting.
+
+July 11 transaction hardening adds a transient `verifying` status plus `verificationOperationId` and `verificationReservedUntil` fields to server-only challenge documents. Invalid-attempt, challenge-expiry, and login-token-expiry writes now commit before the helper throws. A successful verification replaces the former separate token/challenge writes with one transaction after exact challenge/user reads. The new emulator proves five-attempt exhaustion, expiry persistence, one concurrent winner, one-time exact-user consumption, and expired-token persistence. No rule, index, Cloud Function, Storage, provider, cache, public DTO, Firebase deploy, or Vercel deploy change is required.

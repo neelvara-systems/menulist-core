@@ -86,13 +86,13 @@ Zero new Firestore collections. All data stored in existing collections:
 | Data              | Collection                   | Details                                                                      |
 | ----------------- | ---------------------------- | ---------------------------------------------------------------------------- |
 | Entity candidates | `answerlattice_entityCandidates`  | Same as manual extraction                                                    |
-| Promoted entities | `answerlattice_entities`          | Same as manual promote                                                       |
-| Search index      | `answerlattice_entitySearchIndex` | Same as manual promote                                                       |
+| Approved entities | `answerlattice_entities`          | Existing owner-approved entities; bootstrap does not create these automatically |
+| Search index      | `answerlattice_entitySearchIndex` | Created only by the protected owner promotion/ontology transaction           |
 | Answer drafts     | `answerlattice_mutationProposals` | Proposals with `draftStatus: generated`, `draftSource: onboarding_bootstrap` |
 
 Generated onboarding-bootstrap proposals are Answerlattice-scoped with `pId: 'AL'` and system actor metadata (`createdBy`, `modifiedBy`, `modifiedOn`) so they match the normal governance proposal contract.
 | Progress          | `kb_generation_jobs`         | Additive `onboardingBootstrap` field on existing job doc                     |
-| Audit trail       | `answerlattice_auditLogs`         | Actions: `entity_auto_promoted_onboarding`, `draft_generated_onboarding`     |
+| Audit trail       | `answerlattice_auditLogs`         | Owner candidate promotion/review operations and generated-draft governance actions |
 
 ### 3.2 Additive Fields
 
@@ -167,44 +167,33 @@ Output: Entity candidates in answerlattice_entityCandidates
 
 **Deduplication:** Entity name normalization (lowercase, remove special chars) + existing entity matching in `extractEntitiesFromArticles()`.
 
-### 4.3 Step 2 — Auto-Promote High-Confidence Entities
+### 4.3 Step 2 — Hold Candidates for Explicit Owner Review
 
 ```
-Input: Pending entity candidates for tenant
-Output: Promoted entities + search index entries
+Input: Extracted entity candidates for tenant
+Output: Deterministic pending candidates + review count
 ```
-
-**Auto-promotion criteria (ALL must pass):**
-
-- `confidence >= 0.7` (high extraction confidence)
-- `frequency.articles >= 2` (referenced in multiple articles)
-- `status === 'pending'` (not already reviewed)
-- No existing entity with same normalized name (dedup)
 
 **Logic:**
 
-1. Query `answerlattice_entityCandidates` where `status === 'pending'`
-2. Filter by criteria above
-3. For each qualifying candidate:
-   a. Create entity via `addEntity()`
-   b. Create search index entry via `upsertEntitySearchIndex()`
-   c. Update candidate status to `'approved'`
-   d. Audit log: `entity_auto_promoted_onboarding`
-4. Cap: Max 50 auto-promotions per run
-5. Update job bootstrap progress: `entitiesAutoPromoted`, `candidatesForReview`
+1. Normalize extracted type/name and derive a deterministic workspace-scoped candidate ID.
+2. Initialize/validate the ontology counter if required.
+3. In a transaction, refuse invalid ownership/counter state, enforce the pending-candidate cap, create only a missing candidate, and increment the counter.
+4. Count all pending candidates for the workspace.
+5. Set `entitiesAutoPromoted` to `0` and update `candidatesForReview`.
 
-**Authority Guard:** Same `ONTOLOGY_AUTHORITY_RULES` from `entityCandidates.ts` but with relaxed `minArticleReferences: 2` (instead of 2) since we're bootstrapping.
+**Authority Guard:** The bootstrap never promotes a generated candidate. `promoteCandidate()` calls the protected server ontology action, whose transaction creates the entity/search-index state and records the owner-governed operation.
 
 ### 4.4 Step 3 — Generate Canonical Answer Drafts
 
 ```
-Input: Auto-promoted entities (from Step 2)
+Input: Already owner-approved active entities
 Output: Mutation proposals with generated drafts
 ```
 
 **Logic:**
 
-1. For each auto-promoted entity:
+1. For each already approved active entity without an existing proposal/canonical answer:
    a. Gather source articles that reference this entity
    b. Build context: entity name + description + article excerpts
    c. Call Gemini to generate structured answer:
@@ -238,10 +227,6 @@ Output: Mutation proposals with generated drafts
 
 ```typescript
 export const ONBOARDING_BOOTSTRAP_CONFIG = {
-  // Entity auto-promotion thresholds
-  AUTO_PROMOTE_MIN_CONFIDENCE: 0.7,
-  AUTO_PROMOTE_MIN_ARTICLE_REFS: 2,
-
   // Per-run caps (Firebase cost protection)
   MAX_ENTITIES_PER_RUN: 50,
   MAX_DRAFTS_PER_RUN: 50,
@@ -294,7 +279,7 @@ Step 4: Canonical Coverage KPI
 Step 5: Recurring Fallback Detection
 Step 6: Post-Mutation Impact Tracking
 Step 7: Confidence Auto-Adjustment
-Step 8: Signal TTL Auto-Archive
+Retention: Firestore TTL deletes signal events after 12 months from their writer-supplied `expiresAt` field.
 Step 9: Draft Generation (existing - for signal-based proposals)
 Step 10: Friction Daily Aggregation + Cleanup
 Step 11: Friction Weekly Insight (Sundays only)
@@ -336,9 +321,8 @@ After job publishes, show bootstrap progress:
 ┌─────────────────────────────────────┐
 │ Knowledge Bootstrap                 │
 │ ✅ 47 entities extracted            │
-│ ✅ 23 entities auto-promoted        │
-│ ✅ 23 answer drafts generated       │
-│ ℹ️ 24 entities pending your review  │
+│ ℹ️ 47 candidates pending your review│
+│ ✅ 23 drafts for approved entities  │
 │                                     │
 │ [Review Drafts →] [Review Entities →]│
 └─────────────────────────────────────┘
@@ -397,18 +381,17 @@ Bootstrap logs use scope booleans and presence/length metadata for job/entity/ca
 
 **Trade-off:** 0-24 hour delay between KB publish and canonical bootstrap. Acceptable because RAG works immediately.
 
-### ADR-2: Auto-Promote vs All-Manual-Review
+### ADR-2: Explicit Promotion vs Model-Owned Truth
 
-**Decision:** Auto-promote high-confidence entities (≥0.7 confidence, ≥2 articles)
+**Decision:** Every generated candidate requires an explicit owner promotion action.
 **Rationale:**
 
-- Doctrine says "humans approve" but doesn't prohibit automation with guardrails
-- High-confidence, multi-reference entities are almost certainly real product concepts
-- Remaining low-confidence entities stay in manual review queue
-- Audit trail preserves full transparency
-- Founder can always deprecate an auto-promoted entity
+- Entity confidence is evidence, not authority
+- The protected promotion transaction owns entity, search-index, counter, invalidation and operation state
+- Replayed owner actions remain idempotent
+- Generated candidates stay reviewable without changing public/product truth
 
-**Risk mitigation:** Authority guard (confidence + frequency), audit logging, dedup
+**Risk mitigation:** Deterministic candidate identity, capped counters, exact workspace ownership, server-only transition, audit operation record
 
 ### ADR-3: Draft ≠ Active (Doctrine Compliance)
 

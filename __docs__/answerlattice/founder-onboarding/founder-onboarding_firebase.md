@@ -13,12 +13,12 @@
 |-----------|-----------------|------------|---------|
 | `kb_articles` | answerlattice | R | Read published articles for extraction |
 | `kb_generation_jobs` | answerlattice | R+W | Read job status, write bootstrap progress |
-| `answerlattice_entityCandidates` | answerlattice | R+W | Write extracted candidates, read for promote check |
-| `answerlattice_entities` | answerlattice | R+W | Read existing entities (dedup), write promoted entities |
-| `answerlattice_entitySearchIndex` | answerlattice | W | Write search index for promoted entities |
+| `answerlattice_entityCandidates` | answerlattice | R+W | Transactionally write deterministic pending candidates and count the owner-review queue |
+| `answerlattice_entities` | answerlattice | R | Detect existing/approved entities and select existing active entities for draft generation |
+| `answerlattice_entitySearchIndex` | answerlattice | none in bootstrap | Written only by the protected owner promotion transaction |
 | `answerlattice_mutationProposals` | answerlattice | R+W | Read existing proposals (dedup), write draft proposals |
 | `answerlattice_canonicalAnswers` | answerlattice | R | Read existing answers (context for draft gen) |
-| `answerlattice_auditLogs` | answerlattice | W | Write audit entries for all auto-actions |
+| `answerlattice_auditLogs` | answerlattice | none in bootstrap | Owner promotion/review operations are audited by the server ontology boundary |
 
 ---
 
@@ -35,13 +35,11 @@
 | Read existing answers (context) | Read | 20 queries | $0.00006 | $0.0012 |
 | Read KB job doc | Read | 1 | $0.00006 | $0.00006 |
 | Write entity candidates | Write | 30 | $0.00018 | $0.0054 |
-| Write promoted entities | Write | 20 | $0.00018 | $0.0036 |
-| Write search index entries | Write | 20 | $0.00018 | $0.0036 |
 | Write mutation proposals | Write | 20 | $0.00018 | $0.0036 |
-| Write audit logs | Write | 40 | $0.00018 | $0.0072 |
-| Update candidate status | Write | 20 | $0.00018 | $0.0036 |
+| Candidate/counter transaction reads | Read | up to 60+ | $0.00006 | ~$0.0036 |
+| Candidate/counter transaction writes | Write | up to 60+ | $0.00018 | ~$0.0108 |
 | Update KB job progress | Write | 5 | $0.00018 | $0.0009 |
-| **Firestore subtotal** | | | | **~$0.04** |
+| **Firestore subtotal** | | | | **~$0.03, plus drafts for pre-approved entities** |
 
 ### Gemini AI Costs
 

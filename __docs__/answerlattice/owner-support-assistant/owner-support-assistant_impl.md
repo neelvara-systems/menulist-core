@@ -1,12 +1,28 @@
 # Owner Support Assistant - Implementation Plan
 
-> **Status:** DOCS FROZEN
+> **Status:** READ-ONLY RUNTIME LIVE - deferred target architecture retained below
 > **Created:** 2026-06-07
-> **Implementation posture:** Build the complete frozen architecture behind flags. Build order is for engineering safety only; it is not a product maturity plan.
+> **Implementation posture:** Preserve the current bounded runtime. Treat all absent action, AI, feedback, analytics-summary, and scheduler paths as deferred until separately implemented and verified.
 
 ---
 
-## Implementation Verdict
+## Answerlattice Owner Support Assistant Read-Only Runtime
+
+Current source truth:
+
+| Surface | Runtime state |
+| --- | --- |
+| App flag | `ENABLE_ANSWERLATTICE_OWNER_SUPPORT_ASSISTANT: true`. |
+| Route/navigation | `/answerlattice/support-assistant`, management-only, `MANAGE_SUPPORT`, feature-gated. |
+| Brief API | Authenticated, rate-limited before permission reads, five compact summary reads, private/no-store. |
+| Query API | Authenticated, exact session scope, 20 requests/minute per hashed user/workspace key before permission reads, 4 KiB body cap, Zod validation, private/no-store. |
+| Answer engine | Deterministic ten-intent classifier over the same five summary documents: attention, answer risk, friction, readiness, intake, release, install, reply, cost, and unsupported. No AI provider or bounded-detail path. |
+| Daily Founder Brief | Optional `dailyBrief` payload ranks the smallest useful support actions for today from the same five summaries. |
+| Persistence | None. No transcript, feedback, operation, action, analytics, or assistant summary write. |
+| Owner actions | Route links only. No action preview/execute, ticket reply/status change, draft, card, note, or publish path. |
+| Client | Bounded 128 KiB JSON responses, no-store/same-origin/manual-redirect requests, responsive layout, 44px action targets. |
+
+The remaining sections preserve the reviewed target architecture. A file, route, write, or provider behavior described there is not live unless the current-runtime table above says it is.
 
 Owner Support Assistant should be implemented as a thin Answerlattice owner/staff command layer over existing governed systems.
 
@@ -28,10 +44,10 @@ It must not own a separate support memory, message store, plan store, or analyti
 | --- | --- |
 | `src/components/answerlattice/AnswerlatticeDashboardLayout.tsx` | Route shell, access state, responsive dashboard layout. |
 | `src/lib/answerlattice/sessionScope.ts` | `resolveAnswerlatticeSessionScope()`, `getAnswerlatticeScopedSession()`, and `canUseAnswerlatticeManagement()`; tenant/store scope is accepted only as exact positive numeric Firestore document IDs. |
-| `src/config/features.ts` | App-side flag `ENABLE_ANSWERLATTICE_OWNER_SUPPORT_ASSISTANT`, default `false`. |
+| `src/config/features.ts` | App-side flag `ENABLE_ANSWERLATTICE_OWNER_SUPPORT_ASSISTANT`, currently `true`. |
 | `functions-answerlattice/src/constants/features.ts` | Function-side mirror only when the compact assistant summary task is wired. |
-| `src/constants/answerlattice/routes.ts` | Add `/answerlattice/support-assistant` route constant. |
-| `src/constants/answerlattice/navigations.ts` | Add Support Control nav item behind flag and permission. |
+| `src/constants/answerlattice/routes.ts` | Live `/answerlattice/support-assistant` route constant. |
+| `src/constants/answerlattice/navigations.ts` | Live Support Control nav item behind flag and `MANAGE_SUPPORT`. |
 | `src/database/answerlattice/supportBoard.ts` | Read bounded board cards/summaries and save explicit assistant plans as Support Board cards/notes. |
 | `src/database/answerlattice/canonicalAnswers.ts` | Read active/entity-bound answers only for explicit answer review intents. |
 | `src/database/answerlattice/mutationProposals.ts` | Read pending proposals and create answer-change drafts through existing review flow. |
@@ -52,7 +68,9 @@ It must not own a separate support memory, message store, plan store, or analyti
 
 ---
 
-## Planned Code Changes
+## Deferred Target Changes
+
+The consolidated live implementation is in `src/lib/answerlattice/ownerSupportAssistant.ts`, the two `brief`/`query` API routes, the route page, and `AnswerlatticeOwnerSupportAssistant.tsx`. The inventory below is a target decomposition; absent files and endpoints are deferred.
 
 | File | Purpose |
 | --- | --- |
@@ -105,10 +123,10 @@ These changes are intentionally small and reuse existing storage:
 
 ## Feature Flags
 
-Add app flag:
+Current app flag:
 
 ```ts
-ENABLE_ANSWERLATTICE_OWNER_SUPPORT_ASSISTANT: false
+ENABLE_ANSWERLATTICE_OWNER_SUPPORT_ASSISTANT: true
 ```
 
 Add function flag only when `ownerSupportAssistantSummary.ts` is wired:
@@ -119,8 +137,9 @@ ENABLE_ANSWERLATTICE_OWNER_SUPPORT_ASSISTANT_SUMMARY: false
 
 Rules:
 
-- Default `false`.
-- Route, nav item, brief endpoint, query endpoint, action endpoints, feedback endpoint, and summary task all check the relevant flag.
+- The current app runtime is enabled in source.
+- Route navigation, client rendering, brief endpoint, and query endpoint check the app flag.
+- Deferred action, feedback, owner-analytics, and summary-task paths are absent; no function-side mirror is active.
 - API endpoints return before Firestore reads when disabled.
 - Feature flags control availability only; they do not define product maturity levels.
 
@@ -151,29 +170,26 @@ Do not add this route under an old product namespace, `/help-center/*`, or MenuL
 
 Purpose: one protected summary packet for route load.
 
-Reads:
+After feature, rate-limit, and `MANAGE_SUPPORT` admission, it reads exactly these five documents in one `getAll()` call:
 
-- store/workspace context only when needed for permission/license state
-- `platformSummary/ownerSupportAssistantSummary_{tId}_{sId}`
-- `platformSummary/ownerSupportAnalyticsSummary_{tId}_{sId}`
-- `platformSummary/supportBoardSummary_{tId}_{sId}`
 - `platformSummary/coverage_{tId}_{sId}`
 - `platformSummary/trustMetrics_{tId}_{sId}`
-- `platformSummary/contextContent_{tId}_{sId}`
+- `platformSummary/supportBoardSummary_{tId}_{sId}`
+- `platformSummary/frictionSnapshot_{tId}_{sId}`
 - `platformSummary/knowledgeIntakeSummary_{tId}_{sId}`
-- friction summary docs when enabled
 
 Response:
 
 ```ts
 {
-  brief: OwnerSupportAssistantBrief;
-  promptChips: OwnerSupportAssistantPrompt[];
-  limits: string[];
-  readModel: {
-    firestoreReads: number;
-    sourceDocs: string[];
-    costClass: 'summary_only';
+  brief: {
+    status: 'healthy' | 'needs_review' | 'at_risk' | 'insufficient_data';
+    headline: string;
+    attentionCount: number;
+    metrics: Record<string, number | null>;
+    promptChips: string[];
+    updatedAt: string | null;
+    readModel: { firestoreReads: 0 | 5; source: 'summary_only'; cacheHit: boolean };
   };
 }
 ```
@@ -185,12 +201,6 @@ Request:
 ```ts
 {
   question: string;
-  context?: {
-    source?: 'assistant_page' | 'dashboard_card' | 'support_board' | 'governance' | 'weekly_digest';
-    recordId?: string;
-    recordType?: string;
-  };
-  mode?: 'deterministic' | 'ai_assisted';
 }
 ```
 
@@ -198,32 +208,16 @@ Response:
 
 ```ts
 {
-  answerId: string;
-  operationId?: string | null;
-  status: 'healthy' | 'needs_review' | 'at_risk' | 'insufficient_data' | 'partial' | 'unsupported';
-  intent: string;
-  directAnswer: string;
-  evidence: Array<{
-    label: string;
-    sourceType: string;
-    sourceId?: string;
-    href?: string;
-    freshness?: string;
-    confidence?: 'high' | 'medium' | 'low';
-  }>;
-  priority?: {
-    level: 'low' | 'medium' | 'high';
-    reason: string;
+  answer: {
+    id: string;
+    status: 'healthy' | 'needs_review' | 'at_risk' | 'insufficient_data' | 'unsupported';
+    intent: 'attention' | 'answer_risk' | 'friction' | 'readiness' | 'intake' | 'unsupported';
+    directAnswer: string;
+    evidence: Array<{ label: string; value: string; href: string; source: string }>;
+    nextActions: Array<{ label: string; href: string }>;
+    limits: string[];
+    readModel: { firestoreReads: 0 | 5; source: 'summary_only'; cacheHit: boolean };
   };
-  nextActions: Array<{
-    type: 'open_route' | 'create_support_board_card' | 'add_support_board_note' | 'prepare_review_draft' | 'copy_summary';
-    label: string;
-    href?: string;
-    payload?: unknown;
-  }>;
-  limits: string[];
-  costClass: 'summary_only' | 'bounded_detail' | 'ai_assisted';
-  contextHash: string;
 }
 ```
 
@@ -232,18 +226,17 @@ Server sequence:
 1. `withAuth()`.
 2. Feature flag check.
 3. Resolve Answerlattice scoped session from server-side session, not request body; malformed tenant/store scope fails before assistant context reads.
-4. Permission check.
-5. Zod validate request.
-6. Apply workspace/user rate limit before context expansion.
-7. Classify intent and unsupported actions.
-8. Fetch compact context packet.
-9. Fetch bounded detail only when the intent requires it.
-10. Build deterministic answer.
-11. Use LLM only as assistive wording/draft layer over typed context packets.
-12. Record AI operation only for LLM-backed requests.
-13. Return private `no-store` response.
+4. Apply the hashed workspace/user rate limit before the Firestore-backed permission check.
+5. Require `MANAGE_SUPPORT`.
+6. Read at most 4 KiB and Zod-validate a strict 3-500 character question.
+7. Classify one of the six supported intents.
+8. Read or reuse the five-document compact summary packet.
+9. Build a deterministic answer with evidence and governed route links.
+10. Return a private `no-store` response.
 
-### `POST /api/answerlattice/support-assistant/actions/preview`
+The live endpoint does not fetch bounded detail, call an LLM, record an AI operation, or write assistant state.
+
+### Deferred: `POST /api/answerlattice/support-assistant/actions/preview`
 
 Request:
 
@@ -288,7 +281,7 @@ Rules:
 5. Target read must be scoped and capped.
 6. Preview must include the exact target and proposed change.
 
-### `POST /api/answerlattice/support-assistant/actions/execute`
+### Deferred: `POST /api/answerlattice/support-assistant/actions/execute`
 
 Request:
 
@@ -328,7 +321,7 @@ Rules:
 6. Append `answerlattice_auditLogs` when assistant execution needs explicit audit history.
 7. Merge compact assistant counters without creating an action event document.
 
-### `GET /api/answerlattice/owner-analytics/summary`
+### Deferred: `GET /api/answerlattice/owner-analytics/summary`
 
 Purpose: one protected support analytics packet for dashboard cards and assistant period questions.
 
@@ -354,7 +347,7 @@ Response:
 
 This endpoint does not read raw `chatSessions`, raw `aiSearchHistory`, raw `supportTickets`, raw `answerlattice_signalEvents`, KB articles, or audit logs on default load.
 
-### `POST /api/answerlattice/support-assistant/feedback`
+### Deferred: `POST /api/answerlattice/support-assistant/feedback`
 
 Purpose: owner feedback on assistant usefulness without a feedback collection.
 

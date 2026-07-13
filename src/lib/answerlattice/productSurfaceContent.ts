@@ -1,10 +1,15 @@
 import { PRODUCT_IDS } from '@constant/product';
+import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
 import type {
     AnswerlatticeContextPayload,
     AnswerlatticeProductSurface,
     AnswerlatticeProductSurfaceVisibility,
+    AnswerlatticeRelatedArticleRef,
+    AnswerlatticeRelatedChangelogRef,
+    AnswerlatticeRelatedFaqRef,
     AnswerlatticeSurfaceContentItem,
     AnswerlatticeSurfaceContentSummary,
+    AnswerlatticeSurfaceTicketStats,
 } from '@type/answerlattice';
 import { normalizeAnswerlatticeResolvedEntityIds } from './governanceIdBoundary';
 import { normalizeAnswerlatticeProductSurfaceId } from './productSurfaceIdBoundary';
@@ -26,11 +31,70 @@ const MAX_ENTITY_HINTS = 12;
 const MAX_ENTITY_IDS = 25;
 const MAX_TAGS = 25;
 const MAX_FIELD_LENGTH = 100;
+const MAX_SUMMARY_SURFACES = ANSWERLATTICE_PRODUCT_SURFACE_LIMIT;
+const MAX_RELATED_ARTICLES = 25;
+const MAX_RELATED_CHANGELOGS = 25;
+const MAX_RELATED_FAQS = 25;
+const MAX_RECENT_TICKET_IDS = 10;
+const MAX_SUMMARY_COUNT = 1_000_000;
+const MAX_FAQ_ANSWER_LENGTH = 12_000;
 
 const CONTROL_TEXT_PATTERN = /[\u0000-\u001f\u007f]/g;
 
-export const getContextContentSummaryDocId = (tId: number, sId: number) =>
-    `${ANSWERLATTICE_CONTEXT_CONTENT_SUMMARY_PREFIX}_${Number(tId)}_${Number(sId)}`;
+const isRecord = (value: unknown): value is Record<string, unknown> => (
+    Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+);
+
+const normalizeBoundedText = (value: unknown, maxLength: number, allowEmpty = false): string | null => {
+    if (typeof value !== 'string') return null;
+    const normalized = value.replace(CONTROL_TEXT_PATTERN, ' ').replace(/\s+/g, ' ').trim();
+    return (allowEmpty || normalized.length > 0) && normalized.length <= maxLength ? normalized : null;
+};
+
+const normalizeRelatedDocumentId = (value: unknown): string | null => {
+    const documentId = normalizeBoundedText(value, 180);
+    return documentId && isValidFirestoreDocumentId(documentId) ? documentId : null;
+};
+
+const normalizeNonNegativeInteger = (value: unknown, max = MAX_SUMMARY_COUNT): number | null => (
+    typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 && value <= max ? value : null
+);
+
+const normalizeTimestampLikeForSurface = (value: unknown): string | number | null => {
+    if (value == null) return null;
+    if (typeof value === 'number' && Number.isFinite(value)) return value;
+    if (typeof value === 'string') return normalizeBoundedText(value, 120, true);
+    if (value instanceof Date && Number.isFinite(value.getTime())) return value.toISOString();
+    if (isRecord(value)) {
+        if (typeof value.toDate === 'function') {
+            const date = (value.toDate as () => Date)();
+            return Number.isFinite(date.getTime()) ? date.toISOString() : null;
+        }
+        const seconds = typeof value.seconds === 'number' ? value.seconds : value._seconds;
+        const nanoseconds = typeof value.nanoseconds === 'number' ? value.nanoseconds : value._nanoseconds;
+        if (typeof seconds === 'number' && Number.isSafeInteger(seconds)) {
+            const date = new Date((seconds * 1000) + (typeof nanoseconds === 'number' ? Math.floor(nanoseconds / 1_000_000) : 0));
+            return Number.isFinite(date.getTime()) ? date.toISOString() : null;
+        }
+    }
+    return null;
+};
+
+export function normalizeAnswerlatticeProductSurfaceScopeId(value: unknown): number | null {
+    return typeof value === 'number' && Number.isSafeInteger(value) && value > 0 ? value : null;
+}
+
+export function requireAnswerlatticeProductSurfaceScope(scope: { tId: unknown; sId: unknown }): { tId: number; sId: number } {
+    const tId = normalizeAnswerlatticeProductSurfaceScopeId(scope.tId);
+    const sId = normalizeAnswerlatticeProductSurfaceScopeId(scope.sId);
+    if (!tId || !sId) throw new Error('Invalid Answerlattice tenant scope.');
+    return { tId, sId };
+}
+
+export const getContextContentSummaryDocId = (tId: number, sId: number) => {
+    const scope = requireAnswerlatticeProductSurfaceScope({ tId, sId });
+    return `${ANSWERLATTICE_CONTEXT_CONTENT_SUMMARY_PREFIX}_${scope.tId}_${scope.sId}`;
+};
 
 export function normalizeSurfaceToken(value: unknown, maxLength = MAX_FIELD_LENGTH): string {
     if (typeof value !== 'string') return '';
@@ -141,6 +205,7 @@ export const ProductSurfaceSaveSchema = z.object({
 export type ProductSurfaceSaveInput = z.infer<typeof ProductSurfaceSaveSchema>;
 
 export function parseProductSurfaceSaveInput(value: unknown, scope: { tId: number; sId: number }): Omit<AnswerlatticeProductSurface, 'id'> & { id?: string } {
+    const exactScope = requireAnswerlatticeProductSurfaceScope(scope);
     const parsed = ProductSurfaceSaveSchema.parse(value);
     const surfaceId = parsed.id ? normalizeAnswerlatticeProductSurfaceId(parsed.id) : null;
     if (parsed.id && !surfaceId) throw new Error('Invalid product surface id.');
@@ -150,8 +215,8 @@ export function parseProductSurfaceSaveInput(value: unknown, scope: { tId: numbe
     return {
         ...(surfaceId ? { id: surfaceId } : {}),
         pId: PRODUCT_IDS.ANSWERLATTICE,
-        tId: Number(scope.tId),
-        sId: Number(scope.sId),
+        tId: exactScope.tId,
+        sId: exactScope.sId,
         key,
         label,
         description: parsed.description?.replace(CONTROL_TEXT_PATTERN, '').trim() || '',
@@ -165,6 +230,218 @@ export function parseProductSurfaceSaveInput(value: unknown, scope: { tId: numbe
         visibility: normalizeSurfaceVisibility(parsed.visibility),
         active: parsed.active !== false,
         priority: parsed.priority ?? 100,
+    };
+}
+
+export function normalizeStoredAnswerlatticeProductSurface(
+    value: unknown,
+    scope: { tId: number; sId: number },
+    documentId?: string,
+): AnswerlatticeProductSurface | null {
+    if (!isRecord(value)) return null;
+    const exactScope = requireAnswerlatticeProductSurfaceScope(scope);
+    if (
+        value.pId !== PRODUCT_IDS.ANSWERLATTICE
+        || value.tId !== exactScope.tId
+        || value.sId !== exactScope.sId
+    ) {
+        return null;
+    }
+
+    const id = normalizeAnswerlatticeProductSurfaceId(documentId || value.id);
+    const key = normalizeSurfaceKey(value.key);
+    const label = normalizeBoundedText(value.label, MAX_SURFACE_LABEL_LENGTH);
+    if (!id || !key || !label) return null;
+
+    const description = normalizeBoundedText(value.description, 500, true);
+    const feature = normalizeSurfaceToken(value.feature);
+    const page = normalizeSurfaceToken(value.page);
+    const workflow = normalizeSurfaceToken(value.workflow);
+    const priority = normalizeNonNegativeInteger(value.priority, 999) ?? 100;
+
+    return {
+        id,
+        pId: PRODUCT_IDS.ANSWERLATTICE,
+        tId: exactScope.tId,
+        sId: exactScope.sId,
+        key,
+        label,
+        ...(description !== null ? { description } : {}),
+        routePatterns: normalizeSurfaceRoutePatterns(value.routePatterns),
+        ...(feature ? { feature } : {}),
+        ...(page ? { page } : {}),
+        ...(workflow ? { workflow } : {}),
+        entityHints: normalizeSurfaceList(value.entityHints, MAX_ENTITY_HINTS, 64),
+        entityIds: normalizeAnswerlatticeResolvedEntityIds(value.entityIds, MAX_ENTITY_IDS),
+        tags: normalizeSurfaceList(value.tags, MAX_TAGS, 64),
+        visibility: normalizeSurfaceVisibility(value.visibility),
+        active: value.active !== false,
+        priority,
+        ...(value.createdOn !== undefined ? { createdOn: value.createdOn as AnswerlatticeProductSurface['createdOn'] } : {}),
+        ...(value.modifiedOn !== undefined ? { modifiedOn: value.modifiedOn as AnswerlatticeProductSurface['modifiedOn'] } : {}),
+        ...(typeof value.createdBy === 'string' ? { createdBy: value.createdBy.slice(0, 180) } : {}),
+        ...(typeof value.modifiedBy === 'string' ? { modifiedBy: value.modifiedBy.slice(0, 180) } : {}),
+        ...(normalizeNonNegativeInteger(value.uId) !== null ? { uId: normalizeNonNegativeInteger(value.uId) as number } : {}),
+    };
+}
+
+const normalizeRelatedArticleRef = (value: unknown): AnswerlatticeRelatedArticleRef | null => {
+    if (!isRecord(value)) return null;
+    const id = normalizeRelatedDocumentId(value.id);
+    const title = normalizeBoundedText(value.title, 300);
+    if (!id || !title) return null;
+    const categoryTitle = normalizeBoundedText(value.categoryTitle, 240, true);
+    const sectionTitle = normalizeBoundedText(value.sectionTitle, 240, true);
+    const url = normalizeBoundedText(value.url, 500, true);
+    return {
+        id,
+        title,
+        ...(categoryTitle !== null ? { categoryTitle } : {}),
+        ...(sectionTitle !== null ? { sectionTitle } : {}),
+        ...(url !== null ? { url } : {}),
+        tags: normalizeSurfaceList(value.tags, 8, 80),
+    };
+};
+
+const normalizeRelatedChangelogRef = (value: unknown): AnswerlatticeRelatedChangelogRef | null => {
+    if (!isRecord(value)) return null;
+    const id = normalizeRelatedDocumentId(value.id);
+    const pageId = normalizeRelatedDocumentId(value.pageId);
+    const title = normalizeBoundedText(value.title, 300);
+    if (!id || !pageId || !title) return null;
+    const version = value.version == null ? null : normalizeBoundedText(value.version, 120);
+    const releasedOn = normalizeTimestampLikeForSurface(value.releasedOn);
+    return {
+        id,
+        pageId,
+        title,
+        ...(version !== null ? { version } : {}),
+        ...(releasedOn !== null ? { releasedOn } : {}),
+        tags: normalizeSurfaceList(value.tags, 8, 80),
+    };
+};
+
+const normalizeRelatedFaqRef = (value: unknown): AnswerlatticeRelatedFaqRef | null => {
+    if (!isRecord(value)) return null;
+    const id = normalizeRelatedDocumentId(value.id);
+    const question = normalizeBoundedText(value.question, 500);
+    if (!id || !question) return null;
+    const answer = normalizeBoundedText(value.answer, MAX_FAQ_ANSWER_LENGTH, true);
+    const articleId = value.articleId == null ? null : normalizeRelatedDocumentId(value.articleId);
+    const articleTitle = value.articleTitle == null ? null : normalizeBoundedText(value.articleTitle, 300);
+    return {
+        id,
+        question,
+        ...(answer !== null ? { answer } : {}),
+        articleId,
+        articleTitle,
+        tags: normalizeSurfaceList(value.tags, 8, 80),
+    };
+};
+
+const normalizeSurfaceTicketStats = (value: unknown): AnswerlatticeSurfaceTicketStats => {
+    if (!isRecord(value)) return { total: 0, open: 0, recentDisplayIds: [] };
+    const total = normalizeNonNegativeInteger(value.total) ?? 0;
+    const open = normalizeNonNegativeInteger(value.open) ?? 0;
+    const recentDisplayIds = Array.isArray(value.recentDisplayIds)
+        ? Array.from(new Set(
+            value.recentDisplayIds
+                .map(item => normalizeBoundedText(item, 40))
+                .filter((item): item is string => Boolean(item)),
+        )).slice(0, MAX_RECENT_TICKET_IDS)
+        : [];
+    return {
+        total,
+        open: Math.min(open, total),
+        recentDisplayIds,
+    };
+};
+
+const normalizeSurfaceContentItem = (mapKey: string, value: unknown): AnswerlatticeSurfaceContentItem | null => {
+    if (!isRecord(value)) return null;
+    const key = normalizeSurfaceKey(value.key);
+    if (!key || key !== mapKey) return null;
+    const label = normalizeBoundedText(value.label, MAX_SURFACE_LABEL_LENGTH);
+    if (!label) return null;
+
+    const articles = Array.isArray(value.articles)
+        ? value.articles.map(normalizeRelatedArticleRef).filter((item): item is AnswerlatticeRelatedArticleRef => Boolean(item)).slice(0, MAX_RELATED_ARTICLES)
+        : [];
+    const changelogs = Array.isArray(value.changelogs)
+        ? value.changelogs.map(normalizeRelatedChangelogRef).filter((item): item is AnswerlatticeRelatedChangelogRef => Boolean(item)).slice(0, MAX_RELATED_CHANGELOGS)
+        : [];
+    const faqs = Array.isArray(value.faqs)
+        ? value.faqs.map(normalizeRelatedFaqRef).filter((item): item is AnswerlatticeRelatedFaqRef => Boolean(item)).slice(0, MAX_RELATED_FAQS)
+        : [];
+    const feature = normalizeSurfaceToken(value.feature);
+    const page = normalizeSurfaceToken(value.page);
+    const workflow = normalizeSurfaceToken(value.workflow);
+
+    return {
+        key,
+        label,
+        routePatterns: normalizeSurfaceRoutePatterns(value.routePatterns),
+        ...(feature ? { feature } : {}),
+        ...(page ? { page } : {}),
+        ...(workflow ? { workflow } : {}),
+        entityHints: normalizeSurfaceList(value.entityHints, MAX_ENTITY_HINTS, 64),
+        entityIds: normalizeAnswerlatticeResolvedEntityIds(value.entityIds, MAX_ENTITY_IDS),
+        tags: normalizeSurfaceList(value.tags, MAX_TAGS, 64),
+        visibility: normalizeSurfaceVisibility(value.visibility),
+        articles,
+        changelogs,
+        faqs,
+        tickets: normalizeSurfaceTicketStats(value.tickets),
+    };
+};
+
+export function normalizeAnswerlatticeSurfaceContentSummary(
+    value: unknown,
+    scope: { tId: number; sId: number },
+    documentId?: string,
+): AnswerlatticeSurfaceContentSummary | null {
+    if (!isRecord(value)) return null;
+    const exactScope = requireAnswerlatticeProductSurfaceScope(scope);
+    if (
+        value.pId !== PRODUCT_IDS.ANSWERLATTICE
+        || value.tId !== exactScope.tId
+        || value.sId !== exactScope.sId
+        || !isRecord(value.surfaces)
+    ) {
+        return null;
+    }
+
+    const surfaceEntries = Object.entries(value.surfaces);
+    if (surfaceEntries.length > MAX_SUMMARY_SURFACES) return null;
+
+    const surfaces: Record<string, AnswerlatticeSurfaceContentItem> = Object.create(null);
+    for (const [rawKey, rawSurface] of surfaceEntries) {
+        const key = normalizeSurfaceKey(rawKey);
+        if (!key || key !== rawKey) continue;
+        const surface = normalizeSurfaceContentItem(key, rawSurface);
+        if (surface) surfaces[key] = surface;
+    }
+
+    const articleCount = normalizeNonNegativeInteger(value.articleCount);
+    const faqCount = value.faqCount == null ? 0 : normalizeNonNegativeInteger(value.faqCount);
+    const changelogCount = normalizeNonNegativeInteger(value.changelogCount);
+    const ticketCount = normalizeNonNegativeInteger(value.ticketCount);
+    if (articleCount === null || faqCount === null || changelogCount === null || ticketCount === null) {
+        return null;
+    }
+
+    return {
+        ...(documentId ? { id: documentId } : {}),
+        pId: PRODUCT_IDS.ANSWERLATTICE,
+        tId: exactScope.tId,
+        sId: exactScope.sId,
+        ...(value.generatedAt !== undefined ? { generatedAt: value.generatedAt } : {}),
+        surfaceCount: Object.keys(surfaces).length,
+        articleCount,
+        faqCount,
+        changelogCount,
+        ticketCount,
+        surfaces,
     };
 }
 

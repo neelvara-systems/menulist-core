@@ -2,8 +2,8 @@
 
 > **Document Type:** Technical Blueprint (Developers)
 > **Status:** Implemented (Feature flag: `ENABLE_POS_SYNC: true`)
-> **Last Updated:** July 6, 2026
-> **Version:** 2.14
+> **Last Updated:** July 10, 2026
+> **Version:** 2.15
 
 ---
 
@@ -29,12 +29,12 @@
 │          API ROUTE: /api/pos-sync/deliver                    │
 │   1. Auth + tenant verification + 8KB body cap + rate limit │
 │   2. Read target store config and re-check store permission  │
-│   3. Validate public HTTPS URL + DNS-resolved target         │
+│   3. Validate HTTPS/DNS and freeze the public address set    │
 │   4. Read tenant/store-scoped project data                   │
-│   5. Increment menuVersion on store doc                     │
-│   6. Build, sign, and POST webhook payload (5s timeout)      │
+│   5. Recheck config + claim menuVersion in a transaction     │
+│   6. Build/sign; POST over pinned TLS (5s, no redirects)     │
 │   7. Log result to posDeliveryLogs subcollection            │
-│   8. Update store posSync status                            │
+│   8. Apply version-ordered posSync status transaction        │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -47,11 +47,13 @@ Frontend (menu edit in Editor.tsx)
   → syncChanges() saves project via updateProject()
   → triggerPosSyncDebounced() starts 25s timer when sync is enabled and URL + signing secret exist (eventBuilder.ts)
   → After 25s: POST /api/pos-sync/deliver
-  → Server: auth → validate → read store → reject unavailable target stores → validate HTTPS + DNS target → read project → version → build payload → sign → POST webhook without following redirects
+  → Server: auth → validate → read store → reject unavailable target stores → validate HTTPS + DNS target → freeze public addresses → read authoritative project → transactionally recheck connection/claim version → build payload → sign → POST through pinned TLS without following redirects
   → Server: log to stores/{storeId}/posDeliveryLogs → update posSync status
 ```
 
-> **Route security note (June 30, 2026):** `/api/pos-sync/test` and `/api/pos-sync/deliver` validate the configured public HTTPS URL, resolve the target host server-side, and use manual redirect handling. A 3xx provider response is treated as a failed provider response instead of being followed to a new target.
+> **Route security note (updated July 10, 2026):** `/api/pos-sync/test` and `/api/pos-sync/deliver` validate the configured public HTTPS URL, reject special-use host/address ranges, resolve the target once, and pass only that frozen public address set to a custom Node HTTPS lookup. TLS continues to verify the configured hostname. The transport never follows redirects, so a 3xx response is a provider failure and DNS rebinding cannot change the socket destination after admission.
+
+> **Concurrency and identity note (July 10, 2026):** Delivery claims `menuVersion` only after re-reading permission and the exact enabled URL/secret in a transaction. Status completion is accepted only when the connection still matches and its version is newer than `posSync.lastCompletedMenuVersion`. Invalid-target and connection-test status writes use the same current-connection guard. Firestore document IDs, not embedded `projectId` fields, are authoritative.
 
 > **Target-store note (July 1, 2026):** Both POS API routes re-run `requireAnyStorePermissionForStoreData()` against the canonical `stores/{storeId}` document after body validation and the store read. Inactive, soft-deleted, platform-blocked, cross-tenant, or unauthorized target stores fail before webhook URL validation, project reads, menu-version writes, delivery logs, POS status writes, or outbound fetches.
 
@@ -59,7 +61,7 @@ Frontend (menu edit in Editor.tsx)
 
 > **Project ID boundary (July 5, 2026; strict admission updated July 6):** POS delivery project ID boundary validation uses the shared Firestore document-ID guard after the existing POS project-ID character rule without trimming the submitted value first. Malformed IDs, path-shaped IDs, reserved IDs, and whitespace-mutated project IDs fail during request validation before store config reads, scoped project reads, menu-version writes, delivery logs, POS status writes, or outbound fetches.
 
-> **Source gate (July 2, 2026):** POS Sync boundary source gate: `npm run verify:pos-sync-boundary` locks the public-HTTPS and DNS target guard, route auth/tenant/rate-limit order, debounced delivery URL+secret admission, desktop/mobile shared test request policy, MobileShell More routing, and docs/audit parity. The gate is source-only and does not call an external POS provider.
+> **Source gate (updated July 10, 2026):** POS Sync boundary source gate: `npm run verify:pos-sync-boundary`. Together with `npm run test:pos-sync-boundaries`, it locks the public-HTTPS/special-use guard, frozen-address HTTPS transport, route auth/tenant/rate-limit/config order, ordered delivery state, payload allow-list/hash/byte contract, identity-partitioned debounce, desktop/mobile test policy, MobileShell routing, and docs/audit parity. The gate remains source-only and does not call an external POS provider.
 
 ---
 
@@ -235,6 +237,7 @@ posSync: {
   lastStatus: "success" | "failed" | "never_sent";
   lastError: string; // Owner-safe connection status text only; no provider/runtime detail
   menuVersion: number; // Current menu version (incremented on change)
+  lastCompletedMenuVersion?: number; // Latest attempt allowed to update connection status
   consecutiveFailures: number; // Failed live deliveries in a row; reset on success or connection edit
   instructionsSentCount: number; // Daily counter for email abuse protection
   instructionsSentDate: string; // YYYY-MM-DD for daily reset
@@ -274,7 +277,7 @@ posSync: {
 
 **Collection:** `stores/{storeId}/posDeliveryLogs`
 **Document ID:** Auto-generated
-**Retention:** Keep last 20 per store. **Hard delete** older entries on every new log write (batch delete, not archive, not soft delete). Simple retention — no TTL, no archival.
+**Retention:** Keep the newest 20 per store. Log creation and the matching version-ordered store status transition share one Firestore transaction. After commit, a bounded newest-100 query deletes entries after the first 20 in one batch. If a historical backlog exceeds that scan, later deliveries continue convergence; retention cleanup failure is logged and does not turn an already completed provider attempt into a false API failure. No TTL or archival is used.
 
 ```typescript
 {
@@ -291,7 +294,7 @@ posSync: {
 }
 ```
 
-> **payloadHash (added Mar 14, 2026):** sha256 hash of the raw JSON payload. Enables: (1) skip redundant deliveries if hash matches last delivery, (2) debug "POS says menu mismatch" without storing full payload, (3) detect data drift over time. See ADR-10.
+> **payloadHash (runtime aligned July 10, 2026):** SHA-256 of the exact UTF-8 JSON body that was signed and sent. It supports mismatch investigation and offline equality comparison without storing the payload. Current runtime does not skip a delivery based on this hash. `payloadSize` is the UTF-8 byte length of that same body.
 
 ---
 
@@ -476,9 +479,9 @@ Result: 1 webhook sent for all edits
 
 - After menu save, `triggerPosSyncDebounced()` receives the current store POS Sync config
 - It exits unless POS Sync is enabled and both provider connection URL and signing secret exist
-- It waits 25 seconds after the last edit
+- It waits 25 seconds after the last edit for the same tenant/store/project; another project's pending timer is independent
 - On fire, it calls `/api/pos-sync/deliver` with same-origin credentials, `no-store` cache, and manual redirect handling
-- The delivery route validates auth, tenant, store state, public HTTPS URL, resolved DNS target, and scoped project data before outbound delivery
+- The delivery route validates auth, tenant, store state, public HTTPS URL, frozen DNS target, authoritative scoped project data and current connection state before outbound delivery
 
 **Inactive worker design boundary**
 
@@ -498,6 +501,7 @@ Current reality:
 - No automatic retries
 - Failed live delivery #1 and #2: logged, `lastStatus = failed`, no owner warning
 - Failed live delivery #3: `connection_issue` shown
+- Older delivery completions are ignored after a newer `menuVersion` has completed
 - Successful delivery or successful connection test resets `consecutiveFailures` to 0
 - Owner connection URL/secret edits reset `consecutiveFailures` to 0
 - Invalid/blocked provider URL configuration marks `connection_issue` immediately

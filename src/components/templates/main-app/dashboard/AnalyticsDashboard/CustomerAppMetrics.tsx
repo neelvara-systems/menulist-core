@@ -21,35 +21,6 @@ import { LuDownload, LuEye, LuRocket, LuSmartphone, LuStar } from 'react-icons/l
 const { Title, Text } = Typography;
 const { useToken } = theme;
 
-// Local extension of AnalyticsSummary — the core type in src/lib/analytics/types.ts
-// targets menu analytics. Customer App fields live in the same summary doc under
-// additional keys written by updateSummaryDocument() in aggregateCustomerAnalytics.ts.
-interface CustomerAppSummaryShape {
-    lifetimeTotalPromptShown?: number;
-    lifetimeTotalPromptDismissed?: number;
-    lifetimeTotalInstallStarted?: number;
-    lifetimeTotalInstalled?: number;
-    lifetimeUniqueInstalls?: number;
-    lifetimeTotalAppOpens?: number;
-    shortcutClicks?: Record<string, number>;
-    installsByDevice?: Record<string, number>;
-    installsByLocation?: Record<string, number>;
-    /** Per-platform install counts — iOS / Android / Desktop / Other. */
-    installsByPlatform?: Record<string, number>;
-    /** Install source — native prompt vs iOS heuristic/manual standalone inference. */
-    installsBySource?: Record<string, number>;
-    /** Per-platform app-open counts — powers the retention row. */
-    appOpensByPlatform?: Record<string, number>;
-    last30Days?: { totalAppOpens?: number; totalInstalled?: number };
-}
-
-interface CustomerAppDailyShape {
-    date: string;
-    totalInstalled?: number;
-    totalAppOpens?: number;
-    shortcutClicks?: Record<string, number>;
-}
-
 type DashboardTranslator = (key: string, values?: Record<string, string | number>) => string;
 
 function topShortcut(clicks: Record<string, number> | undefined, t: DashboardTranslator): { key: string; count: number } {
@@ -127,8 +98,8 @@ const CustomerAppMetrics: React.FC<Props> = ({ dateRange }) => {
         );
     }
 
-    const summary = (data?.summary ?? null) as CustomerAppSummaryShape | null;
-    const daily = (data?.daily30d ?? []) as CustomerAppDailyShape[];
+    const summary = data?.summary ?? null;
+    const daily = data?.daily30d ?? [];
 
     const hasAnyData =
         (summary?.lifetimeTotalInstalled ?? 0) > 0 ||

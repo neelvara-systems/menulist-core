@@ -131,8 +131,10 @@ export async function GET() {
         if (!FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA) return emptyManifest();
 
         const h = headers();
-        // `host` reflects the incoming request; `x-forwarded-host` covers proxies.
-        requestHostname = h.get('x-forwarded-host') || h.get('host') || '';
+        // Tenant identity must come from the request Host authority. This route
+        // is intentionally excluded from middleware, so do not accept
+        // forwarded Host headers as a tenant selector or public manifest cache key.
+        requestHostname = h.get('host') || '';
         const domain = resolveDomain(requestHostname);
         resolvedDomain = domain;
 

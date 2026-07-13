@@ -35,6 +35,7 @@ import { isDeployed } from './config/secrets';
 if (isDeployed) {
   const prodTriggers = require('./triggers/production');
   exports.startGeneration = prodTriggers.startGeneration;
+  exports.retryGeneration = prodTriggers.retryGeneration;
   exports.finalizePublish = prodTriggers.finalizePublish;
   exports.processMenuImagesJob = prodTriggers.processMenuImagesJob;
 } else {

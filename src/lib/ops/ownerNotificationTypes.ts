@@ -8,7 +8,11 @@ import type {
   OwnerNotificationEventStatus,
 } from '@lib/owner-notifications/types';
 
-export type OwnerNotificationOpsStatusFilter = OwnerNotificationEventStatus | 'all';
+export type OwnerNotificationOpsEventStatus = OwnerNotificationEventStatus | 'invalid';
+export type OwnerNotificationOpsDeliveryStatus = OwnerNotificationDeliveryStatus | 'invalid';
+export type OwnerNotificationOpsRecipientRole = OwnerNotificationRecipientRole | 'invalid';
+export type OwnerNotificationOpsChannel = OwnerNotificationChannel | 'invalid';
+export type OwnerNotificationOpsStatusFilter = OwnerNotificationOpsEventStatus | 'all';
 
 export interface OwnerNotificationOpsEventRow {
   id: string;
@@ -18,10 +22,10 @@ export interface OwnerNotificationOpsEventRow {
   storeId?: string;
   workspaceId?: string;
   referenceId: string;
-  recipientRole: OwnerNotificationRecipientRole;
+  recipientRole: OwnerNotificationOpsRecipientRole;
   requestedChannels: OwnerNotificationChannel[];
   priority: string;
-  status: OwnerNotificationEventStatus;
+  status: OwnerNotificationOpsEventStatus;
   sourcePath: string;
   error?: string | null;
   createdAt: string | null;
@@ -37,10 +41,10 @@ export interface OwnerNotificationOpsDeliveryRow {
   eventId: string;
   productId: OwnerNotificationProductId;
   triggerType: string;
-  channel: OwnerNotificationChannel;
-  recipientRole: OwnerNotificationRecipientRole;
+  channel: OwnerNotificationOpsChannel;
+  recipientRole: OwnerNotificationOpsRecipientRole;
   recipientMasked: string;
-  status: OwnerNotificationDeliveryStatus;
+  status: OwnerNotificationOpsDeliveryStatus;
   subject?: string | null;
   templateKey: string;
   templateVersion: string;
@@ -68,6 +72,7 @@ export interface OwnerNotificationOpsManualTemplate {
 }
 
 export interface OwnerNotificationOpsCost {
+  authReads: number;
   eventReads: number;
   deliveryReads: number;
   scopeReads: number;
@@ -81,7 +86,7 @@ export interface OwnerNotificationOpsSnapshot {
   generatedAt: string;
   feature: {
     dashboardEnabled: boolean;
-    accessModel: 'platform_role';
+    accessModel: 'current_persisted_platform_user';
     realtimeListeners: false;
     productId: OwnerNotificationProductId;
   };
@@ -91,12 +96,13 @@ export interface OwnerNotificationOpsSnapshot {
     limit: number;
     scanLimit: number;
   };
-  counts: Record<OwnerNotificationEventStatus, number>;
+  counts: Record<OwnerNotificationOpsEventStatus, number>;
   events: OwnerNotificationOpsEventRow[];
   selectedEvent?: OwnerNotificationOpsEventRow;
   deliveries?: OwnerNotificationOpsDeliveryRow[];
   resolvedRecipient?: OwnerNotificationOpsRecipient;
   manualTemplate?: OwnerNotificationOpsManualTemplate;
+  detailError?: 'recipient_resolution_failed';
   cost: OwnerNotificationOpsCost;
 }
 
@@ -109,5 +115,6 @@ export interface OwnerNotificationOpsActionResult {
   failed?: number;
   skipped?: number;
   manualEventId?: string;
+  replayed?: boolean;
   message: string;
 }

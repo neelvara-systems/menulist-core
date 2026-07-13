@@ -6,7 +6,7 @@ Analytics Learning captures campaign outcomes from exports, publish events, repl
 
 ## Current Runtime
 
-The active runtime captures observed CampaignCue actions and reads a dashboard summary. Provider publish events, replies, clicks, post insights, ad metrics, and channel callbacks are not active until a separate future provider layer is configured; explicit owner outcome entry is active.
+The active runtime captures observed CampaignCue actions, reads a dashboard summary, and stores the latest bounded owner-reported result receipt on the existing campaign document. A receipt can include a signal, use time, channel, optional reply/call/booking/order/walk-in/link-click counts, note, and the one variable tested. Provider publish events, imported replies/clicks, post insights, ad metrics, and channel callbacks are not active until a separate future provider layer is configured.
 
 ## Goals
 
@@ -22,6 +22,8 @@ The active runtime captures observed CampaignCue actions and reads a dashboard s
 | Outcome capture | Export, publish, click, reply, manual result, and provider metric events can be recorded. |
 | Attribution posture | Reports distinguish observed, imported, estimated, and manually entered outcomes. |
 | Next cue | Results can create campaign improvement cues. |
+| Confidence | Manual receipts are labeled `owner_reported`; system action events remain `observed`. |
+| One-variable learning | The next deterministic suggestion changes only channel, timing, offer, photo, CTA, or format. |
 | Channel views | WhatsApp, Google, ads, organic social, and manual outputs have separate metric contracts. |
 | Agency report | Agencies can prepare client-readable reports. |
 | No overclaim | UI must not claim direct revenue attribution unless source supports it. |
@@ -44,6 +46,7 @@ CampaignCue success is measured by trust-safe campaign usage, not raw asset gene
 | Billing/credits | Estimate accuracy, credits per used campaign, failed-generation refunds, credits by client/location/module. | Failed provider attempts need visible reconciliation. |
 | Trust | Trust checks run, blockers created/fixed, warning acknowledgements, override requests, latency, source-conflict rate. | Trust status must be version-specific. |
 | Manual export | Export/download shown, manual task completed, approval requested, and owner outcome recorded. | Manual export is the active delivery path, not a failure. |
+| Owner result receipt | Result signal plus optional bounded counts and tested variable. | `not_used` does not mark a campaign used and has no use timestamp; owner counts are not provider attribution. |
 | Source/data quality | Missing WhatsApp number, Google profile mismatch, stale source, low-confidence extraction, asset gaps. | Source confidence must remain visible. |
 
 ## Non-Goals

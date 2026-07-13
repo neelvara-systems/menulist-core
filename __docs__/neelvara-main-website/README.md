@@ -31,7 +31,7 @@ Build Neelvara inside the existing Next.js/Vercel product-site architecture:
 - no API routes, auth, CMS, contact form, analytics, or cookie banner in v1
 - optional public contact email env keys only: `NEXT_PUBLIC_NEELVARA_CONTACT_EMAIL`, `NEXT_PUBLIC_NEELVARA_LEGAL_EMAIL`, `NEXT_PUBLIC_NEELVARA_PRIVACY_EMAIL`
 - no Neelvara-owned browser preference storage is required in v1
-- current-color Prism glass visual system applied only to presentation: ice-white canvas, deep navy text, frosted parent-brand mark gradient, fixed restrained mesh, grain, glass cards, prism panels, spotlight cards, marquee/reference modules, and responsive section layout; no product funnel behavior added
+- current-color Prism glass visual system applied only to presentation: ice-white canvas, deep navy text, frosted parent-brand mark gradient, fixed restrained mesh, grain, factual reference summaries, restrained glass panels, and responsive section layout; no product funnel behavior added
 
 Reason: the repo already uses a shared Vercel app with hostname/path-prefix routing for public product sites. Neelvara should follow that routing architecture while staying outside database-backed product identity.
 
@@ -41,7 +41,7 @@ Reason: the repo already uses a shared Vercel app with hostname/path-prefix rout
 
 Use this exact sentence where the current product relationship needs to be explicit:
 
-> MenuList, Answerlattice, and CampaignCue are operated by Neelvara Systems.
+> MenuList and Answerlattice are operated by Neelvara Systems.
 
 Use this safer entity description unless legal counsel/CA confirms stronger wording:
 
@@ -79,6 +79,7 @@ Validation completed:
 - `node scripts/verification/verify-agent-readiness.js --env-targets-only`: pass
 - Neelvara route registered in the existing `productDomains` / `deploymentTargets` architecture
 - `/__neelvara/` local dev path maps to `/sites/neelvara`
+- bare `/__neelvara`, `/__neelvara/home`, `/nv`, and product-domain `/home` requests resolve through the canonical `/sites/neelvara` page rather than a separate homepage alias
 - no `PRODUCT_IDS` entry or Firebase requirement added
 - no API routes, forms, auth, Firestore, Storage, Cloud Functions, or schedulers added
 - Neelvara contact, legal, and privacy email addresses are read from optional public env-backed constants with current address fallbacks
@@ -87,6 +88,14 @@ Validation completed:
 - Open Graph image and `.well-known/security.txt` are present for the company website
 - `/nv` internal alias responses are marked `noindex, nofollow`; `https://neelvara.com` remains canonical
 - no cookie banner, browser preference storage, analytics, forms, auth, Firebase, or API routes are mounted for Neelvara
+
+Current public-launch state:
+
+- source, local routes, responsive layout, content, metadata, accessibility, and motion checks pass
+- the public preview remains on the prior three-product build until an explicitly approved Vercel deployment publishes this worktree
+- `neelvara.com` and `www.neelvara.com` still require public DNS and Vercel domain attachment
+- `hello@neelvara.com`, `legal@neelvara.com`, and `privacy@neelvara.com` require verified delivery plus SPF, DKIM, and DMARC
+- owner/CA/legal approval and trademark-search evidence remain required before public launch
 
 ---
 
@@ -106,7 +115,7 @@ Validation completed:
 - `neelvara-main-website_chatgpt-transcript.md` is a historical captured-conversation artifact from the earlier naming phase. After the Neelvara rename, its visible company-name tokens were name-normalized so repo-wide stale-name scans stay clean.
 - Do not treat the transcript as current implementation authority; current runtime and docs are the source of truth.
 - Neelvara Systems is now the current code/docs/runtime name for the parent operating website.
-- The current implementation uses the operated public lineup: MenuList, Answerlattice, and CampaignCue.
+- The current public implementation uses the operated lineup: MenuList and Answerlattice. CampaignCue is intentionally not published on the Neelvara website.
 - Private, internal, reserved, or future product names such as Canonica, GrowthOS/Growth Kits, KitStamp, SurfaceOS, MyCodex, and SignalDesk stay out of public Neelvara copy until a separate public-surface/legal-policy review approves them.
 - The company website should remain a quiet trust/entity website, not a product funnel.
 - GSTIN should not be displayed publicly in v1 unless explicitly approved.

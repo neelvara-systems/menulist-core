@@ -36,7 +36,7 @@ const clampAuditLimit = (value: number, fallback: number) => {
 export const addAuditLog = async (data: Omit<AnswerlatticeAuditLog, 'id'>) => {
     return await apiCallComposer(
         async () => {
-            const submitData = await answerlatticeRequestBodyComposer(data);
+            const submitData = await answerlatticeRequestBodyComposer(data, { isNew: true });
             const docRef = await addDoc(getCollectionRef(), submitData);
             return { ...submitData, id: docRef.id } as AnswerlatticeAuditLog;
         },

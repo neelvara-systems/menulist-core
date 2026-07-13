@@ -1,17 +1,17 @@
 # Reputation Protection — Implementation Plan
 
-**Status:** ✅ INFRASTRUCTURE BUILT / PRODUCT DISABLED (GBP API blocked — flip flags only when granted)
+**Status:** SCAFFOLDING ONLY / PRODUCT DISABLED (GBP API and runtime completion required; do not flip flags)
 **Author:** Cascade (Lead Architect)  
 **Date:** February 19, 2026  
-**Last Runtime Audit:** July 1, 2026
+**Last Runtime Audit:** July 11, 2026
 **Audience:** Developers  
 **Pillar:** 3 of 6
 
 ---
 
-## Architecture Overview
+## Planned Architecture Overview
 
-This pillar extends existing `reviews-reputation` spec with AI reply-assist capability. Full technical details in `__docs__/reviews-reputation/reviews-reputation_impl.md`.
+This pillar records a future design that extends the dormant `reviews-reputation` scaffolding. The diagram below is not a current file/runtime inventory. Full source-truth boundaries are maintained in `__docs__/reviews-reputation/reviews-reputation_impl.md`.
 
 ```
 Cloud Functions Layer:
@@ -107,7 +107,7 @@ Detailed in `__docs__/reviews-reputation/reviews-reputation_impl.md`. Additional
 | withAuth middleware | ✅ Built     | For API route protection           |
 | Zod validation      | ✅ Available | For request validation             |
 
-## Built Infrastructure (Ready to Activate)
+## Existing Scaffolding (Not Ready to Activate)
 
 | File                                             | Purpose                                                 | Status      |
 | ------------------------------------------------ | ------------------------------------------------------- | ----------- |
@@ -129,7 +129,7 @@ Detailed in `__docs__/reviews-reputation/reviews-reputation_impl.md`. Additional
 - [x] Rate limiting on AI suggestion endpoint
 - [x] SAFE_MODE on AI suggestion endpoint
 - [ ] Reply text sanitized before posting to Google (deferred — needs GBP API)
-- [x] No PII in reply suggestions
+- [ ] Provider privacy/PII launch review (pasted review text is sent to Gemini; bounded logs exclude raw text)
 - [x] RBAC: only users with `canManageFeedback` can generate reply suggestions
 - [x] Feature flag gated (`ENABLE_REVIEWS_REPUTATION` parent flag + `ENABLE_AI_REPLY_ASSIST`)
 
@@ -142,8 +142,11 @@ Detailed in `__docs__/reviews-reputation/reviews-reputation_impl.md`. Additional
 - June 30, 2026: `ReputationGuard` calls `/api/reviews/states` with no-store cache policy, same-origin credentials, and manual redirect handling, then parses the response through a 16KB bounded guard before updating passive warning state. Rejected, redirected, malformed, oversized, or invalid acknowledgements log bounded runtime diagnostics only; route behavior and disabled/unmounted runtime status are unchanged.
 - July 1, 2026: `/api/reviews/suggest` now enforces the shared store permission guard with `canManageFeedback` after bounded input validation and before AI capacity/provider work. This keeps dormant reply-assist scaffolding aligned with the Feedback route permission.
 - No owner dashboard mount point is active for `ReputationGuard` or `ReviewReplyTool` in the current runtime.
+- No GBP ingestion/classifier writer, review inbox, reply composer, Google reply route, status card, or mobile review surface exists. Granting GBP access alone is therefore insufficient to activate the product.
+- July 11, 2026: provider/generation failures now emit bounded `review_reply_generation_failed` diagnostics before the disabled suggestion route returns its static, uncharged fallback.
+- July 11, 2026: the state contract is the flat `reviewsState/{reviewId}` collection with required embedded `tId`/`sId`, aligned across route, rules, indexes, types, and maintained docs.
 - This route/component scaffolding should not be marketed as a live reviews product until GBP ingestion exists and the owner UI is intentionally mounted.
 
 ---
 
-**Last Updated:** July 1, 2026
+**Last Updated:** July 11, 2026

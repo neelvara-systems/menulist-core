@@ -1,5 +1,7 @@
 import { DB_COLLECTIONS } from "@constant/database";
+import { ANSWERLATTICE_PERMISSION_KEYS } from "@constant/answerlattice/permissions";
 import { ECOMSAI_PLATFORM_USER_ROLE } from "@constant/user";
+import { requireAnswerlatticePermission } from "@lib/answerlattice/accessControl";
 import { firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
 import { logger } from "@lib/monitoring/logger";
@@ -103,4 +105,22 @@ export const canManageBillingMutation = async (
     }, 'high');
 
     return false;
+};
+
+/**
+ * Answerlattice billing is narrower than the general management gate. Resolve
+ * the current persisted workspace membership and role definition so a stale
+ * session role, a default manager, or a custom role without canManageBilling
+ * cannot call the shared Razorpay mutation routes directly.
+ */
+export const canManageAnswerlatticeBillingMutation = async (
+    session: any,
+    request: NextRequest,
+): Promise<boolean> => {
+    const permission = await requireAnswerlatticePermission(
+        request,
+        session,
+        ANSWERLATTICE_PERMISSION_KEYS.MANAGE_BILLING,
+    );
+    return permission.response === null;
 };

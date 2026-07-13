@@ -1,0 +1,10 @@
+{
+  "name": "menulist-owner-ease-30s-v4-landscape-brand-type",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "npx --yes hyperframes@0.7.52 preview",
+    "check": "npx --yes hyperframes@0.7.52 check",
+    "render": "npx --yes hyperframes@0.7.52 render"
+  }
+}

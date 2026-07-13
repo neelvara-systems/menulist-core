@@ -19,6 +19,16 @@ Current MenuList Functions retry evidence must start with `npm run verify:functi
 
 ## Fix Ledger
 
+### July 13 follow-up: paid AI reservation and durable batch recovery
+
+Status: Fixed locally; MenuList maintenance scheduler deploy pending authorized QA access.
+
+The paid-route trace found `checkAICapacity()` was only an admission read. Provider work ran before `consumeAICapacity()`, so two concurrent requests could both pass the same balance snapshot; the later request could incur provider cost and then fail its debit. Paid MenuList routes now reserve exact positive integer units in one subscription/operation transaction before provider work, settle that same operation ID after valid output, and refund exact charged buckets when work will not retry. Zero-unit platform-absorbed actions remain unreserved.
+
+The batch retry trace found staged output correctly persisted for accounting retries, but terminal/final-attempt paths keyed refund only on whether output had ever staged. A final accounting failure could therefore delete terminal staged state while retaining the durable reservation. A worker crash on the third attempt before staging also left an expired `processing` execution; the next claim returned `failed` without updating job truth or recovering credits. Batch workers now retain reservations only for active staged retries, refund terminal/cancelled/max-attempt operation IDs idempotently, and transactionally persist max-attempt item/job failure plus retention markers.
+
+Focused evidence: `npm run test:ai-capacity-reservation:emulator`, `npm run test:image-batch-item-concurrency:emulator`, `node scripts/verification/verify-ai-accounting-hardening.js`, exact root TypeScript, and the MenuList Functions build pass. The existing daily maintenance scheduler also reports reservation-only activity, refunds bounded stale interactive shells, and deletes expired refunded evidence. Recovery rechecks the current deadline inside the transaction, counts malformed rows without aborting later rows in that store, and isolates store-level failures so later stores still run. Legacy replay/direct-debit paths now enforce the same safe-integer unit contract as reservations. No collection or index was added; reservation introduces an intentional operation read/shell write before paid provider work and one bounded due-reservation query per active store during daily cleanup.
+
 ### July 6 follow-up: POS and Public Truth Monitor strict project-ID admission
 
 Status: Fixed.
@@ -2068,7 +2078,7 @@ Impact: local development file logging remains available, production behavior re
 
 Status: Fixed during the June 27 continuation audit.
 
-`src/lib/multiTenant/getTenantFromHeaders.ts` is used by public menu, OBP, compliance, and PWA handoff pages to read middleware-set tenant headers and host fallbacks. Its missing-host diagnostic path now uses `secureError()` with a normalized error, bounded log context, and header-presence booleans instead of direct `console.error` with raw header values. `npm run verify:public-business-truth` now guards the helper against raw missing-host header logging and direct console logging.
+`src/lib/multiTenant/getTenantFromHeaders.ts` is used by public menu, OBP, compliance, sitemap, robots, and PWA handoff pages. As of July 10, 2026 it derives tenant identity only from the validated original Host authority; middleware-owned `x-tenant-*` values are integrity claims and forwarded/deployment host fallbacks are not tenant selectors. Middleware deletes incoming routing headers before its rewrite. The missing/malformed-host path uses `secureError()` with bounded context instead of direct console logging or raw header values. `npm run verify:public-business-truth` and `npm run verify:url-routing-boundary` guard the Host-authoritative and forged-header boundaries.
 
 Impact: public tenant routing, host fallback order, tenant type/subdomain/custom-domain resolution, and missing-host return shape are unchanged. The change adds no Firestore reads/writes and no provider calls.
 
@@ -4856,7 +4866,7 @@ Status: Fixed during the June 28 continuation audit; no Firebase deploy required
 
 The MenuList mutating API admission sweep was expanded to include both `export const POST` and `export async function POST` route forms. That scan found `src/app/api/analytics/weekly-narrative/generate-local/route.ts` used `getActiveSession()` directly instead of the shared `withAuth()` wrapper. The route still required `tId` and `sId`, but it bypassed the common API CORS validation, account-ended checks, blocked-account checks, and shared auth failure logging used by protected MenuList API routes. `src/app/api/analytics/weekly-narrative/regenerate/route.ts` delegated into the local generator and inherited that weaker route admission pattern.
 
-The local weekly narrative generator now exports an internal `generateWeeklyNarrativeLocally(request, session)` handler and exposes `POST` through `withAuth(generateWeeklyNarrativeLocally)`. The regeneration route now also uses `withAuth()` and calls the internal handler with the authenticated session. The existing `tId`/`sId` scope validation remains in place, so users without an onboarded store still receive the same unauthorized response after shared auth admission.
+The local weekly narrative route keeps `generateWeeklyNarrativeLocally(request, session)` module-private and exposes only the App Router-compatible `POST` through `withAuth(generateWeeklyNarrativeLocally)`. The regeneration route delegates to that protected `POST` export, preserving the same shared auth/CORS/current-session admission without exporting a non-route field. The existing `tId`/`sId` scope validation remains in place, so users without an onboarded store still receive the same unauthorized response after shared auth admission.
 
 `scripts/verification/verify-menulist-api-tenant-safety.js` now has a MenuList-owned mutating API admission sweep that recognizes protected auth, platform auth, public API auth, CORS/rate-limited public routes, token-based anonymous routes, signature/webhook/worker-secret routes, and development-only routes. The analytics verifier also locks weekly narrative generation and regeneration to `withAuth()` and blocks a regression to direct `getActiveSession()` route admission.
 
@@ -13145,3 +13155,21 @@ Validation:
 - Passed `git diff --check`.
 
 Cost/deploy boundary: this is MenuList Owner Business Assistant document-ID admission hardening only. It adds no Firestore reads/writes/deletes for valid Business Health current, analytics, locations, answer, thread, feedback, or platform monitor requests; no Storage operations; Firebase Auth operation changes; Cloud Function logic changes; provider calls for valid answer requests; route calls; AI accounting writes beyond existing valid answer behavior; cache invalidations; rules; indexes; schema-field changes; tenant-shape changes; permission model changes; owner-facing settings; MenuList Firebase deploy requirement; or Vercel deploy action. Existing valid Business Health read models, owner answer behavior, context-packet cache behavior, thread persistence, feedback writes, answer-event writes, platform monitor behavior, and fixed owner copy remain unchanged except whitespace-mutated OBA document IDs fail before schema/helper/route Firestore work.
+
+## July 13 Follow-up: Batch image reviewed-selection transaction boundary
+
+The durable acceptance boundary now also requires the exact configured Firebase Storage bucket. A URL from another Firebase project can no longer pass merely by using the expected `media/menuItem/{tId}/{sId}/...` path. Standalone persistence resolves the bucket from the active Firebase app; linked-outlet persistence resolves it from Firebase Admin. This adds no read, write, upload, copy, collection, index, rule, Function, or scheduler operation.
+
+The image-batch replay found two related persistence races after provider output was already safely staged. First, the review UI cloned the browser's entire stale `project.files` array and merged it into Firestore when the owner accepted generated images, so a concurrent menu update could be overwritten. Second, a desktop autosave or mobile queued persistence operation could finish after the new image append and remove the accepted URLs again. The same accounting replay found that a corrupted negative monthly or top-up bucket could be accepted when the other bucket kept the combined balance positive.
+
+Fixes:
+
+- `src/lib/ai/imageBatchProjectSelection.ts` now validates bounded same-project selections and appends images by URL without mutating input state.
+- `appendImageBatchProjectSelections()` uses current persisted truth: one browser transaction for standalone projects or the guarded linked-outlet Admin transaction for current outlet/master truth and inherited-image policy.
+- Desktop serializes acceptance behind active saves and explicitly flushes dirty state; mobile waits for active persistence and drains the pending menu snapshot before acceptance.
+- Linked acceptance returns the complete latest outlet project, and all paths invalidate public, master, screen, and assistant caches only after commit.
+- AI debit now rejects either negative credit bucket independently; emulator tests prove no balance or operation-ledger mutation on rejection.
+
+Validation passed the dedicated selection/runtime test, the item-concurrency/accounting emulator, full AI-accounting suite, tenant-safety, multi-location, public-business-truth, root TypeScript, scoped lint, Functions build/lint, and diff integrity. The image-batch rules emulator was retried only after unrelated workspace emulator processes released the shared port.
+
+Firebase cost boundary: standalone acceptance is one transaction read plus one write per owner accept action. Linked acceptance is four admission reads plus two transaction reads and one project write. The operation adds no per-image documents, Storage copies, collection, index, Function, scheduler, rule, provider call, or owner setting. Malformed requests fail before writes, and repeated URLs are idempotent.

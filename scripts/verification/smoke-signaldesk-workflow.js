@@ -177,8 +177,13 @@ async function main() {
 
   const outcome = await recordSignalDeskOutcomeServer(access, {
     channel: "email",
+    evidenceRef: `evidence:${targetId}:smoke`,
+    idempotencyKey: `outcome:${targetId}:smoke`,
     outcomeType: "two_surface_activation",
+    ownerQualifiedAt: new Date(Date.now() - 60_000).toISOString(),
+    ownerReviewedAt: new Date().toISOString(),
     source: "manual",
+    surfaces: ["qr", "whatsapp"],
     targetId,
   });
   assert(outcome.outcomeEventId, "Outcome event was not recorded");

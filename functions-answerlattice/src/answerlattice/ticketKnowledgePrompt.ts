@@ -126,19 +126,23 @@ export function parseTicketResolutionResponse(rawResponse: string | null): Parse
         if (!parsed.structuredSummary || typeof parsed.structuredSummary !== 'string') return null;
         if (!parsed.detailedExplanation || typeof parsed.detailedExplanation !== 'string') return null;
 
-        const summary = parsed.structuredSummary.length > 500
-            ? parsed.structuredSummary.substring(0, 497) + '...'
-            : parsed.structuredSummary;
+        const title = parsed.title.trim().slice(0, 180);
+        const normalizedSummary = parsed.structuredSummary.trim();
+        const detailedExplanation = parsed.detailedExplanation.trim().slice(0, 24_000);
+        if (!title || !normalizedSummary || !detailedExplanation) return null;
+        const summary = normalizedSummary.length > 500
+            ? normalizedSummary.substring(0, 497) + '...'
+            : normalizedSummary;
 
         return {
-            title: parsed.title.substring(0, 200),
+            title,
             structuredSummary: summary,
-            detailedExplanation: parsed.detailedExplanation,
-            edgeCases: typeof parsed.edgeCases === 'string' ? parsed.edgeCases : null,
-            constraints: typeof parsed.constraints === 'string' ? parsed.constraints : null,
+            detailedExplanation,
+            edgeCases: typeof parsed.edgeCases === 'string' ? parsed.edgeCases.trim().slice(0, 8_000) || null : null,
+            constraints: typeof parsed.constraints === 'string' ? parsed.constraints.trim().slice(0, 8_000) || null : null,
             procedure: parsed.procedure && typeof parsed.procedure === 'object' ? parsed.procedure : null,
             confidence: typeof parsed.confidence === 'number' ? Math.max(0, Math.min(1, parsed.confidence)) : 0.5,
-            extractedProblem: typeof parsed.extractedProblem === 'string' ? parsed.extractedProblem.substring(0, 300) : '',
+            extractedProblem: typeof parsed.extractedProblem === 'string' ? parsed.extractedProblem.trim().substring(0, 300) : '',
         };
     } catch {
         return null;

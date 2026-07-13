@@ -11,7 +11,6 @@ import LocalisationProvider from "@providers/localisationProvider";
 import NetworkStatusProvider from "@providers/NetworkStatusProvider";
 import NoSSRProvider from "@providers/noSSRProvider";
 import { ReduxStoreProvider } from "@providers/reduxProvider";
-import SessionProvider from "@providers/sessionProvider";
 import AntdThemeProvider from "@providers/antdThemeProvider";
 import type { Metadata, Viewport } from "next";
 import { getServerSession } from "next-auth";
@@ -21,6 +20,7 @@ import { notFound, redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import SessionExpiryMonitor from "@/components/auth/SessionExpiryMonitor";
 import SignalDeskPathProvider from "@/components/signaldesk/SignalDeskPathProvider";
+import SignalDeskSessionProvider from "@/components/signaldesk/SignalDeskSessionProvider";
 
 export const metadata: Metadata = {
     applicationName: "MenuList SignalDesk",
@@ -53,7 +53,7 @@ function getSignalDeskBasePath(): string {
 function getSignalDeskSigninPath(basePath: string): string {
     return basePath === SIGNALDESK_MENULIST_DIGITAL_ALIAS_PATH
         ? `${SIGNALDESK_MENULIST_DIGITAL_ALIAS_PATH}/signin`
-        : "/signin";
+        : `${SIGNALDESK_BASE_PATH}/signin`;
 }
 
 export default async function SignalDeskLayout({ children }: { children: ReactNode }) {
@@ -87,7 +87,7 @@ export default async function SignalDeskLayout({ children }: { children: ReactNo
         <AntdRegistry>
             <LocalisationProvider locale={locale}>
                 <ReduxStoreProvider>
-                    <SessionProvider session={session}>
+                    <SignalDeskSessionProvider session={session}>
                         <NoSSRProvider>
                             <AntdThemeProvider>
                                 <SessionExpiryMonitor />
@@ -98,7 +98,7 @@ export default async function SignalDeskLayout({ children }: { children: ReactNo
                                 </NetworkStatusProvider>
                             </AntdThemeProvider>
                         </NoSSRProvider>
-                    </SessionProvider>
+                    </SignalDeskSessionProvider>
                 </ReduxStoreProvider>
             </LocalisationProvider>
         </AntdRegistry>

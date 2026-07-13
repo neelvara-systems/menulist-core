@@ -33,9 +33,29 @@ const MAX_SESSION_MESSAGES = 5;
 const MAX_CONTEXT_PAYLOAD_BYTES = 2048;
 const MAX_VISITOR_PAYLOAD_BYTES = 1024;
 const WIDGET_SEARCH_RESPONSE_JSON_MAX_BYTES = 256 * 1024;
+const WIDGET_ERROR_RESPONSE_JSON_MAX_BYTES = 8 * 1024;
+const WIDGET_RUNTIME_TOKEN_HEADER = 'X-Answerlattice-Widget-Runtime';
 const WIDGET_ANSWER_FAILED_MESSAGE = 'Could not answer that right now. Try again.';
 const WIDGET_FEEDBACK_FAILED_MESSAGE = 'Could not save feedback. Try again.';
 const WIDGET_LINK_OPEN_FAILED_MESSAGE = 'Could not open link. Try again.';
+const WIDGET_SEARCH_PUBLIC_ERROR_MESSAGES = new Set([
+    WIDGET_ANSWER_FAILED_MESSAGE,
+    'Help needs to reconnect. Reload this page and try again.',
+    'Too many questions at once. Wait a moment and try again.',
+    'Support is temporarily unavailable for this workspace.',
+    'Support is temporarily unavailable. Try again shortly.',
+]);
+const SENSITIVE_WIDGET_RESPONSE_KEYS = new Set([
+    'apikey',
+    'embedding',
+    'pid',
+    'secret',
+    'sid',
+    'storeid',
+    'tenantid',
+    'tid',
+    'token',
+]);
 
 type WidgetHistoryMode = 'session' | 'forget';
 
@@ -75,6 +95,10 @@ interface WidgetMessage {
     imageBase64?: string;
     imageMimeType?: string;
     procedure?: WidgetProcedure;
+    knownIssue?: {
+        severity: 'info' | 'degraded' | 'outage';
+        statusPageUrl?: string;
+    };
 }
 
 interface WidgetClientProps {
@@ -104,81 +128,150 @@ const isPlainRecord = (value: unknown): value is Record<string, unknown> => (
     Boolean(value) && typeof value === 'object' && !Array.isArray(value)
 );
 
-const isOptionalString = (value: unknown): value is string | undefined => (
-    value === undefined || typeof value === 'string'
+const isBoundedString = (value: unknown, maxLength: number, allowEmpty = false): value is string => (
+    typeof value === 'string'
+    && value.length <= maxLength
+    && (allowEmpty || value.trim().length > 0)
 );
 
-const isOptionalNullableString = (value: unknown): value is string | null | undefined => (
-    value === undefined || value === null || typeof value === 'string'
+const isOptionalBoundedString = (value: unknown, maxLength: number): value is string | undefined => (
+    value === undefined || isBoundedString(value, maxLength, true)
 );
+
+const isOptionalNullableBoundedString = (value: unknown, maxLength: number): value is string | null | undefined => (
+    value === undefined || value === null || isBoundedString(value, maxLength, true)
+);
+
+const isSafeWidgetLink = (value: unknown): value is string | undefined => {
+    if (value === undefined) return true;
+    if (!isBoundedString(value, 1000)) return false;
+    if (value.startsWith('/') && !value.startsWith('//')) return true;
+    try {
+        const parsed = new URL(value);
+        return (parsed.protocol === 'https:' || parsed.protocol === 'http:')
+            && !parsed.username
+            && !parsed.password;
+    } catch {
+        return false;
+    }
+};
+
+const hasSensitiveOrExcessiveResponseShape = (value: unknown): boolean => {
+    const pending: unknown[] = [value];
+    let visited = 0;
+    while (pending.length > 0) {
+        const current = pending.pop();
+        visited += 1;
+        if (visited > 1000) return true;
+        if (Array.isArray(current)) {
+            pending.push(...current);
+            continue;
+        }
+        if (!isPlainRecord(current)) continue;
+        for (const [key, nestedValue] of Object.entries(current)) {
+            if (SENSITIVE_WIDGET_RESPONSE_KEYS.has(key.toLowerCase())) return true;
+            if (nestedValue && typeof nestedValue === 'object') pending.push(nestedValue);
+        }
+    }
+    return false;
+};
+
+const normalizeKnownIssueUrl = (value: unknown): string | undefined => {
+    if (typeof value !== 'string' || value.length > 500) return undefined;
+    try {
+        const parsed = new URL(value);
+        return parsed.protocol === 'https:' ? parsed.toString() : undefined;
+    } catch {
+        return undefined;
+    }
+};
 
 const isWidgetReference = (value: unknown): value is NonNullable<WidgetMessage['references']>[number] => (
     isPlainRecord(value)
-    && typeof value.id === 'string'
-    && typeof value.title === 'string'
-    && isOptionalString(value.url)
+    && isBoundedString(value.id, 180)
+    && isBoundedString(value.title, 300)
+    && isSafeWidgetLink(value.url)
 );
 
 const isWidgetProcedureStep = (value: unknown): value is WidgetProcedureStep => (
     isPlainRecord(value)
     && typeof value.stepOrder === 'number'
-    && Number.isFinite(value.stepOrder)
-    && typeof value.instruction === 'string'
-    && isOptionalString(value.action)
-    && isOptionalString(value.target)
-    && isOptionalString(value.expectedResult)
-    && isOptionalString(value.troubleshootingHint)
+    && Number.isInteger(value.stepOrder)
+    && value.stepOrder >= 0
+    && value.stepOrder <= 100
+    && isBoundedString(value.instruction, 1000)
+    && isOptionalBoundedString(value.action, 160)
+    && isOptionalBoundedString(value.target, 240)
+    && isOptionalBoundedString(value.expectedResult, 600)
+    && isOptionalBoundedString(value.troubleshootingHint, 600)
 );
 
 const isWidgetProcedure = (value: unknown): value is WidgetProcedure => {
     if (!isPlainRecord(value)) return false;
-    if (value.steps !== undefined && (!Array.isArray(value.steps) || !value.steps.every(isWidgetProcedureStep))) return false;
-    if (value.warnings !== undefined && (!Array.isArray(value.warnings) || !value.warnings.every((item) => (
-        isPlainRecord(item) && typeof item.message === 'string' && isOptionalString(item.severity)
+    if (value.steps !== undefined && (!Array.isArray(value.steps) || value.steps.length > 20 || !value.steps.every(isWidgetProcedureStep))) return false;
+    if (value.warnings !== undefined && (!Array.isArray(value.warnings) || value.warnings.length > 10 || !value.warnings.every((item) => (
+        isPlainRecord(item) && isBoundedString(item.message, 600) && isOptionalBoundedString(item.severity, 40)
     )))) return false;
-    if (value.prerequisites !== undefined && (!Array.isArray(value.prerequisites) || !value.prerequisites.every((item) => (
-        isPlainRecord(item) && typeof item.description === 'string' && isOptionalString(item.type) && isOptionalString(item.value)
+    if (value.prerequisites !== undefined && (!Array.isArray(value.prerequisites) || value.prerequisites.length > 10 || !value.prerequisites.every((item) => (
+        isPlainRecord(item)
+        && isBoundedString(item.description, 600)
+        && isOptionalBoundedString(item.type, 80)
+        && isOptionalBoundedString(item.value, 240)
     )))) return false;
     return true;
 };
 
 const isWidgetRelatedContent = (value: unknown): value is WidgetMessage['relatedContent'] => {
     if (!isPlainRecord(value)) return false;
-    if (!isOptionalString(value.key) || !isOptionalString(value.label)) return false;
-    if (value.articles !== undefined && (!Array.isArray(value.articles) || !value.articles.every((item) => (
+    if (!isOptionalBoundedString(value.key, 180) || !isOptionalBoundedString(value.label, 240)) return false;
+    if (value.articles !== undefined && (!Array.isArray(value.articles) || value.articles.length > 10 || !value.articles.every((item) => (
         isPlainRecord(item)
-        && typeof item.id === 'string'
-        && typeof item.title === 'string'
-        && isOptionalString(item.url)
+        && isBoundedString(item.id, 180)
+        && isBoundedString(item.title, 300)
+        && isSafeWidgetLink(item.url)
     )))) return false;
-    if (value.faqs !== undefined && (!Array.isArray(value.faqs) || !value.faqs.every((item) => (
+    if (value.faqs !== undefined && (!Array.isArray(value.faqs) || value.faqs.length > 10 || !value.faqs.every((item) => (
         isPlainRecord(item)
-        && typeof item.id === 'string'
-        && typeof item.question === 'string'
-        && isOptionalString(item.answer)
-        && isOptionalNullableString(item.articleId)
+        && isBoundedString(item.id, 180)
+        && isBoundedString(item.question, 500)
+        && isOptionalBoundedString(item.answer, 3000)
+        && isOptionalNullableBoundedString(item.articleId, 180)
     )))) return false;
-    if (value.changelogs !== undefined && (!Array.isArray(value.changelogs) || !value.changelogs.every((item) => (
+    if (value.changelogs !== undefined && (!Array.isArray(value.changelogs) || value.changelogs.length > 10 || !value.changelogs.every((item) => (
         isPlainRecord(item)
-        && typeof item.id === 'string'
-        && typeof item.title === 'string'
-        && isOptionalNullableString(item.pageId)
-        && isOptionalNullableString(item.version)
+        && isBoundedString(item.id, 180)
+        && isBoundedString(item.title, 300)
+        && isOptionalNullableBoundedString(item.pageId, 180)
+        && isOptionalNullableBoundedString(item.version, 80)
     )))) return false;
     return true;
 };
 
 const isWidgetSearchResponse = (value: unknown): value is WidgetSearchResponse => {
-    if (!isPlainRecord(value) || typeof value.answer !== 'string') return false;
+    if (!isPlainRecord(value) || hasSensitiveOrExcessiveResponseShape(value) || !isBoundedString(value.answer, 20_000)) return false;
     if (value.canonical !== undefined && typeof value.canonical !== 'boolean') return false;
-    if (!isOptionalString(value.confidence) || !isOptionalString(value.answerSource) || !isOptionalString(value.searchHistoryId)) return false;
-    if (value.references !== undefined && (!Array.isArray(value.references) || !value.references.every(isWidgetReference))) return false;
+    if (!isOptionalBoundedString(value.confidence, 40) || !isOptionalBoundedString(value.answerSource, 80) || !isOptionalBoundedString(value.searchHistoryId, 180)) return false;
+    if (value.references !== undefined && (!Array.isArray(value.references) || value.references.length > 12 || !value.references.every(isWidgetReference))) return false;
     if (value.relatedContent !== undefined && !isWidgetRelatedContent(value.relatedContent)) return false;
-    if (value.suggestedQuestions !== undefined && !Array.isArray(value.suggestedQuestions)) return false;
+    if (value.suggestedQuestions !== undefined && (
+        !Array.isArray(value.suggestedQuestions)
+        || value.suggestedQuestions.length > 8
+        || !value.suggestedQuestions.every((item) => (
+            typeof item === 'string'
+                ? isBoundedString(item, 300)
+                : isPlainRecord(item)
+                    && isOptionalBoundedString(item.entityName, 300)
+                    && isOptionalBoundedString(item.title, 300)
+                    && isOptionalBoundedString(item.question, 300)
+        ))
+    )) return false;
     if (value.procedure !== undefined && !isWidgetProcedure(value.procedure)) return false;
     if (value.graphExpansion !== undefined) {
         if (!isPlainRecord(value.graphExpansion)) return false;
-        if (value.graphExpansion.relatedSuggestions !== undefined && !Array.isArray(value.graphExpansion.relatedSuggestions)) return false;
+        if (value.graphExpansion.relatedSuggestions !== undefined && (
+            !Array.isArray(value.graphExpansion.relatedSuggestions)
+            || value.graphExpansion.relatedSuggestions.length > 8
+        )) return false;
     }
     return true;
 };
@@ -209,6 +302,20 @@ const readWidgetSearchResponse = async (
     }
 
     return payload;
+};
+
+const readWidgetSearchErrorMessage = async (response: Response): Promise<string> => {
+    try {
+        await readJsonResponseWithLimit<unknown>(response, WIDGET_ERROR_RESPONSE_JSON_MAX_BYTES);
+    } catch {
+        // The public UI uses status-based copy and never renders an untrusted error payload.
+    }
+
+    if (response.status === 403) return 'Help needs to reconnect. Reload this page and try again.';
+    if (response.status === 429) return 'Too many questions at once. Wait a moment and try again.';
+    if (response.status === 402) return 'Support is temporarily unavailable for this workspace.';
+    if (response.status === 503) return 'Support is temporarily unavailable. Try again shortly.';
+    return WIDGET_ANSWER_FAILED_MESSAGE;
 };
 
 const sanitizeContextString = (value: unknown, maxLength = 100): string | null => {
@@ -390,6 +497,9 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
     const [selectedImage, setSelectedImage] = useState<{ base64: string; mimeType: string; name: string } | null>(null);
     const [productContext, setProductContext] = useState<Record<string, any> | null>(null);
     const [visitorContext, setVisitorContext] = useState<Record<string, any> | null>(null);
+    const [verifiedContextToken, setVerifiedContextToken] = useState<string | null>(null);
+    const [runtimeAuthorizationToken, setRuntimeAuthorizationToken] = useState<string | null>(null);
+    const [evidenceLinks, setEvidenceLinks] = useState<Array<{ url: string; label?: string }>>([]);
     const [historyMode, setHistoryMode] = useState<WidgetHistoryMode>('session');
     const [greeting, setGreeting] = useState('How can we help?');
     const [headerTitle, setHeaderTitle] = useState('Help');
@@ -458,6 +568,35 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
             if (e.data?.type === 'answerlattice-visitor-update') {
                 setVisitorContext(sanitizeVisitorPayload(e.data.visitor));
             }
+            if (e.data?.type === 'answerlattice-security-context-update') {
+                const token = typeof e.data.verifiedContextToken === 'string'
+                    && e.data.verifiedContextToken.length >= 40
+                    && e.data.verifiedContextToken.length <= 4096
+                    ? e.data.verifiedContextToken
+                    : null;
+                const links = Array.isArray(e.data.evidenceLinks)
+                    ? e.data.evidenceLinks.slice(0, 3).flatMap((link: any) => {
+                        try {
+                            const parsed = new URL(String(link?.url || ''));
+                            if (parsed.protocol !== 'https:') return [];
+                            return [{
+                                url: parsed.toString().slice(0, 1000),
+                                ...(typeof link?.label === 'string' ? { label: link.label.replace(/[<>]/g, '').trim().slice(0, 80) } : {}),
+                            }];
+                        } catch {
+                            return [];
+                        }
+                    })
+                    : [];
+                const runtimeToken = typeof e.data.runtimeAuthorizationToken === 'string'
+                    && e.data.runtimeAuthorizationToken.length >= 40
+                    && e.data.runtimeAuthorizationToken.length <= 2048
+                    ? e.data.runtimeAuthorizationToken
+                    : null;
+                setVerifiedContextToken(token);
+                setRuntimeAuthorizationToken(runtimeToken);
+                setEvidenceLinks(links);
+            }
             if (e.data?.type === 'answerlattice-widget-visibility') {
                 const nextHistoryMode: WidgetHistoryMode = e.data.historyMode === 'forget' ? 'forget' : 'session';
                 setHistoryMode(nextHistoryMode);
@@ -490,6 +629,18 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
                 const suggestion = e.data.suggestion;
                 const title = typeof suggestion.title === 'string' ? suggestion.title.slice(0, 160) : '';
                 const summary = typeof suggestion.summary === 'string' ? suggestion.summary.slice(0, 600) : '';
+                const knownIssue = isPlainRecord(suggestion.knownIssue)
+                    ? {
+                        severity: suggestion.knownIssue.severity === 'outage'
+                            ? 'outage' as const
+                            : suggestion.knownIssue.severity === 'degraded'
+                                ? 'degraded' as const
+                                : 'info' as const,
+                        ...(normalizeKnownIssueUrl(suggestion.knownIssue.statusPageUrl)
+                            ? { statusPageUrl: normalizeKnownIssueUrl(suggestion.knownIssue.statusPageUrl) }
+                            : {}),
+                    }
+                    : undefined;
                 const content = [title, summary].filter(Boolean).join('\n\n');
                 if (!content) return;
 
@@ -508,6 +659,7 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
                                 .slice(0, 3)
                             : [],
                         procedure: suggestion.procedure,
+                        ...(knownIssue ? { knownIssue } : {}),
                     }];
                 });
             }
@@ -554,7 +706,10 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
         setError(null);
 
         try {
-            const body: Record<string, any> = { query: q };
+            const body: Record<string, any> = {
+                requestId: createTimestampedRuntimeId('widget_search', 12),
+                query: q,
+            };
 
             // Session memory: include conversation history after first exchange
             const history = getConversationHistory();
@@ -570,6 +725,12 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
             if (visitorContext) {
                 body.visitor = visitorContext;
             }
+            if (verifiedContextToken) {
+                body.verifiedContextToken = verifiedContextToken;
+            }
+            if (evidenceLinks.length > 0) {
+                body.evidenceLinks = evidenceLinks;
+            }
             body.sessionId = widgetSessionIdRef.current;
 
             // Image support: send base64 inline
@@ -583,6 +744,8 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
                 hasImage: Boolean(currentImage),
                 hasProductContext: Boolean(productContext),
                 hasVisitorContext: Boolean(visitorContext),
+                hasVerifiedContext: Boolean(verifiedContextToken),
+                evidenceLinkCount: evidenceLinks.length,
                 historyCount: history?.length || 0,
                 widgetSessionIdLength: widgetSessionIdRef.current.length,
             };
@@ -595,12 +758,15 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
                 headers: {
                     'Content-Type': 'application/json',
                     'X-API-Key': apiKey,
+                    ...(runtimeAuthorizationToken
+                        ? { [WIDGET_RUNTIME_TOKEN_HEADER]: runtimeAuthorizationToken }
+                        : {}),
                 },
                 body: JSON.stringify(body),
             });
 
             if (!res.ok) {
-                throw new Error(WIDGET_ANSWER_FAILED_MESSAGE);
+                throw new Error(await readWidgetSearchErrorMessage(res));
             }
 
             const data = await readWidgetSearchResponse(res, responseLogContext);
@@ -632,9 +798,13 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
             };
 
             setMessages(prev => [...prev, aiMsg]);
-        } catch {
+        } catch (searchError) {
             if (activeRequestRef.current !== requestId) return;
-            setError(WIDGET_ANSWER_FAILED_MESSAGE);
+            const publicMessage = searchError instanceof Error
+                && WIDGET_SEARCH_PUBLIC_ERROR_MESSAGES.has(searchError.message)
+                ? searchError.message
+                : WIDGET_ANSWER_FAILED_MESSAGE;
+            setError(publicMessage);
         } finally {
             if (activeRequestRef.current === requestId) {
                 setLoading(false);
@@ -715,7 +885,13 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
                 cache: 'no-store',
                 credentials: 'same-origin',
                 redirect: 'manual',
-                headers: { 'Content-Type': 'application/json', 'X-API-Key': apiKey },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-API-Key': apiKey,
+                    ...(runtimeAuthorizationToken
+                        ? { [WIDGET_RUNTIME_TOKEN_HEADER]: runtimeAuthorizationToken }
+                        : {}),
+                },
                 body: JSON.stringify({ searchHistoryId: msg.searchHistoryId, isGood }),
             });
             if (!response.ok) {
@@ -795,7 +971,11 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
 
                 {messages.map((msg) => (
                     <div key={msg.id} style={msg.role === 'user' ? styles.userMsgRow : styles.aiMsgRow}>
-                        <div style={msg.role === 'user' ? { ...styles.userBubble, background: accentColor } : styles.aiBubble}>
+                        <div style={msg.role === 'user'
+                            ? { ...styles.userBubble, background: accentColor }
+                            : msg.knownIssue
+                                ? styles.knownIssueBubble
+                                : styles.aiBubble}>
                             {msg.imageBase64 && (
                                 <img
                                     src={`data:${msg.imageMimeType || 'image/png'};base64,${msg.imageBase64}`}
@@ -803,7 +983,26 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
                                     style={{ maxWidth: '100%', maxHeight: 120, borderRadius: 8, marginBottom: 6 }}
                                 />
                             )}
+                            {msg.knownIssue && (
+                                <div style={styles.knownIssueLabel}>
+                                    <LuAlertTriangle size={13} aria-hidden />
+                                    {msg.knownIssue.severity === 'outage' ? 'Service issue' : msg.knownIssue.severity === 'degraded' ? 'Known issue' : 'Service notice'}
+                                </div>
+                            )}
                             <p style={styles.msgText}>{msg.content}</p>
+                            {msg.knownIssue?.statusPageUrl && (
+                                <button
+                                    type="button"
+                                    style={styles.knownIssueLink}
+                                    onClick={() => openWidgetLink(msg.knownIssue?.statusPageUrl, {
+                                        linkId: msg.id,
+                                        linkTitle: 'Status page',
+                                        linkSource: 'known_issue',
+                                    })}
+                                >
+                                    View status page
+                                </button>
+                            )}
 
                             {msg.canonical && (
                                 <div style={styles.canonicalBadge}>
@@ -1091,6 +1290,9 @@ const styles: Record<string, CSSProperties> = {
     aiMsgRow: { display: 'flex', justifyContent: 'flex-start', marginBottom: 12 },
     userBubble: { maxWidth: '80%', padding: '10px 14px', borderRadius: '16px 16px 4px 16px', background: '#6366f1', color: '#ffffff' },
     aiBubble: { maxWidth: '85%', padding: '10px 14px', borderRadius: '16px 16px 16px 4px', background: '#f3f4f6', color: '#1a1a2e' },
+    knownIssueBubble: { maxWidth: '88%', padding: '11px 14px', borderRadius: '12px 12px 12px 4px', background: '#fff7ed', color: '#7c2d12', border: '1px solid #fed7aa' },
+    knownIssueLabel: { display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, color: '#c2410c', fontSize: 11, fontWeight: 700, textTransform: 'uppercase' as const },
+    knownIssueLink: { minHeight: 36, marginTop: 8, padding: '6px 10px', borderRadius: 8, border: '1px solid #fdba74', background: '#ffffff', color: '#9a3412', fontSize: 12, fontWeight: 600, cursor: 'pointer' },
     msgText: { margin: 0, lineHeight: 1.5, whiteSpace: 'pre-wrap', fontSize: 13 },
     canonicalBadge: { marginTop: 8, padding: '4px 8px', borderRadius: 6, background: '#ecfdf5', color: '#059669', fontSize: 11, fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: 4 },
     ownerAnswerBadge: { marginTop: 8, padding: '4px 8px', borderRadius: 6, background: '#eef2ff', color: '#4338ca', fontSize: 11, fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: 4 },

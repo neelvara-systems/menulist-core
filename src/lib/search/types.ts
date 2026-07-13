@@ -9,11 +9,23 @@
  */
 
 import type { ValidatedContextPayload } from '@lib/validation/contextSchema';
+import type {
+    AnswerlatticeCanonicalAnswer,
+    AnswerlatticeEntitySearchIndex,
+    AnswerlatticeRelease,
+} from '@type/answerlattice';
 
 // ===== MOUNT CONTEXT =====
 
 /** Where the search request originated from — used for analytics + behavior tuning */
 export type SearchMountContext = 'help_center' | 'widget';
+
+/**
+ * Production requests may update search history and runtime caches. Answer-test
+ * requests exercise the same retrieval pipeline without creating customer-facing
+ * history, feedback targets, analytics inputs, or instant-cache writes.
+ */
+export type SearchExecutionContext = 'production' | 'answer_test';
 
 // ===== CORE SEARCH INPUT =====
 
@@ -23,6 +35,19 @@ export interface CoreSearchInput {
 
     /** Where the search is mounted (for analytics, logging, future behavior tuning) */
     mountContext: SearchMountContext;
+
+    /** Defaults to production. Tests must explicitly opt into the non-persistent path. */
+    executionContext?: SearchExecutionContext;
+
+    /** Server-only request-local preload for bounded QA runs. Never accepted from public clients. */
+    retrievalPreload?: {
+        searchIndex?: AnswerlatticeEntitySearchIndex[];
+        latestRelease?: AnswerlatticeRelease | null;
+        activeAnswerCache?: Map<string, AnswerlatticeCanonicalAnswer[]>;
+    };
+
+    /** Server-only cost gate invoked immediately before the first provider call. */
+    beforeAiProviderCall?: () => Promise<void>;
 
     /** Tenant ID */
     tId: number;
@@ -64,6 +89,8 @@ export interface CoreSearchInput {
         requestOrigin?: string | null;
         requestPath?: string | null;
         userAgentFamily?: string | null;
+        visitorVerified?: boolean;
+        evidenceLinks?: Array<{ url: string; label?: string }>;
     };
 
     /** Number of previous low-confidence results in this chat session (for S3 repeated failure trigger) */

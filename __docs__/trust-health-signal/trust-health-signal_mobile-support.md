@@ -7,6 +7,8 @@
 
 ## Mobile Relevance Decision: **YES (Display Only)**
 
+**Current runtime status:** Not implemented or mounted. The health-signal flags are `false`, and no mobile screen consumes `healthSignals`.
+
 ---
 
 ## Feature Admission Test Results
@@ -23,7 +25,7 @@
 ## Mobile Implementation
 
 ### Display Location
-- Part of mobile dashboard overview (MobileMenuScreen or MobileMoreScreen)
+- If activated, part of the existing `MobileShell` dashboard/More sub-screen flow
 - Small card: "Customer Trust: Strong" with color indicator
 
 ### Data Source
@@ -31,12 +33,12 @@
 - No additional DAL or API calls needed
 
 ### Components
-- `TrustHealthCard` (shared between desktop and mobile)
-- Uses antd-mobile Tag or Badge for state display on mobile
+- No current mobile component.
+- A future display must use the current Tailwind-driven mobile primitives and `react-icons/lu`; it must not introduce or import `antd-mobile` without an explicit dependency/freeze decision.
 
 ### No Interaction Needed
 This is a **read-only signal**. No buttons, no actions, no navigation.
 
 ---
 
-**Last Updated:** February 19, 2026
+**Last Updated:** July 13, 2026

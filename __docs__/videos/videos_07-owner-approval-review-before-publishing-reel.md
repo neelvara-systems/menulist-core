@@ -5,6 +5,8 @@
 **Source:** [Master production blueprint](./videos_launch-product-marketing-production-blueprint.md)
 **Scope:** Standalone production handoff for Video 7.
 
+**Mandatory production standard:** [MenuList Founder-Approved Video Production Standard](./videos_founder-approved-production-standard.md). Apply it to this video's messaging, Inter typography, website gradient emphasis, UI styling, motion, transitions, logo slate, Indian-English voice, brand music, aspect-ratio adaptation, and encoded-MP4 QA.
+
 ## Shared Positioning
 
 MenuList must be shown as public-business truth infrastructure for SMBs, not as a standalone QR menu app, generic AI restaurant software, or flashy SaaS dashboard.
@@ -144,3 +146,17 @@ Use quiet music. Add a soft click for approval. Use a short silence or reduced m
 ### P. CTA
 
 Review before publishing.
+
+### Q. Conversion Contract
+
+- Funnel stage: trust.
+- Belief change: `MenuList prepares the work, but nothing customer-facing goes live without my review.`
+- Proof moment: prepared private preview/card -> item/price check -> explicit owner approval -> customer version.
+- Display close: `Review before publishing.`
+- Linked action: companion `Create customer link` -> `/create-menu`.
+- Primary metric: claim/review progress and first approved publish per referred session.
+- Guard metric: no autonomous-publishing interpretation.
+- Asset/UTM pattern: `approval_v1_owner_control_20s_<aspect>`.
+- Paid eligibility: blocked until approval milestones can be attributed and the exact cut is ledger-approved.
+
+Use the [conversion brief template](./videos_conversion-brief-template.md) and [campaign ledger](./videos_campaign-measurement-ledger.md).

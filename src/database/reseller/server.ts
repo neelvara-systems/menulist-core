@@ -1,29 +1,30 @@
 import { DB_COLLECTIONS } from "@constant/database";
 import { admin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
+import { sanitizeForFirestore } from "@lib/firestore/sanitizeForFirestore";
 import { ResellerProfile, ResellerTransaction } from "@type/reseller";
 
 const TRANSACTIONS_COLLECTION = DB_COLLECTIONS.RESELLER_TRANSACTIONS;
 const PROFILES_COLLECTION = DB_COLLECTIONS.RESELLER_PROFILES;
 
-const isTimestampLike = (value: any) => (
+type TimestampLike = {
+    toDate: () => Date;
+    seconds: number;
+};
+
+const isTimestampLike = (value: unknown): value is TimestampLike => (
     value
     && typeof value === "object"
-    && typeof value.toDate === "function"
-    && typeof value.seconds === "number"
+    && typeof (value as Partial<TimestampLike>).toDate === "function"
+    && typeof (value as Partial<TimestampLike>).seconds === "number"
 );
 
 const sanitizeForAdminFirestore = (value: any): any => {
-    if (value === undefined) return null;
-    if (value === null) return null;
-    if (isTimestampLike(value)) return admin.firestore.Timestamp.fromDate(value.toDate());
-    if (value instanceof Date) return value;
-    if (Array.isArray(value)) return value.map(sanitizeForAdminFirestore);
-    if (typeof value === "object") {
-        return Object.fromEntries(
-            Object.entries(value).map(([key, nestedValue]) => [key, sanitizeForAdminFirestore(nestedValue)]),
-        );
-    }
-    return value;
+    return sanitizeForFirestore(value, {
+        atomicTransform: (atomicValue) => {
+            if (!isTimestampLike(atomicValue)) return { handled: false };
+            return { handled: true, value: admin.firestore.Timestamp.fromDate(atomicValue.toDate()) };
+        },
+    });
 };
 
 const toResellerProfile = (docSnap: admin.firestore.DocumentSnapshot): ResellerProfile => {

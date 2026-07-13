@@ -1,15 +1,37 @@
 import { AI_SERVICE_ROUTE_REQUEST_OPTIONS, createAiServiceHttpError, getBoundedAiServiceStringContext, logAiServiceFailure, readAiServiceResponseJson } from "@services/ai/aiServiceDiagnostics";
 import { syncBalanceFromResponse } from "@services/ai/balanceSync";
 import { AICapacityError, checkCapacityResponse } from "@services/ai/capacityError";
+import { normalizeImageBatchJobId } from '@lib/ai/imageBatchIdBoundary';
 import { GenerateImageViaApiPayloadBatchType } from "@template/main-app/projects/types";
 
 const BATCH_IMAGE_TRIGGER_RESPONSE_JSON_MAX_BYTES = 64 * 1024;
 
 type BatchImageTriggerApiResponse = {
-    data?: unknown[] | null;
+    data?: unknown;
     remainingBalance?: unknown;
     transaction?: unknown;
 };
+
+export type BatchImageTriggerResult = {
+    failedItemIds: string[];
+    jobId: string;
+    partial: boolean;
+};
+
+function normalizeBatchImageTriggerResult(
+    value: unknown,
+    expectedJobId: unknown,
+): BatchImageTriggerResult | null {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    const data = value as Record<string, unknown>;
+    const jobId = normalizeImageBatchJobId(data.jobId);
+    const expected = normalizeImageBatchJobId(expectedJobId);
+    if (!jobId || !expected || jobId !== expected || typeof data.partial !== 'boolean') return null;
+    if (!Array.isArray(data.failedItemIds) || data.failedItemIds.some((itemId) => typeof itemId !== 'string')) return null;
+    const failedItemIds = data.failedItemIds as string[];
+    if (new Set(failedItemIds).size !== failedItemIds.length || failedItemIds.length > 50) return null;
+    return { failedItemIds, jobId, partial: data.partial };
+}
 
 async function triggerBatchImageGenerationApi(payload: GenerateImageViaApiPayloadBatchType) {
     try {
@@ -38,7 +60,9 @@ async function triggerBatchImageGenerationApi(payload: GenerateImageViaApiPayloa
             parseFailureCode: 'ai_batch_image_trigger_response_parse_failed',
         });
         syncBalanceFromResponse(responseJson);
-        return responseJson.data || [];
+        const result = normalizeBatchImageTriggerResult(responseJson.data, payload.jobId);
+        if (!result) throw new Error('ai_batch_image_trigger_response_invalid');
+        return result;
 
     } catch (error) {
         if (error instanceof AICapacityError) throw error;

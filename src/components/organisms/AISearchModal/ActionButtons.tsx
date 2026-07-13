@@ -36,28 +36,40 @@ export default function ActionButtons({ answer, onRegenerate, isTyping, searchHi
         comments: ''
     });
 
-    const handleFeedback = (feedback: 'up' | 'down') => {
+    const handleFeedback = async (feedback: 'up' | 'down') => {
         if (feedback === 'up') {
             if (!searchHistoryId) {
                 message.error('Cannot submit feedback: search history ID not found.');
                 return;
             }
-            message.info('Thank you for your feedback!');
-            updateAiSearchHistoryWithFeedback({ id: searchHistoryId, isGood: true });
-            setFeedbackData({ isGood: true, reasons: [], comments: '' });
+            try {
+                await updateAiSearchHistoryWithFeedback({ id: searchHistoryId, isGood: true });
+                setFeedbackData({ isGood: true, reasons: [], comments: '' });
+                message.info('Thank you for your feedback!');
+            } catch {
+                message.error('Failed to submit feedback. Please try again.');
+            }
         } else {
             setFeedbackModalVisible(true);
         }
     };
 
-    const handleFeedbackSubmit = async (values: { reasons: any[], comments: string }) => {
+    const handleFeedbackSubmit = async (values: { reasons: string[], comments: string }) => {
         if (!searchHistoryId) {
             message.error('Cannot submit feedback: search history ID not found.');
             return;
         }
-        const feedbackPayload = { isGood: false, ...values };
-        await updateAiSearchHistoryWithFeedback({ id: searchHistoryId, ...feedbackPayload });
-        setFeedbackData({ ...feedbackPayload });
+        const reasonsToImprove = (values.reasons || []).map((value) => ({
+            value,
+            label: value.replace(/_/g, ' '),
+        }));
+        await updateAiSearchHistoryWithFeedback({
+            id: searchHistoryId,
+            isGood: false,
+            reasonsToImprove,
+            comments: values.comments || '',
+        });
+        setFeedbackData({ isGood: false, reasons: values.reasons || [], comments: values.comments || '' });
         setFeedbackModalVisible(false);
         message.success('Thank you for your feedback!');
     };
@@ -95,7 +107,7 @@ export default function ActionButtons({ answer, onRegenerate, isTyping, searchHi
                         <Button
                             disabled={feedbackData.isGood}
                             type={feedbackData.isGood ? 'primary' : 'default'}
-                            icon={<LuThumbsUp />} onClick={() => handleFeedback('up')} />
+                            icon={<LuThumbsUp />} onClick={() => void handleFeedback('up')} />
                     </Tooltip>
                     <Tooltip title="Bad response">
                         <Button

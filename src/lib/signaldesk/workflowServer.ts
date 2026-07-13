@@ -1,22 +1,34 @@
 import { FEATURE_FLAGS } from "@config/features";
 import { SIGNALDESK_COLLECTIONS, SIGNALDESK_SUMMARY_DOCS } from "@constant/signaldesk/database";
-import { SIGNALDESK_DEFAULT_AI_MODEL, SIGNALDESK_INTEGRATION_ENV } from "@constant/signaldesk/integrations";
+import {
+    SIGNALDESK_DEFAULT_AI_MODEL,
+    SIGNALDESK_FAST_AI_MODEL,
+    SIGNALDESK_INTEGRATION_ENV,
+    SIGNALDESK_OUTCOME_ROUTE_SCOPE,
+} from "@constant/signaldesk/integrations";
 import { SIGNALDESK_PRODUCT_CODE } from "@constant/signaldesk/product";
 import { admin, signaldeskFirestoreAdmin } from "@lib/firebase/signaldeskFirebaseAdmin";
+import { sanitizeForFirestore as sanitizeFirestoreValue } from "@lib/firestore/sanitizeForFirestore";
 import { isSignalDeskFirebaseConfigured } from "@lib/firebase/signaldeskConfig";
-import { logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
-import { runSignalDeskAiAssist } from "@lib/signaldesk/aiProvider";
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
+import { runSignalDeskAiAssist, runSignalDeskAiCritic } from "@lib/signaldesk/aiProvider";
 import { getSignalDeskChannelReadiness, sendSignalDeskProviderMessage } from "@lib/signaldesk/providerAdapters";
 import { loadSignalDeskOverviewServer } from "@lib/signaldesk/server";
 import { runSignalDeskSourceProvider } from "@lib/signaldesk/sourceProviders";
-import { createHash } from "crypto";
+import { createHash, randomBytes } from "crypto";
 import type {
     SignalDeskAccessContext,
+    SignalDeskActivationOpportunitySummary,
+    SignalDeskAiShadowReviewDecision,
     SignalDeskAiTask,
     SignalDeskAiScoreSummary,
+    SignalDeskAiVolumeRunSummary,
+    SignalDeskAiVolumeTask,
+    SignalDeskAiWorkerRunSummary,
     SignalDeskActivationWatchSummary,
     SignalDeskApprovalItem,
     SignalDeskApprovalPacketSummary,
+    SignalDeskApprovalRejectionReason,
     SignalDeskAuditEvent,
     SignalDeskAudienceSegmentSummary,
     SignalDeskBudgetPolicySummary,
@@ -48,6 +60,8 @@ import type {
     SignalDeskGrowthMissionSummary,
     SignalDeskKillSwitch,
     SignalDeskMarketPodSummary,
+    SignalDeskManualContactResult,
+    SignalDeskManualContactRoute,
     SignalDeskModelEvalSummary,
     SignalDeskModelRouteSummary,
     SignalDeskNextAction,
@@ -66,6 +80,8 @@ import type {
     SignalDeskResearchProviderId,
     SignalDeskResearchRunSummary,
     SignalDeskResearchTableRowSummary,
+    SignalDeskProofPermissionScope,
+    SignalDeskProofPermissionSummary,
     SignalDeskRunTimelineSummary,
     SignalDeskRole,
     SignalDeskSection,
@@ -116,15 +132,26 @@ type TargetImportRow = {
 };
 
 type SourcePolicyInput = {
+    accessMethod: NonNullable<SignalDeskSourcePolicy["accessMethod"]>;
     allowContact: boolean;
     allowEvidence: boolean;
     allowPersonalization: boolean;
+    allowedFields: string[];
+    attributionRequirements: string[];
+    blockedFields: string[];
     expiresAt?: string;
+    lastReviewedAt?: string;
     name: string;
     notes?: string;
+    policyOwner: string;
+    prohibitedUses: string[];
     provider?: SignalDeskProviderId;
+    rawPayloadPolicy: NonNullable<SignalDeskSourcePolicy["rawPayloadPolicy"]>;
+    refreshMethod: NonNullable<SignalDeskSourcePolicy["refreshMethod"]>;
     retentionDays: number;
     sourceType: SignalDeskSourcePolicy["sourceType"];
+    termsUrl?: string;
+    termsVersion?: string;
 };
 
 type SourceProviderRunInput = {
@@ -147,8 +174,25 @@ type TeamMemberInput = {
 
 type AiAssistInput = {
     instruction?: string;
+    multiPass?: boolean;
     targetId: string;
-    task: SignalDeskAiTask;
+    task: Exclude<SignalDeskAiTask, "quality-critic">;
+    volumeRunId?: string;
+};
+
+type AiVolumeBatchInput = {
+    idempotencyKey: string;
+    instruction?: string;
+    maxEstimatedCostUsd: number;
+    targetIds: string[];
+    tasks: SignalDeskAiVolumeTask[];
+};
+
+type AiShadowReviewInput = {
+    aiRunId: string;
+    decision: SignalDeskAiShadowReviewDecision;
+    founderAttentionMinutes: number;
+    reason?: string;
 };
 
 type ChannelActionInput = {
@@ -462,6 +506,8 @@ type ContentAssetInput = {
     marketPodId?: string;
     primaryAudience: ContentAudience;
     proofLevel: SignalDeskContentAssetSummary["proofLevel"];
+    proofPermissionId?: string;
+    proofScopes: SignalDeskProofPermissionScope[];
     riskNotes: string[];
     sourceId?: string;
     sourceNotes?: string;
@@ -469,6 +515,17 @@ type ContentAssetInput = {
     sourceUrl?: string;
     status?: SignalDeskContentAssetSummary["status"];
     title: string;
+};
+
+type ProofPermissionInput = {
+    evidenceRef: string;
+    expiresAt?: string;
+    grantedAt?: string;
+    notes?: string;
+    proofPermissionId?: string;
+    scopes: SignalDeskProofPermissionScope[];
+    status: SignalDeskProofPermissionSummary["status"];
+    targetId: string;
 };
 
 type ContentDistributionDraftInput = {
@@ -562,6 +619,47 @@ type ActivationWatchInput = {
     targetId: string;
 };
 
+type ManualContactInput = {
+    idempotencyKey: string;
+    note?: string;
+    occurredAt: string;
+    result: SignalDeskManualContactResult;
+    route: SignalDeskManualContactRoute;
+    sourcePolicyId: string;
+    targetId: string;
+};
+
+type OutcomeInput = {
+    channel: SignalDeskOutcomeSummary["channel"];
+    evidenceRef?: string;
+    idempotencyKey?: string;
+    integrityStatus?: NonNullable<SignalDeskOutcomeSummary["integrityStatus"]>;
+    outcomeType: SignalDeskOutcomeSummary["outcomeType"];
+    ownerQualifiedAt?: string;
+    ownerReviewedAt?: string;
+    source: SignalDeskOutcomeSummary["source"];
+    sourceEventId?: string;
+    surfaces?: NonNullable<SignalDeskOutcomeSummary["surfaces"]>;
+    targetId?: string;
+    routeTokenValidation?: {
+        routeTokenHash: string;
+        routeTokenId: string;
+    };
+};
+
+type RouteTokenInput = {
+    actionId?: string;
+    channel: SignalDeskOutcomeSummary["channel"];
+    ctaId?: string;
+    targetId: string;
+    templateId?: string;
+};
+
+type RouteTokenRevocationInput = {
+    reason: string;
+    routeTokenId: string;
+};
+
 const LIST_LIMIT = 30;
 const SIGNALDESK_PROVIDER_BUDGET_BLOCKED_REASON = "provider_budget_blocked";
 const SIGNALDESK_RESEARCH_AGENT_BLOCKED_REASON = "research_agent_blocked";
@@ -576,6 +674,10 @@ const now = () => admin.firestore.Timestamp.now();
 const increment = (value: number) => admin.firestore.FieldValue.increment(value);
 
 const hashValue = (value: string) => createHash("sha256").update(value).digest("hex");
+const isAlreadyExistsError = (error: unknown) => {
+    const code = (error as { code?: unknown } | null)?.code;
+    return code === 6 || code === "6" || code === "already-exists" || code === "ALREADY_EXISTS";
+};
 
 const normalizeText = (value?: string | null) => (value || "").trim();
 const normalizeLower = (value?: string | null) => normalizeText(value).toLowerCase();
@@ -584,6 +686,18 @@ const todayKey = () => new Date().toISOString().slice(0, 10);
 const env = (key: string) => process.env[key]?.trim() || "";
 const operatingLayerEnabled = () => FEATURE_FLAGS.ENABLE_MENULIST_SIGNALDESK_OPERATING_LAYER === true;
 const revenueOperatingLayerEnabled = () => FEATURE_FLAGS.ENABLE_MENULIST_SIGNALDESK_REVENUE_OPERATING_LAYER === true;
+const MANUAL_CONTACT_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+const MANUAL_CONTACT_FUTURE_SKEW_MS = 5 * 60 * 1000;
+const APPROVAL_REJECTION_REASONS = new Set<SignalDeskApprovalRejectionReason>([
+    "evidence-weak-or-stale",
+    "identity-uncertain",
+    "no-customer-truth-gap",
+    "contact-route-not-allowed",
+    "already-solved",
+    "wrong-segment",
+    "duplicate",
+    "other",
+]);
 
 const toIso = (value: any): string | null => {
     if (!value) return null;
@@ -597,6 +711,7 @@ const toIso = (value: any): string | null => {
 
 const toPlain = (value: any): any => {
     if (!value) return value ?? null;
+    if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value.toISOString();
     if (typeof value?.toDate === "function" || typeof value?.seconds === "number") return toIso(value);
     if (Array.isArray(value)) return value.map(toPlain);
     if (typeof value === "object") {
@@ -605,19 +720,15 @@ const toPlain = (value: any): any => {
     return value;
 };
 
-const sanitizeForFirestore = (value: any): any => {
-    if (value === undefined) return null;
-    if (value === null) return null;
-    if (value instanceof Date) return admin.firestore.Timestamp.fromDate(value);
-    if (typeof value !== "object") return value;
-    if (typeof value?.isEqual === "function" && /Transform$/.test(value?.constructor?.name || "")) return value;
-    if (typeof value?.toDate === "function" && typeof value?.seconds === "number") return value;
-    if (Array.isArray(value)) return value.map(sanitizeForFirestore);
-    return Object.fromEntries(Object.entries(value).map(([key, nested]) => [key, sanitizeForFirestore(nested)]));
-};
+const sanitizeForFirestore = (value: unknown) => sanitizeFirestoreValue(value, {
+    dateTransform: (date) => admin.firestore.Timestamp.fromDate(date),
+});
 
 const emptyWorkspace = (section: SignalDeskSection): SignalDeskWorkspaceData => ({
+    activationOpportunities: [],
     activationWatches: [],
+    aiVolumeRuns: [],
+    aiWorkerRuns: [],
     approvalPackets: [],
     audienceSegments: [],
     budgetPolicies: [],
@@ -649,6 +760,7 @@ const emptyWorkspace = (section: SignalDeskSection): SignalDeskWorkspaceData => 
     offerCtas: [],
     operatingEnvelopes: [],
     policies: [],
+    proofPermissions: [],
     providerAccounts: [],
     providerEvaluations: [],
     providerEvents: [],
@@ -829,12 +941,14 @@ const SIGNALDESK_RESEARCH_SOURCE_POLICY_SCAN_FAILED = "signaldesk_research_sourc
 const sourcePolicyUseAllowed = (policy: SignalDeskSourcePolicy, use: SourcePolicyUse) => {
     const allowed = resolveAllowedUse(policy);
     if (use === "contact" || use === "export" || use === "handoff" || use === "send" || use === "sequence") {
-        return allowed.contact;
+        return use === "contact"
+            ? allowed.contact
+            : allowed.contact && allowed.evidence && allowed.personalization;
     }
-    if (use === "draft") return allowed.personalization;
+    if (use === "draft" || use === "approval") return allowed.evidence && allowed.personalization;
     if (use === "import") return allowed.import;
     if (use === "provider-run") return allowed.providerRun;
-    if (use === "storage") return allowed.storage;
+    if (use === "storage" || use === "retention-refresh") return allowed.storage && allowed.evidence;
     return allowed.evidence;
 };
 
@@ -843,6 +957,28 @@ const sourcePolicyHasActiveBlock = (policy: SignalDeskSourcePolicy) => (
     || (policy as AnyRecord).blockStatus === "active"
     || (policy as AnyRecord).suppressionStatus === "active"
 );
+
+const sourcePolicyHasCompleteRights = (policy: SignalDeskSourcePolicy) => (
+    Boolean(policy.accessMethod)
+    && Boolean(normalizeText(policy.policyOwner))
+    && Boolean(toTimestampMillis(policy.lastReviewedAt))
+    && Array.isArray(policy.allowedFields)
+    && policy.allowedFields.length > 0
+    && Array.isArray(policy.blockedFields)
+    && Array.isArray(policy.attributionRequirements)
+    && Array.isArray(policy.prohibitedUses)
+    && policy.prohibitedUses.length > 0
+    && Boolean(policy.rawPayloadPolicy)
+    && Boolean(policy.refreshMethod)
+    && Boolean(normalizeText(policy.termsUrl) || normalizeText(policy.notes))
+);
+
+const sourcePolicyAllowsField = (policy: SignalDeskSourcePolicy, field: string) => {
+    const normalizedField = normalizeLower(field);
+    const blocked = new Set((policy.blockedFields || []).map(normalizeLower));
+    const allowed = new Set((policy.allowedFields || []).map(normalizeLower));
+    return !blocked.has(normalizedField) && allowed.has(normalizedField);
+};
 
 const sourcePolicyUsabilityError = (
     policy: SignalDeskSourcePolicy | null | undefined,
@@ -865,6 +1001,7 @@ const sourcePolicyUsabilityError = (
     const expiryMillis = getSourcePolicyExpiryMillis(policy);
     if (!expiryMillis) return SOURCE_POLICY_REVIEW_REQUIRED;
     if (expiryMillis <= Date.now()) return SOURCE_POLICY_EXPIRED;
+    if (!sourcePolicyHasCompleteRights(policy)) return SOURCE_POLICY_REVIEW_REQUIRED;
     if (!sourcePolicyUseAllowed(policy, options.use)) return SOURCE_POLICY_USE_NOT_ALLOWED;
     return null;
 };
@@ -875,6 +1012,7 @@ const getSourcePolicyState = (policy?: SignalDeskSourcePolicy | null, nowMillis 
     const expiryMillis = getSourcePolicyExpiryMillis(policy);
     if (!expiryMillis) return "review_required";
     if (expiryMillis <= nowMillis) return "expired";
+    if (!sourcePolicyHasCompleteRights(policy)) return "review_required";
     return expiryMillis - nowMillis <= 14 * 24 * 60 * 60 * 1000 ? "expires_soon" : "active";
 };
 
@@ -957,6 +1095,48 @@ const numberOrZero = (value: unknown) => {
     return Number.isFinite(parsed) ? parsed : 0;
 };
 
+const nonNegativeInteger = (value: unknown) => Math.max(0, Math.round(numberOrZero(value)));
+const ratio = (numerator: number, denominator: number) => denominator > 0 ? numerator / denominator : 0;
+
+const annotateModelEvalSummary = (modelEval: SignalDeskModelEvalSummary): SignalDeskModelEvalSummary => {
+    const sampleSize = nonNegativeInteger(modelEval.sampleSize);
+    const reviewedSampleSize = nonNegativeInteger(modelEval.reviewedSampleSize);
+    const hasCumulativeRunCounts = modelEval.passedSampleCount !== undefined || modelEval.rejectedFactSampleCount !== undefined;
+    const hasCumulativeReviewCounts = modelEval.reviewedSampleSize !== undefined;
+    const passedSampleCount = modelEval.passedSampleCount !== undefined
+        ? nonNegativeInteger(modelEval.passedSampleCount)
+        : Math.min(sampleSize, nonNegativeInteger(numberOrZero(modelEval.passRate) * sampleSize));
+    const rejectedFactSampleCount = modelEval.rejectedFactSampleCount !== undefined
+        ? nonNegativeInteger(modelEval.rejectedFactSampleCount)
+        : Math.min(sampleSize, nonNegativeInteger(numberOrZero(modelEval.rejectedFactRate) * sampleSize));
+    const acceptedCount = nonNegativeInteger(modelEval.acceptedCount);
+    const editedCount = nonNegativeInteger(modelEval.editedCount);
+    const rejectedCount = nonNegativeInteger(modelEval.rejectedCount);
+    const heldCount = nonNegativeInteger(modelEval.heldCount);
+
+    return {
+        ...modelEval,
+        acceptedCount,
+        acceptanceRate: hasCumulativeReviewCounts ? ratio(acceptedCount, reviewedSampleSize) : numberOrZero(modelEval.acceptanceRate),
+        editRate: hasCumulativeReviewCounts ? ratio(editedCount, reviewedSampleSize) : numberOrZero(modelEval.editRate),
+        editedCount,
+        founderAttentionMinutes: nonNegativeInteger(modelEval.founderAttentionMinutes),
+        heldCount,
+        holdRate: hasCumulativeReviewCounts ? ratio(heldCount, reviewedSampleSize) : numberOrZero(modelEval.holdRate),
+        lowConfidenceCount: modelEval.lowConfidenceCount !== undefined
+            ? nonNegativeInteger(modelEval.lowConfidenceCount)
+            : Math.max(0, sampleSize - passedSampleCount),
+        passRate: hasCumulativeRunCounts ? ratio(passedSampleCount, sampleSize) : numberOrZero(modelEval.passRate),
+        passedSampleCount,
+        rejectedCount,
+        rejectedFactRate: hasCumulativeRunCounts ? ratio(rejectedFactSampleCount, sampleSize) : numberOrZero(modelEval.rejectedFactRate),
+        rejectedFactSampleCount,
+        rejectionRate: hasCumulativeReviewCounts ? ratio(rejectedCount, reviewedSampleSize) : numberOrZero(modelEval.rejectionRate),
+        reviewedSampleSize,
+        sampleSize,
+    };
+};
+
 const providerAccountIdFor = (provider: SignalDeskProviderId, use: SignalDeskProviderUse) => `provider_${provider}_${use}`;
 const budgetPolicyIdFor = (scope: SignalDeskBudgetPolicySummary["scope"], provider?: SignalDeskProviderId | null, scopeId?: string | null) => [
     "budget",
@@ -1026,6 +1206,7 @@ const readBudgetPolicy = async (
 const requireProviderBudget = async (
     db: any,
     params: {
+        enforcePerRunBudget?: boolean;
         estimatedCostUsd: number;
         provider: SignalDeskProviderId;
         use: SignalDeskProviderUse;
@@ -1037,7 +1218,9 @@ const requireProviderBudget = async (
         throw new Error("Provider account is not approved");
     }
     if (account.credentialState === "missing") throw new Error("Provider account credentials are not configured");
-    if (params.estimatedCostUsd > numberOrZero(account.perRunBudgetUsd)) throw new Error("Provider per-run budget exceeded");
+    if (params.enforcePerRunBudget !== false && params.estimatedCostUsd > numberOrZero(account.perRunBudgetUsd)) {
+        throw new Error("Provider per-run budget exceeded");
+    }
     if (numberOrZero(account.spentTodayUsd) + params.estimatedCostUsd > numberOrZero(account.dailyBudgetUsd)) {
         throw new Error("Provider daily budget exceeded");
     }
@@ -1047,7 +1230,7 @@ const requireProviderBudget = async (
 
     const providerBudget = await readBudgetPolicy(db, "provider", params.provider);
     if (providerBudget && providerBudget.status !== "active") throw new Error("Provider budget policy is not active");
-    if (providerBudget && params.estimatedCostUsd > numberOrZero(providerBudget.perRunBudgetUsd)) {
+    if (providerBudget && params.enforcePerRunBudget !== false && params.estimatedCostUsd > numberOrZero(providerBudget.perRunBudgetUsd)) {
         throw new Error("Provider per-run budget exceeded");
     }
     if (providerBudget && numberOrZero(providerBudget.spentTodayUsd) + params.estimatedCostUsd > numberOrZero(providerBudget.dailyBudgetUsd)) {
@@ -1460,6 +1643,43 @@ const contentAssetIdFor = (title: string, sourceUrl?: string | null) => (
     `content_asset_${hashValue(`${normalizeLower(title)}|${normalizeUrl(sourceUrl)}`).slice(0, 18)}`
 );
 
+const proofPermissionIdFor = (targetId: string) => (
+    `proof_permission_${hashValue(targetId).slice(0, 22)}`
+);
+
+const PUBLIC_PROOF_SCOPES = new Set<SignalDeskProofPermissionScope>([
+    "business-name",
+    "logo",
+    "quotation",
+    "before-after-screenshots",
+    "public-case-study",
+    "partner-material",
+]);
+
+const isProofPermissionActive = (permission?: SignalDeskProofPermissionSummary | null) => {
+    if (!permission || permission.status !== "active") return false;
+    const expiresAt = toTimestampMillis(permission.expiresAt);
+    if (expiresAt && expiresAt <= Date.now()) return false;
+    return true;
+};
+
+const isProofPermissionUsable = (
+    permission?: SignalDeskProofPermissionSummary | null,
+    requiredScopes: SignalDeskProofPermissionScope[] = [],
+) => {
+    if (!isProofPermissionActive(permission)) return false;
+    const requestedScopes = Array.from(new Set(requiredScopes));
+    if (!requestedScopes.length) return false;
+    const grantedScopes = new Set(permission!.scopes);
+    return requestedScopes.every((scope) => PUBLIC_PROOF_SCOPES.has(scope) && grantedScopes.has(scope));
+};
+
+const readProofPermission = async (db: any, proofPermissionId?: string | null): Promise<SignalDeskProofPermissionSummary | null> => {
+    if (!proofPermissionId) return null;
+    const snap = await db.collection(SIGNALDESK_COLLECTIONS.PROOF_PERMISSIONS).doc(proofPermissionId).get();
+    return snap.exists ? toPlain(snap.data()) as SignalDeskProofPermissionSummary : null;
+};
+
 const contentChannelLabel = (channel: SignalDeskContentChannel) => {
     if (channel === "x") return "X";
     if (channel === "partner-brief") return "Partner brief";
@@ -1679,6 +1899,7 @@ const buildResearchRow = (input: {
     researchRunId: string;
     researchType: SignalDeskResearchRunSummary["researchType"];
     sourcePolicyId?: string | null;
+    sourcePolicy?: SignalDeskSourcePolicy | null;
     sourceRunId?: string | null;
     target: SignalDeskTargetSummary;
 }): SignalDeskResearchTableRowSummary => {
@@ -1689,6 +1910,13 @@ const buildResearchRow = (input: {
     const currentListGap = input.target.primaryOpportunity;
     const gapStrong = currentListGap === "missing-current-list" || currentListGap === "pdf-only" || currentListGap === "instagram-only" || currentListGap === "no-link";
     const suppressed = input.target.suppressionStatus !== "clear";
+    const policyState = getSourcePolicyState(input.sourcePolicy);
+    const contactUseAllowed = Boolean(
+        input.sourcePolicy
+        && policyState !== "expired"
+        && policyState !== "review_required"
+        && sourcePolicyUseAllowed(input.sourcePolicy, "contact")
+    );
     const fitScore = clampScore(
         (isPartner ? (partnerFit ? 72 : 48) : (foodFit ? 72 : 42)) +
         (gapStrong ? 18 : 5) +
@@ -1700,17 +1928,94 @@ const buildResearchRow = (input: {
         : fitScore >= 72
             ? "pass"
             : "unsure";
+    const routePermissionState: SignalDeskResearchTableRowSummary["routePermissionState"] = suppressed
+        ? "blocked"
+        : policyState === "expired"
+            ? "expired"
+            : policyState === "review_required"
+                ? "review_required"
+                : contactUseAllowed
+                    ? "permissioned"
+                    : "research_only";
+    const permissionedReferral = input.sourcePolicy?.accessMethod === "permissioned-referral";
+    const hardGateFailures = [
+        suppressed ? `suppression:${input.target.suppressionStatus}` : "",
+        policyState === "expired" ? "source-policy-expired" : "",
+        policyState === "review_required" ? "source-policy-review-required" : "",
+        !contactUseAllowed ? "contact-use-not-allowed" : "",
+        input.target.contactability === "blocked" ? "contactability-blocked" : "",
+        input.target.contactability === "missing" && !permissionedReferral ? "contact-route-missing" : "",
+        input.target.contactability === "limited" && !permissionedReferral ? "contact-route-unverified" : "",
+    ].filter(Boolean);
+    const allowedRoute: SignalDeskResearchTableRowSummary["allowedRoute"] = fitDecision === "fail"
+        || routePermissionState !== "permissioned"
+        || input.target.contactability === "blocked"
+        || (input.target.contactability === "missing" && !permissionedReferral)
+        ? "none"
+        : permissionedReferral
+            ? "partner-intro"
+            : input.target.contactability === "ready"
+                ? "email-export"
+                : "none";
+    const actionabilityState: SignalDeskResearchTableRowSummary["actionabilityState"] = fitDecision === "fail" || suppressed
+        ? "blocked"
+        : allowedRoute !== "none"
+            ? "actionable"
+            : routePermissionState === "research_only"
+                ? "research_only"
+                : "verify";
     const recommendedNextAction: SignalDeskResearchTableRowSummary["recommendedNextAction"] = fitDecision === "pass"
         ? isPartner ? "partner-review" : "score"
         : fitDecision === "unsure"
             ? isPartner ? "pod-review" : "evidence"
             : "hold";
+    const recommendedChannel: NonNullable<SignalDeskResearchTableRowSummary["recommendedChannel"]> = allowedRoute === "none" ? "hold" : allowedRoute;
+    const allowedRouteReason = allowedRoute !== "none"
+        ? `Source policy permits contact and the ${allowedRoute} route is available.`
+        : routePermissionState === "research_only"
+            ? "This source may support research and evidence, but it does not grant contact permission."
+            : routePermissionState === "expired"
+                ? "The source policy expired; review is required before any action."
+                : routePermissionState === "review_required"
+                    ? "The source-rights record is incomplete or due for review."
+                    : suppressed
+                        ? "The identity is suppressed and cannot be contacted."
+                        : "No allowed, verified contact route is available.";
+    const recommendedCta = isPartner
+        ? "Ask for a trusted introduction to owners who need one current customer-ready menu link."
+        : currentListGap === "pdf-only"
+            ? "Offer a private preview that turns the PDF menu into one mobile current link for QR, WhatsApp, Google/Profile, and Instagram."
+            : currentListGap === "instagram-only"
+                ? "Offer a private preview that keeps Instagram for discovery but gives customers one reviewed current menu link."
+                : currentListGap === "missing-current-list" || currentListGap === "no-link"
+                    ? "Offer one reviewed current menu link for QR, WhatsApp, Google/Profile, Instagram, and repeat customers."
+                    : currentListGap === "stale-menu"
+                        ? "Offer a reviewed current-menu refresh so old links and images stop spreading."
+                        : "Use only evidence-backed current-list wording and ask for a private MenuList preview.";
+    const recommendedMessageAngle = isPartner
+        ? "Trusted local operator intro, not follower-count influencer outreach."
+        : currentListGap === "pdf-only"
+            ? "Your menu exists, but it is trapped in a file that is hard to update and share on mobile."
+            : currentListGap === "instagram-only"
+                ? "Instagram is useful for discovery, but it should not be the only current menu source."
+                : currentListGap === "missing-current-list" || currentListGap === "no-link"
+                    ? "Customers can find the business, but need one current menu link they can open and share."
+                    : currentListGap === "stale-menu"
+                        ? "A reviewed current MenuList preview can reduce outdated customer-facing menu drift."
+                        : "MenuList can prepare a reviewed current-list preview before anything is published.";
     const sourceRefs = [
         input.sourceRunId ? `source-run:${input.sourceRunId}` : "",
         input.sourcePolicyId ? `source-policy:${input.sourcePolicyId}` : "",
         input.providerRecordUrl || "",
     ].filter(Boolean);
     const sourceRef = sourceRefs[0] || null;
+    const evidenceSummary = [
+        gapStrong ? `current-list gap:${currentListGap}` : `current-list gap needs review:${currentListGap}`,
+        input.target.website ? "website present" : "website missing/unknown",
+        `contactability:${input.target.contactability}`,
+        `route-permission:${routePermissionState}`,
+        sourceRefs.length ? "source refs attached" : "source refs missing",
+    ].join("; ");
 
     return {
         category: input.target.category || null,
@@ -1719,6 +2024,7 @@ const buildResearchRow = (input: {
         country: input.target.country || null,
         currentListGap,
         displayName: input.target.displayName,
+        evidenceSummary,
         enrichment: [
             {
                 key: "website",
@@ -1751,11 +2057,19 @@ const buildResearchRow = (input: {
         ],
         fitDecision,
         fitScore,
+        actionabilityState,
+        allowedRoute,
+        allowedRouteReason,
+        hardGateFailures,
         provider: input.provider,
         providerRecordUrl: input.providerRecordUrl || null,
+        recommendedChannel,
+        recommendedCta,
+        recommendedMessageAngle,
         recommendedNextAction,
         researchRowId: researchRowIdFor(input.researchRunId, input.target.targetId, input.index),
         researchRunId: input.researchRunId,
+        routePermissionState,
         sourcePolicyId: input.sourcePolicyId || null,
         sourceRefs,
         sourceRunId: input.sourceRunId || null,
@@ -1765,9 +2079,207 @@ const buildResearchRow = (input: {
     };
 };
 
+const revalidateResearchRowRoute = (
+    row: SignalDeskResearchTableRowSummary,
+    policy?: SignalDeskSourcePolicy | null,
+    target?: SignalDeskTargetSummary | null,
+): SignalDeskResearchTableRowSummary => {
+    const policyState = getSourcePolicyState(policy);
+    const suppressed = Boolean(target && target.suppressionStatus !== "clear");
+    const contactAllowed = Boolean(
+        policy
+        && !suppressed
+        && policyState !== "expired"
+        && policyState !== "review_required"
+        && sourcePolicyUseAllowed(policy, "contact")
+    );
+    const routePermissionState: SignalDeskResearchTableRowSummary["routePermissionState"] = suppressed
+        ? "blocked"
+        : policyState === "expired"
+        ? "expired"
+        : policyState === "review_required"
+            ? "review_required"
+            : contactAllowed
+                ? "permissioned"
+                : "research_only";
+    const intendedRoute: SignalDeskResearchTableRowSummary["allowedRoute"] = policy?.accessMethod === "permissioned-referral"
+        ? "partner-intro"
+        : row.contactability === "ready"
+            ? "email-export"
+            : "none";
+    const allowedRoute: SignalDeskResearchTableRowSummary["allowedRoute"] = row.fitDecision !== "fail"
+        && contactAllowed
+        && row.contactability !== "blocked"
+        && (row.contactability !== "missing" || policy?.accessMethod === "permissioned-referral")
+        ? intendedRoute
+        : "none";
+    const hardGateFailures = Array.from(new Set([
+        ...(row.hardGateFailures || []).filter((failure) => (
+            !failure.startsWith("source-policy-")
+            && failure !== "contact-use-not-allowed"
+            && failure !== "contact-route-missing"
+            && failure !== "contact-route-unverified"
+        )),
+        suppressed ? `suppression:${target?.suppressionStatus}` : "",
+        policyState === "expired" ? "source-policy-expired" : "",
+        policyState === "review_required" ? "source-policy-review-required" : "",
+        !contactAllowed ? "contact-use-not-allowed" : "",
+        row.contactability === "missing" && policy?.accessMethod !== "permissioned-referral" ? "contact-route-missing" : "",
+        row.contactability === "limited" && policy?.accessMethod !== "permissioned-referral" ? "contact-route-unverified" : "",
+    ].filter(Boolean)));
+    const actionabilityState: SignalDeskResearchTableRowSummary["actionabilityState"] = row.fitDecision === "fail"
+        ? "blocked"
+        : allowedRoute !== "none"
+            ? "actionable"
+            : routePermissionState === "research_only"
+                ? "research_only"
+                : "verify";
+    return {
+        ...row,
+        actionabilityState,
+        allowedRoute,
+        allowedRouteReason: allowedRoute !== "none"
+            ? `Current source policy permits contact through ${allowedRoute}.`
+            : suppressed
+                ? "The identity is suppressed and no contact action is allowed."
+            : routePermissionState === "research_only"
+                ? "Research and evidence use are allowed, but contact use is not."
+                : routePermissionState === "expired"
+                    ? "The source policy expired; no contact action is allowed."
+                    : "The source-rights record requires review before any contact action.",
+        hardGateFailures,
+        recommendedChannel: allowedRoute === "none" ? "hold" : allowedRoute,
+        routePermissionState,
+    };
+};
+
+const isVerifiedTwoSurfaceOutcome = (outcome: SignalDeskOutcomeSummary) => (
+    outcome.outcomeType === "two_surface_activation"
+    && (outcome.integrityStatus === "owner-reviewed-manual" || outcome.integrityStatus === "menulist-signed")
+    && Boolean(outcome.ownerQualifiedAt)
+    && Boolean(outcome.ownerReviewedAt)
+    && Boolean(outcome.evidenceRef)
+    && new Set(outcome.surfaces || []).size >= 2
+);
+
+const deriveActivationOpportunities = (workspace: SignalDeskWorkspaceData): SignalDeskActivationOpportunitySummary[] => {
+    const policies = new Map(workspace.policies.map((policy) => [policy.sourcePolicyId, policy]));
+    const rowsByTarget = new Map(workspace.researchTableRows.filter((row) => row.targetId).map((row) => [row.targetId as string, row]));
+    const conversationsByTarget = new Map(workspace.conversations.map((conversation) => [conversation.targetId, conversation]));
+    const outcomesByTarget = new Map<string, SignalDeskOutcomeSummary[]>();
+    workspace.outcomes.forEach((outcome) => {
+        if (!outcome.targetId) return;
+        outcomesByTarget.set(outcome.targetId, [...(outcomesByTarget.get(outcome.targetId) || []), outcome]);
+    });
+    const nowMillis = Date.now();
+    return workspace.targets.map((target) => {
+        const policy = target.sourcePolicyId ? policies.get(target.sourcePolicyId) : null;
+        const policyState = getSourcePolicyState(policy);
+        const researchRow = rowsByTarget.get(target.targetId);
+        const routeRow = researchRow ? revalidateResearchRowRoute(researchRow, policy, target) : null;
+        const conversation = conversationsByTarget.get(target.targetId);
+        const outcomes = outcomesByTarget.get(target.targetId) || [];
+        const activation = outcomes.find(isVerifiedTwoSurfaceOutcome);
+        const projectedActivationSurfaces = Array.from(new Set(target.latestVerifiedActivationSurfaces || []));
+        const hasProjectedActivation = Boolean(
+            target.latestVerifiedActivationAt
+            && target.latestVerifiedActivationEvidenceRef
+            && (target.latestVerifiedActivationIntegrityStatus === "owner-reviewed-manual" || target.latestVerifiedActivationIntegrityStatus === "menulist-signed")
+            && projectedActivationSurfaces.length >= 2
+        );
+        const activationStart = outcomes.find((outcome) => outcome.outcomeType === "upload_started" || outcome.outcomeType === "preview_prepared");
+        const ownerQualifiedAt = target.ownerQualifiedAt
+            || activation?.ownerQualifiedAt
+            || outcomes.find((outcome) => outcome.ownerQualifiedAt)?.ownerQualifiedAt
+            || (conversation?.state === "interested" ? conversation.lastInboundAt : null);
+        const ownerQualifiedMillis = toTimestampMillis(ownerQualifiedAt);
+        const activationDeadlineAt = ownerQualifiedMillis ? new Date(ownerQualifiedMillis + (7 * 24 * 60 * 60 * 1000)).toISOString() : null;
+        const stalled = Boolean(activationDeadlineAt && !activation && !hasProjectedActivation && new Date(activationDeadlineAt).getTime() < nowMillis);
+        const preparedContact = conversation?.state === "exported" && !target.latestManualContactAt;
+        let state: SignalDeskActivationOpportunitySummary["state"] = "candidate";
+        if (target.suppressionStatus !== "clear") state = "suppressed";
+        else if (policyState === "expired") state = "expired";
+        else if (routeRow?.fitDecision === "fail") state = "rejected";
+        else if (target.status === "rejected") state = "rejected";
+        else if (activation || hasProjectedActivation) state = "activated";
+        else if (activationStart) state = "activation_started";
+        else if (conversation?.state === "interested") state = "engaged";
+        else if (target.latestManualContactAt || target.status === "contacted" || conversation?.state === "contacted") state = "contacted";
+        else if (routeRow?.actionabilityState === "actionable") state = "actionable";
+        else if (target.sourceConfidence === "high" || target.sourceConfidence === "medium") state = "verified";
+        const allowedRoute = routeRow?.allowedRoute || "none";
+        const hardGateFailures = routeRow?.hardGateFailures || [
+            policyState === "expired" ? "source-policy-expired" : "",
+            policyState === "review_required" ? "source-policy-review-required" : "",
+            target.suppressionStatus !== "clear" ? `suppression:${target.suppressionStatus}` : "",
+        ].filter(Boolean);
+        const priority = state === "suppressed"
+            ? 100
+            : conversation?.state === "complaint" || conversation?.state === "privacy_request" || conversation?.state === "legal_request"
+                ? 98
+                : stalled
+                    ? 95
+                    : preparedContact
+                        ? 82
+                    : state === "engaged" || state === "activation_started"
+                        ? 90
+                        : state === "actionable"
+                            ? 70
+                            : state === "verified"
+                                ? 45
+                                : 20;
+        return {
+            activationOpportunityId: `activation_opportunity_${target.targetId}`,
+            targetId: target.targetId,
+            displayName: target.displayName,
+            category: target.category || null,
+            city: target.city || null,
+            state,
+            truthGap: target.primaryOpportunity,
+            sourcePolicyState: policyState,
+            evidenceGrade: target.sourceConfidence === "blocked" ? "low" : target.sourceConfidence,
+            allowedRoute,
+            allowedRouteReason: routeRow?.allowedRouteReason || "No verified contact route is available.",
+            routePermissionState: routeRow?.routePermissionState || (policyState === "expired" ? "expired" : policyState === "review_required" ? "review_required" : "research_only"),
+            hardGateFailures,
+            dimensions: {
+                truthGap: target.currentListGapScore ?? (target.primaryOpportunity === "unknown" ? 35 : 75),
+                evidence: target.sourceConfidence === "high" ? 90 : target.sourceConfidence === "medium" ? 70 : 35,
+                reachability: allowedRoute !== "none" ? 85 : target.contactability === "limited" ? 45 : 15,
+                activationFeasibility: activationStart ? 90 : ownerQualifiedAt ? 75 : target.primaryOpportunity === "unknown" ? 35 : 60,
+                surfaceLeverage: activation?.surfaces?.length || hasProjectedActivation
+                    ? Math.min(100, (activation?.surfaces?.length || projectedActivationSurfaces.length) * 35)
+                    : 50,
+                learningValue: state === "engaged" || state === "activation_started" ? 90 : 60,
+            },
+            ownerQualifiedAt: ownerQualifiedAt || null,
+            activationStartedAt: activationStart?.updatedAt || null,
+            activatedAt: activation?.updatedAt || target.latestVerifiedActivationAt || null,
+            activationDeadlineAt,
+            surfaces: activation?.surfaces || projectedActivationSurfaces,
+            nextAction: state === "suppressed"
+                ? "No contact. Review the suppression or complaint record."
+                : stalled
+                    ? "Resolve the current activation blocker before researching more businesses."
+                    : preparedContact
+                        ? "Complete the prepared contact action, then record what actually happened."
+                    : state === "engaged" || state === "activation_started"
+                        ? "Continue the owner-approved MenuList activation path."
+                        : state === "actionable"
+                            ? "Review the evidence-bound action packet."
+                            : routeRow?.allowedRouteReason || "Verify evidence and source rights.",
+            priority,
+            updatedAt: target.updatedAt || null,
+        };
+    }).sort((left, right) => right.priority - left.priority || left.displayName.localeCompare(right.displayName));
+};
+
 const classifyReply = (message: string): SignalDeskConversationSummary["state"] => {
     const text = message.toLowerCase();
     if (/\b(stop|unsubscribe|do not contact|don't contact|dnc)\b/.test(text)) return "dnc";
+    if (/\b(complaint|report you|spam complaint|harassment|unwanted message)\b/.test(text)) return "complaint";
+    if (/\b(delete my data|privacy request|data request|personal data|right to erasure)\b/.test(text)) return "privacy_request";
+    if (/\b(legal notice|lawyer|solicitor|cease and desist|legal action)\b/.test(text)) return "legal_request";
     if (/\bwrong (person|contact|number|email)\b/.test(text)) return "wrong_contact";
     if (/\b(yes|interested|pricing|price|demo|call|send|how much)\b/.test(text)) return "interested";
     if (/\b(no|not interested|later)\b/.test(text)) return "not_interested";
@@ -1941,12 +2453,18 @@ export async function loadSignalDeskWorkspaceServer(
         workspace.selfServiceCtas = await readList<SignalDeskSelfServiceCtaSummary>(db, SIGNALDESK_COLLECTIONS.SELF_SERVICE_CTAS);
     } else if (section === "inbox") {
         workspace.conversations = await readList<SignalDeskConversationSummary>(db, SIGNALDESK_COLLECTIONS.CONVERSATION_SUMMARIES);
+        workspace.outcomes = await readList<SignalDeskOutcomeSummary>(db, SIGNALDESK_COLLECTIONS.OUTCOME_SUMMARIES);
+        workspace.policies = await readList<SignalDeskSourcePolicy>(db, SIGNALDESK_COLLECTIONS.SOURCE_POLICIES);
+        workspace.researchTableRows = await readList<SignalDeskResearchTableRowSummary>(db, SIGNALDESK_COLLECTIONS.RESEARCH_TABLE_ROWS);
         workspace.targets = await readList<SignalDeskTargetSummary>(db, SIGNALDESK_COLLECTIONS.TARGET_SUMMARIES);
     } else if (section === "attribution") {
         workspace.outcomes = await readList<SignalDeskOutcomeSummary>(db, SIGNALDESK_COLLECTIONS.OUTCOME_SUMMARIES);
+        workspace.conversations = await readList<SignalDeskConversationSummary>(db, SIGNALDESK_COLLECTIONS.CONVERSATION_SUMMARIES);
         workspace.demandSignals = await readList<SignalDeskDemandSignalSummary>(db, SIGNALDESK_COLLECTIONS.DEMAND_SIGNAL_SUMMARIES);
         workspace.audienceSegments = await readList<SignalDeskAudienceSegmentSummary>(db, SIGNALDESK_COLLECTIONS.AUDIENCE_SEGMENTS);
         workspace.marketPods = await readList<SignalDeskMarketPodSummary>(db, SIGNALDESK_COLLECTIONS.MARKET_PODS);
+        workspace.policies = await readList<SignalDeskSourcePolicy>(db, SIGNALDESK_COLLECTIONS.SOURCE_POLICIES);
+        workspace.researchTableRows = await readList<SignalDeskResearchTableRowSummary>(db, SIGNALDESK_COLLECTIONS.RESEARCH_TABLE_ROWS);
         workspace.strategistMemos = await readList<SignalDeskStrategistMemoSummary>(db, SIGNALDESK_COLLECTIONS.STRATEGIST_MEMOS);
         workspace.targets = await readList<SignalDeskTargetSummary>(db, SIGNALDESK_COLLECTIONS.TARGET_SUMMARIES);
     } else if (section === "policies") {
@@ -1968,9 +2486,13 @@ export async function loadSignalDeskWorkspaceServer(
         workspace.targets = await readList<SignalDeskTargetSummary>(db, SIGNALDESK_COLLECTIONS.TARGET_SUMMARIES);
         workspace.vendorRuns = await readList<SignalDeskVendorRunSummary>(db, SIGNALDESK_COLLECTIONS.VENDOR_RUNS);
     } else if (section === "ai") {
-        workspace.modelEvals = await readList<SignalDeskModelEvalSummary>(db, SIGNALDESK_COLLECTIONS.MODEL_EVALS);
+        const aiRuns = await readList<SignalDeskAiWorkerRunSummary & SignalDeskAiVolumeRunSummary & Partial<SignalDeskAiScoreSummary>>(db, SIGNALDESK_COLLECTIONS.AI_WORKER_RUNS, "createdAt");
+        workspace.modelEvals = (await readList<SignalDeskModelEvalSummary>(db, SIGNALDESK_COLLECTIONS.MODEL_EVALS))
+            .map(annotateModelEvalSummary);
         workspace.modelRoutes = await readList<SignalDeskModelRouteSummary>(db, SIGNALDESK_COLLECTIONS.MODEL_ROUTES);
-        workspace.scores = await readList<SignalDeskAiScoreSummary>(db, SIGNALDESK_COLLECTIONS.AI_WORKER_RUNS, "createdAt");
+        workspace.aiWorkerRuns = aiRuns.filter((run) => String(run.workerType || "").startsWith("ai_assist_"));
+        workspace.aiVolumeRuns = aiRuns.filter((run) => run.workerType === "ai_volume_batch");
+        workspace.scores = aiRuns.filter((run) => Boolean(run.scoreId)) as SignalDeskAiScoreSummary[];
         workspace.targets = await readList<SignalDeskTargetSummary>(db, SIGNALDESK_COLLECTIONS.TARGET_SUMMARIES);
         workspace.evidencePackets = await readList<SignalDeskEvidencePacketSummary>(db, SIGNALDESK_COLLECTIONS.EVIDENCE_PACKET_SUMMARIES);
     } else if (section === "channels") {
@@ -1991,6 +2513,7 @@ export async function loadSignalDeskWorkspaceServer(
         workspace.contentDistributionDrafts = await readList<SignalDeskContentDistributionDraftSummary>(db, SIGNALDESK_COLLECTIONS.CONTENT_DISTRIBUTION_DRAFTS);
         workspace.contentPerformanceSummaries = await readList<SignalDeskContentPerformanceSummary>(db, SIGNALDESK_COLLECTIONS.CONTENT_PERFORMANCE_SUMMARIES, "capturedAt");
         workspace.contentSources = await readList<SignalDeskContentSourceSummary>(db, SIGNALDESK_COLLECTIONS.CONTENT_SOURCES);
+        workspace.proofPermissions = await readList<SignalDeskProofPermissionSummary>(db, SIGNALDESK_COLLECTIONS.PROOF_PERMISSIONS);
         workspace.marketPods = await readList<SignalDeskMarketPodSummary>(db, SIGNALDESK_COLLECTIONS.MARKET_PODS);
         workspace.selfServiceCtas = await readList<SignalDeskSelfServiceCtaSummary>(db, SIGNALDESK_COLLECTIONS.SELF_SERVICE_CTAS);
     } else if (section === "partners") {
@@ -2022,8 +2545,13 @@ export async function loadSignalDeskWorkspaceServer(
         workspace.modelRoutes = await readList<SignalDeskModelRouteSummary>(db, SIGNALDESK_COLLECTIONS.MODEL_ROUTES);
         workspace.providerAccounts = await readList<SignalDeskProviderAccountSummary>(db, SIGNALDESK_COLLECTIONS.PROVIDER_ACCOUNTS);
         workspace.providerEvaluations = await readList<SignalDeskProviderEvaluationSummary>(db, SIGNALDESK_COLLECTIONS.PROVIDER_EVALUATIONS);
+        workspace.policies = await readList<SignalDeskSourcePolicy>(db, SIGNALDESK_COLLECTIONS.SOURCE_POLICIES);
+        workspace.proofPermissions = await readList<SignalDeskProofPermissionSummary>(db, SIGNALDESK_COLLECTIONS.PROOF_PERMISSIONS);
         workspace.runTimelines = await readList<SignalDeskRunTimelineSummary>(db, SIGNALDESK_COLLECTIONS.RUN_TIMELINES);
-        workspace.scores = await readList<SignalDeskAiScoreSummary>(db, SIGNALDESK_COLLECTIONS.AI_WORKER_RUNS, "createdAt");
+        const aiRuns = await readList<SignalDeskAiWorkerRunSummary & SignalDeskAiVolumeRunSummary & Partial<SignalDeskAiScoreSummary>>(db, SIGNALDESK_COLLECTIONS.AI_WORKER_RUNS, "createdAt");
+        workspace.aiWorkerRuns = aiRuns.filter((run) => String(run.workerType || "").startsWith("ai_assist_"));
+        workspace.aiVolumeRuns = aiRuns.filter((run) => run.workerType === "ai_volume_batch");
+        workspace.scores = aiRuns.filter((run) => Boolean(run.scoreId)) as SignalDeskAiScoreSummary[];
         workspace.selfServiceCtas = await readList<SignalDeskSelfServiceCtaSummary>(db, SIGNALDESK_COLLECTIONS.SELF_SERVICE_CTAS);
         workspace.senderDomains = await readList<SignalDeskSenderDomainSummary>(db, SIGNALDESK_COLLECTIONS.SENDER_DOMAINS);
         workspace.sequencerHandoffs = await readList<SignalDeskSequencerHandoffSummary>(db, SIGNALDESK_COLLECTIONS.SEQUENCER_HANDOFFS);
@@ -2044,6 +2572,16 @@ export async function loadSignalDeskWorkspaceServer(
         workspace.auditEvents = await readList<SignalDeskAuditEvent>(db, SIGNALDESK_COLLECTIONS.AUDIT_EVENTS, "createdAt", 50);
     }
     workspace.policies = workspace.policies.map(annotateSourcePolicy);
+    const policyById = new Map(workspace.policies.map((policy) => [policy.sourcePolicyId, policy]));
+    const targetById = new Map(workspace.targets.map((target) => [target.targetId, target]));
+    workspace.researchTableRows = workspace.researchTableRows.map((row) => (
+        revalidateResearchRowRoute(
+            row,
+            row.sourcePolicyId ? policyById.get(row.sourcePolicyId) : null,
+            row.targetId ? targetById.get(row.targetId) : null,
+        )
+    ));
+    workspace.activationOpportunities = deriveActivationOpportunities(workspace);
 
     return { ...overview, workspace };
 }
@@ -2075,11 +2613,18 @@ export async function seedSignalDeskDefaultsServer(access: SignalDeskAccessConte
         { credentialState: "missing", dailyBudgetUsd: 0, monthlyBudgetUsd: 0, ownerApproved: false, perRunBudgetUsd: 0, provider: "lemlist", status: "disabled", use: "sequencer", disabledReason: "Sequencer eval blocked until sender-domain risk policy is approved." },
     ];
     const modelRouteDefaults: ModelRouteInput[] = [
-        { confidenceThreshold: "medium", defaultModel: SIGNALDESK_DEFAULT_AI_MODEL, defaultProvider: "gemini", escalationModel: "gpt-5-mini", escalationProvider: "openai", maxCostUsd: 0.05, status: "active", task: "score" },
-        { confidenceThreshold: "medium", defaultModel: SIGNALDESK_DEFAULT_AI_MODEL, defaultProvider: "gemini", escalationModel: "gpt-5-mini", escalationProvider: "openai", maxCostUsd: 0.05, status: "active", task: "evidence" },
+        { confidenceThreshold: "medium", defaultModel: SIGNALDESK_FAST_AI_MODEL, defaultProvider: "gemini", escalationModel: SIGNALDESK_DEFAULT_AI_MODEL, escalationProvider: "gemini", maxCostUsd: 0.05, status: "active", task: "score" },
+        { confidenceThreshold: "medium", defaultModel: SIGNALDESK_FAST_AI_MODEL, defaultProvider: "gemini", escalationModel: SIGNALDESK_DEFAULT_AI_MODEL, escalationProvider: "gemini", maxCostUsd: 0.05, status: "active", task: "evidence" },
+        { confidenceThreshold: "medium", defaultModel: SIGNALDESK_FAST_AI_MODEL, defaultProvider: "gemini", escalationModel: SIGNALDESK_DEFAULT_AI_MODEL, escalationProvider: "gemini", maxCostUsd: 0.05, status: "active", task: "draft" },
+        { confidenceThreshold: "medium", defaultModel: SIGNALDESK_FAST_AI_MODEL, defaultProvider: "gemini", escalationModel: SIGNALDESK_DEFAULT_AI_MODEL, escalationProvider: "gemini", maxCostUsd: 0.05, status: "active", task: "reply-classification" },
+        { confidenceThreshold: "high", defaultModel: SIGNALDESK_FAST_AI_MODEL, defaultProvider: "gemini", maxCostUsd: 0.02, status: "active", task: "quality-critic" },
         { confidenceThreshold: "medium", defaultModel: "gpt-5-mini", defaultProvider: "openai", escalationModel: "claude-opus-4.8", escalationProvider: "anthropic", maxCostUsd: 0.15, status: "hold", task: "approval-packet" },
         { confidenceThreshold: "high", defaultModel: "claude-opus-4.8", defaultProvider: "anthropic", maxCostUsd: 1, status: "hold", task: "weekly-strategist" },
     ];
+    const modelRouteSnaps = await Promise.all(modelRouteDefaults.map((route) => (
+        db.collection(SIGNALDESK_COLLECTIONS.MODEL_ROUTES).doc(`model_route_${route.task}`).get()
+    )));
+    let modelRouteWriteCount = 0;
     const providerSpendById = new Map<string, { spentMonthUsd: number; spentTodayUsd: number }>();
     const budgetSpendById = new Map<string, { spentMonthUsd: number; spentTodayUsd: number }>();
     const providerSnaps = await Promise.all(providerDefaults.map((provider) => (
@@ -2122,6 +2667,16 @@ export async function seedSignalDeskDefaultsServer(access: SignalDeskAccessConte
             storage: true,
         },
         retentionDays: 30,
+        accessMethod: "manual-public-research",
+        allowedFields: ["displayName", "category", "city", "country", "currentListUrl", "website", "notes", "providerRecordId", "providerRecordUrl"],
+        attributionRequirements: ["Keep source policy, source run, and provider record reference attached to each evidence claim."],
+        blockedFields: ["email", "phone", "instagram", "personal-profile"],
+        policyOwner: access.userId,
+        prohibitedUses: ["contact", "personalization", "provider-send", "durable raw provider payload storage"],
+        rawPayloadPolicy: "never-store",
+        refreshMethod: "manual-review",
+        termsVersion: "internal-source-rights-v1",
+        lastReviewedAt: timestamp,
         approvedAt: timestamp,
         expiresAt: expiresAtForRetention(30),
         notes: "Candidate discovery and evidence review only; contact fields, personalization, export, and send remain blocked.",
@@ -2145,6 +2700,16 @@ export async function seedSignalDeskDefaultsServer(access: SignalDeskAccessConte
             storage: true,
         },
         retentionDays: 90,
+        accessMethod: "permissioned-referral",
+        allowedFields: ["displayName", "category", "city", "country", "currentListUrl", "website", "email", "phone", "instagram", "notes"],
+        attributionRequirements: ["Keep the permissioned introduction or referral evidence attached to the target."],
+        blockedFields: ["personal-profile", "sensitive-attribute"],
+        policyOwner: access.userId,
+        prohibitedUses: ["cold WhatsApp", "cold social DM", "unapproved provider send", "proof use without permission"],
+        rawPayloadPolicy: "never-store",
+        refreshMethod: "owner-refresh",
+        termsVersion: "internal-source-rights-v1",
+        lastReviewedAt: timestamp,
         approvedAt: timestamp,
         expiresAt: expiresAtForRetention(90),
         notes: "Contact use is limited to a founder-supplied, permissioned referral, partner handoff, or expected manual follow-up; public availability alone is not permission.",
@@ -2200,8 +2765,22 @@ export async function seedSignalDeskDefaultsServer(access: SignalDeskAccessConte
         }), { merge: true });
     });
 
-    modelRouteDefaults.forEach((route) => {
+    modelRouteDefaults.forEach((route, index) => {
         const routeRef = db.collection(SIGNALDESK_COLLECTIONS.MODEL_ROUTES).doc(`model_route_${route.task}`);
+        const routeSnap = modelRouteSnaps[index];
+        const existingRoute = routeSnap.exists ? toPlain(routeSnap.data()) as Partial<SignalDeskModelRouteSummary> : null;
+        const exactLegacyDefault = Boolean(
+            existingRoute
+            && (route.task === "score" || route.task === "evidence")
+            && existingRoute.defaultProvider === "gemini"
+            && existingRoute.defaultModel === SIGNALDESK_DEFAULT_AI_MODEL
+            && existingRoute.escalationProvider === "openai"
+            && existingRoute.escalationModel === "gpt-5-mini"
+            && existingRoute.status === "active"
+            && numberOrZero(existingRoute.maxCostUsd) === 0.05
+        );
+        if (routeSnap.exists && !exactLegacyDefault) return;
+        modelRouteWriteCount += 1;
         batch.set(routeRef, sanitizeForFirestore({
             modelRouteId: routeRef.id,
             pId: SIGNALDESK_PRODUCT_CODE,
@@ -2424,7 +3003,7 @@ export async function seedSignalDeskDefaultsServer(access: SignalDeskAccessConte
             { label: "Offer CTA and reply playbooks seeded", status: "completed", at: toIso(timestamp) },
         ],
     });
-    updateDailyCost(db, batch, providerDefaults.length * 2 + modelRouteDefaults.length + replyPlaybooks.length + 12, 0);
+    updateDailyCost(db, batch, providerDefaults.length * 2 + modelRouteWriteCount + replyPlaybooks.length + 12, 0);
     await batch.commit();
 
     return {
@@ -2455,6 +3034,17 @@ export async function createSignalDeskSourcePolicyServer(access: SignalDeskAcces
             storage: input.allowEvidence,
         },
         retentionDays: input.retentionDays,
+        accessMethod: input.accessMethod,
+        allowedFields: Array.from(new Set(input.allowedFields.map((field) => normalizeText(field)).filter(Boolean))),
+        attributionRequirements: Array.from(new Set(input.attributionRequirements.map((item) => normalizeText(item)).filter(Boolean))),
+        blockedFields: Array.from(new Set(input.blockedFields.map((field) => normalizeText(field)).filter(Boolean))),
+        policyOwner: input.policyOwner,
+        prohibitedUses: Array.from(new Set(input.prohibitedUses.map((item) => normalizeText(item)).filter(Boolean))),
+        rawPayloadPolicy: input.rawPayloadPolicy,
+        refreshMethod: input.refreshMethod,
+        termsUrl: input.termsUrl || null,
+        termsVersion: input.termsVersion || null,
+        lastReviewedAt: timestampFromIsoOrDefault(input.lastReviewedAt, 0),
         approvedAt: timestamp,
         expiresAt: timestampFromIsoOrDefault(input.expiresAt, input.retentionDays),
         notes: input.notes || null,
@@ -2887,10 +3477,18 @@ export async function qualifySignalDeskRevenueAccountServer(
         db.collection(SIGNALDESK_COLLECTIONS.OUTCOME_SUMMARIES)
             .where("targetId", "==", input.targetId)
             .where("outcomeType", "==", "two_surface_activation")
-            .limit(1)
+            .limit(30)
             .get(),
     ]);
-    const hasTwoSurfaceActivation = !activationOutcomeSnap.empty;
+    const hasProjectedActivation = Boolean(
+        target.latestVerifiedActivationAt
+        && target.latestVerifiedActivationEvidenceRef
+        && (target.latestVerifiedActivationIntegrityStatus === "owner-reviewed-manual" || target.latestVerifiedActivationIntegrityStatus === "menulist-signed")
+        && new Set(target.latestVerifiedActivationSurfaces || []).size >= 2
+    );
+    const hasTwoSurfaceActivation = hasProjectedActivation || activationOutcomeSnap.docs.some((doc: any) => (
+        isVerifiedTwoSurfaceOutcome(toPlain(doc.data()) as SignalDeskOutcomeSummary)
+    ));
     await assertSourcePolicyUsable(db, access, sourcePolicy, {
         entityId: target.targetId,
         use: "evidence",
@@ -3453,6 +4051,7 @@ export async function refreshSignalDeskActivationWatchServer(
     requireRevenueOperatingLayer();
     const db = requireDb();
     const accountRef = db.collection(SIGNALDESK_COLLECTIONS.REVENUE_ACCOUNTS).doc(revenueAccountIdFor(input.targetId));
+    const targetRef = db.collection(SIGNALDESK_COLLECTIONS.TARGET_SUMMARIES).doc(input.targetId);
     const watchRef = db.collection(SIGNALDESK_COLLECTIONS.ACTIVATION_WATCHES).doc(activationWatchIdFor(input.targetId));
     const opportunityRef = db.collection(SIGNALDESK_COLLECTIONS.COMMERCIAL_OPPORTUNITIES).doc(opportunityIdFor(accountRef.id));
     const summaryRef = db.collection(SIGNALDESK_COLLECTIONS.REVENUE_CONTROL_SUMMARIES).doc(SIGNALDESK_SUMMARY_DOCS.REVENUE);
@@ -3461,39 +4060,46 @@ export async function refreshSignalDeskActivationWatchServer(
         .where("targetId", "==", input.targetId)
         .orderBy("updatedAt", "desc")
         .limit(30);
-    const earliestOutcomeQuery = outcomeCollection
-        .where("targetId", "==", input.targetId)
-        .orderBy("updatedAt", "asc")
-        .limit(1);
     const activationOutcomeQuery = outcomeCollection
         .where("targetId", "==", input.targetId)
         .where("outcomeType", "==", "two_surface_activation")
-        .limit(1);
+        .limit(30);
     return db.runTransaction(async (transaction: any) => {
-        const [accountSnap, latestOutcomeSnap, earliestOutcomeSnap, activationOutcomeSnap, existingSnap, opportunitySnap] = await Promise.all([
+        const [accountSnap, targetSnap, latestOutcomeSnap, activationOutcomeSnap, existingSnap, opportunitySnap] = await Promise.all([
             transaction.get(accountRef),
+            transaction.get(targetRef),
             transaction.get(latestOutcomeQuery),
-            transaction.get(earliestOutcomeQuery),
             transaction.get(activationOutcomeQuery),
             transaction.get(watchRef),
             transaction.get(opportunityRef),
         ]);
         if (!accountSnap.exists) throw new Error("Revenue account not found");
+        if (!targetSnap.exists) throw new Error("Target not found");
         const account = toPlain(accountSnap.data()) as SignalDeskRevenueAccountSummary;
+        const target = toPlain(targetSnap.data()) as SignalDeskTargetSummary;
         const existing = existingSnap.exists ? toPlain(existingSnap.data()) as SignalDeskActivationWatchSummary : null;
         const outcomes = latestOutcomeSnap.docs.map((doc: any) => toPlain(doc.data()) as SignalDeskOutcomeSummary);
-        const outcomeTypes = Array.from(new Set(outcomes.filter((outcome) => numberOrZero(outcome.count) > 0).map((outcome) => outcome.outcomeType)));
-        const activationRecorded = !activationOutcomeSnap.empty || existing?.status === "activated";
+        const outcomeTypes = Array.from(new Set(outcomes
+            .filter((outcome) => numberOrZero(outcome.count) > 0 && (outcome.outcomeType !== "two_surface_activation" || isVerifiedTwoSurfaceOutcome(outcome)))
+            .map((outcome) => outcome.outcomeType)));
+        const projectedActivationSurfaces = new Set(target.latestVerifiedActivationSurfaces || []);
+        const activationRecorded = Boolean(
+            target.latestVerifiedActivationAt
+            && target.latestVerifiedActivationEvidenceRef
+            && (target.latestVerifiedActivationIntegrityStatus === "owner-reviewed-manual" || target.latestVerifiedActivationIntegrityStatus === "menulist-signed")
+            && projectedActivationSurfaces.size >= 2
+        ) || activationOutcomeSnap.docs.some((doc: any) => (
+            isVerifiedTwoSurfaceOutcome(toPlain(doc.data()) as SignalDeskOutcomeSummary)
+        ));
         if (activationRecorded && !outcomeTypes.includes("two_surface_activation")) outcomeTypes.push("two_surface_activation");
-        const earliestOutcome = earliestOutcomeSnap.docs[0]
-            ? toPlain(earliestOutcomeSnap.docs[0].data()) as SignalDeskOutcomeSummary
-            : null;
         const outcomeTimes = outcomes.map((outcome) => toTimestampMillis(outcome.updatedAt) || new Date(`${outcome.day}T00:00:00.000Z`).getTime()).filter(Number.isFinite);
-        const firstOutcomeMillis = earliestOutcome
-            ? toTimestampMillis(earliestOutcome.updatedAt) || new Date(`${earliestOutcome.day}T00:00:00.000Z`).getTime()
-            : null;
+        const ownerQualifiedTimes = [
+            toTimestampMillis(target.ownerQualifiedAt),
+            ...outcomes.map((outcome) => toTimestampMillis(outcome.ownerQualifiedAt)),
+        ].filter((value): value is number => Boolean(value));
+        const ownerQualifiedMillis = ownerQualifiedTimes.length ? Math.min(...ownerQualifiedTimes) : null;
         const lastOutcomeMillis = outcomeTimes.length ? Math.max(...outcomeTimes) : null;
-        const deadlineMillis = firstOutcomeMillis ? firstOutcomeMillis + (7 * 24 * 60 * 60 * 1000) : null;
+        const deadlineMillis = ownerQualifiedMillis ? ownerQualifiedMillis + (7 * 24 * 60 * 60 * 1000) : null;
         let status: SignalDeskActivationWatchSummary["status"] = "not-started";
         if (activationRecorded) status = "activated";
         else if (outcomeTypes.includes("published")) status = "published";
@@ -3524,6 +4130,7 @@ export async function refreshSignalDeskActivationWatchServer(
             deadlineAt: deadlineMillis ? new Date(deadlineMillis) : null,
             lastOutcomeAt: lastOutcomeMillis ? new Date(lastOutcomeMillis) : null,
             nextAction,
+            ownerQualifiedAt: ownerQualifiedMillis ? new Date(ownerQualifiedMillis) : null,
             outcomeTypes,
             pId: SIGNALDESK_PRODUCT_CODE,
             revenueAccountId: account.revenueAccountId,
@@ -3722,17 +4329,21 @@ export async function createSignalDeskDailyGrowthMissionServer(access: SignalDes
         });
     };
 
-    const pendingApprovals = approvals.filter((approval) => approval.status === "pending");
-    if (pendingApprovals.length) {
-        const approval = pendingApprovals[0];
+    const criticalReplies = conversations.filter((conversation) => (
+        conversation.state === "complaint"
+        || conversation.state === "privacy_request"
+        || conversation.state === "legal_request"
+    ));
+    if (criticalReplies.length) {
+        const conversation = criticalReplies[0];
         pushAction({
-            actionType: "approve",
-            entityId: approval.approvalId,
-            entityType: "approval",
-            expectedOutcome: "Approved or held outreach packet with evidence trace intact.",
-            label: `Review ${pendingApprovals.length} pending approval${pendingApprovals.length === 1 ? "" : "s"}`,
-            reason: approval.reviewReason || "Approval queue has founder-visible work.",
-            riskLevel: approval.priority === "high" ? "high" : "medium",
+            actionType: "pause",
+            entityId: conversation.conversationId,
+            entityType: "reply",
+            expectedOutcome: "The complaint or rights request remains suppressed, paused, and under founder review.",
+            label: `Resolve ${criticalReplies.length} critical reply exception${criticalReplies.length === 1 ? "" : "s"}`,
+            reason: conversation.lastMessagePreview || conversation.state,
+            riskLevel: "high",
         });
     }
 
@@ -3768,6 +4379,20 @@ export async function createSignalDeskDailyGrowthMissionServer(access: SignalDes
             label: `Recover ${stalledActivationWatches.length} stalled activation${stalledActivationWatches.length === 1 ? "" : "s"}`,
             reason: watch.nextAction,
             riskLevel: "high",
+        });
+    }
+
+    const pendingApprovals = approvals.filter((approval) => approval.status === "pending");
+    if (pendingApprovals.length) {
+        const approval = pendingApprovals[0];
+        pushAction({
+            actionType: "approve",
+            entityId: approval.approvalId,
+            entityType: "approval",
+            expectedOutcome: "Approved or held outreach packet with evidence trace intact.",
+            label: `Review ${pendingApprovals.length} pending approval${pendingApprovals.length === 1 ? "" : "s"}`,
+            reason: approval.reviewReason || "Approval queue has founder-visible work.",
+            riskLevel: approval.priority === "high" ? "high" : "medium",
         });
     }
 
@@ -4013,7 +4638,7 @@ export async function createSignalDeskSourceQualitySnapshotServer(access: Signal
     const usableTargetRate = relatedTargets.length ? usableTargetCount / relatedTargets.length : targetCount ? Math.max(0, 1 - duplicateRate) : 0;
     const targetIds = new Set(relatedTargets.map((target) => target.targetId));
     const activationCount = outcomes
-        .filter((outcome) => outcome.outcomeType === "two_surface_activation" && (!targetIds.size || (outcome.targetId && targetIds.has(outcome.targetId))))
+        .filter((outcome) => isVerifiedTwoSurfaceOutcome(outcome) && (!targetIds.size || (outcome.targetId && targetIds.has(outcome.targetId))))
         .reduce((sum, outcome) => sum + numberOrZero(outcome.count), 0);
     const activationRate = targetCount ? activationCount / targetCount : 0;
     const evidenceQualityScore = relatedTargets.length
@@ -4862,6 +5487,52 @@ export async function upsertSignalDeskContentSourceServer(
     return toPlain(source) as SignalDeskContentSourceSummary;
 }
 
+export async function upsertSignalDeskProofPermissionServer(
+    access: SignalDeskAccessContext,
+    input: ProofPermissionInput,
+) {
+    requireContentDistributionRail();
+    if (access.role !== "founder-admin") throw new Error("Founder approval is required for proof permissions");
+    const db = requireDb();
+    const targetSnap = await db.collection(SIGNALDESK_COLLECTIONS.TARGET_SUMMARIES).doc(input.targetId).get();
+    if (!targetSnap.exists) throw new Error("Target not found");
+    const target = toPlain(targetSnap.data()) as SignalDeskTargetSummary;
+    const proofPermissionId = input.proofPermissionId || proofPermissionIdFor(input.targetId);
+    const permissionRef = db.collection(SIGNALDESK_COLLECTIONS.PROOF_PERMISSIONS).doc(proofPermissionId);
+    const existingSnap = await permissionRef.get();
+    const existing = existingSnap.exists ? toPlain(existingSnap.data()) as SignalDeskProofPermissionSummary : null;
+    if (existing && existing.targetId !== input.targetId) throw new Error("PROOF_PERMISSION_TARGET_IMMUTABLE");
+    const timestamp = now();
+    const expiresAt = input.expiresAt ? timestampFromIsoOrDefault(input.expiresAt, 0) : null;
+    if (input.status === "active" && expiresAt && toTimestampMillis(expiresAt) <= Date.now()) {
+        throw new Error("Proof permission expiry must be in the future");
+    }
+    const permission = {
+        proofPermissionId,
+        pId: SIGNALDESK_PRODUCT_CODE,
+        targetId: input.targetId,
+        targetName: target.displayName,
+        status: input.status,
+        scopes: Array.from(new Set(input.scopes)),
+        evidenceRef: input.evidenceRef,
+        grantedAt: input.status === "active"
+            ? timestampFromIsoOrDefault(input.grantedAt, 0)
+            : existing?.grantedAt || null,
+        expiresAt,
+        revokedAt: input.status === "revoked" ? timestamp : null,
+        notes: input.notes || null,
+        createdAt: (existing as AnyRecord)?.createdAt || timestamp,
+        updatedAt: timestamp,
+        updatedBy: access.userId,
+    };
+    const batch = db.batch();
+    batch.set(permissionRef, sanitizeForFirestore(permission), { merge: true });
+    appendAudit(db, batch, access, "proof_permission_upsert", "proofPermission", proofPermissionId, `${input.status}:${permission.scopes.join(",")}`);
+    updateDailyCost(db, batch, 2, 0, 0);
+    await batch.commit();
+    return toPlain(permission) as SignalDeskProofPermissionSummary;
+}
+
 export async function createSignalDeskContentAssetServer(
     access: SignalDeskAccessContext,
     input: ContentAssetInput,
@@ -4869,13 +5540,20 @@ export async function createSignalDeskContentAssetServer(
     requireContentDistributionRail();
     const db = requireDb();
     await requireNoActiveKillSwitch(db, "content-distribution", "Content distribution is paused");
-    const [sourceSnap, cta] = await Promise.all([
+    const [sourceSnap, cta, proofPermission] = await Promise.all([
         input.sourceId ? db.collection(SIGNALDESK_COLLECTIONS.CONTENT_SOURCES).doc(input.sourceId).get() : Promise.resolve(null),
         input.ctaId
             ? db.collection(SIGNALDESK_COLLECTIONS.SELF_SERVICE_CTAS).doc(input.ctaId).get().then((snap: any) => (snap.exists ? toPlain(snap.data()) as SignalDeskSelfServiceCtaSummary : null))
             : readDefaultCta(db),
+        readProofPermission(db, input.proofPermissionId),
     ]);
     if (input.sourceId && !sourceSnap?.exists) throw new Error("Content source not found");
+    if (input.proofLevel === "customer-proof" && !isProofPermissionActive(proofPermission)) {
+        throw new Error("PROOF_PERMISSION_REQUIRED");
+    }
+    if (input.proofLevel === "customer-proof" && !isProofPermissionUsable(proofPermission, input.proofScopes)) {
+        throw new Error("PROOF_PERMISSION_SCOPE_NOT_ALLOWED");
+    }
     const batch = db.batch();
     const timestamp = now();
     const source = sourceSnap?.exists ? toPlain(sourceSnap.data()) as SignalDeskContentSourceSummary : null;
@@ -4893,6 +5571,8 @@ export async function createSignalDeskContentAssetServer(
         sourceNotes: input.sourceNotes || null,
         primaryAudience: input.primaryAudience,
         proofLevel: input.proofLevel,
+        proofPermissionId: input.proofPermissionId || null,
+        proofScopes: input.proofLevel === "customer-proof" ? Array.from(new Set(input.proofScopes)) : [],
         riskNotes: input.riskNotes,
         ctaId: input.ctaId || cta?.ctaId || null,
         marketPodId: input.marketPodId || source?.defaultMarketPodId || null,
@@ -4916,6 +5596,7 @@ export async function createSignalDeskContentAssetServer(
         steps: [
             { label: "Canonical message captured", status: "completed", at: toIso(timestamp) },
             { label: `${input.proofLevel} proof level`, status: input.proofLevel === "internal-note" ? "held" : "completed", at: toIso(timestamp) },
+            { label: "Proof permission checked", status: input.proofLevel === "customer-proof" ? "completed" : "ready", at: toIso(timestamp) },
             { label: "CTA attached", status: cta ? "completed" : "held", at: toIso(timestamp) },
         ],
     });
@@ -4936,6 +5617,11 @@ export async function generateSignalDeskContentDistributionDraftsServer(
     if (!assetSnap.exists) throw new Error("Content asset not found");
     const asset = toPlain(assetSnap.data()) as SignalDeskContentAssetSummary;
     if (asset.status !== "ready" && asset.status !== "distributed") throw new Error("Content asset is not ready");
+    if (asset.proofLevel === "customer-proof") {
+        const permission = await readProofPermission(db, asset.proofPermissionId);
+        if (!isProofPermissionActive(permission)) throw new Error("PROOF_PERMISSION_REQUIRED");
+        if (!isProofPermissionUsable(permission, asset.proofScopes || [])) throw new Error("PROOF_PERMISSION_SCOPE_NOT_ALLOWED");
+    }
     const cta = asset.ctaId
         ? await db.collection(SIGNALDESK_COLLECTIONS.SELF_SERVICE_CTAS).doc(asset.ctaId).get().then((snap: any) => (snap.exists ? toPlain(snap.data()) as SignalDeskSelfServiceCtaSummary : null))
         : await readDefaultCta(db);
@@ -5598,7 +6284,12 @@ export async function importSignalDeskTargetsServer(access: SignalDeskAccessCont
         entityId: input.sourcePolicyId,
         use: "import",
     });
+    if (!policy || !sourcePolicyAllowsField(policy, "displayName")) {
+        await appendSourcePolicyBlockedAudit(db, access, policy, { entityId: input.sourcePolicyId, use: "import" }, SOURCE_POLICY_USE_NOT_ALLOWED);
+        throw new Error(SOURCE_POLICY_USE_NOT_ALLOWED);
+    }
     const policyAllowedUse = resolveAllowedUse(policy);
+    const policyExpiryMillis = getSourcePolicyExpiryMillis(policy);
 
     const batch = db.batch();
     const timestamp = now();
@@ -5609,40 +6300,68 @@ export async function importSignalDeskTargetsServer(access: SignalDeskAccessCont
     let blockedCount = 0;
     let contactIdentityWriteCount = 0;
     const targets: SignalDeskTargetSummary[] = [];
+    const targetIdsByIdentity = new Map<string, string>();
 
     for (const row of rows) {
-        const identityHash = computeTargetIdentity(row, { includeContact: policyAllowedUse.contact });
+        const allowedRow: TargetImportRow = {
+            displayName: normalizeText(row.displayName),
+            category: sourcePolicyAllowsField(policy, "category") ? row.category : undefined,
+            city: sourcePolicyAllowsField(policy, "city") ? row.city : undefined,
+            country: sourcePolicyAllowsField(policy, "country") ? row.country : undefined,
+            currentListUrl: sourcePolicyAllowsField(policy, "currentListUrl") ? row.currentListUrl : undefined,
+            website: sourcePolicyAllowsField(policy, "website") ? row.website : undefined,
+            email: policyAllowedUse.contact && sourcePolicyAllowsField(policy, "email") ? row.email : undefined,
+            phone: policyAllowedUse.contact && sourcePolicyAllowsField(policy, "phone") ? row.phone : undefined,
+            instagram: policyAllowedUse.contact && sourcePolicyAllowsField(policy, "instagram") ? row.instagram : undefined,
+            notes: sourcePolicyAllowsField(policy, "notes") ? row.notes : undefined,
+            providerRecordId: sourcePolicyAllowsField(policy, "providerRecordId") ? row.providerRecordId : undefined,
+            providerRecordUrl: sourcePolicyAllowsField(policy, "providerRecordUrl") ? row.providerRecordUrl : undefined,
+        };
+        const identityHash = computeTargetIdentity(allowedRow, { includeContact: policyAllowedUse.contact });
         const identityRef = db.collection(SIGNALDESK_COLLECTIONS.IDENTITY_INDEX).doc(identityHash);
-        const identitySnap = await identityRef.get();
-        const targetId = identitySnap.exists && identitySnap.data()?.targetId
+        const targetIdFromCurrentImport = targetIdsByIdentity.get(identityHash);
+        const identitySnap = targetIdFromCurrentImport ? null : await identityRef.get();
+        const targetId = targetIdFromCurrentImport
+            || (identitySnap?.exists && identitySnap.data()?.targetId
             ? String(identitySnap.data()?.targetId)
-            : `tgt_${identityHash.slice(0, 20)}`;
-        if (identitySnap.exists) duplicateCount += 1;
+            : `tgt_${identityHash.slice(0, 20)}`);
+        const duplicateInCurrentImport = Boolean(targetIdFromCurrentImport);
+        targetIdsByIdentity.set(identityHash, targetId);
+        if (duplicateInCurrentImport || identitySnap?.exists) duplicateCount += 1;
 
-        const email = policyAllowedUse.contact ? normalizeLower(row.email) : "";
-        const phone = policyAllowedUse.contact ? normalizeText(row.phone).replace(/[^\d+]/g, "") : "";
-        const instagram = policyAllowedUse.contact ? normalizeLower(row.instagram).replace(/^@/, "") : "";
-        const [emailSuppression, phoneSuppression, instagramSuppression] = await Promise.all([
+        const email = normalizeLower(allowedRow.email);
+        const phone = normalizeText(allowedRow.phone).replace(/[^\d+]/g, "");
+        const canonicalPhone = phone.replace(/\D/g, "");
+        const instagram = normalizeLower(allowedRow.instagram).replace(/^@/, "");
+        const [emailSuppression, phoneSuppression, canonicalPhoneSuppression, instagramSuppression] = await Promise.all([
             email ? db.collection(SIGNALDESK_COLLECTIONS.SUPPRESSION_LEDGER).doc(`email_${hashValue(email)}`).get() : null,
             phone ? db.collection(SIGNALDESK_COLLECTIONS.SUPPRESSION_LEDGER).doc(`phone_${hashValue(phone)}`).get() : null,
+            canonicalPhone && canonicalPhone !== phone
+                ? db.collection(SIGNALDESK_COLLECTIONS.SUPPRESSION_LEDGER).doc(`phone_${hashValue(canonicalPhone)}`).get()
+                : null,
             instagram ? db.collection(SIGNALDESK_COLLECTIONS.SUPPRESSION_LEDGER).doc(`instagram_${hashValue(instagram)}`).get() : null,
         ]);
-        const suppressionStatus: SignalDeskSuppressionStatus = emailSuppression?.exists || phoneSuppression?.exists || instagramSuppression?.exists ? "suppressed" : "clear";
+        const suppressionStatus: SignalDeskSuppressionStatus = emailSuppression?.exists
+            || phoneSuppression?.exists
+            || canonicalPhoneSuppression?.exists
+            || instagramSuppression?.exists
+            ? "suppressed"
+            : "clear";
         if (suppressionStatus !== "clear") suppressedCount += 1;
         if (!policyAllowedUse.evidence) blockedCount += 1;
 
-        const contactability = policyAllowedUse.contact ? classifyContactability(row) : "blocked";
+        const contactability = policyAllowedUse.contact ? classifyContactability(allowedRow) : "blocked";
         const target: SignalDeskTargetSummary = {
             targetId,
-            displayName: normalizeText(row.displayName),
-            category: normalizeText(row.category) || null,
-            city: normalizeText(row.city) || null,
-            country: normalizeText(row.country) || null,
-            currentListUrl: normalizeText(row.currentListUrl) || null,
-            website: normalizeText(row.website) || null,
+            displayName: normalizeText(allowedRow.displayName),
+            category: normalizeText(allowedRow.category) || null,
+            city: normalizeText(allowedRow.city) || null,
+            country: normalizeText(allowedRow.country) || null,
+            currentListUrl: normalizeText(allowedRow.currentListUrl) || null,
+            website: normalizeText(allowedRow.website) || null,
             status: suppressionStatus === "clear" && policyAllowedUse.evidence ? "review" : "held",
             segment: suppressionStatus === "clear" ? "c" : "hold",
-            primaryOpportunity: inferOpportunity(row),
+            primaryOpportunity: inferOpportunity(allowedRow),
             sourceConfidence: policyAllowedUse.evidence ? "medium" : "blocked",
             contactability,
             suppressionStatus,
@@ -5659,24 +6378,26 @@ export async function importSignalDeskTargetsServer(access: SignalDeskAccessCont
             pId: SIGNALDESK_PRODUCT_CODE,
             email: email || null,
             phone: phone || null,
-            instagram: policyAllowedUse.contact ? normalizeText(row.instagram) || null : null,
-            notes: normalizeText(row.notes) || null,
+            instagram: normalizeText(allowedRow.instagram) || null,
+            notes: normalizeText(allowedRow.notes) || null,
             identityHash,
             updatedAt: timestamp,
         }), { merge: true });
         batch.set(identityRef, sanitizeForFirestore({ identityHash, targetId, updatedAt: timestamp }), { merge: true });
 
-        const candidateRef = db.collection(SIGNALDESK_COLLECTIONS.SOURCE_CANDIDATES).doc();
-        batch.set(candidateRef, sanitizeForFirestore({
-            sourceCandidateId: candidateRef.id,
-            pId: SIGNALDESK_PRODUCT_CODE,
-            targetId,
-            sourceRunId: sourceRunRef.id,
-            sourcePolicyId: input.sourcePolicyId,
-            displayName: target.displayName,
-            blocked: target.nextAction === "hold",
-            createdAt: timestamp,
-        }));
+        if (!duplicateInCurrentImport) {
+            const candidateRef = db.collection(SIGNALDESK_COLLECTIONS.SOURCE_CANDIDATES).doc();
+            batch.set(candidateRef, sanitizeForFirestore({
+                sourceCandidateId: candidateRef.id,
+                pId: SIGNALDESK_PRODUCT_CODE,
+                targetId,
+                sourceRunId: sourceRunRef.id,
+                sourcePolicyId: input.sourcePolicyId,
+                displayName: target.displayName,
+                blocked: target.nextAction === "hold",
+                createdAt: timestamp,
+            }));
+        }
 
         if (email) {
             batch.set(db.collection(SIGNALDESK_COLLECTIONS.CONTACT_IDENTITIES).doc(`email_${hashValue(email)}`), sanitizeForFirestore({
@@ -5684,7 +6405,11 @@ export async function importSignalDeskTargetsServer(access: SignalDeskAccessCont
                 targetId,
                 channel: "email",
                 value: email,
+                permissionState: "permissioned",
+                sourcePolicyId: input.sourcePolicyId,
                 sourceRunId: sourceRunRef.id,
+                observedAt: timestamp,
+                expiresAt: policyExpiryMillis ? new Date(policyExpiryMillis) : null,
                 updatedAt: timestamp,
             }), { merge: true });
             contactIdentityWriteCount += 1;
@@ -5696,7 +6421,11 @@ export async function importSignalDeskTargetsServer(access: SignalDeskAccessCont
                 targetId,
                 channel: "phone",
                 value: phone,
+                permissionState: "permissioned",
+                sourcePolicyId: input.sourcePolicyId,
                 sourceRunId: sourceRunRef.id,
+                observedAt: timestamp,
+                expiresAt: policyExpiryMillis ? new Date(policyExpiryMillis) : null,
                 updatedAt: timestamp,
             }), { merge: true });
             contactIdentityWriteCount += 1;
@@ -5706,7 +6435,11 @@ export async function importSignalDeskTargetsServer(access: SignalDeskAccessCont
                 targetId,
                 channel: "whatsapp",
                 value: phone,
+                permissionState: "research_only",
+                sourcePolicyId: input.sourcePolicyId,
                 sourceRunId: sourceRunRef.id,
+                observedAt: timestamp,
+                expiresAt: policyExpiryMillis ? new Date(policyExpiryMillis) : null,
                 updatedAt: timestamp,
             }), { merge: true });
             contactIdentityWriteCount += 1;
@@ -5718,14 +6451,18 @@ export async function importSignalDeskTargetsServer(access: SignalDeskAccessCont
                 targetId,
                 channel: "instagram",
                 value: instagram,
+                permissionState: "research_only",
+                sourcePolicyId: input.sourcePolicyId,
                 sourceRunId: sourceRunRef.id,
+                observedAt: timestamp,
+                expiresAt: policyExpiryMillis ? new Date(policyExpiryMillis) : null,
                 updatedAt: timestamp,
             }), { merge: true });
             contactIdentityWriteCount += 1;
         }
 
         importedCount += 1;
-        targets.push(target);
+        if (!duplicateInCurrentImport) targets.push(target);
     }
 
     const runData = {
@@ -5831,8 +6568,8 @@ export async function runSignalDeskSourceProviderServer(access: SignalDeskAccess
     if (retentionEligibleProvider) {
         rows.forEach((row: AnyRecord, index) => {
             const target = imported.targets[index];
-            const providerRecordId = normalizeText(row.providerRecordId);
-            const providerRecordUrl = normalizeText(row.providerRecordUrl);
+            const providerRecordId = sourcePolicyAllowsField(policy, "providerRecordId") ? normalizeText(row.providerRecordId) : "";
+            const providerRecordUrl = sourcePolicyAllowsField(policy, "providerRecordUrl") ? normalizeText(row.providerRecordUrl) : "";
             if (!target || (!providerRecordId && !providerRecordUrl)) return;
             const retentionId = `retention_${input.provider}_${hashValue(`${providerRecordId || providerRecordUrl}|${target.targetId}`).slice(0, 18)}`;
             batch.set(db.collection(SIGNALDESK_COLLECTIONS.PROVIDER_SOURCE_RETENTION).doc(retentionId), sanitizeForFirestore({
@@ -6006,6 +6743,7 @@ export async function createSignalDeskResearchAgentRunServer(access: SignalDeskA
             providerRecordUrl: retentionByTarget.get(target.targetId)?.providerRecordUrl || null,
             researchRunId,
             researchType: input.researchType,
+            sourcePolicy,
             sourcePolicyId,
             sourceRunId: providerResult.run.sourceRunId,
             target,
@@ -6215,91 +6953,675 @@ export async function runSignalDeskAiAssistServer(access: SignalDeskAccessContex
         use: input.task === "draft" ? "draft" : "evidence",
     });
     const evidence = (await readRecentByTarget<SignalDeskEvidencePacketSummary>(db, SIGNALDESK_COLLECTIONS.EVIDENCE_PACKET_SUMMARIES, input.targetId, 1))[0] || null;
-    const { estimatedCostUsd, route } = await resolveModelRouteForTask(db, input.task);
-    const assist = await runSignalDeskAiAssist({
+    const { estimatedCostUsd: generationCostUsd, route } = await resolveModelRouteForTask(db, input.task);
+    const initialAssist = await runSignalDeskAiAssist({
         evidence,
         instruction: input.instruction,
         model: route.defaultModel,
         target,
         task: input.task,
     });
+    let finalAssist = initialAssist;
+    let finalOutput = initialAssist.output;
+    let finalConfidence = initialAssist.confidence;
+    let critic: Awaited<ReturnType<typeof runSignalDeskAiCritic>> | null = null;
+    let criticCostUsd = 0;
+    let escalated = false;
+    let escalationBlocked = false;
+    let escalationCostUsd = 0;
+    let modelCallCount = 1;
 
-    const batch = db.batch();
+    if (input.multiPass) {
+        const criticRouteResult = await resolveModelRouteForTask(db, "quality-critic");
+        criticCostUsd = criticRouteResult.estimatedCostUsd;
+        critic = await runSignalDeskAiCritic({
+            candidate: initialAssist.output,
+            evidence,
+            model: criticRouteResult.route.defaultModel,
+            target,
+            task: input.task,
+        });
+        modelCallCount += 1;
+        if (critic.verdict === "revise" && critic.revisedOutput) finalOutput = critic.revisedOutput;
+
+        const initialRejectedFacts = Array.isArray(initialAssist.output.rejectedFacts) ? initialAssist.output.rejectedFacts : [];
+        const needsEscalation = initialAssist.confidence === "low"
+            || critic.confidence === "low"
+            || critic.verdict !== "pass"
+            || initialRejectedFacts.length > 0
+            || critic.rejectedFacts.length > 0;
+        if (needsEscalation) {
+            if (route.escalationProvider === "gemini" && route.escalationModel) {
+                escalationCostUsd = Math.min(numberOrZero(route.maxCostUsd), 0.05);
+                await requireProviderBudget(db, {
+                    estimatedCostUsd: escalationCostUsd,
+                    provider: "gemini",
+                    use: "ai",
+                });
+                finalAssist = await runSignalDeskAiAssist({
+                    evidence,
+                    instruction: [
+                        input.instruction || "",
+                        "Produce a corrected final result after an independent critic review. Do not claim external-action approval.",
+                        `Critic verdict: ${critic.verdict}.`,
+                        `Critic reasons: ${critic.reasons.join("; ")}.`,
+                    ].filter(Boolean).join(" "),
+                    model: route.escalationModel,
+                    priorOutput: critic.revisedOutput || initialAssist.output,
+                    target,
+                    task: input.task,
+                });
+                finalOutput = finalAssist.output;
+                finalConfidence = critic.verdict === "hold"
+                    ? "low"
+                    : finalAssist.confidence === "low"
+                        ? "low"
+                        : "medium";
+                escalated = true;
+                modelCallCount += 1;
+            } else {
+                escalationBlocked = true;
+                finalConfidence = "low";
+            }
+        } else if (critic.confidence === "medium" || initialAssist.confidence === "medium") {
+            finalConfidence = "medium";
+        } else {
+            finalConfidence = "high";
+        }
+    }
+
+    const estimatedCostUsd = generationCostUsd + criticCostUsd + escalationCostUsd;
+
     const timestamp = now();
     const runRef = db.collection(SIGNALDESK_COLLECTIONS.AI_WORKER_RUNS).doc();
     const snapshotRef = db.collection(SIGNALDESK_COLLECTIONS.DECISION_SNAPSHOTS).doc();
     const ledgerRef = db.collection(SIGNALDESK_COLLECTIONS.AI_OPERATION_LEDGER).doc();
-    batch.set(runRef, sanitizeForFirestore({
-        aiRunId: runRef.id,
-        pId: SIGNALDESK_PRODUCT_CODE,
-        workerType: `ai_assist_${input.task}`,
-        workerVersion: assist.promptVersion,
-        model: assist.model,
-        targetId: input.targetId,
-        confidence: assist.confidence,
-        output: assist.output,
-        costEstimate: estimatedCostUsd,
-        createdAt: timestamp,
-    }));
-    batch.set(snapshotRef, sanitizeForFirestore({
-        snapshotId: snapshotRef.id,
-        pId: SIGNALDESK_PRODUCT_CODE,
-        targetId: input.targetId,
-        decisionType: "score",
-        confidence: assist.confidence,
-        rejectedFacts: Array.isArray(assist.output.rejectedFacts) ? assist.output.rejectedFacts : [],
-        evidenceRefs: evidence?.evidencePacketId ? [evidence.evidencePacketId] : [],
-        aiWorkerVersion: assist.promptVersion,
-        ruleVersion: "ai-assist-v1",
-        decidedBy: "system",
-        createdAt: timestamp,
-    }));
-    batch.set(ledgerRef, sanitizeForFirestore({
-        operationId: ledgerRef.id,
-        pId: SIGNALDESK_PRODUCT_CODE,
-        targetId: input.targetId,
-        operation: `ai_assist_${input.task}`,
-        costEstimate: estimatedCostUsd,
-        model: assist.model,
-        createdAt: timestamp,
-    }));
     const evalRef = db.collection(SIGNALDESK_COLLECTIONS.MODEL_EVALS).doc(`model_eval_${route.task}_${route.defaultProvider}`);
-    batch.set(evalRef, sanitizeForFirestore({
-        modelEvalId: evalRef.id,
-        pId: SIGNALDESK_PRODUCT_CODE,
-        modelRouteId: route.modelRouteId,
-        task: route.task,
-        provider: route.defaultProvider,
-        model: assist.model,
-        status: assist.confidence === "low" ? "needs-review" : "passed",
-        sampleSize: increment(1),
-        passRate: assist.confidence === "low" ? 0 : 1,
-        editRate: 0,
-        rejectedFactRate: Array.isArray(assist.output.rejectedFacts) && assist.output.rejectedFacts.length ? 1 : 0,
-        updatedAt: timestamp,
-        updatedBy: access.userId,
-    }), { merge: true });
-    writeProviderSpend(db, batch, {
-        costUsd: estimatedCostUsd,
-        provider: route.defaultProvider,
+    const rejectedFacts = Array.from(new Set([
+        ...(Array.isArray(finalOutput.rejectedFacts) ? finalOutput.rejectedFacts : []),
+        ...(critic?.rejectedFacts || []),
+    ].filter((fact): fact is string => typeof fact === "string" && Boolean(fact.trim())).map((fact) => fact.trim()))).slice(0, 16);
+    if (rejectedFacts.length) finalConfidence = "low";
+    await db.runTransaction(async (transaction: any) => {
+        const evalSnap = await transaction.get(evalRef);
+        const rawExistingEval = evalSnap.exists
+            ? toPlain(evalSnap.data()) as SignalDeskModelEvalSummary
+            : null;
+        const existingEval = rawExistingEval ? annotateModelEvalSummary(rawExistingEval) : null;
+        const hasExactCumulativeCounts = rawExistingEval?.passedSampleCount !== undefined
+            || rawExistingEval?.rejectedFactSampleCount !== undefined;
+        const sampleSize = (hasExactCumulativeCounts ? nonNegativeInteger(existingEval?.sampleSize) : 0) + 1;
+        const passedSampleCount = (hasExactCumulativeCounts ? nonNegativeInteger(existingEval?.passedSampleCount) : 0) + (finalConfidence === "low" ? 0 : 1);
+        const lowConfidenceCount = (hasExactCumulativeCounts ? nonNegativeInteger(existingEval?.lowConfidenceCount) : 0) + (finalConfidence === "low" ? 1 : 0);
+        const rejectedFactSampleCount = (hasExactCumulativeCounts ? nonNegativeInteger(existingEval?.rejectedFactSampleCount) : 0) + (rejectedFacts.length ? 1 : 0);
+
+        transaction.set(runRef, sanitizeForFirestore({
+            aiRunId: runRef.id,
+            pId: SIGNALDESK_PRODUCT_CODE,
+            workerType: `ai_assist_${input.task}`,
+            workerVersion: critic ? `${initialAssist.promptVersion}+${critic.promptVersion}` : initialAssist.promptVersion,
+            task: input.task,
+            provider: route.defaultProvider,
+            model: finalAssist.model,
+            modelRouteId: route.modelRouteId,
+            modelEvalId: evalRef.id,
+            volumeRunId: input.volumeRunId || null,
+            targetId: input.targetId,
+            confidence: finalConfidence,
+            rejectedFactCount: rejectedFacts.length,
+            initialOutput: critic ? initialAssist.output : null,
+            output: finalOutput,
+            criticConfidence: critic?.confidence || null,
+            criticModel: critic?.model || null,
+            criticPromptVersion: critic?.promptVersion || null,
+            criticReasons: critic?.reasons || [],
+            criticRejectedFactCount: critic?.rejectedFacts.length || 0,
+            criticVerdict: critic?.verdict || null,
+            escalated,
+            escalationBlocked,
+            escalationModel: escalated ? finalAssist.model : route.escalationModel || null,
+            modelCallCount,
+            costEstimate: estimatedCostUsd,
+            reviewDecision: null,
+            reviewReason: null,
+            reviewedAt: null,
+            reviewedBy: null,
+            founderAttentionMinutes: 0,
+            createdAt: timestamp,
+        }));
+        transaction.set(snapshotRef, sanitizeForFirestore({
+            snapshotId: snapshotRef.id,
+            pId: SIGNALDESK_PRODUCT_CODE,
+            targetId: input.targetId,
+            decisionType: "score",
+            confidence: finalConfidence,
+            rejectedFacts,
+            evidenceRefs: evidence?.evidencePacketId ? [evidence.evidencePacketId] : [],
+            aiWorkerVersion: critic ? `${initialAssist.promptVersion}+${critic.promptVersion}` : initialAssist.promptVersion,
+            ruleVersion: "ai-assist-v2",
+            decidedBy: "system",
+            createdAt: timestamp,
+        }));
+        transaction.set(ledgerRef, sanitizeForFirestore({
+            operationId: ledgerRef.id,
+            pId: SIGNALDESK_PRODUCT_CODE,
+            targetId: input.targetId,
+            operation: `ai_assist_${input.task}`,
+            costEstimate: estimatedCostUsd,
+            model: finalAssist.model,
+            modelCallCount,
+            volumeRunId: input.volumeRunId || null,
+            createdAt: timestamp,
+        }));
+        transaction.set(evalRef, sanitizeForFirestore({
+            modelEvalId: evalRef.id,
+            pId: SIGNALDESK_PRODUCT_CODE,
+            modelRouteId: route.modelRouteId,
+            task: route.task,
+            provider: route.defaultProvider,
+            model: finalAssist.model,
+            status: finalConfidence === "low" ? "needs-review" : existingEval?.status === "failed" ? "failed" : "passed",
+            measurementVersion: "cumulative-v1",
+            legacySampleSize: hasExactCumulativeCounts
+                ? nonNegativeInteger(existingEval?.legacySampleSize)
+                : nonNegativeInteger(existingEval?.sampleSize),
+            legacyPassRate: hasExactCumulativeCounts
+                ? numberOrZero(existingEval?.legacyPassRate)
+                : numberOrZero(existingEval?.passRate),
+            legacyRejectedFactRate: hasExactCumulativeCounts
+                ? numberOrZero(existingEval?.legacyRejectedFactRate)
+                : numberOrZero(existingEval?.rejectedFactRate),
+            sampleSize,
+            passedSampleCount,
+            lowConfidenceCount,
+            rejectedFactSampleCount,
+            reviewedSampleSize: nonNegativeInteger(existingEval?.reviewedSampleSize),
+            acceptedCount: nonNegativeInteger(existingEval?.acceptedCount),
+            editedCount: nonNegativeInteger(existingEval?.editedCount),
+            rejectedCount: nonNegativeInteger(existingEval?.rejectedCount),
+            heldCount: nonNegativeInteger(existingEval?.heldCount),
+            passRate: ratio(passedSampleCount, sampleSize),
+            editRate: numberOrZero(existingEval?.editRate),
+            rejectedFactRate: ratio(rejectedFactSampleCount, sampleSize),
+            acceptanceRate: numberOrZero(existingEval?.acceptanceRate),
+            rejectionRate: numberOrZero(existingEval?.rejectionRate),
+            holdRate: numberOrZero(existingEval?.holdRate),
+            founderAttentionMinutes: nonNegativeInteger(existingEval?.founderAttentionMinutes),
+            updatedAt: timestamp,
+            updatedBy: access.userId,
+        }), { merge: true });
+        writeProviderSpend(db, transaction, {
+            costUsd: estimatedCostUsd,
+            provider: route.defaultProvider,
+            use: "ai",
+        });
+        writeRunTimeline(db, transaction, {
+            entityId: runRef.id,
+            entityType: "model",
+            label: `${route.defaultProvider}/${finalAssist.model} ${input.task}`,
+            status: finalConfidence === "low" ? "held" : "completed",
+            steps: [
+                { label: "Model route active", status: "completed", at: toIso(timestamp) },
+                { label: "Provider budget checked", status: "completed", at: toIso(timestamp) },
+                ...(critic ? [{ label: `Critic: ${critic.verdict}`, status: critic.verdict === "pass" ? "completed" as const : "held" as const, at: toIso(timestamp) }] : []),
+                ...(escalated ? [{ label: `Escalated: ${finalAssist.model}`, status: "completed" as const, at: toIso(timestamp) }] : []),
+                ...(escalationBlocked ? [{ label: "Escalation unavailable", status: "held" as const, at: toIso(timestamp) }] : []),
+                { label: "Rejected facts captured", status: rejectedFacts.length ? "held" : "completed", at: toIso(timestamp) },
+            ],
+        });
+        appendAudit(db, transaction, access, "ai_assist_run", "target", input.targetId, input.task);
+        updateDailyCost(db, transaction, 8, estimatedCostUsd, 0);
+    });
+
+    return {
+        ...finalAssist,
+        aiRunId: runRef.id,
+        confidence: finalConfidence,
+        critic,
+        escalated,
+        escalationBlocked,
+        estimatedCostUsd,
+        modelCallCount,
+        output: finalOutput,
+    };
+}
+
+const signalDeskAiVolumeFailureCode = (error: unknown) => {
+    const message = error instanceof Error ? error.message : "";
+    if (message.includes("budget") || message.includes("cost")) return "ai_volume_budget_blocked";
+    if (message.includes("source policy") || message.startsWith("SOURCE_POLICY_")) return "ai_volume_policy_blocked";
+    if (message.includes("provider") || message.includes("route") || message.includes("model")) return "ai_volume_provider_blocked";
+    if (message.includes("Target")) return "ai_volume_target_blocked";
+    return "ai_volume_child_failed";
+};
+
+const SIGNALDESK_AI_VOLUME_LOCK_ID = "ai_volume_lock_global";
+const SIGNALDESK_AI_VOLUME_LOCK_TTL_MS = 6 * 60 * 1000;
+const SIGNALDESK_AI_VOLUME_INTERRUPTED_CODE = "ai_volume_run_interrupted";
+
+const recoverExpiredSignalDeskAiVolumeRun = async (params: {
+    access: SignalDeskAccessContext;
+    db: any;
+    existingSnap: any;
+    lockRef: any;
+    volumeRef: any;
+}): Promise<SignalDeskAiVolumeRunSummary> => {
+    const existingRaw = params.existingSnap.data() as AnyRecord;
+    const existing = toPlain(existingRaw) as SignalDeskAiVolumeRunSummary;
+    if (existing.status !== "running") return existing;
+    const fallbackAnchorMillis = toTimestampMillis(existingRaw.updatedAt || existingRaw.createdAt);
+    const expiresAtMillis = toTimestampMillis(existingRaw.lockExpiresAt)
+        || (fallbackAnchorMillis ? fallbackAnchorMillis + SIGNALDESK_AI_VOLUME_LOCK_TTL_MS : null);
+    if (!expiresAtMillis || expiresAtMillis > Date.now()) return existing;
+
+    const childSnaps = await params.db.collection(SIGNALDESK_COLLECTIONS.AI_WORKER_RUNS)
+        .where("volumeRunId", "==", params.volumeRef.id)
+        .limit(20)
+        .get();
+    const recoveredChildren = childSnaps.docs
+        .map((doc: any) => toPlain(doc.data()) as SignalDeskAiWorkerRunSummary)
+        .filter((run: SignalDeskAiWorkerRunSummary) => String(run.workerType || "").startsWith("ai_assist_"));
+    const recoveredChildRunIds = Array.from(new Set([
+        ...(existing.childRunIds || []),
+        ...recoveredChildren.map((run) => run.aiRunId).filter(Boolean),
+    ])).slice(0, 15);
+    const recoveredCostUsd = recoveredChildren.reduce((sum, run) => sum + numberOrZero(run.costEstimate), 0);
+    const recoveredModelCallCount = recoveredChildren.reduce((sum, run) => sum + nonNegativeInteger(run.modelCallCount || 1), 0);
+    const recoveredAt = now();
+
+    return params.db.runTransaction(async (transaction: any) => {
+        const [currentSnap, lockSnap] = await Promise.all([
+            transaction.get(params.volumeRef),
+            transaction.get(params.lockRef),
+        ]);
+        if (!currentSnap.exists) return existing;
+        const currentRaw = currentSnap.data() as AnyRecord;
+        const current = toPlain(currentRaw) as SignalDeskAiVolumeRunSummary;
+        if (current.status !== "running") return current;
+        const currentFallbackAnchorMillis = toTimestampMillis(currentRaw.updatedAt || currentRaw.createdAt);
+        const currentExpiresAtMillis = toTimestampMillis(currentRaw.lockExpiresAt)
+            || (currentFallbackAnchorMillis ? currentFallbackAnchorMillis + SIGNALDESK_AI_VOLUME_LOCK_TTL_MS : null);
+        if (!currentExpiresAtMillis || currentExpiresAtMillis > recoveredAt.toMillis()) return current;
+
+        const requestedPairCount = nonNegativeInteger(current.requestedPairCount);
+        const completedPairCount = recoveredChildRunIds.length;
+        const fullyRecovered = requestedPairCount > 0 && completedPairCount >= requestedPairCount;
+        const status: SignalDeskAiVolumeRunSummary["status"] = fullyRecovered
+            ? "completed"
+            : completedPairCount > 0
+                ? "partial"
+                : "blocked";
+        const failureCodes = fullyRecovered
+            ? Array.from(new Set(current.failureCodes || []))
+            : Array.from(new Set([...(current.failureCodes || []), SIGNALDESK_AI_VOLUME_INTERRUPTED_CODE]));
+        const updates = {
+            childRunIds: recoveredChildRunIds,
+            completedAt: recoveredAt,
+            completedPairCount,
+            estimatedCostUsd: Math.max(numberOrZero(current.estimatedCostUsd), recoveredCostUsd),
+            failedPairCount: fullyRecovered ? 0 : Math.max(0, requestedPairCount - completedPairCount),
+            failureCodes,
+            modelCallCount: Math.max(nonNegativeInteger(current.modelCallCount), recoveredModelCallCount),
+            status,
+            updatedAt: recoveredAt,
+        };
+        transaction.set(params.volumeRef, sanitizeForFirestore(updates), { merge: true });
+        const lock = lockSnap.exists ? lockSnap.data() as AnyRecord : null;
+        if (lock?.activeVolumeRunId === params.volumeRef.id) {
+            transaction.set(params.lockRef, sanitizeForFirestore({
+                activeVolumeRunId: params.volumeRef.id,
+                expiresAt: recoveredAt,
+                recoveryReason: SIGNALDESK_AI_VOLUME_INTERRUPTED_CODE,
+                status: "completed",
+                updatedAt: recoveredAt,
+            }), { merge: true });
+        }
+        writeRunTimeline(params.db, transaction, {
+            entityId: params.volumeRef.id,
+            entityType: "model",
+            label: `AI volume batch recovered: ${completedPairCount}/${requestedPairCount} pairs`,
+            status: status === "completed" ? "completed" : status === "partial" ? "held" : "blocked",
+            steps: [
+                { label: "Expired running parent detected", status: "held", at: toIso(recoveredAt) },
+                { label: `${completedPairCount} child runs recovered`, status: completedPairCount ? "completed" : "blocked", at: toIso(recoveredAt) },
+                { label: `Recovered as ${status}`, status: status === "completed" ? "completed" : status === "partial" ? "held" : "blocked", at: toIso(recoveredAt) },
+            ],
+        });
+        appendAudit(params.db, transaction, params.access, "ai_volume_batch_recovered", "aiWorkerRun", params.volumeRef.id, status);
+        updateDailyCost(params.db, transaction, lock?.activeVolumeRunId === params.volumeRef.id ? 5 : 4, 0);
+        return toPlain({ ...current, ...updates }) as SignalDeskAiVolumeRunSummary;
+    });
+};
+
+export async function runSignalDeskAiVolumeBatchServer(
+    access: SignalDeskAccessContext,
+    input: AiVolumeBatchInput,
+) {
+    if (!FEATURE_FLAGS.ENABLE_MENULIST_SIGNALDESK_AI_VOLUME_MODE) {
+        throw new Error("SignalDesk AI Volume Mode is disabled");
+    }
+    if (!FEATURE_FLAGS.ENABLE_MENULIST_SIGNALDESK_AI_PROVIDER_CALLS) {
+        throw new Error("SignalDesk AI provider calls are disabled");
+    }
+    if (access.role !== "founder-admin" || !access.permissions.includes("signaldesk.configure")) {
+        throw new Error("Founder approval is required for AI volume runs");
+    }
+    const idempotencyKey = normalizeText(input.idempotencyKey);
+    const targetIds = Array.from(new Set(input.targetIds.map((targetId) => normalizeText(targetId)).filter(Boolean)));
+    const tasks = Array.from(new Set(input.tasks));
+    const allowedTasks: SignalDeskAiVolumeTask[] = ["score", "evidence", "draft", "reply-classification"];
+    if (
+        idempotencyKey.length < 8
+        || idempotencyKey.length > 180
+        || !targetIds.length
+        || targetIds.length > 5
+        || targetIds.some((targetId) => targetId.length < 3 || targetId.length > 160)
+        || !tasks.length
+        || tasks.length > 3
+        || tasks.some((task) => !allowedTasks.includes(task))
+        || numberOrZero(input.maxEstimatedCostUsd) < 0.01
+        || numberOrZero(input.maxEstimatedCostUsd) > 5
+    ) {
+        throw new Error("AI volume batch limits are invalid");
+    }
+
+    const db = requireDb();
+    const idempotencyKeyHash = hashValue(`${access.userId}|${idempotencyKey}`);
+    const volumeRef = db.collection(SIGNALDESK_COLLECTIONS.AI_WORKER_RUNS).doc(`ai_volume_${idempotencyKeyHash.slice(0, 24)}`);
+    const lockRef = db.collection(SIGNALDESK_COLLECTIONS.AI_WORKER_RUNS).doc(SIGNALDESK_AI_VOLUME_LOCK_ID);
+    const existingVolumeSnap = await volumeRef.get();
+    if (existingVolumeSnap.exists) {
+        return recoverExpiredSignalDeskAiVolumeRun({
+            access,
+            db,
+            existingSnap: existingVolumeSnap,
+            lockRef,
+            volumeRef,
+        });
+    }
+    await requireNoActiveKillSwitch(db, "ai-worker", "SignalDesk AI workers are paused");
+    const [criticRoute, ...taskRoutes] = await Promise.all([
+        readModelRoute(db, "quality-critic"),
+        ...tasks.map((task) => readModelRoute(db, task)),
+    ]);
+    if (!criticRoute || criticRoute.status !== "active" || criticRoute.defaultProvider !== "gemini") {
+        throw new Error("SignalDesk AI critic route is not active");
+    }
+    taskRoutes.forEach((route) => {
+        if (!route || route.status !== "active" || route.defaultProvider !== "gemini") {
+            throw new Error("SignalDesk AI route is not active");
+        }
+    });
+    const projectedPairCostUsd = taskRoutes.reduce((sum, route) => sum
+        + Math.min(numberOrZero(route?.maxCostUsd), 0.05)
+        + Math.min(numberOrZero(criticRoute.maxCostUsd), 0.05)
+        + (route?.escalationProvider === "gemini" && route.escalationModel ? Math.min(numberOrZero(route.maxCostUsd), 0.05) : 0), 0);
+    const projectedMaxCostUsd = projectedPairCostUsd * targetIds.length;
+    if (projectedMaxCostUsd > numberOrZero(input.maxEstimatedCostUsd) + 0.000001) {
+        throw new Error("AI volume projected cost exceeds founder maximum");
+    }
+    await requireProviderBudget(db, {
+        enforcePerRunBudget: false,
+        estimatedCostUsd: projectedMaxCostUsd,
+        provider: "gemini",
         use: "ai",
     });
-    writeRunTimeline(db, batch, {
-        entityId: runRef.id,
-        entityType: "model",
-        label: `${route.defaultProvider}/${assist.model} ${input.task}`,
-        status: assist.confidence === "low" ? "held" : "completed",
-        steps: [
-            { label: "Model route active", status: "completed", at: toIso(timestamp) },
-            { label: "Provider budget checked", status: "completed", at: toIso(timestamp) },
-            { label: "Rejected facts captured", status: Array.isArray(assist.output.rejectedFacts) && assist.output.rejectedFacts.length ? "held" : "completed", at: toIso(timestamp) },
-        ],
-    });
-    appendAudit(db, batch, access, "ai_assist_run", "target", input.targetId, input.task);
-    updateDailyCost(db, batch, 8, estimatedCostUsd, 0);
-    await batch.commit();
 
-    return { ...assist, aiRunId: runRef.id };
+    const timestamp = now();
+    const lockExpiresAt = admin.firestore.Timestamp.fromMillis(timestamp.toMillis() + SIGNALDESK_AI_VOLUME_LOCK_TTL_MS);
+    const initialVolumeRun = {
+        aiRunId: volumeRef.id,
+        volumeRunId: volumeRef.id,
+        pId: SIGNALDESK_PRODUCT_CODE,
+        workerType: "ai_volume_batch" as const,
+        workerVersion: "ai-volume-v1" as const,
+        status: "running" as const,
+        targetIds,
+        tasks,
+        requestedPairCount: targetIds.length * tasks.length,
+        completedPairCount: 0,
+        failedPairCount: 0,
+        modelCallCount: 0,
+        estimatedCostUsd: 0,
+        maxEstimatedCostUsd: input.maxEstimatedCostUsd,
+        projectedMaxCostUsd,
+        childRunIds: [] as string[],
+        failureCodes: [] as string[],
+        idempotencyKeyHash,
+        instruction: normalizeText(input.instruction) || null,
+        lockExpiresAt,
+        createdAt: timestamp,
+        createdBy: access.userId,
+        updatedAt: timestamp,
+    };
+    const startResult = await db.runTransaction(async (transaction: any) => {
+        const [existingSnap, lockSnap] = await Promise.all([
+            transaction.get(volumeRef),
+            transaction.get(lockRef),
+        ]);
+        if (existingSnap.exists) {
+            return { created: false, run: toPlain(existingSnap.data()) as SignalDeskAiVolumeRunSummary };
+        }
+        const lock = lockSnap.exists ? lockSnap.data() as AnyRecord : null;
+        const activeLockExpiresAt = lock?.expiresAt?.toMillis?.() || 0;
+        if (lock?.status === "running" && activeLockExpiresAt > timestamp.toMillis()) {
+            throw new Error("SignalDesk AI volume run is already active");
+        }
+        transaction.set(lockRef, sanitizeForFirestore({
+            activeVolumeRunId: volumeRef.id,
+            createdAt: lock?.createdAt || timestamp,
+            expiresAt: lockExpiresAt,
+            pId: SIGNALDESK_PRODUCT_CODE,
+            status: "running",
+            updatedAt: timestamp,
+            workerType: "ai_volume_lock",
+        }));
+        transaction.set(volumeRef, sanitizeForFirestore(initialVolumeRun));
+        writeRunTimeline(db, transaction, {
+            entityId: volumeRef.id,
+            entityType: "model",
+            label: `AI volume batch: ${targetIds.length} targets / ${tasks.length} tasks`,
+            status: "ready",
+            steps: [
+                { label: "Founder cost envelope checked", status: "completed", at: toIso(timestamp) },
+                { label: `${initialVolumeRun.requestedPairCount} target/task pairs queued`, status: "ready", at: toIso(timestamp) },
+            ],
+        });
+        appendAudit(db, transaction, access, "ai_volume_batch_started", "aiWorkerRun", volumeRef.id, `${targetIds.length} targets; ${tasks.length} tasks`);
+        updateDailyCost(db, transaction, 4, 0);
+        return { created: true, run: null };
+    });
+    if (!startResult.created && startResult.run) return startResult.run;
+
+    const pairs = targetIds.flatMap((targetId) => tasks.map((task) => ({ targetId, task })));
+    const childRunIds: string[] = [];
+    const failureCodes: string[] = [];
+    let estimatedCostUsd = 0;
+    let modelCallCount = 0;
+    let cursor = 0;
+    const worker = async () => {
+        while (cursor < pairs.length) {
+            const pair = pairs[cursor];
+            cursor += 1;
+            try {
+                const result = await runSignalDeskAiAssistServer(access, {
+                    instruction: input.instruction,
+                    multiPass: true,
+                    targetId: pair.targetId,
+                    task: pair.task,
+                    volumeRunId: volumeRef.id,
+                });
+                childRunIds.push(result.aiRunId);
+                estimatedCostUsd += numberOrZero(result.estimatedCostUsd);
+                modelCallCount += nonNegativeInteger(result.modelCallCount);
+            } catch (error) {
+                const failureCode = signalDeskAiVolumeFailureCode(error);
+                failureCodes.push(failureCode);
+                logRuntimeFailure("signaldesk_ai_volume_child_failed", error, {
+                    ...getBoundedRuntimeStringContext("targetId", pair.targetId),
+                    product: "signaldesk",
+                    task: pair.task,
+                    volumeRunId: volumeRef.id,
+                });
+            }
+        }
+    };
+    await Promise.all(Array.from({ length: Math.min(3, pairs.length) }, () => worker()));
+
+    const completedPairCount = childRunIds.length;
+    const failedPairCount = failureCodes.length;
+    const status: SignalDeskAiVolumeRunSummary["status"] = completedPairCount === pairs.length
+        ? "completed"
+        : completedPairCount > 0
+            ? "partial"
+            : "blocked";
+    const completedAt = now();
+    const updates = {
+        childRunIds,
+        completedAt,
+        completedPairCount,
+        estimatedCostUsd,
+        failedPairCount,
+        failureCodes: Array.from(new Set(failureCodes)),
+        modelCallCount,
+        status,
+        updatedAt: completedAt,
+    };
+    await db.runTransaction(async (transaction: any) => {
+        const lockSnap = await transaction.get(lockRef);
+        transaction.set(volumeRef, sanitizeForFirestore(updates), { merge: true });
+        const lock = lockSnap.exists ? lockSnap.data() as AnyRecord : null;
+        if (lock?.activeVolumeRunId === volumeRef.id) {
+            transaction.set(lockRef, sanitizeForFirestore({
+                activeVolumeRunId: volumeRef.id,
+                expiresAt: completedAt,
+                status: "completed",
+                updatedAt: completedAt,
+            }), { merge: true });
+        }
+        writeRunTimeline(db, transaction, {
+            entityId: volumeRef.id,
+            entityType: "model",
+            label: `AI volume batch: ${targetIds.length} targets / ${tasks.length} tasks`,
+            status: status === "completed" ? "completed" : status === "partial" ? "held" : "blocked",
+            steps: [
+                { label: "Founder cost envelope checked", status: "completed", at: toIso(timestamp) },
+                { label: `${completedPairCount} pairs completed`, status: completedPairCount ? "completed" : "blocked", at: toIso(completedAt) },
+                { label: `${failedPairCount} pairs failed`, status: failedPairCount ? "held" : "completed", at: toIso(completedAt) },
+            ],
+        });
+        appendAudit(db, transaction, access, "ai_volume_batch_finished", "aiWorkerRun", volumeRef.id, status);
+        updateDailyCost(db, transaction, lock?.activeVolumeRunId === volumeRef.id ? 5 : 4, 0);
+    });
+
+    return toPlain({ ...initialVolumeRun, ...updates }) as SignalDeskAiVolumeRunSummary;
+}
+
+export async function reviewSignalDeskAiShadowRunServer(
+    access: SignalDeskAccessContext,
+    input: AiShadowReviewInput,
+) {
+    if (access.role !== "founder-admin" || !access.permissions.includes("signaldesk.configure")) {
+        throw new Error("Founder approval is required for AI shadow review");
+    }
+    if (input.decision !== "accepted" && !normalizeText(input.reason)) {
+        throw new Error("AI shadow review reason is required");
+    }
+    const db = requireDb();
+    const runRef = db.collection(SIGNALDESK_COLLECTIONS.AI_WORKER_RUNS).doc(input.aiRunId);
+    const revenueSummaryRef = db.collection(SIGNALDESK_COLLECTIONS.REVENUE_CONTROL_SUMMARIES).doc(SIGNALDESK_SUMMARY_DOCS.REVENUE);
+
+    return db.runTransaction(async (transaction: any) => {
+        const runSnap = await transaction.get(runRef);
+        if (!runSnap.exists) throw new Error("AI run not found");
+        const run = toPlain(runSnap.data()) as SignalDeskAiWorkerRunSummary;
+        if (!String(run.workerType || "").startsWith("ai_assist_") || !run.provider || !run.modelEvalId) {
+            throw new Error("Only provider-backed AI assist runs can be reviewed");
+        }
+        const evalRef = db.collection(SIGNALDESK_COLLECTIONS.MODEL_EVALS).doc(run.modelEvalId);
+        const [evalSnap, revenueSummarySnap] = await Promise.all([
+            transaction.get(evalRef),
+            transaction.get(revenueSummaryRef),
+        ]);
+        if (!evalSnap.exists) throw new Error("AI model evaluation not found");
+
+        const existingEval = annotateModelEvalSummary(toPlain(evalSnap.data()) as SignalDeskModelEvalSummary);
+        const previousDecision = run.reviewDecision || null;
+        const previousAttentionMinutes = nonNegativeInteger(run.founderAttentionMinutes);
+        const nextAttentionMinutes = nonNegativeInteger(input.founderAttentionMinutes);
+        const countFor = (decision: SignalDeskAiShadowReviewDecision) => Math.max(
+            0,
+            nonNegativeInteger({
+                accepted: existingEval.acceptedCount,
+                edited: existingEval.editedCount,
+                rejected: existingEval.rejectedCount,
+                held: existingEval.heldCount,
+            }[decision]) - (previousDecision === decision ? 1 : 0) + (input.decision === decision ? 1 : 0),
+        );
+        const acceptedCount = countFor("accepted");
+        const editedCount = countFor("edited");
+        const rejectedCount = countFor("rejected");
+        const heldCount = countFor("held");
+        const reviewedSampleSize = acceptedCount + editedCount + rejectedCount + heldCount;
+        const founderAttentionMinutes = Math.max(
+            0,
+            nonNegativeInteger(existingEval.founderAttentionMinutes) - previousAttentionMinutes + nextAttentionMinutes,
+        );
+        const timestamp = now();
+        const reason = normalizeText(input.reason || (input.decision === "accepted" ? "Accepted unchanged." : ""));
+
+        transaction.set(runRef, sanitizeForFirestore({
+            reviewDecision: input.decision,
+            reviewReason: reason,
+            reviewedAt: timestamp,
+            reviewedBy: access.userId,
+            founderAttentionMinutes: nextAttentionMinutes,
+        }), { merge: true });
+        const evalUpdates = {
+            acceptedCount,
+            editedCount,
+            rejectedCount,
+            heldCount,
+            reviewedSampleSize,
+            acceptanceRate: ratio(acceptedCount, reviewedSampleSize),
+            editRate: ratio(editedCount, reviewedSampleSize),
+            rejectionRate: ratio(rejectedCount, reviewedSampleSize),
+            holdRate: ratio(heldCount, reviewedSampleSize),
+            founderAttentionMinutes,
+            updatedAt: timestamp,
+            updatedBy: access.userId,
+        };
+        transaction.set(evalRef, sanitizeForFirestore(evalUpdates), { merge: true });
+
+        if (revenueSummarySnap.exists) {
+            const revenueSummary = toPlain(revenueSummarySnap.data()) as SignalDeskRevenueControlSummary;
+            transaction.set(revenueSummaryRef, sanitizeForFirestore({
+                founderAttentionMinutes: Math.max(
+                    0,
+                    nonNegativeInteger(revenueSummary.founderAttentionMinutes) - previousAttentionMinutes + nextAttentionMinutes,
+                ),
+                updatedAt: timestamp,
+            }), { merge: true });
+        }
+        appendAudit(db, transaction, access, "ai_shadow_review", "aiWorkerRun", input.aiRunId, `${input.decision}: ${reason}`);
+        writeRunTimeline(db, transaction, {
+            entityId: input.aiRunId,
+            entityType: "model",
+            label: `${run.provider}/${run.model} shadow review`,
+            status: input.decision === "accepted" ? "completed" : input.decision === "rejected" ? "blocked" : "held",
+            steps: [
+                { label: "Founder decision recorded", status: "completed", at: toIso(timestamp) },
+                { label: `Decision: ${input.decision}`, status: input.decision === "accepted" ? "completed" : input.decision === "rejected" ? "blocked" : "held", at: toIso(timestamp) },
+                { label: `${nextAttentionMinutes} founder minute${nextAttentionMinutes === 1 ? "" : "s"}`, status: "completed", at: toIso(timestamp) },
+            ],
+        });
+        updateDailyCost(db, transaction, revenueSummarySnap.exists ? 5 : 4, 0);
+
+        return {
+            run: toPlain({ ...run, reviewDecision: input.decision, reviewReason: reason, reviewedAt: timestamp, reviewedBy: access.userId, founderAttentionMinutes: nextAttentionMinutes }),
+            modelEval: annotateModelEvalSummary(toPlain({ ...existingEval, ...evalUpdates }) as SignalDeskModelEvalSummary),
+        };
+    });
 }
 
 export async function createSignalDeskEvidenceServer(access: SignalDeskAccessContext, targetId: string) {
@@ -6473,8 +7795,18 @@ export async function createSignalDeskDraftServer(access: SignalDeskAccessContex
 export async function reviewSignalDeskApprovalServer(access: SignalDeskAccessContext, input: {
     approvalId: string;
     reason?: string;
+    rejectionReason?: SignalDeskApprovalRejectionReason;
     status: "approved" | "rejected";
 }) {
+    const reviewNote = normalizeText(input.reason);
+    if (input.status === "rejected") {
+        if (!input.rejectionReason || !APPROVAL_REJECTION_REASONS.has(input.rejectionReason)) {
+            throw new Error("Approval rejection reason is required");
+        }
+        if (input.rejectionReason === "other" && !reviewNote) {
+            throw new Error("Approval rejection note is required for other");
+        }
+    }
     const db = requireDb();
     const approvalRef = db.collection(SIGNALDESK_COLLECTIONS.APPROVAL_QUEUE).doc(input.approvalId);
     const approvalSnap = await approvalRef.get();
@@ -6500,39 +7832,74 @@ export async function reviewSignalDeskApprovalServer(access: SignalDeskAccessCon
         });
     }
 
-    const batch = db.batch();
-    const timestamp = now();
-    batch.set(approvalRef, sanitizeForFirestore({
-        status: input.status,
-        reviewReason: input.reason || approval.reviewReason,
-        reviewedAt: timestamp,
-        reviewedBy: access.userId,
-        updatedAt: timestamp,
-    }), { merge: true });
-    if (approval.draftId) {
-        batch.set(db.collection(SIGNALDESK_COLLECTIONS.DRAFT_SUMMARIES).doc(approval.draftId), sanitizeForFirestore({
-            status: input.status,
-            updatedAt: timestamp,
-        }), { merge: true });
-    }
-    batch.set(db.collection(SIGNALDESK_COLLECTIONS.TARGET_SUMMARIES).doc(approval.targetId), sanitizeForFirestore({
-        nextAction: input.status === "approved" ? "export" : "draft",
-        updatedAt: timestamp,
-    }), { merge: true });
-    if (approval.approvalPacketId) {
-        batch.set(db.collection(SIGNALDESK_COLLECTIONS.APPROVAL_PACKETS).doc(approval.approvalPacketId), sanitizeForFirestore({
-            status: input.status,
-            recommendedAction: input.status === "approved" ? "approve" : "reject",
-            updatedAt: timestamp,
-            updatedBy: access.userId,
-        }), { merge: true });
-    }
-    appendAudit(db, batch, access, `draft_${input.status}`, "approval", input.approvalId, input.reason);
-    updateQueueSummary(db, batch, { approvalBacklog: increment(-1), humanReview: increment(-1) });
-    updateDailyCost(db, batch, 4, 0);
-    await batch.commit();
+    const rejectionProjection = input.status === "rejected"
+        ? input.rejectionReason === "evidence-weak-or-stale"
+            ? { nextAction: "evidence" as const, status: "review" as const }
+            : input.rejectionReason === "identity-uncertain"
+                ? { nextAction: "enrich" as const, status: "review" as const }
+                : input.rejectionReason === "contact-route-not-allowed" || input.rejectionReason === "other"
+                    ? { nextAction: "hold" as const, status: "held" as const }
+                    : { nextAction: "reject" as const, status: "rejected" as const }
+        : null;
+    const transactionResult = await db.runTransaction(async (transaction: any) => {
+        const currentApprovalSnap = await transaction.get(approvalRef);
+        if (!currentApprovalSnap.exists) throw new Error("Approval not found");
+        const currentApproval = toPlain(currentApprovalSnap.data()) as SignalDeskApprovalItem;
+        if (currentApproval.status !== "pending") throw new Error("Approval is not pending");
+        const currentDraftSnap = currentApproval.draftId
+            ? await transaction.get(db.collection(SIGNALDESK_COLLECTIONS.DRAFT_SUMMARIES).doc(currentApproval.draftId))
+            : null;
+        const currentDraft = currentDraftSnap?.exists
+            ? toPlain(currentDraftSnap.data()) as SignalDeskDraftSummary
+            : null;
+        if (input.status === "approved" && currentDraft?.unsupportedClaims?.length) {
+            appendAudit(db, transaction, access, "approval_block", "approval", input.approvalId, "Draft has unsupported claims");
+            return { blockedByUnsupportedClaims: true };
+        }
 
-    return { approvalId: input.approvalId, status: input.status };
+        const timestamp = now();
+        const reviewReason = input.status === "rejected"
+            ? [input.rejectionReason, reviewNote].filter(Boolean).join(": ")
+            : reviewNote || currentApproval.reviewReason;
+        transaction.set(approvalRef, sanitizeForFirestore({
+            rejectionReason: input.status === "rejected" ? input.rejectionReason : null,
+            status: input.status,
+            reviewReason,
+            reviewedAt: timestamp,
+            reviewedBy: access.userId,
+            updatedAt: timestamp,
+        }), { merge: true });
+        if (currentApproval.draftId) {
+            transaction.set(db.collection(SIGNALDESK_COLLECTIONS.DRAFT_SUMMARIES).doc(currentApproval.draftId), sanitizeForFirestore({
+                status: input.status,
+                updatedAt: timestamp,
+            }), { merge: true });
+        }
+        transaction.set(db.collection(SIGNALDESK_COLLECTIONS.TARGET_SUMMARIES).doc(currentApproval.targetId), sanitizeForFirestore({
+            nextAction: input.status === "approved" ? "export" : rejectionProjection?.nextAction,
+            ...(rejectionProjection ? { status: rejectionProjection.status } : {}),
+            updatedAt: timestamp,
+        }), { merge: true });
+        if (currentApproval.approvalPacketId) {
+            transaction.set(db.collection(SIGNALDESK_COLLECTIONS.APPROVAL_PACKETS).doc(currentApproval.approvalPacketId), sanitizeForFirestore({
+                status: input.status,
+                recommendedAction: input.status === "approved" ? "approve" : "reject",
+                updatedAt: timestamp,
+                updatedBy: access.userId,
+            }), { merge: true });
+        }
+        appendAudit(db, transaction, access, `draft_${input.status}`, "approval", input.approvalId, reviewReason);
+        updateQueueSummary(db, transaction, { approvalBacklog: increment(-1), humanReview: increment(-1) });
+        updateDailyCost(db, transaction, 4, 0);
+        return { blockedByUnsupportedClaims: false };
+    });
+    if (transactionResult.blockedByUnsupportedClaims) throw new Error("Draft has unsupported claims");
+
+    return {
+        approvalId: input.approvalId,
+        rejectionReason: input.status === "rejected" ? input.rejectionReason : null,
+        status: input.status,
+    };
 }
 
 const loadApprovedMessageContext = async (
@@ -6665,8 +8032,9 @@ const writeChannelDeliveryState = (params: {
         targetId: params.approval.targetId,
         targetName: params.approval.targetName,
         channel: params.channel,
-        state: "exported",
+        state: params.status === "sent" ? "contacted" : "exported",
         lastMessagePreview: params.draft.subject,
+        ...(params.status === "sent" ? { lastOutboundAt: timestamp } : {}),
         updatedAt: timestamp,
     }), { merge: true });
     params.batch.set(params.db.collection(SIGNALDESK_COLLECTIONS.APPROVAL_QUEUE).doc(params.approval.approvalId), sanitizeForFirestore({
@@ -6681,8 +8049,8 @@ const writeChannelDeliveryState = (params: {
     }
     params.batch.set(params.db.collection(SIGNALDESK_COLLECTIONS.TARGET_SUMMARIES).doc(params.approval.targetId), sanitizeForFirestore({
         latestConversationId: conversationRef.id,
-        nextAction: "reply",
-        status: "contacted",
+        nextAction: params.status === "sent" ? "reply" : "contact",
+        status: params.status === "sent" ? "contacted" : params.target.status,
         updatedAt: timestamp,
     }), { merge: true });
     params.batch.set(params.db.collection(SIGNALDESK_COLLECTIONS.CHANNEL_HEALTH_SUMMARIES).doc(params.channel), sanitizeForFirestore({
@@ -6843,8 +8211,8 @@ export async function exportSignalDeskMessageServer(access: SignalDeskAccessCont
     }
     batch.set(db.collection(SIGNALDESK_COLLECTIONS.TARGET_SUMMARIES).doc(approval.targetId), sanitizeForFirestore({
         latestConversationId: conversationRef.id,
-        nextAction: "reply",
-        status: "contacted",
+        nextAction: "contact",
+        status: target.status,
         updatedAt: timestamp,
     }), { merge: true });
     appendAudit(db, batch, access, "message_export", "messageExport", exportRef.id, approval.targetName);
@@ -6852,6 +8220,195 @@ export async function exportSignalDeskMessageServer(access: SignalDeskAccessCont
     await batch.commit();
 
     return toPlain(exportData);
+}
+
+export async function recordSignalDeskManualContactServer(access: SignalDeskAccessContext, input: ManualContactInput) {
+    const occurredAtMillis = new Date(input.occurredAt).getTime();
+    const currentMillis = Date.now();
+    if (!Number.isFinite(occurredAtMillis)
+        || occurredAtMillis > currentMillis + MANUAL_CONTACT_FUTURE_SKEW_MS
+        || occurredAtMillis < currentMillis - MANUAL_CONTACT_MAX_AGE_MS) {
+        throw new Error("Manual contact timestamp is invalid");
+    }
+    if (input.result === "introduced" && input.route !== "partner-intro") {
+        throw new Error("Manual contact result does not match route");
+    }
+
+    const db = requireDb();
+    const note = normalizeText(input.note);
+    const idempotencyHash = hashValue(`${access.userId}:${input.targetId}:${input.idempotencyKey}`);
+    const requestFingerprintHash = hashValue(JSON.stringify({
+        note,
+        occurredAt: new Date(occurredAtMillis).toISOString(),
+        result: input.result,
+        route: input.route,
+        sourcePolicyId: input.sourcePolicyId,
+        targetId: input.targetId,
+    }));
+    const timelineRef = db.collection(SIGNALDESK_COLLECTIONS.RUN_TIMELINES).doc(`manual_contact_${idempotencyHash.slice(0, 32)}`);
+    const existingTimelineSnap = await timelineRef.get();
+    if (existingTimelineSnap.exists) {
+        if (existingTimelineSnap.data()?.requestFingerprintHash !== requestFingerprintHash) {
+            throw new Error("Manual contact idempotency conflict");
+        }
+        return {
+            duplicate: true,
+            manualContactId: timelineRef.id,
+            result: input.result,
+            route: input.route,
+            targetId: input.targetId,
+        };
+    }
+    const [targetSnap, targetDetailSnap] = await Promise.all([
+        db.collection(SIGNALDESK_COLLECTIONS.TARGET_SUMMARIES).doc(input.targetId).get(),
+        db.collection(SIGNALDESK_COLLECTIONS.TARGETS).doc(input.targetId).get(),
+    ]);
+    if (!targetSnap.exists) throw new Error("Target not found");
+    const target = toPlain(targetSnap.data()) as SignalDeskTargetSummary;
+    const targetDetail = toPlain(targetDetailSnap.data() || {}) as AnyRecord;
+    if (target.sourcePolicyId !== input.sourcePolicyId) throw new Error("Manual contact source policy changed");
+    if (target.suppressionStatus !== "clear") throw new Error("Target is suppressed");
+    if (target.status === "rejected" || target.status === "converted") throw new Error("Target is not eligible for manual contact");
+
+    const policy = await assertSourcePolicyUsable(db, access, await readSourcePolicy(db, target.sourcePolicyId), {
+        entityId: input.targetId,
+        use: "contact",
+    }) as SignalDeskSourcePolicy;
+    await requireNoActiveKillSwitch(db, "global-outbound", "Outbound contact is paused");
+    if (input.route === "email-export") await requireNoActiveKillSwitch(db, "email", "Outbound contact is paused");
+    if (input.route === "partner-intro") await requireNoActiveKillSwitch(db, "trust-partner", "Outbound contact is paused");
+
+    const allowedRoutes = new Set<SignalDeskManualContactRoute>();
+    if (target.contactability === "ready") allowedRoutes.add("email-export");
+    if (policy.accessMethod === "permissioned-referral") allowedRoutes.add("partner-intro");
+    if (!allowedRoutes.has(input.route)) throw new Error("Manual contact route is not allowed");
+
+    if (input.route === "email-export") {
+        const conversationSnap = await db.collection(SIGNALDESK_COLLECTIONS.CONVERSATION_SUMMARIES)
+            .doc(target.latestConversationId || `conv_${input.targetId}`)
+            .get();
+        const conversation = conversationSnap.exists
+            ? toPlain(conversationSnap.data()) as SignalDeskConversationSummary
+            : null;
+        if (conversation?.state !== "exported") throw new Error("Prepared email export is required");
+        const exportSnap = await db.collection(SIGNALDESK_COLLECTIONS.MESSAGE_EXPORTS)
+            .where("targetId", "==", input.targetId)
+            .limit(20)
+            .get();
+        const preparedExport = exportSnap.docs.some((doc: any) => {
+            const data = doc.data() as AnyRecord;
+            const preparedAt = toTimestampMillis(data.createdAt);
+            return data.status === "exported" && Boolean(
+                preparedAt
+                && preparedAt <= occurredAtMillis
+                && preparedAt >= currentMillis - MANUAL_CONTACT_MAX_AGE_MS
+            );
+        });
+        if (!preparedExport) throw new Error("Prepared email export is required");
+    }
+
+    const conversationRef = db.collection(SIGNALDESK_COLLECTIONS.CONVERSATION_SUMMARIES).doc(target.latestConversationId || `conv_${input.targetId}`);
+    const occurredAt = admin.firestore.Timestamp.fromDate(new Date(occurredAtMillis));
+    const timestamp = now();
+    const channel: SignalDeskConversationSummary["channel"] = input.route === "email-export" ? "email" : "manual";
+    const conversationState: SignalDeskConversationSummary["state"] = input.result === "wrong-contact"
+        ? "wrong_contact"
+        : input.result === "declined"
+            ? "not_interested"
+            : "contacted";
+    const nextAction: SignalDeskNextAction = input.result === "contacted" || input.result === "introduced"
+        ? "reply"
+        : input.result === "declined"
+            ? "reject"
+            : "hold";
+    const nextStatus: SignalDeskTargetSummary["status"] = input.result === "wrong-contact" || input.result === "declined"
+        ? "rejected"
+        : "contacted";
+    const eventSummary = `${input.route}:${input.result}`;
+
+    const batch = db.batch();
+    batch.create(timelineRef, sanitizeForFirestore({
+        runTimelineId: timelineRef.id,
+        pId: SIGNALDESK_PRODUCT_CODE,
+        entityType: "target",
+        entityId: input.targetId,
+        idempotencyKeyHash: idempotencyHash,
+        requestFingerprintHash,
+        label: "Manual contact attempt",
+        result: input.result,
+        route: input.route,
+        status: input.result === "wrong-contact" || input.result === "declined" ? "held" : "completed",
+        steps: [
+            { label: `Policy-approved route: ${input.route}`, status: "completed", at: toIso(occurredAt) },
+            { label: `Founder-recorded result: ${input.result}`, status: input.result === "wrong-contact" ? "blocked" : "completed", at: toIso(occurredAt) },
+        ],
+        sourcePolicyId: input.sourcePolicyId,
+        updatedAt: timestamp,
+    }));
+    batch.set(conversationRef, sanitizeForFirestore({
+        conversationId: conversationRef.id,
+        pId: SIGNALDESK_PRODUCT_CODE,
+        targetId: input.targetId,
+        targetName: target.displayName,
+        channel,
+        state: conversationState,
+        lastMessagePreview: `Manual contact: ${input.result} via ${input.route}`,
+        lastOutboundAt: occurredAt,
+        updatedAt: timestamp,
+    }), { merge: true });
+    batch.set(targetSnap.ref, sanitizeForFirestore({
+        ...(input.result === "wrong-contact" ? {
+            contactability: "blocked",
+            suppressionStatus: "wrong-contact",
+        } : {}),
+        latestConversationId: conversationRef.id,
+        latestManualContactAt: occurredAt,
+        latestManualContactResult: input.result,
+        latestManualContactRoute: input.route,
+        nextAction,
+        status: nextStatus,
+        updatedAt: timestamp,
+    }), { merge: true });
+    if (input.result === "wrong-contact") {
+        const suppressionIdentity = getSuppressionIdentityForReply(targetDetail, channel, input.targetId);
+        batch.set(db.collection(SIGNALDESK_COLLECTIONS.SUPPRESSION_LEDGER).doc(suppressionIdentity.suppressionId), sanitizeForFirestore({
+            suppressionId: suppressionIdentity.suppressionId,
+            pId: SIGNALDESK_PRODUCT_CODE,
+            targetId: input.targetId,
+            identityHash: suppressionIdentity.identityHash,
+            channel,
+            reason: "wrong-contact",
+            source: "manual-contact",
+            createdAt: timestamp,
+        }), { merge: true });
+    }
+    appendAudit(db, batch, access, "manual_contact_record", "target", input.targetId, [eventSummary, note].filter(Boolean).join(": "));
+    updateDailyCost(db, batch, input.result === "wrong-contact" ? 6 : 5, 0);
+
+    try {
+        await batch.commit();
+    } catch (error) {
+        if (!isAlreadyExistsError(error)) throw error;
+        const concurrentTimelineSnap = await timelineRef.get();
+        if (!concurrentTimelineSnap.exists || concurrentTimelineSnap.data()?.requestFingerprintHash !== requestFingerprintHash) {
+            throw new Error("Manual contact idempotency conflict");
+        }
+        return {
+            duplicate: true,
+            manualContactId: timelineRef.id,
+            result: input.result,
+            route: input.route,
+            targetId: input.targetId,
+        };
+    }
+
+    return {
+        duplicate: false,
+        manualContactId: timelineRef.id,
+        result: input.result,
+        route: input.route,
+        targetId: input.targetId,
+    };
 }
 
 export async function captureSignalDeskReplyServer(access: SignalDeskAccessContext, input: {
@@ -6905,7 +8462,12 @@ export async function captureSignalDeskReplyServer(access: SignalDeskAccessConte
         classifierVersion: "rules-v1",
         createdAt: timestamp,
     }));
-    if (state === "dnc" || state === "wrong_contact") {
+    const requiresSuppression = state === "dnc"
+        || state === "wrong_contact"
+        || state === "complaint"
+        || state === "privacy_request"
+        || state === "legal_request";
+    if (requiresSuppression) {
         const suppressionIdentity = getSuppressionIdentityForReply(targetDetail, input.channel, input.targetId);
         batch.set(db.collection(SIGNALDESK_COLLECTIONS.SUPPRESSION_LEDGER).doc(suppressionIdentity.suppressionId), sanitizeForFirestore({
             suppressionId: suppressionIdentity.suppressionId,
@@ -6913,21 +8475,56 @@ export async function captureSignalDeskReplyServer(access: SignalDeskAccessConte
             targetId: input.targetId,
             identityHash: suppressionIdentity.identityHash,
             channel: input.channel,
-            reason: state === "dnc" ? "dnc" : "wrong-contact",
+            reason: state === "dnc" ? "dnc" : state === "wrong_contact" ? "wrong-contact" : state,
             source: "inbound",
             createdAt: timestamp,
         }), { merge: true });
     }
+    const requiresIncidentPause = state === "complaint" || state === "privacy_request" || state === "legal_request";
+    if (requiresIncidentPause) {
+        const incidentRef = db.collection(SIGNALDESK_COLLECTIONS.INCIDENTS).doc();
+        const pauseScope = input.channel === "manual" ? "global-outbound" : input.channel;
+        batch.set(incidentRef, sanitizeForFirestore({
+            incidentId: incidentRef.id,
+            pId: SIGNALDESK_PRODUCT_CODE,
+            severity: state === "complaint" ? "high" : "critical",
+            status: "open",
+            title: `${state.replace(/_/g, " ")} requires founder review`,
+            targetId: input.targetId,
+            channel: input.channel,
+            createdAt: timestamp,
+            updatedAt: timestamp,
+        }));
+        batch.set(db.collection(SIGNALDESK_COLLECTIONS.KILL_SWITCHES).doc(`scope_${pauseScope}`), sanitizeForFirestore({
+            killSwitchId: `scope_${pauseScope}`,
+            pId: SIGNALDESK_PRODUCT_CODE,
+            scope: pauseScope,
+            status: "active",
+            reason: `${state} received; outbound paused pending founder review.`,
+            activatedAt: timestamp,
+            activatedBy: access.userId,
+            updatedAt: timestamp,
+        }), { merge: true });
+        appendAudit(db, batch, access, "reply_incident_pause", "conversation", conversationRef.id, `${state}:${pauseScope}`);
+        updateControlSummary(db, batch, { incidentCount: increment(1), safetyStatus: "blocked" });
+    }
     batch.set(db.collection(SIGNALDESK_COLLECTIONS.TARGET_SUMMARIES).doc(input.targetId), sanitizeForFirestore({
         latestConversationId: conversationRef.id,
-        nextAction: state === "interested" ? "outcome" : state === "needs_review" ? "review" : "hold",
-        status: "replied",
-        suppressionStatus: state === "dnc" ? "suppressed" : state === "wrong_contact" ? "wrong-contact" : target.suppressionStatus,
+        nextAction: target.status === "converted" || state === "interested" ? "outcome" : state === "needs_review" || requiresIncidentPause ? "review" : "hold",
+        ownerQualifiedAt: state === "interested" ? target.ownerQualifiedAt || timestamp : target.ownerQualifiedAt || null,
+        status: target.status === "converted" ? "converted" : "replied",
+        suppressionStatus: state === "dnc"
+            ? "suppressed"
+            : state === "wrong_contact"
+                ? "wrong-contact"
+                : requiresIncidentPause
+                    ? "complaint"
+                    : target.suppressionStatus,
         updatedAt: timestamp,
     }), { merge: true });
     appendAudit(db, batch, access, "reply_capture", "conversation", conversationRef.id, state);
-    updateQueueSummary(db, batch, { inboxBacklog: state === "needs_review" || state === "interested" ? increment(1) : increment(0) });
-    updateDailyCost(db, batch, 7, 0);
+    updateQueueSummary(db, batch, { inboxBacklog: state === "needs_review" || state === "interested" || requiresIncidentPause ? increment(1) : increment(0) });
+    updateDailyCost(db, batch, requiresIncidentPause ? 11 : 7, 0);
     await batch.commit();
 
     let revenueSyncStatus: "not-applicable" | "updated" | "pending" = "not-applicable";
@@ -6951,63 +8548,291 @@ export async function captureSignalDeskReplyServer(access: SignalDeskAccessConte
     return { conversationId: conversationRef.id, revenueSyncStatus, state };
 }
 
-export async function recordSignalDeskOutcomeServer(access: SignalDeskAccessContext, input: {
-    channel: SignalDeskOutcomeSummary["channel"];
-    outcomeType: SignalDeskOutcomeSummary["outcomeType"];
-    source: SignalDeskOutcomeSummary["source"];
-    targetId?: string;
-}) {
+export async function createSignalDeskRouteTokenServer(access: SignalDeskAccessContext, input: RouteTokenInput) {
     const db = requireDb();
-    const targetSnap = input.targetId
-        ? await db.collection(SIGNALDESK_COLLECTIONS.TARGET_SUMMARIES).doc(input.targetId).get()
+    await requireNoActiveKillSwitch(db, "menu-list-bridge", "MenuList outcome bridge is paused");
+    const targetSnap = await db.collection(SIGNALDESK_COLLECTIONS.TARGET_SUMMARIES).doc(input.targetId).get();
+    if (!targetSnap.exists) throw new Error("Target not found");
+    const target = toPlain(targetSnap.data()) as SignalDeskTargetSummary;
+    if (target.suppressionStatus !== "clear") throw new Error("Target is suppressed");
+    const policy = await readSourcePolicy(db, target.sourcePolicyId);
+    await assertSourcePolicyUsable(db, access, policy, { entityId: input.targetId, use: "evidence" });
+    const conversationSnap = target.latestConversationId
+        ? await db.collection(SIGNALDESK_COLLECTIONS.CONVERSATION_SUMMARIES).doc(target.latestConversationId).get()
         : null;
-    const target = targetSnap?.exists ? toPlain(targetSnap.data()) as SignalDeskTargetSummary : null;
-    const batch = db.batch();
+    const conversation = conversationSnap?.exists
+        ? toPlain(conversationSnap.data()) as SignalDeskConversationSummary
+        : null;
+    if (!conversation || conversation.state !== "interested") {
+        throw new Error("OWNER_QUALIFIED_INTENT_REQUIRED");
+    }
+    const token = randomBytes(32).toString("base64url");
+    const tokenHash = hashValue(token);
+    const routeTokenId = `route_${tokenHash.slice(0, 32)}`;
     const timestamp = now();
-    const day = todayKey();
-    const outcomeRef = db.collection(SIGNALDESK_COLLECTIONS.OUTCOME_EVENTS).doc();
-    const summaryId = `${day}_${input.outcomeType}_${input.channel}_${input.targetId || "general"}`;
-    const summaryRef = db.collection(SIGNALDESK_COLLECTIONS.OUTCOME_SUMMARIES).doc(summaryId);
-
-    batch.set(outcomeRef, sanitizeForFirestore({
-        outcomeEventId: outcomeRef.id,
+    const expiresAt = timestampAfterDays(14);
+    const routeToken = {
+        routeTokenId,
         pId: SIGNALDESK_PRODUCT_CODE,
-        targetId: input.targetId || null,
-        targetName: target?.displayName || null,
-        outcomeType: input.outcomeType,
-        source: input.source,
+        tokenHash,
+        scope: SIGNALDESK_OUTCOME_ROUTE_SCOPE,
+        targetId: target.targetId,
+        targetName: target.displayName,
+        sourcePolicyId: target.sourcePolicyId || null,
+        sourceRunId: target.sourceRunId || null,
         channel: input.channel,
+        templateId: input.templateId || null,
+        ctaId: input.ctaId || null,
+        sourceActionId: normalizeText(input.actionId) || input.ctaId || input.templateId || conversation.conversationId,
+        status: "active",
+        ownerQualifiedAt: target.ownerQualifiedAt || conversation.lastInboundAt || timestamp,
+        expiresAt,
+        revokedAt: null,
+        revokedBy: null,
         createdAt: timestamp,
         createdBy: access.userId,
-    }));
-    batch.set(summaryRef, sanitizeForFirestore({
-        outcomeSummaryId: summaryId,
-        pId: SIGNALDESK_PRODUCT_CODE,
-        targetId: input.targetId || null,
-        targetName: target?.displayName || null,
-        outcomeType: input.outcomeType,
-        source: input.source,
-        channel: input.channel,
-        count: increment(1),
-        day,
         updatedAt: timestamp,
-    }), { merge: true });
-    if (input.targetId) {
-        batch.set(db.collection(SIGNALDESK_COLLECTIONS.TARGET_SUMMARIES).doc(input.targetId), sanitizeForFirestore({
-            latestOutcomeAt: timestamp,
-            nextAction: input.outcomeType === "two_surface_activation" ? "outcome" : "review",
-            status: input.outcomeType === "published" || input.outcomeType === "two_surface_activation" ? "converted" : "replied",
+    };
+    const batch = db.batch();
+    batch.set(db.collection(SIGNALDESK_COLLECTIONS.ROUTE_TOKENS).doc(routeTokenId), sanitizeForFirestore(routeToken));
+    appendAudit(db, batch, access, "route_token_create", "routeToken", routeTokenId, `${input.targetId}:${input.channel}`);
+    updateDailyCost(db, batch, 2, 0);
+    await batch.commit();
+    return {
+        channel: input.channel,
+        expiresAt: toIso(expiresAt),
+        routeTokenId,
+        targetId: input.targetId,
+        token,
+    };
+}
+
+export async function revokeSignalDeskRouteTokenServer(
+    access: SignalDeskAccessContext,
+    input: RouteTokenRevocationInput,
+) {
+    const db = requireDb();
+    const routeTokenRef = db.collection(SIGNALDESK_COLLECTIONS.ROUTE_TOKENS).doc(input.routeTokenId);
+    return db.runTransaction(async (transaction: FirebaseFirestore.Transaction) => {
+        const routeTokenSnap = await transaction.get(routeTokenRef);
+        if (!routeTokenSnap.exists) throw new Error("Route token not found");
+        const routeToken = toPlain(routeTokenSnap.data()) as AnyRecord;
+        if (routeToken.status === "revoked" || routeToken.revokedAt) {
+            return {
+                duplicate: true,
+                routeTokenId: input.routeTokenId,
+                status: "revoked" as const,
+            };
+        }
+        const timestamp = now();
+        transaction.set(routeTokenRef, sanitizeForFirestore({
+            revocationReason: input.reason,
+            revokedAt: timestamp,
+            revokedBy: access.userId,
+            status: "revoked",
             updatedAt: timestamp,
         }), { merge: true });
+        appendAudit(db, transaction, access, "route_token_revoke", "routeToken", input.routeTokenId, input.reason);
+        updateDailyCost(db, transaction, 2, 0);
+        return {
+            duplicate: false,
+            routeTokenId: input.routeTokenId,
+            status: "revoked" as const,
+        };
+    });
+}
+
+export async function recordSignalDeskOutcomeServer(access: SignalDeskAccessContext, input: OutcomeInput) {
+    const db = requireDb();
+    const surfaces = Array.from(new Set(input.surfaces || []));
+    const isActivation = input.outcomeType === "two_surface_activation";
+    if (isActivation && !input.targetId) throw new Error("Activation target is required");
+    if (isActivation && !normalizeText(input.idempotencyKey)) throw new Error("OUTCOME_IDEMPOTENCY_KEY_REQUIRED");
+    if (isActivation && !normalizeText(input.evidenceRef)) throw new Error("ACTIVATION_EVIDENCE_REQUIRED");
+    if (isActivation && surfaces.length < 2) throw new Error("ACTIVATION_TWO_DISTINCT_SURFACES_REQUIRED");
+    const ownerQualifiedMillis = toTimestampMillis(input.ownerQualifiedAt);
+    const ownerReviewedMillis = toTimestampMillis(input.ownerReviewedAt);
+    const maximumAcceptedTimestamp = Date.now() + (5 * 60 * 1000);
+    if ((ownerQualifiedMillis && ownerQualifiedMillis > maximumAcceptedTimestamp) || (ownerReviewedMillis && ownerReviewedMillis > maximumAcceptedTimestamp)) {
+        throw new Error("OUTCOME_TIMESTAMP_INVALID");
     }
-    appendAudit(db, batch, access, "outcome_record", "outcome", outcomeRef.id, input.outcomeType);
-    updateControlSummary(db, batch, { outcomeCount: increment(1) });
-    updateDailyCost(db, batch, 5, 0);
-    await batch.commit();
+    if (isActivation && (!ownerQualifiedMillis || !ownerReviewedMillis)) throw new Error("ACTIVATION_OWNER_REVIEW_REQUIRED");
+    if (isActivation && ownerReviewedMillis! < ownerQualifiedMillis!) throw new Error("ACTIVATION_OWNER_REVIEW_REQUIRED");
+    if (input.source === "route-token" && input.integrityStatus !== "menulist-signed") {
+        throw new Error("OUTCOME_BRIDGE_SIGNATURE_REQUIRED");
+    }
+    if (input.source === "route-token" && !input.routeTokenValidation) throw new Error("INVALID_SIGNALDESK_ROUTE_TOKEN");
+    if (input.source !== "route-token" && input.routeTokenValidation) throw new Error("INVALID_SIGNALDESK_ROUTE_TOKEN");
+    const integrityStatus: NonNullable<SignalDeskOutcomeSummary["integrityStatus"]> = isActivation
+        ? input.integrityStatus === "menulist-signed" ? "menulist-signed" : "owner-reviewed-manual"
+        : input.integrityStatus === "menulist-signed" ? "menulist-signed" : "unverified";
+    const day = todayKey();
+    const idempotencyKeyHash = normalizeText(input.idempotencyKey) ? hashValue(normalizeText(input.idempotencyKey)) : "";
+    const requestFingerprintHash = hashValue(JSON.stringify({
+        channel: input.channel,
+        evidenceRef: normalizeText(input.evidenceRef),
+        outcomeType: input.outcomeType,
+        ownerQualifiedAt: ownerQualifiedMillis || null,
+        ownerReviewedAt: ownerReviewedMillis || null,
+        source: input.source,
+        sourceEventId: normalizeText(input.sourceEventId),
+        surfaces: [...surfaces].sort(),
+        targetId: input.targetId || null,
+        routeTokenId: input.routeTokenValidation?.routeTokenId || null,
+    }));
+    const outcomeRef = idempotencyKeyHash
+        ? db.collection(SIGNALDESK_COLLECTIONS.OUTCOME_EVENTS).doc(`outcome_${idempotencyKeyHash.slice(0, 32)}`)
+        : db.collection(SIGNALDESK_COLLECTIONS.OUTCOME_EVENTS).doc();
+    const idempotencyRef = idempotencyKeyHash
+        ? db.collection(SIGNALDESK_COLLECTIONS.IDEMPOTENCY_KEYS).doc(`outcome_${idempotencyKeyHash}`)
+        : null;
+    const summaryId = `${day}_${input.outcomeType}_${input.channel}_${input.targetId || "general"}`;
+    const summaryRef = db.collection(SIGNALDESK_COLLECTIONS.OUTCOME_SUMMARIES).doc(summaryId);
+    const routeTokenRef = input.routeTokenValidation
+        ? db.collection(SIGNALDESK_COLLECTIONS.ROUTE_TOKENS).doc(input.routeTokenValidation.routeTokenId)
+        : null;
+    const transactionResult = await db.runTransaction(async (transaction: FirebaseFirestore.Transaction) => {
+        const [targetSnap, priorIdempotencySnap, routeTokenSnap] = await Promise.all([
+            input.targetId
+                ? transaction.get(db.collection(SIGNALDESK_COLLECTIONS.TARGET_SUMMARIES).doc(input.targetId))
+                : Promise.resolve(null),
+            idempotencyRef ? transaction.get(idempotencyRef) : Promise.resolve(null),
+            routeTokenRef ? transaction.get(routeTokenRef) : Promise.resolve(null),
+        ]);
+        if (input.targetId && !targetSnap?.exists) throw new Error("Target not found");
+        if (priorIdempotencySnap?.exists) {
+            const priorFingerprintHash = normalizeText(priorIdempotencySnap.data()?.requestFingerprintHash);
+            if (priorFingerprintHash && priorFingerprintHash !== requestFingerprintHash) {
+                throw new Error("OUTCOME_IDEMPOTENCY_CONFLICT");
+            }
+            return {
+                duplicate: true,
+                outcomeEventId: String(priorIdempotencySnap.data()?.entityId || outcomeRef.id),
+            };
+        }
+        const routeToken = routeTokenSnap?.exists ? toPlain(routeTokenSnap.data()) as AnyRecord : null;
+        if (routeTokenRef) {
+            const routeExpiresAt = toTimestampMillis(routeToken?.expiresAt);
+            if (
+                !routeToken
+                || routeToken.scope !== SIGNALDESK_OUTCOME_ROUTE_SCOPE
+                || routeToken.status !== "active"
+                || Boolean(routeToken.revokedAt)
+                || routeToken.tokenHash !== input.routeTokenValidation?.routeTokenHash
+                || routeToken.targetId !== input.targetId
+                || !routeExpiresAt
+                || routeExpiresAt <= Date.now()
+            ) {
+                throw new Error("INVALID_SIGNALDESK_ROUTE_TOKEN");
+            }
+        }
+        const target = targetSnap?.exists ? toPlain(targetSnap.data()) as SignalDeskTargetSummary : null;
+        const timestamp = now();
+        const outcomeRecord = {
+            outcomeEventId: outcomeRef.id,
+            pId: SIGNALDESK_PRODUCT_CODE,
+            targetId: input.targetId || null,
+            targetName: target?.displayName || null,
+            outcomeType: input.outcomeType,
+            source: input.source,
+            channel: input.channel,
+            evidenceRef: input.evidenceRef || null,
+            idempotencyKeyHash: idempotencyKeyHash || null,
+            integrityStatus,
+            ownerQualifiedAt: ownerQualifiedMillis ? new Date(ownerQualifiedMillis) : null,
+            ownerReviewedAt: ownerReviewedMillis ? new Date(ownerReviewedMillis) : null,
+            sourceEventId: input.sourceEventId || null,
+            routeTokenId: routeTokenRef?.id || null,
+            surfaces,
+            createdAt: timestamp,
+            createdBy: access.userId,
+        };
+        transaction.set(outcomeRef, sanitizeForFirestore(outcomeRecord));
+        transaction.set(summaryRef, sanitizeForFirestore({
+            outcomeSummaryId: summaryId,
+            pId: SIGNALDESK_PRODUCT_CODE,
+            targetId: input.targetId || null,
+            targetName: target?.displayName || null,
+            outcomeType: input.outcomeType,
+            source: input.source,
+            channel: input.channel,
+            count: increment(1),
+            day,
+            evidenceRef: input.evidenceRef || null,
+            integrityStatus,
+            ownerQualifiedAt: ownerQualifiedMillis ? new Date(ownerQualifiedMillis) : null,
+            ownerReviewedAt: ownerReviewedMillis ? new Date(ownerReviewedMillis) : null,
+            sourceEventId: input.sourceEventId || null,
+            routeTokenId: routeTokenRef?.id || null,
+            surfaces,
+            updatedAt: timestamp,
+        }), { merge: true });
+        if (idempotencyRef) {
+            transaction.set(idempotencyRef, sanitizeForFirestore({
+                entityId: outcomeRef.id,
+                entityType: "outcome",
+                idempotencyKeyHash,
+                pId: SIGNALDESK_PRODUCT_CODE,
+                requestFingerprintHash,
+                updatedAt: timestamp,
+            }));
+        }
+        if (input.targetId) {
+            const existingOwnerQualifiedMillis = toTimestampMillis(target?.ownerQualifiedAt);
+            const targetUpdates: AnyRecord = {
+                latestOutcomeAt: timestamp,
+                nextAction: isActivation || target?.status === "converted" ? "outcome" : "review",
+                status: isActivation || target?.status === "converted" ? "converted" : "replied",
+                updatedAt: timestamp,
+            };
+            if (ownerQualifiedMillis && (!existingOwnerQualifiedMillis || ownerQualifiedMillis < existingOwnerQualifiedMillis)) {
+                targetUpdates.ownerQualifiedAt = new Date(ownerQualifiedMillis);
+            }
+            if (isActivation) {
+                targetUpdates.latestVerifiedActivationAt = new Date(ownerReviewedMillis!);
+                targetUpdates.latestVerifiedActivationEvidenceRef = input.evidenceRef;
+                targetUpdates.latestVerifiedActivationIntegrityStatus = integrityStatus;
+                targetUpdates.latestVerifiedActivationSurfaces = surfaces;
+            }
+            transaction.set(db.collection(SIGNALDESK_COLLECTIONS.TARGET_SUMMARIES).doc(input.targetId), sanitizeForFirestore(targetUpdates), { merge: true });
+        }
+        if (input.targetId) {
+            const attributionTouchRef = db.collection(SIGNALDESK_COLLECTIONS.ATTRIBUTION_TOUCHES)
+                .doc(`touch_${hashValue(outcomeRef.id).slice(0, 32)}`);
+            transaction.set(attributionTouchRef, sanitizeForFirestore({
+                actionId: normalizeText(routeToken?.sourceActionId) || normalizeText(input.sourceEventId) || "manual-outcome",
+                channel: input.channel,
+                createdAt: timestamp,
+                eventId: outcomeRef.id,
+                method: routeTokenRef ? "route-token-direct-v1" : "manual-direct-v1",
+                pId: SIGNALDESK_PRODUCT_CODE,
+                targetId: input.targetId,
+                touchId: attributionTouchRef.id,
+                touchType: "direct",
+                weight: 1,
+            }));
+        }
+        if (routeTokenRef) {
+            transaction.set(routeTokenRef, sanitizeForFirestore({
+                lastOutcomeAt: timestamp,
+                lastOutcomeEventIdHash: hashValue(normalizeText(input.sourceEventId) || outcomeRef.id),
+                updatedAt: timestamp,
+            }), { merge: true });
+        }
+        appendAudit(db, transaction, access, "outcome_record", "outcome", outcomeRef.id, `${input.outcomeType}:${integrityStatus}`);
+        updateControlSummary(db, transaction, { outcomeCount: increment(1) });
+        updateDailyCost(
+            db,
+            transaction,
+            (idempotencyRef ? 6 : 5) + (input.targetId ? 1 : 0) + (routeTokenRef ? 1 : 0),
+            0,
+        );
+        return { duplicate: false, outcomeEventId: outcomeRef.id };
+    });
 
     let activationWatch: SignalDeskActivationWatchSummary | null = null;
     let activationWatchSyncStatus: "not-applicable" | "updated" | "pending" = "not-applicable";
-    if (input.targetId && FEATURE_FLAGS.ENABLE_MENULIST_SIGNALDESK_REVENUE_OPERATING_LAYER) {
+    if (!transactionResult.duplicate && input.targetId && FEATURE_FLAGS.ENABLE_MENULIST_SIGNALDESK_REVENUE_OPERATING_LAYER) {
         const accountSnap = await db.collection(SIGNALDESK_COLLECTIONS.REVENUE_ACCOUNTS)
             .doc(revenueAccountIdFor(input.targetId))
             .get();
@@ -7029,7 +8854,8 @@ export async function recordSignalDeskOutcomeServer(access: SignalDeskAccessCont
     return {
         activationWatch,
         activationWatchSyncStatus,
-        outcomeEventId: outcomeRef.id,
+        duplicate: transactionResult.duplicate,
+        outcomeEventId: transactionResult.outcomeEventId,
         outcomeSummaryId: summaryId,
     };
 }

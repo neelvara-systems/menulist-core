@@ -1,53 +1,32 @@
 /**
  * Multi-Outlet Master Store Propagation
  *
- * When master store updates chain-level identity/classification fields
- * (logo, phoneNumber, businessType, businessCategory, etc.), propagate to all
- * outlets where outletPolicy.canOverrideBrandIdentity === false.
+ * When a master store changes chain-level identity/classification fields,
+ * hand the coupled master/outlet/summary write to the authenticated Admin
+ * route. Browser code only validates the shaped acknowledgement.
  *
- * Called from updateStore() after the master store save succeeds.
- * Follows same pattern as propagateNewProjectToOutlets().
+ * Called from updateStore() before its unrelated direct-field write.
  *
  * @see __docs__/official-business-page/official-business-page_impl.md ADR-7
  */
 
 import { resolveStoreBusinessCategory } from "@data/shared/businessTypes";
-import { DB_COLLECTIONS } from "@constant/database";
-import { mergeStoreSummaryFields } from "@database/platformSummary";
-import { revalidatePublicClientCache } from "@lib/cache/publicClientCache";
-import { firebaseClient } from "@lib/firebase/firebaseClient";
 import { getBoundedMultiOutletStringContext, logMultiOutletFailure } from "@lib/multiOutlet/diagnostics";
-import { touchDigitalScreenContentVersion } from "@lib/screen/screenInvalidation";
-import { doc, getDoc, serverTimestamp, updateDoc } from "firebase/firestore";
+import {
+    isBrandPropagationResult,
+    MASTER_STORE_PROPAGATED_FIELDS,
+    normalizeMasterStorePropagationFields,
+    type BrandPropagationResult,
+    type MasterStorePropagatedField,
+} from "@lib/multiOutlet/brandPropagationBoundary";
+import {
+    createMultiOutletStatusError,
+    MULTI_OUTLET_ACTION_REQUEST_POLICY,
+    MULTI_OUTLET_ACTION_RESPONSE_JSON_MAX_BYTES,
+} from "@lib/multiOutlet/outletActionResponseGuards";
+import { readJsonResponseWithLimit } from "@lib/security/boundedResponseBody";
 
 /** Master-controlled fields propagated from master to outlets when overrides are locked. */
-const MASTER_STORE_PROPAGATED_FIELDS = [
-    'logo',
-    'phoneNumber',
-    'currencyCode',
-    'currencySymbol',
-    'country',
-    'timeZone',
-    'defaultLanguage',
-    'businessType',
-    'businessCategory',
-] as const;
-
-const STORE_SUMMARY_PROPAGATED_FIELDS = new Set<string>([
-    'businessType',
-    'businessCategory',
-    'logo',
-    'timeZone',
-]);
-
-const DIGITAL_SCREEN_PROPAGATED_OUTPUT_FIELDS = new Set<string>([
-    'currencyCode',
-    'currencySymbol',
-    'logo',
-]);
-
-type MasterStorePropagatedField = typeof MASTER_STORE_PROPAGATED_FIELDS[number];
-
 export function hasMasterStorePropagationFields(updatedFields: Record<string, any>): boolean {
     return MASTER_STORE_PROPAGATED_FIELDS.some((field) => Object.prototype.hasOwnProperty.call(updatedFields, field));
 }
@@ -83,24 +62,6 @@ export function extractMasterStorePropagationChanges(
 
 export const extractBrandChanges = extractMasterStorePropagationChanges;
 
-function extractStoresSummaryPropagationChanges(propagatedChanges: Record<string, any>) {
-    const summaryPatch: Record<string, any> = {};
-
-    for (const [field, value] of Object.entries(propagatedChanges)) {
-        if (STORE_SUMMARY_PROPAGATED_FIELDS.has(field)) {
-            summaryPatch[field] = value;
-        }
-    }
-
-    if (Object.keys(summaryPatch).length === 0) return null;
-
-    return summaryPatch;
-}
-
-function hasDigitalScreenPropagatedOutputChanges(propagatedChanges: Record<string, any>) {
-    return Object.keys(propagatedChanges).some((field) => DIGITAL_SCREEN_PROPAGATED_OUTPUT_FIELDS.has(field));
-}
-
 /**
  * Propagate master store identity/classification changes to all outlets.
  *
@@ -113,74 +74,35 @@ export async function propagateMasterStoreChangesToOutlets(
     tenantId: number,
     masterStoreId: number,
     propagatedChanges: Record<string, any>,
-): Promise<{ propagated: number; failed: number; skipped: number }> {
-    const result = { propagated: 0, failed: 0, skipped: 0 };
-
-    if (!propagatedChanges || Object.keys(propagatedChanges).length === 0) {
-        return result;
-    }
+): Promise<BrandPropagationResult> {
+    const fields = normalizeMasterStorePropagationFields(Object.keys(propagatedChanges || {}));
+    if (fields.length === 0) return { failed: 0, propagated: 0, skipped: 0, success: true };
 
     try {
-        // Get tenant to find all outlet stores
-        const tenantRef = doc(firebaseClient, DB_COLLECTIONS.TENANTS, String(tenantId));
-        const tenantSnap = await getDoc(tenantRef);
-        if (!tenantSnap.exists()) return result;
-
-        const storesList = tenantSnap.data()?.storesList || [];
-        const outletStores = storesList.filter(
-            (s: any) => s.storeId !== masterStoreId && s.isMaster !== true && s.active !== false,
+        const response = await fetch('/api/outlets/brand-propagation', {
+            ...MULTI_OUTLET_ACTION_REQUEST_POLICY,
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ masterStoreId, tenantId, values: propagatedChanges }),
+        });
+        const data = await readJsonResponseWithLimit<unknown>(
+            response,
+            MULTI_OUTLET_ACTION_RESPONSE_JSON_MAX_BYTES,
         );
-
-        if (outletStores.length === 0) return result;
-
-        // Check master store's outlet policy
-        const masterRef = doc(firebaseClient, DB_COLLECTIONS.STORES, String(masterStoreId));
-        const masterSnap = await getDoc(masterRef);
-        const outletPolicy = masterSnap.data()?.outletPolicy;
-        const outletCanOverrideBrandIdentity = outletPolicy?.canOverrideBrandIdentity === true
-            || outletPolicy?.allowBrandingOverride === true;
-
-        // If branding override is allowed, skip propagation.
-        // Outlets can then own their own brand identity and classification.
-        if (outletCanOverrideBrandIdentity) {
-            result.skipped = outletStores.length;
-            return result;
+        if (!response.ok) {
+            throw createMultiOutletStatusError('multi_outlet_brand_propagation_rejected', response.status);
         }
-
-        // Propagate to each outlet
-        for (const outlet of outletStores) {
-            try {
-                const outletRef = doc(firebaseClient, DB_COLLECTIONS.STORES, String(outlet.storeId));
-                await updateDoc(outletRef, {
-                    ...propagatedChanges,
-                    modifiedOn: serverTimestamp(),
-                });
-                const summaryChanges = extractStoresSummaryPropagationChanges(propagatedChanges);
-                if (summaryChanges) {
-                    await mergeStoreSummaryFields(outlet.storeId, summaryChanges);
-                }
-                await revalidatePublicClientCache(outlet.storeId, "propagateMasterStoreChangesToOutlets");
-                if (hasDigitalScreenPropagatedOutputChanges(propagatedChanges)) {
-                    await touchDigitalScreenContentVersion(outlet.storeId, "propagateMasterStoreChangesToOutlets");
-                }
-                result.propagated++;
-            } catch (e) {
-                logMultiOutletFailure('multi_outlet_brand_propagation_outlet_failed', e, {
-                    ...getBoundedMultiOutletStringContext('masterStoreId', masterStoreId),
-                    ...getBoundedMultiOutletStringContext('outletStoreId', outlet.storeId),
-                    propagatedFieldCount: Object.keys(propagatedChanges).length,
-                });
-                result.failed++;
-            }
+        if (!isBrandPropagationResult(data)) {
+            throw new Error('multi_outlet_brand_propagation_response_invalid');
         }
+        return data;
     } catch (e) {
         logMultiOutletFailure('multi_outlet_brand_propagation_failed', e, {
             ...getBoundedMultiOutletStringContext('masterStoreId', masterStoreId),
             propagatedFieldCount: Object.keys(propagatedChanges).length,
         });
+        throw e;
     }
-
-    return result;
 }
 
 export const propagateBrandToOutlets = propagateMasterStoreChangesToOutlets;

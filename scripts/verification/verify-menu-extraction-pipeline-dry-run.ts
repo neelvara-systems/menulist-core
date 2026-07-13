@@ -14,6 +14,12 @@ import {
   PUBLIC_CREATE_MENU_IMAGE_MIME_TYPES,
   SUPPORTED_MENU_EXTRACTION_JOB_MIME_TYPES,
 } from '../../src/data/shared/menuExtractionJob';
+import {
+  getPublicMenuDraftTimestampMillis,
+  normalizePublicMenuDraftExtractedData,
+  PUBLIC_MENU_DRAFT_DATA_LIMITS,
+} from '../../src/data/shared/publicMenuDraftData';
+import { normalizePublicDraftSourceForProject } from '../../src/lib/public-menu-entry/publicDraftSource';
 
 type DryRunFile = {
   name: string;
@@ -301,14 +307,98 @@ assertCheck(
 
 const workerSource = read('functions/src/logic/processMenuImagesJob.ts');
 assertCheck(
-  'public draft completion normalizes project extracted-data shape',
+  'public draft completion uses the mirrored allowlist contract and verifies job binding',
   workerSource.includes('function buildPublicDraftExtractedData')
-    && workerSource.includes('function normalizeDraftCategory')
-    && workerSource.includes('function normalizeDraftItem')
-    && workerSource.includes('category: String(item.category ?? categoryId ?? "")')
-    && workerSource.includes('active: item.active !== false')
-    && workerSource.includes('available: item.available !== false')
+    && workerSource.includes('normalizePublicMenuDraftExtractedData(sourceData)')
+    && workerSource.includes('assertPublicDraftJobBinding(jobId, job)')
+    && workerSource.includes('publicDraftBindingVerified = true')
+    && workerSource.includes('if (publicDraftBindingVerified)')
     && workerSource.includes('updatePublicDraftFromExtraction(jobId, job, result.data.data, redistributedFiles)'),
+);
+
+const normalizedPublicDraft = normalizePublicMenuDraftExtractedData({
+  categories: [
+    { id: 'food', name: { en: '<b>Food</b>' }, active: true, providerSecret: 'drop-me' },
+    { id: 'food', name: { en: 'Duplicate' } },
+  ],
+  items: [
+    {
+      id: 'item-1',
+      categoryId: 'food',
+      name: { en: '<script>bad()</script> Soup' },
+      price: 12.5,
+      active: true,
+      available: true,
+      attributes: [{ id: 'large', name: { en: 'Large' }, price: 15 }],
+      ownerBoost: 20,
+      qualityReview: { approved: true },
+      providerSecret: 'drop-me',
+    },
+    { id: 'orphan', categoryId: 'missing', name: { en: 'Hidden orphan' }, price: 1 },
+  ],
+  languages: [{ code: 'en', name: 'English', isPrimary: true }],
+  providerEnvelope: { raw: 'drop-me' },
+});
+assertCheck(
+  'public draft DTO strips provider and owner-only fields and rejects orphan relationships',
+  normalizedPublicDraft?.categories.length === 1
+    && normalizedPublicDraft.items.length === 1
+    && normalizedPublicDraft.items[0].category === 'food'
+    && normalizedPublicDraft.items[0].price === '12.5'
+    && normalizedPublicDraft.items[0].name.en === 'bad() Soup'
+    && !Object.prototype.hasOwnProperty.call(normalizedPublicDraft.items[0], 'ownerBoost')
+    && !Object.prototype.hasOwnProperty.call(normalizedPublicDraft.items[0], 'qualityReview')
+    && !Object.prototype.hasOwnProperty.call(normalizedPublicDraft.items[0], 'providerSecret')
+    && !Object.prototype.hasOwnProperty.call(normalizedPublicDraft.categories[0], 'providerSecret'),
+);
+assertCheck(
+  'public draft DTO rejects incoherent menu shapes and exposes bounded limits',
+  normalizePublicMenuDraftExtractedData({
+    categories: [{ id: 'food', name: { en: 'Food' } }],
+    items: [{ id: 'orphan', category: 'missing', name: { en: 'Orphan' } }],
+    languages: [],
+  }) === null
+    && PUBLIC_MENU_DRAFT_DATA_LIMITS.MAX_ITEMS === 500
+    && PUBLIC_MENU_DRAFT_DATA_LIMITS.MAX_CATEGORIES === 100,
+);
+assertCheck(
+  'public draft TTL parser accepts supported timestamp shapes and rejects malformed values',
+  getPublicMenuDraftTimestampMillis({ seconds: 10, nanoseconds: 500_000_000 }) === 10_500
+    && getPublicMenuDraftTimestampMillis({ toMillis: () => 42_000 }) === 42_000
+    && getPublicMenuDraftTimestampMillis({ toMillis: () => { throw new Error('malformed'); } }) === null
+    && getPublicMenuDraftTimestampMillis({ seconds: '10' }) === null
+    && getPublicMenuDraftTimestampMillis(null) === null,
+);
+
+const sourceDraftId = '12345678-1234-5123-8123-123456789abc';
+const sourceDraftPath = `publicMenuDrafts/${sourceDraftId}/menu.jpg`;
+const validSourceDraft = {
+  token: sourceDraftId,
+  sourceType: 'image_upload',
+  fileType: 'image/jpeg',
+  fileSize: 2_048,
+  imagePath: sourceDraftPath,
+  imageUrl: `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodeURIComponent(sourceDraftPath)}?alt=media&token=${sourceDraftId}`,
+  originalFileName: 'Menu.jpg',
+};
+assertCheck(
+  'public claim source envelope accepts only the configured bucket and exact draft path',
+  normalizePublicDraftSourceForProject(validSourceDraft, sourceDraftId, {
+    allowedBucket: bucket,
+    allowLocalEmulator: false,
+  })?.imageUrl === validSourceDraft.imageUrl
+    && normalizePublicDraftSourceForProject({
+      ...validSourceDraft,
+      imageUrl: 'https://attacker.example/menu.jpg',
+    }, sourceDraftId, { allowedBucket: bucket, allowLocalEmulator: false }) === null
+    && normalizePublicDraftSourceForProject({
+      ...validSourceDraft,
+      imagePath: 'publicMenuDrafts/other/menu.jpg',
+    }, sourceDraftId, { allowedBucket: bucket, allowLocalEmulator: false }) === null
+    && normalizePublicDraftSourceForProject({
+      ...validSourceDraft,
+      fileType: 'text/html',
+    }, sourceDraftId, { allowedBucket: bucket, allowLocalEmulator: false }) === null,
 );
 
 const projectTypes = read('src/components/templates/main-app/projects/types/project.types.ts');
@@ -337,12 +427,16 @@ assertCheck(
 
 const publicClaimRoute = read('src/app/api/public/create-menu/claim/route.ts');
 assertCheck(
-  'public claim creates renderer-parseable project IDs',
+  'public claim validates draft DTOs, supports exact-owner retry, and runs all invalidations independently',
   publicClaimRoute.includes('const projectId = `${tenantId}-${Date.now().toString(36)}-${storeId}`')
     && publicClaimRoute.includes('.doc(tenantDocumentId)')
     && publicClaimRoute.includes('.collection(storeDocumentId)')
     && publicClaimRoute.includes('.doc(projectId)')
-    && publicClaimRoute.includes('revalidateTag(`menu-store-${result.storeId}`)'),
+    && publicClaimRoute.includes('normalizePublicMenuDraftExtractedData(draft.extractedData)')
+    && publicClaimRoute.includes('normalizeCompletedClaimResult(draft, userId)')
+    && publicClaimRoute.includes('convertedProjectSlug: projectSlug')
+    && publicClaimRoute.includes('convertedSubdomain: subdomain')
+    && publicClaimRoute.includes('Promise.allSettled(cacheEffects.map((effect) => effect.run()))'),
 );
 
 const messagingWatcher = read('functions/src/messagingOnboarding/extractionWatcher.ts');
@@ -352,24 +446,32 @@ assertCheck(
     && messagingWatcher.includes('active: true')
     && messagingWatcher.includes('deleted: false')
     && messagingWatcher.includes('index,')
-    && messagingWatcher.includes('message: extractedData.message || ""')
-    && messagingWatcher.includes('data: extractedData.data')
+    && messagingWatcher.includes('typeof extractedData.message === "string" ? extractedData.message : ""')
+    && messagingWatcher.includes('const clonedData = rawData')
+    && messagingWatcher.includes('_extractedAt: record._extractedAt || extractedAt')
+    && messagingWatcher.includes('data: clonedData')
     && messagingWatcher.includes('extractedProjectFiles,'),
 );
 
 const messagingApproveRoute = read('src/app/api/msg-preview/[sessionId]/approve/route.ts');
 const messagingPublish = read('src/lib/messaging-onboarding/publish.ts');
+const messagingPublishBoundary = read('src/lib/messaging-onboarding/publishSessionBoundary.ts');
+const messagingPublishValidation = read('src/lib/messaging-onboarding/publishValidationBoundary.ts');
 assertCheck(
   'messaging approve publishes through active renderer-ready project writer',
   messagingApproveRoute.includes('executeMessagingOnboardingPublish')
-    && messagingApproveRoute.includes('categoryCount < 1 || itemCount < 1 || !hasItemWithPrice')
+    && messagingApproveRoute.includes('const menuValidation = validateMessagingPublishMenu(menuData);')
+    && messagingPublishValidation.includes('valid: activeCategoryIds.size > 0 && activeItems.length > 0 && pricedItemCount > 0')
     && messagingPublish.includes('const projectId = `${core.tenantId}-default-${core.storeId}`')
     && messagingPublish.includes('db.collection(`projects/${core.tenantId}/${core.storeId}`).doc(projectId)')
-    && messagingPublish.includes('Array.isArray(sessionData.extractedProjectFiles)')
-    && messagingPublish.includes('active: file.active !== false')
-    && messagingPublish.includes('deleted: file.deleted === true')
-    && messagingPublish.includes('index: typeof file.index === "number" ? file.index : index')
+    && messagingPublish.includes('const projectFiles = sessionData.extractedProjectFiles;')
     && messagingPublish.includes('files: projectFiles')
+    && messagingPublishBoundary.includes('function normalizeExtractedProjectFiles')
+    && messagingPublishBoundary.includes('source.extractedProjectFiles')
+    && messagingPublishBoundary.includes('buildFallbackProjectFiles')
+    && messagingPublishBoundary.includes('active: source.active !== false')
+    && messagingPublishBoundary.includes('deleted: source.deleted === true')
+    && messagingPublishBoundary.includes('normalizeProjectFileIndex(source.index, fallbackIndex)')
     && messagingPublish.includes('revalidateTag(`menu-store-${result.storeId}`)')
     && messagingPublish.includes('revalidateTag("client-stores")')
     && messagingPublish.includes('revalidateTag("screen-data")')

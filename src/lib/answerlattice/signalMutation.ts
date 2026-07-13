@@ -108,6 +108,7 @@ function clusterSignalsByEntity(signals: AnswerlatticeSignalEvent[]): SignalClus
     const clusterMap = new Map<string, AnswerlatticeSignalEvent[]>();
 
     for (const signal of signals) {
+        if (!Object.prototype.hasOwnProperty.call(SIGNAL_SEVERITY_WEIGHTS, signal.type)) continue;
         const entityId = normalizeAnswerlatticeResolvedEntityId(signal.entityId);
         if (!entityId) continue;
         const existing = clusterMap.get(entityId) || [];
@@ -155,7 +156,7 @@ async function determineMutationType(
     cluster: SignalCluster,
     tId: number,
     sId: number
-): Promise<{ mutationType: AnswerlatticeMutationType; targetAnswerId: string | null; reason: string }> {
+): Promise<{ mutationType: AnswerlatticeMutationType; targetAnswerId: string | null; reason: string } | null> {
     // Check if canonical answers exist for this entity
     const existingAnswers = await getActiveAnswersForEntity(tId, sId, cluster.entityId);
 
@@ -168,37 +169,15 @@ async function determineMutationType(
         };
     }
 
+    if (existingAnswers.length > 1) {
+        return null;
+    }
+
     // Canonical answer exists — determine if content or scope issue
     const primaryAnswer = existingAnswers[0];
 
-    // High negative feedback rate → content refinement needed
-    if (cluster.chatNegativeCount > cluster.ticketCount) {
-        return {
-            mutationType: ANSWERLATTICE_MUTATION_TYPE.CONTENT_REFINEMENT,
-            targetAnswerId: primaryAnswer.id,
-            reason: `${cluster.chatNegativeCount} negative chat feedback signals — answer may be unclear or incomplete`,
-        };
-    }
-
-    // High ticket count with drifted answer → version update needed
-    if (primaryAnswer.governance.driftFlag) {
-        return {
-            mutationType: ANSWERLATTICE_MUTATION_TYPE.VERSION_UPDATE,
-            targetAnswerId: primaryAnswer.id,
-            reason: `Answer is drifted and has ${cluster.ticketCount} ticket signals — version update likely needed`,
-        };
-    }
-
-    // Escalation pattern → scope adjustment (answer may be correct but not for all plans/roles)
-    if (cluster.escalationCount > 0) {
-        return {
-            mutationType: ANSWERLATTICE_MUTATION_TYPE.SCOPE_ADJUSTMENT,
-            targetAnswerId: primaryAnswer.id,
-            reason: `${cluster.escalationCount} escalation signals — answer may need plan/role scope adjustment`,
-        };
-    }
-
-    // Default: content refinement
+    // Entity-only signals cannot author a safe scope/version mutation. Generate
+    // a complete content-refinement draft for the single unambiguous answer.
     return {
         mutationType: ANSWERLATTICE_MUTATION_TYPE.CONTENT_REFINEMENT,
         targetAnswerId: primaryAnswer.id,
@@ -274,7 +253,12 @@ export async function runSignalMutationEngine(
     // 4. Generate mutation proposals for significant clusters
     for (const cluster of significantClusters) {
         try {
-            const { mutationType, targetAnswerId, reason } = await determineMutationType(cluster, tId, sId);
+            const mutation = await determineMutationType(cluster, tId, sId);
+            if (!mutation) {
+                result.clustersSkipped++;
+                continue;
+            }
+            const { mutationType, targetAnswerId, reason } = mutation;
 
             const proposalData: Omit<AnswerlatticeMutationProposal, 'id'> = {
                 tId,
@@ -288,7 +272,7 @@ export async function runSignalMutationEngine(
                     negativeFeedbackRate: cluster.chatNegativeCount / Math.max(cluster.totalCount, 1),
                     exampleReferences: cluster.signals.slice(0, 3).map(s => s.id),
                 },
-                suggestedChange: {},
+                suggestedChange: { reviewReason: reason },
                 confidenceScore: Math.min(cluster.weightedScore / 20, 1.0), // Normalize weighted score to 0-1
                 status: 'pending_review',
             };

@@ -31,6 +31,23 @@ const PLATFORM_ASSET_REMOTE_IMAGE_FAILED_MESSAGE = "Unable to fetch image. Pleas
 const PLATFORM_ASSET_REMOTE_IMAGE_TOO_LARGE_MESSAGE = "Image is too large. Use an image under 4 MB.";
 const PLATFORM_ASSET_REMOTE_IMAGE_UNSUPPORTED_MESSAGE = "Only HTTPS image URLs with PNG, JPG, WebP, GIF, or SVG files are supported.";
 
+const normalizeSelectedAssetPreviewType = (
+    value: string,
+    fallback: AssetsCategoryType['previewType'],
+): AssetsCategoryType['previewType'] => {
+    const normalized = value.trim().toLowerCase().replace('image/jpg', 'image/jpeg');
+    if (
+        normalized === 'image/gif'
+        || normalized === 'image/jpeg'
+        || normalized === 'image/png'
+        || normalized === 'image/svg+xml'
+        || normalized === 'image/webp'
+    ) {
+        return normalized;
+    }
+    return fallback;
+};
+
 const normalizePlatformAssetRemoteImageMimeType = (value?: string | null) => {
     return (value || "").split(";")[0].trim().toLowerCase().replace("image/jpg", "image/jpeg");
 };
@@ -124,39 +141,51 @@ function DetailsModal({ activeAssetsType, modalData, onClose, onSubmit, activeCa
         return selectedFile.type.includes("svg")
     }
     const onSaveCategory = async () => {
-        let updatedData = activeDetails;
         dispatch(startLoader("onSaveCategory"))
-        if (Boolean(activeDetails?.id)) {
-            const changedData: any = {};
-            if (activeDetails.active !== modalData.data.active) changedData.active = activeDetails.active;
-            if (activeDetails.name !== modalData.data.name) changedData.name = activeDetails.name;
-            if (activeDetails.tags !== modalData.data.tags) changedData.tags = activeDetails.tags;
-            if (selectedFile.src) {
-                changedData.newPreview = isSvg() ? selectedFile.textContent : selectedFile.src;
-                changedData.preview = activeDetails.preview
-                changedData.previewType = selectedFile.type
-            };
-            updatedData = await updateAssetsCategory(activeAssetsType, changedData, activeDetails.id)
-            onSubmit({ ...activeDetails, preview: updatedData?.preview || activeDetails.preview })
-            dispatch(showSuccessToast("Category updated !"))
-        } else {
-            updatedData = await addAssetsCategory(activeAssetsType, { ...activeDetails, newPreview: isSvg() ? selectedFile.textContent : selectedFile.src, previewType: selectedFile.type })
-            onSubmit(updatedData)
-            dispatch(showSuccessToast("Category added !"))
+        try {
+            if (Boolean(activeDetails?.id)) {
+                const changedData: any = {};
+                if (activeDetails.active !== modalData.data.active) changedData.active = activeDetails.active;
+                if (activeDetails.name !== modalData.data.name) changedData.name = activeDetails.name;
+                if (activeDetails.tags !== modalData.data.tags) changedData.tags = activeDetails.tags;
+                if (selectedFile.src) {
+                    changedData.newPreview = isSvg() ? selectedFile.textContent : selectedFile.src;
+                    changedData.preview = activeDetails.preview
+                    changedData.previewType = normalizeSelectedAssetPreviewType(selectedFile.type, activeDetails.previewType)
+                };
+                const updateResult = await updateAssetsCategory(activeAssetsType, changedData, String(activeDetails.id))
+                onSubmit({ ...activeDetails, preview: updateResult.preview || activeDetails.preview })
+                dispatch(showSuccessToast("Category updated !"))
+            } else {
+                const addResult = await addAssetsCategory(activeAssetsType, {
+                    ...activeDetails,
+                    newPreview: isSvg() ? selectedFile.textContent : selectedFile.src,
+                    previewType: normalizeSelectedAssetPreviewType(selectedFile.type, activeDetails.previewType),
+                })
+                onSubmit(addResult)
+                dispatch(showSuccessToast("Category added !"))
+            }
+        } catch (error) {
+            logRuntimeFailure('platform_asset_category_save_failed', error, {
+                ...getBoundedRuntimeStringContext('assetType', activeAssetsType),
+                hasEntityId: activeDetails.id !== undefined,
+            });
+        } finally {
+            dispatch(stopLoader("onSaveCategory"))
         }
-        dispatch(stopLoader(""))
     }
 
     const onSaveSubCategory = async () => {
         let updatedData = activeDetails;
         dispatch(startLoader("onSaveSubCategory"))
-        if (Boolean(activeCategory?.id)) {
+        try {
+            if (!Boolean(activeCategory?.id)) throw new Error('platform_asset_parent_missing');
 
             const changedData: any = activeDetails;
             if (selectedFile.src) {
                 changedData.newPreview = isSvg() ? selectedFile.textContent : selectedFile.src;
                 changedData.preview = activeDetails.preview
-                changedData.previewType = selectedFile.type
+                changedData.previewType = normalizeSelectedAssetPreviewType(selectedFile.type, activeDetails.previewType)
             };
             if (activeDetails.id) {
                 updatedData = await updateAssetsSubCategory(activeAssetsType, changedData, activeCategory)
@@ -166,83 +195,117 @@ function DetailsModal({ activeAssetsType, modalData, onClose, onSubmit, activeCa
                 onSubmit({ ...activeCategory, subCategories: newCats });
                 dispatch(showSuccessToast("Sub Category updated !"))
             } else {
-                updatedData = await addAssetsSubCategory(activeAssetsType, { ...changedData, id: new Date().getTime(), previewType: selectedFile.type }, activeCategory.id)
+                updatedData = await addAssetsSubCategory(activeAssetsType, {
+                    ...changedData,
+                    id: new Date().getTime(),
+                    previewType: normalizeSelectedAssetPreviewType(selectedFile.type, activeDetails.previewType),
+                }, String(activeCategory.id))
                 onSubmit({ ...activeCategory, subCategories: [...activeCategory.subCategories, updatedData] });
                 dispatch(showSuccessToast("Sub Category added !"))
             }
+        } catch (error) {
+            logRuntimeFailure('platform_asset_subcategory_save_failed', error, {
+                ...getBoundedRuntimeStringContext('assetType', activeAssetsType),
+                hasEntityId: activeDetails.id !== undefined,
+                hasParentId: activeCategory.id !== undefined,
+            });
+        } finally {
+            dispatch(stopLoader("onSaveSubCategory"))
         }
-        dispatch(stopLoader(""))
     }
 
     const onSaveItem = async () => {
         let updatedData = activeDetails;
         const changedData: any = activeDetails;
         dispatch(startLoader("onSaveItem"))
-        if (selectedFile.src) {
-            changedData.newPreview = isSvg() ? selectedFile.textContent : selectedFile.src;
-            changedData.preview = activeDetails.preview
-            changedData.previewType = selectedFile.type
-        };
-        const activeCategoryCpy = removeObjRef(activeCategory);
-        if (activeDetails.id) {
-            updatedData = await updateAssetsItem(activeAssetsType, changedData, activeCategory, activeSubCategory)
-            if (Boolean(activeSubCategory?.id)) {
-                const subcategoryIndex = activeCategoryCpy.subCategories.findIndex(subcategory => subcategory.id === activeSubCategory.id);
-                const iIndex = activeCategoryCpy.subCategories[subcategoryIndex].items.findIndex(i => i.id == activeDetails.id)
-                activeCategoryCpy.subCategories[subcategoryIndex].items[iIndex] = { ...activeDetails, preview: updatedData?.preview || activeDetails.preview }
+        try {
+            if (selectedFile.src) {
+                changedData.newPreview = isSvg() ? selectedFile.textContent : selectedFile.src;
+                changedData.preview = activeDetails.preview
+            changedData.previewType = normalizeSelectedAssetPreviewType(selectedFile.type, activeDetails.previewType)
+            };
+            const activeCategoryCpy = removeObjRef(activeCategory);
+            if (activeDetails.id) {
+                updatedData = await updateAssetsItem(activeAssetsType, changedData, activeCategory, activeSubCategory)
+                if (Boolean(activeSubCategory?.id)) {
+                    const subcategoryIndex = activeCategoryCpy.subCategories.findIndex(subcategory => subcategory.id === activeSubCategory.id);
+                    const iIndex = activeCategoryCpy.subCategories[subcategoryIndex].items.findIndex(i => i.id == activeDetails.id)
+                    activeCategoryCpy.subCategories[subcategoryIndex].items[iIndex] = { ...activeDetails, preview: updatedData?.preview || activeDetails.preview }
+                } else {
+                    const iIndex = activeCategoryCpy.items.findIndex(i => i.id == activeDetails.id)
+                    activeCategoryCpy.items[iIndex] = { ...activeDetails, preview: updatedData?.preview || activeDetails.preview, previewType: updatedData?.previewType || activeDetails.previewType }
+                }
+                onSubmit({ ...activeCategoryCpy });
+                dispatch(showSuccessToast("Item updated !"))
             } else {
-                const iIndex = activeCategoryCpy.items.findIndex(i => i.id == activeDetails.id)
-                activeCategoryCpy.items[iIndex] = { ...activeDetails, preview: updatedData?.preview || activeDetails.preview, previewType: updatedData?.previewType || activeDetails.previewType }
+                updatedData = await addAssetsItem(activeAssetsType, {
+                    ...changedData,
+                    id: new Date().getTime(),
+                    previewType: normalizeSelectedAssetPreviewType(selectedFile.type, activeDetails.previewType),
+                }, activeCategory, activeSubCategory)
+                if (Boolean(activeSubCategory?.id)) {
+                    const subcategoryIndex = activeCategoryCpy.subCategories.findIndex(subcategory => subcategory.id === activeSubCategory.id);
+                    activeCategoryCpy.subCategories[subcategoryIndex].items.push(updatedData)
+                } else {
+                    activeCategoryCpy.items.push(updatedData)
+                }
+                onSubmit({ ...activeCategoryCpy });
+                dispatch(showSuccessToast("Item added !"))
             }
-            onSubmit({ ...activeCategoryCpy });
-            dispatch(showSuccessToast("Item updated !"))
-        } else {
-            updatedData = await addAssetsItem(activeAssetsType, { ...changedData, id: new Date().getTime(), previewType: selectedFile.type }, activeCategory, activeSubCategory)
-            if (Boolean(activeSubCategory?.id)) {
-                const subcategoryIndex = activeCategoryCpy.subCategories.findIndex(subcategory => subcategory.id === activeSubCategory.id);
-                activeCategoryCpy.subCategories[subcategoryIndex].items.push(updatedData)
-            } else {
-                activeCategoryCpy.items.push(updatedData)
-            }
-            onSubmit({ ...activeCategoryCpy });
-            dispatch(showSuccessToast("Item added !"))
+        } catch (error) {
+            logRuntimeFailure('platform_asset_item_save_failed', error, {
+                ...getBoundedRuntimeStringContext('assetType', activeAssetsType),
+                hasEntityId: activeDetails.id !== undefined,
+                hasParentId: activeCategory.id !== undefined,
+                hasSubcategoryId: activeSubCategory.id !== undefined,
+            });
+        } finally {
+            dispatch(stopLoader("onSaveItem"))
         }
-        dispatch(stopLoader(""))
     }
 
     const onSave = async () => {
-        if (modalData.type == 'Category') onSaveCategory()
-        else if (modalData.type == 'Sub Category') onSaveSubCategory()
-        else if (modalData.type == 'Item') onSaveItem()
+        if (modalData.type == 'Category') await onSaveCategory()
+        else if (modalData.type == 'Sub Category') await onSaveSubCategory()
+        else if (modalData.type == 'Item') await onSaveItem()
     }
 
     const onDelete = async () => {
         dispatch(startLoader("onDelete"))
-        if (modalData.type == 'Category') {
-            await deleteAssetsCategory(activeAssetsType, activeDetails);
-            onSubmit({ type: "deleted", catId: activeCategory.id, subCatId: activeSubCategory.id });
-            dispatch(showSuccessToast("Category deleted !"))
-        } else if (modalData.type == 'Sub Category') {
-            await deleteAssetsSubCategory(activeAssetsType, activeDetails, activeCategory);
-            let scId = activeCategory.subCategories.findIndex(c => c.id == activeDetails.id);
-            activeCategory.subCategories.splice(scId, 1);
-            onSubmit({ ...activeCategory });
-            dispatch(showSuccessToast("Category deleted !"))
-        } else if (modalData.type == 'Item') {
-            await deleteAssetsItem(activeAssetsType, activeDetails, activeCategory, activeSubCategory);
-            const activeCategoryCpy = removeObjRef(activeCategory);
-            if (Boolean(activeSubCategory?.id)) {
-                const subcategoryIndex = activeCategoryCpy.subCategories.findIndex(subcategory => subcategory.id === activeSubCategory.id);
-                const iIndex = activeCategoryCpy.subCategories[subcategoryIndex].items.findIndex(i => i.id == activeDetails.id)
-                activeCategoryCpy.subCategories[subcategoryIndex].items.splice(iIndex, 1)
-            } else {
-                const iIndex = activeCategoryCpy.items.findIndex(i => i.id == activeDetails.id)
-                activeCategoryCpy.items.splice(iIndex, 1)
+        try {
+            if (modalData.type == 'Category') {
+                await deleteAssetsCategory(activeAssetsType, activeDetails);
+                onSubmit({ type: "deleted", catId: activeCategory.id, subCatId: activeSubCategory.id });
+                dispatch(showSuccessToast("Category deleted !"))
+            } else if (modalData.type == 'Sub Category') {
+                await deleteAssetsSubCategory(activeAssetsType, activeDetails, activeCategory);
+                let scId = activeCategory.subCategories.findIndex(c => c.id == activeDetails.id);
+                activeCategory.subCategories.splice(scId, 1);
+                onSubmit({ ...activeCategory });
+                dispatch(showSuccessToast("Category deleted !"))
+            } else if (modalData.type == 'Item') {
+                await deleteAssetsItem(activeAssetsType, activeDetails, activeCategory, activeSubCategory);
+                const activeCategoryCpy = removeObjRef(activeCategory);
+                if (Boolean(activeSubCategory?.id)) {
+                    const subcategoryIndex = activeCategoryCpy.subCategories.findIndex(subcategory => subcategory.id === activeSubCategory.id);
+                    const iIndex = activeCategoryCpy.subCategories[subcategoryIndex].items.findIndex(i => i.id == activeDetails.id)
+                    activeCategoryCpy.subCategories[subcategoryIndex].items.splice(iIndex, 1)
+                } else {
+                    const iIndex = activeCategoryCpy.items.findIndex(i => i.id == activeDetails.id)
+                    activeCategoryCpy.items.splice(iIndex, 1)
+                }
+                onSubmit({ ...activeCategoryCpy });
+                dispatch(showSuccessToast("Item deleted !"))
             }
-            onSubmit({ ...activeCategoryCpy });
-            dispatch(showSuccessToast("Item deleted !"))
+        } catch (error) {
+            logRuntimeFailure('platform_asset_delete_failed', error, {
+                ...getBoundedRuntimeStringContext('assetType', activeAssetsType),
+                ...getBoundedRuntimeStringContext('entityType', modalData.type),
+                hasEntityId: activeDetails.id !== undefined,
+            });
+        } finally {
+            dispatch(stopLoader("onDelete"))
         }
-        dispatch(stopLoader(""))
     }
 
     const onAddTag = () => {
@@ -338,7 +401,7 @@ function DetailsModal({ activeAssetsType, modalData, onClose, onSubmit, activeCa
             });
             dispatch(showErrorToast(statusCode === 404 ? "Image not found. Please check the URL." : getPlatformAssetRemoteImageErrorMessage(error)));
         }
-        dispatch(stopLoader(""));
+        dispatch(stopLoader("fetchingBase64"));
     };
 
 
@@ -391,7 +454,7 @@ function DetailsModal({ activeAssetsType, modalData, onClose, onSubmit, activeCa
                     </Flex>
                     <Flex vertical gap={10} style={{ width: 70 }} >
                         <Text strong>Active</Text>
-                        <Switch defaultChecked={activeDetails.active} value={activeDetails.active} onChange={(e) => onChangeValue('active', !activeDetails.active)} />
+                        <Switch checked={activeDetails.active} onChange={(checked) => onChangeValue('active', checked)} />
                     </Flex>
                 </Flex>
                 {modalData.type == 'Category' ? <>

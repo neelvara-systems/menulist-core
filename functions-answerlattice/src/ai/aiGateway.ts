@@ -149,6 +149,7 @@ export class AIGateway {
     get files() {
         return {
             upload: (config: any) => this.executeWithRetry('fileUpload', config),
+            delete: (config: any) => this.executeWithRetry('fileDelete', config),
         };
     }
 
@@ -174,7 +175,9 @@ export class AIGateway {
             try {
                 const result = method === 'fileUpload'
                     ? await client.files.upload(config)
-                    : await (client.models as any)[method](config);
+                    : method === 'fileDelete'
+                        ? await client.files.delete(config)
+                        : await (client.models as any)[method](config);
 
                 this.keyManager.markCurrentKeySuccess();
                 return result;

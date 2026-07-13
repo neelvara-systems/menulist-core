@@ -1,7 +1,7 @@
 # ADR: Email Uniqueness Strategy
 
 **Status:** IMPLEMENTED  
-**Date:** 2026-02-22  
+**Date:** 2026-02-22; concurrency update 2026-07-11
 **Author:** Cascade (Session 10 — decision, Session 11 — implementation)
 
 ## Context
@@ -50,6 +50,10 @@ Every major SaaS platform (Shopify, Square, Toast, Clover) uses globally unique 
 | R5   | Adding existing staff to another store (same tenant) = update stores[], not create new user |
 | R6   | Adding email that exists at a DIFFERENT tenant = reject with clear error                    |
 
+### OAuth concurrency implementation
+
+The global-email rule is enforced for new Google OAuth users with deterministic `users/oauth_{sha256(normalizedEmail)}` document identity and transaction `create`. Multiple concurrent first-login callbacks therefore converge on one user document instead of passing the same pre-read and creating multiple random documents. The raw email is not part of the document path. Existing legacy user documents remain authoritative when the global email lookup finds them before deterministic creation.
+
 ## Staff Addition Flow (After Fix)
 
 ```
@@ -90,6 +94,7 @@ User enters email, Staff ID, or phone + password/passcode →
 | `src/app/api/staff/route.ts`                                           | Current staff list/create/update/remove API |
 | `src/app/api/staff/password-reset/route.ts`                            | Current owner-triggered staff reset/passcode API |
 | `src/app/api/staff/roles/route.ts`                                     | Current role create/update/deactivate API |
-| `src/database/users/index.ts`                                          | Add email uniqueness guard to `addPlatformUser()`            |
+| `src/lib/auth/serverUserContext.ts`                                   | Deterministic transactional OAuth user claim and global legacy email lookup |
+| `src/database/users/index.ts`                                         | Platform user reads use bounded numeric/string scope compatibility; unused random-create/direct store-grant exports removed |
 | `src/components/mobile/screens/MobileUsersScreen.tsx`                  | Must use create-staff API (was bypassing it)                 |
 | `src/components/templates/main-app/users/usersList/userForm/index.tsx` | Handle 'existing user added to store' response               |

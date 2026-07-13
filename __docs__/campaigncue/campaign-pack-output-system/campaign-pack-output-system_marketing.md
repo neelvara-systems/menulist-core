@@ -6,11 +6,13 @@ CampaignCue does not stop at a post or caption. It gives the local business owne
 
 ## Internal Message
 
-Know what to promote. Get the pack. Check the facts. Use it manually. Record what happened.
+Know what to promote. Get the pack. Check readiness. Use it manually. Record what happened. Reuse the useful pattern with current facts.
 
 ## Differentiator
 
 Most creative tools output content. CampaignCue outputs a verified local campaign packet with delivery instructions and result memory.
+
+Campaign Rhythm is a next-action organizer, not an automatic posting engine. Pack readiness is a completeness and safety receipt, not a performance prediction.
 
 Content repurposing tools prove the "one source to many channel assets" mental model, but CampaignCue must translate that into "one checked local-business cue to a usable campaign pack." Do not position CampaignCue as autopilot distribution, a blog/podcast repurposer, or a social scheduler.
 
@@ -21,3 +23,5 @@ Content repurposing tools prove the "one source to many channel assets" mental m
 - automated ad spend
 - hosted offer pages
 - guaranteed sales, bookings, ranking, or ROI
+- predicted engagement, reach, or best posting time
+- automatic repetition of a past campaign

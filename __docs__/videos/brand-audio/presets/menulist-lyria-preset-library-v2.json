@@ -1,0 +1,224 @@
+{
+  "version": 2,
+  "updatedAt": "2026-07-13",
+  "model": "lyria-realtime-exp",
+  "defaults": {
+    "generationMode": "QUALITY",
+    "voiceoverBackground": true,
+    "muteBass": false,
+    "muteDrums": false,
+    "onlyBassAndDrums": false,
+    "vocalization": false,
+    "recordBeyondTargetSeconds": 15,
+    "automationTransition": "smooth"
+  },
+  "presets": [
+    {
+      "id": "menulist-public-truth-hero-v2",
+      "name": "MenuList Public Truth Hero",
+      "purpose": "Main launch film and website hero",
+      "targetDurationSeconds": 75,
+      "seed": 260715,
+      "config": {
+        "bpm": 106,
+        "scale": "D Major / B Minor",
+        "temperature": 0.72,
+        "guidance": 3.8,
+        "topK": 24,
+        "density": 0.3,
+        "brightness": 0.54
+      },
+      "prompts": [
+        { "text": "Refined minimal electronic brand soundtrack", "weight": 1.25 },
+        { "text": "Warm restrained analog synth pads", "weight": 0.6 },
+        { "text": "Clean muted rhythmic pluck", "weight": 0.55 },
+        { "text": "Soft precise modern percussion", "weight": 0.35 },
+        { "text": "Subtle confident bass pulse", "weight": 0.22 }
+      ],
+      "automation": [
+        { "atSeconds": 0, "label": "quiet authority", "energy": 0.28 },
+        { "atSeconds": 8, "label": "problem movement", "energy": 0.38 },
+        { "atSeconds": 24, "label": "product entry", "energy": 0.55 },
+        { "atSeconds": 48, "label": "system proof", "energy": 0.72 },
+        { "atSeconds": 66, "label": "brand resolution", "energy": 0.62 }
+      ]
+    },
+    {
+      "id": "menulist-quiet-product-walkthrough-v2",
+      "name": "MenuList Quiet Product Walkthrough",
+      "purpose": "Product demo, onboarding, and sales walkthrough",
+      "targetDurationSeconds": 180,
+      "seed": 260716,
+      "config": {
+        "bpm": 100,
+        "scale": "G Major / E Minor",
+        "temperature": 0.62,
+        "guidance": 4.0,
+        "topK": 18,
+        "density": 0.22,
+        "brightness": 0.5
+      },
+      "prompts": [
+        { "text": "Minimal unobtrusive electronic product demonstration music", "weight": 1.35 },
+        { "text": "Warm soft analog pad", "weight": 0.52 },
+        { "text": "Sparse muted digital pluck", "weight": 0.38 },
+        { "text": "Light precise percussion without fills", "weight": 0.24 },
+        { "text": "Subtle steady bass pulse", "weight": 0.16 }
+      ],
+      "automation": [
+        { "atSeconds": 0, "label": "introduction", "energy": 0.3 },
+        { "atSeconds": 45, "label": "review flow", "energy": 0.36 },
+        { "atSeconds": 90, "label": "customer experience", "energy": 0.4 },
+        { "atSeconds": 135, "label": "update proof", "energy": 0.42 },
+        { "atSeconds": 168, "label": "closing lift", "energy": 0.48 }
+      ]
+    },
+    {
+      "id": "menulist-owner-relief-v2",
+      "name": "MenuList Owner Relief",
+      "purpose": "Non-technical owner setup and relief story",
+      "targetDurationSeconds": 60,
+      "seed": 260717,
+      "config": {
+        "bpm": 96,
+        "scale": "F Major / D Minor",
+        "temperature": 0.68,
+        "guidance": 3.8,
+        "topK": 22,
+        "density": 0.26,
+        "brightness": 0.52
+      },
+      "prompts": [
+        { "text": "Warm muted acoustic pluck tones", "weight": 0.85 },
+        { "text": "Subtle low-pass electric piano chords", "weight": 0.75 },
+        { "text": "Warm soft analog pad", "weight": 0.48 },
+        { "text": "Sleek organic percussion flow", "weight": 0.3 },
+        { "text": "Gentle modern electronic bass", "weight": 0.18 }
+      ],
+      "automation": [
+        { "atSeconds": 0, "label": "owner problem", "energy": 0.28 },
+        { "atSeconds": 7, "label": "start with existing menu", "energy": 0.38 },
+        { "atSeconds": 18, "label": "preview appears", "energy": 0.5 },
+        { "atSeconds": 40, "label": "approved link", "energy": 0.6 },
+        { "atSeconds": 53, "label": "warm resolution", "energy": 0.48 }
+      ]
+    },
+    {
+      "id": "menulist-approval-first-v2",
+      "name": "MenuList Approval First",
+      "purpose": "Owner approval and AI Menu Manager demonstrations",
+      "targetDurationSeconds": 45,
+      "seed": 260718,
+      "config": {
+        "bpm": 104,
+        "scale": "D Major / B Minor",
+        "temperature": 0.65,
+        "guidance": 4.1,
+        "topK": 20,
+        "density": 0.25,
+        "brightness": 0.56
+      },
+      "prompts": [
+        { "text": "Minimal unobtrusive electronic product demonstration music", "weight": 1.0 },
+        { "text": "Clean muted rhythmic pluck", "weight": 0.45 },
+        { "text": "Warm restrained analog synth pads", "weight": 0.45 },
+        { "text": "Light precise percussion without fills", "weight": 0.28 },
+        { "text": "Subtle confident bass pulse", "weight": 0.15 }
+      ],
+      "automation": [
+        { "atSeconds": 0, "label": "prepare", "energy": 0.32 },
+        { "atSeconds": 10, "label": "review", "energy": 0.46 },
+        { "atSeconds": 25, "label": "owner decision hold", "energy": 0.38 },
+        { "atSeconds": 31, "label": "approve", "energy": 0.62 },
+        { "atSeconds": 38, "label": "current public version", "energy": 0.5 }
+      ]
+    },
+    {
+      "id": "menulist-one-link-motion-v2",
+      "name": "MenuList One Link Motion",
+      "purpose": "Launch cuts, one-link reels, and paid social",
+      "targetDurationSeconds": 30,
+      "seed": 260719,
+      "config": {
+        "bpm": 112,
+        "scale": "G Major / E Minor",
+        "temperature": 0.75,
+        "guidance": 3.7,
+        "topK": 26,
+        "density": 0.38,
+        "brightness": 0.62
+      },
+      "prompts": [
+        { "text": "Refined minimal electronic brand soundtrack", "weight": 1.1 },
+        { "text": "Clean muted rhythmic pluck", "weight": 0.7 },
+        { "text": "Light syncopated percussion shakers", "weight": 0.45 },
+        { "text": "Warm soft analog pad", "weight": 0.4 },
+        { "text": "Subtle steady bass pulse", "weight": 0.2 }
+      ],
+      "automation": [
+        { "atSeconds": 0, "label": "hook", "energy": 0.52 },
+        { "atSeconds": 3, "label": "product entry", "energy": 0.64 },
+        { "atSeconds": 12, "label": "one link everywhere", "energy": 0.78 },
+        { "atSeconds": 23, "label": "brand lockup", "energy": 0.62 }
+      ]
+    },
+    {
+      "id": "menulist-founder-plainspoken-v2",
+      "name": "MenuList Founder Plainspoken",
+      "purpose": "Founder POV and talking-head edits",
+      "targetDurationSeconds": 90,
+      "seed": 260720,
+      "config": {
+        "bpm": 92,
+        "scale": "C Major / A Minor",
+        "temperature": 0.58,
+        "guidance": 4.2,
+        "topK": 16,
+        "density": 0.18,
+        "brightness": 0.46
+      },
+      "prompts": [
+        { "text": "Warm soft analog pad", "weight": 0.78 },
+        { "text": "Minimal unobtrusive electronic product demonstration music", "weight": 0.65 },
+        { "text": "Subtle low-pass electric piano chords", "weight": 0.48 },
+        { "text": "Sparse muted digital pluck", "weight": 0.28 },
+        { "text": "Light precise percussion without fills", "weight": 0.12 }
+      ],
+      "automation": [
+        { "atSeconds": 0, "label": "plainspoken opening", "energy": 0.22 },
+        { "atSeconds": 20, "label": "problem context", "energy": 0.3 },
+        { "atSeconds": 45, "label": "product belief", "energy": 0.38 },
+        { "atSeconds": 75, "label": "founder close", "energy": 0.26 }
+      ]
+    },
+    {
+      "id": "menulist-outlet-control-v2",
+      "name": "MenuList Outlet Control",
+      "purpose": "Multi-location and premium-plan explainers",
+      "targetDurationSeconds": 60,
+      "seed": 260721,
+      "config": {
+        "bpm": 108,
+        "scale": "D Major / B Minor",
+        "temperature": 0.7,
+        "guidance": 3.9,
+        "topK": 22,
+        "density": 0.32,
+        "brightness": 0.55
+      },
+      "prompts": [
+        { "text": "Refined minimal electronic brand soundtrack", "weight": 0.95 },
+        { "text": "Clean muted rhythmic pluck", "weight": 0.45 },
+        { "text": "Sleek low-pass synth melody pulse", "weight": 0.32 },
+        { "text": "Soft precise modern percussion", "weight": 0.35 },
+        { "text": "Subtle confident bass pulse", "weight": 0.25 }
+      ],
+      "automation": [
+        { "atSeconds": 0, "label": "fragmented outlets", "energy": 0.34 },
+        { "atSeconds": 16, "label": "master list", "energy": 0.5 },
+        { "atSeconds": 30, "label": "controlled variation", "energy": 0.62 },
+        { "atSeconds": 48, "label": "stable outlet system", "energy": 0.52 }
+      ]
+    }
+  ]
+}

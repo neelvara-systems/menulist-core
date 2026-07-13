@@ -6,7 +6,7 @@ CampaignCue must not ask a model what the owner should promote.
 
 CampaignCue recommends through:
 
-Business Brain + campaign recipes + timing/context signals + asset readiness + missing inputs + trust/risk gates + result memory = recommended campaign cue.
+Business Brain + current Owner Pulse + commercial policy + campaign recipes + workspace-local timing + asset readiness + missing inputs + trust/risk gates + owner-reported result receipts = recommended campaign cue.
 
 AI may help with wording, variants, or ambiguous owner comments inside controlled systems. AI is not the authority for prices, dates, contacts, locations, claims, campaign safety, or document mutation.
 
@@ -49,6 +49,9 @@ The runtime exposes `CampaignCueDecision` with:
 - `recommendedOutputs`
 - `trustPreflight`
 - `ownerPrimaryActionLabel`
+- `commercialGate`
+- `pulseEvidence`
+- `experiment`
 
 The owner sees plain language. The system keeps structured reasoning.
 
@@ -70,6 +73,10 @@ Scores are bounded integers from 0 to 100.
 | `trustRiskPenalty` | Blocked facts, restricted assets, review facts, or rights risk. |
 | `finalScore` | Ranked decision score. |
 
+Operating Pulse can increase relevance for quiet periods, available capacity, available stock, or a saved local moment. Closed business state, full capacity, unavailable stock, expired pulse, commercial restrictions, expired source inputs, and unsafe return-customer contact payloads are handled as explicit gates rather than score-only suggestions.
+
+The review-request recipe requires a verified review destination plus a non-identifying note that a real visit, order, booking, appointment, or service was completed. The return-customer recipe requires a non-identifying owner-managed audience description. Neither path stores or imports customer contacts.
+
 ## Owner States
 
 | State | Owner meaning |
@@ -86,4 +93,3 @@ Confidence is not a model score.
 - `high`: enough facts, low risk, useful timing/memory.
 - `medium`: useful recommendation, but missing input or review remains.
 - `low`: blocked, low score, or safer action needed.
-

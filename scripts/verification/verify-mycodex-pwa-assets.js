@@ -167,6 +167,10 @@ function verifyMetadataAndRegistration() {
   const auth = read('src/lib/mycodex/auth.ts');
   const productIds = read('src/constants/product.ts');
   const docsLoader = read('src/lib/mycodex/docs.ts');
+  const requestHost = read('src/lib/mycodex/requestHost.ts');
+  const documentPage = read('src/app/sites/mycodex/[[...slug]]/page.tsx');
+  const favoritesPage = read('src/app/sites/mycodex/favorites/page.tsx');
+  const queuePage = read('src/app/sites/mycodex/queue/page.tsx');
   const documentRoute = read('src/app/sites/mycodex/api/document/route.ts');
   const sessionRoute = read('src/app/sites/mycodex/api/session/route.ts');
   const clientContainer = read('src/app/sites/mycodex/components/MyCodexClientContainer.tsx');
@@ -194,6 +198,17 @@ function verifyMetadataAndRegistration() {
   assertIncludes(auth, "MYCODEX_PRODUCT_SLUG = 'mycodex'", 'MyCodex route slug boundary');
   assertIncludes(auth, 'product: MYCODEX_PRODUCT_SLUG', 'MyCodex session slug boundary');
   assertNotIncludes(auth, 'product: MYCODEX_PRODUCT_CODE', 'MyCodex session must not store the pId code');
+  assertIncludes(requestHost, "normalizeRequestAuthority(authority)?.hostname", 'MyCodex local-dev host helper must use the shared strict Host authority parser');
+  assertIncludes(requestHost, 'MYCODEX_LOCAL_DEVELOPMENT_HOSTS.has(hostname)', 'MyCodex local-dev host helper must compare exact normalized hostnames');
+  for (const [label, content] of [
+    ['MyCodex document page', documentPage],
+    ['MyCodex favorites page', favoritesPage],
+    ['MyCodex queue page', queuePage],
+  ]) {
+    assertIncludes(content, "isMyCodexLocalDevelopmentHost(host)", `${label} must use the shared MyCodex local-dev Host helper`);
+    assertNotIncludes(content, "host.includes('localhost')", `${label} must not classify raw Host substrings as local development`);
+    assertNotIncludes(content, "host.includes('127.0.0.1')", `${label} must not classify raw Host substrings as local development`);
+  }
   assertIncludes(auth, "MYCODEX_OFFLINE_PATH = '/offline'", 'MyCodex auth bypass');
   assertNotIncludes(apiSchemas, "['ML', 'AL', 'CC', 'MC']", 'MyCodex must not be exposed as a billing API product');
   assertIncludes(billingPlans, 'normalized === PRODUCT_IDS.MYCODEX', 'MyCodex billing normalizer boundary');

@@ -4,6 +4,8 @@
 **Created:** July 7, 2026
 **Primary output:** 8-30 second vertical videos
 
+**Mandatory production standard:** [MenuList Founder-Approved Video Production Standard](./videos_founder-approved-production-standard.md).
+
 ## Purpose
 
 Short-form videos create repeated awareness without making MenuList sound repetitive.

@@ -12,10 +12,11 @@ import { firestoreAdmin } from "../firebaseAdmin";
 import { createAlert } from "../monitoring/alerts";
 import { PLATFORM_NOTIFICATION_TRIGGER_TYPES } from "../sharedData/platformNotificationRegistry";
 import {
-  MessagingOnboardingSession,
+  MSG_ONBOARDING_EVENT_TYPES,
   MsgOnboardingEventType,
 } from "../types/messagingOnboarding.types";
 import { COST_MONITORING } from "./constants";
+import { normalizeMessagingPublishedResult } from "./publishedResultBoundary";
 
 const logger = functions.logger;
 const db = firestoreAdmin;
@@ -23,6 +24,7 @@ const MESSAGING_HEALTH_SNAPSHOT_WRITE_FAILED = "MESSAGING_HEALTH_SNAPSHOT_WRITE_
 
 const HEALTH_CONTROL_DOC = "messaging_onboarding_control";
 const HEALTH_DOC_PREFIX = "messaging_onboarding";
+const HEALTH_COMPUTE_LEASE_MS = 15 * 60 * 1000;
 
 function getMessagingHealthErrorName(error: unknown): string {
   if (error instanceof Error) return (error.name || "Error").slice(0, 80);
@@ -54,36 +56,106 @@ interface HealthAlert {
   severity: "warning" | "critical";
   title: string;
   message: string;
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
+}
+
+const MSG_ONBOARDING_EVENT_TYPE_SET = new Set<string>(MSG_ONBOARDING_EVENT_TYPES);
+
+function isMessagingEventType(value: unknown): value is MsgOnboardingEventType {
+  return typeof value === "string" && MSG_ONBOARDING_EVENT_TYPE_SET.has(value);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function readNonNegativeInteger(value: unknown): number | null {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : null;
+}
+
+function readTimestampMillis(value: unknown): number | null {
+  if (!isRecord(value) || typeof value.toMillis !== "function") return null;
+  try {
+    const millis = value.toMillis.call(value);
+    return typeof millis === "number" && Number.isFinite(millis) ? millis : null;
+  } catch {
+    return null;
+  }
+}
+
+export function isMessagingHealthComputationDue(
+  control: unknown,
+  nowMillis: number,
+): boolean {
+  if (!Number.isFinite(nowMillis) || nowMillis < 0) return false;
+  const source = isRecord(control) ? control : {};
+  const lastComputedAt = readTimestampMillis(source.lastComputedAt);
+  const computeLeaseUntil = readTimestampMillis(source.computeLeaseUntil);
+  const recentlyCompleted = lastComputedAt !== null
+    && lastComputedAt <= nowMillis
+    && nowMillis - lastComputedAt < COST_MONITORING.HEALTH_SNAPSHOT_INTERVAL_MS;
+  const activeLease = computeLeaseUntil !== null
+    && computeLeaseUntil > nowMillis
+    && computeLeaseUntil <= nowMillis + HEALTH_COMPUTE_LEASE_MS;
+  return !recentlyCompleted && !activeLease;
+}
+
+export function normalizeMessagingHealthSessionSample(
+  value: unknown,
+): { processingRuns: number; published: boolean } | null {
+  if (!isRecord(value)) return null;
+  const processingRuns = readNonNegativeInteger(value.processingRuns);
+  const knownState = typeof value.state === "string" && [
+    "COLLECTING_INPUT",
+    "VALIDATING_ASSETS",
+    "AWAITING_MORE_UPLOADS",
+    "PROCESSING_MENU",
+    "PREVIEW_READY",
+    "AWAITING_APPROVAL",
+    "PUBLISHING",
+    "LIVE",
+    "FAILED",
+    "EXPIRED",
+    "COOLDOWN",
+  ].includes(value.state);
+  const publishedResultIsValid = normalizeMessagingPublishedResult(value.publishedResult) !== null;
+  if (
+    processingRuns === null
+    || !knownState
+    || value.state === "LIVE" && !publishedResultIsValid
+    || value.state !== "LIVE" && value.publishedResult !== null
+  ) {
+    return null;
+  }
+  return { processingRuns, published: value.state === "LIVE" };
 }
 
 export async function recordMessagingOnboardingHealth(
   runMetrics: MessagingOnboardingRunMetrics,
 ): Promise<void> {
+  const controlRef = db
+    .collection(DB_COLLECTIONS.SYSTEM_HEALTH)
+    .doc(HEALTH_CONTROL_DOC);
+  let computationClaimed = false;
   try {
+    if (
+      readNonNegativeInteger(runMetrics.inboundProcessed) === null
+      || readNonNegativeInteger(runMetrics.processed) === null
+      || readNonNegativeInteger(runMetrics.errors) === null
+    ) {
+      throw new Error("MESSAGING_HEALTH_RUN_METRICS_INVALID");
+    }
     const now = Timestamp.now();
-    const controlRef = db
-      .collection(DB_COLLECTIONS.SYSTEM_HEALTH)
-      .doc(HEALTH_CONTROL_DOC);
 
     const shouldCompute = await db.runTransaction(async (transaction) => {
       const controlSnapshot = await transaction.get(controlRef);
-      const lastComputedAt = controlSnapshot.data()?.lastComputedAt as
-        | Timestamp
-        | undefined;
-
-      if (
-        lastComputedAt &&
-        now.toMillis() - lastComputedAt.toMillis() <
-          COST_MONITORING.HEALTH_SNAPSHOT_INTERVAL_MS
-      ) {
-        return false;
-      }
+      if (!isMessagingHealthComputationDue(controlSnapshot.data(), now.toMillis())) return false;
 
       transaction.set(
         controlRef,
         {
-          lastComputedAt: now,
+          computeLeaseUntil: Timestamp.fromMillis(now.toMillis() + HEALTH_COMPUTE_LEASE_MS),
+          lastAttemptAt: now,
           lastRunMetrics: runMetrics,
           status: "computing",
           updatedAt: now,
@@ -94,6 +166,7 @@ export async function recordMessagingOnboardingHealth(
     });
 
     if (!shouldCompute) return;
+    computationClaimed = true;
 
     const snapshot = await buildHealthSnapshot(runMetrics);
     const snapshotId = getHourlySnapshotId(snapshot.windowEnd.toDate());
@@ -105,6 +178,7 @@ export async function recordMessagingOnboardingHealth(
 
     await controlRef.set(
       {
+        computeLeaseUntil: null,
         lastComputedAt: snapshot.windowEnd,
         lastSnapshotId: snapshotId,
         lastStatus: snapshot.status,
@@ -113,9 +187,26 @@ export async function recordMessagingOnboardingHealth(
       },
       { merge: true },
     );
+    computationClaimed = false;
 
     await emitHealthAlerts(snapshot.alerts);
   } catch (error) {
+    if (computationClaimed) {
+      try {
+        const failedAt = Timestamp.now();
+        await controlRef.set({
+          computeLeaseUntil: null,
+          lastFailureAt: failedAt,
+          status: "failed",
+          updatedAt: failedAt,
+        }, { merge: true });
+      } catch (releaseError) {
+        logger.error("[MessagingHealth] Failed to release health computation lease", {
+          failureCode: "MESSAGING_HEALTH_LEASE_RELEASE_FAILED",
+          ...getMessagingHealthErrorContext(releaseError),
+        });
+      }
+    }
     logger.error("[MessagingHealth] Failed to record health snapshot", {
       failureCode: MESSAGING_HEALTH_SNAPSHOT_WRITE_FAILED,
       ...getMessagingHealthErrorContext(error),
@@ -150,17 +241,17 @@ async function buildHealthSnapshot(runMetrics: MessagingOnboardingRunMetrics) {
         .get(),
     ]);
 
-  const sessions = sessionsSnapshot.docs.map(
-    (doc) => doc.data() as MessagingOnboardingSession,
+  const sessions = sessionsSnapshot.docs.map((doc) => normalizeMessagingHealthSessionSample(doc.data()));
+  const validSessions = sessions.filter(
+    (session): session is NonNullable<typeof session> => session !== null,
   );
+  const invalidSessionRecords = sessions.length - validSessions.length;
   const eventsByType = countEventsByType(eventsSnapshot.docs);
 
-  const sessionsStarted = sessions.length;
-  const publishedSessions = sessions.filter(
-    (session) => session.state === "LIVE" || !!session.publishedResult,
-  ).length;
-  const processingRuns = sessions.reduce(
-    (total, session) => total + Number(session.processingRuns || 0),
+  const sessionsStarted = sessionsSnapshot.size;
+  const publishedSessions = validSessions.filter((session) => session.published).length;
+  const processingRuns = validSessions.reduce(
+    (total, session) => total + session.processingRuns,
     0,
   );
   const publishRate =
@@ -176,10 +267,13 @@ async function buildHealthSnapshot(runMetrics: MessagingOnboardingRunMetrics) {
     (eventsByType.MESSAGE_SEND_FAILED || 0) +
     (eventsByType.INBOUND_MESSAGE_FAILED || 0);
 
-  const publishedSourceBytesSampled = liveSessionsSnapshot.docs.reduce(
-    (total, doc) => total + getSessionUploadBytes(doc.data()),
-    0,
-  );
+  let publishedSourceBytesSampled = 0;
+  let invalidUploadRecords = 0;
+  for (const doc of liveSessionsSnapshot.docs) {
+    const uploadSample = getMessagingSessionUploadByteSample(doc.data());
+    publishedSourceBytesSampled += uploadSample.bytes;
+    invalidUploadRecords += uploadSample.invalidRecords;
+  }
 
   const alerts = buildAlerts({
     sessionsStarted,
@@ -190,6 +284,7 @@ async function buildHealthSnapshot(runMetrics: MessagingOnboardingRunMetrics) {
     eventsByType,
     publishedSourceBytesSampled,
     liveSessionsSampled: liveSessionsSnapshot.size,
+    invalidDataRecords: invalidSessionRecords + invalidUploadRecords,
   });
 
   const status = alerts.some((alert) => alert.severity === "critical")
@@ -217,6 +312,7 @@ async function buildHealthSnapshot(runMetrics: MessagingOnboardingRunMetrics) {
       processingRuns,
       failedEvents,
       eventsByType,
+      invalidSessionRecords,
     },
     costs: {
       currency: "INR",
@@ -230,6 +326,7 @@ async function buildHealthSnapshot(runMetrics: MessagingOnboardingRunMetrics) {
       reviewAfterDays: COST_MONITORING.SOURCE_FILE_RETENTION_REVIEW_DAYS,
       publishedSourceBytesSampled,
       liveSessionsSampled: liveSessionsSnapshot.size,
+      invalidUploadRecords,
       warnBytes: COST_MONITORING.PUBLISHED_SOURCE_STORAGE_WARN_BYTES,
       criticalBytes: COST_MONITORING.PUBLISHED_SOURCE_STORAGE_CRITICAL_BYTES,
     },
@@ -247,21 +344,38 @@ async function buildHealthSnapshot(runMetrics: MessagingOnboardingRunMetrics) {
 
 function countEventsByType(
   docs: FirebaseFirestore.QueryDocumentSnapshot<FirebaseFirestore.DocumentData>[],
-): Record<MsgOnboardingEventType, number> {
-  return docs.reduce((counts, doc) => {
-    const eventType = doc.data().eventType as MsgOnboardingEventType | undefined;
-    if (!eventType) return counts;
-    counts[eventType] = (counts[eventType] || 0) + 1;
-    return counts;
-  }, {} as Record<MsgOnboardingEventType, number>);
+): Partial<Record<MsgOnboardingEventType, number>> {
+  return countMessagingEventTypes(docs.map((doc) => doc.get("eventType")));
 }
 
-function getSessionUploadBytes(data: FirebaseFirestore.DocumentData): number {
-  if (!Array.isArray(data.uploads)) return 0;
-  return data.uploads.reduce(
-    (total: number, upload: any) => total + Number(upload?.fileSize || 0),
-    0,
-  );
+export function countMessagingEventTypes(
+  values: readonly unknown[],
+): Partial<Record<MsgOnboardingEventType, number>> {
+  const counts: Partial<Record<MsgOnboardingEventType, number>> = {};
+  for (const eventType of values) {
+    if (!isMessagingEventType(eventType)) continue;
+    counts[eventType] = (counts[eventType] || 0) + 1;
+  }
+  return counts;
+}
+
+export function getMessagingSessionUploadByteSample(
+  data: unknown,
+): { bytes: number; invalidRecords: number } {
+  if (!isRecord(data) || !Array.isArray(data.uploads)) {
+    return { bytes: 0, invalidRecords: 1 };
+  }
+  let bytes = 0;
+  let invalidRecords = 0;
+  for (const upload of data.uploads) {
+    const fileSize = isRecord(upload) ? readNonNegativeInteger(upload.fileSize) : null;
+    if (fileSize === null || fileSize === 0 || fileSize > 10 * 1024 * 1024) {
+      invalidRecords++;
+      continue;
+    }
+    bytes += fileSize;
+  }
+  return { bytes, invalidRecords };
 }
 
 function buildAlerts(params: {
@@ -273,8 +387,19 @@ function buildAlerts(params: {
   eventsByType: Partial<Record<MsgOnboardingEventType, number>>;
   publishedSourceBytesSampled: number;
   liveSessionsSampled: number;
+  invalidDataRecords: number;
 }): HealthAlert[] {
   const alerts: HealthAlert[] = [];
+
+  if (params.invalidDataRecords > 0) {
+    alerts.push({
+      key: "invalid_health_source_data",
+      severity: "warning",
+      title: "Messaging Onboarding Health Data Invalid",
+      message: `${params.invalidDataRecords} sampled messaging records failed health-data validation.`,
+      metadata: { invalidDataRecords: params.invalidDataRecords },
+    });
+  }
 
   if (params.sessionsStarted > COST_MONITORING.MAX_SESSIONS_PER_DAY_ALERT) {
     alerts.push({

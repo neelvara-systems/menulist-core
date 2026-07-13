@@ -3,6 +3,7 @@
 import { FontPresetsType } from '@type/assets';
 import { ChangelogPage } from '@type/changelog';
 import { KnowledgeBaseArticleType, KnowledgeBaseCategoriesType } from '@type/knowledgeBase';
+import type { AnswerlatticeReadableArticle } from '@lib/answerlattice/publicContentBoundary';
 import { StoreDataType } from '@type/platform/store';
 import { TenantDataType } from '@type/platform/tenant';
 import { UserDataType } from '@type/platform/user';
@@ -51,7 +52,7 @@ export type PlatformGlobalDataProviderType = {
     cachedTickets: { cachedOn: Timestamp, tickets: SupportTicketType[] };
     setCachedTickets: any;
 
-    cachedArticles: { cachedOn: Timestamp | null, articles: KnowledgeBaseArticleType[] };
+    cachedArticles: { cachedOn: Timestamp | null, articles: AnswerlatticeReadableArticle[] };
     setCachedArticles: any;
 
     platformStoreSummaryOptions: PlatformStoreSummaryOption[];

@@ -1,7 +1,7 @@
 # Owner Notifications - Mobile Support
 
 **Status:** Source-bounded mobile boundary; not current launch certification
-**Date:** 2026-06-02
+**Date:** 2026-07-13
 **Decision:** Partial mobile support
 
 > **Current release boundary (July 2, 2026):** This mobile note records source/mobile-scope evidence only. It is not current production-launch approval. Current owner-notification mobile approval requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, `npm run verify:owner-notifications-boundary`, authenticated mobile settings/status QA for any owner-facing setup surface in release scope, platform recovery monitor browser QA for delivery logs, provider smoke where enabled, target deploy evidence, and production-host smoke.
@@ -92,5 +92,7 @@ MenuList mobile already saves locale/currency settings in `src/components/mobile
 ## Implementation Decision
 
 Mobile support is required for setup and status, but not for detailed operations monitoring. Detailed delivery logs belong in platform/admin views.
+
+July 13 verification: the internal recovery monitor remains outside the SMB-owner mobile surface. Its API now requires current persisted platform authority after a fail-closed limiter. No owner-mobile route, setting, trigger, template, channel, or MobileShell behavior changed.
 
 `npm run verify:owner-notifications-boundary` locks the current boundary that detailed delivery logs and recovery actions stay in the platform/admin monitor, while mobile support remains limited to future setup/status surfaces that must reuse shared DAL/API paths.

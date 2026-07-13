@@ -81,10 +81,10 @@
 
 ```typescript
 // In src/config/features.ts
-ENABLE_MENU_OBSERVATION: true,  // Default: false
+ENABLE_MENU_OBSERVATION: true,
 ```
 
-**Note**: Feature is OFF by default for cost safety. Enable only after testing.
+**Note**: The current runtime enables MOL and uses compact summary mode by default. Detailed per-item mode remains an explicit higher-write diagnostic option.
 
 ---
 
@@ -95,11 +95,14 @@ ENABLE_MENU_OBSERVATION: true,  // Default: false
 | `src/types/menuObservation.ts`        | All MOL types                |
 | `src/database/menuChangeLog/index.ts` | Change log DAL               |
 | `src/database/menuChangeLog/menuChangeLogDiagnostics.ts` | Bounded MOL failure diagnostics |
+| `src/data/shared/menuDriftContribution.ts` | Bounded summary/detailed drift compatibility contract |
 | `src/database/projects/index.ts`      | Change detection interceptor |
 | `src/config/features.ts`              | Feature flags                |
 | `src/constants/database.ts`           | Collection constants         |
 
-**Diagnostics note**: MOL write paths remain non-blocking. Tracking, scoped tracking, debounced writes, and flush-time session lookup failures log bounded `menu_change_log_*` diagnostics; `flushPendingChanges()` logs `menu_change_log_flush_session_failed` if session lookup fails before queued write handoff.
+**Runtime note**: MOL write paths remain non-blocking. Tracking, scoped tracking, batch-session, invalid-entry, and Firestore write failures log bounded `menu_change_log_*` diagnostics. Every pending detailed entry snapshots its validated tenant/store scope when queued; `flushPendingChanges()` drains those stored scopes and never re-resolves a possibly switched active session. Completed revision summaries and publish events bypass replacement-style debouncing so two completed operations inside five seconds cannot overwrite one another.
+
+Default summaries carry a bounded, per-item price/availability contribution list for the nightly drift task. The Functions mirror validates the same contract, scans each store's 30-day ledger once with stable timestamp/document pagination, partitions events by active project, and writes metrics in bounded batches. Derived item documents whose events leave the rolling window are deleted, and 180-day price staleness is marked unavailable when the 30-day source window cannot prove it. If a single revision exceeds the compact contribution cap, only overflow price/availability events fall back to the existing detailed event path.
 
 ---
 

@@ -1,26 +1,47 @@
-import { GenerateContentResponse } from "@google/genai";
 import * as admin from "firebase-admin";
 import * as functions from 'firebase-functions';
 import * as fs from 'fs'; // Import the 'fs' module
 import { normalizeProcessedKBData, normalizeVector } from ".";
-import { AI_ADVANCED_MODEL, AI_EMBEDDING_MODEL } from "../constants/ai";
-import { firestoreAdmin } from "../firebaseAdmin";
+import {
+    AI_ADVANCED_MODEL,
+} from "../constants/ai";
 import { genAIClient } from "../genAiClient";
-import { KB_ARTICLES_COLLECTION } from "../types";
+import {
+    ANSWERLATTICE_ACTIVE_EMBEDDING_CONFIG,
+    ANSWERLATTICE_LEGACY_EMBEDDING_CONFIG,
+    type AnswerlatticeEmbeddingVersion,
+    buildAnswerlatticeEmbeddingRequest,
+    getAnswerlatticeEmbeddingConfig,
+} from '../sharedData/answerlatticeEmbedding';
+import { ProcessedKBMap } from "../types";
 import { buildSafeTempFilePath } from "./safeTempFile";
 import { tiptapToText } from "./tiptapUtils";
 
-const EMBEDDING_MODEL = AI_EMBEDDING_MODEL;
 const GENERATIVE_MODEL = AI_ADVANCED_MODEL;
 const KB_SOURCE_GENERATION_FAILED_CODE = 'ANSWERLATTICE_KB_SOURCE_GENERATION_FAILED';
 const KB_SOURCE_FILE_UPLOAD_FAILED_CODE = 'ANSWERLATTICE_KB_SOURCE_FILE_UPLOAD_FAILED';
 const KB_SOURCE_FILE_CLEANUP_FAILED_CODE = 'ANSWERLATTICE_KB_SOURCE_FILE_CLEANUP_FAILED';
 const ARTICLE_EMBEDDING_FAILED_CODE = 'ANSWERLATTICE_ARTICLE_EMBEDDING_FAILED';
-const SIMILAR_ARTICLE_LOOKUP_FAILED_CODE = 'ANSWERLATTICE_SIMILAR_ARTICLE_LOOKUP_FAILED';
 const KB_SOURCE_GENERATION_FAILED_MESSAGE = 'Knowledge base generation failed';
 const ARTICLE_EMBEDDING_FAILED_MESSAGE = 'Embedding generation failed';
-const SIMILAR_ARTICLE_LOOKUP_FAILED_MESSAGE = 'Similar article lookup failed';
 const KB_SOURCE_STORAGE_PATH_REJECTED_CODE = 'ANSWERLATTICE_KB_SOURCE_STORAGE_PATH_REJECTED';
+const KB_SOURCE_FILE_REJECTED_CODE = 'ANSWERLATTICE_KB_SOURCE_FILE_REJECTED';
+const KB_PROVIDER_FILE_CLEANUP_FAILED_CODE = 'ANSWERLATTICE_KB_PROVIDER_FILE_CLEANUP_FAILED';
+const MAX_SOURCE_FILES = 8;
+const MAX_SOURCE_FILE_BYTES = 10 * 1024 * 1024;
+const MAX_SOURCE_TOTAL_BYTES = 40 * 1024 * 1024;
+const ALLOWED_SOURCE_MIME_TYPES = new Set([
+    'application/json',
+    'application/msword',
+    'application/pdf',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/xml',
+    'text/csv',
+    'text/html',
+    'text/markdown',
+    'text/plain',
+    'text/xml',
+]);
 /**
  * Interface for the source files provided to the prompt constructor.
  */
@@ -30,6 +51,16 @@ interface SourceFile {
     fileName: string;
     type: string;
     gsUri: string;
+}
+
+interface ValidatedSourceFile extends SourceFile {
+    byteSize: number;
+}
+
+interface UploadedProviderFile {
+    mimeType: string;
+    name: string;
+    uri: string;
 }
 
 interface KnowledgeSourceScope {
@@ -67,8 +98,10 @@ function getSourceFileContext(file: SourceFile): Record<string, string | number 
 
 function cleanStoragePathSegment(value: unknown): string {
     if (typeof value !== 'string' && typeof value !== 'number') return '';
-    const normalized = String(value).trim();
-    return /^[a-zA-Z0-9_-]+$/.test(normalized) ? normalized : '';
+    const raw = String(value);
+    if (!/^[1-9]\d*$/.test(raw)) return '';
+    const parsed = Number(raw);
+    return Number.isSafeInteger(parsed) && String(parsed) === raw ? raw : '';
 }
 
 function isAllowedKnowledgeSourceStoragePath(file: SourceFile, scope: KnowledgeSourceScope): boolean {
@@ -84,6 +117,56 @@ function isAllowedKnowledgeSourceStoragePath(file: SourceFile, scope: KnowledgeS
         && Boolean(pathParts[3]);
 }
 
+function isAllowedKnowledgeSourceMimeType(mimeType: string): boolean {
+    return ALLOWED_SOURCE_MIME_TYPES.has(mimeType)
+        || mimeType.startsWith('image/')
+        || mimeType.startsWith('audio/')
+        || mimeType.startsWith('video/');
+}
+
+async function validateKnowledgeSourceFiles(
+    files: unknown,
+    scope: KnowledgeSourceScope,
+): Promise<ValidatedSourceFile[]> {
+    if (!Array.isArray(files) || files.length === 0 || files.length > MAX_SOURCE_FILES) {
+        throw new Error(KB_SOURCE_FILE_REJECTED_CODE);
+    }
+    const bucket = admin.storage().bucket();
+    const validated: ValidatedSourceFile[] = [];
+    let totalBytes = 0;
+    for (const value of files) {
+        if (!value || typeof value !== 'object' || Array.isArray(value)) {
+            throw new Error(KB_SOURCE_FILE_REJECTED_CODE);
+        }
+        const record = value as Record<string, unknown>;
+        const file: SourceFile = {
+            downloadURL: typeof record.downloadURL === 'string' ? record.downloadURL.trim() : '',
+            storagePath: typeof record.storagePath === 'string' ? record.storagePath.trim() : '',
+            fileName: typeof record.fileName === 'string' ? record.fileName.trim().slice(0, 180) : '',
+            type: typeof record.type === 'string' ? record.type.trim().toLowerCase().slice(0, 120) : '',
+            gsUri: typeof record.gsUri === 'string' ? record.gsUri.trim().slice(0, 1024) : '',
+        };
+        if (!file.fileName || !isAllowedKnowledgeSourceStoragePath(file, scope)) {
+            throw new Error(KB_SOURCE_FILE_REJECTED_CODE);
+        }
+        const [metadata] = await bucket.file(file.storagePath).getMetadata();
+        const byteSize = Number(metadata.size);
+        const mimeType = String(metadata.contentType || file.type).trim().toLowerCase().slice(0, 120);
+        if (
+            !Number.isSafeInteger(byteSize)
+            || byteSize <= 0
+            || byteSize > MAX_SOURCE_FILE_BYTES
+            || !isAllowedKnowledgeSourceMimeType(mimeType)
+        ) {
+            throw new Error(KB_SOURCE_FILE_REJECTED_CODE);
+        }
+        totalBytes += byteSize;
+        if (totalBytes > MAX_SOURCE_TOTAL_BYTES) throw new Error(KB_SOURCE_FILE_REJECTED_CODE);
+        validated.push({ ...file, byteSize, type: mimeType });
+    }
+    return validated;
+}
+
 function getArticleEmbeddingContext(article: { id: string, categoryTitle: string, sectionTitle?: string, title: string, content: any }): Record<string, string | number | boolean> {
     return {
         articleIdLength: article.id?.length || 0,
@@ -94,32 +177,52 @@ function getArticleEmbeddingContext(article: { id: string, categoryTitle: string
     };
 }
 
-export const getKBFromSource = async (prompt: string, sourceFiles: SourceFile[], scope: KnowledgeSourceScope): Promise<any> => {
-    return await generateKbFromSourceUsingGenAi(prompt, sourceFiles, scope);
+export const getKBFromSource = async (
+    prompt: string,
+    sourceFiles: unknown,
+    scope: KnowledgeSourceScope,
+): Promise<ProcessedKBMap> => {
+    const validatedSourceFiles = await validateKnowledgeSourceFiles(sourceFiles, scope);
+    return await generateKbFromSourceUsingGenAi(prompt, validatedSourceFiles, scope);
 }
 
-export const genrateEmbedding = async (article: { id: string, categoryTitle: string, sectionTitle?: string, title: string, content: any }): Promise<number[]> => {
-    return await generateArticleEmbeddingUsingGenAi(article);
+type AnswerlatticeEmbeddingArticle = { id: string, categoryTitle: string, sectionTitle?: string, title: string, content: any, sId?: number, source?: string, tId?: number };
+
+export const genrateEmbedding = async (article: AnswerlatticeEmbeddingArticle): Promise<number[]> => {
+    return await generateArticleEmbeddingUsingGenAi(article, ANSWERLATTICE_ACTIVE_EMBEDDING_CONFIG.version);
 }
 
-export const generateArticleEmbeddingUsingGenAi = async (article: { id: string, categoryTitle: string, sectionTitle?: string, title: string, content: any }): Promise<number[]> => {
+export const generateArticleEmbeddingUsingGenAi = async (
+    article: AnswerlatticeEmbeddingArticle,
+    version: AnswerlatticeEmbeddingVersion = ANSWERLATTICE_ACTIVE_EMBEDDING_CONFIG.version,
+): Promise<number[]> => {
 
     const logger = functions.logger;
     // 1. Construct the full, context-rich text for embedding.
     // This correctly follows our final architectural plan.
-    const textToEmbed = [article.categoryTitle, article.sectionTitle, article.title, tiptapToText(article.content)].filter(Boolean).join('\n\n'); // filter(Boolean) removes any empty/null titles.
-    if (!textToEmbed || textToEmbed.trim().length === 0) throw new Error('Article content is empty, cannot generate embedding.');
+    const rawTextToEmbed = [article.categoryTitle, article.sectionTitle, article.title, tiptapToText(article.content)].filter(Boolean).join('\n\n'); // filter(Boolean) removes any empty/null titles.
+    if (!rawTextToEmbed || rawTextToEmbed.trim().length === 0) throw new Error('Article content is empty, cannot generate embedding.');
 
     try {
+        const embeddingConfig = getAnswerlatticeEmbeddingConfig(version);
+        const request = buildAnswerlatticeEmbeddingRequest({
+            content: rawTextToEmbed,
+            purpose: 'document',
+            title: article.title,
+            version,
+        });
         // 2. Call the Gemini embedding model.
-        const response: any = await genAIClient.models.embedContent({ model: EMBEDDING_MODEL, contents: textToEmbed });
-        const embedding = response.embeddings[0];
-        if (!embedding?.values) throw new Error('Unexpected Gemini embedding response shape');
-        const embeddingValues = embedding.values;
-        if (!embeddingValues || embeddingValues.length === 0) throw new Error('Gemini returned an empty embedding.')
+        const response = await genAIClient.models.embedContent(request);
+        const embeddingValues = response.embeddings?.[0]?.values;
+        if (
+            !embeddingValues
+            || embeddingValues.length !== embeddingConfig.outputDimensionality
+            || !embeddingValues.some((value: unknown) => typeof value === 'number' && Number.isFinite(value) && value !== 0)
+        ) {
+            throw new Error('Unexpected Gemini embedding response shape');
+        }
         // 3. Return the embedding as a Firestore Vector object.
-        return normalizeVector(embedding.values); // ✅ return raw float array
-        // return admin.firestore.FieldValue.vector(embeddingValues);
+        return normalizeVector(embeddingValues);
     } catch (error: any) {
         logger.error('generateArticleEmbeddingUsingGenAi:Critical error during embedding generation', {
             failureCode: ARTICLE_EMBEDDING_FAILED_CODE,
@@ -131,7 +234,33 @@ export const generateArticleEmbeddingUsingGenAi = async (article: { id: string, 
     }
 };
 
-async function uploadToGemini(file: SourceFile, scope: KnowledgeSourceScope): Promise<any> {
+export const generateEmbeddingMigrationVectors = async (
+    article: AnswerlatticeEmbeddingArticle,
+    options: { includeLegacy: boolean },
+): Promise<{ active: number[]; legacy?: number[] }> => {
+    const active = await generateArticleEmbeddingUsingGenAi(
+        article,
+        ANSWERLATTICE_ACTIVE_EMBEDDING_CONFIG.version,
+    );
+    if (!options.includeLegacy) return { active };
+
+    try {
+        const legacy = await generateArticleEmbeddingUsingGenAi(
+            article,
+            ANSWERLATTICE_LEGACY_EMBEDDING_CONFIG.version,
+        );
+        return { active, legacy };
+    } catch (error) {
+        functions.logger.warn('[Answerlattice KB] Legacy embedding dual-write failed', {
+            failureCode: 'ANSWERLATTICE_LEGACY_EMBEDDING_DUAL_WRITE_FAILED',
+            ...getArticleEmbeddingContext(article),
+            ...getAiUtilsErrorContext(error),
+        });
+        return { active };
+    }
+};
+
+async function uploadToGemini(file: ValidatedSourceFile, scope: KnowledgeSourceScope): Promise<UploadedProviderFile> {
     const logger = functions.logger;
     const tempFilePath = buildSafeTempFilePath(file.fileName, 'source-file');
     try {
@@ -156,11 +285,14 @@ async function uploadToGemini(file: SourceFile, scope: KnowledgeSourceScope): Pr
 
         const document = await genAIClient.files.upload({
             file: tempFilePath,
-            config: { mimeType: file.type },
+            config: { mimeType: file.type, displayName: file.fileName },
         });
+        if (!document.name || !document.uri || !document.mimeType) {
+            throw new Error(KB_SOURCE_FILE_UPLOAD_FAILED_CODE);
+        }
 
         logger.info('uploadToGemini:Uploaded source file to Gemini', getSourceFileContext(file));
-        return document;
+        return { name: document.name, uri: document.uri, mimeType: document.mimeType };
     } catch (error) {
         logger.error('uploadToGemini:Failed to upload source file to Gemini', {
             failureCode: KB_SOURCE_FILE_UPLOAD_FAILED_CODE,
@@ -184,20 +316,40 @@ async function uploadToGemini(file: SourceFile, scope: KnowledgeSourceScope): Pr
     }
 }
 
-export const generateKbFromSourceUsingGenAi = async (textPrompt: string, files: SourceFile[], scope: KnowledgeSourceScope): Promise<any> => {
+export const generateKbFromSourceUsingGenAi = async (
+    textPrompt: string,
+    files: ValidatedSourceFile[],
+    scope: KnowledgeSourceScope,
+): Promise<ProcessedKBMap> => {
     const logger = functions.logger;
-    const uploadedFiles = await Promise.all(files.map(async (file) => uploadToGemini(file, scope)));
-    const newPromptParts = [
-        { text: textPrompt },
-        // ...uploadedFiles.map(file => ({ fileData: { mimeType: file.mimeType, fileUri: file.uri } }))
-        ...uploadedFiles.map((file, i) => ({ fileData: { mimeType: file.mimeType, fileUri: file.uri, name: file.name, originalurl: files[i].downloadURL } }))
-    ];
-
-    logger.info(`generateKbFromSourceUsingGenAi:Generated prompt parts:`,);
+    const uploadedFiles: UploadedProviderFile[] = [];
     try {
-        logger.info(`generateKbFromSourceUsingGenAi:Generating knowledge base content from source using GenAI.`);;
+        for (let index = 0; index < files.length; index += 2) {
+            const results = await Promise.allSettled(
+                files.slice(index, index + 2).map(file => uploadToGemini(file, scope)),
+            );
+            for (const result of results) {
+                if (result.status === 'fulfilled') uploadedFiles.push(result.value);
+            }
+            const failed = results.find(result => result.status === 'rejected');
+            if (failed?.status === 'rejected') throw failed.reason;
+        }
+        const newPromptParts = [
+            { text: textPrompt },
+            ...uploadedFiles.map(file => ({
+                fileData: { mimeType: file.mimeType, fileUri: file.uri },
+            })),
+        ];
+        logger.info('generateKbFromSourceUsingGenAi:Generating knowledge base content from source using GenAI.');
 
-        const result: GenerateContentResponse = await genAIClient.models.generateContent({ model: GENERATIVE_MODEL, contents: newPromptParts, config: { responseMimeType: "application/json" }, });
+        const result = await genAIClient.models.generateContent({
+            model: GENERATIVE_MODEL,
+            contents: newPromptParts,
+            config: {
+                responseMimeType: 'application/json',
+                maxOutputTokens: 32_768,
+            },
+        });
         logger.info('generateKbFromSourceUsingGenAi:Generated knowledge base content from source using GenAI.', {
             sourceFileCount: files.length,
             candidateCount: result.candidates?.length || 0,
@@ -208,59 +360,26 @@ export const generateKbFromSourceUsingGenAi = async (textPrompt: string, files: 
             sourceFileCount: files.length,
             responseTextLength: responseText?.length || 0,
         });
-
-        if (!responseText) throw new Error("AI response was empty or in an unexpected format.");
-        logger.info('generateKbFromSourceUsingGenAi:Successfully generated and parsed knowledge base data using GenAI.', {
-            sourceFileCount: files.length,
-            responseTextLength: responseText.length,
-        });
-
+        if (!responseText) throw new Error('AI response was empty or in an unexpected format.');
         return normalizeProcessedKBData(responseText);
-    } catch (error: any) {
+    } catch (error: unknown) {
         logger.error('generateKbFromSourceUsingGenAi:Critical error during knowledge base generation using GenAI', {
             failureCode: KB_SOURCE_GENERATION_FAILED_CODE,
             sourceFileCount: files.length,
             ...getAiUtilsErrorContext(error),
         });
         throw new Error(KB_SOURCE_GENERATION_FAILED_MESSAGE);
-    }
-};
-
-export const findSimilarArticles = async (embeddingVector: any, limit: number = 12) => {
-    const SIMILARITY_THRESHOLD = 0.6;
-    const logger = functions.logger;
-    try {
-        const collectionRef = firestoreAdmin.collection(KB_ARTICLES_COLLECTION) as any;
-        const neighborsSnapshot = await collectionRef
-            .findNearest({
-                vectorField: 'embedding',
-                queryVector: normalizeVector(embeddingVector),
-                limit: limit,
-                distanceMeasure: 'COSINE',
-                distanceResultField: 'distance',
-            }).get();
-
-        logger.info(`[findSimilarArticles] neighborsSnapshot:`, { empty: neighborsSnapshot.empty, size: neighborsSnapshot.size });
-
-        const documentsFound = neighborsSnapshot.docs.map((doc: any) => {
-            const data = doc.data();
-            const score = 1 - doc.get('distance');
-            const document = {
-                ...data,
-                id: doc.id,
-                score: score
-            };
-            delete document.embedding;
-            return document;
-        });
-
-        return documentsFound.filter((doc: any) => doc.score > SIMILARITY_THRESHOLD);
-    } catch (error: any) {
-        logger.error('[findSimilarArticles] Error finding similar articles', {
-            failureCode: SIMILAR_ARTICLE_LOOKUP_FAILED_CODE,
-            limit,
-            ...getAiUtilsErrorContext(error),
-        });
-        throw new Error(SIMILAR_ARTICLE_LOOKUP_FAILED_MESSAGE);
+    } finally {
+        const cleanupResults = await Promise.allSettled(
+            uploadedFiles.map(file => genAIClient.files.delete({ name: file.name })),
+        );
+        const failedCleanupCount = cleanupResults.filter(result => result.status === 'rejected').length;
+        if (failedCleanupCount > 0) {
+            logger.error('generateKbFromSourceUsingGenAi:Provider file cleanup failed', {
+                failureCode: KB_PROVIDER_FILE_CLEANUP_FAILED_CODE,
+                attemptedCount: uploadedFiles.length,
+                failedCount: failedCleanupCount,
+            });
+        }
     }
 };

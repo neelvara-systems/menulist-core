@@ -1,10 +1,23 @@
 # Cost Self-Protection — Firebase Cost Analysis
 
 **Created:** February 20, 2026
+**Last Updated:** July 13, 2026
 
 ---
 
 ## Cost Model
+
+### Manual SAFE_MODE Toggle
+
+| Operation | Changed state | Repeated current state |
+| --- | ---: | ---: |
+| Current `users/{uId}` authorization read | 1 | 1 |
+| Transactional `ops_config/system` read | 1 | 1 |
+| `ops_config/system` write | 1 | 0 |
+| `systemAlerts` write | 1 when alert creation succeeds | 0 |
+| Existing alert-mute read | 0-1 when alert delivery is enabled | 0 |
+
+The per-operator limiter fails closed before these reads when its provider is unavailable. A committed config transition remains the authoritative success even if the secondary alert write fails; bounded diagnostics make that failure visible without encouraging a duplicate toggle retry.
 
 ### Per SAFE_MODE Check (API route)
 
@@ -42,7 +55,8 @@ Each API route that checks SAFE_MODE performs 1 Firestore read. However, these r
 
 ## Cost Safety
 
-- Feature flag: `ENABLE_COST_PROTECTION` — disables all SAFE_MODE checks
+- App feature flag: `ENABLE_COST_PROTECTION` gates Next.js route checks; the MenuList Functions AI gateway always consults the cached Functions SAFE_MODE helper before provider access
 - 60-second cache TTL in Cloud Functions — limits read frequency
 - Fail-open design — check failure doesn't add retry reads
 - Single document — not a collection that could grow unbounded
+- Shared Functions gateway coverage adds no provider-side call and reuses the existing 60-second per-instance SAFE_MODE cache

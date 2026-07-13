@@ -2,6 +2,7 @@ import { sortFontsPresets } from '@database/static/fontPresets';
 import { DndContext, DragEndEvent, DragOverlay, rectIntersection, useDroppable } from '@dnd-kit/core';
 import { SortableContext, arrayMove, rectSortingStrategy } from "@dnd-kit/sortable";
 import { getUID } from '@util/utils';
+import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { Button, Flex, Modal, theme } from 'antd';
 import { Fragment, useEffect, useState } from 'react';
 import { LuX } from 'react-icons/lu';
@@ -22,11 +23,16 @@ function SortFontModal({ showSortModal, setShowSortModal, setFontsList }) {
         setFonts(list)
     }, [showSortModal])
 
-    const onSubmit = () => {
-        sortFontsPresets(fontsList).then((res) => {
+    const onSubmit = async () => {
+        try {
+            await sortFontsPresets(fontsList);
             setFontsList(fontsList)
             setShowSortModal({ active: false, data: [] })
-        })
+        } catch (error) {
+            logRuntimeFailure('platform_font_presets_sort_failed', error, {
+                fontCount: Array.isArray(fontsList) ? fontsList.length : 0,
+            });
+        }
     }
 
     const handleOnDragEnd = ({ active, over }: DragEndEvent, currentState: any) => {

@@ -7,8 +7,8 @@
 
 ## Mobile Relevance Decision: **YES (Display Only)**
 
-Same assessment as Trust Health Signal. All 4 gates pass. Display-only card on mobile dashboard. No interaction needed. Read from store data in Redux session.
+Same assessment as Trust Health Signal. All 4 gates pass for a future display, but no current mobile screen consumes the signal and the flag is `false`. Any activation must stay inside `MobileShell`, reuse the current Tailwind-driven mobile layer and `react-icons/lu`, and add no independent data load.
 
 ---
 
-**Last Updated:** February 19, 2026
+**Last Updated:** July 13, 2026

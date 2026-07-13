@@ -91,7 +91,15 @@ const getAccessEndedCopy = (reason?: string) => {
             title: 'Signed Out',
         };
     }
-    if (reason === 'USER_INACTIVE' || reason === 'USER_DELETED' || reason === 'USER_NOT_FOUND' || reason === 'USER_UNVERIFIED') {
+    if (
+        reason === 'USER_INACTIVE'
+        || reason === 'USER_DELETED'
+        || reason === 'USER_NOT_FOUND'
+        || reason === 'USER_UNVERIFIED'
+        || reason === 'TENANT_NOT_FOUND'
+        || reason === 'STORE_NOT_FOUND'
+        || reason === 'STORE_TENANT_MISMATCH'
+    ) {
         return {
             description: 'An owner changed this account access.',
             title: 'Access Ended',

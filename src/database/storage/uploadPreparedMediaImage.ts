@@ -1,12 +1,19 @@
 import uploadBlobToStorage from "@database/storage/uploadBlobToStorage";
+import { deleteFileByUrl } from "@database/storage/deleteFromStorage";
+import { logStorageHelperFailure } from "@database/storage/storageDiagnostics";
 import { getMediaImageProfile, type MediaImageType, type MediaImageVariantId } from "@lib/media/imageProfiles";
 import { buildMediaStoragePath, getDataUrlBlob, getMediaDataFingerprint, getMediaFileExtension, isDataUrl } from "@lib/media/mediaStorage";
+import {
+    assertMediaUploadBlobCandidate,
+    cleanupUploadedMediaUrls,
+    normalizeMediaUploadMimeType,
+} from "@lib/media/mediaUploadBoundary";
 import type { PreparedMediaImage, PreparedMediaVariant } from "@lib/media/prepareMediaImage";
 import { STORAGE_CACHE_CONTROL } from "@lib/storage/cacheControl";
 
 const PUBLIC_MEDIA_RETENTION_POLICY = 'public_asset_until_replaced_or_deleted';
 
-interface UploadPreparedMediaImageData {
+export interface UploadPreparedMediaImageData {
     blob?: Blob;
     contentType?: string | null;
     dataUrl?: string;
@@ -20,9 +27,9 @@ interface UploadPreparedMediaImageData {
     variant?: MediaImageVariantId;
 }
 
-function normalizeId(value: string | number | null | undefined, fallback: string): string {
-    const normalized = String(value ?? '').trim();
-    return normalized || fallback;
+export interface UploadedPreparedMediaImage {
+    primaryUrl: string;
+    uploadedUrls: string[];
 }
 
 async function getBlobFingerprint(blob: Blob): Promise<string> {
@@ -51,7 +58,7 @@ async function getBlobFingerprint(blob: Blob): Promise<string> {
     return (hash >>> 0).toString(16).padStart(8, '0');
 }
 
-export async function uploadPreparedMediaImage({
+export async function uploadPreparedMediaImageWithLedger({
     blob,
     contentType,
     dataUrl,
@@ -63,43 +70,79 @@ export async function uploadPreparedMediaImage({
     storeId,
     tenantId,
     variant,
-}: UploadPreparedMediaImageData): Promise<string> {
-    const selectedVariantId = variant || prepared?.primaryVariant || getMediaImageProfile(profile).primaryVariant;
+}: UploadPreparedMediaImageData): Promise<UploadedPreparedMediaImage> {
+    const profileConfig = getMediaImageProfile(profile);
+    if (!profileConfig) throw new Error('prepared_media_profile_invalid');
+    if (prepared && (prepared.profile !== profile || prepared.imageType !== profile)) {
+        throw new Error('prepared_media_profile_mismatch');
+    }
+
+    const selectedVariantId = variant || prepared?.primaryVariant || profileConfig.primaryVariant;
+    if (!profileConfig.variants.some((entry) => entry.id === selectedVariantId)) {
+        throw new Error('prepared_media_variant_invalid');
+    }
     const selectedVariant = prepared?.variants?.[selectedVariantId];
-    const uploadBlob = selectedVariant?.blob || prepared?.blob || blob || (isDataUrl(dataUrl) ? getDataUrlBlob(dataUrl) : null);
+    if (prepared && variant && !selectedVariant && selectedVariantId !== prepared.primaryVariant) {
+        throw new Error('prepared_media_variant_missing');
+    }
+    const useDataUrlBlob = !selectedVariant?.blob && !prepared?.blob && !blob && isDataUrl(dataUrl);
+    const uploadBlob = selectedVariant?.blob || prepared?.blob || blob || (useDataUrlBlob ? getDataUrlBlob(dataUrl) : null);
 
     if (!uploadBlob) {
         throw new Error('Prepared media upload requires a Blob or data URL.');
     }
 
-    const uploadContentType = selectedVariant?.mimeType || prepared?.mimeType || contentType || uploadBlob.type || 'image/jpeg';
-    const blobFingerprint = dataUrl ? getMediaDataFingerprint(dataUrl) : await getBlobFingerprint(uploadBlob);
+    const uploadContentType = normalizeMediaUploadMimeType(
+        selectedVariant?.mimeType || prepared?.mimeType || contentType || uploadBlob.type,
+    );
+    assertMediaUploadBlobCandidate({
+        blob: uploadBlob,
+        mimeType: uploadContentType,
+        preparedOutput: prepared?.exifNormalized === true,
+        profile,
+        variant: selectedVariantId,
+    });
+    const blobFingerprint = useDataUrlBlob
+        ? getMediaDataFingerprint(dataUrl)
+        : await getBlobFingerprint(uploadBlob);
     const uploadMediaId = prepared?.mediaId
         || mediaId
         || `${profile}_${blobFingerprint}`;
-    const checksum = prepared?.checksum || mediaChecksum || blobFingerprint;
-    const normalizedEntityId = normalizeId(entityId, 'asset');
-    const normalizedStoreId = normalizeId(storeId, 'store');
-    const normalizedTenantId = normalizeId(tenantId, 'tenant');
-    const version = String(prepared?.version ?? 1);
+    const checksum = String(prepared?.checksum || mediaChecksum || blobFingerprint).trim();
+    if (!/^[a-f0-9]{8,128}$/i.test(checksum)) {
+        throw new Error('prepared_media_checksum_invalid');
+    }
+    const preparedVersion = prepared?.version ?? 1;
+    if (!Number.isSafeInteger(preparedVersion) || preparedVersion < 1 || preparedVersion > 99) {
+        throw new Error('prepared_media_version_invalid');
+    }
+    const version = String(preparedVersion);
     const exifNormalized = prepared?.exifNormalized === true;
     const sourceMetadataPolicy = exifNormalized ? 'source_metadata_stripped' : 'source_metadata_not_normalized';
-    const uploadVariant = (variantId: MediaImageVariantId, variantBlob: Blob, variantContentType: string) => {
-        const extension = getMediaFileExtension(variantContentType);
+    const uploadVariant = async (variantId: MediaImageVariantId, variantBlob: Blob, variantContentType: string) => {
+        const normalizedContentType = normalizeMediaUploadMimeType(variantContentType || variantBlob.type);
+        assertMediaUploadBlobCandidate({
+            blob: variantBlob,
+            mimeType: normalizedContentType,
+            preparedOutput: prepared?.exifNormalized === true,
+            profile,
+            variant: variantId,
+        });
+        const extension = getMediaFileExtension(normalizedContentType);
         const path = buildMediaStoragePath({
-            entityId: normalizedEntityId,
+            entityId,
             extension,
             mediaId: uploadMediaId,
             profile,
-            storeId: normalizedStoreId,
-            tenantId: normalizedTenantId,
+            storeId: typeof storeId === 'string' || typeof storeId === 'number' ? String(storeId) : '',
+            tenantId: typeof tenantId === 'string' || typeof tenantId === 'number' ? String(tenantId) : '',
             variant: variantId,
         });
 
-        return uploadBlobToStorage({
+        const url = await uploadBlobToStorage({
             blob: variantBlob,
             cacheControl: STORAGE_CACHE_CONTROL.immutablePublic,
-            contentType: variantContentType,
+            contentType: normalizedContentType,
             customMetadata: {
                 checksum,
                 exifNormalized: String(exifNormalized),
@@ -112,14 +155,33 @@ export async function uploadPreparedMediaImage({
             },
             path,
         });
+        if (!url) throw new Error('Prepared media upload returned no URL');
+        return url;
     };
 
-    const preparedVariants = prepared?.variants
-        ? Object.values(prepared.variants).filter((entry): entry is PreparedMediaVariant => Boolean(entry?.blob))
-        : [];
+    const preparedVariants: PreparedMediaVariant[] = [];
+    if (prepared?.variants) {
+        const seenVariantIds = new Set<MediaImageVariantId>();
+        for (const [variantKey, entry] of Object.entries(prepared.variants)) {
+            if (!entry) continue;
+            if (
+                entry.id !== variantKey
+                || !profileConfig.variants.some((allowed) => allowed.id === entry.id)
+                || seenVariantIds.has(entry.id)
+                || !(entry.blob instanceof Blob)
+            ) {
+                throw new Error('prepared_media_variants_invalid');
+            }
+            seenVariantIds.add(entry.id);
+            preparedVariants.push(entry);
+        }
+    }
 
     if (preparedVariants.length > 0) {
-        const uploadedVariants = await Promise.all(preparedVariants.map(async (preparedVariant) => ({
+        if (!preparedVariants.some((preparedVariant) => preparedVariant.id === selectedVariantId)) {
+            throw new Error('prepared_media_variant_missing');
+        }
+        const uploadResults = await Promise.allSettled(preparedVariants.map(async (preparedVariant) => ({
             id: preparedVariant.id,
             url: await uploadVariant(
                 preparedVariant.id,
@@ -127,10 +189,47 @@ export async function uploadPreparedMediaImage({
                 preparedVariant.mimeType || preparedVariant.blob.type || uploadContentType,
             ),
         })));
-        return uploadedVariants.find((uploadedVariant) => uploadedVariant.id === selectedVariantId)?.url
-            || uploadedVariants[0]?.url
-            || '';
+        const uploadedVariants = uploadResults.flatMap((result) => (
+            result.status === 'fulfilled' ? [result.value] : []
+        ));
+        const failedVariant = uploadResults.find((result) => result.status === 'rejected');
+        if (failedVariant?.status === 'rejected') {
+            const cleanup = await cleanupUploadedMediaUrls(
+                uploadedVariants.map(({ url }) => url),
+                deleteFileByUrl,
+            );
+            if (cleanup.failedCount > 0) {
+                logStorageHelperFailure(
+                    'prepared_media_partial_variant_cleanup_failed',
+                    new Error('prepared_media_partial_variant_cleanup_failed'),
+                    {
+                        attemptedCleanupCount: cleanup.attemptedCount,
+                        failedCleanupCount: cleanup.failedCount,
+                        profile,
+                        uploadedVariantCount: uploadedVariants.length,
+                    },
+                );
+            }
+            throw failedVariant.reason instanceof Error
+                ? failedVariant.reason
+                : new Error('Prepared media variant upload failed');
+        }
+
+        const primaryUrl = uploadedVariants.find((uploadedVariant) => uploadedVariant.id === selectedVariantId)?.url || '';
+        if (!primaryUrl) throw new Error('Prepared media upload returned no URL');
+        return {
+            primaryUrl,
+            uploadedUrls: uploadedVariants.map(({ url }) => url),
+        };
     }
 
-    return uploadVariant(selectedVariantId, uploadBlob, uploadContentType);
+    const primaryUrl = await uploadVariant(selectedVariantId, uploadBlob, uploadContentType);
+    if (!primaryUrl) throw new Error('Prepared media upload returned no URL');
+    return { primaryUrl, uploadedUrls: [primaryUrl] };
+}
+
+export async function uploadPreparedMediaImage(
+    data: UploadPreparedMediaImageData,
+): Promise<string> {
+    return (await uploadPreparedMediaImageWithLedger(data)).primaryUrl;
 }

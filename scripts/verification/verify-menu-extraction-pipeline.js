@@ -73,6 +73,18 @@ filesEqual(
   'Shared extraction project-size limits are mirrored byte-for-byte',
 );
 
+filesEqual(
+  'src/data/shared/publicMenuDraftData.ts',
+  'functions/src/sharedData/publicMenuDraftData.ts',
+  'Public menu draft DTO contract is mirrored byte-for-byte',
+);
+
+filesEqual(
+  'src/data/shared/menuExtractionIntegrity.ts',
+  'functions/src/sharedData/menuExtractionIntegrity.ts',
+  'Shared menu extraction integrity contract is mirrored byte-for-byte',
+);
+
 contains(
   'src/data/shared/menuExtractionJob.ts',
   [
@@ -609,21 +621,40 @@ notContains(
   contains(
     docPath,
     [
-      'controlled internal testing ready, not launch certification',
+      'Launch boundary:** Not current launch certification or deploy approval',
+      'source-gated AI Extraction Monitoring evidence only',
+      '`ENABLE_EXTRACTION_MONITORING_DASHBOARD=true`',
+      '`MobileExtractionMonitorScreen` inside `MobileShell`',
+      'Cross-tenant job reads and `MENULIST_AI_OPERATIONS` reads are Firestore-rule-gated to platform admins',
       'External Certification Runbook',
-      'source-verified for controlled internal testing',
-      'current production-readiness audit',
+      'active production-readiness audit',
     ],
-    `${docPath} documents the extraction monitoring launch boundary`,
+    `${docPath} documents the enabled extraction monitoring source and release boundary`,
   );
   notContains(
     docPath,
     [
-      'Feature flag OFF, ready for production',
+      'Feature flag OFF',
+      'ENABLE_EXTRACTION_MONITORING_DASHBOARD: false',
     ],
-    `${docPath} does not claim flag-off production readiness`,
+    `${docPath} does not claim a disabled extraction monitor`,
   );
 });
+
+contains(
+  'src/config/features.ts',
+  ['ENABLE_EXTRACTION_MONITORING_DASHBOARD: true,'],
+  'AI extraction monitoring feature flag is enabled in current source',
+);
+
+contains(
+  'src/components/mobile/screens/MobileExtractionMonitorScreen.tsx',
+  [
+    "const isPlatform = platformRole === 'PLATFORM';",
+    'getExtractionDashboardSnapshot({ status: filterToStatus(jobFilter), pageSize: 20 })',
+  ],
+  'AI extraction monitoring has a bounded platform mobile summary',
+);
 
 contains(
   '__docs__/menu-extraction-pipeline/menu-extraction-pipeline_mobile-support.md',
@@ -645,6 +676,30 @@ contains(
     'mobile passes remaining PDF page slots into conversion before canvas rendering',
   ],
   'Production-readiness tracker records desktop/mobile extraction upload cap parity',
+);
+
+contains(
+  'src/components/mobile/sheets/MenuUploadSheet.tsx',
+  [
+    'const convertedPdfImages = await convertPdfToImages([',
+    'uid: `${Date.now()}-${createRandomIdSegment(8)}`',
+    'name: file.name',
+    'arrayBuffer: () => file.arrayBuffer()',
+    "], 'mobile', 'mobile', { maxPages: remainingPageSlots });",
+    '...convertedPdfImages.map((page) => ({',
+  ],
+  'Mobile PDF conversion passes the typed converter input and consumes typed converted pages',
+);
+
+notContains(
+  'src/components/mobile/sheets/MenuUploadSheet.tsx',
+  [
+    /convertPdfToImages\(\[\s*\{[\s\S]*?size:\s*file\.size[\s\S]*?\}\s*\], 'mobile'/,
+    /convertPdfToImages\(\[\s*\{[\s\S]*?type:\s*file\.type[\s\S]*?\}\s*\], 'mobile'/,
+    /\]\s*,\s*'mobile'\s*,\s*'mobile'\s*,\s*\{ maxPages: remainingPageSlots \}\)\s+as any\[\]/,
+    /\.map\(\(page:\s*any\)/,
+  ],
+  'Mobile PDF conversion does not pass unused file metadata or erase converter result types',
 );
 
 contains(
@@ -1264,8 +1319,25 @@ contains(
     'key: `public-menu-entry-status:${userRateLimitHash}:${draftRateLimitHash}`',
     'statusOnly',
     'resultReady',
+    'buildIdempotentPublicDraftToken',
+    'batch.create(jobRef',
+    'batch.create(draftRef',
+    'const downloadToken = draftToken;',
+    'getReusableDraftByIdForUser',
+    'getPublicMenuDraftTimestampMillis',
+    'expiresAtMillis === null',
   ],
-  'Public create-menu queues durable public draft jobs with identity metadata and status-only polling support',
+  'Public create-menu atomically queues collision-safe drafts/jobs with identity metadata and status-only polling support',
+);
+
+notContains(
+  'src/app/api/public/create-menu/route.ts',
+  [
+    '.doc(draftToken).set({',
+    'extractionJobId: null',
+    'deletePublicMenuEntryDraft',
+  ],
+  'Public create-menu does not expose non-atomic orphan draft/job states or delete a concurrent winner',
 );
 
 contains(
@@ -1775,13 +1847,39 @@ contains(
     "getBoundedSecurityStringContext('storeId', context.storeId)",
     "getBoundedSecurityStringContext('projectId', context.projectId)",
     'const projectId = `${tenantId}-${Date.now().toString(36)}-${storeId}`',
+    'normalizePublicMenuDraftExtractedData(draft.extractedData)',
+    'getPublicMenuDraftTimestampMillis(draft.expiresAt)',
+    'normalizePublicDraftSourceForProject(draft, draftId',
+    'allowedBucket: storageAdmin.bucket().name',
+    'normalizeExtractedBusinessProfile(',
+    'normalizeCompletedClaimResult(draft, userId)',
+    'convertedTenantId: tenantId',
+    'convertedProjectSlug: projectSlug',
+    'convertedSubdomain: subdomain',
+    'convertedWasNewAccount: !hasExistingAccount',
+    'idempotent: true',
+    'idempotent: false',
+    'Promise.allSettled(cacheEffects.map((effect) => effect.run()))',
+    'cacheEffect: cacheEffects[index].name',
     'active: true',
     'deleted: false',
     'index: 0',
     "message: ''",
     'revalidateTag(`menu-store-${result.storeId}`)',
   ],
-  'Public draft claim writes parseable project IDs and the standard project file shape',
+  'Public draft claim validates durable DTOs, supports idempotent owner retry, and writes the standard project file shape',
+);
+contains(
+  'src/lib/public-menu-entry/publicDraftSource.ts',
+  [
+    'imagePath.startsWith(`publicMenuDrafts/${draftId}/`)',
+    "parsed.hostname !== 'firebasestorage.googleapis.com'",
+    'bucketName !== options.allowedBucket',
+    'storagePath !== imagePath',
+    "!parsed.searchParams.get('token')",
+    'MENU_EXTRACTION_JOB_LIMITS.MAX_FILE_SIZE_BYTES',
+  ],
+  'Public claim source envelope is bucket-, path-, MIME-, token-, and size-bound before project promotion',
 );
 notContains(
   'src/app/api/public/create-menu/claim/route.ts',
@@ -1878,6 +1976,105 @@ notContains(
   'Public create-menu no longer runs inline extraction',
 );
 
+const menuLinkImportActiveDocs = [
+  '__docs__/menu-link-import/README.md',
+  '__docs__/menu-link-import/menu-link-import_spec.md',
+  '__docs__/menu-link-import/menu-link-import_impl.md',
+  '__docs__/menu-link-import/menu-link-import_firebase.md',
+  '__docs__/menu-link-import/menu-link-import_mobile-support.md',
+  '__docs__/menu-link-import/menu-link-import_website.md',
+  '__docs__/menu-link-import/menu-link-import_helpdoc.md',
+  '__docs__/menu-link-import/menu-link-import_marketing.md',
+  '__docs__/menu-link-import/menu-link-import_test-cases.md',
+  '__docs__/menu-link-import/menu-link-import_validation.md',
+];
+menuLinkImportActiveDocs.forEach((docPath) => {
+  contains(
+    docPath,
+    [
+      'Launch boundary:** Not current launch certification or deploy approval',
+      'source-gated Menu Link Import evidence only',
+      'Both current intake paths require a signed-in owner before source acquisition or extraction',
+      '`/api/menu-link-imports`',
+      '`/api/public/create-menu`',
+      'production-readiness audit',
+      'External Certification Runbook',
+      '`npm run verify:production-readiness-local`',
+      '`npm run verify:menu-extraction-pipeline`',
+      '`npm run verify:functions-deploy-preflight`',
+      'authenticated desktop/mobile owner-flow QA',
+      'signed-in `/create-menu` browser QA',
+      'direct and rendered source-acquisition smoke',
+      'Gemini extraction provider smoke where fallback is used',
+      'applicable target Firebase/Vercel deploy evidence',
+      'production-host smoke',
+    ],
+    `${docPath} top launch and auth boundary`,
+  );
+});
+
+contains(
+  '__docs__/menu-link-import/README.md',
+  ['submitting a link redirects an unauthenticated visitor to sign in before acquisition begins'],
+  'Menu Link Import README public-page auth parity',
+);
+contains(
+  '__docs__/menu-link-import/menu-link-import_spec.md',
+  [
+    'requires sign-in before the protected create-draft request and source acquisition',
+    'rate-limited by HMAC-hashed user identity through `PUBLIC_MENU_ENTRY_AUTH`',
+  ],
+  'Menu Link Import spec authenticated public-draft parity',
+);
+notContains(
+  '__docs__/menu-link-import/menu-link-import_spec.md',
+  [
+    'starter funnel before sign-in, guarded by permission confirmation, public IP rate limits',
+    'accepts permission-confirmed menu links before sign-in',
+    'rate-limited by IP through `PUBLIC_MENU_ENTRY`',
+    'creates only a review preview before sign-in',
+  ],
+  'Menu Link Import spec must not claim anonymous acquisition or IP-only draft limiting',
+);
+contains(
+  '__docs__/menu-link-import/menu-link-import_impl.md',
+  ['Neither adapter performs anonymous source acquisition or extraction.'],
+  'Menu Link Import implementation two-adapter auth boundary',
+);
+contains(
+  '__docs__/menu-link-import/menu-link-import_firebase.md',
+  [
+    'It does not create a `menuLinkImportArtifacts` document because the temporary `publicMenuDrafts` record owns source metadata until claim.',
+    'rate-limits with HMAC-hashed user identity through `PUBLIC_MENU_ENTRY_AUTH`',
+  ],
+  'Menu Link Import Firebase public-draft storage and rate-limit parity',
+);
+contains(
+  '__docs__/menu-link-import/menu-link-import_website.md',
+  ['submit redirects unauthenticated visitors to sign in before the `withAuth`-protected route performs acquisition or extraction'],
+  'Menu Link Import website pre-sign-in copy boundary',
+);
+notContains(
+  '__docs__/menu-link-import/menu-link-import_website.md',
+  ['## Launch Readiness Status'],
+  'Menu Link Import website must not label source/copy status as launch readiness',
+);
+contains(
+  '__docs__/menu-link-import/menu-link-import_test-cases.md',
+  ['not an anonymous IP-only link-import limit'],
+  'Menu Link Import tests cover authenticated public draft rate-limit boundary',
+);
+contains(
+  '__docs__/audits/menulist-production-readiness-audit.md',
+  ['Menu Link Import active-doc auth/top-boundary checkpoint'],
+  'Production-readiness audit records Menu Link Import auth/doc parity',
+);
+contains(
+  '__docs__/changelog.md',
+  ['Menu Link Import Active Docs And Auth Boundary'],
+  'Changelog records Menu Link Import auth/doc parity',
+);
+
 contains(
   'src/app/api/menu-link-imports/route.ts',
   [
@@ -1914,9 +2111,9 @@ contains(
     "getBoundedMenuProcessingStringContext('sourceKind', acquisition.sourceKind)",
     "getBoundedMenuProcessingStringContext('sourceErrorCode', error.code)",
     'MENU_LINK_IMPORT_STORAGE_CLEANUP_FAILED',
-    'MENU_LINK_IMPORT_ARTIFACT_CLEANUP_FAILED',
+    'createOrReuseActiveMenuExtractionJob',
+    'additionalCreates: [{ data: artifactData, ref: artifactRef }]',
     'deleteMenuLinkImportStoragePath',
-    'deleteMenuLinkImportArtifactDoc',
     'menu_link_import_job_created',
     'menu_link_import_source_rejected',
     'menu_link_import_route_failed',
@@ -1925,6 +2122,26 @@ contains(
     'jobDocCreated',
   ],
   'Authenticated link import route uses bounded menu-processing diagnostics',
+);
+
+contains(
+  'src/lib/menu-extraction/activeJobClaim.ts',
+  [
+    'additionalCreates?: ReadonlyArray',
+    'return params.db.runTransaction(async (transaction) => {',
+    'transaction.create(jobRef, params.jobData);',
+    'transaction.create(additionalCreate.ref, additionalCreate.data);',
+  ],
+  'Authenticated link import creates artifact metadata atomically with the extraction job',
+);
+
+notContains(
+  'src/app/api/menu-link-imports/route.ts',
+  [
+    'artifactRef.set(',
+    'await artifactRef.create(',
+  ],
+  'Authenticated link import must not create artifact metadata outside the active-job transaction',
 );
 
 notContains(
@@ -2207,9 +2424,16 @@ contains(
     'expectedChangeCount?: number',
     'function getAppliedExtractionChangeCount',
     'function isAcknowledgedApplyChangesResult',
+    'function buildCompletedReviewJobPayload',
     'appliedChangeCount <= 0',
     'appliedChangeCount !== expectedChangeCount',
     'completed: true',
+    'upsertById(files[fileIndex].extractedData.data.categories, [cat.newCategory]);',
+    'upsertById(files[fileIndex].extractedData.data.items, [item.newItem]);',
+    'const batch = writeBatch(firebaseClient);',
+    'batch.update(projectRef, sanitizeFirestoreValue(updatePayload));',
+    'batch.update(jobRef, buildCompletedReviewJobPayload());',
+    'await batch.commit();',
     'function assertOwnedPreviewJob',
     "jobData.status !== 'preview_ready'",
     "throw new Error('Extraction review does not belong to this business')",
@@ -2231,6 +2455,16 @@ contains(
     'version: molContext.version',
   ],
   'Review apply validates ownership/status, creates standard project file shells, routes linked outlets through outlet-save, and revalidates public render cache',
+);
+
+notContains(
+  'src/lib/extraction/applyChanges.ts',
+  [
+    'files[fileIndex].extractedData.data.categories.push(cat.newCategory)',
+    'files[fileIndex].extractedData.data.items.push(item.newItem)',
+    "await updateDoc(jobRef, {\n            status: 'completed'",
+  ],
+  'Extraction review apply avoids duplicate add retries and direct project/job split completion writes',
 );
 
 ordered(
@@ -2383,14 +2617,58 @@ notContains(
 );
 
 contains(
-  'functions/src/messagingOnboarding/intakeProcessor.ts',
+  'functions/src/triggers/messaging.ts',
   [
+    'isMessagingOnboardingMenuExtractionProjectId',
+    'if (!isMessagingOnboardingMenuExtractionProjectId(after.projectId)) return;',
+  ],
+  'Messaging extraction trigger rejects malformed non-string project IDs before retry-enabled watcher work',
+);
+
+notContains(
+  'functions/src/triggers/messaging.ts',
+  [
+    "after.projectId?.startsWith('msg-onboarding-')",
+  ],
+  'Messaging extraction trigger does not invoke string methods on unvalidated persisted fields',
+);
+
+contains(
+  'functions/src/messagingOnboarding/extractionLifecycle.ts',
+  [
+    'MAX_MESSAGING_SESSION_DOCUMENT_JSON_BYTES = 850_000',
+    'Buffer.byteLength(serialized, "utf8")',
+    'MESSAGING_ONBOARDING_SESSION_DOCUMENT_TOO_LARGE',
+    'assertMessagingSessionDocumentSize({',
     'buildMessagingOnboardingMenuExtractionDestination',
     'buildMenuExtractionRoutingFields',
     'MENU_EXTRACTION_SOURCES.MESSAGING_ONBOARDING',
     'skipProjectSave: true',
+    'transaction.create(jobRef, jobData)',
+    'extractionJobId: jobRef.id',
+    'processingRunsThisWeek: weekly.count + 1',
   ],
-  'Messaging onboarding uses shared messaging destination routing',
+  'Messaging onboarding bounds the session document and atomically binds shared destination routing, state, and quota',
+);
+
+contains(
+  'scripts/verification/test-messaging-extraction-lifecycle-emulator.ts',
+  [
+    'verifyOversizedExtractionResultFailsBeforeWrite',
+    '"x".repeat(900_000)',
+    '/MESSAGING_ONBOARDING_SESSION_DOCUMENT_TOO_LARGE/',
+    'assert.equal(persisted.get("state"), "PROCESSING_MENU")',
+  ],
+  'Messaging lifecycle emulator rejects oversized terminal data without partially advancing the session',
+);
+
+contains(
+  'functions/src/messagingOnboarding/intakeProcessor.ts',
+  [
+    'claimMessagingIntakeSession',
+    'enqueueMessagingExtractionJob',
+  ],
+  'Messaging intake uses transactional claim and extraction lifecycle boundaries',
 );
 
 contains(
@@ -2400,11 +2678,13 @@ contains(
     'active: true',
     'deleted: false',
     'index,',
-    'message: extractedData.message || ""',
-    'data: extractedData.data',
+    'const clonedData',
+    'data: clonedData',
     'extractedProjectFiles,',
+    'finalizeMessagingExtractionSuccess',
+    'session.extractionJobId !== jobId',
   ],
-  'Messaging extraction watcher stores standard project files for publish',
+  'Messaging extraction watcher clones standard project files and finalizes only the exact bound job',
 );
 
 contains(
@@ -2433,8 +2713,13 @@ contains(
     'eventType: "PREVIEW_VIEWED"',
     'metadataKeyCount: 0',
     'logRuntimeFailure',
+    'const resolvedBusinessType = getBusinessTypeConfig(businessTypeCandidate)?.value',
+    'session.expiresAtMillis <= viewedAt.toMillis()',
+    'const eventId = crypto.randomUUID()',
+    '.doc(eventId)',
+    'eventId,',
   ],
-  'Messaging preview GET route uses bounded diagnostics',
+  'Messaging preview GET canonicalizes identity, enforces expiry, and stores matching event document identity',
 );
 
 notContains(
@@ -2456,18 +2741,225 @@ contains(
     'executeMessagingOnboardingPublish',
     'state: "PUBLISHING"',
     'state === "LIVE"',
-    'categoryCount < 1 || itemCount < 1 || !hasItemWithPrice',
+    'const menuValidation = validateMessagingPublishMenu(menuData);',
     'messaging_preview_publish_retry_failed',
     'messaging_preview_approve_route_failed',
     'getPreviewApproveLogContext',
+    'const sessionHash = hashPublicRateLimitValue(sessionId);',
     'const ipHash = hashPublicRateLimitValue(ip);',
-    'key: `publish:${ipHash}`',
+    'key: `msg-preview-publish:${sessionHash}:${ipHash}`',
     'PUBLISH_FAILED_REASON',
     'messaging_preview_event_write_failed',
     'eventType: "PREVIEW_APPROVED"',
     'eventType: "PUBLISH_FAILED"',
+    'getMessagingCommittedPublishResult',
+    'messaging_preview_publish_commit_replay_check_failed',
+    'return NextResponse.json({ success: true, publishedResult: committedResult })',
+    'Boolean(getBusinessTypeConfig(value))',
+    'const eventId = crypto.randomUUID()',
+    '.doc(eventId)',
+    'const approvalEventId = crypto.randomUUID()',
+    '.doc(approvalEventId)',
+    'eventId: approvalEventId',
   ],
-  'Messaging approval route uses the active centralized publish executor, publish gate, and bounded diagnostics',
+  'Messaging approval uses canonical types, committed replay, matching event identity, and the centralized publisher',
+);
+
+contains(
+  'src/lib/messaging-onboarding/previewReadSessionBoundary.ts',
+  [
+    'optionalString(businessInfo?.businessName, 100)',
+    'optionalString(businessInfo?.address, 200)',
+  ],
+  'Messaging preview persistence boundary matches approve field limits',
+);
+
+contains(
+  'src/lib/messaging-onboarding/previewClientResponse.ts',
+  [
+    'normalizeClientString(payload.businessName, 100)',
+    'normalizeClientString(payload.address, 200)',
+  ],
+  'Messaging browser response boundary matches persisted and approve field limits',
+);
+
+contains(
+  'src/app/(global-pages)/msg-preview/[sessionId]/page.tsx',
+  [
+    'import { BUSINESS_TYPES } from "@data/shared/businessTypes"',
+    'maxLength={100}',
+    'maxLength={200}',
+    'BUSINESS_TYPES.map((type)',
+  ],
+  'Messaging preview UI bounds owner fields and selects from the canonical business-type registry',
+);
+
+contains(
+  'src/lib/messaging-onboarding/publishValidationBoundary.ts',
+  [
+    'activeCategoryCount',
+    'activeItemCount',
+    'pricedItemCount',
+    'valid: activeCategoryIds.size > 0 && activeItems.length > 0 && pricedItemCount > 0',
+    'attribute.active !== false && hasPrice(attribute.price)',
+  ],
+  'Messaging publish validation boundary requires an active category, active item, and item or variant price',
+);
+
+contains(
+  'src/lib/messaging-onboarding/previewResponseBoundary.ts',
+  [
+    'normalizePublicMenuDraftExtractedData(value)',
+    'item.active !== false && activeCategoryIds.has(item.category)',
+    'return categories.length > 0 && items.length > 0 ? { categories, items } : null;',
+  ],
+  'Messaging preview uses the same bounded active graph admitted by publish',
+);
+
+contains(
+  'src/lib/messaging-onboarding/publishRetryBoundary.ts',
+  [
+    'RETRYABLE_FIREBASE_ERROR_CODES',
+    'RETRYABLE_GRPC_STATUS_CODES',
+    'isMessagingPublishRetryableError',
+    'isMessagingPublishClaimStale',
+  ],
+  'Messaging publish retry and stale-claim behavior is bounded and deterministic',
+);
+
+contains(
+  'src/app/api/msg-preview/[sessionId]/approve/route.ts',
+  [
+    'if (!isMessagingPublishRetryableError(publishError))',
+    'messaging_preview_publish_transient_failure_retrying',
+    'Recovered interrupted publish attempt',
+    'stalePublishRecovered',
+  ],
+  'Messaging approval retries only transient failures and recovers stale publish claims',
+);
+
+contains(
+  'functions/src/messagingOnboarding/sessionCleanupBoundary.ts',
+  [
+    'value.sessionId !== expectedSessionId',
+    '`messagingOnboarding/${sessionId}/${id}.${extension}`',
+    'getMessagingExpiryTransitionPath',
+    'return ["FAILED", "EXPIRED"]',
+  ],
+  'Messaging cleanup validates exact document and Storage ownership and uses allowed expiry edges',
+);
+
+contains(
+  'functions/src/schedulers/messagingSessionCleanup.ts',
+  [
+    'normalizeMessagingCleanupSession(doc.data(), doc.id)',
+    'if (!allFilesDeleted) continue;',
+    'await doc.ref.delete({ lastUpdateTime: doc.updateTime });',
+    'claimMessagingReminder',
+    'quarantineInvalidMessagingCleanupSession',
+    '.where("expiresAt", ">", now)',
+    'if (doc.get("status") === "PROCESSING") continue;',
+    'isFailedPreconditionError',
+  ],
+  'Messaging cleanup preserves retry pointers and in-flight rows, claims live reminders, and quarantines invalid rows',
+);
+
+contains(
+  'functions/src/messagingOnboarding/sessionCleanupBoundary.ts',
+  [
+    'session.expiresAtMillis > nowMillis',
+    '["VALIDATING_ASSETS", "PROCESSING_MENU", "PUBLISHING"].includes(state)',
+  ],
+  'Messaging reminder and cleanup boundaries exclude expired or actively processing sessions',
+);
+
+contains(
+  'functions/src/messagingOnboarding/providers/whatsapp/WhatsAppAdapter.ts',
+  [
+    'TRUSTED_WHATSAPP_MEDIA_HOST_SUFFIXES',
+    'export function isTrustedWhatsAppMediaUrl',
+    'mediaLookupUrl.searchParams.set("phone_number_id", this.phoneNumberId)',
+    'if (!isTrustedWhatsAppMediaUrl(url))',
+    'millis <= now + 24 * 60 * 60 * 1000',
+    'response.status !== 400 && response.status !== 422',
+    'must not amplify throttling, auth, or transient server failures',
+  ],
+  'WhatsApp binds trusted media downloads and avoids retry amplification for failed interactive delivery',
+);
+
+contains(
+  'scripts/verification/test-messaging-whatsapp-adapter.ts',
+  [
+    'testLinkDeliveryDoesNotAmplifyProviderFailures',
+    'interactive status ${status} must not trigger a second provider call',
+    '[[401, false], [429, true], [503, true]]',
+  ],
+  'WhatsApp adapter tests cover auth, throttling, and transient interactive-send call amplification',
+);
+
+contains(
+  'functions/src/messagingOnboarding/inboundQueue.ts',
+  [
+    'timestampMillis < nowMillis - RETENTION.INBOUND_MESSAGE_TTL_MS',
+    'timestampMillis > nowMillis + 24 * 60 * 60 * 1000',
+    'messageType === "text" && !text',
+  ],
+  'Messaging inbound queue rejects stale, future, and empty text events before durable ingress',
+);
+
+contains(
+  'functions/src/messagingOnboarding/healthMonitor.ts',
+  [
+    'HEALTH_COMPUTE_LEASE_MS = 15 * 60 * 1000',
+    'export function isMessagingHealthComputationDue',
+    'computeLeaseUntil: Timestamp.fromMillis(now.toMillis() + HEALTH_COMPUTE_LEASE_MS)',
+    'lastAttemptAt: now',
+    'computeLeaseUntil: null',
+    'MESSAGING_HEALTH_LEASE_RELEASE_FAILED',
+  ],
+  'Messaging health snapshots use a recoverable bounded computation lease instead of treating attempts as completions',
+);
+
+notContains(
+  'functions/src/schedulers/messagingSessionCleanup.ts',
+  [
+    'doc.data() as MessagingOnboardingSession',
+    '.doc(session.sessionId).delete()',
+  ],
+  'Messaging cleanup does not trust asserted session rows or embedded delete targets',
+);
+
+contains(
+  'functions/src/messagingOnboarding/reminderLease.ts',
+  [
+    'reminderMessageLeaseToken',
+    'expectedPreviewBaseUrl',
+    'snapshot.get("state") !== "AWAITING_APPROVAL"',
+    'lastUpdateTime: FirebaseFirestore.Timestamp',
+    '{ lastUpdateTime: params.lastUpdateTime }',
+  ],
+  'Messaging reminders use an origin-bound lease and stale-safe quarantine precondition',
+);
+
+contains(
+  'scripts/verification/test-messaging-session-cleanup-emulator.ts',
+  [
+    'A stale quarantine snapshot must not overwrite a concurrent valid state update',
+    'lastUpdateTime: staleSnapshot.updateTime',
+    'assert.equal((await staleQuarantineRef.get()).get("state"), "COLLECTING_INPUT")',
+  ],
+  'Messaging cleanup emulator proves stale quarantine cannot overwrite concurrent valid state',
+);
+
+contains(
+  'functions/src/messagingOnboarding/publishedResultBoundary.ts',
+  [
+    'normalizeMessagingPublishedResult',
+    'Number.isSafeInteger(tenantId)',
+    'safeHttpsUrl(value.publicUrl)',
+    'safeHttpsUrl(value.dashboardUrl)',
+  ],
+  'Messaging runtime, delivery, and health use one strict published-result contract',
 );
 
 notContains(
@@ -2476,6 +2968,7 @@ notContains(
     'secureError(',
     '[msg-preview/approve] Error',
     'key: `publish:${ip}`',
+    'key: `publish:${ipHash}`',
     'message: (retryError as Error).message',
     'Publish failed after retry: ${(retryError as Error).message}',
     'sessionId.length < 10',
@@ -2498,8 +2991,11 @@ contains(
     'eventType: "PREVIEW_FIX_REQUESTED"',
     'metadataKeyCount: 3',
     'logRuntimeFailure',
+    'const eventId = crypto.randomUUID()',
+    '.doc(eventId)',
+    'eventId,',
   ],
-  'Messaging fix route uses bounded diagnostics',
+  'Messaging fix route uses matching event document identity and bounded diagnostics',
 );
 
 notContains(
@@ -2583,10 +3079,8 @@ contains(
     'const projectId = `${core.tenantId}-default-${core.storeId}`',
     'db.collection(`projects/${core.tenantId}/${core.storeId}`).doc(projectId)',
     'doc(normalizedSessionId)',
-    'Array.isArray(sessionData.extractedProjectFiles)',
-    'active: file.active !== false',
-    'deleted: file.deleted === true',
-    'index: typeof file.index === "number" ? file.index : index',
+    'const projectFiles = sessionData.extractedProjectFiles;',
+    'timeZone: currency.timezone,',
     'files: projectFiles',
     'DB_COLLECTIONS.PLATFORM_SUMMARY',
     'slug: projectSlug',
@@ -2596,13 +3090,35 @@ contains(
 	    'revalidateTag("screen-data")',
 	    'touchDigitalScreenContentVersionForStoreServer(result.storeId, "messagingOnboardingPublish")',
 	    'messaging_onboarding_publish_cache_revalidation_failed',
+	    'operation: "next_cache_tags"',
+	    'operation: "digital_screen_content_version"',
+	    'operation: "owner_business_assistant_packet"',
 	    'messaging_onboarding_publish_event_write_failed',
+	    'const eventId = crypto.randomUUID()',
+	    '.doc(eventId)',
+	    'eventId,',
 	    'getBoundedRuntimeStringContext("storeId", result.storeId)',
 	    'getBoundedRuntimeStringContext("sessionId", sessionId)',
 	    'logPublishEvent(normalizedSessionId, sessionData, "PUBLISH_COMPLETED", "LIVE", {',
 	    'logRuntimeFailure',
   ],
   'Messaging publish writes a renderer-ready project, summary entry, and public cache tags',
+);
+
+contains(
+  'src/lib/messaging-onboarding/publishSessionBoundary.ts',
+  [
+    'export type MessagingPublishProjectFile',
+    'function normalizeExtractedProjectFiles',
+    'source.extractedProjectFiles',
+    'buildFallbackProjectFiles',
+    'active: source.active !== false',
+    'deleted: source.deleted === true',
+    'normalizeProjectFileIndex(source.index, fallbackIndex)',
+    "index === 0 ? { message: '', data: extractedMenuData } : null",
+    'extractedProjectFiles: session.extractedProjectFiles',
+  ],
+  'Messaging publish session boundary preserves renderer-ready project files and legacy fallback',
 );
 
 ordered(
@@ -2692,9 +3208,9 @@ contains(
     'PROCESS_MENU_IMAGES_JOB_FAILED_MESSAGE',
     'message: PROCESS_MENU_IMAGES_JOB_FAILED_MESSAGE',
     'PROCESS_MENU_IMAGES_JOB_STATUS_UPDATE_FAILED',
-    'PROCESS_MENU_IMAGES_JOB_TENANT_MISMATCH',
     'PROCESS_MENU_IMAGES_JOB_BUSINESS_DEFAULTS_FAILED',
     'PROCESS_MENU_IMAGES_JOB_PUBLIC_DRAFT_STATUS_UPDATE_FAILED',
+    'PROCESS_MENU_IMAGES_JOB_PUBLIC_DRAFT_BINDING_INVALID',
     'PROCESS_MENU_IMAGES_JOB_SAFE_MODE_ACTIVE',
     'PROCESS_MENU_IMAGES_JOB_SAFE_MODE_MESSAGE',
     'if (await isSafeModeActive())',
@@ -2713,6 +3229,16 @@ contains(
     'const sourceStatus = getFunctionErrorStatus(error)',
     'function normalizeRetryAfterSeconds(value: unknown): number | null',
     'source.details?.retryDelay',
+    'assertPublicDraftJobBinding(jobId, job)',
+    'publicDraftBindingVerified = true',
+    'if (publicDraftBindingVerified)',
+    'normalizePublicMenuDraftExtractedData(sourceData)',
+    'normalizeExtractedBusinessProfile(menuData?.extractedBusinessProfile)',
+    'validateJobRouting(job)',
+    'findDuplicateMenuExtractionFileUids(job.files)',
+    'resolveMenuExtractionBatchCompletion(result.batchResults',
+    'partialResultNeedsReview',
+    'recorded: result.transaction.recorded',
   ],
   'Worker enforces shared limits, public draft lifecycle, shape checks, cache revalidation, timing telemetry, bounded diagnostics, failures, and result summaries',
 );
@@ -2720,6 +3246,10 @@ contains(
 ordered(
   'functions/src/logic/processMenuImagesJob.ts',
   [
+    'const updated = await firestoreAdmin.runTransaction',
+    'if (!updated)',
+    'await assertPublicDraftJobBinding(jobId, job);',
+    'publicDraftBindingVerified = true;',
     'if (await isSafeModeActive())',
     'return;',
     'await markPublicDraftExtractionProcessing(jobId, job);',
@@ -2727,6 +3257,59 @@ ordered(
     'const result = deterministicLinkResult || await processMenuImagesLogic(request);',
   ],
   'Worker checks SAFE_MODE before public draft processing and provider work',
+);
+
+contains(
+  'src/lib/menu-extraction/activeJobClaim.ts',
+  [
+    "where('projectId', '==', params.projectId)",
+    "where('status', 'in', MENU_EXTRACTION_ACTIVE_JOB_STATUSES)",
+    'const activeSnapshot = await transaction.get(activeQuery);',
+    'transaction.create(jobRef, params.jobData);',
+    'transaction.create(additionalCreate.ref, additionalCreate.data);',
+  ],
+  'Owner and link-import job creation share one transactional project-wide active-job boundary',
+);
+
+contains(
+  'functions/src/logic/processMenuImages.ts',
+  [
+    'MAX_CONCURRENT_FILE_UPLOADS = 3',
+    'failedFileIndices.sort',
+    'uploadedFiles.length !== files.length',
+    'findInvalidMenuExtractionSourceIndexes',
+    'batchResults: batchResults.map',
+    'await cleanupProviderFiles(uploadedFilesForCleanup);',
+    "status: successfulBatches === totalBatches ? 'completed' : 'partial'",
+  ],
+  'Provider uploads are bounded, ordered, all-or-nothing, source-index checked, accounted, and cleaned up',
+);
+
+contains(
+  'functions/src/logic/saveFilesToProject.ts',
+  [
+    'selectNewMenuExtractionProjectFiles(existingFiles, jobFiles)',
+    'replayedFilesSkipped: jobFiles.length - newFiles.length',
+    'items: (extractedData.data.items || []).map',
+  ],
+  'Project persistence is replay-safe and does not mutate the provider response in place',
+);
+
+contains(
+  'src/components/mobile/sheets/MenuUploadSheet.tsx',
+  [
+    "cleanupUploadedMenuFiles(uploadedFiles, 'partial_upload_failure', projectId)",
+  ],
+  'Mobile partial upload failure removes successful orphan candidates',
+);
+
+contains(
+  'src/components/templates/main-app/projects/index.tsx',
+  [
+    "'partial_upload_failure'",
+    'successfulUploads',
+  ],
+  'Desktop partial upload failure removes successful orphan candidates',
 );
 
 notContains(
@@ -3048,6 +3631,19 @@ contains(
 );
 
 contains(
+  'functions/src/schedulers/menulistMaintenanceScheduler.ts',
+  [
+    'PUBLIC_MENU_DRAFT_IMAGE_PATH_INVALID_CODE',
+    'imagePath.startsWith(`publicMenuDrafts/${doc.id}/`)',
+    'Preserve the draft as the durable retry record',
+    'continue;',
+    'if (deletedDrafts > 0)',
+    'deletedDrafts,',
+  ],
+  'Public draft cleanup preserves the Firestore retry record when source deletion is unsafe or fails',
+);
+
+contains(
   'functions/src/utils/menuExtractionResultSummary.ts',
   [
     'export function buildExtractionResultSummary',
@@ -3064,14 +3660,26 @@ contains(
   'functions/src/logic/processMenuImagesJob.ts',
   [
     'function buildPublicDraftExtractedData',
-    'function normalizeDraftCategory',
-    'function normalizeDraftItem',
-    'category: String(item.category ?? categoryId ?? "")',
-    'active: item.active !== false',
-    'available: item.available !== false',
+    'normalizePublicMenuDraftExtractedData(sourceData)',
+    'throw new Error("No coherent public menu data remained after validation.")',
+    'assertPublicDraftJobBinding(jobId, job)',
+    'jobId !== `public_${draftId}`',
+    'draft.extractionJobId !== jobId',
+    'draft.createdByUId !== requestedByUId',
+    'draft.imagePath !== fileStoragePath',
     'updatePublicDraftFromExtraction(jobId, job, result.data.data, redistributedFiles)',
   ],
-  'Worker normalizes public draft extracted data to the project/editor shape',
+  'Worker allowlists public draft extracted data and verifies the durable draft/job owner binding',
+);
+
+notContains(
+  'functions/src/logic/processMenuImagesJob.ts',
+  [
+    'const { sourceFileIndex: _sourceFileIndex, ...rest } = category',
+    '...rest,\n        id: String(category.id)',
+    '...rest,\n        id: String(item.id)',
+  ],
+  'Worker does not spread arbitrary provider fields into durable public draft data',
 );
 
 contains(

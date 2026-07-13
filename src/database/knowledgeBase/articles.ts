@@ -1,21 +1,27 @@
 import { DB_COLLECTIONS } from "@constant/database";
-import { collection, deleteDoc, doc, documentId, getDoc, getDocs, limit, query, QueryConstraint, runTransaction, setDoc, where, writeBatch } from "@firebase/firestore";
+import { collection, doc, documentId, getDoc, getDocs, limit, query, QueryConstraint, runTransaction, Timestamp, where } from "@firebase/firestore";
 import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentComposer';
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import getActiveSession from "@lib/auth/getActiveSession";
 import { ANSWERLATTICE_CACHE_SOURCES } from "@lib/answerlattice/cacheVersionManifest";
+import { isAnswerlatticeArticleBulkStatus, normalizeAnswerlatticeArticleMutationIds, resolveSingleAnswerlatticeArticleScope } from '@lib/answerlattice/articleMutationBoundary';
 import { bumpAnswerlatticeCacheVersion } from "@lib/answerlattice/cacheVersionClient";
 import { getAnswerlatticeScopeLogContext, getBoundedAnswerlatticeStringContext, logAnswerlatticeFailure } from "@lib/answerlattice/diagnostics";
+import { normalizeAnswerlatticeKbArticleId } from '@lib/answerlattice/kbArticleIdBoundary';
+import { ANSWERLATTICE_FAQ_ARTICLE_LINK_LIMIT } from '@lib/answerlattice/faqContent';
+import { normalizeAnswerlatticeFaqId } from '@lib/answerlattice/faqIdBoundary';
 import { normalizeAnswerlatticeScopeDocumentId } from "@lib/answerlattice/sessionScope";
 import { revalidateAnswerlatticePublicClientCache } from "@lib/cache/answerlatticePublicClientCache";
 import { answerlatticeFirebaseClient } from "@lib/firebase/answerlatticeFirebaseClient";
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
-import { KnowledgeBaseArticleType } from "@type/knowledgeBase";
+import { ANSWERLATTICE_FAQ_STATUS } from '@type/answerlattice';
+import { ARTICLE_STATUS, KnowledgeBaseArticleType } from "@type/knowledgeBase";
 import { addDoc } from "firebase/firestore";
 
 const COLLECTION = DB_COLLECTIONS.KB_ARTICLES;
 const KB_ARTICLE_LIST_LIMIT = 500;
 const KB_ARTICLE_ID_QUERY_CHUNK_SIZE = 30;
+const ANSWERLATTICE_PRODUCT_ID = 'AL';
 const ARTICLE_ENTITY_EXTRACTION_RESPONSE_JSON_MAX_BYTES = 16 * 1024;
 const ARTICLE_ENTITY_EXTRACTION_REQUEST_POLICY: RequestInit = {
     cache: 'no-store',
@@ -44,7 +50,9 @@ const getCollectionRef = async () => {
 }
 
 const getDocRef = async (docId: string) => {
-    return doc(answerlatticeFirebaseClient, `${COLLECTION}`, docId)
+    const articleId = normalizeAnswerlatticeKbArticleId(docId);
+    if (!articleId) throw new Error('Knowledge base article ID is invalid.');
+    return doc(answerlatticeFirebaseClient, `${COLLECTION}`, articleId)
 }
 
 const resolveKnowledgeBaseArticleSession = async (operation: string): Promise<KnowledgeBaseArticleSessionLookup> => {
@@ -101,12 +109,13 @@ const resolveReadableArticleScope = async (): Promise<ReadableArticleScope> => {
 
 const getReadableScopeFilters = (scope: ReadableArticleScope): QueryConstraint[] => {
     if (scope.isPlatform) {
-        return [];
+        return [where("pId", "==", ANSWERLATTICE_PRODUCT_ID)];
     }
     if (!scope.tId || !scope.sId) {
         return [];
     }
     return [
+        where("pId", "==", ANSWERLATTICE_PRODUCT_ID),
         where("tId", "==", scope.tId),
         where("sId", "==", scope.sId),
     ];
@@ -182,16 +191,64 @@ const acknowledgeArticleEntityExtractionResponse = async (
 };
 
 const readableScopeAllowsArticle = (scope: ReadableArticleScope, article: Partial<KnowledgeBaseArticleType> | null | undefined) => {
+    if (article?.pId !== ANSWERLATTICE_PRODUCT_ID) return false;
+    const record = article as Record<string, unknown> | null | undefined;
+    const articleTId = normalizeAnswerlatticeScopeDocumentId(record?.tId ?? record?.tenantId);
+    const articleSId = normalizeAnswerlatticeScopeDocumentId(record?.sId ?? record?.storeId);
+    if (!articleTId || !articleSId) return false;
     if (scope.isPlatform) {
         return true;
     }
-    const record = article as Record<string, unknown> | null | undefined;
     return Boolean(
         scope.tId
         && scope.sId
-        && normalizeAnswerlatticeScopeDocumentId(record?.tId ?? record?.tenantId) === scope.tId
-        && normalizeAnswerlatticeScopeDocumentId(record?.sId ?? record?.storeId) === scope.sId
+        && articleTId === scope.tId
+        && articleSId === scope.sId
     );
+};
+
+const getStoredArticleScope = (article: Partial<KnowledgeBaseArticleType> | null | undefined) => {
+    if (article?.pId !== ANSWERLATTICE_PRODUCT_ID) return null;
+    return normalizeKnowledgeBaseArticleScope(article as Record<string, unknown> | null);
+};
+
+const assertArticleMutationAccess = (
+    scope: ReadableArticleScope,
+    articleId: string,
+    article: Partial<KnowledgeBaseArticleType> | null | undefined,
+) => {
+    const articleScope = getStoredArticleScope(article);
+    if (!articleScope || !readableScopeAllowsArticle(scope, article)) {
+        throw new Error(`Knowledge base article ${articleId} is outside this workspace.`);
+    }
+    return articleScope;
+};
+
+const resolveArticleMutationScope = async () => {
+    const scope = await resolveReadableArticleScope();
+    if (!scope.isPlatform && (!scope.tId || !scope.sId)) {
+        throw new Error('Answerlattice workspace scope is not available.');
+    }
+    return scope;
+};
+
+const resolveArticleCreateScope = async (data: Partial<KnowledgeBaseArticleType>) => {
+    const scope = await resolveArticleMutationScope();
+    const requestedScope = normalizeKnowledgeBaseArticleScope(data as Record<string, unknown>);
+    const suppliedScope = data.tId !== undefined || data.sId !== undefined;
+    if (suppliedScope && !requestedScope) {
+        throw new Error('Knowledge base article workspace is invalid.');
+    }
+    if (scope.isPlatform) {
+        const target = requestedScope || (scope.tId && scope.sId ? { tId: scope.tId, sId: scope.sId } : null);
+        if (!target) throw new Error('Select an Answerlattice workspace before creating an article.');
+        return target;
+    }
+    if (!scope.tId || !scope.sId) throw new Error('Answerlattice workspace scope is not available.');
+    if (requestedScope && (requestedScope.tId !== scope.tId || requestedScope.sId !== scope.sId)) {
+        throw new Error('Knowledge base article workspace does not match the active session.');
+    }
+    return { tId: scope.tId, sId: scope.sId };
 };
 
 const bumpKnowledgeBaseVersion = async (
@@ -244,7 +301,13 @@ export const getArticles = async () => {
 export const addArticle = async (data: Omit<KnowledgeBaseArticleType, 'id'>) => {
     return await apiCallComposer(
         async () => {
-            const submitData = await answerlatticeRequestBodyComposer(data);
+            const targetScope = await resolveArticleCreateScope(data);
+            const submitData = await answerlatticeRequestBodyComposer({
+                ...data,
+                pId: ANSWERLATTICE_PRODUCT_ID,
+                tId: targetScope.tId,
+                sId: targetScope.sId,
+            }, { isNew: true });
             await bumpKnowledgeBaseVersion(submitData as Partial<KnowledgeBaseArticleType>, 'article_create');
             const docRef = await addDoc(await getCollectionRef(), submitData);
             const savedArticle = { ...submitData, id: docRef.id };
@@ -263,32 +326,108 @@ export const addArticle = async (data: Omit<KnowledgeBaseArticleType, 'id'>) => 
 export const updateArticle = async (data: Partial<KnowledgeBaseArticleType>) => {
     return await apiCallComposer(
         async () => {
-            const composedData = await answerlatticeRequestBodyComposer(data);
-            await bumpKnowledgeBaseVersion(composedData as Partial<KnowledgeBaseArticleType>, 'article_update', data.id);
-            await setDoc(await getDocRef(data.id), composedData, { merge: true });
-            await revalidateAnswerlatticePublicClientCache(await resolveArticleScope(composedData as Partial<KnowledgeBaseArticleType>), ['kb', 'context'], 'updateArticle');
-
-            // Mark linked FAQs for review when article truth changes.
-            if ((data.content || data.title) && data.id) {
-                const article = { id: data.id as string, tId: data.tId, sId: data.sId };
-                void import('@database/answerlattice/faqs')
-                    .then(({ markFaqsNeedReviewForArticle }) => markFaqsNeedReviewForArticle(article))
-                    .catch((error) => {
-                        logArticleFaqMaintenanceFailure('answerlattice_article_faq_review_marker_failed', error, article);
-                    });
+            const articleId = normalizeAnswerlatticeKbArticleId(data.id);
+            if (!articleId) throw new Error('Knowledge base article ID is invalid.');
+            const mutationScope = await resolveArticleMutationScope();
+            const articleRef = await getDocRef(articleId);
+            const initialSnapshot = await getDoc(articleRef);
+            if (!initialSnapshot.exists()) throw new Error(`Knowledge base article ${articleId} was not found.`);
+            const initialArticle = { ...initialSnapshot.data(), id: articleId } as KnowledgeBaseArticleType;
+            const targetScope = assertArticleMutationAccess(mutationScope, articleId, initialArticle);
+            const composedData = await answerlatticeRequestBodyComposer({
+                ...data,
+                id: articleId,
+                pId: ANSWERLATTICE_PRODUCT_ID,
+                tId: targetScope.tId,
+                sId: targetScope.sId,
+            }, { isNew: false });
+            const shouldRequestFaqReview = Boolean(data.content || data.title);
+            const faqSnapshot = shouldRequestFaqReview ? await getDocs(query(
+                collection(answerlatticeFirebaseClient, DB_COLLECTIONS.ANSWERLATTICE_FAQS),
+                where('tId', '==', targetScope.tId),
+                where('sId', '==', targetScope.sId),
+                where('articleId', '==', articleId),
+                where('active', '==', true),
+                limit(ANSWERLATTICE_FAQ_ARTICLE_LINK_LIMIT + 1),
+            )) : null;
+            if (faqSnapshot && faqSnapshot.size > ANSWERLATTICE_FAQ_ARTICLE_LINK_LIMIT) {
+                throw new Error('This article has too many linked FAQs to update safely.');
             }
+            const faqReviewData = shouldRequestFaqReview ? await answerlatticeRequestBodyComposer({
+                status: ANSWERLATTICE_FAQ_STATUS.NEEDS_REVIEW,
+                reviewRequestedOn: Timestamp.now(),
+                pId: ANSWERLATTICE_PRODUCT_ID,
+                tId: targetScope.tId,
+                sId: targetScope.sId,
+            }, { isNew: false }) : null;
+            await bumpKnowledgeBaseVersion(composedData as Partial<KnowledgeBaseArticleType>, 'article_update', articleId);
+            await runTransaction(answerlatticeFirebaseClient, async (transaction) => {
+                const currentSnapshot = await transaction.get(articleRef);
+                if (!currentSnapshot.exists()) throw new Error(`Knowledge base article ${articleId} was not found.`);
+                const currentArticle = { ...currentSnapshot.data(), id: articleId } as KnowledgeBaseArticleType;
+                const currentScope = assertArticleMutationAccess(mutationScope, articleId, currentArticle);
+                if (currentScope.tId !== targetScope.tId || currentScope.sId !== targetScope.sId) {
+                    throw new Error('Knowledge base article workspace changed before update.');
+                }
+                if (faqReviewData && faqSnapshot) {
+                    const rawLinkedFaqIds = [
+                        ...faqSnapshot.docs.map(faqDoc => faqDoc.id),
+                        ...(Array.isArray(currentArticle.faqIds) ? currentArticle.faqIds : []),
+                    ];
+                    const normalizedLinkedFaqIds = rawLinkedFaqIds.map(normalizeAnswerlatticeFaqId);
+                    if (normalizedLinkedFaqIds.some(faqId => faqId === null)) {
+                        throw new Error('This article has invalid linked FAQ references.');
+                    }
+                    const linkedFaqIds = Array.from(new Set(normalizedLinkedFaqIds as string[]));
+                    if (linkedFaqIds.length > ANSWERLATTICE_FAQ_ARTICLE_LINK_LIMIT) {
+                        throw new Error('This article has too many linked FAQs to update safely.');
+                    }
+                    const faqRefs = linkedFaqIds.map(faqId => doc(
+                        answerlatticeFirebaseClient,
+                        DB_COLLECTIONS.ANSWERLATTICE_FAQS,
+                        faqId,
+                    ));
+                    const faqDocs = await Promise.all(faqRefs.map(faqRef => transaction.get(faqRef)));
+                    faqDocs.forEach((faqDoc, index) => {
+                        if (!faqDoc.exists()) return;
+                        const faq = faqDoc.data();
+                        if (
+                            faq.pId !== ANSWERLATTICE_PRODUCT_ID
+                            || normalizeAnswerlatticeScopeDocumentId(faq.tId) !== targetScope.tId
+                            || normalizeAnswerlatticeScopeDocumentId(faq.sId) !== targetScope.sId
+                            || normalizeAnswerlatticeKbArticleId(faq.articleId) !== articleId
+                        ) {
+                            throw new Error(`Linked FAQ ${linkedFaqIds[index]} is outside this article workspace.`);
+                        }
+                    });
+                    faqDocs.forEach((faqDoc, index) => {
+                        if (faqDoc.exists() && faqDoc.data().active === true) {
+                            transaction.set(faqRefs[index], faqReviewData, { merge: true });
+                        }
+                    });
+                }
+                transaction.set(articleRef, composedData, { merge: true });
+            });
+            await revalidateAnswerlatticePublicClientCache(
+                targetScope,
+                shouldRequestFaqReview ? ['faqs', 'kb', 'context'] : ['kb', 'context'],
+                'updateArticle',
+            );
 
             // E4: Fire-and-forget entity extraction when article content changes
-            if (data.content && data.id && data.title) {
+            if (data.content && data.title) {
                 _triggerEntityExtraction({
-                    id: data.id,
+                    id: articleId,
                     title: data.title,
                     content: data.content,
                     categoryTitle: data.categoryTitle,
+                    pId: ANSWERLATTICE_PRODUCT_ID,
+                    tId: targetScope.tId,
+                    sId: targetScope.sId,
                 } as KnowledgeBaseArticleType);
             }
 
-            return composedData;
+            return { ...composedData, id: articleId };
         },
         data,
         "updateArticle"
@@ -329,19 +468,80 @@ export type KnowledgeBaseArticleBulkStatusUpdateResult = {
 export const deleteArticle = async (id: string) => {
     return await apiCallComposer(
         async () => {
-            const docRef = await getDocRef(id);
+            const articleId = normalizeAnswerlatticeKbArticleId(id);
+            if (!articleId) throw new Error('Knowledge base article ID is invalid.');
+            const mutationScope = await resolveArticleMutationScope();
+            const docRef = await getDocRef(articleId);
             const docSnap = await getDoc(docRef);
-            const articleData = docSnap.exists() ? docSnap.data() as Partial<KnowledgeBaseArticleType> : null;
-            await bumpKnowledgeBaseVersion(articleData, 'article_delete', id);
-            await deleteDoc(docRef);
-            await revalidateAnswerlatticePublicClientCache(await resolveArticleScope(articleData), ['kb', 'context'], 'deleteArticle');
-            const article = { id, tId: articleData?.tId, sId: articleData?.sId };
-            void import('@database/answerlattice/faqs')
-                .then(({ archiveFaqsForArticle }) => archiveFaqsForArticle(article))
-                .catch((error) => {
-                    logArticleFaqMaintenanceFailure('answerlattice_article_faq_archive_failed', error, article);
+            if (!docSnap.exists()) throw new Error(`Knowledge base article ${articleId} was not found.`);
+            const articleData = { ...docSnap.data(), id: articleId } as KnowledgeBaseArticleType;
+            const targetScope = assertArticleMutationAccess(mutationScope, articleId, articleData);
+            const faqSnapshot = await getDocs(query(
+                collection(answerlatticeFirebaseClient, DB_COLLECTIONS.ANSWERLATTICE_FAQS),
+                where('tId', '==', targetScope.tId),
+                where('sId', '==', targetScope.sId),
+                where('articleId', '==', articleId),
+                where('active', '==', true),
+                limit(ANSWERLATTICE_FAQ_ARTICLE_LINK_LIMIT + 1),
+            ));
+            if (faqSnapshot.size > ANSWERLATTICE_FAQ_ARTICLE_LINK_LIMIT) {
+                throw new Error('This article has too many linked FAQs to delete safely.');
+            }
+            const faqArchiveData = await answerlatticeRequestBodyComposer({
+                status: ANSWERLATTICE_FAQ_STATUS.ARCHIVED,
+                active: false,
+                pId: ANSWERLATTICE_PRODUCT_ID,
+                tId: targetScope.tId,
+                sId: targetScope.sId,
+                modifiedOn: Timestamp.now(),
+            }, { isNew: false });
+            await bumpKnowledgeBaseVersion(articleData, 'article_delete', articleId);
+            await runTransaction(answerlatticeFirebaseClient, async (transaction) => {
+                const currentSnapshot = await transaction.get(docRef);
+                if (!currentSnapshot.exists()) throw new Error(`Knowledge base article ${articleId} was not found.`);
+                const currentArticle = { ...currentSnapshot.data(), id: articleId } as KnowledgeBaseArticleType;
+                const currentScope = assertArticleMutationAccess(mutationScope, articleId, currentArticle);
+                if (currentScope.tId !== targetScope.tId || currentScope.sId !== targetScope.sId) {
+                    throw new Error('Knowledge base article workspace changed before deletion.');
+                }
+                const rawLinkedFaqIds = [
+                    ...faqSnapshot.docs.map(faqDoc => faqDoc.id),
+                    ...(Array.isArray(currentArticle.faqIds) ? currentArticle.faqIds : []),
+                ];
+                const normalizedLinkedFaqIds = rawLinkedFaqIds.map(normalizeAnswerlatticeFaqId);
+                if (normalizedLinkedFaqIds.some(faqId => faqId === null)) {
+                    throw new Error('This article has invalid linked FAQ references.');
+                }
+                const linkedFaqIds = Array.from(new Set(normalizedLinkedFaqIds as string[]));
+                if (linkedFaqIds.length > ANSWERLATTICE_FAQ_ARTICLE_LINK_LIMIT) {
+                    throw new Error('This article has too many linked FAQs to delete safely.');
+                }
+                const faqRefs = linkedFaqIds.map(faqId => doc(
+                    answerlatticeFirebaseClient,
+                    DB_COLLECTIONS.ANSWERLATTICE_FAQS,
+                    faqId,
+                ));
+                const faqDocs = await Promise.all(faqRefs.map(faqRef => transaction.get(faqRef)));
+                faqDocs.forEach((faqDoc, index) => {
+                    if (!faqDoc.exists()) return;
+                    const faq = faqDoc.data();
+                    if (
+                        faq.pId !== ANSWERLATTICE_PRODUCT_ID
+                        || normalizeAnswerlatticeScopeDocumentId(faq.tId) !== targetScope.tId
+                        || normalizeAnswerlatticeScopeDocumentId(faq.sId) !== targetScope.sId
+                        || normalizeAnswerlatticeKbArticleId(faq.articleId) !== articleId
+                    ) {
+                        throw new Error(`Linked FAQ ${linkedFaqIds[index]} is outside this article workspace.`);
+                    }
                 });
-            return { success: true, id } satisfies KnowledgeBaseArticleDeleteResult;
+                faqDocs.forEach((faqDoc, index) => {
+                    if (faqDoc.exists()) transaction.set(faqRefs[index], faqArchiveData, { merge: true });
+                });
+                transaction.delete(docRef);
+            });
+            await revalidateAnswerlatticePublicClientCache(targetScope, ['faqs', 'kb', 'context'], 'deleteArticle');
+            const article = { id: articleId, tId: targetScope.tId, sId: targetScope.sId };
+            return { success: true, id: articleId } satisfies KnowledgeBaseArticleDeleteResult;
         },
         id,
         "deleteArticle"
@@ -393,21 +593,50 @@ export function assertKnowledgeBaseArticleBulkStatusUpdateSucceeded(
 export const bulkUpdateArticleStatus = async (ids: string[], status: string) => {
     return await apiCallComposer(
         async () => {
-            if (!ids || ids.length === 0) return;
-
-            const batch = writeBatch(answerlatticeFirebaseClient);
-            const composedData = await answerlatticeRequestBodyComposer({ status, active: status === 'published' });
-            await bumpKnowledgeBaseVersion(composedData as Partial<KnowledgeBaseArticleType>, 'article_bulk_status');
-            for (const id of ids) {
-                const docRef = await getDocRef(id);
-                batch.update(docRef, composedData);
+            const articleIds = normalizeAnswerlatticeArticleMutationIds(ids);
+            if (!articleIds) throw new Error('Knowledge base article selection is invalid.');
+            if (!isAnswerlatticeArticleBulkStatus(status)) {
+                throw new Error('Knowledge base bulk status is invalid.');
             }
-            await batch.commit();
-            await revalidateAnswerlatticePublicClientCache(await resolveArticleScope(composedData as Partial<KnowledgeBaseArticleType>), ['kb', 'context'], 'bulkUpdateArticleStatus');
+            const mutationScope = await resolveArticleMutationScope();
+            const articleRefs = await Promise.all(articleIds.map(getDocRef));
+            const initialSnapshots = await Promise.all(articleRefs.map(articleRef => getDoc(articleRef)));
+            const initialArticles = initialSnapshots.map((snapshot, index) => {
+                const articleId = articleIds[index];
+                if (!snapshot.exists()) throw new Error(`Knowledge base article ${articleId} was not found.`);
+                const article = { ...snapshot.data(), id: articleId } as KnowledgeBaseArticleType;
+                assertArticleMutationAccess(mutationScope, articleId, article);
+                return article;
+            });
+            const targetScope = resolveSingleAnswerlatticeArticleScope(initialArticles);
+            if (!targetScope) throw new Error('Knowledge base article selection is invalid.');
+            const finalTargetScope = targetScope;
+            const composedData = await answerlatticeRequestBodyComposer({
+                status,
+                active: status === ARTICLE_STATUS.PUBLISHED,
+                pId: ANSWERLATTICE_PRODUCT_ID,
+                tId: finalTargetScope.tId,
+                sId: finalTargetScope.sId,
+            }, { isNew: false });
+            await bumpKnowledgeBaseVersion(composedData as Partial<KnowledgeBaseArticleType>, 'article_bulk_status');
+            await runTransaction(answerlatticeFirebaseClient, async (transaction) => {
+                const snapshots = await Promise.all(articleRefs.map(articleRef => transaction.get(articleRef)));
+                snapshots.forEach((snapshot, index) => {
+                    const articleId = articleIds[index];
+                    if (!snapshot.exists()) throw new Error(`Knowledge base article ${articleId} was not found.`);
+                    const article = { ...snapshot.data(), id: articleId } as KnowledgeBaseArticleType;
+                    const articleScope = assertArticleMutationAccess(mutationScope, articleId, article);
+                    if (articleScope.tId !== finalTargetScope.tId || articleScope.sId !== finalTargetScope.sId) {
+                        throw new Error('Knowledge base article workspace changed before bulk update.');
+                    }
+                });
+                articleRefs.forEach(articleRef => transaction.update(articleRef, composedData));
+            });
+            await revalidateAnswerlatticePublicClientCache(finalTargetScope, ['kb', 'context'], 'bulkUpdateArticleStatus');
             return {
                 success: true,
-                ids,
-                updatedCount: ids.length,
+                ids: articleIds,
+                updatedCount: articleIds.length,
                 status,
             } satisfies KnowledgeBaseArticleBulkStatusUpdateResult;
         },
@@ -416,40 +645,23 @@ export const bulkUpdateArticleStatus = async (ids: string[], status: string) => 
     );
 };
 
-export const deleteMultipleArticles = async (ids: string[]) => {
-    return await apiCallComposer(
-        async () => {
-            if (!ids || ids.length === 0) return;
-
-            const batch = writeBatch(answerlatticeFirebaseClient);
-            const scope = await bumpKnowledgeBaseVersion(null, 'article_bulk_delete');
-            for (const id of ids) {
-                const docRef = await getDocRef(id);
-                batch.delete(docRef);
-            }
-            await batch.commit();
-            await revalidateAnswerlatticePublicClientCache(scope, ['kb', 'context'], 'deleteMultipleArticles');
-            return null;
-        },
-        ids,
-        "deleteMultipleArticles"
-    );
-};
-
 export const getArticlesByCategoryId = async (categoryId: string) => {
     return await apiCallComposer(
         async () => {
+            const safeCategoryId = normalizeAnswerlatticeKbArticleId(categoryId);
+            if (!safeCategoryId) return [];
             const scope = await resolveReadableArticleScope();
             if (!scope.isPlatform && (!scope.tId || !scope.sId)) {
                 return [];
             }
-            const filters: any[] = [where("categoryId", "==", categoryId)];
+            const filters: QueryConstraint[] = [where("categoryId", "==", safeCategoryId)];
             filters.push(...getReadableScopeFilters(scope));
             const q = query(await getCollectionRef(), ...filters, limit(KB_ARTICLE_LIST_LIMIT));
             const querySnapshot = await getDocs(q);
             const list: KnowledgeBaseArticleType[] = [];
             querySnapshot.forEach((doc) => {
-                list.push({ ...doc.data(), id: doc.id } as KnowledgeBaseArticleType);
+                const article = { ...doc.data(), id: doc.id } as KnowledgeBaseArticleType;
+                if (readableScopeAllowsArticle(scope, article)) list.push(article);
             });
             return list;
         },
@@ -461,17 +673,20 @@ export const getArticlesByCategoryId = async (categoryId: string) => {
 export const getArticlesBySectionId = async (sectionId: string) => {
     return await apiCallComposer(
         async () => {
+            const safeSectionId = normalizeAnswerlatticeKbArticleId(sectionId);
+            if (!safeSectionId) return [];
             const scope = await resolveReadableArticleScope();
             if (!scope.isPlatform && (!scope.tId || !scope.sId)) {
                 return [];
             }
-            const filters: any[] = [where("sectionId", "==", sectionId)];
+            const filters: QueryConstraint[] = [where("sectionId", "==", safeSectionId)];
             filters.push(...getReadableScopeFilters(scope));
             const q = query(await getCollectionRef(), ...filters, limit(KB_ARTICLE_LIST_LIMIT));
             const querySnapshot = await getDocs(q);
             const list: KnowledgeBaseArticleType[] = [];
             querySnapshot.forEach((doc) => {
-                list.push({ ...doc.data(), id: doc.id } as KnowledgeBaseArticleType);
+                const article = { ...doc.data(), id: doc.id } as KnowledgeBaseArticleType;
+                if (readableScopeAllowsArticle(scope, article)) list.push(article);
             });
             return list;
         },
@@ -489,8 +704,8 @@ export const getArticlesByIds = async (ids: string[]) => {
             const collectionRef = await getCollectionRef();
             const uniqueIds = Array.from(new Set(
                 ids
-                    .map(id => String(id || '').trim())
-                    .filter(Boolean)
+                    .map(normalizeAnswerlatticeKbArticleId)
+                    .filter((id): id is string => Boolean(id))
             )).slice(0, KB_ARTICLE_LIST_LIMIT);
             const scope = await resolveReadableArticleScope();
             if (!scope.isPlatform && (!scope.tId || !scope.sId)) {
@@ -519,11 +734,13 @@ export const getArticlesByIds = async (ids: string[]) => {
 export const getArticleById = async (id: string) => {
     return await apiCallComposer(
         async () => {
+            const articleId = normalizeAnswerlatticeKbArticleId(id);
+            if (!articleId) return null;
             const scope = await resolveReadableArticleScope();
             if (!scope.isPlatform && (!scope.tId || !scope.sId)) {
                 return null;
             }
-            const docRef = await getDocRef(id);
+            const docRef = await getDocRef(articleId);
             const docSnap = await getDoc(docRef);
             if (docSnap.exists()) {
                 const article = { ...docSnap.data(), id: docSnap.id } as KnowledgeBaseArticleType;
@@ -533,42 +750,6 @@ export const getArticleById = async (id: string) => {
         },
         id,
         "getArticleById"
-    );
-}
-
-export const updateArticleFeedback = async (articleId: string, type: 'like' | 'dislike', increment: boolean = true) => {
-    return await apiCallComposer(
-        async () => {
-            const docRef = await getDocRef(articleId);
-
-            // Atomic transaction to prevent concurrent feedback count drift
-            const result = await runTransaction(answerlatticeFirebaseClient, async (transaction) => {
-                const docSnap = await transaction.get(docRef);
-
-                if (!docSnap.exists()) {
-                    throw new Error('Article not found');
-                }
-
-                const currentData = docSnap.data();
-                const updatedData = {
-                    likes: currentData.likes || 0,
-                    dislikes: currentData.dislikes || 0,
-                };
-
-                if (type === 'like') {
-                    updatedData.likes = increment ? updatedData.likes + 1 : Math.max(0, updatedData.likes - 1);
-                } else {
-                    updatedData.dislikes = increment ? updatedData.dislikes + 1 : Math.max(0, updatedData.dislikes - 1);
-                }
-
-                transaction.update(docRef, updatedData);
-                return updatedData;
-            });
-
-            return result;
-        },
-        { articleId, type, increment },
-        "updateArticleFeedback"
     );
 }
 

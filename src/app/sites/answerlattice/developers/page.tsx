@@ -10,7 +10,7 @@ import { ANSWERLATTICE_DEVELOPER_DOCS } from '../publicContent';
 
 export const metadata: Metadata = {
     title: 'Developers',
-    description: 'AnswerLattice developer docs for widget install, safe page context, verification, framework quickstarts, and agent install packets.',
+    description: 'AnswerLattice developer docs for widget install, safe page context, optional signed visitor context, bounded evidence links, verification, framework quickstarts, and agent install packets.',
     alternates: { canonical: '/developers' },
 };
 
@@ -46,7 +46,7 @@ export default function AnswerlatticeDevelopersPage() {
                         Install the AnswerLattice widget with one stable contract.
                     </h1>
                     <p className="mx-auto mt-6 max-w-3xl text-lg leading-relaxed text-[#a0a0c0]">
-                        Developer docs stay focused on the public v1 widget, safe page context, dashboard-owned route controls, and verification. They do not expose private workspace data or dashboard APIs.
+                        Developer docs stay focused on the public v1 widget, safe page context, optional server-signed identity, dashboard-owned route controls, and verification. They do not expose private workspace data or dashboard APIs.
                     </p>
                     <PageProofStrip
                         className="mx-auto mt-8 max-w-6xl text-left"

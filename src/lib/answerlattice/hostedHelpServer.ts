@@ -2,6 +2,7 @@ import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
 import { normalizeHostedHelpDomain } from '@constant/answerlattice/hostedHelp';
 import { PRODUCT_IDS } from '@constant/product';
+import { normalizeAnswerlatticeScopeDocumentId } from '@lib/answerlattice/sessionScope';
 import {
     type AnswerlatticeHostedHelpConfig,
     normalizeHostedHelpConfig,
@@ -86,9 +87,9 @@ const fetchHostedHelpSiteByDomain = async (domain: string): Promise<Answerlattic
     }
 
     const config = normalizeHostedHelpConfig(data.config);
-    const tId = Number(data.tId);
-    const sId = Number(data.sId);
-    if (!Number.isFinite(tId) || !Number.isFinite(sId) || tId <= 0 || sId <= 0) {
+    const tId = normalizeAnswerlatticeScopeDocumentId(data.tId);
+    const sId = normalizeAnswerlatticeScopeDocumentId(data.sId);
+    if (!tId || !sId) {
         secureError('[Answerlattice Hosted Help] Invalid registry scope', new Error('Hosted help registry doc has invalid scope'), {
             domain: normalizedDomain,
         });

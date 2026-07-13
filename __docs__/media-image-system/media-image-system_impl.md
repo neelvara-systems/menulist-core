@@ -68,7 +68,7 @@ The current upload architecture uses client-side DAL and Firebase Storage. This 
 
 ### Existing public cache behavior stays
 
-Project and menu writes continue through existing `publishProject`, `syncProjectToSummary`, and `updateProjectMetadata` paths, which already call public cache invalidation.
+Project and menu writes continue through existing `publishProject` and transactional `updateProjectMetadata` paths, which already call public cache invalidation. Generated project covers update only `projectImage`; they never reconstruct a full summary from stale caller data.
 
 ### Canonical media identity
 

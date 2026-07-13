@@ -1,10 +1,10 @@
 export const dynamic = 'force-dynamic';
-import { canManageBillingMutation } from '@lib/billing/billingAccess';
+import { canManageAnswerlatticeBillingMutation, canManageBillingMutation } from '@lib/billing/billingAccess';
 import {
+    applyProductSubscriptionUpgradeCarryForward,
     getProductSubscriptionById,
     resolveBillingScopeFromSession,
     safeSyncProductSubscriptionEntitlementFromSubscription,
-    updateProductSubscription,
 } from '@lib/billing/productBillingServer';
 import {
     getBoundedRazorpaySecurityContext,
@@ -16,14 +16,10 @@ import {
 import { isAnswerlatticeBillingProduct, normalizeBillingProductId } from '@lib/billing/productBillingPlans';
 import { validateTransition } from '@lib/billing/subscriptionStateMachine';
 import { logger } from "@lib/monitoring/logger";
-import { getFounderSubscriptionMrrPaise } from "@lib/ops/founderRevenueReadModel";
 import { razorpayClient } from "@lib/razorpay/razorpay";
 import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
 import { validateAPIInput } from "@lib/security/inputValidation";
 import { UpgradeSubscriptionRequestSchema } from "@lib/validation/apiSchemas";
-import { FirestoreSubscriptionDoc } from "@type/razorpay";
-import { calculateRemainingCredits } from "@util/razorpay";
-import { Timestamp } from "firebase/firestore";
 import { writeLogEntry } from 'logs/utils';
 import { NextResponse } from 'next/server';
 import { hashPublicRateLimitValue } from "src/middleware/publicApi";
@@ -79,6 +75,13 @@ export const POST = withAuth(async (request, session) => {
             return NextResponse.json({ error: "Missing tenant/store data" }, { status: 400 });
         }
         const { tenantId, storeId } = scope;
+
+        if (isAnswerlatticeBillingProduct(productId) && !(await canManageAnswerlatticeBillingMutation(session, request))) {
+            return NextResponse.json(
+                { error: 'Forbidden - Access denied' },
+                { status: 403 }
+            );
+        }
 
         if (!isAnswerlatticeBillingProduct(productId) && !verifyTenantAccess(session, tenantId, storeId, request)) {
             return NextResponse.json(
@@ -144,24 +147,26 @@ export const POST = withAuth(async (request, session) => {
             );
         }
 
-        const alreadyAppliedCarryForward = (newInternalSub as any).carryForwardFromSubscriptionId === oldSubscriptionId;
-        if (internalSub.status === 'expired' && alreadyAppliedCarryForward) {
+        if (
+            internalSub.status === 'expired'
+            && newInternalSub.carryForwardFromSubscriptionId === oldSubscriptionId
+        ) {
+            const duplicateApplication = await applyProductSubscriptionUpgradeCarryForward(productId, {
+                newSubscriptionId,
+                oldSubscriptionId,
+                storeId: Number(storeId),
+                tenantId: Number(tenantId),
+            });
+            if (!duplicateApplication?.duplicate) {
+                return NextResponse.json({ error: "Subscription state changed while upgrading. Please refresh and try again." }, { status: 409 });
+            }
             await safeSyncProductSubscriptionEntitlementFromSubscription(
                 productId,
-                { ...internalSub, status: 'expired' },
-                'api:upgrade-subscription:old-expired-idempotent',
+                duplicateApplication.newSubscription,
+                'api:upgrade-subscription:idempotent',
             );
             return NextResponse.json({ success: true, message: "Subscription upgraded successfully." });
         }
-
-        const calculatedCredits = calculateRemainingCredits(internalSub);
-        const remainingCredits = Math.max(
-            0,
-            Math.min(
-                1_000_000,
-                Math.floor(Number(calculatedCredits.totalRemainingCredits || 0)),
-            ),
-        );
 
         await writeLogEntry({
             logFileName: LOG_FILE,
@@ -196,48 +201,26 @@ export const POST = withAuth(async (request, session) => {
             });
         }
 
-        await updateProductSubscription(productId, internalSub.id, {
-            status: 'expired',
-            cycleEndDate: Timestamp.now(),
-            subscriptionEndDate: Timestamp.now(),
-            statuses: [
-                ...internalSub.statuses,
-                {
-                    status: 'expired',
-                    timestamp: Timestamp.now(),
-                    amount: internalSub.amount,
-                    currency: internalSub.currency,
-                    remark: `Upgrading Plan with Credits Carry Forward: ${remainingCredits} credits, New Subscription ID: ${newSubscriptionId}, Old Subscription ID: ${oldSubscriptionId}`,
-                },
-            ],
+        const upgradeApplication = await applyProductSubscriptionUpgradeCarryForward(productId, {
+            newSubscriptionId,
+            oldSubscriptionId,
+            storeId: Number(storeId),
+            tenantId: Number(tenantId),
         });
-        if (!alreadyAppliedCarryForward) {
-            await updateProductSubscription(productId, newInternalSub.id, {
-                topUpCredits: remainingCredits,
-                carryForwardCredits: remainingCredits,
-                carryForwardFromSubscriptionId: oldSubscriptionId,
-                carryForwardAppliedAt: Timestamp.now(),
-                founderMonitorReplacementForSubscriptionId: oldSubscriptionId,
-                founderMonitorReplacementMrrPaise: getFounderSubscriptionMrrPaise(internalSub),
-                founderMonitorReplacementPlanId: internalSub.planId || null,
-                founderMonitorReplacementPlanName: internalSub.planName || null,
-                statuses: [
-                    ...(newInternalSub.statuses || []),
-                    {
-                        status: 'carry_forward_applied',
-                        timestamp: Timestamp.now(),
-                        amount: newInternalSub.amount,
-                        currency: newInternalSub.currency,
-                        remark: `Credits carried forward from upgraded subscription: ${remainingCredits}`,
-                    },
-                ],
-            } as Partial<FirestoreSubscriptionDoc>);
+        if (!upgradeApplication || (!upgradeApplication.applied && !upgradeApplication.duplicate)) {
+            return NextResponse.json({ error: "Subscription state changed while upgrading. Please refresh and try again." }, { status: 409 });
         }
         await safeSyncProductSubscriptionEntitlementFromSubscription(
             productId,
-            { ...internalSub, status: 'expired' },
+            upgradeApplication.oldSubscription,
             'api:upgrade-subscription:old-expired',
         );
+        await safeSyncProductSubscriptionEntitlementFromSubscription(
+            productId,
+            upgradeApplication.newSubscription,
+            'api:upgrade-subscription:new-active',
+        );
+        const remainingCredits = upgradeApplication.remainingCredits;
         await writeLogEntry({
             logFileName: LOG_FILE,
             logType: 'RAZORPAY_UPGRADE_SUBSCRIPTION_FLOW_SUCCESS',

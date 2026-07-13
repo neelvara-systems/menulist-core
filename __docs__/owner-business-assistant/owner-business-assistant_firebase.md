@@ -2,7 +2,7 @@
 
 **Owner-Facing Name:** Business Health
 **Status:** Compact read-only model
-**Last Updated:** July 4, 2026
+**Last Updated:** July 13, 2026
 
 ## Cost Position
 
@@ -26,6 +26,10 @@ Business Health may use bounded documents for:
 - platform monitoring
 
 Every query must be tenant/store scoped and bounded.
+
+The scheduler treats `ownerBusinessHealthCurrent_*`, same-day `ownerBusinessHealthSnapshot_*`, and `ownerBusinessAnalyticsIndex_*` payloads as complete authoritative read models. Each run sanitizes and replaces those documents so an optional teaser, period, project summary, source reference, or legacy field that is no longer produced is removed rather than retained by Firestore merge semantics. `ownerBusinessHealthMultiLocation_*` is intentionally different: it merges only `stores.{sId}` plus current metadata so refreshing one location preserves every sibling location.
+
+Server reads do not cast these persisted documents into response types. `src/lib/ownerBusinessAssistant/readModelBoundary.ts` validates every supported nested structure, requires the stored tenant/store identity to match the requested document scope, and returns a schema-projected DTO. Firestore-only `kind`/`expiresAt` fields and unknown legacy fields are not copied into context packets or JSON responses. An invalid current document emits a bounded diagnostic and falls back to `not_ready`; an invalid analytics document becomes unavailable. Redis context-packet reads apply the same schemas and require packet, health, and cache-key tenant/store/project identity to agree before a cached packet is accepted.
 
 ## Removed Workflow Storage
 
@@ -61,6 +65,8 @@ Context packets must not include an action catalog.
 
 Server packet cache diagnostics are cost-neutral. Upstash context-packet cache read/index-read/write/invalidation failures still fall back to Firestore-backed packets, skipped cache writes, empty indexes, or best-effort invalidation, but now log bounded `owner_business_assistant_packet_cache_index_read_failed`, `owner_business_assistant_packet_cache_read_failed`, `owner_business_assistant_packet_cache_write_failed`, and `owner_business_assistant_packet_cache_invalidate_failed` diagnostics. This adds no Firestore reads/writes/deletes, no Storage operations, no provider calls, no API routes, no rules, no indexes, no schema fields, no Cloud Function source changes, no owner settings, and no deploy requirement.
 
+Malformed, extra-field, or scope-mismatched Redis packets are treated as cache misses and emit `owner_business_assistant_packet_cache_invalid` with bounded cache metadata. This validation performs no Firestore operation and prevents a packet stored under the wrong cache identity from crossing owner request scope.
+
 ## Scheduler Discipline
 
 Business Health scheduled work belongs in existing consolidated MenuList scheduler discipline with bounded reads, leases, and explicit cost notes. No standalone cleanup scheduler should exist for Business Health action records because those records are no longer produced.
@@ -86,6 +92,8 @@ Business Health answer-event ID admission is cost-neutral. `src/lib/ownerBusines
 July 1 feedback response acknowledgement hardening adds no Firestore reads/writes/deletes beyond the existing feedback route write, no Storage operations, no Cloud Functions, no rules, no indexes, no schema changes, and no owner-facing settings. It only changes the browser hook to use the shared request policy and a 16KB bounded response parser, requiring `{ data: { success: true } }` before returning saved feedback success.
 
 June 29 shared guard hardening is Firebase-cost neutral. The Business Health API guard keeps the same route-specific prefixes, limiter profiles, and request ordering, but hashes owner, tenant, and store key segments before storage in Upstash and records only presence/length metadata for rate-limit and selected-store violation scope diagnostics. June 30 follow-up: the same guard now uses bounded route security metadata for selected-store, tenant-access, and rate-limit security events instead of raw `buildSecurityContext()` output. This resets existing Business Health owner-route buckets once and changes no Firestore reads/writes/deletes, provider calls, cache invalidations, rules, indexes, schema fields, Cloud Function logic, or owner UI behavior.
+
+July 11 selected-store admission is also Firebase-cost neutral. The scope schema and server guard reuse `normalizeStoreSwitchStoreId()` and reject a supplied non-canonical store ID before mapped-store authorization, permission reads, context-packet work, thread/feedback writes or answer work. Valid canonical selected-store requests retain their existing reads/writes and response behavior.
 
 There are no active Firestore rules for removed Business Health operation records or operation drafts.
 

@@ -37,7 +37,7 @@ export const addTodo = async (data: any) => {
     return await apiCallComposer(
         async () => {
             const session = await getActiveSession();
-            const submitData = await requestBodyComposer({ ...data, active: true, deleted: false });
+            const submitData = await requestBodyComposer({ ...data, active: true, deleted: false }, { isNew: true });
             const docRef = await addDoc(getCollectionRef(session), submitData);
             return { ...submitData, id: docRef.id };
         },
@@ -50,7 +50,7 @@ export const updateTodo = async (data: any) => {
     return await apiCallComposer(
         async () => {
             const session = await getActiveSession();
-            const updateData = await requestBodyComposer(data);
+            const updateData = await requestBodyComposer(data, { isNew: false });
             await setDoc(getDocRef(session, data.id), updateData, { merge: true });
             return updateData;
         },

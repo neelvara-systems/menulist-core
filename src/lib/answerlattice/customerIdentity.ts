@@ -1,3 +1,4 @@
+import { PRODUCT_IDS, type ProductId } from '@constant/product';
 import type { SourceContext } from '@type/multiProduct';
 
 export type AnswerlatticeCustomerIdentity = {
@@ -22,18 +23,41 @@ export const cleanAnswerlatticeEmail = (value: unknown): string | null => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : null;
 };
 
+const normalizeAnswerlatticeIdentityProductId = (value: unknown): ProductId | null => {
+    if (typeof value !== 'string') return null;
+    const normalized = value.trim().toUpperCase();
+    return Object.values(PRODUCT_IDS).some(productId => productId === normalized)
+        ? normalized as ProductId
+        : null;
+};
+
+const normalizeAnswerlatticeIdentityScopeId = (value: unknown): number | null => {
+    const parsed = Number(value);
+    return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
+};
+
 export const buildAnswerlatticeActorSnapshot = (session: any) => {
     const user = session?.user || {};
     const userId = cleanAnswerlatticeIdentityText(session?.uId || user.id, 120);
     const name = cleanAnswerlatticeIdentityText(session?.userName || user.name, 160);
     const email = cleanAnswerlatticeEmail(session?.userEmail || session?.email || user.email);
     const phone = cleanAnswerlatticeIdentityText(session?.userPhone || session?.phone || user.phone, 80);
-    const sourceContext = {
-        ...((session?.sourceContext && typeof session.sourceContext === 'object') ? session.sourceContext : {}),
-        ...(userId ? { uId: userId } : {}),
+    const sessionSourceContext = session?.sourceContext
+        && typeof session.sourceContext === 'object'
+        && !Array.isArray(session.sourceContext)
+        ? session.sourceContext as Record<string, unknown>
+        : {};
+    const sourcePId = normalizeAnswerlatticeIdentityProductId(sessionSourceContext.pId);
+    const sourceTId = normalizeAnswerlatticeIdentityScopeId(sessionSourceContext.tId);
+    const sourceSId = normalizeAnswerlatticeIdentityScopeId(sessionSourceContext.sId);
+    const sourceContext: SourceContext = {
+        uId: userId || 'unknown',
         name: name || email || userId || 'Unknown user',
         email: email || '',
         ...(phone ? { phone } : {}),
+        ...(sourcePId ? { pId: sourcePId } : {}),
+        ...(sourceTId ? { tId: sourceTId } : {}),
+        ...(sourceSId ? { sId: sourceSId } : {}),
     };
 
     return {

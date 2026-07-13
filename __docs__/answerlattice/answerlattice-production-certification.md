@@ -76,7 +76,7 @@ Core ready-to-use flags are now enabled for Answerlattice activation. Predictive
 | Append-only audit logs           | No update, no delete                                                     | `auditLogs.ts` only exports `addAuditLog` + read functions                                                        | **VERIFIED** |
 | Append-only signal events        | No update, no delete                                                     | `signalEvents.ts` only exports `addSignalEvent` + read functions                                                  | **VERIFIED** |
 | Mutation state machine           | `pending_review → approved → implemented` or `pending_review → rejected` | Guards in `approveMutationProposal`, `rejectMutationProposal`, `markMutationImplemented` all check current status | **VERIFIED** |
-| Release immutable after creation | Only status field updatable                                              | `activateRelease` only updates status. No general `updateRelease` exported. Answerlattice App Release ID Boundary normalizes release document IDs before activation/processing refs. | **VERIFIED** |
+| Release immutable after creation | Server-owned governed lifecycle                                          | Browser exports no general update; bounded create/activate actions use the authenticated Admin transaction/lease lifecycle with exact stored scope/version admission. | **VERIFIED LOCALLY** |
 | Drift derived, not toggled       | Computed from primitives                                                 | `evaluateDriftForTenant` computes fresh each run, doesn't read previous flag to decide                            | **VERIFIED** |
 | Cross-tenant isolation           | tId+sId on all queries                                                   | All DAL queries include `where('tId', '==', tId), where('sId', '==', sId)`                                        | **VERIFIED** |
 | Entity deprecation guard         | Cannot deprecate if active answers reference it                          | `deprecateEntity` checks `getActiveAnswersForEntity` before deprecating                                           | **VERIFIED** |
@@ -153,7 +153,7 @@ activateRelease(releaseId)
   → Mark status: 'active'
 ```
 
-Answerlattice App Release ID Boundary: `activateRelease()` and `markReleaseProcessing()` normalize release document IDs through the shared Firestore document-ID guard before release refs, drift-audit entity IDs, and compiled-context source IDs are built. Malformed, reserved, empty, or path-shaped release IDs fail before Firestore document access.
+Answerlattice App Release ID Boundary: browser reads normalize release IDs through the shared Firestore document-ID guard. Create/activate actions cross the bounded authenticated route; the Admin transaction/lease lifecycle proves exact release, entity and affected-answer product/workspace/version identity before writes. Malformed, reserved, path-shaped or coercive IDs/scope fail closed.
 
 **Verdict:** SAFE. Drift evaluation failure logged to audit trail (not just console.warn — fixed in prior session). Release activation never blocked by drift failure.
 

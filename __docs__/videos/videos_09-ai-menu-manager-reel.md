@@ -5,6 +5,8 @@
 **Source:** [Master production blueprint](./videos_launch-product-marketing-production-blueprint.md)
 **Scope:** Standalone production handoff for Video 9.
 
+**Mandatory production standard:** [MenuList Founder-Approved Video Production Standard](./videos_founder-approved-production-standard.md). Apply it to this video's messaging, Inter typography, website gradient emphasis, UI styling, motion, transitions, logo slate, Indian-English voice, brand music, aspect-ratio adaptation, and encoded-MP4 QA.
+
 ## Shared Positioning
 
 MenuList must be shown as public-business truth infrastructure for SMBs, not as a standalone QR menu app, generic AI restaurant software, or flashy SaaS dashboard.
@@ -148,3 +150,17 @@ Use soft typing/tap SFX. Keep music restrained. Voiceover should sound operation
 ### P. CTA
 
 Review before publishing.
+
+### Q. Conversion Contract
+
+- Funnel stage: trust.
+- Belief change: `I can use AI assistance without losing control of what customers see.`
+- Proof moment: normal owner message -> prepared approval card -> owner review -> approval -> current customer page.
+- Display close: `AI prepares. Owner approves.`
+- Linked action: companion `Create customer link` -> `/create-menu`.
+- Primary metric: approval/claim progress per qualified referred session.
+- Guard metric: no autonomous AI, robot-assistant, or external-platform-update misunderstanding.
+- Asset/UTM pattern: `ai_manager_v1_owner_approves_25s_<aspect>`.
+- Paid eligibility: blocked until exact supported behavior and deeper approval attribution are approved.
+
+Use the [conversion brief template](./videos_conversion-brief-template.md) and [campaign ledger](./videos_campaign-measurement-ledger.md).

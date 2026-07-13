@@ -1,9 +1,17 @@
 import { DB_COLLECTIONS } from "@constant/database";
 import { resolveStoreBusinessCategory } from "@data/shared/businessTypes";
-import { collection, getDocs } from "@firebase/firestore";
+import {
+    parsePlatformStoreSummary,
+    type PlatformStoreSummaryData,
+} from "@data/shared/storeSummaryBoundary";
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
-import { deleteField, doc, getDoc, increment, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
+import {
+    allocateNextPlatformEntityId,
+    readPlatformCounterSnapshot,
+    type PlatformEntityCounter,
+} from "@lib/platform/platformCounterAllocator";
+import { doc, getDoc } from "firebase/firestore";
 
 /**
  * STORES SUMMARY PATTERN
@@ -47,7 +55,7 @@ export interface StoreSummaryData {
     activePlanType?: string;    // Denormalized billing plan id for scheduler entitlements, e.g. 'starter' | 'pro' | 'premium'
     menuPresence?: StoreDistributionPresenceSummary;
     presence?: StoreDistributionPresenceSummary;
-    modifiedOn?: any;
+    modifiedOn?: unknown;
 }
 
 type StorePresenceValue = boolean | string | null | { linked?: boolean | null };
@@ -69,90 +77,24 @@ export type StoreDistributionPresenceSummary = {
 };
 
 export interface StoresSummary {
-    lastUpdated: any;
-    stores: Record<string, StoreSummaryData>;
+    lastUpdated: unknown;
+    stores: Record<string, PlatformStoreSummaryData>;
 }
 
 const COLLECTION = DB_COLLECTIONS.PLATFORM_SUMMARY;
 
-const getCollectionRef = () => {
-    return collection(firebaseClient, COLLECTION)
-}
-
-const getPlatformSummaryDocRef = () => {
-    return doc(firebaseClient, `${COLLECTION}`, 'default')
-}
-
 export const getPlatformSummary = async () => {
     return await apiCallComposer(
-        async () => {
-            const querySnapshot = await getDocs(await getCollectionRef());
-            const list = [];
-            querySnapshot.forEach((doc) => {
-                list.push({ ...doc.data(), id: doc.id })
-            });
-            return list[0];
-        },
+        () => readPlatformCounterSnapshot(firebaseClient),
         "getPlatformSummary"
     );
 }
 
-export const updateTenantsCountInPlatformSummary = async () => {
+export const reserveNextPlatformEntityId = async (counter: PlatformEntityCounter): Promise<number> => {
     return await apiCallComposer(
-        async () => {
-
-            const ref = await getPlatformSummaryDocRef();
-            const docSnap = await getDoc(ref);
-            if (docSnap.exists()) {
-                await updateDoc(ref, { 'tenants.count': increment(1) });
-            } else {
-                //for the first time in life
-                await setDoc(ref, { tenants: { count: 0 } });
-            }
-            return true;
-        },
-        "updateTenantsCountInPlatformSummary"
-    );
-}
-
-
-export const updateStoresCountInPlatformSummary = async () => {
-    return await apiCallComposer(
-        async () => {
-
-            const ref = await getPlatformSummaryDocRef();
-            const docSnap = await getDoc(ref);
-            if (docSnap.exists()) {
-                await updateDoc(ref, { 'stores.count': increment(1) });
-            } else {
-                //for the first time in life
-                await setDoc(ref, { stores: { count: 0 } });
-            }
-            return true;
-        },
-        "updateStoresCountInPlatformSummary"
-    );
-}
-
-
-export const updateStoresAndTenantsCountInPlatformSummary = async () => {
-    return await apiCallComposer(
-        async () => {
-
-            const ref = await getPlatformSummaryDocRef();
-            const docSnap = await getDoc(ref);
-            if (docSnap.exists()) {
-                await updateDoc(ref, {
-                    'stores.count': increment(1),
-                    'tenants.count': increment(1),
-                });
-            } else {
-                //for the first time in life
-                await setDoc(ref, { stores: { count: 0 }, tenants: { count: 0 } });
-            }
-            return true;
-        },
-        "updateStoresAndTenantsCountInPlatformSummary"
+        () => allocateNextPlatformEntityId(firebaseClient, counter),
+        { counter },
+        "reserveNextPlatformEntityId"
     );
 }
 
@@ -220,6 +162,39 @@ export const buildStoreDistributionPresenceSummary = (
     return Object.keys(summary).length > 0 ? summary : undefined;
 };
 
+export const buildStoreSummaryEntry = (data: StoreSummaryData): Record<string, unknown> => {
+    const businessCategory = resolveStoreBusinessCategory(data.businessType, data.businessCategory);
+    const summaryEntry: Record<string, unknown> = {
+        tId: data.tId,
+        businessType: data.businessType || 'unknown',
+        businessCategory,
+        active: data.active ?? true,
+        blocked: data.blocked ?? false,
+        name: data.name || '',
+        tenantName: data.tenantName || '',
+    };
+    if (data.tenantBlocked !== undefined) summaryEntry.tenantBlocked = data.tenantBlocked;
+    if (data.subdomain !== undefined) summaryEntry.subdomain = data.subdomain || '';
+    if (data.timeZone) summaryEntry.timeZone = data.timeZone;
+    if (data.businessDayEndTime) summaryEntry.businessDayEndTime = data.businessDayEndTime;
+    if (data.isMaster !== undefined) summaryEntry.isMaster = data.isMaster;
+    if (data.outletSlug !== undefined) summaryEntry.outletSlug = data.outletSlug;
+    if (data.city !== undefined) summaryEntry.city = data.city || '';
+    if (data.addressLine !== undefined) summaryEntry.addressLine = data.addressLine || '';
+    if (data.logo !== undefined) summaryEntry.logo = data.logo || '';
+    if (data.workingHours !== undefined) summaryEntry.workingHours = data.workingHours || {};
+    if (data.schedulerHour !== undefined) summaryEntry.schedulerHour = data.schedulerHour;
+    if (data.activePlanType !== undefined) summaryEntry.activePlanType = data.activePlanType;
+    if (data.menuPresence !== undefined) {
+        summaryEntry.menuPresence = buildStoreDistributionPresenceSummary(data.menuPresence) || {};
+    }
+    if (data.presence !== undefined) {
+        summaryEntry.presence = buildStoreDistributionPresenceSummary(data.presence) || {};
+    }
+    if (data.modifiedOn !== undefined) summaryEntry.modifiedOn = data.modifiedOn;
+    return summaryEntry;
+};
+
 /**
  * Get all stores summary data (1 read instead of N)
  * Used by Cloud Functions for batch processing
@@ -229,221 +204,14 @@ export const getStoresSummary = async (): Promise<StoresSummary | null> => {
         async () => {
             const docSnap = await getDoc(getStoresSummaryDocRef());
             if (docSnap.exists()) {
-                return docSnap.data() as StoresSummary;
+                const data = docSnap.data();
+                return {
+                    lastUpdated: data.lastUpdated ?? null,
+                    stores: parsePlatformStoreSummary(data),
+                } satisfies StoresSummary;
             }
             return null;
         },
         "getStoresSummary"
-    );
-}
-
-/**
- * Sync a single store to the summary document
- * Called after addStore() or updateStore()
- */
-export const syncStoreToSummary = async (storeId: string | number, data: StoreSummaryData) => {
-    return await apiCallComposer(
-        async () => {
-            const ref = getStoresSummaryDocRef();
-            const businessCategory = resolveStoreBusinessCategory(data.businessType, data.businessCategory);
-            const summaryEntry: Record<string, any> = {
-                tId: data.tId,
-                businessType: data.businessType || 'unknown',
-                businessCategory,
-                active: data.active ?? true,
-                blocked: data.blocked ?? false,
-                name: data.name || '',
-                tenantName: data.tenantName || '',
-            };
-            if (data.subdomain !== undefined) {
-                summaryEntry.subdomain = data.subdomain || '';
-            }
-            // Include timeZone for DST-safe runtime scheduling in CF
-            if (data.timeZone) {
-                summaryEntry.timeZone = data.timeZone;
-            }
-            if (data.businessDayEndTime) {
-                summaryEntry.businessDayEndTime = data.businessDayEndTime;
-            }
-            if (data.isMaster !== undefined) {
-                summaryEntry.isMaster = data.isMaster;
-            }
-            if (data.outletSlug !== undefined) {
-                summaryEntry.outletSlug = data.outletSlug;
-            }
-            if (data.city !== undefined) {
-                summaryEntry.city = data.city || '';
-            }
-            if (data.addressLine !== undefined) {
-                summaryEntry.addressLine = data.addressLine || '';
-            }
-            if (data.logo !== undefined) {
-                summaryEntry.logo = data.logo || '';
-            }
-            if (data.workingHours !== undefined) {
-                summaryEntry.workingHours = data.workingHours || {};
-            }
-            // schedulerHour is FALLBACK only (for stores without timeZone)
-            if (data.schedulerHour !== undefined) {
-                summaryEntry.schedulerHour = data.schedulerHour;
-            }
-            if (data.activePlanType !== undefined) {
-                summaryEntry.activePlanType = data.activePlanType;
-            }
-            if (data.menuPresence !== undefined) {
-                summaryEntry.menuPresence = buildStoreDistributionPresenceSummary(data.menuPresence) || {};
-            }
-            if (data.presence !== undefined) {
-                summaryEntry.presence = buildStoreDistributionPresenceSummary(data.presence) || {};
-            }
-            if (data.modifiedOn !== undefined) {
-                summaryEntry.modifiedOn = data.modifiedOn;
-            }
-            await setDoc(ref, {
-                lastUpdated: serverTimestamp(),
-                stores: {
-                    [storeId]: summaryEntry,
-                },
-            }, { merge: true });
-            return true;
-        },
-        { storeId, data },
-        "syncStoreToSummary"
-    );
-}
-
-/**
- * Merge a partial store summary update without rebuilding the full summary row.
- * Use for cross-store propagation paths where the changed fields are already known.
- */
-export const mergeStoreSummaryFields = async (storeId: string | number, data: Partial<StoreSummaryData>) => {
-    return await apiCallComposer(
-        async () => {
-            const ref = getStoresSummaryDocRef();
-            const summaryEntry: Record<string, any> = {};
-
-            if (data.tId !== undefined) {
-                summaryEntry.tId = data.tId;
-            }
-            if (data.businessType !== undefined) {
-                summaryEntry.businessType = data.businessType || 'unknown';
-            }
-            if (data.businessType !== undefined || data.businessCategory !== undefined) {
-                summaryEntry.businessCategory = resolveStoreBusinessCategory(data.businessType, data.businessCategory);
-            }
-            if (data.active !== undefined) {
-                summaryEntry.active = data.active;
-            }
-            if (data.blocked !== undefined) {
-                summaryEntry.blocked = data.blocked;
-            }
-            if (data.tenantBlocked !== undefined) {
-                summaryEntry.tenantBlocked = data.tenantBlocked;
-            }
-            if (data.name !== undefined) {
-                summaryEntry.name = data.name || '';
-            }
-            if (data.tenantName !== undefined) {
-                summaryEntry.tenantName = data.tenantName || '';
-            }
-            if (data.subdomain !== undefined) {
-                summaryEntry.subdomain = data.subdomain || '';
-            }
-            if (data.isMaster !== undefined) {
-                summaryEntry.isMaster = data.isMaster;
-            }
-            if (data.outletSlug !== undefined) {
-                summaryEntry.outletSlug = data.outletSlug;
-            }
-            if (data.city !== undefined) {
-                summaryEntry.city = data.city || '';
-            }
-            if (data.addressLine !== undefined) {
-                summaryEntry.addressLine = data.addressLine || '';
-            }
-            if (data.logo !== undefined) {
-                summaryEntry.logo = data.logo || '';
-            }
-            if (data.workingHours !== undefined) {
-                summaryEntry.workingHours = data.workingHours || {};
-            }
-            if (data.timeZone !== undefined) {
-                summaryEntry.timeZone = data.timeZone || '';
-            }
-            if (data.businessDayEndTime !== undefined) {
-                summaryEntry.businessDayEndTime = data.businessDayEndTime || '';
-            }
-            if (data.schedulerHour !== undefined) {
-                summaryEntry.schedulerHour = data.schedulerHour;
-            }
-            if (data.activePlanType !== undefined) {
-                summaryEntry.activePlanType = data.activePlanType;
-            }
-            if (data.menuPresence !== undefined) {
-                summaryEntry.menuPresence = buildStoreDistributionPresenceSummary(data.menuPresence) || {};
-            }
-            if (data.presence !== undefined) {
-                summaryEntry.presence = buildStoreDistributionPresenceSummary(data.presence) || {};
-            }
-            if (data.modifiedOn !== undefined) {
-                summaryEntry.modifiedOn = data.modifiedOn;
-            }
-
-            if (Object.keys(summaryEntry).length === 0) {
-                return false;
-            }
-
-            if (summaryEntry.modifiedOn === undefined) {
-                summaryEntry.modifiedOn = serverTimestamp();
-            }
-
-            await setDoc(ref, {
-                lastUpdated: serverTimestamp(),
-                stores: {
-                    [storeId]: summaryEntry,
-                },
-            }, { merge: true });
-            return true;
-        },
-        { storeId, data },
-        "mergeStoreSummaryFields"
-    );
-}
-
-/**
- * Remove a store from the summary document
- * Called after deleteStore() or when deactivating
- */
-export const removeStoreFromSummary = async (storeId: string | number) => {
-    return await apiCallComposer(
-        async () => {
-            const ref = getStoresSummaryDocRef();
-            await updateDoc(ref, {
-                lastUpdated: serverTimestamp(),
-                [`stores.${storeId}`]: deleteField()
-            });
-            return true;
-        },
-        { storeId },
-        "removeStoreFromSummary"
-    );
-}
-
-/**
- * Update store active status in summary
- * Called when store is activated/deactivated
- */
-export const updateStoreActiveStatusInSummary = async (storeId: string | number, active: boolean) => {
-    return await apiCallComposer(
-        async () => {
-            const ref = getStoresSummaryDocRef();
-            await updateDoc(ref, {
-                lastUpdated: serverTimestamp(),
-                [`stores.${storeId}.active`]: active
-            });
-            return true;
-        },
-        { storeId, active },
-        "updateStoreActiveStatusInSummary"
     );
 }

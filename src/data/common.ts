@@ -100,7 +100,7 @@ export interface PricingPlan {
     razorpayPlanId?: string;
     active: boolean;
     version: number;
-    createdOn?: any;
-    modifiedOn?: any;
+    createdOn?: unknown;
+    modifiedOn?: unknown;
     planType: 'B2C' | 'B2B';
 }

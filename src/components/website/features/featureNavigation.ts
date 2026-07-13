@@ -59,7 +59,6 @@ export const websiteFeatureNavGroups: WebsiteFeatureNavGroup[] = [
     links: [
       getFeatureLink('/features/menu-import'),
       getFeatureLink('/features/menu-content-prep'),
-      getFeatureLink('/features/menu-quality-validation'),
       getFeatureLink('/features/featured-choices'),
     ],
   },
@@ -78,6 +77,7 @@ export const websiteFeatureNavGroups: WebsiteFeatureNavGroup[] = [
       getFeatureLink('/features/owner-phone-dashboard'),
       getFeatureLink('/features/analytics'),
       getFeatureLink('/features/business-health'),
+      getFeatureLink('/features/menu-quality-validation'),
       getFeatureLink('/features/customer-feedback-loop'),
       getFeatureLink('/features/public-discovery'),
     ],

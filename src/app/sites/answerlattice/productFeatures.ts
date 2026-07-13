@@ -807,13 +807,13 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
         label: 'Proactive Help',
         href: '/product/proactive-help',
         eyebrow: 'Proactive Help',
-        title: 'Show help before users ask, only where it is configured.',
+        title: 'Show approved help or an active issue on the page where it matters.',
         description:
-            'AnswerLattice can use owner-approved page triggers to suggest relevant help from the widget when active triggers exist for the current app page.',
+            'AnswerLattice uses owner-approved page triggers to suggest relevant help and can show a temporary, expiring known-issue notice from the widget without rewriting permanent support knowledge.',
         heroBullets: [
             'Owner-approved page triggers',
+            'Contextual known-issue notices',
             'Widget skips calls when disabled',
-            'Resolved suggestion summaries',
         ],
         proofTitle: 'Proactive help should be helpful, quiet, and bounded.',
         proofDescription:
@@ -845,9 +845,9 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
                     'Allowed origins, blocked routes, and safe context rules still apply before any proactive prompt appears.',
             },
             {
-                title: 'Turn misses into review',
+                title: 'Keep Known Issue notices separate',
                 description:
-                    'If a prompt is missing or weak, feedback and fallback can become support review work instead of invisible analytics noise.',
+                    'Set an approved issue message, affected page context, active window, and optional HTTPS status link. Expired or resolved notices stop rendering while canonical answers stay unchanged.',
             },
         ],
         workflowTitle: 'From page trigger to quiet in-app guidance.',
@@ -855,7 +855,7 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
             'Proactive help stays owner-controlled: configure the page trigger, attach approved support, let the widget display it only when eligible, and review feedback.',
         workflowSteps: [
             { title: 'Map the support-heavy page', description: 'Attach the route or workflow to the product surface where users need help.' },
-            { title: 'Create an active trigger', description: 'Define when the widget should suggest help for that page context.' },
+            { title: 'Choose the runtime message', description: 'Configure reviewed help or a temporary known-issue notice for that page context.' },
             { title: 'Resolve the suggestion', description: 'Attach reviewed support content or an approved answer summary.' },
             { title: 'Let runtime gate the call', description: 'The widget checks capability state before requesting proactive help.' },
             { title: 'Review feedback', description: 'Use feedback and fallback signals to improve the trigger or support content.' },
@@ -868,6 +868,7 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
             { title: 'Approved answers', description: 'Suggestions can point to reviewed answer summaries instead of free-form guesses.' },
             { title: 'Product surfaces', description: 'Triggers stay attached to routes, workflows, and product areas.' },
             { title: 'Support review', description: 'Feedback and fallbacks keep proactive help reviewable.' },
+            { title: 'Known issues', description: 'Temporary notices use the same bounded page-aware runtime but never replace an approved answer.' },
         ],
         faq: [
             {
@@ -884,6 +885,11 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
                 title: 'Will this increase widget cost on every page?',
                 description:
                     'The runtime is designed to skip proactive calls when the feature is disabled and use trigger summaries and negative caching when no active triggers exist.',
+            },
+            {
+                title: 'Is Known Issue Mode a public status page?',
+                description:
+                    'No. It is a contextual widget notice with an optional link to your existing HTTPS status or help page. It does not add subscribers, incident timelines, or a public status site.',
             },
         ],
     },

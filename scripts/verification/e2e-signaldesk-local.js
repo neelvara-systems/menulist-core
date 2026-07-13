@@ -3,6 +3,9 @@ process.env.MENULIST_SIGNALDESK_FIREBASE_MODE = process.env.MENULIST_SIGNALDESK_
 process.env.MENULIST_SIGNALDESK_FIREBASE_PROJECT_ID = process.env.MENULIST_SIGNALDESK_FIREBASE_PROJECT_ID || process.env.GCLOUD_PROJECT || "demo-signaldesk";
 process.env.NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_PROJECT_ID = process.env.NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_PROJECT_ID || process.env.MENULIST_SIGNALDESK_FIREBASE_PROJECT_ID;
 process.env.MENULIST_SIGNALDESK_EMAIL_WEBHOOK_SECRET = process.env.MENULIST_SIGNALDESK_EMAIL_WEBHOOK_SECRET || "local-signaldesk-webhook-secret";
+process.env.MENULIST_SIGNALDESK_APIFY_WEBHOOK_SECRET = process.env.MENULIST_SIGNALDESK_APIFY_WEBHOOK_SECRET || "local-signaldesk-apify-webhook-secret";
+process.env.MENULIST_SIGNALDESK_OUTCOME_BRIDGE_SECRET = process.env.MENULIST_SIGNALDESK_OUTCOME_BRIDGE_SECRET || "local-signaldesk-outcome-bridge-secret";
+process.env.MENULIST_SIGNALDESK_META_APP_SECRET = process.env.MENULIST_SIGNALDESK_META_APP_SECRET || "local-signaldesk-meta-app-secret";
 
 if (!process.env.FIRESTORE_EMULATOR_HOST) {
   console.error("SignalDesk local E2E requires FIRESTORE_EMULATOR_HOST. Run it through firebase emulators:exec.");
@@ -19,11 +22,13 @@ const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
 const { SIGNALDESK_COLLECTIONS, SIGNALDESK_SUMMARY_DOCS } = require("@constant/signaldesk/database");
+const { SIGNALDESK_OUTCOME_ROUTE_SCOPE } = require("@constant/signaldesk/integrations");
 const { admin, signaldeskFirestoreAdmin } = require("@lib/firebase/signaldeskFirebaseAdmin");
 const { isSignalDeskMobileRequest } = require("@lib/signaldesk/apiGuards");
 const { getSignalDeskAccessContext } = require("@lib/signaldesk/access");
 const { recordSignalDeskMobileActionBlockedServer } = require("@lib/signaldesk/server");
 const { processSignalDeskProviderWebhook } = require("@lib/signaldesk/webhookServer");
+const signalDeskAiProvider = require("@lib/signaldesk/aiProvider");
 const {
   captureSignalDeskDemandSignalServer,
   captureSignalDeskReplyServer,
@@ -31,32 +36,55 @@ const {
   createSignalDeskDraftServer,
   createSignalDeskEvidenceServer,
   createSignalDeskResearchAgentRunServer,
+  createSignalDeskRouteTokenServer,
   createSignalDeskSourcePolicyServer,
   exportSignalDeskMessageServer,
   importSignalDeskTargetsServer,
   loadSignalDeskWorkspaceServer,
   qualifySignalDeskRevenueAccountServer,
   recommendSignalDeskMarketPodPlanServer,
+  recordSignalDeskManualContactServer,
   recordSignalDeskOutcomeServer,
   refreshSignalDeskActivationWatchServer,
+  revokeSignalDeskRouteTokenServer,
   reviewSignalDeskApprovalServer,
+  reviewSignalDeskAiShadowRunServer,
   reviewSignalDeskMarketPodServer,
+  runSignalDeskAiVolumeBatchServer,
   runSignalDeskSourceProviderServer,
   scoreSignalDeskTargetServer,
   seedSignalDeskDefaultsServer,
   sendSignalDeskApprovedMessageServer,
   upsertSignalDeskCommercialOfferServer,
   upsertSignalDeskCommercialOpportunityServer,
+  upsertSignalDeskProofPermissionServer,
+  createSignalDeskContentAssetServer,
+  generateSignalDeskContentDistributionDraftsServer,
   upsertSignalDeskOperatingEnvelopeServer,
   upsertSignalDeskSenderDomainServer,
   upsertSignalDeskTeamMemberServer,
 } = require("@lib/signaldesk/workflowServer");
+const { processSignalDeskOutcomeBridge } = require("@lib/signaldesk/outcomeBridgeServer");
 
 const db = signaldeskFirestoreAdmin;
 const timestampNow = () => admin.firestore.Timestamp.now();
 const hashValue = (value) => crypto.createHash("sha256").update(String(value)).digest("hex");
+const metaWebhookHeaders = (rawBody) => new Headers({
+  "x-hub-signature-256": `sha256=${crypto.createHmac("sha256", process.env.MENULIST_SIGNALDESK_META_APP_SECRET).update(rawBody).digest("hex")}`,
+});
+const signedOutcomeHeaders = (rawBody, timestamp = String(Math.floor(Date.now() / 1000))) => new Headers({
+  "x-signaldesk-outcome-signature": `sha256=${crypto.createHmac("sha256", process.env.MENULIST_SIGNALDESK_OUTCOME_BRIDGE_SECRET).update(`${timestamp}.${rawBody}`).digest("hex")}`,
+  "x-signaldesk-outcome-timestamp": timestamp,
+});
 const futureIso = (days = 30) => new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
 const pastIso = () => "2000-01-01T00:00:00.000Z";
+const activationFixture = (targetId, suffix = "activation") => ({
+  evidenceRef: `evidence:${targetId}:${suffix}`,
+  idempotencyKey: `outcome:${targetId}:${suffix}`,
+  ownerQualifiedAt: new Date(Date.now() - 60_000).toISOString(),
+  ownerReviewedAt: new Date().toISOString(),
+  surfaces: ["qr", "whatsapp"],
+});
 
 const access = {
   active: true,
@@ -204,15 +232,24 @@ async function seedAccessAndReadiness() {
 
 async function createPolicy(label, overrides = {}) {
   return createSignalDeskSourcePolicyServer(access, {
+    accessMethod: overrides.accessMethod || (overrides.allowContact === false ? "open-data" : "permissioned-referral"),
     allowContact: overrides.allowContact ?? true,
     allowEvidence: overrides.allowEvidence ?? true,
     allowPersonalization: overrides.allowPersonalization ?? true,
+    allowedFields: overrides.allowedFields || ["displayName", "category", "city", "country", "currentListUrl", "website", "notes", "providerRecordId", "providerRecordUrl", ...(overrides.allowContact === false ? [] : ["email", "phone", "instagram"])],
+    attributionRequirements: ["Keep source references attached."],
+    blockedFields: overrides.blockedFields || (overrides.allowContact === false ? ["email", "phone", "instagram"] : ["personal-profile"]),
     expiresAt: overrides.expiresAt ?? futureIso(30),
     name: `${label} source policy`,
     notes: "Local deterministic SignalDesk E2E fixture.",
+    policyOwner: access.userId,
+    prohibitedUses: ["unapproved send", "cold WhatsApp", "proof use without permission"],
     provider: overrides.provider,
     retentionDays: overrides.retentionDays ?? 30,
+    rawPayloadPolicy: "never-store",
+    refreshMethod: overrides.sourceType === "provider" ? "provider-refresh" : "manual-review",
     sourceType: overrides.sourceType || "manual-research",
+    termsVersion: "local-e2e-v1",
   });
 }
 
@@ -269,6 +306,20 @@ async function prepareApprovedTarget(sourcePolicyId, suffix) {
   return { approvalId: draftResult.approval.approvalId, draftId: draftResult.draft.draftId, targetId };
 }
 
+async function assertImportDedupe() {
+  const policy = await createPolicy("Import dedupe");
+  const duplicateRow = rowFor("DuplicateWithinImport", { currentListUrl: "" });
+  const result = await importSignalDeskTargetsServer(access, {
+    rows: [duplicateRow, { ...duplicateRow }],
+    sourceName: "local duplicate import",
+    sourcePolicyId: policy.sourcePolicyId,
+  });
+  assert(result.targets.length === 1, "Duplicate rows in one import returned duplicate targets");
+  assert(result.run.duplicateCount === 1, "Duplicate rows in one import were not counted");
+  const candidateCount = await expectCollectionCount(SIGNALDESK_COLLECTIONS.SOURCE_CANDIDATES, (data) => data.sourceRunId === result.run.sourceRunId);
+  assert(candidateCount === 1, "Duplicate rows in one import created duplicate source candidates");
+}
+
 async function assertHappyPath() {
   const sourcePolicy = await createPolicy("Happy path");
   const targetId = await importOne(sourcePolicy.sourcePolicyId, "Happy");
@@ -313,6 +364,36 @@ async function assertHappyPath() {
   assert(!exportSnap.empty, "Message export record was not created");
   assert(exportSnap.docs[0].data().status === "exported", "Message export record was not export-only");
 
+  const preparedTargetSnap = await db.collection(SIGNALDESK_COLLECTIONS.TARGET_SUMMARIES).doc(targetId).get();
+  assert(preparedTargetSnap.data()?.status !== "contacted", "Export preparation incorrectly marked the target contacted");
+  assert(preparedTargetSnap.data()?.nextAction === "contact", "Export preparation did not request manual contact confirmation");
+  const contactInput = {
+    idempotencyKey: "manual-contact-happy-e2e",
+    occurredAt: new Date().toISOString(),
+    result: "contacted",
+    route: "email-export",
+    sourcePolicyId: sourcePolicy.sourcePolicyId,
+    targetId,
+  };
+  const contact = await recordSignalDeskManualContactServer(access, contactInput);
+  const duplicateContact = await recordSignalDeskManualContactServer(access, contactInput);
+  assert(contact.duplicate === false, "Manual contact was not recorded");
+  assert(duplicateContact.duplicate === true, "Manual contact idempotency did not dedupe a retry");
+  await expectRejects("Manual contact idempotency key cannot bind changed facts", () => recordSignalDeskManualContactServer(access, {
+    ...contactInput,
+    result: "no-answer",
+  }), "Manual contact idempotency conflict");
+  const contactedTargetSnap = await db.collection(SIGNALDESK_COLLECTIONS.TARGET_SUMMARIES).doc(targetId).get();
+  assert(contactedTargetSnap.data()?.status === "contacted", "Manual confirmation did not mark the target contacted");
+  assert(contactedTargetSnap.data()?.latestManualContactResult === "contacted", "Manual contact result projection is missing");
+  assert(contactedTargetSnap.data()?.latestManualContactRoute === "email-export", "Manual contact route projection is missing");
+  const manualContactAuditCount = await expectCollectionCount(SIGNALDESK_COLLECTIONS.AUDIT_EVENTS, (data) => data.action === "manual_contact_record" && data.entityId === targetId);
+  assert(manualContactAuditCount === 1, "Manual contact retry created duplicate audit events");
+  await expectRejects("Consumed email export cannot record another contact", () => recordSignalDeskManualContactServer(access, {
+    ...contactInput,
+    idempotencyKey: "manual-contact-happy-second-attempt",
+  }), "Prepared email export is required");
+
   const reply = await captureSignalDeskReplyServer(access, {
     channel: "email",
     message: "Yes, send details.",
@@ -328,6 +409,7 @@ async function assertHappyPath() {
   assert(classificationCount > 0, "Reply classification was not recorded");
 
   const outcome = await recordSignalDeskOutcomeServer(access, {
+    ...activationFixture(targetId, "happy"),
     channel: "email",
     outcomeType: "two_surface_activation",
     source: "manual",
@@ -645,6 +727,7 @@ async function assertRevenueOperatingLayer() {
   assert(inProgressWatch.status === "in-progress", "Activation watch did not derive in-progress state from upload outcome");
 
   const activatedOutcome = await recordSignalDeskOutcomeServer(access, {
+    ...activationFixture(targetId, "revenue"),
     channel: "manual",
     outcomeType: "two_surface_activation",
     source: "manual",
@@ -709,6 +792,7 @@ async function assertRevenueOperatingLayer() {
   const convertedTargetId = await importOne(sourcePolicy.sourcePolicyId, "RevenueAlreadyConverted", { currentListUrl: "" });
   await scoreSignalDeskTargetServer(access, convertedTargetId);
   await recordSignalDeskOutcomeServer(access, {
+    ...activationFixture(convertedTargetId, "converted-before-qualification"),
     channel: "manual",
     outcomeType: "two_surface_activation",
     source: "manual",
@@ -859,10 +943,56 @@ async function assertSourcePolicyNegatives() {
     sourcePolicyId: noRetentionPolicyId,
   }), "SOURCE_POLICY_RETENTION_MISSING");
 
+  const incompleteRightsPolicyId = "policy_rights_review_required";
+  await db.collection(SIGNALDESK_COLLECTIONS.SOURCE_POLICIES).doc(incompleteRightsPolicyId).set({
+    sourcePolicyId: incompleteRightsPolicyId,
+    pId: "SD",
+    name: "Policy without source rights",
+    sourceType: "manual-research",
+    status: "active",
+    allowedUse: { contact: true, evidence: true, import: true, personalization: true, storage: true },
+    approvedAt: timestampNow(),
+    expiresAt: admin.firestore.Timestamp.fromDate(new Date(futureIso(30))),
+    retentionDays: 30,
+    updatedAt: timestampNow(),
+  });
+  await expectRejects("Policy without source-rights registry", () => importSignalDeskTargetsServer(access, {
+    rows: [rowFor("MissingRights")],
+    sourceName: "missing source rights",
+    sourcePolicyId: incompleteRightsPolicyId,
+  }), "SOURCE_POLICY_REVIEW_REQUIRED");
+
   const contactBlockedPolicy = await createPolicy("No contact export", { allowContact: false });
   const heldTargetId = await importOne(contactBlockedPolicy.sourcePolicyId, "NoContact", { email: "blocked@example.invalid" });
   const heldTargetSnap = await db.collection(SIGNALDESK_COLLECTIONS.TARGET_SUMMARIES).doc(heldTargetId).get();
   assert(heldTargetSnap.data()?.contactability === "blocked", "Contact-disallowed import did not block contactability");
+
+  const compositePolicy = await createPolicy("Composite message rights");
+  const compositeTargetId = await importOne(compositePolicy.sourcePolicyId, "CompositeRights", { currentListUrl: "" });
+  await scoreSignalDeskTargetServer(access, compositeTargetId);
+  await createSignalDeskEvidenceServer(access, compositeTargetId);
+  await db.collection(SIGNALDESK_COLLECTIONS.SOURCE_POLICIES).doc(compositePolicy.sourcePolicyId).set({
+    allowedUse: { contact: true, evidence: false, import: true, personalization: true, providerRun: false, storage: true },
+    updatedAt: timestampNow(),
+  }, { merge: true });
+  await expectRejects("Draft after evidence rights revoked", () => createSignalDeskDraftServer(access, {
+    targetId: compositeTargetId,
+  }), "SOURCE_POLICY_USE_NOT_ALLOWED");
+  await db.collection(SIGNALDESK_COLLECTIONS.SOURCE_POLICIES).doc(compositePolicy.sourcePolicyId).set({
+    allowedUse: { contact: true, evidence: true, import: true, personalization: true, providerRun: false, storage: true },
+    updatedAt: timestampNow(),
+  }, { merge: true });
+  const compositeDraft = await createSignalDeskDraftServer(access, { targetId: compositeTargetId });
+  await reviewSignalDeskApprovalServer(access, {
+    approvalId: compositeDraft.approval.approvalId,
+    reason: "Composite rights fixture approval.",
+    status: "approved",
+  });
+  await db.collection(SIGNALDESK_COLLECTIONS.SOURCE_POLICIES).doc(compositePolicy.sourcePolicyId).set({
+    allowedUse: { contact: true, evidence: true, import: true, personalization: false, providerRun: false, storage: true },
+    updatedAt: timestampNow(),
+  }, { merge: true });
+  await expectRejects("Export after personalization rights revoked", () => exportSignalDeskMessageServer(access, compositeDraft.approval.approvalId), "SOURCE_POLICY_USE_NOT_ALLOWED");
 }
 
 async function assertFhrsFhisSourceProvider() {
@@ -997,6 +1127,12 @@ async function assertResearchAgentTable() {
     assert(result.rows.some((row) => row.fitDecision === "pass"), "Research agent did not create any pass rows");
     assert(result.rows.every((row) => row.sourceRefs.some((ref) => ref.startsWith("source-policy:"))), "Research rows missed source policy refs");
     assert(result.rows.every((row) => row.enrichment.some((item) => item.key === "source-transparency")), "Research rows missed source transparency enrichment");
+    assert(result.rows.every((row) => row.evidenceSummary && row.evidenceSummary.includes("current-list gap")), "Research rows missed evidence summaries");
+    assert(result.rows.every((row) => row.allowedRoute === "none"), "Evidence-only research exposed a contact route");
+    assert(result.rows.every((row) => row.routePermissionState === "research_only"), "Evidence-only research did not preserve research-only permission state");
+    assert(result.rows.every((row) => row.actionabilityState === "research_only"), "Evidence-only research was presented as actionable outreach");
+    assert(result.rows.every((row) => row.recommendedCta), "Research rows missed recommended CTAs");
+    assert(result.rows.every((row) => row.recommendedMessageAngle), "Research rows missed recommended message angles");
     const rowCount = await expectCollectionCount(SIGNALDESK_COLLECTIONS.RESEARCH_TABLE_ROWS, (data) => data.researchRunId === result.run.researchRunId);
     assert(rowCount === 2, "Research table rows were not stored");
     const dashboardWorkspace = await loadSignalDeskWorkspaceServer(access, "dashboard");
@@ -1029,6 +1165,10 @@ async function assertResearchAgentTable() {
     assert(duplicate.duplicate === true, "Research agent idempotency did not return duplicate");
     const afterDuplicateRows = await expectCollectionCount(SIGNALDESK_COLLECTIONS.RESEARCH_TABLE_ROWS, (data) => data.researchRunId === result.run.researchRunId);
     assert(afterDuplicateRows === rowCount, "Duplicate research run created extra rows");
+    await expirePolicy(policy.sourcePolicyId);
+    const expiredWorkspace = await loadSignalDeskWorkspaceServer(access, "dashboard");
+    const expiredRows = expiredWorkspace.workspace.researchTableRows.filter((row) => row.researchRunId === result.run.researchRunId);
+    assert(expiredRows.every((row) => row.allowedRoute === "none" && row.routePermissionState === "expired"), "Persisted research rows were not revalidated after source-policy expiry");
   } finally {
     global.fetch = originalFetch;
   }
@@ -1068,6 +1208,68 @@ async function assertExpiryAcrossWorkflow() {
 }
 
 async function assertApprovalAndExportNegatives() {
+  const rejectionPolicy = await createPolicy("Structured approval rejection");
+  const rejectionTargetId = await importOne(rejectionPolicy.sourcePolicyId, "StructuredRejection", { currentListUrl: "" });
+  await scoreSignalDeskTargetServer(access, rejectionTargetId);
+  await createSignalDeskEvidenceServer(access, rejectionTargetId);
+  const rejectionDraft = await createSignalDeskDraftServer(access, { targetId: rejectionTargetId });
+  await expectRejects("Approval rejection without reason", () => reviewSignalDeskApprovalServer(access, {
+    approvalId: rejectionDraft.approval.approvalId,
+    status: "rejected",
+  }), "Approval rejection reason is required");
+  await expectRejects("Approval other rejection without note", () => reviewSignalDeskApprovalServer(access, {
+    approvalId: rejectionDraft.approval.approvalId,
+    rejectionReason: "other",
+    status: "rejected",
+  }), "Approval rejection note is required for other");
+  const rejectedApproval = await reviewSignalDeskApprovalServer(access, {
+    approvalId: rejectionDraft.approval.approvalId,
+    reason: "The reviewed evidence is no longer current.",
+    rejectionReason: "evidence-weak-or-stale",
+    status: "rejected",
+  });
+  assert(rejectedApproval.rejectionReason === "evidence-weak-or-stale", "Structured rejection reason was not returned");
+  const rejectionApprovalSnap = await db.collection(SIGNALDESK_COLLECTIONS.APPROVAL_QUEUE).doc(rejectionDraft.approval.approvalId).get();
+  assert(rejectionApprovalSnap.data()?.rejectionReason === "evidence-weak-or-stale", "Structured rejection reason was not stored");
+  const rejectionTargetSnap = await db.collection(SIGNALDESK_COLLECTIONS.TARGET_SUMMARIES).doc(rejectionTargetId).get();
+  assert(rejectionTargetSnap.data()?.status === "review" && rejectionTargetSnap.data()?.nextAction === "evidence", "Structured rejection did not project the correct recovery action");
+
+  const concurrentPolicy = await createPolicy("Concurrent approval review");
+  const concurrentTargetId = await importOne(concurrentPolicy.sourcePolicyId, "ConcurrentApprovalReview");
+  await scoreSignalDeskTargetServer(access, concurrentTargetId);
+  await createSignalDeskEvidenceServer(access, concurrentTargetId);
+  const concurrentDraft = await createSignalDeskDraftServer(access, { targetId: concurrentTargetId });
+  const queueBeforeConcurrentReview = await db.collection(SIGNALDESK_COLLECTIONS.QUEUE_SUMMARIES)
+    .doc(SIGNALDESK_SUMMARY_DOCS.QUEUES)
+    .get();
+  const approvalBacklogBefore = Number(queueBeforeConcurrentReview.data()?.approvalBacklog || 0);
+  const humanReviewBefore = Number(queueBeforeConcurrentReview.data()?.humanReview || 0);
+  const concurrentReviews = await Promise.allSettled([
+    reviewSignalDeskApprovalServer(access, {
+      approvalId: concurrentDraft.approval.approvalId,
+      reason: "Concurrent approval fixture.",
+      status: "approved",
+    }),
+    reviewSignalDeskApprovalServer(access, {
+      approvalId: concurrentDraft.approval.approvalId,
+      reason: "Concurrent rejection fixture.",
+      rejectionReason: "wrong-segment",
+      status: "rejected",
+    }),
+  ]);
+  assert(concurrentReviews.filter((result) => result.status === "fulfilled").length === 1, "Concurrent approval review accepted more than one terminal decision");
+  assert(concurrentReviews.filter((result) => result.status === "rejected").length === 1, "Concurrent approval review did not reject the losing decision");
+  const queueAfterConcurrentReview = await db.collection(SIGNALDESK_COLLECTIONS.QUEUE_SUMMARIES)
+    .doc(SIGNALDESK_SUMMARY_DOCS.QUEUES)
+    .get();
+  assert(Number(queueAfterConcurrentReview.data()?.approvalBacklog || 0) === approvalBacklogBefore - 1, "Concurrent approval review decremented approval backlog more than once");
+  assert(Number(queueAfterConcurrentReview.data()?.humanReview || 0) === humanReviewBefore - 1, "Concurrent approval review decremented human review more than once");
+  const concurrentReviewAuditCount = await expectCollectionCount(SIGNALDESK_COLLECTIONS.AUDIT_EVENTS, (data) => (
+    data.entityId === concurrentDraft.approval.approvalId
+    && (data.action === "draft_approved" || data.action === "draft_rejected")
+  ));
+  assert(concurrentReviewAuditCount === 1, "Concurrent approval review created duplicate terminal audit events");
+
   const unsupportedPolicy = await createPolicy("Unsupported claim");
   const unsupportedTargetId = await importOne(unsupportedPolicy.sourcePolicyId, "UnsupportedClaim");
   await scoreSignalDeskTargetServer(access, unsupportedTargetId);
@@ -1129,6 +1331,682 @@ async function assertApprovalAndExportNegatives() {
   });
 }
 
+async function assertManualContactGuards() {
+  const noExportPolicy = await createPolicy("Manual contact requires prepared email");
+  const noExportReady = await prepareApprovedTarget(noExportPolicy.sourcePolicyId, "ManualContactNoExport");
+  await expectRejects("Manual email contact without export", () => recordSignalDeskManualContactServer(access, {
+    idempotencyKey: "manual-contact-without-export",
+    occurredAt: new Date().toISOString(),
+    result: "contacted",
+    route: "email-export",
+    sourcePolicyId: noExportPolicy.sourcePolicyId,
+    targetId: noExportReady.targetId,
+  }), "Prepared email export is required");
+
+  const wrongContactPolicy = await createPolicy("Manual wrong contact");
+  const wrongContactReady = await prepareApprovedTarget(wrongContactPolicy.sourcePolicyId, "ManualWrongContact");
+  await exportSignalDeskMessageServer(access, wrongContactReady.approvalId);
+  const wrongContact = await recordSignalDeskManualContactServer(access, {
+    idempotencyKey: "manual-contact-wrong-contact",
+    note: "The business confirmed this route belongs to a different operator.",
+    occurredAt: new Date().toISOString(),
+    result: "wrong-contact",
+    route: "email-export",
+    sourcePolicyId: wrongContactPolicy.sourcePolicyId,
+    targetId: wrongContactReady.targetId,
+  });
+  assert(wrongContact.duplicate === false, "Wrong-contact action was not recorded");
+  const wrongContactTargetSnap = await db.collection(SIGNALDESK_COLLECTIONS.TARGET_SUMMARIES).doc(wrongContactReady.targetId).get();
+  assert(wrongContactTargetSnap.data()?.suppressionStatus === "wrong-contact", "Wrong-contact action did not suppress the target");
+  const wrongContactSuppressionCount = await expectCollectionCount(SIGNALDESK_COLLECTIONS.SUPPRESSION_LEDGER, (data) => data.targetId === wrongContactReady.targetId && data.reason === "wrong-contact");
+  assert(wrongContactSuppressionCount === 1, "Wrong-contact action did not create one suppression record");
+
+  const expiredPolicy = await createPolicy("Manual contact expired policy");
+  const expiredReady = await prepareApprovedTarget(expiredPolicy.sourcePolicyId, "ManualContactExpired");
+  await exportSignalDeskMessageServer(access, expiredReady.approvalId);
+  await expirePolicy(expiredPolicy.sourcePolicyId);
+  await expectRejects("Manual contact from expired policy", () => recordSignalDeskManualContactServer(access, {
+    idempotencyKey: "manual-contact-expired-policy",
+    occurredAt: new Date().toISOString(),
+    result: "contacted",
+    route: "email-export",
+    sourcePolicyId: expiredPolicy.sourcePolicyId,
+    targetId: expiredReady.targetId,
+  }), "SOURCE_POLICY_EXPIRED");
+
+  const limitedPolicy = await createPolicy("Unverified limited contact route", {
+    accessMethod: "manual-public-research",
+  });
+  const limitedTargetId = await importOne(limitedPolicy.sourcePolicyId, "ManualContactLimited", { email: "" });
+  await expectRejects("Limited contactability cannot masquerade as a manual form", () => recordSignalDeskManualContactServer(access, {
+    idempotencyKey: "manual-contact-unverified-limited-route",
+    occurredAt: new Date().toISOString(),
+    result: "contacted",
+    route: "manual-form",
+    sourcePolicyId: limitedPolicy.sourcePolicyId,
+    targetId: limitedTargetId,
+  }), "Manual contact route is not allowed");
+
+  const staleExportPolicy = await createPolicy("Stale prepared email export");
+  const staleExportReady = await prepareApprovedTarget(staleExportPolicy.sourcePolicyId, "ManualContactStaleExport");
+  await exportSignalDeskMessageServer(access, staleExportReady.approvalId);
+  const staleExportSnap = await db.collection(SIGNALDESK_COLLECTIONS.MESSAGE_EXPORTS)
+    .where("targetId", "==", staleExportReady.targetId)
+    .limit(1)
+    .get();
+  await staleExportSnap.docs[0].ref.set({
+    createdAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() - (31 * 24 * 60 * 60 * 1000))),
+  }, { merge: true });
+  await expectRejects("Stale prepared email export cannot confirm a current contact", () => recordSignalDeskManualContactServer(access, {
+    idempotencyKey: "manual-contact-stale-export",
+    occurredAt: new Date().toISOString(),
+    result: "contacted",
+    route: "email-export",
+    sourcePolicyId: staleExportPolicy.sourcePolicyId,
+    targetId: staleExportReady.targetId,
+  }), "Prepared email export is required");
+
+  const suppressedContactPolicy = await createPolicy("Suppressed manual contact");
+  const suppressedContactReady = await prepareApprovedTarget(suppressedContactPolicy.sourcePolicyId, "ManualContactSuppressed");
+  await exportSignalDeskMessageServer(access, suppressedContactReady.approvalId);
+  await db.collection(SIGNALDESK_COLLECTIONS.TARGET_SUMMARIES).doc(suppressedContactReady.targetId).set({
+    suppressionStatus: "suppressed",
+    updatedAt: timestampNow(),
+  }, { merge: true });
+  await expectRejects("Suppressed target cannot record manual contact", () => recordSignalDeskManualContactServer(access, {
+    idempotencyKey: "manual-contact-suppressed",
+    occurredAt: new Date().toISOString(),
+    result: "contacted",
+    route: "email-export",
+    sourcePolicyId: suppressedContactPolicy.sourcePolicyId,
+    targetId: suppressedContactReady.targetId,
+  }), "Target is suppressed");
+
+  const partnerIntroPolicy = await createPolicy("Permissioned partner introduction");
+  const partnerIntroTargetId = await importOne(partnerIntroPolicy.sourcePolicyId, "ManualPartnerIntro", {
+    email: "",
+    instagram: "",
+    phone: "",
+    website: "",
+  });
+  const partnerIntro = await recordSignalDeskManualContactServer(access, {
+    idempotencyKey: "manual-contact-partner-introduction",
+    occurredAt: new Date().toISOString(),
+    result: "introduced",
+    route: "partner-intro",
+    sourcePolicyId: partnerIntroPolicy.sourcePolicyId,
+    targetId: partnerIntroTargetId,
+  });
+  assert(partnerIntro.duplicate === false, "Permissioned partner introduction was blocked");
+}
+
+async function assertUnverifiedLimitedRouteRevalidation() {
+  const policy = await createPolicy("Legacy limited route revalidation", {
+    accessMethod: "manual-public-research",
+  });
+  const targetId = await importOne(policy.sourcePolicyId, "LegacyLimitedRoute", { email: "" });
+  const researchRowId = `legacy_limited_route_${targetId}`;
+  await db.collection(SIGNALDESK_COLLECTIONS.RESEARCH_TABLE_ROWS).doc(researchRowId).set({
+    actionabilityState: "actionable",
+    allowedRoute: "manual-form",
+    allowedRouteReason: "Legacy inferred form route fixture.",
+    category: "restaurant",
+    contactability: "limited",
+    currentListGap: "missing-current-list",
+    displayName: "Legacy limited route fixture",
+    evidenceSummary: "Evidence fixture",
+    enrichment: [],
+    fitDecision: "pass",
+    fitScore: 80,
+    hardGateFailures: [],
+    provider: "manual",
+    recommendedChannel: "manual-form",
+    recommendedCta: "Private preview",
+    recommendedMessageAngle: "Current menu link",
+    recommendedNextAction: "score",
+    researchRowId,
+    researchRunId: "legacy_limited_route_run",
+    routePermissionState: "permissioned",
+    sourcePolicyId: policy.sourcePolicyId,
+    sourceRefs: [`source-policy:${policy.sourcePolicyId}`],
+    targetId,
+    updatedAt: timestampNow(),
+  });
+  const workspace = await loadSignalDeskWorkspaceServer(access, "mission");
+  const row = workspace.workspace.researchTableRows.find((item) => item.researchRowId === researchRowId);
+  const opportunity = workspace.workspace.activationOpportunities.find((item) => item.targetId === targetId);
+  assert(row?.allowedRoute === "none", "Legacy limited contactability retained an inferred manual-form route");
+  assert(row?.actionabilityState === "verify", "Unverified limited contact route remained actionable");
+  assert(row?.hardGateFailures.includes("contact-route-unverified"), "Unverified limited contact route missed its hard-gate reason");
+  assert(opportunity?.allowedRoute === "none", "Activation opportunity exposed an unverified limited contact route");
+
+  const referralPolicy = await createPolicy("Permissioned referral without direct contact");
+  const referralTargetId = await importOne(referralPolicy.sourcePolicyId, "PermissionedReferralNoDirectRoute", {
+    email: "",
+    instagram: "",
+    phone: "",
+    website: "",
+  });
+  const referralResearchRowId = `permissioned_referral_route_${referralTargetId}`;
+  await db.collection(SIGNALDESK_COLLECTIONS.RESEARCH_TABLE_ROWS).doc(referralResearchRowId).set({
+    actionabilityState: "verify",
+    allowedRoute: "none",
+    allowedRouteReason: "Pre-revalidation permissioned-referral fixture.",
+    category: "restaurant",
+    contactability: "missing",
+    currentListGap: "missing-current-list",
+    displayName: "Permissioned referral fixture",
+    evidenceSummary: "Permissioned introduction evidence fixture",
+    enrichment: [],
+    fitDecision: "pass",
+    fitScore: 80,
+    hardGateFailures: ["contact-route-missing"],
+    provider: "manual",
+    recommendedChannel: "hold",
+    recommendedCta: "Private preview",
+    recommendedMessageAngle: "Permissioned introduction",
+    recommendedNextAction: "partner-review",
+    researchRowId: referralResearchRowId,
+    researchRunId: "permissioned_referral_route_run",
+    routePermissionState: "permissioned",
+    sourcePolicyId: referralPolicy.sourcePolicyId,
+    sourceRefs: [`source-policy:${referralPolicy.sourcePolicyId}`],
+    targetId: referralTargetId,
+    updatedAt: timestampNow(),
+  });
+  const referralWorkspace = await loadSignalDeskWorkspaceServer(access, "mission");
+  const referralRow = referralWorkspace.workspace.researchTableRows.find((item) => item.researchRowId === referralResearchRowId);
+  assert(referralRow?.allowedRoute === "partner-intro", "Permissioned referral without direct contact was not actionable through its partner route");
+  assert(referralRow?.actionabilityState === "actionable", "Permissioned referral remained incorrectly held for direct contact");
+  assert(!referralRow?.hardGateFailures.includes("contact-route-missing"), "Permissioned referral retained a stale direct-contact failure");
+}
+
+async function assertAiShadowReviewLearning() {
+  const modelEvalId = "model_eval_evidence_gemini_shadow_e2e";
+  const aiRunId = "ai_shadow_e2e_provider_run";
+  const rulesRunId = "ai_shadow_e2e_rules_score";
+  const timestamp = timestampNow();
+  await db.collection(SIGNALDESK_COLLECTIONS.MODEL_EVALS).doc(modelEvalId).set({
+    modelEvalId,
+    modelRouteId: "model_route_evidence",
+    task: "evidence",
+    provider: "gemini",
+    model: "gemini-e2e",
+    status: "needs-review",
+    sampleSize: 2,
+    passedSampleCount: 1,
+    lowConfidenceCount: 1,
+    rejectedFactSampleCount: 1,
+    reviewedSampleSize: 0,
+    acceptedCount: 0,
+    editedCount: 0,
+    rejectedCount: 0,
+    heldCount: 0,
+    passRate: 0.5,
+    editRate: 0,
+    rejectedFactRate: 0.5,
+    acceptanceRate: 0,
+    rejectionRate: 0,
+    holdRate: 0,
+    founderAttentionMinutes: 0,
+    updatedAt: timestamp,
+  });
+  await db.collection(SIGNALDESK_COLLECTIONS.AI_WORKER_RUNS).doc(aiRunId).set({
+    aiRunId,
+    workerType: "ai_assist_evidence",
+    workerVersion: "shadow-e2e-v1",
+    task: "evidence",
+    provider: "gemini",
+    model: "gemini-e2e",
+    modelRouteId: "model_route_evidence",
+    modelEvalId,
+    targetId: "target_shadow_e2e",
+    confidence: "medium",
+    rejectedFactCount: 1,
+    output: { rejectedFacts: ["Unsupported claim"] },
+    costEstimate: 0.01,
+    founderAttentionMinutes: 0,
+    createdAt: timestamp,
+  });
+  await db.collection(SIGNALDESK_COLLECTIONS.AI_WORKER_RUNS).doc(rulesRunId).set({
+    scoreId: rulesRunId,
+    workerType: "target_score",
+    workerVersion: "rules-v1",
+    targetId: "target_rules_e2e",
+    fitScore: 80,
+    currentListGapScore: 80,
+    contactabilityScore: 80,
+    riskScore: 10,
+    segment: "a",
+    nextAction: "draft",
+    reasons: ["Rules-only fixture"],
+    confidence: "high",
+    model: "rules",
+    costEstimate: 0,
+    createdAt: timestamp,
+  });
+  await db.collection(SIGNALDESK_COLLECTIONS.REVENUE_CONTROL_SUMMARIES).doc(SIGNALDESK_SUMMARY_DOCS.REVENUE).set({
+    founderAttentionMinutes: 10,
+    updatedAt: timestamp,
+  }, { merge: true });
+
+  await expectRejects("Non-founder AI shadow review", () => reviewSignalDeskAiShadowRunServer({
+    ...access,
+    role: "growth-manager",
+  }, {
+    aiRunId,
+    decision: "accepted",
+    founderAttentionMinutes: 1,
+  }), "Founder approval is required for AI shadow review");
+  await expectRejects("Rules-only AI shadow review", () => reviewSignalDeskAiShadowRunServer(access, {
+    aiRunId: rulesRunId,
+    decision: "accepted",
+    founderAttentionMinutes: 1,
+  }), "Only provider-backed AI assist runs can be reviewed");
+  await expectRejects("AI shadow review without exception reason", () => reviewSignalDeskAiShadowRunServer(access, {
+    aiRunId,
+    decision: "edited",
+    founderAttentionMinutes: 3,
+  }), "AI shadow review reason is required");
+
+  const sideEffectCountBefore = await expectCollectionCount(SIGNALDESK_COLLECTIONS.MESSAGE_EXPORTS, () => true);
+  await reviewSignalDeskAiShadowRunServer(access, {
+    aiRunId,
+    decision: "edited",
+    founderAttentionMinutes: 3,
+    reason: "Removed an unsupported claim before reuse.",
+  });
+  let evalSnap = await db.collection(SIGNALDESK_COLLECTIONS.MODEL_EVALS).doc(modelEvalId).get();
+  assert(evalSnap.data()?.sampleSize === 2, "Shadow review changed provider sample size");
+  assert(evalSnap.data()?.reviewedSampleSize === 1, "Shadow review did not count one reviewed run");
+  assert(evalSnap.data()?.editedCount === 1 && evalSnap.data()?.editRate === 1, "Edited shadow decision was not aggregated");
+  assert(evalSnap.data()?.founderAttentionMinutes === 3, "Model evaluation did not capture founder attention");
+  let revenueSnap = await db.collection(SIGNALDESK_COLLECTIONS.REVENUE_CONTROL_SUMMARIES).doc(SIGNALDESK_SUMMARY_DOCS.REVENUE).get();
+  assert(revenueSnap.data()?.founderAttentionMinutes === 13, "Revenue summary did not include shadow-review attention");
+
+  await reviewSignalDeskAiShadowRunServer(access, {
+    aiRunId,
+    decision: "rejected",
+    founderAttentionMinutes: 2,
+    reason: "Evidence remained too weak for use.",
+  });
+  evalSnap = await db.collection(SIGNALDESK_COLLECTIONS.MODEL_EVALS).doc(modelEvalId).get();
+  assert(evalSnap.data()?.reviewedSampleSize === 1, "Review replacement double-counted the reviewed run");
+  assert(evalSnap.data()?.editedCount === 0 && evalSnap.data()?.editRate === 0, "Review replacement retained the prior edit decision");
+  assert(evalSnap.data()?.rejectedCount === 1 && evalSnap.data()?.rejectionRate === 1, "Rejected review replacement was not aggregated");
+  assert(evalSnap.data()?.founderAttentionMinutes === 2, "Review replacement double-counted founder attention");
+  revenueSnap = await db.collection(SIGNALDESK_COLLECTIONS.REVENUE_CONTROL_SUMMARIES).doc(SIGNALDESK_SUMMARY_DOCS.REVENUE).get();
+  assert(revenueSnap.data()?.founderAttentionMinutes === 12, "Revenue attention replacement was not idempotent");
+
+  const runSnap = await db.collection(SIGNALDESK_COLLECTIONS.AI_WORKER_RUNS).doc(aiRunId).get();
+  assert(runSnap.data()?.reviewDecision === "rejected", "AI run did not retain the latest founder decision");
+  assert(runSnap.data()?.reviewedBy === access.userId, "AI run did not retain founder review identity");
+  const auditCount = await expectCollectionCount(SIGNALDESK_COLLECTIONS.AUDIT_EVENTS, (data) => data.action === "ai_shadow_review" && data.entityId === aiRunId);
+  assert(auditCount === 2, "AI shadow review did not write one audit event per founder decision");
+  const timelineSnap = await db.collection(SIGNALDESK_COLLECTIONS.RUN_TIMELINES).doc(`model_${aiRunId}`).get();
+  assert(timelineSnap.exists && timelineSnap.data()?.status === "blocked", "AI shadow review timeline did not retain latest status");
+  const sideEffectCountAfter = await expectCollectionCount(SIGNALDESK_COLLECTIONS.MESSAGE_EXPORTS, () => true);
+  assert(sideEffectCountAfter === sideEffectCountBefore, "AI shadow review created an outbound export");
+
+  const aiWorkspace = await loadSignalDeskWorkspaceServer(access, "ai");
+  assert(aiWorkspace.workspace.aiWorkerRuns.some((run) => run.aiRunId === aiRunId), "AI workspace did not expose provider-backed runs for review");
+  assert(!aiWorkspace.workspace.scores.some((score) => score.scoreId === aiRunId), "AI provider run leaked into rules scores");
+  assert(aiWorkspace.workspace.scores.some((score) => score.scoreId === rulesRunId), "AI workspace lost rules-only scores");
+  const loadedEval = aiWorkspace.workspace.modelEvals.find((evaluation) => evaluation.modelEvalId === modelEvalId);
+  assert(loadedEval?.passRate === 0.5 && loadedEval?.rejectedFactRate === 0.5, "AI workspace did not derive cumulative provider quality rates");
+}
+
+async function assertAiVolumeMode() {
+  const policy = await createPolicy("AI volume");
+  const targetId = await importOne(policy.sourcePolicyId, "AiVolume");
+  await db.collection(SIGNALDESK_COLLECTIONS.PROVIDER_ACCOUNTS).doc("provider_gemini_ai").set({
+    credentialState: "configured",
+    dailyBudgetUsd: 5,
+    monthlyBudgetUsd: 120,
+    ownerApproved: true,
+    perRunBudgetUsd: 0.15,
+    provider: "gemini",
+    status: "approved",
+    use: "ai",
+    spentTodayUsd: 0,
+    spentMonthUsd: 0,
+    updatedAt: timestampNow(),
+  }, { merge: true });
+  await db.collection(SIGNALDESK_COLLECTIONS.BUDGET_POLICIES).doc("budget_provider_gemini_default").set({
+    dailyBudgetUsd: 5,
+    monthlyBudgetUsd: 120,
+    perRunBudgetUsd: 0.15,
+    provider: "gemini",
+    scope: "provider",
+    status: "active",
+    spentTodayUsd: 0,
+    spentMonthUsd: 0,
+    updatedAt: timestampNow(),
+  }, { merge: true });
+
+  await expectRejects("Non-founder AI volume run", () => runSignalDeskAiVolumeBatchServer({
+    ...access,
+    role: "growth-manager",
+  }, {
+    idempotencyKey: "ai-volume-non-founder-e2e",
+    maxEstimatedCostUsd: 1,
+    targetIds: [targetId],
+    tasks: ["score"],
+  }), "Founder approval is required for AI volume runs");
+  await expectRejects("AI volume direct-server input bounds", () => runSignalDeskAiVolumeBatchServer(access, {
+    idempotencyKey: "short",
+    maxEstimatedCostUsd: 1,
+    targetIds: [targetId],
+    tasks: ["score"],
+  }), "AI volume batch limits are invalid");
+  await expectRejects("AI volume founder maximum", () => runSignalDeskAiVolumeBatchServer(access, {
+    idempotencyKey: "ai-volume-cost-block-e2e",
+    maxEstimatedCostUsd: 0.01,
+    targetIds: [targetId],
+    tasks: ["score", "evidence"],
+  }), "AI volume projected cost exceeds founder maximum");
+  const preflightVolumeCount = await expectCollectionCount(SIGNALDESK_COLLECTIONS.AI_WORKER_RUNS, (data) => data.workerType === "ai_volume_batch");
+  assert(preflightVolumeCount === 0, "AI volume cost preflight wrote a parent run before blocking");
+  await db.collection(SIGNALDESK_COLLECTIONS.PROVIDER_ACCOUNTS).doc("provider_gemini_ai").set({ dailyBudgetUsd: 0.1 }, { merge: true });
+  await db.collection(SIGNALDESK_COLLECTIONS.BUDGET_POLICIES).doc("budget_provider_gemini_default").set({ dailyBudgetUsd: 0.1 }, { merge: true });
+  await expectRejects("AI volume aggregate provider budget", () => runSignalDeskAiVolumeBatchServer(access, {
+    idempotencyKey: "ai-volume-provider-budget-e2e",
+    maxEstimatedCostUsd: 1,
+    targetIds: [targetId],
+    tasks: ["score"],
+  }), "Provider daily budget exceeded");
+  await db.collection(SIGNALDESK_COLLECTIONS.PROVIDER_ACCOUNTS).doc("provider_gemini_ai").set({ dailyBudgetUsd: 5 }, { merge: true });
+  await db.collection(SIGNALDESK_COLLECTIONS.BUDGET_POLICIES).doc("budget_provider_gemini_default").set({ dailyBudgetUsd: 5 }, { merge: true });
+  const activeVolumeLockRef = db.collection(SIGNALDESK_COLLECTIONS.AI_WORKER_RUNS).doc("ai_volume_lock_global");
+  const staleVolumeKey = "ai-volume-stale-recovery-e2e";
+  const staleVolumeId = `ai_volume_${hashValue(`${access.userId}|${staleVolumeKey}`).slice(0, 24)}`;
+  const staleVolumeRef = db.collection(SIGNALDESK_COLLECTIONS.AI_WORKER_RUNS).doc(staleVolumeId);
+  const staleChildRef = db.collection(SIGNALDESK_COLLECTIONS.AI_WORKER_RUNS).doc();
+  const expiredAt = admin.firestore.Timestamp.fromMillis(Date.now() - 60000);
+  await staleVolumeRef.set({
+    aiRunId: staleVolumeId,
+    volumeRunId: staleVolumeId,
+    workerType: "ai_volume_batch",
+    workerVersion: "ai-volume-v1",
+    status: "running",
+    targetIds: [targetId],
+    tasks: ["score", "evidence"],
+    requestedPairCount: 2,
+    completedPairCount: 0,
+    failedPairCount: 0,
+    modelCallCount: 0,
+    estimatedCostUsd: 0,
+    maxEstimatedCostUsd: 1,
+    childRunIds: [],
+    failureCodes: [],
+    lockExpiresAt: expiredAt,
+    createdBy: access.userId,
+    createdAt: expiredAt,
+    updatedAt: expiredAt,
+  });
+  await staleChildRef.set({
+    aiRunId: staleChildRef.id,
+    confidence: "high",
+    costEstimate: 0.03,
+    model: "gemini-2.5-flash-lite",
+    modelCallCount: 2,
+    provider: "gemini",
+    targetId,
+    task: "score",
+    volumeRunId: staleVolumeId,
+    workerType: "ai_assist_score",
+    workerVersion: "signaldesk-ai-assist-v2+signaldesk-ai-critic-v1",
+    createdAt: expiredAt,
+  });
+  await activeVolumeLockRef.set({
+    activeVolumeRunId: staleVolumeId,
+    expiresAt: expiredAt,
+    status: "running",
+    workerType: "ai_volume_lock",
+  });
+  const recoveredStaleVolume = await runSignalDeskAiVolumeBatchServer(access, {
+    idempotencyKey: staleVolumeKey,
+    maxEstimatedCostUsd: 1,
+    targetIds: [targetId],
+    tasks: ["score", "evidence"],
+  });
+  assert(recoveredStaleVolume.status === "partial", "Expired AI volume parent was not recovered as partial");
+  assert(recoveredStaleVolume.completedPairCount === 1 && recoveredStaleVolume.failedPairCount === 1, "Expired AI volume recovery counters are incorrect");
+  assert(recoveredStaleVolume.childRunIds.includes(staleChildRef.id), "Expired AI volume recovery lost its completed child");
+  assert(recoveredStaleVolume.modelCallCount === 2 && recoveredStaleVolume.estimatedCostUsd === 0.03, "Expired AI volume recovery did not reconstruct calls and cost");
+  assert(recoveredStaleVolume.failureCodes.includes("ai_volume_run_interrupted"), "Expired AI volume recovery lost its stable failure code");
+  const recoveredLock = await activeVolumeLockRef.get();
+  assert(recoveredLock.data()?.status === "completed" && recoveredLock.data()?.recoveryReason === "ai_volume_run_interrupted", "Expired AI volume recovery did not release its owned lock");
+  const recoveredTimeline = await db.collection(SIGNALDESK_COLLECTIONS.RUN_TIMELINES).doc(`model_${staleVolumeId}`).get();
+  assert(recoveredTimeline.data()?.status === "held", "Expired AI volume recovery did not write a held timeline");
+  const recoveryAuditCount = await expectCollectionCount(SIGNALDESK_COLLECTIONS.AUDIT_EVENTS, (data) => data.entityId === staleVolumeId && data.action === "ai_volume_batch_recovered");
+  assert(recoveryAuditCount === 1, "Expired AI volume recovery did not write exactly one audit event");
+  const recoveredStaleRetry = await runSignalDeskAiVolumeBatchServer(access, {
+    idempotencyKey: staleVolumeKey,
+    maxEstimatedCostUsd: 1,
+    targetIds: [targetId],
+    tasks: ["score", "evidence"],
+  });
+  const recoveryAuditCountAfterRetry = await expectCollectionCount(SIGNALDESK_COLLECTIONS.AUDIT_EVENTS, (data) => data.entityId === staleVolumeId && data.action === "ai_volume_batch_recovered");
+  assert(recoveredStaleRetry.status === "partial" && recoveryAuditCountAfterRetry === 1, "Recovered AI volume retry repeated recovery writes");
+
+  const blockedStaleVolumeKey = "ai-volume-stale-blocked-e2e";
+  const blockedStaleVolumeId = `ai_volume_${hashValue(`${access.userId}|${blockedStaleVolumeKey}`).slice(0, 24)}`;
+  await db.collection(SIGNALDESK_COLLECTIONS.AI_WORKER_RUNS).doc(blockedStaleVolumeId).set({
+    aiRunId: blockedStaleVolumeId,
+    volumeRunId: blockedStaleVolumeId,
+    workerType: "ai_volume_batch",
+    workerVersion: "ai-volume-v1",
+    status: "running",
+    targetIds: [targetId],
+    tasks: ["score"],
+    requestedPairCount: 1,
+    completedPairCount: 0,
+    failedPairCount: 0,
+    modelCallCount: 0,
+    estimatedCostUsd: 0,
+    maxEstimatedCostUsd: 1,
+    childRunIds: [],
+    failureCodes: [],
+    lockExpiresAt: expiredAt,
+    createdBy: access.userId,
+    createdAt: expiredAt,
+    updatedAt: expiredAt,
+  });
+  const recoveredBlockedVolume = await runSignalDeskAiVolumeBatchServer(access, {
+    idempotencyKey: blockedStaleVolumeKey,
+    maxEstimatedCostUsd: 1,
+    targetIds: [targetId],
+    tasks: ["score"],
+  });
+  assert(recoveredBlockedVolume.status === "blocked" && recoveredBlockedVolume.failedPairCount === 1, "Expired AI volume with no children was not recovered as blocked");
+  assert(recoveredBlockedVolume.failureCodes.includes("ai_volume_run_interrupted"), "Blocked stale AI volume lost interruption evidence");
+
+  await activeVolumeLockRef.set({
+    activeVolumeRunId: "ai_volume_other",
+    expiresAt: admin.firestore.Timestamp.fromMillis(Date.now() + 300000),
+    status: "running",
+    workerType: "ai_volume_lock",
+  });
+  await expectRejects("Concurrent AI volume run", () => runSignalDeskAiVolumeBatchServer(access, {
+    idempotencyKey: "ai-volume-concurrent-block-e2e",
+    maxEstimatedCostUsd: 1,
+    targetIds: [targetId],
+    tasks: ["score"],
+  }), "SignalDesk AI volume run is already active");
+  await activeVolumeLockRef.delete();
+
+  const originalAssist = signalDeskAiProvider.runSignalDeskAiAssist;
+  const originalCritic = signalDeskAiProvider.runSignalDeskAiCritic;
+  let assistCallCount = 0;
+  let criticCallCount = 0;
+  signalDeskAiProvider.runSignalDeskAiAssist = async (input) => {
+    assistCallCount += 1;
+    const escalated = Boolean(input.priorOutput);
+    return {
+      confidence: escalated ? "high" : input.task === "evidence" ? "medium" : "high",
+      model: input.model,
+      output: {
+        confidence: escalated ? "high" : input.task === "evidence" ? "medium" : "high",
+        nextAction: input.task === "evidence" ? "evidence" : "review",
+        reasons: [escalated ? "Strong-model correction fixture" : "Fast-model fixture"],
+        rejectedFacts: [],
+      },
+      promptVersion: "signaldesk-ai-assist-v2",
+      task: input.task,
+    };
+  };
+  signalDeskAiProvider.runSignalDeskAiCritic = async (input) => {
+    criticCallCount += 1;
+    const revise = input.task === "evidence";
+    return {
+      confidence: revise ? "medium" : "high",
+      model: input.model,
+      reasons: [revise ? "Evidence needs stronger adjudication" : "Candidate is evidence-bounded"],
+      rejectedFacts: [],
+      revisedOutput: revise ? {
+        confidence: "medium",
+        nextAction: "evidence",
+        reasons: ["Critic revision fixture"],
+        rejectedFacts: [],
+      } : undefined,
+      promptVersion: "signaldesk-ai-critic-v1",
+      verdict: revise ? "revise" : "pass",
+    };
+  };
+
+  try {
+    const messageExportCountBefore = await expectCollectionCount(SIGNALDESK_COLLECTIONS.MESSAGE_EXPORTS, () => true);
+    const result = await runSignalDeskAiVolumeBatchServer(access, {
+      idempotencyKey: "ai-volume-happy-e2e",
+      instruction: "Prepare internal review outputs only.",
+      maxEstimatedCostUsd: 1,
+      targetIds: [targetId],
+      tasks: ["score", "evidence"],
+    });
+    assert(result.status === "completed", `AI volume batch did not complete: ${result.status}`);
+    assert(result.requestedPairCount === 2 && result.completedPairCount === 2, "AI volume batch pair counters are incorrect");
+    assert(result.failedPairCount === 0 && result.failureCodes.length === 0, "AI volume batch recorded unexpected failures");
+    assert(result.childRunIds.length === 2, "AI volume batch did not retain both child run IDs");
+    assert(result.modelCallCount === 5, `AI volume model-call count was ${result.modelCallCount}, expected 5`);
+    assert(assistCallCount === 3 && criticCallCount === 2, "AI volume generation/critic/escalation call split is incorrect");
+    assert(result.estimatedCostUsd > 0 && result.estimatedCostUsd <= result.maxEstimatedCostUsd, "AI volume estimated cost exceeded founder authority");
+    const releasedVolumeLock = await db.collection(SIGNALDESK_COLLECTIONS.AI_WORKER_RUNS).doc("ai_volume_lock_global").get();
+    assert(releasedVolumeLock.data()?.status === "completed", "AI volume global lock was not released after completion");
+
+    const childSnaps = await Promise.all(result.childRunIds.map((childRunId) => (
+      db.collection(SIGNALDESK_COLLECTIONS.AI_WORKER_RUNS).doc(childRunId).get()
+    )));
+    const children = childSnaps.map((snap) => snap.data());
+    assert(children.every((child) => child?.volumeRunId === result.volumeRunId), "AI volume child lost its parent run ID");
+    assert(children.every((child) => child?.criticVerdict), "AI volume child lost critic evidence");
+    assert(children.some((child) => child?.escalated === true && child?.modelCallCount === 3), "AI volume critic exception did not escalate");
+    assert(children.some((child) => child?.escalated === false && child?.modelCallCount === 2), "AI volume clean child did not stop after critic pass");
+    const messageExportCountAfter = await expectCollectionCount(SIGNALDESK_COLLECTIONS.MESSAGE_EXPORTS, () => true);
+    assert(messageExportCountAfter === messageExportCountBefore, "AI volume mode created an outbound export");
+    const volumeAuditCount = await expectCollectionCount(SIGNALDESK_COLLECTIONS.AUDIT_EVENTS, (data) => (
+      data.entityId === result.volumeRunId && (data.action === "ai_volume_batch_started" || data.action === "ai_volume_batch_finished")
+    ));
+    assert(volumeAuditCount === 2, "AI volume batch did not write start and finish audit evidence");
+    const aiWorkspace = await loadSignalDeskWorkspaceServer(access, "ai");
+    assert(aiWorkspace.workspace.aiVolumeRuns.some((run) => run.volumeRunId === result.volumeRunId), "AI workspace did not load the volume parent summary");
+    assert(aiWorkspace.workspace.aiWorkerRuns.filter((run) => run.volumeRunId === result.volumeRunId).length === 2, "AI workspace did not load both reviewable volume children");
+
+    const callsBeforeRetry = assistCallCount + criticCallCount;
+    const idempotentRetry = await runSignalDeskAiVolumeBatchServer(access, {
+      idempotencyKey: "ai-volume-happy-e2e",
+      instruction: "Prepare internal review outputs only.",
+      maxEstimatedCostUsd: 1,
+      targetIds: [targetId],
+      tasks: ["score", "evidence"],
+    });
+    assert(idempotentRetry.volumeRunId === result.volumeRunId, "AI volume retry did not return the deterministic parent run");
+    assert(assistCallCount + criticCallCount === callsBeforeRetry, "AI volume retry repeated paid model calls");
+
+    signalDeskAiProvider.runSignalDeskAiAssist = async (input) => {
+      if (input.task === "evidence" && !input.priorOutput) throw new Error("provider secret raw failure must not persist");
+      return {
+        confidence: "high",
+        model: input.model,
+        output: { confidence: "high", nextAction: "review", reasons: ["Partial fixture"], rejectedFacts: [] },
+        promptVersion: "signaldesk-ai-assist-v2",
+        task: input.task,
+      };
+    };
+    signalDeskAiProvider.runSignalDeskAiCritic = async (input) => ({
+      confidence: "high",
+      model: input.model,
+      reasons: ["Partial fixture critic pass"],
+      rejectedFacts: [],
+      promptVersion: "signaldesk-ai-critic-v1",
+      verdict: "pass",
+    });
+    const partial = await runSignalDeskAiVolumeBatchServer(access, {
+      idempotencyKey: "ai-volume-partial-e2e",
+      maxEstimatedCostUsd: 1,
+      targetIds: [targetId],
+      tasks: ["score", "evidence"],
+    });
+    assert(partial.status === "partial" && partial.completedPairCount === 1 && partial.failedPairCount === 1, "AI volume partial failure was not retained accurately");
+    assert(partial.failureCodes.length === 1 && !partial.failureCodes.join(" ").includes("secret"), "AI volume parent persisted raw provider failure text");
+
+    const scoreRouteRef = db.collection(SIGNALDESK_COLLECTIONS.MODEL_ROUTES).doc("model_route_score");
+    await scoreRouteRef.set({ escalationModel: "gpt-5-mini", escalationProvider: "openai", updatedAt: timestampNow() }, { merge: true });
+    signalDeskAiProvider.runSignalDeskAiAssist = async (input) => ({
+      confidence: "medium",
+      model: input.model,
+      output: { confidence: "medium", nextAction: "review", reasons: ["Escalation-block fixture"], rejectedFacts: [] },
+      promptVersion: "signaldesk-ai-assist-v2",
+      task: input.task,
+    });
+    signalDeskAiProvider.runSignalDeskAiCritic = async (input) => ({
+      confidence: "low",
+      model: input.model,
+      reasons: ["Stronger review required"],
+      rejectedFacts: [],
+      promptVersion: "signaldesk-ai-critic-v1",
+      verdict: "hold",
+    });
+    const blockedEscalation = await runSignalDeskAiVolumeBatchServer(access, {
+      idempotencyKey: "ai-volume-escalation-block-e2e",
+      maxEstimatedCostUsd: 1,
+      targetIds: [targetId],
+      tasks: ["score"],
+    });
+    const blockedEscalationChild = await db.collection(SIGNALDESK_COLLECTIONS.AI_WORKER_RUNS).doc(blockedEscalation.childRunIds[0]).get();
+    assert(blockedEscalation.status === "completed", "Unavailable escalation incorrectly failed the internal child record");
+    assert(blockedEscalationChild.data()?.escalationBlocked === true && blockedEscalationChild.data()?.confidence === "low", "Unavailable non-Gemini escalation did not remain review-required");
+    await scoreRouteRef.set({ escalationModel: "gemini-2.5-flash", escalationProvider: "gemini", updatedAt: timestampNow() }, { merge: true });
+
+    signalDeskAiProvider.runSignalDeskAiAssist = async (input) => ({
+      confidence: "high",
+      model: input.model,
+      output: { confidence: "high", nextAction: "review", reasons: ["Rejected-fact fixture"], rejectedFacts: ["Owner identity is not evidenced"] },
+      promptVersion: "signaldesk-ai-assist-v2",
+      task: input.task,
+    });
+    signalDeskAiProvider.runSignalDeskAiCritic = async (input) => ({
+      confidence: "high",
+      model: input.model,
+      reasons: ["Candidate retained an unsupported fact marker"],
+      rejectedFacts: [],
+      promptVersion: "signaldesk-ai-critic-v1",
+      verdict: "pass",
+    });
+    const rejectedFactRun = await runSignalDeskAiVolumeBatchServer(access, {
+      idempotencyKey: "ai-volume-rejected-fact-e2e",
+      maxEstimatedCostUsd: 1,
+      targetIds: [targetId],
+      tasks: ["score"],
+    });
+    const rejectedFactChild = await db.collection(SIGNALDESK_COLLECTIONS.AI_WORKER_RUNS).doc(rejectedFactRun.childRunIds[0]).get();
+    assert(rejectedFactChild.data()?.rejectedFactCount === 1 && rejectedFactChild.data()?.confidence === "low", "Rejected facts did not force founder review");
+  } finally {
+    signalDeskAiProvider.runSignalDeskAiAssist = originalAssist;
+    signalDeskAiProvider.runSignalDeskAiCritic = originalCritic;
+  }
+}
+
 async function assertMobileReadOnlyContract() {
   const fakeMobileRequest = {
     headers: {
@@ -1147,30 +2025,44 @@ async function assertMobileReadOnlyContract() {
   [
     '"review-approval": "approve"',
     '"export-message": "export"',
+    '"record-manual-contact": "configure"',
     '"send-approved-message": "send"',
     '"run-source-provider": "provider_run"',
     '"upsert-connector-setting": "configure"',
     '"qualify-revenue-account": "configure"',
     '"review-market-pod": "approve"',
+    '"review-ai-shadow-run": "approve"',
+    '"run-ai-volume-batch": "provider_run"',
     '"upsert-operating-envelope": "mutate_policy"',
     '"schedule-content-distribution-draft": "schedule"',
     '| "reveal_pii"',
     'MOBILE_READ_ONLY_ACTION_BLOCKED',
   ].forEach((needle) => assert(actionsRoute.includes(needle), `Mobile read-only route contract missing ${needle}`));
 
+  const workspaceSource = fs.readFileSync(path.join(__dirname, "..", "..", "src/components/signaldesk/SignalDeskWorkspace.tsx"), "utf8");
+  [
+    'SIGNALDESK_AI_VOLUME_RETRY_STORAGE_KEY',
+    'result.status !== "running"',
+    '"Retry Batch"',
+    '>Clear Retry<',
+  ].forEach((needle) => assert(workspaceSource.includes(needle), `AI volume retry UI contract missing ${needle}`));
+
   for (const [action, actionClass] of [
     ["review-approval", "approve"],
     ["export-message", "export"],
+    ["record-manual-contact", "configure"],
     ["upsert-connector-setting", "configure"],
     ["qualify-revenue-account", "configure"],
     ["review-market-pod", "approve"],
+    ["review-ai-shadow-run", "approve"],
+    ["run-ai-volume-batch", "provider_run"],
     ["upsert-operating-envelope", "mutate_policy"],
     ["target-contact-reveal", "reveal_pii"],
   ]) {
     await recordSignalDeskMobileActionBlockedServer({ access, action, actionClass });
   }
   const blockedAuditCount = await expectCollectionCount(SIGNALDESK_COLLECTIONS.AUDIT_EVENTS, (data) => data.action === "mobile_action_blocked");
-  assert(blockedAuditCount >= 7, "Mobile blocked action audit events were not recorded");
+  assert(blockedAuditCount >= 10, "Mobile blocked action audit events were not recorded");
 }
 
 async function assertWebhookAndDncFixtures(targetId) {
@@ -1206,6 +2098,289 @@ async function assertWebhookAndDncFixtures(targetId) {
   assert(afterDuplicateMessages === afterFirstMessages, "Duplicate webhook created another message");
   assert(afterDuplicateSuppressions === afterFirstSuppressions, "Duplicate webhook created another suppression");
 
+  const atomicPolicy = await createPolicy("Atomic webhook");
+  const atomicTargetId = await importOne(atomicPolicy.sourcePolicyId, "AtomicWebhook", { currentListUrl: "" });
+  const atomicPayload = {
+    event: "email.reply",
+    eventId: "email_event_atomic_fixture",
+    message: "Yes, I am interested in a preview.",
+    messageId: "provider_message_atomic_fixture",
+    targetId: atomicTargetId,
+  };
+  const atomicMessageCountBefore = await expectCollectionCount(SIGNALDESK_COLLECTIONS.MESSAGES, () => true);
+  const concurrentResults = await Promise.all([
+    processSignalDeskProviderWebhook({ provider: "email", rawBody: JSON.stringify(atomicPayload), requestHeaders: headers }),
+    processSignalDeskProviderWebhook({ provider: "email", rawBody: JSON.stringify(atomicPayload), requestHeaders: headers }),
+  ]);
+  assert(concurrentResults.filter((result) => result.status === "processed").length === 1, "Concurrent webhook processing did not produce one winner");
+  assert(concurrentResults.filter((result) => result.status === "duplicate").length === 1, "Concurrent webhook processing did not dedupe one retry");
+  const atomicMessageCountAfter = await expectCollectionCount(SIGNALDESK_COLLECTIONS.MESSAGES, () => true);
+  assert(atomicMessageCountAfter === atomicMessageCountBefore + 1, "Concurrent webhook retry created duplicate message side effects");
+  const atomicTargetSnap = await db.collection(SIGNALDESK_COLLECTIONS.TARGET_SUMMARIES).doc(atomicTargetId).get();
+  assert(atomicTargetSnap.data()?.latestConversationId === `conv_${atomicTargetId}`, "Provider reply did not project the latest conversation onto the target");
+  assert(atomicTargetSnap.data()?.ownerQualifiedAt, "Interested provider reply did not start the owner-qualified clock");
+  const atomicRevenueAccountSnap = await db.collection(SIGNALDESK_COLLECTIONS.REVENUE_ACCOUNTS)
+    .doc(`revenue_account_${hashValue(atomicTargetId).slice(0, 22)}`)
+    .get();
+  assert(atomicRevenueAccountSnap.exists, "Interested provider reply did not project the revenue lifecycle");
+
+  const providerMessageCountBeforeStatus = await expectCollectionCount(SIGNALDESK_COLLECTIONS.MESSAGES, (data) => data.targetId === atomicTargetId);
+  const atomicPhoneIdentitySnap = await db.collection(SIGNALDESK_COLLECTIONS.CONTACT_IDENTITIES)
+    .where("targetId", "==", atomicTargetId)
+    .where("channel", "==", "phone")
+    .limit(1)
+    .get();
+  assert(!atomicPhoneIdentitySnap.empty, "Atomic webhook fixture lost its phone identity");
+  const atomicPhone = String(atomicPhoneIdentitySnap.docs[0].data().value || "").replace(/\D/g, "");
+  const deliveryPayload = {
+    object: "whatsapp_business_account",
+    entry: [{
+      id: "waba_e2e",
+      changes: [{
+        field: "messages",
+        value: {
+          messaging_product: "whatsapp",
+          statuses: [{ id: "wa_outbound_fixture", recipient_id: atomicPhone, status: "delivered", timestamp: String(Math.floor(Date.now() / 1000)) }],
+        },
+      }],
+    }],
+  };
+  const deliveryRawBody = JSON.stringify(deliveryPayload);
+  const deliveryResult = await processSignalDeskProviderWebhook({
+    provider: "whatsapp",
+    rawBody: deliveryRawBody,
+    requestHeaders: metaWebhookHeaders(deliveryRawBody),
+  });
+  assert(deliveryResult.status === "processed", "WhatsApp delivery status did not resolve its target");
+  const providerMessageCountAfterStatus = await expectCollectionCount(SIGNALDESK_COLLECTIONS.MESSAGES, (data) => data.targetId === atomicTargetId);
+  assert(providerMessageCountAfterStatus === providerMessageCountBeforeStatus, "WhatsApp delivery status was stored as an inbound human reply");
+  const afterDeliveryTargetSnap = await db.collection(SIGNALDESK_COLLECTIONS.TARGET_SUMMARIES).doc(atomicTargetId).get();
+  assert(afterDeliveryTargetSnap.data()?.ownerQualifiedAt, "WhatsApp delivery status erased owner-qualified state");
+
+  const emailStatusMessageCountBefore = await expectCollectionCount(SIGNALDESK_COLLECTIONS.MESSAGES, (data) => data.targetId === atomicTargetId);
+  const emailDeliveryResult = await processSignalDeskProviderWebhook({
+    provider: "email",
+    rawBody: JSON.stringify({ event: "email.delivered", messageId: "email_status_shared_message", targetId: atomicTargetId }),
+    requestHeaders: headers,
+  });
+  const emailOpenedResult = await processSignalDeskProviderWebhook({
+    provider: "email",
+    rawBody: JSON.stringify({ event: "email.opened", messageId: "email_status_shared_message", targetId: atomicTargetId }),
+    requestHeaders: headers,
+  });
+  assert(emailDeliveryResult.status === "processed" && emailOpenedResult.status === "processed", "Email status callbacks sharing one message ID collided");
+  const emailStatusMessageCountAfter = await expectCollectionCount(SIGNALDESK_COLLECTIONS.MESSAGES, (data) => data.targetId === atomicTargetId);
+  assert(emailStatusMessageCountAfter === emailStatusMessageCountBefore, "Email delivery status was stored as an inbound human reply");
+
+  const batchMessageCountBefore = await expectCollectionCount(SIGNALDESK_COLLECTIONS.MESSAGES, (data) => data.targetId === atomicTargetId);
+  const batchedPayload = {
+    object: "whatsapp_business_account",
+    entry: [{
+      id: "waba_e2e",
+      changes: [{
+        field: "messages",
+        value: {
+          messaging_product: "whatsapp",
+          messages: [
+            { from: atomicPhone, id: "wa_batch_message_1", timestamp: String(Math.floor(Date.now() / 1000)), type: "text", text: { body: "Yes, please share pricing." } },
+            { from: atomicPhone, id: "wa_batch_message_2", timestamp: String(Math.floor(Date.now() / 1000) + 1), type: "image" },
+          ],
+        },
+      }],
+    }],
+  };
+  const batchedRawBody = JSON.stringify(batchedPayload);
+  const batchedResult = await processSignalDeskProviderWebhook({
+    provider: "whatsapp",
+    rawBody: batchedRawBody,
+    requestHeaders: metaWebhookHeaders(batchedRawBody),
+  });
+  assert(batchedResult.eventCount === 2 && batchedResult.processedCount === 2, "Batched WhatsApp webhook did not process every event");
+  const batchMessageCountAfter = await expectCollectionCount(SIGNALDESK_COLLECTIONS.MESSAGES, (data) => data.targetId === atomicTargetId);
+  assert(batchMessageCountAfter === batchMessageCountBefore + 2, "Batched WhatsApp webhook dropped an inbound message");
+  const nonTextMessageSnap = await db.collection(SIGNALDESK_COLLECTIONS.MESSAGES).doc(`message_${hashValue(`webhook_whatsapp_${hashValue("wa_batch_message_2").slice(0, 40)}`).slice(0, 32)}`).get();
+  assert(nonTextMessageSnap.data()?.body === "[image message]", "Non-text WhatsApp message was silently discarded");
+
+  const instagramPolicy = await createPolicy("Instagram webhook shape");
+  const instagramTargetId = await importOne(instagramPolicy.sourcePolicyId, "InstagramWebhook", { instagram: "owner_igsid_fixture" });
+  const instagramPayload = {
+    object: "instagram",
+    entry: [{
+      id: "instagram_business_fixture",
+      time: Date.now(),
+      messaging: [{
+        sender: { id: "owner_igsid_fixture" },
+        recipient: { id: "instagram_business_fixture" },
+        timestamp: Date.now(),
+        message: { mid: "instagram_mid_fixture", text: "Yes, I am interested." },
+      }],
+    }],
+  };
+  const instagramRawBody = JSON.stringify(instagramPayload);
+  const instagramResult = await processSignalDeskProviderWebhook({
+    provider: "instagram",
+    rawBody: instagramRawBody,
+    requestHeaders: metaWebhookHeaders(instagramRawBody),
+  });
+  assert(instagramResult.status === "processed", "Instagram messaging webhook shape was not processed");
+  const instagramTargetSnap = await db.collection(SIGNALDESK_COLLECTIONS.TARGET_SUMMARIES).doc(instagramTargetId).get();
+  assert(instagramTargetSnap.data()?.ownerQualifiedAt, "Instagram interested reply did not project owner-qualified intent");
+
+  const messengerPolicy = await createPolicy("Messenger webhook shape");
+  const messengerTargetId = await importOne(messengerPolicy.sourcePolicyId, "MessengerWebhook");
+  await db.collection(SIGNALDESK_COLLECTIONS.CONTACT_IDENTITIES).doc(`messenger_${hashValue("messenger_psid_fixture")}`).set({
+    channel: "messenger",
+    identityId: `messenger_${hashValue("messenger_psid_fixture")}`,
+    permissionState: "permissioned",
+    targetId: messengerTargetId,
+    updatedAt: timestampNow(),
+    value: "messenger_psid_fixture",
+  });
+  const messengerPayload = {
+    object: "page",
+    entry: [{
+      id: "messenger_page_fixture",
+      time: Date.now(),
+      messaging: [{
+        sender: { id: "messenger_psid_fixture" },
+        recipient: { id: "messenger_page_fixture" },
+        timestamp: Date.now(),
+        message: { mid: "messenger_mid_fixture", text: "Please send the details." },
+      }],
+    }],
+  };
+  const messengerRawBody = JSON.stringify(messengerPayload);
+  const messengerResult = await processSignalDeskProviderWebhook({
+    provider: "messenger",
+    rawBody: messengerRawBody,
+    requestHeaders: metaWebhookHeaders(messengerRawBody),
+  });
+  assert(messengerResult.status === "processed", "Messenger messaging webhook shape was not processed");
+
+  const unknownDncEmail = "unknown-opt-out@example.invalid";
+  const unknownDncPayload = {
+    email: unknownDncEmail,
+    event: "email.reply",
+    eventId: "unknown_dnc_fixture",
+    message: "Stop. Do not contact me again.",
+  };
+  const unknownDncResult = await processSignalDeskProviderWebhook({
+    provider: "email",
+    rawBody: JSON.stringify(unknownDncPayload),
+    requestHeaders: headers,
+  });
+  assert(unknownDncResult.status === "received", "Unresolved DNC webhook was not retained");
+  const unknownSuppressionSnap = await db.collection(SIGNALDESK_COLLECTIONS.SUPPRESSION_LEDGER)
+    .doc(`email_${hashValue(unknownDncEmail)}`)
+    .get();
+  assert(unknownSuppressionSnap.exists && unknownSuppressionSnap.data()?.targetId === null, "Unresolved DNC webhook did not create identity suppression");
+
+  const unknownWhatsAppPhone = "15551239876";
+  const unknownWhatsAppPayload = {
+    object: "whatsapp_business_account",
+    entry: [{
+      id: "waba_e2e",
+      changes: [{
+        field: "messages",
+        value: {
+          messaging_product: "whatsapp",
+          messages: [{
+            from: unknownWhatsAppPhone,
+            id: "wa_unknown_dnc_fixture",
+            timestamp: String(Math.floor(Date.now() / 1000)),
+            type: "text",
+            text: { body: "Stop. Do not contact me again." },
+          }],
+        },
+      }],
+    }],
+  };
+  const unknownWhatsAppRawBody = JSON.stringify(unknownWhatsAppPayload);
+  const unknownWhatsAppResult = await processSignalDeskProviderWebhook({
+    provider: "whatsapp",
+    rawBody: unknownWhatsAppRawBody,
+    requestHeaders: metaWebhookHeaders(unknownWhatsAppRawBody),
+  });
+  assert(unknownWhatsAppResult.status === "received", "Unresolved WhatsApp DNC webhook was not retained");
+  const unknownWhatsAppSuppressionSnap = await db.collection(SIGNALDESK_COLLECTIONS.SUPPRESSION_LEDGER)
+    .doc(`phone_${hashValue(unknownWhatsAppPhone)}`)
+    .get();
+  assert(unknownWhatsAppSuppressionSnap.exists, "Unresolved WhatsApp DNC did not create canonical phone suppression");
+  const futureImportPolicy = await createPolicy("WhatsApp suppression compatibility");
+  const futureSuppressedTargetId = await importOne(futureImportPolicy.sourcePolicyId, "FutureWhatsAppSuppressed", {
+    phone: `+${unknownWhatsAppPhone}`,
+  });
+  const futureSuppressedTargetSnap = await db.collection(SIGNALDESK_COLLECTIONS.TARGET_SUMMARIES).doc(futureSuppressedTargetId).get();
+  assert(futureSuppressedTargetSnap.data()?.suppressionStatus === "suppressed", "Future +E.164 import bypassed canonical WhatsApp suppression");
+
+  const conflictPayload = {
+    email: "owner+happy@example.invalid",
+    event: "email.reply",
+    eventId: "email_target_conflict_fixture",
+    message: "Interested",
+    targetId: atomicTargetId,
+  };
+  await expectRejects("Webhook identity and supplied target conflict", () => processSignalDeskProviderWebhook({
+    provider: "email",
+    rawBody: JSON.stringify(conflictPayload),
+    requestHeaders: headers,
+  }), "signaldesk_webhook_target_conflict");
+
+  const idempotencyPayload = {
+    event: "email.reply",
+    eventId: "email_changed_retry_fixture",
+    message: "No, not interested.",
+    targetId: atomicTargetId,
+  };
+  await processSignalDeskProviderWebhook({ provider: "email", rawBody: JSON.stringify(idempotencyPayload), requestHeaders: headers });
+  await expectRejects("Webhook event ID cannot bind changed facts", () => processSignalDeskProviderWebhook({
+    provider: "email",
+    rawBody: JSON.stringify({ ...idempotencyPayload, message: "Yes, interested." }),
+    requestHeaders: headers,
+  }), "signaldesk_webhook_event_conflict");
+
+  const orderedPolicy = await createPolicy("Webhook event ordering");
+  const orderedTargetId = await importOne(orderedPolicy.sourcePolicyId, "WebhookOrdering");
+  const newestTimestamp = Math.floor(Date.now() / 1000);
+  await processSignalDeskProviderWebhook({
+    provider: "email",
+    rawBody: JSON.stringify({ event: "email.reply", eventId: "ordered_newest_fixture", message: "Yes, interested.", targetId: orderedTargetId, timestamp: newestTimestamp }),
+    requestHeaders: headers,
+  });
+  await processSignalDeskProviderWebhook({
+    provider: "email",
+    rawBody: JSON.stringify({ event: "email.reply", eventId: "ordered_stale_fixture", message: "Not interested.", targetId: orderedTargetId, timestamp: newestTimestamp - 120 }),
+    requestHeaders: headers,
+  });
+  const orderedConversationSnap = await db.collection(SIGNALDESK_COLLECTIONS.CONVERSATION_SUMMARIES).doc(`conv_${orderedTargetId}`).get();
+  assert(orderedConversationSnap.data()?.state === "interested", "Out-of-order webhook regressed the current conversation state");
+  const staleMessageSnap = await db.collection(SIGNALDESK_COLLECTIONS.MESSAGES)
+    .doc(`message_${hashValue(`webhook_email_${hashValue("ordered_stale_fixture").slice(0, 40)}`).slice(0, 32)}`)
+    .get();
+  assert(staleMessageSnap.data()?.isOutOfOrder === true, "Out-of-order webhook was not preserved as historical evidence");
+
+  const sharedExternalId = "apify_shared_provider_event";
+  const providerEventCountBefore = await expectCollectionCount(SIGNALDESK_COLLECTIONS.WEBHOOK_EVENTS, () => true);
+  const emailShared = await processSignalDeskProviderWebhook({
+    provider: "email",
+    rawBody: JSON.stringify({ event: "email.delivered", eventId: sharedExternalId }),
+    requestHeaders: headers,
+  });
+  const apifyShared = await processSignalDeskProviderWebhook({
+    provider: "apify",
+    rawBody: JSON.stringify({ eventType: "ACTOR.RUN.SUCCEEDED", runId: "shared_provider_event", runStatus: "SUCCEEDED" }),
+    requestHeaders: new Headers({ "x-signaldesk-webhook-secret": process.env.MENULIST_SIGNALDESK_APIFY_WEBHOOK_SECRET }),
+  });
+  assert(emailShared.status === "received" && apifyShared.status === "received", "Provider-scoped webhook IDs collided");
+  const providerEventCountAfter = await expectCollectionCount(SIGNALDESK_COLLECTIONS.WEBHOOK_EVENTS, () => true);
+  assert(providerEventCountAfter === providerEventCountBefore + 2, "Provider-scoped webhook events did not persist independently");
+
+  await expectRejects("Invalid provider target ID", () => processSignalDeskProviderWebhook({
+    provider: "email",
+    rawBody: JSON.stringify({ event: "email.reply", eventId: "invalid_target_fixture", message: "Interested", targetId: "../stores/unsafe" }),
+    requestHeaders: headers,
+  }), "signaldesk_webhook_target_conflict");
+
   const directDnc = await captureSignalDeskReplyServer(access, {
     channel: "email",
     message: "Stop. Do not contact me again.",
@@ -1214,6 +2389,295 @@ async function assertWebhookAndDncFixtures(targetId) {
   assert(directDnc.state === "dnc", "DNC reply was not classified as dnc");
   const dncSuppressionCount = await expectCollectionCount(SIGNALDESK_COLLECTIONS.SUPPRESSION_LEDGER, (data) => data.targetId === targetId && data.reason === "dnc");
   assert(dncSuppressionCount > 0, "DNC reply did not create suppression immediately");
+}
+
+async function assertOutcomeIntegrityAndProofPermissions() {
+  const policy = await createPolicy("Outcome integrity");
+  const targetId = await importOne(policy.sourcePolicyId, "OutcomeIntegrity", { currentListUrl: "" });
+  await captureSignalDeskReplyServer(access, {
+    channel: "email",
+    message: "Yes, I want to review the preview.",
+    targetId,
+  });
+  await expectRejects("Activation without integrity evidence", () => recordSignalDeskOutcomeServer(access, {
+    channel: "manual",
+    outcomeType: "two_surface_activation",
+    source: "manual",
+    targetId,
+  }), "OUTCOME_IDEMPOTENCY_KEY_REQUIRED");
+  await expectRejects("Activation with one surface", () => recordSignalDeskOutcomeServer(access, {
+    ...activationFixture(targetId, "one-surface"),
+    channel: "manual",
+    outcomeType: "two_surface_activation",
+    source: "manual",
+    surfaces: ["qr"],
+    targetId,
+  }), "ACTIVATION_TWO_DISTINCT_SURFACES_REQUIRED");
+
+  const validInput = {
+    ...activationFixture(targetId, "idempotent"),
+    channel: "manual",
+    outcomeType: "two_surface_activation",
+    source: "manual",
+    targetId,
+  };
+  const first = await recordSignalDeskOutcomeServer(access, validInput);
+  const duplicate = await recordSignalDeskOutcomeServer(access, validInput);
+  assert(first.duplicate === false, "First activation outcome was treated as duplicate");
+  assert(duplicate.duplicate === true, "Duplicate activation outcome was not deduped");
+  await expectRejects("Conflicting activation idempotency reuse", () => recordSignalDeskOutcomeServer(access, {
+    ...validInput,
+    surfaces: ["qr", "instagram"],
+  }), "OUTCOME_IDEMPOTENCY_CONFLICT");
+  await expectRejects("Future activation timestamps", () => recordSignalDeskOutcomeServer(access, {
+    ...activationFixture(targetId, "future-time"),
+    channel: "manual",
+    outcomeType: "two_surface_activation",
+    ownerQualifiedAt: new Date(Date.now() + 10 * 60_000).toISOString(),
+    ownerReviewedAt: new Date(Date.now() + 11 * 60_000).toISOString(),
+    source: "manual",
+    targetId,
+  }), "OUTCOME_TIMESTAMP_INVALID");
+  const summarySnap = await db.collection(SIGNALDESK_COLLECTIONS.OUTCOME_SUMMARIES)
+    .where("targetId", "==", targetId)
+    .where("outcomeType", "==", "two_surface_activation")
+    .get();
+  assert(summarySnap.docs.reduce((sum, doc) => sum + Number(doc.data().count || 0), 0) === 1, "Duplicate activation incremented the summary");
+  assert(summarySnap.docs.every((doc) => doc.data().integrityStatus === "owner-reviewed-manual"), "Manual activation lost owner-review integrity state");
+  const activatedTargetSnap = await db.collection(SIGNALDESK_COLLECTIONS.TARGET_SUMMARIES).doc(targetId).get();
+  assert(activatedTargetSnap.data()?.latestVerifiedActivationEvidenceRef === validInput.evidenceRef, "Target projection lost verified activation evidence");
+  assert(new Set(activatedTargetSnap.data()?.latestVerifiedActivationSurfaces || []).size === 2, "Target projection lost distinct activation surfaces");
+  await recordSignalDeskOutcomeServer(access, {
+    channel: "manual",
+    idempotencyKey: `post-activation:${targetId}`,
+    outcomeType: "published",
+    ownerQualifiedAt: validInput.ownerQualifiedAt,
+    source: "manual",
+    targetId,
+  });
+  const postActivationTargetSnap = await db.collection(SIGNALDESK_COLLECTIONS.TARGET_SUMMARIES).doc(targetId).get();
+  assert(postActivationTargetSnap.data()?.status === "converted", "A later outcome downgraded a verified activation");
+  const activationWatch = await refreshSignalDeskActivationWatchServer(access, { targetId });
+  const projectedOwnerQualifiedAt = postActivationTargetSnap.data()?.ownerQualifiedAt?.toDate?.().getTime?.();
+  const watchDeadlineAt = new Date(activationWatch.deadlineAt).getTime();
+  assert(
+    projectedOwnerQualifiedAt && Math.abs(watchDeadlineAt - projectedOwnerQualifiedAt - (7 * 24 * 60 * 60 * 1000)) < 1000,
+    `Activation clock did not start from owner-qualified intent (${projectedOwnerQualifiedAt || "missing"} -> ${watchDeadlineAt || "missing"})`,
+  );
+  const projectedWorkspace = await loadSignalDeskWorkspaceServer(access, "dashboard");
+  const projectedOpportunity = projectedWorkspace.workspace.activationOpportunities.find((opportunity) => opportunity.targetId === targetId);
+  assert(projectedOpportunity?.state === "activated", "Activation opportunity did not use the durable verified-activation projection");
+
+  const legacyTargetId = await importOne(policy.sourcePolicyId, "LegacyActivation", { currentListUrl: "" });
+  await captureSignalDeskReplyServer(access, {
+    channel: "email",
+    message: "Interested in a preview.",
+    targetId: legacyTargetId,
+  });
+  await db.collection(SIGNALDESK_COLLECTIONS.OUTCOME_SUMMARIES).doc(`legacy_activation_${legacyTargetId}`).set({
+    channel: "manual",
+    count: 1,
+    day: new Date().toISOString().slice(0, 10),
+    outcomeSummaryId: `legacy_activation_${legacyTargetId}`,
+    outcomeType: "two_surface_activation",
+    pId: "SD",
+    source: "manual",
+    targetId: legacyTargetId,
+    updatedAt: timestampNow(),
+  });
+  const legacyWatch = await refreshSignalDeskActivationWatchServer(access, { targetId: legacyTargetId });
+  assert(legacyWatch.status !== "activated", "Legacy unverified activation closed an activation watch");
+  assert(!legacyWatch.outcomeTypes.includes("two_surface_activation"), "Legacy unverified activation appeared as verified outcome evidence");
+
+  await expectRejects("Customer proof without permission", () => createSignalDeskContentAssetServer(access, {
+    canonicalMessage: "An owner-approved proof message for the local activation cohort.",
+    primaryAudience: "restaurant-owner",
+    proofLevel: "customer-proof",
+    proofScopes: ["business-name"],
+    riskNotes: [],
+    sourceNotes: "Local E2E proof fixture.",
+    sourceType: "customer-story",
+    title: "Unpermissioned customer proof",
+  }), "PROOF_PERMISSION_REQUIRED");
+  const permission = await upsertSignalDeskProofPermissionServer(access, {
+    evidenceRef: `consent:${targetId}`,
+    expiresAt: futureIso(30),
+    scopes: ["business-name", "before-after-screenshots"],
+    status: "active",
+    targetId,
+  });
+  const asset = await createSignalDeskContentAssetServer(access, {
+    canonicalMessage: "An owner-approved proof message for the local activation cohort.",
+    primaryAudience: "restaurant-owner",
+    proofLevel: "customer-proof",
+    proofPermissionId: permission.proofPermissionId,
+    proofScopes: ["business-name", "before-after-screenshots"],
+    riskNotes: [],
+    sourceNotes: "Local E2E proof fixture.",
+    sourceType: "customer-story",
+    title: "Permissioned customer proof",
+  });
+  assert(asset.status === "ready", "Permissioned customer proof did not become ready");
+  const drafts = await generateSignalDeskContentDistributionDraftsServer(access, {
+    channels: ["linkedin"],
+    contentAssetId: asset.contentAssetId,
+  });
+  assert(drafts.length === 1, "Permissioned proof did not generate one review-gated draft");
+  await upsertSignalDeskProofPermissionServer(access, {
+    evidenceRef: `consent-narrowed:${targetId}`,
+    proofPermissionId: permission.proofPermissionId,
+    scopes: ["business-name"],
+    status: "active",
+    targetId,
+  });
+  await expectRejects("Customer proof outside narrowed scope", () => generateSignalDeskContentDistributionDraftsServer(access, {
+    channels: ["email"],
+    contentAssetId: asset.contentAssetId,
+  }), "PROOF_PERMISSION_SCOPE_NOT_ALLOWED");
+  await upsertSignalDeskProofPermissionServer(access, {
+    evidenceRef: `consent-revoked:${targetId}`,
+    proofPermissionId: permission.proofPermissionId,
+    scopes: permission.scopes,
+    status: "revoked",
+    targetId,
+  });
+  await expectRejects("Customer proof after revocation", () => generateSignalDeskContentDistributionDraftsServer(access, {
+    channels: ["email"],
+    contentAssetId: asset.contentAssetId,
+  }), "PROOF_PERMISSION_REQUIRED");
+}
+
+async function assertSignedOutcomeBridge() {
+  const policy = await createPolicy("Signed outcome bridge");
+  const targetId = await importOne(policy.sourcePolicyId, "SignedBridge", { currentListUrl: "" });
+  await captureSignalDeskReplyServer(access, {
+    channel: "email",
+    message: "Yes, please prepare the owner review route.",
+    targetId,
+  });
+  const route = await createSignalDeskRouteTokenServer(access, {
+    channel: "email",
+    targetId,
+  });
+  const storedRoute = await db.collection(SIGNALDESK_COLLECTIONS.ROUTE_TOKENS).doc(route.routeTokenId).get();
+  assert(storedRoute.exists, "Signed bridge route token record was not stored");
+  assert(!storedRoute.data()?.token, "Raw invitation token was stored in Firestore");
+  assert(storedRoute.data()?.tokenHash === hashValue(route.token), "Stored invitation token hash does not match");
+  assert(storedRoute.data()?.scope === SIGNALDESK_OUTCOME_ROUTE_SCOPE, "Signed bridge route token scope was not stored");
+  assert(storedRoute.data()?.sourceActionId, "Signed bridge route token lost its source action attribution");
+  assert(storedRoute.data()?.revokedAt === null, "New signed bridge route token was created revoked");
+
+  const payload = {
+    evidenceRef: `menulist-event:${targetId}`,
+    eventId: `menulist_event_${targetId}`,
+    outcomeType: "two_surface_activation",
+    ownerQualifiedAt: new Date(Date.now() - 60_000).toISOString(),
+    ownerReviewedAt: new Date().toISOString(),
+    routeToken: route.token,
+    surfaces: ["qr", "google-profile"],
+    targetId,
+  };
+  const rawBody = JSON.stringify(payload);
+  const timestamp = String(Math.floor(Date.now() / 1000));
+  const headers = signedOutcomeHeaders(rawBody, timestamp);
+  const first = await processSignalDeskOutcomeBridge({ rawBody, requestHeaders: headers });
+  const duplicate = await processSignalDeskOutcomeBridge({ rawBody, requestHeaders: headers });
+  assert(first.status === "processed", "Signed MenuList outcome was not processed");
+  assert(duplicate.status === "duplicate", "Signed MenuList outcome replay was not deduped");
+  const outcomeSnap = await db.collection(SIGNALDESK_COLLECTIONS.OUTCOME_EVENTS).doc(first.eventId).get();
+  assert(outcomeSnap.data()?.routeTokenId === route.routeTokenId, "Signed outcome did not retain its route-token provenance");
+  const touchId = `touch_${hashValue(first.eventId).slice(0, 32)}`;
+  const touchSnap = await db.collection(SIGNALDESK_COLLECTIONS.ATTRIBUTION_TOUCHES).doc(touchId).get();
+  assert(touchSnap.exists, "Signed outcome did not write its direct attribution touch");
+  assert(touchSnap.data()?.actionId === storedRoute.data()?.sourceActionId, "Signed outcome attribution lost the route action");
+  assert(touchSnap.data()?.method === "route-token-direct-v1", "Signed outcome attribution used the wrong method");
+  assert(touchSnap.data()?.targetId === targetId, "Signed outcome attribution targeted the wrong account");
+  const usedRouteSnap = await storedRoute.ref.get();
+  assert(usedRouteSnap.data()?.lastOutcomeAt, "Signed outcome did not update route usage atomically");
+  assert(usedRouteSnap.data()?.lastOutcomeEventIdHash === hashValue(payload.eventId), "Signed outcome route usage stored the wrong event hash");
+
+  const revocation = await revokeSignalDeskRouteTokenServer(access, {
+    reason: "Local E2E route-token revocation fixture.",
+    routeTokenId: route.routeTokenId,
+  });
+  assert(revocation.duplicate === false && revocation.status === "revoked", "Signed bridge route token was not revoked");
+  const replayAfterRevocation = await processSignalDeskOutcomeBridge({ rawBody, requestHeaders: headers });
+  assert(replayAfterRevocation.status === "duplicate", "Exact signed outcome retry was rejected after route revocation");
+  const newEventPayload = { ...payload, eventId: `${payload.eventId}_after_revocation` };
+  const newEventRawBody = JSON.stringify(newEventPayload);
+  await expectRejects("New signed outcome after route revocation", () => processSignalDeskOutcomeBridge({
+    rawBody: newEventRawBody,
+    requestHeaders: signedOutcomeHeaders(newEventRawBody),
+  }), "Invalid SignalDesk route token");
+  const duplicateRevocation = await revokeSignalDeskRouteTokenServer(access, {
+    reason: "Repeated local E2E route-token revocation fixture.",
+    routeTokenId: route.routeTokenId,
+  });
+  assert(duplicateRevocation.duplicate === true, "Repeated route-token revocation was not idempotent");
+
+  const unknownFieldPayload = { ...payload, unexpectedField: "must-be-rejected" };
+  const unknownFieldRawBody = JSON.stringify(unknownFieldPayload);
+  await expectRejects("Unknown outcome bridge payload field", () => processSignalDeskOutcomeBridge({
+    rawBody: unknownFieldRawBody,
+    requestHeaders: signedOutcomeHeaders(unknownFieldRawBody),
+  }), "Invalid SignalDesk outcome bridge payload");
+  await expectRejects("Invalid outcome bridge signature", () => processSignalDeskOutcomeBridge({
+    rawBody,
+    requestHeaders: new Headers({
+      "x-signaldesk-outcome-signature": "sha256=invalid",
+      "x-signaldesk-outcome-timestamp": timestamp,
+    }),
+  }), "Invalid SignalDesk outcome bridge signature");
+}
+
+async function assertComplaintCircuitBreaker() {
+  const policy = await createPolicy("Complaint circuit breaker");
+  const targetId = await importOne(policy.sourcePolicyId, "ComplaintCircuit", { currentListUrl: "" });
+  await db.collection(SIGNALDESK_COLLECTIONS.RESEARCH_TABLE_ROWS).doc(`complaint_route_${targetId}`).set({
+    actionabilityState: "actionable",
+    allowedRoute: "email-export",
+    allowedRouteReason: "Pre-complaint contact route fixture.",
+    category: "restaurant",
+    contactability: "ready",
+    currentListGap: "missing-current-list",
+    displayName: "Complaint route fixture",
+    evidenceSummary: "Evidence fixture",
+    enrichment: [],
+    fitDecision: "pass",
+    fitScore: 90,
+    hardGateFailures: [],
+    provider: "fhrs-fhis",
+    recommendedChannel: "email-export",
+    recommendedCta: "Private preview",
+    recommendedMessageAngle: "Current menu link",
+    recommendedNextAction: "score",
+    researchRowId: `complaint_route_${targetId}`,
+    researchRunId: "complaint_route_run",
+    routePermissionState: "permissioned",
+    sourcePolicyId: policy.sourcePolicyId,
+    sourceRefs: [`source-policy:${policy.sourcePolicyId}`],
+    targetId,
+    updatedAt: timestampNow(),
+  });
+  const reply = await captureSignalDeskReplyServer(access, {
+    channel: "email",
+    message: "This is an unwanted message and I am making a complaint.",
+    targetId,
+  });
+  assert(reply.state === "complaint", "Complaint reply was not classified as complaint");
+  const suppressionCount = await expectCollectionCount(SIGNALDESK_COLLECTIONS.SUPPRESSION_LEDGER, (data) => data.targetId === targetId && data.reason === "complaint");
+  assert(suppressionCount > 0, "Complaint did not create immediate suppression");
+  const incidentCount = await expectCollectionCount(SIGNALDESK_COLLECTIONS.INCIDENTS, (data) => data.targetId === targetId && data.status === "open");
+  assert(incidentCount > 0, "Complaint did not create an open incident");
+  const pauseSnap = await db.collection(SIGNALDESK_COLLECTIONS.KILL_SWITCHES).doc("scope_email").get();
+  assert(pauseSnap.data()?.status === "active", "Complaint did not pause the email channel");
+  const mission = await createSignalDeskDailyGrowthMissionServer(access);
+  assert(mission.missionActions[0]?.label.includes("critical reply"), "Daily mission did not prioritize the critical reply before new approvals");
+  const workspace = await loadSignalDeskWorkspaceServer(access, "mission");
+  const revalidatedRow = workspace.workspace.researchTableRows.find((row) => row.targetId === targetId);
+  const suppressedOpportunity = workspace.workspace.activationOpportunities.find((opportunity) => opportunity.targetId === targetId);
+  assert(revalidatedRow?.allowedRoute === "none" && revalidatedRow?.routePermissionState === "blocked", "Suppression did not revoke the displayed research route");
+  assert(suppressedOpportunity?.allowedRoute === "none" && suppressedOpportunity?.state === "suppressed", "Suppression did not revoke the activation-opportunity route");
 }
 
 async function assertNoMenuListTruthWrites() {
@@ -1248,6 +2712,7 @@ async function main() {
   await seedAccessAndReadiness();
 
   await assertTeamAccessManagement();
+  await assertImportDedupe();
   const happy = await assertHappyPath();
   await assertRevenueOperatingLayer();
   await assertSourcePolicyNegatives();
@@ -1255,7 +2720,14 @@ async function main() {
   await assertResearchAgentTable();
   await assertExpiryAcrossWorkflow();
   await assertApprovalAndExportNegatives();
+  await assertManualContactGuards();
+  await assertUnverifiedLimitedRouteRevalidation();
+  await assertAiShadowReviewLearning();
+  await assertAiVolumeMode();
   await assertMobileReadOnlyContract();
+  await assertOutcomeIntegrityAndProofPermissions();
+  await assertSignedOutcomeBridge();
+  await assertComplaintCircuitBreaker();
   await assertWebhookAndDncFixtures(happy.targetId);
   await assertNoMenuListTruthWrites();
   await assertNoRawPayloadsOrSecrets();

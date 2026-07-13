@@ -42,6 +42,7 @@ export const FEATURE_FLAGS = {
     ENABLE_MENULIST_SIGNALDESK_FHRS_FHIS_SOURCE_PROVIDER: true,
     ENABLE_MENULIST_SIGNALDESK_APIFY_SOURCE_BROKER: true,
     ENABLE_MENULIST_SIGNALDESK_AI_PROVIDER_CALLS: true,
+    ENABLE_MENULIST_SIGNALDESK_AI_VOLUME_MODE: true,
     ENABLE_MENULIST_SIGNALDESK_PROVIDER_WEBHOOKS: true,
     ENABLE_MENULIST_SIGNALDESK_ASSISTED_CHANNELS: true,
     ENABLE_MENULIST_SIGNALDESK_OWNED_EMAIL_SEQUENCER: true,
@@ -85,6 +86,11 @@ export const FEATURE_FLAGS = {
     ENABLE_CAMPAIGNCUE_PUBLISHING: false,
     ENABLE_CAMPAIGNCUE_BILLING: false,
     ENABLE_CAMPAIGNCUE_ANALYTICS: true,
+    ENABLE_CAMPAIGNCUE_OPERATING_LOOP: true,
+    ENABLE_CAMPAIGNCUE_AI_ASSISTANCE_PLAN: true,
+    ENABLE_CAMPAIGNCUE_AI_PROVIDER_CALLS: false,
+    ENABLE_CAMPAIGNCUE_PATTERN_CUE: true,
+    ENABLE_CAMPAIGNCUE_PATTERN_CUE_MODEL_ASSIST: false,
 
     /**
      * Shared Creative Editor runtime.
@@ -1486,7 +1492,7 @@ export const FEATURE_FLAGS = {
      * Production: Enable when stores have real traffic
      * Development: Keep false — no data to test against
      */
-    ENABLE_TRUST_HEALTH_SIGNAL: true,
+    ENABLE_TRUST_HEALTH_SIGNAL: false,
 
     /**
      * Loyalty Health Signal (Pillar 5)
@@ -1501,7 +1507,7 @@ export const FEATURE_FLAGS = {
      * Production: Enable when stores have real traffic
      * Development: Keep false — no data to test against
      */
-    ENABLE_LOYALTY_HEALTH_SIGNAL: true,
+    ENABLE_LOYALTY_HEALTH_SIGNAL: false,
 
     /**
      * Risk / Decline Detection (Pillar 6)
@@ -1517,7 +1523,7 @@ export const FEATURE_FLAGS = {
      * Production: Enable after Pillars 4+5 have been active for 4+ weeks
      * Development: Keep false
      */
-    ENABLE_RISK_DECLINE_DETECTION: true,
+    ENABLE_RISK_DECLINE_DETECTION: false,
 
     // ─────────────────────────────────────────────────────────────
     // REVIEWS & REPUTATION (Pillar 3 — Reputation Protection)
@@ -2544,6 +2550,58 @@ export const FEATURE_FLAGS = {
      * @see __docs__/answerlattice/support-board/
      */
     ENABLE_ANSWERLATTICE_SUPPORT_BOARD_NIGHTLY_SUMMARY: false,
+
+    /**
+     * Answerlattice Answer Tests and Release Safety
+     *
+     * Owner-managed, capped regression cases run against canonical-first
+     * retrieval. Full-runtime fallback tests are explicitly metered and test
+     * execution never writes customer search history, signals, or analytics.
+     *
+     * @see __docs__/answerlattice/founder-support-controls/
+     */
+    ENABLE_ANSWERLATTICE_ANSWER_TESTS: true,
+
+    /**
+     * Summary-first owner support assistant. It reads existing compact
+     * operational summaries and creates no transcript collection.
+     */
+    ENABLE_ANSWERLATTICE_OWNER_SUPPORT_ASSISTANT: true,
+
+    /**
+     * Founder Daily Brief
+     *
+     * true: Support Assistant shows a deterministic daily plan that ranks
+     *       existing answer risk, support gaps, intake review, release safety,
+     *       launch verification, and cost guard actions from the same compact
+     *       summaries already loaded for the read-only assistant.
+     * false: Support Assistant keeps the existing brief/question experience.
+     *
+     * Cost model: no additional Firestore reads beyond the existing five-summary
+     * assistant packet, no writes, no listeners, no scheduler, no model call.
+     *
+     * @see __docs__/answerlattice/founder-daily-brief/
+     */
+    ENABLE_ANSWERLATTICE_FOUNDER_DAILY_BRIEF: true,
+
+    /**
+     * Owner-declared known issues delivered through the existing bounded
+     * predictive-trigger summary and widget context pipeline.
+     */
+    ENABLE_ANSWERLATTICE_KNOWN_ISSUES: true,
+
+    /**
+     * Signed visitor context and allowlisted external evidence links for the
+     * widget. Tenant scope always comes from the widget API key.
+     */
+    ENABLE_ANSWERLATTICE_VERIFIED_CONTEXT: true,
+    ENABLE_ANSWERLATTICE_EXTERNAL_EVIDENCE_LINKS: true,
+
+    /**
+     * Owner-triggered, bounded JSON export of approved support truth. Private
+     * conversations, tickets, secrets, and internal runtime metadata are excluded.
+     */
+    ENABLE_ANSWERLATTICE_SUPPORT_TRUTH_EXPORT: true,
 
     /**
      * Answerlattice Knowledge Intake Command Center

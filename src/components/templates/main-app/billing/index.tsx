@@ -9,7 +9,7 @@ import { getActiveSubscriptionForStore } from '@database/subscriptions';
 import { getBillingHistoryForStore } from '@database/subscriptions/paymentTransactions';
 import { getBoundedPaymentStringContext, logPaymentFailure } from '@hook/paymentDiagnostics';
 import { useAppDispatch } from '@hook/useAppDispatch';
-import usePaymentHandler from '@hook/usePaymentHandler';
+import usePaymentHandler, { isPaymentCheckoutDismissedError } from '@hook/usePaymentHandler';
 import { AUTH_ACCOUNT_REQUEST_POLICY, readAuthAccountResponse } from '@lib/auth/accountClientResponses';
 import { refreshFirebaseAuthClaims } from '@lib/auth/firebaseAuthSync';
 import { formatBillingHistoryEvents } from '@lib/billing/billingHistoryFormatter';
@@ -106,7 +106,7 @@ function BillingPage() {
         if (!userId || !effectiveHistoryStoreId) return;
 
         // 2. Fetch transaction logs from the unified ledger. New rows are lean v2 audit summaries.
-        const rawHistory = await getBillingHistoryForStore(Number(session?.user?.tenantId), effectiveHistoryStoreId);
+        const rawHistory = await getBillingHistoryForStore(session?.user?.tenantId, effectiveHistoryStoreId);
         // 3. Transform lean webhook audit rows and legacy raw payload rows into a clean UI model.
         const formattedHistory = formatBillingHistoryEvents(rawHistory, {
             formatBillingCycle: (startSeconds, endSeconds) => {
@@ -177,6 +177,7 @@ function BillingPage() {
             refetchActiveSubscription();
             setIsSuccessModalOpen({ active: true, paymentDetails: { paymentResponse, ...newPlan } });
         } catch (error) {
+            if (isPaymentCheckoutDismissedError(error)) return;
             message.error(t('paymentFailed'));
             logPaymentFailure('payment_desktop_billing_upgrade_failed', error, buildBillingPaymentLogContext('confirm_upgrade', {
                 ...getBoundedPaymentStringContext('planId', newPlan.planId),
@@ -204,6 +205,7 @@ function BillingPage() {
             message.success(`Paid locations updated to ${nextPaidLocationCount}.`);
             await refetchActiveSubscription();
         } catch (error) {
+            if (isPaymentCheckoutDismissedError(error)) return;
             message.error(t('paymentFailed'));
             logPaymentFailure('payment_desktop_billing_paid_location_failed', error, buildBillingPaymentLogContext('add_paid_location', {
                 ...getBoundedPaymentStringContext('planId', currentSubscriptionPlan.planId),
@@ -232,6 +234,7 @@ function BillingPage() {
                 }
                 : previous);
         } catch (error) {
+            if (isPaymentCheckoutDismissedError(error)) return;
             message.error(t('enhancementsFailed'));
             logPaymentFailure('payment_desktop_billing_credit_pack_failed', error, buildBillingPaymentLogContext('credit_pack_purchase', {
                 ...getBoundedPaymentStringContext('packId', packId),

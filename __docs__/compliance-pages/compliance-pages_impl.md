@@ -140,16 +140,18 @@ interface ComplianceOverrideDoc {
 match /compliancePages/{docId} {
   // Public read — required for verification bots
   allow read: if true;
-  // Write — authenticated users only (API route has withAuth + Zod)
-  allow write: if isAuthenticated();
+  // Writes are server-owned. Owner mutations must use /api/compliance.
+  allow write: if false;
 }
 ```
+
+The browser mutation DAL is intentionally absent. Authenticated Firebase clients cannot bypass `/api/compliance` granular permission checks, `DATA_WRITE` limiting, the 32KB body cap, Zod action/type validation, plain-text sanitization, or exact session/store admission. The route writes through `src/database/compliance/server.ts` with Firebase Admin after those controls pass.
 
 ---
 
 ## 3. File Structure
 
-### New Files (5)
+### Core Files
 
 | File                                                   | Purpose                                                | LOC  |
 | ------------------------------------------------------ | ------------------------------------------------------ | ---- |
@@ -157,7 +159,8 @@ match /compliancePages/{docId} {
 | `src/lib/compliance/templates.ts`                      | Privacy, Terms, and Refund template generation + input extraction | ~200 |
 | `src/lib/compliance/sanitizer.ts`                      | Content sanitization for custom overrides              | ~55  |
 | `src/app/api/compliance/route.ts`                      | GET (read) + POST (override/reset) with withAuth + Zod | ~165 |
-| `src/database/compliance/index.ts`                     | DAL functions (get, save, override, reset, create)     | ~140 |
+| `src/database/compliance/server.ts`                    | Admin-only override read/save/reset DAL                | ~80  |
+| `scripts/verification/test-compliance-pages-rules.ts`  | Public-read and client-write-denial emulator regression | ~80  |
 
 ### Modified Files (5)
 
@@ -168,7 +171,7 @@ match /compliancePages/{docId} {
 | `src/components/templates/main-app/projects/b2cView/output/MenuFooter.tsx` | Public menu policy links behind visibility settings |
 | `src/constants/database.ts`            | Add `COMPLIANCE_PAGES` to DB_COLLECTIONS                         |
 | `functions/src/constants/database.ts`  | Mirror `COMPLIANCE_PAGES` constant                               |
-| `firestore.rules`                      | Add public read rule for compliancePages                         |
+| `firestore.rules`                      | Public read plus server-only write rule for compliancePages      |
 
 ---
 

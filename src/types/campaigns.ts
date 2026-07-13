@@ -142,8 +142,8 @@ export interface Campaign {
     // Identity
     id: string;
     projectId: string;
-    tId: string;
-    sId: string;
+    tId: number;
+    sId: number;
 
     // Type
     kind: CampaignKind;
@@ -519,8 +519,8 @@ export interface CampaignExport {
     id: string;
     campaignId: string;
     projectId: string;
-    tId: string;
-    sId: string;
+    tId: number;
+    sId: number;
 
     surface: ExecutionSurface;
     method: ExportMethod;

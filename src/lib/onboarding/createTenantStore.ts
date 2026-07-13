@@ -16,13 +16,26 @@
 
 import { getDefaultTimeSlotPresets } from '@config/defaultTimeSlotPresets';
 import { resolveStoreBusinessCategory } from '@data/shared/businessTypes';
+import {
+    findNextAvailablePlatformEntityId,
+    LEGACY_PLATFORM_COUNTER_DOCUMENT_ID,
+    PLATFORM_COUNTER_DOCUMENT_ID,
+    resolvePlatformCounterFloor,
+} from '@data/shared/platformCounterBoundary';
 import { DB_COLLECTIONS } from '@constant/database';
 import { isReservedSubdomain } from '@constant/reservedSlugs';
 import { createDefaultRoles, getOwnerRoleId } from '@data/defaultRoles';
 import { admin } from '@lib/firebase/firebaseAdmin';
+import { isCurrentUserRecordEligible } from '@lib/auth/currentPlatformUser';
 import { resolveBusinessDayEndTime } from '@lib/analytics/businessDay';
 import { CANONICAL_SOURCE_LANGUAGE } from '@lib/localization/languagePolicy';
 import { requireOnboardingUserId } from './onboardingUserId';
+import {
+    readSubdomainReservationInTransaction,
+    isSubdomainUnavailableError,
+    type SubdomainReservation,
+    writeCurrentSubdomainClaim,
+} from '@lib/routing/subdomainClaim';
 import { slugify } from '@lib/utils/slugify';
 import { computeSchedulerHour } from '@lib/utils/schedulerHour';
 
@@ -84,6 +97,63 @@ export interface TenantStoreResult {
     defaultRoles: ReturnType<typeof createDefaultRoles>;
 }
 
+export class OnboardingUserUnavailableError extends Error {
+    constructor() {
+        super('Current user is not eligible for onboarding');
+        this.name = 'OnboardingUserUnavailableError';
+    }
+}
+
+const isEmptyOnboardingScopeCollection = (value: unknown): boolean => (
+    value === undefined
+    || value === null
+    || (Array.isArray(value) && value.length === 0)
+);
+
+const isOnboardingScopeUnset = (value: unknown): boolean => (
+    value === undefined || value === null || value === ''
+);
+
+export function isCurrentUserAvailableForOnboarding(params: {
+    documentId: string;
+    session: unknown;
+    userData: unknown;
+}): boolean {
+    if (!isCurrentUserRecordEligible(params)) return false;
+    const userData = params.userData as Record<string, unknown>;
+    return isOnboardingScopeUnset(userData.tenantId)
+        && isOnboardingScopeUnset(userData.storeId)
+        && isEmptyOnboardingScopeCollection(userData.stores)
+        && isEmptyOnboardingScopeCollection(userData.storeIds);
+}
+
+/**
+ * Locks and revalidates the exact current user inside the same transaction that
+ * allocates tenant/store IDs. A stale session is only an advisory pre-check;
+ * this read is the authority and makes concurrent onboarding attempts converge
+ * on a single winning transaction.
+ */
+export async function assertCurrentUserAvailableForOnboardingInTransaction(
+    transaction: FirebaseFirestore.Transaction,
+    db: FirebaseFirestore.Firestore,
+    userId: string,
+    session: unknown,
+): Promise<void> {
+    const normalizedUserId = requireOnboardingUserId(userId);
+    const userRef = db.collection(DB_COLLECTIONS.USERS).doc(normalizedUserId);
+    const userSnapshot = await transaction.get(userRef);
+    if (
+        !userSnapshot.exists
+        || !isCurrentUserAvailableForOnboarding({
+            documentId: userSnapshot.id,
+            session,
+            userData: userSnapshot.data(),
+        })
+    ) {
+        throw new OnboardingUserUnavailableError();
+    }
+}
+
 // ═══════════════════════════════════════════════════════════════
 // Pre-Transaction Helpers
 // ═══════════════════════════════════════════════════════════════
@@ -107,12 +177,9 @@ function buildFallbackSubdomain(businessName: string, storeId: number): string {
 }
 
 /**
- * Pre-check subdomain uniqueness BEFORE a Firestore transaction.
- * Firestore transactions cannot do WHERE queries on other collections,
- * so subdomain uniqueness must be checked outside the transaction.
- *
- * Collisions found by this precheck auto-resolve via storeId suffix fallback
- * inside the transaction.
+ * Advisory pre-check before the creation transaction. The transaction still
+ * reads the durable claim plus current/redirect query ranges and owns the
+ * final decision; this result only avoids choosing a known collision first.
  *
  * @returns Pre-checked subdomain string. Empty string if collision detected or invalid input.
  */
@@ -130,15 +197,18 @@ export async function preCheckSubdomain(
         return '';
     }
 
-    const existingStore = await db
-        .collection(DB_COLLECTIONS.STORES)
-        .where('subdomain', '==', subdomain)
-        .where('active', '==', true)
-        .limit(1)
-        .get();
-
-    if (!existingStore.empty) {
-        return ''; // Collision — caller will get storeId suffix fallback
+    try {
+        await db.runTransaction((transaction) => readSubdomainReservationInTransaction({
+            db,
+            nowMillis: Date.now(),
+            storeId: '__precheck__',
+            subdomain,
+            tenantId: '__precheck__',
+            transaction,
+        }));
+    } catch (error) {
+        if (isSubdomainUnavailableError(error)) return '';
+        throw error;
     }
 
     return subdomain;
@@ -183,31 +253,32 @@ export async function createTenantStoreInTransaction(
     } = config;
 
     // 1. Read platformSummary (with transaction lock — prevents race conditions)
-    const platformSummaryRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc('summary');
+    const platformSummaryRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(PLATFORM_COUNTER_DOCUMENT_ID);
+    const legacyPlatformSummaryRef = db
+        .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
+        .doc(LEGACY_PLATFORM_COUNTER_DOCUMENT_ID);
     const storesSummaryRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc('storesSummary');
-    const platformSummary = await transaction.get(platformSummaryRef);
-    const storesSummary = await transaction.get(storesSummaryRef);
+    const [platformSummary, legacyPlatformSummary, storesSummary] = await Promise.all([
+        transaction.get(platformSummaryRef),
+        transaction.get(legacyPlatformSummaryRef),
+        transaction.get(storesSummaryRef),
+    ]);
 
-    const storesSummaryData = storesSummary.exists ? storesSummary.data() : null;
-    const deriveCountsFromStoresSummary = () => {
-        const stores = storesSummaryData?.stores || {};
-        let maxTenantId = 0;
-        let maxStoreId = 0;
-
-        Object.entries(stores).forEach(([storeId, storeData]: [string, any]) => {
-            const numericStoreId = Number(storeData?.storeId || storeId);
-            const numericTenantId = Number(storeData?.tId || storeData?.tenantId || 0);
-            if (Number.isFinite(numericStoreId)) maxStoreId = Math.max(maxStoreId, numericStoreId);
-            if (Number.isFinite(numericTenantId)) maxTenantId = Math.max(maxTenantId, numericTenantId);
-        });
-
-        return { tenantCount: maxTenantId, storeCount: maxStoreId };
-    };
-
-    const summaryData = platformSummary.exists ? platformSummary.data()! : {};
-    const derivedCounts = deriveCountsFromStoresSummary();
-    const currentTenantCount = Number(summaryData?.tenants?.count || 0) || derivedCounts.tenantCount;
-    const currentStoreCount = Number(summaryData?.stores?.count || 0) || derivedCounts.storeCount;
+    const summaryData = platformSummary.data();
+    const legacySummaryData = legacyPlatformSummary.data();
+    const storesSummaryData = storesSummary.data();
+    const currentTenantCount = resolvePlatformCounterFloor(
+        summaryData,
+        legacySummaryData,
+        storesSummaryData,
+        'tenant',
+    );
+    const currentStoreCount = resolvePlatformCounterFloor(
+        summaryData,
+        legacySummaryData,
+        storesSummaryData,
+        'store',
+    );
 
     const hasUsableCounters = currentTenantCount > 0 && currentStoreCount > 0;
     const canBootstrapCounters = allowInitialCounters && currentTenantCount >= 0 && currentStoreCount >= 0;
@@ -215,8 +286,20 @@ export async function createTenantStoreInTransaction(
         throw new Error('Platform summary not found and storesSummary cannot bootstrap counters');
     }
 
-    const newTenantId = currentTenantCount + 1;
-    const newStoreId = currentStoreCount + 1;
+    const newTenantId = await findNextAvailablePlatformEntityId(
+        currentTenantCount,
+        async (candidateId) => (
+            await transaction.get(db.collection(DB_COLLECTIONS.TENANTS).doc(String(candidateId)))
+        ).exists,
+    );
+    const tenantRef = db.collection(DB_COLLECTIONS.TENANTS).doc(String(newTenantId));
+    const newStoreId = await findNextAvailablePlatformEntityId(
+        currentStoreCount,
+        async (candidateId) => (
+            await transaction.get(db.collection(DB_COLLECTIONS.STORES).doc(String(candidateId)))
+        ).exists,
+    );
+    const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(String(newStoreId));
     const now = admin.firestore.Timestamp.now();
 
     // 2. Derive computed fields
@@ -228,13 +311,32 @@ export async function createTenantStoreInTransaction(
     const resolvedBusinessDayEndTime = resolveBusinessDayEndTime(businessType, businessDayEndTime, businessCategory);
     const schedulerHour = computeSchedulerHour(timeZone, resolvedBusinessDayEndTime);
 
-    // 3. Resolve subdomain (if requested)
+    // 3. Resolve and transactionally reserve subdomain (if requested)
     let autoSubdomain: string | undefined;
+    let subdomainReservation: SubdomainReservation | undefined;
     if (subdomainConfig) {
-        autoSubdomain = normalizeSubdomainCandidate(subdomainConfig.preChecked || '');
-        if (!autoSubdomain || isReservedSubdomain(autoSubdomain)) {
-            autoSubdomain = buildFallbackSubdomain(businessName, newStoreId);
+        const requestedSubdomain = normalizeSubdomainCandidate(subdomainConfig.preChecked || '');
+        const fallbackSubdomain = buildFallbackSubdomain(businessName, newStoreId);
+        const candidates = Array.from(new Set([requestedSubdomain, fallbackSubdomain]))
+            .filter((candidate) => candidate && !isReservedSubdomain(candidate));
+        for (const candidate of candidates) {
+            try {
+                subdomainReservation = await readSubdomainReservationInTransaction({
+                    db,
+                    nowMillis: now.toMillis(),
+                    storeId: String(newStoreId),
+                    subdomain: candidate,
+                    tenantId: String(newTenantId),
+                    transaction,
+                });
+                autoSubdomain = candidate;
+                break;
+            } catch (error) {
+                if (isSubdomainUnavailableError(error)) continue;
+                throw error;
+            }
         }
+        if (!autoSubdomain || !subdomainReservation) throw new Error('subdomain_allocation_conflict');
     }
 
     // 4. Generate time slot presets (if requested)
@@ -254,7 +356,6 @@ export async function createTenantStoreInTransaction(
     }
 
     // 6. Create Tenant
-    const tenantRef = db.collection(DB_COLLECTIONS.TENANTS).doc(String(newTenantId));
     transaction.set(tenantRef, {
         name: businessName,
         businessType,
@@ -273,7 +374,6 @@ export async function createTenantStoreInTransaction(
     });
 
     // 7. Create Store
-    const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(String(newStoreId));
     transaction.set(storeRef, {
         name: storeName,
         tenantName: businessName,
@@ -300,6 +400,9 @@ export async function createTenantStoreInTransaction(
         modifiedOn: now,
         ...storeExtra,
     });
+    if (subdomainReservation) {
+        writeCurrentSubdomainClaim(transaction, subdomainReservation, now);
+    }
 
     // 8. Sync storesSummary (for Cloud Function cost optimization)
     transaction.set(

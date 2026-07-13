@@ -5,7 +5,11 @@
  * Note: For production accuracy, consider moving to server-side analytics
  */
 
-import { getRecentlyViewedEntries, RecentlyViewedType } from '@lib/recentlyViewed';
+import {
+    getRecentlyViewedEntries,
+    type RecentlyViewedStorageScope,
+    type RecentlyViewedType,
+} from '@lib/recentlyViewed';
 
 /**
  * Gets view count for a specific item from current user's history
@@ -13,8 +17,13 @@ import { getRecentlyViewedEntries, RecentlyViewedType } from '@lib/recentlyViewe
  * Note: This only counts views from the current user.
  * For global view counts, you'd need server-side analytics.
  */
-export const getUserViewCount = (userId: string, itemId: string, type: RecentlyViewedType): number => {
-    const entries = getRecentlyViewedEntries(userId);
+export const getUserViewCount = (
+    scope: RecentlyViewedStorageScope,
+    userId: string,
+    itemId: string,
+    type: RecentlyViewedType,
+): number => {
+    const entries = getRecentlyViewedEntries(scope, userId);
     const count = entries.filter(entry => entry.id === itemId && entry.type === type).length;
     return count;
 };

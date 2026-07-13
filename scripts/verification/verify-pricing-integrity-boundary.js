@@ -44,6 +44,9 @@ function requireOrder(source, tokens, label) {
 }
 
 const packageJson = read('package.json');
+const firestoreRules = read('firestore.rules');
+const pricingPlansDal = read('src/database/pricingPlans/index.ts');
+const pricingPlansUi = read('src/components/templates/platform/pricingPlans/index.tsx');
 const projectsDatabase = read('src/database/projects/index.ts');
 const publicClientCache = read('src/lib/cache/publicClientCache.ts');
 const screenInvalidation = read('src/lib/screen/screenInvalidation.ts');
@@ -72,10 +75,46 @@ requireToken(
   '"verify:pricing-integrity-boundary": "node scripts/verification/verify-pricing-integrity-boundary.js"',
   'package scripts',
 );
+requireToken(
+  packageJson,
+  '"test:pricing-plans:rules": "GCLOUD_PROJECT=demo-pricing-plans-rules firebase emulators:exec --only firestore',
+  'pricing plan rules test script',
+);
+
+[
+  'export type PricingPlanMutationInput',
+  'const normalizePricingPlanFields = (value: unknown): PricingPlanMutationInput | null => {',
+  '!Number.isSafeInteger(plan.price)',
+  'plan.features.length > PLAN_FEATURE_MAX_ITEMS',
+  'export const normalizePricingPlan = (value: unknown, id: string): PricingPlan | null => {',
+  'return { ...fields, id, version: Number(version) };',
+  'if (planType !== undefined && planType !== \'B2C\' && planType !== \'B2B\')',
+  'return runTransaction(firebaseClient, async (transaction) => {',
+  'currentPlan.version >= Number.MAX_SAFE_INTEGER',
+  'transaction.update(planRef, {',
+].forEach((token) => requireToken(pricingPlansDal, token, 'Pricing plan DAL public/version boundary'));
+[
+  'requestBodyComposer',
+  'return { ...plan, id }',
+  'seedInitialPlans',
+  'updateDoc(getDocRef',
+].forEach((token) => forbidToken(pricingPlansDal, token, 'Pricing plan DAL public/version boundary'));
+requireToken(pricingPlansUi, 'PricingPlanMutationInput', 'Pricing plan editor typed mutation boundary');
+forbidToken(pricingPlansUi, 'handleSavePlan = async (values: any)', 'Pricing plan editor typed mutation boundary');
+
+[
+  'allow read: if isPlatformAdmin() || isPublicPricingPlan(resource.data);',
+  'allow create, update: if isPlatformAdmin() && isPublicPricingPlan(request.resource.data);',
+  'allow delete: if false;',
+  'function isPublicPricingPlan(data) {',
+  "data.keys().hasOnly([",
+  '&& data.price is int',
+  '&& data.version is int',
+].forEach((token) => requireToken(firestoreRules, token, 'Pricing plan public Firestore contract'));
 
 [
   'await revalidatePublicClientCacheForProject(data.projectId as string, "updateProject");',
-  'detectAndLogChanges(data.projectId, oldProject, data);',
+  'void detectAndLogChanges(data.projectId, oldProject, data, operationScope);',
 ].forEach((token) => requireToken(projectsDatabase, token, 'Project save path'));
 forbidToken(projectsDatabase, 'runPricingIntegrity', 'Project save path');
 
@@ -84,23 +123,37 @@ forbidToken(projectsDatabase, 'runPricingIntegrity', 'Project save path');
   'invalidateOwnerBusinessAssistantBrowserCache({ storeId, projectId });',
   'await revalidatePublicClientCache(storeId, context);',
   'await touchDigitalScreenContentVersion(storeId, context, { projectId });',
+  'const pendingRevalidations = new Map<string, PendingPublicCacheRevalidation>();',
+  'pending.rerunRequested = true;',
+  '} while (entry.rerunRequested);',
 ].forEach((token) => requireToken(publicClientCache, token, 'Public client cache helper'));
+forbidToken(publicClientCache, 'const pendingRevalidations = new Map<string, Promise<void>>();', 'Public client cache helper');
 
 [
   'if (!FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED || !normalizedStoreId || typeof window === "undefined")',
   'if (!screen?.screenToken)',
-  '"screen.contentVersion": increment(1)',
+  'await runTransaction(firebaseClient, async (transaction) => {',
+  '"screen.contentVersion": nextContentVersion',
   '"screen.lastContentChangeAt": now',
-  'await syncPublicScreenState(normalizedStoreId',
+  'transaction.set(publicScreenRef, publicState, { merge: false });',
+  'type PendingScreenContentTouch',
+  'const pendingScreenTouches = new Map<string, PendingScreenContentTouch>();',
+  'pending.rerunRequested = true;',
+  'pending.options = options;',
+  '} while (entry.rerunRequested);',
+  'if (pendingScreenTouches.get(normalizedStoreId) === entry)',
 ].forEach((token) => requireToken(screenInvalidation, token, 'Digital Screens invalidation path'));
+forbidToken(screenInvalidation, 'const pendingScreenTouches = new Map<string, Promise<void>>();', 'Digital Screens invalidation path');
 requireOrder(
   screenInvalidation,
   [
+    'await runTransaction(firebaseClient, async (transaction) => {',
     'if (!screen?.screenToken)',
     'const nextContentVersion = Number(screen.contentVersion || 0) + 1;',
-    'await updateDoc(screenRef, {',
-    '"screen.contentVersion": increment(1)',
-    'await syncPublicScreenState(normalizedStoreId',
+    'const publicState = toPublicScreenState(normalizedStoreId, nextScreen);',
+    'transaction.update(screenRef, {',
+    '"screen.contentVersion": nextContentVersion',
+    'transaction.set(publicScreenRef, publicState, { merge: false });',
   ],
   'Digital Screens invalidation order',
 );
@@ -223,9 +276,11 @@ for (const [label, content] of activeDocs) {
   ['audit', audit, 'Pricing Integrity current-runtime public-claim checkpoint'],
   ['audit', audit, '`npm run verify:pricing-integrity-boundary`'],
   ['audit', audit, 'Pricing Integrity PDF failure reason persistence checkpoint'],
+  ['audit', audit, 'Pricing-plan public contract and atomic version checkpoint'],
   ['changelog', changelog, 'Pricing Integrity Current Runtime Boundary'],
   ['changelog', changelog, '`npm run verify:pricing-integrity-boundary`'],
   ['changelog', changelog, 'Pricing Integrity PDF Failure Reason Persistence'],
+  ['changelog', changelog, 'Pricing Plan Public Contract and Versioning'],
 ].forEach(([label, source, token]) => requireToken(source, token, `Pricing ledger ${label}`));
 
 if (failures.length > 0) {

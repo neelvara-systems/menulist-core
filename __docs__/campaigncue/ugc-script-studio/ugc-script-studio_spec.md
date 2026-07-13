@@ -20,6 +20,7 @@ UGC Script Studio creates creator-ready scripts, briefs, hooks, shot lists, talk
 | Dialogue/action brief | Creator scripts include a phone-camera persona, product-placement note, and dialogue/action beats that a real owner, staff member, creator, or source-approved customer can follow. |
 | Creator fit checklist | Brief includes baseline views, comment quality, local audience fit, customer intent, format fit, and natural category fit checks before spend. |
 | Small test plan | Brief can recommend a 3-test pattern for creators, hooks, or local audiences and records what result should decide repeat/adjust/kill. |
+| Pattern Cue | When the owner has saved a current example, the creator brief includes its abstract format, three original business-specific hooks, structural beats, and an explicit no-copy boundary. |
 | Pricing boundary | Brief may include flat-fee boundary guidance and repeat/adjust/kill prompts, but must not broker deals, renew creators, or manage payments. |
 | Role variants | Supports owner, staff, customer-style, creator, and agency brief formats with compliance restrictions. |
 | Claim guard | Testimonials, results, health/beauty outcomes, and review-like claims require approved source. |
@@ -36,6 +37,7 @@ UGC Script Studio creates creator-ready scripts, briefs, hooks, shot lists, talk
 - It does not guarantee reach, visits, rankings, revenue, or creator performance.
 - It does not create fake customers or fake personal experiences.
 - It does not present AI avatars, stock people, or fictional customers as real customer experiences.
+- It does not monitor creator accounts, copy source scripts, or promise that an adapted format will perform.
 
 ## Risks
 

@@ -22,6 +22,9 @@ import {
     PLATFORM_DOMAINS,
     RESERVED_SUBDOMAINS,
 } from "@constant/urls";
+import { normalizeRequestAuthority } from "@lib/routing/hostAuthority";
+
+export { normalizeRequestAuthority } from "@lib/routing/hostAuthority";
 
 export type DomainType = 'platform' | 'product' | 'subdomain' | 'custom' | 'localhost';
 
@@ -35,8 +38,63 @@ export interface ResolvedDomain {
     isClient: boolean;
 }
 
+export type TenantDomainType = Extract<DomainType, 'subdomain' | 'custom'>;
+
+export interface TenantRoutingClaims {
+    subdomain?: string | null;
+    customDomain?: string | null;
+    tenantType?: string | null;
+}
+
+export interface TenantRequestIdentity {
+    authority: string;
+    hostname: string;
+    subdomain: string | null;
+    customDomain: string | null;
+    tenantType: TenantDomainType | null;
+    routingClaimsValid: boolean;
+}
+
 const isVercelDeploymentHost = (hostname: string): boolean =>
     hostname === 'vercel.app' || hostname.endsWith('.vercel.app');
+
+/**
+ * Derive tenant identity exclusively from the request Host authority. Routed
+ * x-tenant-* values are treated as integrity claims only, so a forged or stale
+ * header can never select a different tenant.
+ */
+export function resolveTenantRequestIdentity(
+    authority: string | null,
+    routingClaims: TenantRoutingClaims = {},
+): TenantRequestIdentity | null {
+    const normalizedAuthority = normalizeRequestAuthority(authority);
+    if (!normalizedAuthority) return null;
+
+    const resolvedDomain = resolveDomain(normalizedAuthority.hostname);
+    const subdomain = resolvedDomain.isClient ? resolvedDomain.subdomain || null : null;
+    const customDomain = resolvedDomain.isClient ? resolvedDomain.customDomain || null : null;
+    const tenantType: TenantDomainType | null = resolvedDomain.type === 'subdomain' || resolvedDomain.type === 'custom'
+        ? resolvedDomain.type
+        : null;
+    const hasRoutingClaims = Boolean(
+        routingClaims.subdomain
+        || routingClaims.customDomain
+        || routingClaims.tenantType,
+    );
+    const routingClaimsValid = !hasRoutingClaims || (
+        (routingClaims.subdomain || null) === subdomain
+        && (routingClaims.customDomain || null) === customDomain
+        && (routingClaims.tenantType || null) === tenantType
+    );
+
+    return {
+        ...normalizedAuthority,
+        subdomain,
+        customDomain,
+        tenantType,
+        routingClaimsValid,
+    };
+}
 
 /**
  * Parse hostname and determine domain type
@@ -51,8 +109,20 @@ export function resolveDomain(hostname: string | null): ResolvedDomain {
         };
     }
 
-    // Normalize hostname (remove port if present)
-    const normalizedHost = hostname.split(':')[0].toLowerCase();
+    const normalizedAuthority = normalizeRequestAuthority(hostname);
+    if (!normalizedAuthority) {
+        return {
+            type: 'localhost',
+            hostname: 'localhost',
+            isPlatform: true,
+            isClient: false,
+        };
+    }
+
+    // Normalize hostname through the same strict Host-authority parser used
+    // by tenant identity resolution. Malformed host values must never fall
+    // through to custom-domain tenant routing.
+    const normalizedHost = normalizedAuthority.hostname;
 
     // Check if it's a product website domain (answerlattice.com, campaigncue.ai, surfaceos.app, etc.)
     // Must check BEFORE platform domain check since product domains are also in PLATFORM_DOMAINS

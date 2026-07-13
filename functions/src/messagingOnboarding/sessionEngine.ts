@@ -13,12 +13,18 @@ import * as functions from "firebase-functions";
 import { DB_COLLECTIONS } from "../constants/database";
 import { firestoreAdmin, storageAdmin } from "../firebaseAdmin";
 import {
+  MAX_MESSAGING_REPLACEMENT_UPLOADS,
+  mergeMessagingPendingUploadCleanupPaths,
+  normalizeMessagingPendingUploadCleanupPaths,
+} from "../sharedData/messagingReplacementUploads";
+import {
   MessagingOnboardingRateLimit,
   MessagingOnboardingSession,
   MessagingOnboardingState,
   MessagingProvider,
   NormalizedMessage,
   SessionUpload,
+  StateHistoryEntry,
   TERMINAL_STATES,
 } from "../types/messagingOnboarding.types";
 import {
@@ -30,12 +36,129 @@ import {
   UPLOAD_LIMITS,
 } from "./constants";
 import { logOnboardingEvent, maskUserId } from "./eventLogger";
+import { normalizeMessagingPublishedResult } from "./publishedResultBoundary";
 import { IMessagingProvider } from "./providers/IMessagingProvider";
+import { validateMessagingUploadContent } from "./uploadContentValidation";
+import { drainMessagingPendingUploadCleanup } from "./uploadCleanup";
 
 const logger = functions.logger;
 const db = firestoreAdmin;
 const sessionsCol = DB_COLLECTIONS.MESSAGING_ONBOARDING_SESSIONS;
 const rateLimitsCol = DB_COLLECTIONS.MESSAGING_ONBOARDING_RATE_LIMITS;
+const SESSION_ADMISSION_ACTIVE_CODE = "SESSION_ADMISSION_ACTIVE";
+const SESSION_ADMISSION_INVALID_CODE = "SESSION_ADMISSION_INVALID";
+const SESSION_LOOKUP_INVALID_CODE = "MESSAGING_SESSION_LOOKUP_INVALID";
+const SESSION_LOOKUP_AMBIGUOUS_CODE = "MESSAGING_SESSION_LOOKUP_AMBIGUOUS";
+const SESSION_UPLOAD_MIME_TYPES = new Set<string>(UPLOAD_LIMITS.ALLOWED_MIME_TYPES);
+
+type MessagingOnboardingRoutingSession = Pick<
+MessagingOnboardingSession,
+| "createdAt"
+| "expiresAt"
+| "processingRuns"
+| "provider"
+| "providerDisplayId"
+| "providerMessageIds"
+| "providerUserId"
+| "replacementUploads"
+| "pendingUploadCleanupPaths"
+| "previewUrl"
+| "publishedResult"
+| "sessionId"
+| "state"
+| "stateHistory"
+| "uploads"
+| "uploadCleanupPending"
+>;
+
+type SessionAdmissionReason =
+  | "active_session"
+  | "cooldown"
+  | "daily_limit"
+  | "invalid_state"
+  | "weekly_limit";
+
+class SessionAdmissionError extends Error {
+  readonly code: string;
+  readonly reason: SessionAdmissionReason;
+
+  constructor(reason: SessionAdmissionReason) {
+    super(reason === "active_session" ? SESSION_ADMISSION_ACTIVE_CODE : SESSION_ADMISSION_INVALID_CODE);
+    this.name = "SessionAdmissionError";
+    this.code = this.message;
+    this.reason = reason;
+  }
+}
+
+function isSessionAdmissionError(error: unknown): error is SessionAdmissionError {
+  return error instanceof SessionAdmissionError;
+}
+
+function readTimestampMillis(value: unknown): number | null {
+  if (!isSessionRecord(value) || typeof value.toMillis !== "function") return null;
+  try {
+    const millis = value.toMillis.call(value);
+    return typeof millis === "number" && Number.isFinite(millis) ? millis : null;
+  } catch {
+    return null;
+  }
+}
+
+function readNonNegativeCounter(value: unknown): number | null {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : null;
+}
+
+function normalizeRateLimitDocument(
+  value: unknown,
+  expectedUserHash: string,
+): MessagingOnboardingRateLimit | null {
+  if (!isSessionRecord(value) || value.userHash !== expectedUserHash) return null;
+  const sessionsToday = readNonNegativeCounter(value.sessionsToday);
+  const sessionsThisWeek = readNonNegativeCounter(value.sessionsThisWeek);
+  const processingRunsThisWeek = readNonNegativeCounter(value.processingRunsThisWeek);
+  const lastSessionAt = readTimestampMillis(value.lastSessionAt);
+  const dayResetAt = readTimestampMillis(value.dayResetAt);
+  const weekResetAt = readTimestampMillis(value.weekResetAt);
+  const cooldownUntil = value.cooldownUntil === null
+    ? null
+    : readTimestampMillis(value.cooldownUntil);
+  const rawActiveSessionId = value.activeSessionId;
+  let activeSessionId: string | null | undefined;
+  if (rawActiveSessionId === undefined) {
+    activeSessionId = undefined;
+  } else if (rawActiveSessionId === null) {
+    activeSessionId = null;
+  } else if (
+    isBoundedSessionString(rawActiveSessionId, 160)
+    && /^[A-Za-z0-9_-]+$/.test(rawActiveSessionId)
+  ) {
+    activeSessionId = rawActiveSessionId;
+  } else {
+    return null;
+  }
+  if (
+    sessionsToday === null
+    || sessionsThisWeek === null
+    || processingRunsThisWeek === null
+    || lastSessionAt === null
+    || dayResetAt === null
+    || weekResetAt === null
+    || cooldownUntil === null && value.cooldownUntil !== null
+  ) {
+    return null;
+  }
+  return {
+    ...(activeSessionId === undefined ? {} : { activeSessionId }),
+    cooldownUntil: cooldownUntil === null ? null : Timestamp.fromMillis(cooldownUntil),
+    dayResetAt: Timestamp.fromMillis(dayResetAt),
+    lastSessionAt: Timestamp.fromMillis(lastSessionAt),
+    processingRunsThisWeek,
+    sessionsThisWeek,
+    sessionsToday,
+    userHash: expectedUserHash,
+    weekResetAt: Timestamp.fromMillis(weekResetAt),
+  };
+}
 
 function getSessionEngineIdLogContext(
   label: string,
@@ -67,6 +190,380 @@ function getSessionEngineErrorContext(error: unknown): Record<string, string | u
   };
 }
 
+function isBoundedSessionString(value: unknown, maxLength: number): value is string {
+  return typeof value === "string"
+    && value.length > 0
+    && value.length <= maxLength
+    && value === value.trim()
+    && !value.includes("\0");
+}
+
+function isSessionRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function isMessagingOnboardingState(value: unknown): value is MessagingOnboardingState {
+  switch (value) {
+    case "COLLECTING_INPUT":
+    case "VALIDATING_ASSETS":
+    case "AWAITING_MORE_UPLOADS":
+    case "PROCESSING_MENU":
+    case "PREVIEW_READY":
+    case "AWAITING_APPROVAL":
+    case "PUBLISHING":
+    case "LIVE":
+    case "FAILED":
+    case "EXPIRED":
+    case "COOLDOWN":
+      return true;
+    default:
+      return false;
+  }
+}
+
+function isSafeMessagingOwnerUrl(value: unknown): value is string {
+  if (!isBoundedSessionString(value, 2048)) return false;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:"
+      && Boolean(url.hostname)
+      && !url.username
+      && !url.password;
+  } catch {
+    return false;
+  }
+}
+
+function normalizeSessionStateHistory(value: unknown): StateHistoryEntry[] | null {
+  if (!Array.isArray(value) || value.length === 0 || value.length > 500) return null;
+  const history: StateHistoryEntry[] = [];
+  for (const candidate of value) {
+    if (!isSessionRecord(candidate) || !isMessagingOnboardingState(candidate.state)) {
+      return null;
+    }
+    const reason = candidate.reason;
+    const timestampMillis = readTimestampMillis(candidate.timestamp);
+    if (timestampMillis === null) return null;
+    let normalizedReason: string | undefined;
+    if (reason !== undefined) {
+      if (!isBoundedSessionString(reason, 500)) return null;
+      normalizedReason = reason;
+    }
+    history.push({
+      ...(normalizedReason === undefined ? {} : { reason: normalizedReason }),
+      state: candidate.state,
+      timestamp: Timestamp.fromMillis(timestampMillis),
+    });
+  }
+  return history;
+}
+
+function normalizeRoutingUpload(value: unknown): SessionUpload | null {
+  if (!isSessionRecord(value)) return null;
+  const uploadedAtMillis = readTimestampMillis(value.uploadedAt);
+  const fileName = value.fileName;
+  let normalizedFileName: string | undefined;
+  if (fileName !== undefined) {
+    if (!isBoundedSessionString(fileName, 180)) return null;
+    normalizedFileName = fileName;
+  }
+  if (
+    !isBoundedSessionString(value.id, 160)
+    || !isBoundedSessionString(value.providerMediaId, 256)
+    || !isBoundedSessionString(value.storagePath, 512)
+    || !value.storagePath.startsWith("messagingOnboarding/")
+    || !isSafeMessagingOwnerUrl(value.storageUrl)
+    || typeof value.mimeType !== "string"
+    || !SESSION_UPLOAD_MIME_TYPES.has(value.mimeType)
+    || typeof value.fileSize !== "number"
+    || !Number.isSafeInteger(value.fileSize)
+    || value.fileSize <= 0
+    || value.fileSize > UPLOAD_LIMITS.MAX_FILE_SIZE_BYTES
+    || typeof value.sha256 !== "string"
+    || !/^[0-9a-f]{64}$/.test(value.sha256)
+    || uploadedAtMillis === null
+  ) {
+    return null;
+  }
+  return {
+    fileSize: value.fileSize,
+    id: value.id,
+    mimeType: value.mimeType,
+    providerMediaId: value.providerMediaId,
+    sha256: value.sha256,
+    storagePath: value.storagePath,
+    storageUrl: value.storageUrl,
+    uploadedAt: Timestamp.fromMillis(uploadedAtMillis),
+    ...(normalizedFileName === undefined ? {} : { fileName: normalizedFileName }),
+  };
+}
+
+function normalizeRoutingUploads(
+  value: unknown,
+  expectedSessionId: string,
+  options: { allowEmpty?: boolean; max?: number } = {},
+): SessionUpload[] | null {
+  if (
+    !Array.isArray(value)
+    || (!options.allowEmpty && value.length === 0)
+    || value.length > (options.max ?? UPLOAD_LIMITS.MAX_IMAGES_PER_SESSION)
+  ) {
+    return null;
+  }
+  const uploads: SessionUpload[] = [];
+  const uploadIds = new Set<string>();
+  const mediaIds = new Set<string>();
+  const hashes = new Set<string>();
+  for (const candidate of value) {
+    const upload = normalizeRoutingUpload(candidate);
+    if (
+      !upload
+      || !upload.storagePath.startsWith(`messagingOnboarding/${expectedSessionId}/`)
+      || uploadIds.has(upload.id)
+      || mediaIds.has(upload.providerMediaId)
+      || hashes.has(upload.sha256)
+    ) {
+      return null;
+    }
+    uploadIds.add(upload.id);
+    mediaIds.add(upload.providerMediaId);
+    hashes.add(upload.sha256);
+    uploads.push(upload);
+  }
+  return uploads;
+}
+
+function readSessionLookupDocument(
+  doc: FirebaseFirestore.QueryDocumentSnapshot,
+  provider: MessagingProvider,
+  providerUserId: string,
+): MessagingOnboardingRoutingSession {
+  const value: unknown = doc.data();
+  if (!isSessionRecord(value)) {
+    throw new Error(SESSION_LOOKUP_INVALID_CODE);
+  }
+  const state = isMessagingOnboardingState(value.state)
+    ? value.state
+    : null;
+  const stateHistory = normalizeSessionStateHistory(value.stateHistory);
+  const persistedUploads = normalizeRoutingUploads(value.uploads, doc.id, {
+    allowEmpty: state === "COLLECTING_INPUT" || state === "AWAITING_MORE_UPLOADS",
+  });
+  const latestPreviewMillis = stateHistory
+    ? getLatestPreviewTimestampMillis(stateHistory)
+    : null;
+  const legacyReplacementUploads = value.replacementUploads === undefined
+    && persistedUploads
+    && latestPreviewMillis !== null
+    && (state === "PREVIEW_READY" || state === "AWAITING_APPROVAL" || state === "PUBLISHING")
+    ? persistedUploads.filter((upload) => upload.uploadedAt.toMillis() > latestPreviewMillis)
+    : [];
+  const replacementUploads = value.replacementUploads === undefined
+    ? legacyReplacementUploads
+    : normalizeRoutingUploads(value.replacementUploads, doc.id, {
+      allowEmpty: true,
+      max: MAX_MESSAGING_REPLACEMENT_UPLOADS,
+    });
+  const uploads = persistedUploads && legacyReplacementUploads.length > 0
+    ? persistedUploads.filter((upload) => !legacyReplacementUploads.some(({ id }) => id === upload.id))
+    : persistedUploads;
+  const pendingUploadCleanupPaths = normalizeMessagingPendingUploadCleanupPaths(
+    value.pendingUploadCleanupPaths ?? [],
+    doc.id,
+  );
+  const uploadCleanupPending = value.uploadCleanupPending ?? false;
+  const createdAtMillis = readTimestampMillis(value.createdAt);
+  const expiresAtMillis = readTimestampMillis(value.expiresAt);
+  const processingRuns = readNonNegativeCounter(value.processingRuns);
+  const publishedResult = value.publishedResult === null
+    ? null
+    : normalizeMessagingPublishedResult(value.publishedResult);
+  const previewUrl = value.previewUrl === null
+    ? null
+    : isSafeMessagingOwnerUrl(value.previewUrl)
+      ? value.previewUrl
+      : undefined;
+  const previewRequired = state === "PREVIEW_READY"
+    || state === "AWAITING_APPROVAL"
+    || state === "PUBLISHING"
+    || state === "LIVE";
+  if (
+    value.sessionId !== doc.id
+    || !isBoundedSessionString(value.sessionId, 160)
+    || value.provider !== provider
+    || value.providerUserId !== providerUserId
+    || !isBoundedSessionString(value.providerDisplayId, 160)
+    || state === null
+    || !Array.isArray(value.providerMessageIds)
+    || value.providerMessageIds.length > 500
+    || value.providerMessageIds.some((id) => !isBoundedSessionString(id, 256))
+    || new Set(value.providerMessageIds).size !== value.providerMessageIds.length
+    || !stateHistory
+    || stateHistory[stateHistory.length - 1]?.state !== state
+    || !uploads
+    || !replacementUploads
+    || !pendingUploadCleanupPaths
+    || typeof uploadCleanupPending !== "boolean"
+    || uploadCleanupPending !== (pendingUploadCleanupPaths.length > 0)
+    || replacementUploads.some((replacement) => (
+      uploads.some((upload) => (
+        upload.id === replacement.id
+        || upload.providerMediaId === replacement.providerMediaId
+        || upload.sha256 === replacement.sha256
+        || upload.storagePath === replacement.storagePath
+      ))
+    ))
+    || [...uploads, ...replacementUploads].some((upload) => (
+      pendingUploadCleanupPaths.includes(upload.storagePath)
+    ))
+    || (replacementUploads.length > 0
+      && state !== "PREVIEW_READY"
+      && state !== "AWAITING_APPROVAL"
+      && state !== "PUBLISHING")
+    || createdAtMillis === null
+    || expiresAtMillis === null
+    || expiresAtMillis <= createdAtMillis
+    || processingRuns === null
+    || previewUrl === undefined
+    || (previewRequired && previewUrl === null)
+    || (value.publishedResult !== null && !publishedResult)
+    || (state === "LIVE" && !publishedResult)
+    || (state !== "LIVE" && publishedResult !== null)
+  ) {
+    throw new Error(SESSION_LOOKUP_INVALID_CODE);
+  }
+  return {
+    createdAt: Timestamp.fromMillis(createdAtMillis),
+    expiresAt: Timestamp.fromMillis(expiresAtMillis),
+    processingRuns,
+    provider,
+    providerDisplayId: value.providerDisplayId,
+    providerMessageIds: [...value.providerMessageIds],
+    providerUserId,
+    replacementUploads,
+    pendingUploadCleanupPaths,
+    previewUrl,
+    publishedResult,
+    sessionId: value.sessionId,
+    state,
+    stateHistory,
+    uploads,
+    uploadCleanupPending,
+  };
+}
+
+function readSingleSessionLookup(
+  docs: readonly FirebaseFirestore.QueryDocumentSnapshot[],
+  provider: MessagingProvider,
+  providerUserId: string,
+): MessagingOnboardingRoutingSession | null {
+  if (docs.length === 0) return null;
+  if (docs.length > 1) throw new Error(SESSION_LOOKUP_AMBIGUOUS_CODE);
+  return readSessionLookupDocument(docs[0], provider, providerUserId);
+}
+
+async function deleteStoredUpload(
+  upload: SessionUpload,
+  sessionId: string,
+  reason: string,
+): Promise<void> {
+  try {
+    await storageAdmin.bucket().file(upload.storagePath).delete({ ignoreNotFound: true });
+  } catch (error) {
+    const cleanupContext = {
+      ...getSessionEngineIdLogContext("sessionId", sessionId),
+      ...getSessionEngineIdLogContext("uploadId", upload.id),
+      ...getSessionEngineIdLogContext("storagePath", upload.storagePath),
+      cleanupReason: reason.slice(0, 64),
+      ...getSessionEngineErrorContext(error),
+    };
+
+    if (reason === "duplicate") {
+      logger.warn("[SessionEngine] Duplicate upload cleanup failed", cleanupContext);
+      return;
+    }
+
+    logger.warn("[SessionEngine] Stored upload cleanup failed", cleanupContext);
+  }
+}
+
+async function expireActiveRoutingSession(
+  session: MessagingOnboardingRoutingSession,
+  now: Timestamp,
+): Promise<boolean> {
+  const sessionRef = db.collection(sessionsCol).doc(session.sessionId);
+  const outcome = await db.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(sessionRef);
+    if (!snapshot.exists) return "gone" as const;
+    const state = snapshot.get("state");
+    if (!isMessagingOnboardingState(state)) throw new Error(SESSION_LOOKUP_INVALID_CODE);
+    if (TERMINAL_STATES.includes(state)) return "gone" as const;
+
+    const expiresAtMillis = readTimestampMillis(snapshot.get("expiresAt"));
+    const stateHistory = normalizeSessionStateHistory(snapshot.get("stateHistory"));
+    if (
+      snapshot.get("sessionId") !== session.sessionId
+      || snapshot.get("provider") !== session.provider
+      || snapshot.get("providerUserId") !== session.providerUserId
+      || expiresAtMillis === null
+      || !stateHistory
+      || stateHistory[stateHistory.length - 1]?.state !== state
+    ) {
+      throw new Error(SESSION_LOOKUP_INVALID_CODE);
+    }
+    if (expiresAtMillis > now.toMillis()) return "current" as const;
+
+    transaction.update(sessionRef, buildRoutingExpiryUpdate(state, stateHistory, now));
+    return "expired" as const;
+  });
+
+  if (outcome === "expired") {
+    logOnboardingEvent({
+      eventType: "SESSION_EXPIRED",
+      provider: session.provider,
+      sessionCreatedAt: session.createdAt,
+      sessionId: session.sessionId,
+      sessionState: "EXPIRED",
+      userIdMasked: maskUserId(session.providerUserId),
+    });
+  }
+  return outcome !== "current";
+}
+
+function buildRoutingExpiryUpdate(
+  state: MessagingOnboardingState,
+  stateHistory: readonly StateHistoryEntry[],
+  now: Timestamp,
+): Record<string, unknown> {
+  const expiryHistory: StateHistoryEntry[] = [];
+  if (state === "VALIDATING_ASSETS" || state === "PROCESSING_MENU" || state === "PUBLISHING") {
+    expiryHistory.push({
+      reason: "Interrupted work exceeded the session lifetime",
+      state: "FAILED",
+      timestamp: now,
+    });
+  }
+  expiryHistory.push({ reason: "24h session expiry", state: "EXPIRED", timestamp: now });
+  return {
+    confirmationPending: false,
+    confirmationMessageLeaseToken: null,
+    confirmationMessageLeaseUntil: null,
+    fixMessagePending: false,
+    fixMessageLeaseToken: null,
+    fixMessageLeaseUntil: null,
+    intakeExpiresAt: null,
+    pendingUploadsWhileProcessing: false,
+    previewMessagePending: false,
+    previewMessageLeaseToken: null,
+    previewMessageLeaseUntil: null,
+    reminderMessageLeaseToken: null,
+    reminderMessageLeaseUntil: null,
+    state: "EXPIRED",
+    stateHistory: [...stateHistory, ...expiryHistory],
+    updatedAt: now,
+  };
+}
+
 // ═══════════════════════════════════════════════════════════════
 // SESSION LOOKUP & CREATION
 // ═══════════════════════════════════════════════════════════════
@@ -75,53 +572,66 @@ function getSessionEngineErrorContext(error: unknown): Record<string, string | u
 export async function findActiveSession(
   provider: MessagingProvider,
   providerUserId: string,
-): Promise<MessagingOnboardingSession | null> {
+): Promise<MessagingOnboardingRoutingSession | null> {
   const snapshot = await db
     .collection(sessionsCol)
     .where("provider", "==", provider)
     .where("providerUserId", "==", providerUserId)
     .where("state", "not-in", TERMINAL_STATES)
-    .limit(1)
+    .limit(2)
     .get();
 
-  if (snapshot.empty) return null;
-  return snapshot.docs[0].data() as MessagingOnboardingSession;
+  const session = readSingleSessionLookup(snapshot.docs, provider, providerUserId);
+  if (!session || session.expiresAt.toMillis() > Date.now()) return session;
+  return await expireActiveRoutingSession(session, Timestamp.now()) ? null : session;
 }
 
 /** Find any LIVE session for a provider+user */
 export async function findLiveSession(
   provider: MessagingProvider,
   providerUserId: string,
-): Promise<MessagingOnboardingSession | null> {
+): Promise<MessagingOnboardingRoutingSession | null> {
   const snapshot = await db
     .collection(sessionsCol)
     .where("provider", "==", provider)
     .where("providerUserId", "==", providerUserId)
     .where("state", "==", "LIVE")
-    .limit(1)
+    .limit(2)
     .get();
 
-  if (snapshot.empty) return null;
-  return snapshot.docs[0].data() as MessagingOnboardingSession;
+  return readSingleSessionLookup(snapshot.docs, provider, providerUserId);
 }
 
 /** Check if this phone is linked to an existing store (any onboarding source) */
 export async function findExistingStoreByPhone(
   phoneDisplay: string,
 ): Promise<{ storeId: number; tenantId: number } | null> {
+  if (!/^\+[1-9]\d{6,14}$/.test(phoneDisplay)) return null;
   // Check users collection for phone match
   const snapshot = await db
     .collection(DB_COLLECTIONS.USERS)
     .where("phone", "==", phoneDisplay)
-    .limit(1)
+    .limit(2)
     .get();
 
-  if (snapshot.empty) return null;
-  const userData = snapshot.docs[0].data();
-  if (userData.storeId && userData.tenantId) {
-    return { storeId: userData.storeId, tenantId: userData.tenantId };
+  const matches = snapshot.docs.flatMap((doc) => {
+    const userData: unknown = doc.data();
+    if (!isSessionRecord(userData)) return [];
+    const storeId = userData.storeId;
+    const tenantId = userData.tenantId;
+    return typeof storeId === "number"
+      && Number.isSafeInteger(storeId)
+      && storeId > 0
+      && typeof tenantId === "number"
+      && Number.isSafeInteger(tenantId)
+      && tenantId > 0
+      ? [{ storeId, tenantId }]
+      : [];
+  });
+  if (snapshot.size > 1) {
+    throw new Error("MESSAGING_EXISTING_STORE_LOOKUP_AMBIGUOUS");
   }
-  return null;
+  return matches[0] || null;
 }
 
 /** Create a new session (only on first valid media — spec §Session Creation Trigger) */
@@ -162,6 +672,9 @@ export async function createSessionWithId(
     ],
 
     uploads: [upload],
+    replacementUploads: [],
+    pendingUploadCleanupPaths: [],
+    uploadCleanupPending: false,
 
     validMenuFiles: [],
     invalidFiles: [],
@@ -176,6 +689,7 @@ export async function createSessionWithId(
     typeSource: "fallback",
 
     extractionJobId: null,
+    extractionCompletedJobId: null,
     extractedMenuData: null,
     qualityScore: null,
 
@@ -192,6 +706,8 @@ export async function createSessionWithId(
     processingRuns: 0,
     correctionCount: 0,
     reminderSentAt: null,
+    reminderMessageLeaseToken: null,
+    reminderMessageLeaseUntil: null,
     pendingUploadsWhileProcessing: false,
 
     lastUploadAt: now,
@@ -202,7 +718,101 @@ export async function createSessionWithId(
     expiresAt,
   };
 
-  await sessionRef.set(session);
+  const userHash = getUserHash(msg.provider, msg.userId);
+  const rateLimitRef = db.collection(rateLimitsCol).doc(userHash);
+
+  await db.runTransaction(async (transaction) => {
+    const [existingSession, rateLimitSnapshot] = await Promise.all([
+      transaction.get(sessionRef),
+      transaction.get(rateLimitRef),
+    ]);
+    if (existingSession.exists) throw new SessionAdmissionError("invalid_state");
+
+    const rateLimitData = rateLimitSnapshot.exists
+      ? normalizeRateLimitDocument(rateLimitSnapshot.data(), userHash)
+      : null;
+    if (rateLimitSnapshot.exists && !rateLimitData) throw new SessionAdmissionError("invalid_state");
+    const activeSessionId = rateLimitData?.activeSessionId || null;
+
+    if (activeSessionId && activeSessionId !== sessionId) {
+      const activeSnapshot = await transaction.get(db.collection(sessionsCol).doc(activeSessionId));
+      if (activeSnapshot.exists) {
+        const activeState = activeSnapshot.get("state");
+        if (!isMessagingOnboardingState(activeState)) {
+          throw new SessionAdmissionError("invalid_state");
+        }
+        if (!TERMINAL_STATES.includes(activeState)) {
+          throw new SessionAdmissionError("active_session");
+        }
+      }
+    }
+
+    const nowMillis = now.toMillis();
+    let sessionsToday = 0;
+    let sessionsThisWeek = 0;
+    let processingRunsThisWeek = 0;
+    let dayResetAt = getNextMidnightUTC();
+    let weekResetAt = getNextMondayUTC();
+    let cooldownUntil: Timestamp | null = null;
+
+    if (rateLimitSnapshot.exists) {
+      if (!rateLimitData) throw new SessionAdmissionError("invalid_state");
+      const persistedToday = rateLimitData.sessionsToday;
+      const persistedWeek = rateLimitData.sessionsThisWeek;
+      const persistedProcessing = rateLimitData.processingRunsThisWeek;
+      const persistedDayReset = rateLimitData.dayResetAt.toMillis();
+      const persistedWeekReset = rateLimitData.weekResetAt.toMillis();
+      const persistedCooldown = rateLimitData.cooldownUntil == null
+        ? null
+        : readTimestampMillis(rateLimitData.cooldownUntil);
+      if (
+        persistedToday === null
+        || persistedWeek === null
+        || persistedProcessing === null
+        || persistedDayReset === null
+        || persistedWeekReset === null
+        || persistedCooldown === null && rateLimitData.cooldownUntil != null
+      ) {
+        throw new SessionAdmissionError("invalid_state");
+      }
+
+      sessionsToday = persistedDayReset <= nowMillis ? 0 : persistedToday;
+      sessionsThisWeek = persistedWeekReset <= nowMillis ? 0 : persistedWeek;
+      processingRunsThisWeek = persistedWeekReset <= nowMillis ? 0 : persistedProcessing;
+      dayResetAt = persistedDayReset <= nowMillis
+        ? getNextMidnightUTC()
+        : rateLimitData.dayResetAt;
+      weekResetAt = persistedWeekReset <= nowMillis
+        ? getNextMondayUTC()
+        : rateLimitData.weekResetAt;
+      cooldownUntil = persistedCooldown === null
+        ? null
+        : rateLimitData.cooldownUntil;
+    }
+
+    if (cooldownUntil && cooldownUntil.toMillis() > nowMillis) {
+      throw new SessionAdmissionError("cooldown");
+    }
+    if (sessionsToday >= RATE_LIMITS.SESSIONS_PER_DAY) {
+      throw new SessionAdmissionError("daily_limit");
+    }
+    if (sessionsThisWeek >= RATE_LIMITS.SESSIONS_PER_WEEK) {
+      throw new SessionAdmissionError("weekly_limit");
+    }
+
+    transaction.create(sessionRef, session);
+    transaction.set(rateLimitRef, {
+      activeSessionId: sessionId,
+      cooldownUntil,
+      dayResetAt,
+      lastSessionAt: now,
+      processingRunsThisWeek,
+      sessionsToday: sessionsToday + 1,
+      sessionsThisWeek: sessionsThisWeek + 1,
+      userHash,
+      weekResetAt,
+    } satisfies MessagingOnboardingRateLimit, { merge: false });
+  });
 
   logOnboardingEvent({
     sessionId,
@@ -227,7 +837,10 @@ export async function transitionState(
   currentState: MessagingOnboardingState,
   newState: MessagingOnboardingState,
   reason: string,
-  additionalUpdates: Record<string, any> = {},
+  context: {
+    _provider?: MessagingProvider;
+    _userIdMasked?: string;
+  } = {},
 ): Promise<boolean> {
   // Check forbidden transitions
   const forbidden = isTransitionForbidden(currentState, newState);
@@ -244,23 +857,46 @@ export async function transitionState(
   const now = Timestamp.now();
   const sessionRef = db.collection(sessionsCol).doc(sessionId);
 
-  await sessionRef.update({
-    state: newState,
-    stateHistory: FieldValue.arrayUnion({
+  const {
+    _provider: eventProvider = "whatsapp",
+    _userIdMasked: eventUserIdMasked = "****",
+  } = context;
+
+  const transitioned = await db.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(sessionRef);
+    if (!snapshot.exists) return false;
+
+    const actualState = snapshot.get("state");
+    if (actualState !== currentState) {
+      logger.warn("[SessionEngine] Stale state transition ignored", {
+        ...getSessionEngineIdLogContext("sessionId", sessionId),
+        expectedState: currentState,
+        actualState: typeof actualState === "string" ? actualState.slice(0, 40) : typeof actualState,
+        requestedState: newState,
+      });
+      return false;
+    }
+
+    transaction.update(sessionRef, {
       state: newState,
-      timestamp: now,
-      reason,
-    }),
-    updatedAt: now,
-    ...additionalUpdates,
+      stateHistory: FieldValue.arrayUnion({
+        state: newState,
+        timestamp: now,
+        reason,
+      }),
+      updatedAt: now,
+    });
+    return true;
   });
+
+  if (!transitioned) return false;
 
   logOnboardingEvent({
     sessionId,
-    provider: additionalUpdates._provider || "whatsapp",
+    provider: eventProvider,
     eventType: "SESSION_STATE_CHANGED",
     sessionState: newState,
-    userIdMasked: additionalUpdates._userIdMasked || "****",
+    userIdMasked: eventUserIdMasked,
     metadata: { fromState: currentState, toState: newState, reason },
   });
 
@@ -282,9 +918,7 @@ export async function processAndStoreUpload(
 
   // Check MIME type
   if (
-    !UPLOAD_LIMITS.ALLOWED_MIME_TYPES.includes(
-      msg.media.mimeType as (typeof UPLOAD_LIMITS.ALLOWED_MIME_TYPES)[number],
-    )
+    !SESSION_UPLOAD_MIME_TYPES.has(msg.media.mimeType)
   ) {
     return null; // Silently reject unsupported types
   }
@@ -314,7 +948,24 @@ export async function processAndStoreUpload(
     const buffer = await adapter.downloadMedia(msg.media.providerMediaId);
 
     // Check file size
-    if (buffer.length > UPLOAD_LIMITS.MAX_FILE_SIZE_BYTES) {
+    if (buffer.length === 0 || buffer.length > UPLOAD_LIMITS.MAX_FILE_SIZE_BYTES) {
+      return null;
+    }
+
+    const contentValidation = validateMessagingUploadContent(buffer, msg.media.mimeType);
+    if (contentValidation.valid === false) {
+      logOnboardingEvent({
+        sessionId,
+        provider: msg.provider,
+        eventType: "UPLOAD_REJECTED",
+        sessionState: "COLLECTING_INPUT",
+        userIdMasked: maskUserId(msg.userId),
+        metadata: {
+          reason: contentValidation.reason,
+          mimeType: msg.media.mimeType,
+          fileSize: buffer.length,
+        },
+      });
       return null;
     }
 
@@ -329,7 +980,11 @@ export async function processAndStoreUpload(
     // Upload to Firebase Storage with a stable Firebase download token.
     // Project files keep this URL after publish; a short-lived signed URL would
     // break source-file preview/retry flows once the owner claims the dashboard.
-    const uploadId = crypto.randomUUID();
+    const uploadId = crypto
+      .createHash("sha256")
+      .update(`${msg.provider}:${msg.providerMessageId}:${msg.media.providerMediaId}`)
+      .digest("hex")
+      .slice(0, 40);
     const downloadToken = crypto.randomUUID();
     const ext = getExtensionFromMime(msg.media.mimeType);
     const storagePath = `messagingOnboarding/${sessionId}/${uploadId}.${ext}`;
@@ -381,66 +1036,418 @@ export async function processAndStoreUpload(
       },
     });
 
-    return null;
+    throw err;
   }
 }
 
 /** Check if upload is duplicate by SHA-256 */
 export function isDuplicateUpload(
-  session: MessagingOnboardingSession,
+  session: Pick<MessagingOnboardingSession, "uploads">,
   sha256: string,
 ): boolean {
   return session.uploads.some((u) => u.sha256 === sha256);
+}
+
+function hasProviderMediaUpload(
+  session: Pick<MessagingOnboardingSession, "uploads" | "replacementUploads">,
+  providerMediaId: string | undefined,
+): boolean {
+  return !!providerMediaId
+    && [...session.uploads, ...(session.replacementUploads || [])]
+      .some((upload) => upload.providerMediaId === providerMediaId);
+}
+
+type UploadAppendStatus =
+  | "added"
+  | "duplicate"
+  | "expired"
+  | "limit_reached"
+  | "missing_session"
+  | "state_changed";
+
+interface UploadAppendResult {
+  cleanupScheduled?: boolean;
+  reopenedFromFailure: boolean;
+  status: UploadAppendStatus;
+  recentUploadCount: number;
+  sessionRestarted: boolean;
+}
+
+function getLatestPreviewTimestampMillis(stateHistory: unknown): number | null {
+  if (!Array.isArray(stateHistory)) return null;
+  for (let index = stateHistory.length - 1; index >= 0; index--) {
+    const entry = stateHistory[index];
+    if (
+      isSessionRecord(entry)
+      && (entry.state === "PREVIEW_READY" || entry.state === "AWAITING_APPROVAL")
+    ) {
+      return readTimestampMillis(entry.timestamp);
+    }
+  }
+  return null;
 }
 
 /** Add upload to session and reset intake timer (with Fast Start logic — spec §Smart Intake Logic) */
 export async function addUploadToSession(
   sessionId: string,
   upload: SessionUpload,
-  session: MessagingOnboardingSession,
-): Promise<void> {
-  const now = Timestamp.now();
-  const totalUploadsAfterAdd = session.uploads.length + 1;
-  const hasPdf = upload.mimeType === "application/pdf" ||
-    session.uploads.some((u) => u.mimeType === "application/pdf");
+  session: MessagingOnboardingRoutingSession,
+  options: {
+    cleanupPendingUploads?: (sessionId: string) => Promise<unknown>;
+    markPendingWhileProcessing?: boolean;
+    restartProviderMessageId?: string;
+    restartOnRecentThreshold?: number;
+  } = {},
+): Promise<UploadAppendResult> {
+  const sessionRef = db.collection(sessionsCol).doc(sessionId);
+  const result = await db.runTransaction(async (transaction): Promise<UploadAppendResult> => {
+    const snapshot = await transaction.get(sessionRef);
+    if (!snapshot.exists) {
+      return {
+        reopenedFromFailure: false,
+        status: "missing_session",
+        recentUploadCount: 0,
+        sessionRestarted: false,
+      };
+    }
+    if (snapshot.get("state") !== session.state) {
+      return {
+        reopenedFromFailure: false,
+        status: "state_changed",
+        recentUploadCount: 0,
+        sessionRestarted: false,
+      };
+    }
 
-  // Smart Intake Timing (spec §Smart Intake Logic):
-  // - PDF received → 60s idle window
-  // - ≥4 uploads → 90s idle window
-  // - Default → 10 min max wait
-  let intakeDelayMs = TIMING.INTAKE_WINDOW_MS; // Default: 10 min
-  if (hasPdf) {
-    intakeDelayMs = TIMING.PDF_FAST_START_IDLE_MS; // 60s
-  } else if (totalUploadsAfterAdd >= TIMING.FAST_START_MIN_UPLOADS) {
-    intakeDelayMs = TIMING.FAST_START_IDLE_MS; // 90s
+    const now = Timestamp.now();
+    const expiresAtMillis = readTimestampMillis(snapshot.get("expiresAt"));
+    const stateHistory = normalizeSessionStateHistory(snapshot.get("stateHistory"));
+    if (
+      expiresAtMillis === null
+      || !stateHistory
+      || stateHistory[stateHistory.length - 1]?.state !== session.state
+    ) {
+      throw new Error("MESSAGING_SESSION_EXPIRY_STATE_INVALID");
+    }
+    if (expiresAtMillis <= now.toMillis()) {
+      transaction.update(
+        sessionRef,
+        buildRoutingExpiryUpdate(session.state, stateHistory, now),
+      );
+      return {
+        reopenedFromFailure: false,
+        status: "expired",
+        recentUploadCount: 0,
+        sessionRestarted: false,
+      };
+    }
+
+    const persistedUploads = normalizeRoutingUploads(snapshot.get("uploads"), sessionId, {
+      allowEmpty: session.state === "COLLECTING_INPUT" || session.state === "AWAITING_MORE_UPLOADS",
+    });
+    const latestPreviewMillis = getLatestPreviewTimestampMillis(stateHistory);
+    const legacyReplacementUploads = snapshot.get("replacementUploads") === undefined
+      && latestPreviewMillis !== null
+      && options.restartOnRecentThreshold !== undefined
+      && persistedUploads
+      ? persistedUploads.filter((current) => current.uploadedAt.toMillis() > latestPreviewMillis)
+      : [];
+    const replacementUploads = snapshot.get("replacementUploads") === undefined
+      ? legacyReplacementUploads
+      : normalizeRoutingUploads(snapshot.get("replacementUploads"), sessionId, {
+        allowEmpty: true,
+        max: MAX_MESSAGING_REPLACEMENT_UPLOADS,
+      });
+    const uploads = persistedUploads && legacyReplacementUploads.length > 0
+      ? persistedUploads.filter((current) => (
+        !legacyReplacementUploads.some(({ id }) => id === current.id)
+      ))
+      : persistedUploads;
+    const pendingUploadCleanupPaths = normalizeMessagingPendingUploadCleanupPaths(
+      snapshot.get("pendingUploadCleanupPaths") ?? [],
+      sessionId,
+    );
+    const uploadCleanupPending = snapshot.get("uploadCleanupPending") ?? false;
+    if (
+      !uploads
+      || !replacementUploads
+      || !pendingUploadCleanupPaths
+      || typeof uploadCleanupPending !== "boolean"
+      || uploadCleanupPending !== (pendingUploadCleanupPaths.length > 0)
+    ) {
+      throw new Error("MESSAGING_SESSION_UPLOADS_INVALID");
+    }
+    if ([...uploads, ...replacementUploads].some((current) => (
+      current?.providerMediaId === upload.providerMediaId || current?.sha256 === upload.sha256
+    ))) {
+      return {
+        reopenedFromFailure: false,
+        status: "duplicate",
+        recentUploadCount: 0,
+        sessionRestarted: false,
+      };
+    }
+    const isReplacementUpload = options.restartOnRecentThreshold !== undefined;
+    if (
+      isReplacementUpload
+        ? replacementUploads.length >= MAX_MESSAGING_REPLACEMENT_UPLOADS
+        : uploads.length >= UPLOAD_LIMITS.MAX_IMAGES_PER_SESSION
+    ) {
+      return {
+        reopenedFromFailure: false,
+        status: "limit_reached",
+        recentUploadCount: 0,
+        sessionRestarted: false,
+      };
+    }
+
+    const nextUploads = isReplacementUpload ? uploads : [...uploads, upload];
+    const nextReplacementUploads = isReplacementUpload
+      ? [...replacementUploads, upload]
+      : replacementUploads;
+    const intakeUploads = isReplacementUpload ? nextReplacementUploads : nextUploads;
+    const hasPdf = intakeUploads.some((current) => current?.mimeType === "application/pdf");
+    const intakeDelayMs = hasPdf
+      ? TIMING.PDF_FAST_START_IDLE_MS
+      : intakeUploads.length >= TIMING.FAST_START_MIN_UPLOADS
+        ? TIMING.FAST_START_IDLE_MS
+        : TIMING.INTAKE_WINDOW_MS;
+    const recentUploads = isReplacementUpload
+      ? nextReplacementUploads
+      : latestPreviewMillis === null
+        ? nextUploads
+        : nextUploads.filter((current) => current.uploadedAt.toMillis() > latestPreviewMillis);
+    const recentUploadCount = recentUploads.length;
+    const sessionRestarted = options.restartOnRecentThreshold !== undefined
+      && recentUploadCount >= options.restartOnRecentThreshold;
+    const nextCleanupPaths = sessionRestarted
+      ? mergeMessagingPendingUploadCleanupPaths(
+        pendingUploadCleanupPaths,
+        uploads.map(({ storagePath }) => storagePath),
+        sessionId,
+      )
+      : pendingUploadCleanupPaths;
+    if (!nextCleanupPaths) throw new Error("MESSAGING_UPLOAD_CLEANUP_QUEUE_FULL");
+    const reopenedFromFailure = session.state === "FAILED";
+    if (sessionRestarted) {
+      const transitionError = isTransitionForbidden(session.state, "COLLECTING_INPUT");
+      if (transitionError) throw new Error("MESSAGING_SESSION_RESTART_FORBIDDEN");
+    }
+    if (reopenedFromFailure) {
+      const transitionError = isTransitionForbidden("FAILED", "COLLECTING_INPUT");
+      if (transitionError) throw new Error("MESSAGING_SESSION_REOPEN_FORBIDDEN");
+    }
+    const rawProviderMessageIds = snapshot.get("providerMessageIds");
+    if (
+      !Array.isArray(rawProviderMessageIds)
+      || rawProviderMessageIds.length > 500
+      || rawProviderMessageIds.some((id) => !isBoundedSessionString(id, 256))
+      || new Set(rawProviderMessageIds).size !== rawProviderMessageIds.length
+    ) {
+      throw new Error("MESSAGING_PROVIDER_MESSAGE_IDS_INVALID");
+    }
+    let restartProviderMessageIds = rawProviderMessageIds;
+    if (sessionRestarted) {
+      const restartProviderMessageId = options.restartProviderMessageId;
+      if (!isBoundedSessionString(restartProviderMessageId, 256)) {
+        throw new Error("MESSAGING_SESSION_RESTART_MESSAGE_ID_INVALID");
+      }
+      restartProviderMessageIds = Array.from(new Set([
+        ...rawProviderMessageIds,
+        restartProviderMessageId,
+      ]));
+    }
+    if (restartProviderMessageIds.length > 500) {
+      throw new Error("MESSAGING_PROVIDER_MESSAGE_IDS_FULL");
+    }
+
+    transaction.update(sessionRef, {
+      uploads: sessionRestarted ? recentUploads : nextUploads,
+      replacementUploads: sessionRestarted ? [] : nextReplacementUploads,
+      pendingUploadCleanupPaths: nextCleanupPaths,
+      uploadCleanupPending: nextCleanupPaths.length > 0,
+      lastUploadAt: now,
+      intakeExpiresAt: Timestamp.fromMillis(
+        now.toMillis() + (sessionRestarted ? TIMING.INTAKE_WINDOW_MS : intakeDelayMs),
+      ),
+      ...(options.markPendingWhileProcessing ? { pendingUploadsWhileProcessing: true } : {}),
+      ...(reopenedFromFailure ? {
+        extractedBusinessInfo: null,
+        extractedBusinessProfile: null,
+        extractedMenuData: null,
+        extractedProjectFiles: null,
+        extractionCompletedJobId: null,
+        extractionJobId: null,
+        invalidFiles: [],
+        menuCompleteness: null,
+        pendingUploadsWhileProcessing: false,
+        previewMessageDeliveryAttempts: 0,
+        previewMessageLeaseToken: null,
+        previewMessageLeaseUntil: null,
+        previewMessagePending: false,
+        previewToken: null,
+        previewUrl: null,
+        qualityScore: null,
+        reminderMessageLeaseToken: null,
+        reminderMessageLeaseUntil: null,
+        reminderSentAt: null,
+        state: "COLLECTING_INPUT",
+        stateHistory: [...stateHistory, {
+          reason: "Valid upload received after failure",
+          state: "COLLECTING_INPUT",
+          timestamp: now,
+        }],
+        validMenuFiles: [],
+        validationConfidence: null,
+      } : {}),
+      ...(sessionRestarted ? {
+        detectedBusinessCategory: null,
+        detectedBusinessType: null,
+        extractedBusinessInfo: null,
+        extractedBusinessProfile: null,
+        extractedMenuData: null,
+        extractedProjectFiles: null,
+        extractionCompletedJobId: null,
+        extractionJobId: null,
+        fixMessageDeliveryAttempts: 0,
+        fixMessageLeaseToken: null,
+        fixMessageLeaseUntil: null,
+        fixMessagePending: false,
+        invalidFiles: [],
+        menuCompleteness: null,
+        pendingUploadsWhileProcessing: false,
+        previewMessageDeliveryAttempts: 0,
+        previewMessageLeaseToken: null,
+        previewMessageLeaseUntil: null,
+        previewMessagePending: false,
+        previewToken: null,
+        previewUrl: null,
+        qualityScore: null,
+        reminderMessageLeaseToken: null,
+        reminderMessageLeaseUntil: null,
+        reminderSentAt: null,
+        providerMessageIds: restartProviderMessageIds,
+        state: "COLLECTING_INPUT",
+        stateHistory: [...stateHistory, {
+          reason: "Full resend detected",
+          state: "COLLECTING_INPUT",
+          timestamp: now,
+        }],
+        validMenuFiles: [],
+        validationConfidence: null,
+        typeConfidence: null,
+        typeSource: "fallback",
+      } : {}),
+      updatedAt: now,
+    });
+    return {
+      cleanupScheduled: sessionRestarted && nextCleanupPaths.length > 0,
+      reopenedFromFailure,
+      status: "added",
+      recentUploadCount,
+      sessionRestarted,
+    };
+  });
+
+  if (result.cleanupScheduled) {
+    const cleanupPendingUploads = options.cleanupPendingUploads
+      || ((pendingSessionId: string) => drainMessagingPendingUploadCleanup({ sessionId: pendingSessionId }));
+    await cleanupPendingUploads(sessionId);
   }
 
-  const newIntakeExpiresAt = Timestamp.fromMillis(
-    now.toMillis() + intakeDelayMs,
-  );
+  if (result.status === "expired") {
+    logOnboardingEvent({
+      eventType: "SESSION_EXPIRED",
+      provider: session.provider,
+      sessionCreatedAt: session.createdAt,
+      sessionId,
+      sessionState: "EXPIRED",
+      userIdMasked: maskUserId(session.providerUserId),
+    });
+  }
 
-  const sessionRef = db.collection(sessionsCol).doc(sessionId);
+  if (result.status === "added") {
+    logOnboardingEvent({
+      sessionId,
+      provider: session.provider,
+      eventType: "UPLOAD_RECEIVED",
+      sessionState: session.state,
+      userIdMasked: maskUserId(session.providerUserId),
+      metadata: {
+        mimeType: upload.mimeType,
+        fileSize: upload.fileSize,
+      },
+      sessionCreatedAt: session.createdAt,
+    });
+    if (result.sessionRestarted) {
+      logOnboardingEvent({
+        sessionId,
+        provider: session.provider,
+        eventType: "SESSION_RESTARTED",
+        sessionState: "COLLECTING_INPUT",
+        userIdMasked: maskUserId(session.providerUserId),
+        metadata: { uploadCount: result.recentUploadCount },
+        sessionCreatedAt: session.createdAt,
+      });
+    }
+    if (result.reopenedFromFailure) {
+      logOnboardingEvent({
+        sessionId,
+        provider: session.provider,
+        eventType: "SESSION_STATE_CHANGED",
+        sessionState: "COLLECTING_INPUT",
+        userIdMasked: maskUserId(session.providerUserId),
+        metadata: {
+          fromState: "FAILED",
+          reason: "Valid upload received after failure",
+          toState: "COLLECTING_INPUT",
+        },
+        sessionCreatedAt: session.createdAt,
+      });
+    }
+  }
+  return result;
+}
 
-  await sessionRef.update({
-    uploads: FieldValue.arrayUnion(upload),
-    lastUploadAt: now,
-    intakeExpiresAt: newIntakeExpiresAt,
-    updatedAt: now,
-  });
+async function appendStoredUploadOrCleanup(
+  upload: SessionUpload,
+  session: MessagingOnboardingRoutingSession,
+  options: {
+    cleanupPendingUploads?: (sessionId: string) => Promise<unknown>;
+    markPendingWhileProcessing?: boolean;
+    restartProviderMessageId?: string;
+    restartOnRecentThreshold?: number;
+  } = {},
+): Promise<UploadAppendResult> {
+  let result: UploadAppendResult;
+  try {
+    result = await addUploadToSession(session.sessionId, upload, session, options);
+  } catch (error) {
+    await deleteStoredUpload(upload, session.sessionId, "session_append_failed");
+    throw error;
+  }
 
-  logOnboardingEvent({
-    sessionId,
-    provider: session.provider,
-    eventType: "UPLOAD_RECEIVED",
-    sessionState: session.state,
-    userIdMasked: maskUserId(session.providerUserId),
-    metadata: {
-      mimeType: upload.mimeType,
-      fileSize: upload.fileSize,
-      uploadIndex: session.uploads.length + 1,
-    },
-    sessionCreatedAt: session.createdAt,
-  });
+  if (result.status === "added") return result;
+  await deleteStoredUpload(upload, session.sessionId, result.status);
+
+  if (result.status === "duplicate") {
+    logOnboardingEvent({
+      sessionId: session.sessionId,
+      provider: session.provider,
+      eventType: "UPLOAD_DEDUPLICATED",
+      sessionState: session.state,
+      userIdMasked: maskUserId(session.providerUserId),
+      metadata: { sha256: upload.sha256.slice(0, 8) },
+      sessionCreatedAt: session.createdAt,
+    });
+  }
+  if (result.status === "missing_session" || result.status === "state_changed") {
+    throw new Error(`MESSAGING_SESSION_${result.status.toUpperCase()}`);
+  }
+  if (result.status === "expired") {
+    throw new Error("MESSAGING_SESSION_EXPIRED_DURING_UPLOAD");
+  }
+  return result;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -469,35 +1476,41 @@ export async function checkRateLimit(
 
   if (!doc.exists) return null; // No rate limit record = first session
 
-  const rateLimit = doc.data() as MessagingOnboardingRateLimit;
+  const rateLimit = normalizeRateLimitDocument(doc.data(), userHash);
+  if (!rateLimit) return "invalid_state";
   const now = Date.now();
 
   // Check cooldown
-  if (rateLimit.cooldownUntil && rateLimit.cooldownUntil.toMillis() > now) {
-    return "cooldown";
+  if (rateLimit.cooldownUntil) {
+    const cooldownUntil = readTimestampMillis(rateLimit.cooldownUntil);
+    if (cooldownUntil === null) return "invalid_state";
+    if (cooldownUntil > now) return "cooldown";
   }
 
-  let sessionsToday = rateLimit.sessionsToday || 0;
-  let sessionsThisWeek = rateLimit.sessionsThisWeek || 0;
-  const resetUpdates: Record<string, unknown> = {};
+  const persistedToday = readNonNegativeCounter(rateLimit.sessionsToday);
+  const persistedWeek = readNonNegativeCounter(rateLimit.sessionsThisWeek);
+  const dayResetAt = readTimestampMillis(rateLimit.dayResetAt);
+  const weekResetAt = readTimestampMillis(rateLimit.weekResetAt);
+  if (
+    persistedToday === null
+    || persistedWeek === null
+    || dayResetAt === null
+    || weekResetAt === null
+  ) {
+    return "invalid_state";
+  }
+
+  let sessionsToday = persistedToday;
+  let sessionsThisWeek = persistedWeek;
 
   // Reset counters first, then still evaluate the other active windows.
   // Returning early here allowed a weekly-capped user through on day rollover.
-  if (rateLimit.dayResetAt.toMillis() <= now) {
+  if (dayResetAt <= now) {
     sessionsToday = 0;
-    resetUpdates.sessionsToday = 0;
-    resetUpdates.dayResetAt = getNextMidnightUTC();
   }
 
-  if (rateLimit.weekResetAt.toMillis() <= now) {
+  if (weekResetAt <= now) {
     sessionsThisWeek = 0;
-    resetUpdates.sessionsThisWeek = 0;
-    resetUpdates.processingRunsThisWeek = 0;
-    resetUpdates.weekResetAt = getNextMondayUTC();
-  }
-
-  if (Object.keys(resetUpdates).length > 0) {
-    await rateLimitRef.update(resetUpdates);
   }
 
   // Check daily limit
@@ -513,49 +1526,153 @@ export async function checkRateLimit(
   return null;
 }
 
-/** Increment session count in rate limiter */
-export async function incrementSessionCount(
-  provider: MessagingProvider,
-  providerUserId: string,
-): Promise<void> {
-  const userHash = getUserHash(provider, providerUserId);
-  const rateLimitRef = db.collection(rateLimitsCol).doc(userHash);
-  const doc = await rateLimitRef.get();
-
-  const now = Timestamp.now();
-
-  if (!doc.exists) {
-    const rateLimit: MessagingOnboardingRateLimit = {
-      userHash,
-      sessionsToday: 1,
-      sessionsThisWeek: 1,
-      processingRunsThisWeek: 0,
-      lastSessionAt: now,
-      cooldownUntil: null,
-      dayResetAt: getNextMidnightUTC(),
-      weekResetAt: getNextMondayUTC(),
-    };
-    await rateLimitRef.set(rateLimit);
-  } else {
-    await rateLimitRef.update({
-      sessionsToday: FieldValue.increment(1),
-      sessionsThisWeek: FieldValue.increment(1),
-      lastSessionAt: now,
-    });
+async function recordInvalidUploadAttempt(
+  session: MessagingOnboardingRoutingSession,
+  providerMessageId: string,
+): Promise<{ count: number; cooldownApplied: boolean; duplicate: boolean }> {
+  if (!isBoundedSessionString(providerMessageId, 256)) {
+    throw new Error("MESSAGING_PROVIDER_MESSAGE_ID_INVALID");
   }
+  const sessionRef = db.collection(sessionsCol).doc(session.sessionId);
+  const userHash = getUserHash(session.provider, session.providerUserId);
+  const rateLimitRef = db.collection(rateLimitsCol).doc(userHash);
+  const result = await db.runTransaction(async (transaction) => {
+    const [sessionSnapshot, rateLimitSnapshot] = await Promise.all([
+      transaction.get(sessionRef),
+      transaction.get(rateLimitRef),
+    ]);
+    if (!sessionSnapshot.exists) throw new Error("MESSAGING_SESSION_MISSING");
+    if (
+      sessionSnapshot.get("provider") !== session.provider
+      || sessionSnapshot.get("providerUserId") !== session.providerUserId
+      || sessionSnapshot.get("state") !== session.state
+    ) {
+      throw new Error("MESSAGING_SESSION_IDENTITY_MISMATCH");
+    }
+
+    const now = Timestamp.now();
+    const expiresAtMillis = readTimestampMillis(sessionSnapshot.get("expiresAt"));
+    const stateHistory = normalizeSessionStateHistory(sessionSnapshot.get("stateHistory"));
+    if (
+      expiresAtMillis === null
+      || !stateHistory
+      || stateHistory[stateHistory.length - 1]?.state !== session.state
+    ) {
+      throw new Error("MESSAGING_SESSION_EXPIRY_STATE_INVALID");
+    }
+    if (expiresAtMillis <= now.toMillis()) {
+      transaction.update(
+        sessionRef,
+        buildRoutingExpiryUpdate(session.state, stateHistory, now),
+      );
+      return { count: 0, cooldownApplied: false, duplicate: false, expired: true as const };
+    }
+
+    const persistedCount = readNonNegativeCounter(sessionSnapshot.get("invalidUploadAttempts"));
+    if (persistedCount === null) throw new Error("MESSAGING_INVALID_UPLOAD_COUNT_INVALID");
+    const providerMessageIds = sessionSnapshot.get("providerMessageIds");
+    if (
+      !Array.isArray(providerMessageIds)
+      || providerMessageIds.length > 500
+      || providerMessageIds.some((id) => !isBoundedSessionString(id, 256))
+      || new Set(providerMessageIds).size !== providerMessageIds.length
+    ) {
+      throw new Error("MESSAGING_PROVIDER_MESSAGE_IDS_INVALID");
+    }
+    if (providerMessageIds.includes(providerMessageId)) {
+      return { count: persistedCount, cooldownApplied: false, duplicate: true };
+    }
+    if (providerMessageIds.length >= 500) {
+      throw new Error("MESSAGING_PROVIDER_MESSAGE_IDS_FULL");
+    }
+    const count = persistedCount + 1;
+    const cooldownApplied = count >= RATE_LIMITS.MAX_INVALID_UPLOAD_ATTEMPTS;
+    transaction.update(sessionRef, {
+      invalidUploadAttempts: count,
+      providerMessageIds: FieldValue.arrayUnion(providerMessageId),
+      ...(cooldownApplied ? {
+        intakeExpiresAt: null,
+        state: "COOLDOWN",
+        stateHistory: FieldValue.arrayUnion({
+          reason: "Maximum invalid upload attempts reached",
+          state: "COOLDOWN",
+          timestamp: now,
+        }),
+      } : {}),
+      updatedAt: now,
+    });
+
+    if (cooldownApplied) {
+      const cooldownUntil = Timestamp.fromMillis(
+        now.toMillis() + RATE_LIMITS.COOLDOWN_HOURS * 60 * 60 * 1000,
+      );
+      if (rateLimitSnapshot.exists) {
+        if (!normalizeRateLimitDocument(rateLimitSnapshot.data(), userHash)) {
+          throw new Error("MESSAGING_RATE_LIMIT_INVALID");
+        }
+        transaction.update(rateLimitRef, { cooldownUntil });
+      } else {
+        transaction.create(rateLimitRef, {
+          activeSessionId: session.sessionId,
+          cooldownUntil,
+          dayResetAt: getNextMidnightUTC(),
+          lastSessionAt: session.createdAt,
+          processingRunsThisWeek: session.processingRuns,
+          sessionsThisWeek: 1,
+          sessionsToday: 1,
+          userHash,
+          weekResetAt: getNextMondayUTC(),
+        } satisfies MessagingOnboardingRateLimit);
+      }
+    }
+    return { count, cooldownApplied, duplicate: false, expired: false as const };
+  });
+  if (result.expired) {
+    logOnboardingEvent({
+      eventType: "SESSION_EXPIRED",
+      provider: session.provider,
+      sessionCreatedAt: session.createdAt,
+      sessionId: session.sessionId,
+      sessionState: "EXPIRED",
+      userIdMasked: maskUserId(session.providerUserId),
+    });
+    throw new Error("MESSAGING_SESSION_EXPIRED_DURING_INVALID_UPLOAD");
+  }
+  return result;
 }
 
-/** Apply cooldown to user */
-export async function applyCooldown(
-  provider: MessagingProvider,
-  providerUserId: string,
-): Promise<void> {
-  const userHash = getUserHash(provider, providerUserId);
-  const rateLimitRef = db.collection(rateLimitsCol).doc(userHash);
-  const cooldownUntil = Timestamp.fromMillis(
-    Date.now() + RATE_LIMITS.COOLDOWN_HOURS * 60 * 60 * 1000,
-  );
-  await rateLimitRef.set({ cooldownUntil }, { merge: true });
+async function recordRejectedUpload(
+  session: MessagingOnboardingRoutingSession,
+  msg: NormalizedMessage,
+): Promise<{ count: number; cooldownApplied: boolean }> {
+  const invalidAttempt = await recordInvalidUploadAttempt(session, msg.providerMessageId);
+  if (!invalidAttempt.duplicate) {
+    logOnboardingEvent({
+      sessionId: session.sessionId,
+      provider: session.provider,
+      eventType: "UPLOAD_REJECTED",
+      sessionState: invalidAttempt.cooldownApplied ? "COOLDOWN" : session.state,
+      userIdMasked: maskUserId(session.providerUserId),
+      metadata: {
+        invalidCount: invalidAttempt.count,
+        mimeType: msg.media?.mimeType,
+      },
+      sessionCreatedAt: session.createdAt,
+    });
+  }
+
+  if (invalidAttempt.cooldownApplied && !invalidAttempt.duplicate) {
+    logOnboardingEvent({
+      sessionId: session.sessionId,
+      provider: session.provider,
+      eventType: "COOLDOWN_APPLIED",
+      sessionState: "COOLDOWN",
+      userIdMasked: maskUserId(session.providerUserId),
+      metadata: { reason: "max_invalid_uploads" },
+      sessionCreatedAt: session.createdAt,
+    });
+  }
+  return invalidAttempt;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -608,11 +1725,21 @@ export async function handleMessage(
   const activeSession = await findActiveSession(msg.provider, msg.userId);
 
   if (activeSession) {
-    // Legacy safety for sessions created before the durable inbound queue.
-    // New messages are not appended here; the queue owns dedup so every active
-    // session message does not pay an extra Firestore write.
+    // First-session admission, full-resend restart, legacy sessions, and
+    // invalid-upload counters record the IDs needed to reconstruct a reply
+    // after a mutation/checkpoint crash. General deduplication remains in the
+    // durable inbound queue.
     if (activeSession.providerMessageIds?.includes(msg.providerMessageId)) {
-      return null; // Already processed
+      const isMedia = msg.messageType === "image" || msg.messageType === "document";
+      if (!isMedia) return null;
+
+      // Session creation and invalid-upload accounting can commit before the
+      // inbound queue stores its handler/reply checkpoint. Reconstruct those
+      // deterministic replies on replay so idempotency does not become a lost
+      // owner response in that crash window.
+      return hasProviderMediaUpload(activeSession, msg.media?.providerMediaId)
+        ? MESSAGES.FIRST_UPLOAD
+        : MESSAGES.NON_MENU_FILE;
     }
 
     return await handleMessageForExistingSession(msg, activeSession, adapter);
@@ -647,11 +1774,16 @@ export async function handleMessage(
       return MESSAGES.NON_MENU_FILE;
     }
 
-    // Create session with initial upload (using pre-generated ID)
-    await createSessionWithId(preGeneratedSessionId, msg, upload);
-
-    // Increment rate limit counter
-    await incrementSessionCount(msg.provider, msg.userId);
+    // Create session and consume the rate-limit slot atomically.
+    try {
+      await createSessionWithId(preGeneratedSessionId, msg, upload);
+    } catch (error) {
+      await deleteStoredUpload(upload, preGeneratedSessionId, "session_create_failed");
+      if (isSessionAdmissionError(error) && error.reason !== "active_session") {
+        return MESSAGES.RATE_LIMITED;
+      }
+      throw error;
+    }
 
     return MESSAGES.FIRST_UPLOAD;
   }
@@ -675,7 +1807,7 @@ export async function handleMessage(
  */
 async function handleMessageForExistingSession(
   msg: NormalizedMessage,
-  session: MessagingOnboardingSession,
+  session: MessagingOnboardingRoutingSession,
   adapter: IMessagingProvider,
 ): Promise<string | null> {
   const isMedia =
@@ -701,6 +1833,7 @@ async function handleMessageForExistingSession(
 
     case "PROCESSING_MENU": {
       if (isMedia) {
+        if (hasProviderMediaUpload(session, msg.media?.providerMediaId)) return null;
         // Store upload, set pendingUploadsWhileProcessing
         const upload = await processAndStoreUpload(
           msg,
@@ -710,16 +1843,13 @@ async function handleMessageForExistingSession(
         if (upload === "PASSWORD_PROTECTED_PDF") {
           return MESSAGES.PASSWORD_PROTECTED_PDF;
         }
-        if (upload && !isDuplicateUpload(session, upload.sha256)) {
-          await addUploadToSession(session.sessionId, upload, session);
-          await db
-            .collection(sessionsCol)
-            .doc(session.sessionId)
-            .update({
-              pendingUploadsWhileProcessing: true,
-              updatedAt: Timestamp.now(),
-            });
+        if (!upload) {
+          const invalidAttempt = await recordRejectedUpload(session, msg);
+          return invalidAttempt.cooldownApplied ? MESSAGES.RATE_LIMITED : MESSAGES.NON_MENU_FILE;
         }
+        await appendStoredUploadOrCleanup(upload, session, {
+          markPendingWhileProcessing: true,
+        });
       }
       return null;
     }
@@ -728,8 +1858,11 @@ async function handleMessageForExistingSession(
     case "AWAITING_APPROVAL": {
       if (isMedia) {
         // Count new uploads in this batch
-        const recentUploads = await countRecentUploads(msg, session, adapter);
-        if (recentUploads >= PROCESSING.FULL_RESEND_THRESHOLD) {
+        const recentUpload = await processRecentUpload(msg, session, adapter);
+        if (recentUpload === "password_protected") return MESSAGES.PASSWORD_PROTECTED_PDF;
+        if (recentUpload === "cooldown") return MESSAGES.RATE_LIMITED;
+        if (recentUpload === "invalid") return MESSAGES.NON_MENU_FILE;
+        if (recentUpload?.sessionRestarted) {
           // Full resend → restart
           logOnboardingEvent({
             sessionId: session.sessionId,
@@ -737,12 +1870,12 @@ async function handleMessageForExistingSession(
             eventType: "FULL_RESEND_DETECTED",
             sessionState: session.state,
             userIdMasked: maskUserId(session.providerUserId),
-            metadata: { uploadCount: recentUploads },
+            metadata: { uploadCount: recentUpload.recentUploadCount },
             sessionCreatedAt: session.createdAt,
           });
-          await restartSession(session);
           return MESSAGES.FIRST_UPLOAD;
         }
+        if (recentUpload?.status === "limit_reached") return MESSAGES.UPLOAD_LIMIT_REACHED;
         // Partial addition → reply with update guidance + preview link (spec §Failure Handling)
         if (session.previewUrl) {
           return MESSAGES.PARTIAL_UPLOAD_AFTER_PREVIEW(session.previewUrl);
@@ -781,9 +1914,11 @@ async function handleMessageForExistingSession(
 /** Handle upload during COLLECTING_INPUT / AWAITING_MORE_UPLOADS states */
 async function handleUploadInCollectingState(
   msg: NormalizedMessage,
-  session: MessagingOnboardingSession,
+  session: MessagingOnboardingRoutingSession,
   adapter: IMessagingProvider,
 ): Promise<string | null> {
+  if (hasProviderMediaUpload(session, msg.media?.providerMediaId)) return null;
+
   // Check upload limit
   if (session.uploads.length >= UPLOAD_LIMITS.MAX_IMAGES_PER_SESSION) {
     logOnboardingEvent({
@@ -809,184 +1944,56 @@ async function handleUploadInCollectingState(
   }
 
   if (!upload) {
-    // Invalid file type or download failed
-    const newInvalidCount = session.invalidUploadAttempts + 1;
-    await db
-      .collection(sessionsCol)
-      .doc(session.sessionId)
-      .update({
-        invalidUploadAttempts: newInvalidCount,
-        updatedAt: Timestamp.now(),
-      });
+    // Invalid file type/content. Provider and Storage failures throw and are
+    // retried by the durable inbound queue instead of consuming this counter.
+    const invalidAttempt = await recordRejectedUpload(session, msg);
 
-    logOnboardingEvent({
-      sessionId: session.sessionId,
-      provider: session.provider,
-      eventType: "UPLOAD_REJECTED",
-      sessionState: session.state,
-      userIdMasked: maskUserId(session.providerUserId),
-      metadata: {
-        mimeType: msg.media?.mimeType,
-        invalidCount: newInvalidCount,
-      },
-      sessionCreatedAt: session.createdAt,
-    });
-
-    if (newInvalidCount >= RATE_LIMITS.MAX_INVALID_UPLOAD_ATTEMPTS) {
-      await applyCooldown(session.provider, session.providerUserId);
-      logOnboardingEvent({
-        sessionId: session.sessionId,
-        provider: session.provider,
-        eventType: "COOLDOWN_APPLIED",
-        sessionState: session.state,
-        userIdMasked: maskUserId(session.providerUserId),
-        metadata: { reason: "max_invalid_uploads" },
-        sessionCreatedAt: session.createdAt,
-      });
-    }
-
-    return MESSAGES.NON_MENU_FILE;
-  }
-
-  // Check for duplicate
-  if (typeof upload !== "string" && isDuplicateUpload(session, upload.sha256)) {
-    // Delete the orphaned Storage file (already uploaded before dedup check)
-    try {
-      const bucket = storageAdmin.bucket();
-      await bucket.file(upload.storagePath).delete();
-    } catch (error) {
-      logger.warn("[SessionEngine] Duplicate upload cleanup failed", {
-        ...getSessionEngineIdLogContext("sessionId", session.sessionId),
-        ...getSessionEngineIdLogContext("uploadId", upload.id),
-        ...getSessionEngineIdLogContext("storagePath", upload.storagePath),
-        ...getSessionEngineErrorContext(error),
-      });
-    }
-
-    logOnboardingEvent({
-      sessionId: session.sessionId,
-      provider: session.provider,
-      eventType: "UPLOAD_DEDUPLICATED",
-      sessionState: session.state,
-      userIdMasked: maskUserId(session.providerUserId),
-      metadata: { sha256: upload.sha256.slice(0, 8) },
-      sessionCreatedAt: session.createdAt,
-    });
-    // Silently ignore duplicate — no reply
-    return null;
+    return invalidAttempt.cooldownApplied ? MESSAGES.RATE_LIMITED : MESSAGES.NON_MENU_FILE;
   }
 
   // Store upload and reset intake timer
   if (typeof upload !== "string") {
-    await addUploadToSession(session.sessionId, upload, session);
-  }
-
-  // If session was in FAILED state, transition back to COLLECTING_INPUT
-  if (session.state === "FAILED") {
-    await transitionState(
-      session.sessionId,
-      "FAILED",
-      "COLLECTING_INPUT",
-      "Re-upload after failure",
-      {
-        _provider: session.provider,
-        _userIdMasked: maskUserId(session.providerUserId),
-      },
-    );
+    const appendResult = await appendStoredUploadOrCleanup(upload, session);
+    if (appendResult.status === "duplicate") return null;
+    if (appendResult.status === "limit_reached") return MESSAGES.UPLOAD_LIMIT_REACHED;
   }
 
   // No reply for subsequent uploads (silent collection)
   return null;
 }
 
-/** Restart session to COLLECTING_INPUT (full resend) */
-async function restartSession(
-  session: MessagingOnboardingSession,
-): Promise<void> {
-  const now = Timestamp.now();
-  const newIntakeExpiresAt = Timestamp.fromMillis(
-    now.toMillis() + TIMING.INTAKE_WINDOW_MS,
-  );
-
-  await db.collection(sessionsCol).doc(session.sessionId).update({
-    state: "COLLECTING_INPUT",
-    stateHistory: FieldValue.arrayUnion({
-      state: "COLLECTING_INPUT",
-      timestamp: now,
-      reason: "Full resend detected",
-    }),
-    // Keep uploads — they'll be re-validated
-    validMenuFiles: [],
-    invalidFiles: [],
-    menuCompleteness: null,
-    validationConfidence: null,
-    extractedBusinessInfo: null,
-    extractionJobId: null,
-    extractedMenuData: null,
-    qualityScore: null,
-    previewToken: null,
-    previewUrl: null,
-    pendingUploadsWhileProcessing: false,
-    lastUploadAt: now,
-    intakeExpiresAt: newIntakeExpiresAt,
-    updatedAt: now,
-  });
-
-  logOnboardingEvent({
-    sessionId: session.sessionId,
-    provider: session.provider,
-    eventType: "SESSION_RESTARTED",
-    sessionState: "COLLECTING_INPUT",
-    userIdMasked: maskUserId(session.providerUserId),
-    sessionCreatedAt: session.createdAt,
-  });
-}
-
-/** Count recent uploads for full-resend detection.
- * NOTE: session.uploads is the LOCAL (stale) copy read before this function.
- * addUploadToSession writes to Firestore but does NOT mutate the local object.
- * So session.uploads does NOT include the just-added upload — the +1 accounts for it.
- */
-async function countRecentUploads(
+/** Persist one post-preview upload and atomically restart after a full resend. */
+async function processRecentUpload(
   msg: NormalizedMessage,
-  session: MessagingOnboardingSession,
+  session: MessagingOnboardingRoutingSession,
   adapter: IMessagingProvider,
-): Promise<number> {
+): Promise<UploadAppendResult | "cooldown" | "invalid" | "password_protected" | null> {
+  if (hasProviderMediaUpload(session, msg.media?.providerMediaId)) return null;
+
   // Process and store the new upload
   const upload = await processAndStoreUpload(
     msg,
     session.sessionId,
     adapter,
   );
-  const uploadSucceeded = upload && upload !== "PASSWORD_PROTECTED_PDF" && !isDuplicateUpload(session, upload.sha256);
-  if (uploadSucceeded && typeof upload !== "string") {
-    await addUploadToSession(session.sessionId, upload, session);
+  if (upload === "PASSWORD_PROTECTED_PDF") return "password_protected";
+  if (!upload) {
+    const invalidAttempt = await recordRejectedUpload(session, msg);
+    return invalidAttempt.cooldownApplied ? "cooldown" : "invalid";
   }
-
-  // Count uploads in the stale local array that arrived after preview was generated
-  const previewGeneratedAt = session.stateHistory.find(
-    (h) => h.state === "PREVIEW_READY" || h.state === "AWAITING_APPROVAL",
-  )?.timestamp;
-
-  if (!previewGeneratedAt) return uploadSucceeded ? 1 : 0;
-
-  const recentUploadsFromStaleArray = session.uploads.filter(
-    (u) => u.uploadedAt.toMillis() > previewGeneratedAt.toMillis(),
-  );
-
-  // +1 for the just-added upload (not in stale array), +0 if upload failed/duplicate
-  return recentUploadsFromStaleArray.length + (uploadSucceeded ? 1 : 0);
+  return appendStoredUploadOrCleanup(upload, session, {
+    restartProviderMessageId: msg.providerMessageId,
+    restartOnRecentThreshold: PROCESSING.FULL_RESEND_THRESHOLD,
+  });
 }
 
 // ═══════════════════════════════════════════════════════════════
 // HELPERS
 // ═══════════════════════════════════════════════════════════════
 
-/** Detect password-protected PDF by checking for /Encrypt in PDF header (spec §Failure Handling) */
+/** Detect password-protected PDF by checking for an encryption dictionary. */
 function isPdfEncrypted(buffer: Buffer): boolean {
-  // Check first 4KB of PDF for /Encrypt dictionary entry
-  const header = buffer.subarray(0, Math.min(buffer.length, 4096)).toString("latin1");
-  return header.includes("/Encrypt");
+  return buffer.includes(Buffer.from("/Encrypt", "latin1"));
 }
 
 function getExtensionFromMime(mimeType: string): string {

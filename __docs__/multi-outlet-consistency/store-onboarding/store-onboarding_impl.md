@@ -112,7 +112,7 @@ HQ clicks "Add Outlet"
 | E14 | Duplicate linking attempt                                               | Block if `masterProjectId` already set                      | **AGREE**                                                        | ✅ `linkStoreToMaster()` validates at `src/database/multiOutlet/index.ts:222`                                           |
 | E15 | 500+ items menu performance                                             | Snapshot/diff must stay fast                                | **AGREE** — Monitor                                              | ✅ Diff engine is O(n) scan, acceptable                                                                                 |
 | E16 | Master project archive (instead of delete)                              | Soft archive, not hard delete                               | **AGREE**                                                        | ❌ Not implemented (future enhancement)                                                                                 |
-| E17 | 50 outlets created rapidly                                              | Sequential ID generation                                    | **AGREE**                                                        | ✅ `getPlatformSummary().stores.count + 1` is sequential                                                                |
+| E17 | 50 outlets created rapidly                                              | Sequential ID generation                                    | **AGREE**                                                        | ✅ Outlet transaction serializes on canonical `platformSummary/summary`, reconciles legacy/store-summary floors, and probes occupied store IDs before creation |
 | E18 | Billing succeeds but internal creation fails                            | Quantity updated in Razorpay, no outlet exists              | **AGREE** — Mark `provisioning`, reconciliation detects mismatch | ✅ Implemented — `api/outlets/create/route.ts:237-249` reverts Razorpay quantity on failure                             |
 | E19 | Outlet removal (future)                                                 | Quantity -1, then deactivate outlet                         | **AGREE** — Future feature behind flag                           | ❌ Not implemented                                                                                                      |
 | E20 | Orphan outlet project integrity check                                   | Periodic job: verify all outlets have all master projects   | **AGREE** — Background safety net                                | ❌ Not implemented (see §15)                                                                                            |
@@ -482,8 +482,8 @@ addOutletToMaster(masterStoreId, outletDetails)
     │       → Query projects where storeId === masterStoreId
     │       → Filter: only isMaster === true projects
     │
-    ├── 3. Generate new outlet storeId
-    │       → getPlatformSummary().stores.count + 1
+    ├── 3. Allocate new outlet storeId in the creation transaction
+    │       → canonical/legacy/store-summary floor + occupied-document probes
     │
     ├── 4. Create outlet store doc
     │       → addStore({ ...outletDetails, tenantId, isMaster: false })
@@ -585,6 +585,10 @@ The `session.user.stores[]` array already exists (it's set during onboarding for
 1. **API endpoint** (`/api/auth/switch-store`) — Validates user belongs to target store, checks canonical target-store eligibility, calls NextAuth session update
 2. **UI component** — Header dropdown showing `tenantDetails.storesList`
 3. **Page reload** — After switch, reload to re-initialize `SessionProvider` with new `storeId`
+
+> **Current runtime authority note (July 13, 2026):** Browser `activeStoreContext` is only a local selection hint, never store authority. It is structured JSON with exact numeric `tenantId`, `baseStoreId`, and target `storeId`. The reader requires coherent top-level and nested signed-session tenant/store aliases, exact base/tenant agreement, and target membership in the signed `storeIds`/`stores` mappings. Contradictory, inaccessible, malformed, legacy scalar, or stale values leave the signed base session unchanged and are removed. Protected reads and writes must still re-establish server/rules authority.
+
+> `SessionProvider` applies the same fail-closed rule to denormalized tenant data. A tenant summary target must have a canonical active store ID. Embedded or freshly read `storeDetails` must independently match the signed tenant and selected store through every present alias and must not be inactive, deleted, auth-disabled, or blocked. Malformed numeric summary IDs cannot select an outlet or satisfy legacy single-store master inference.
 
 ### 8.3 Master Impersonation Mode (Session 3)
 

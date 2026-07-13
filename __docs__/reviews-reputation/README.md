@@ -3,7 +3,7 @@
 **Feature:** Reviews & Reputation  
 **Status:** 🔒 SPEC LOCKED — Runtime infrastructure present, product disabled until GBP API access granted
 **Version:** 1.0  
-**Last Updated:** July 1, 2026
+**Last Updated:** July 11, 2026
 
 ---
 
@@ -82,6 +82,9 @@ ENABLE_AI_REPLY_ASSIST: false; // Requires ENABLE_REVIEWS_REPUTATION
 - June 30, 2026: `ReviewReplyTool` copied feedback waits for Clipboard API success or acknowledged textarea fallback success; failed copy diagnostics include clipboard/fallback support booleans while keeping pasted review text and generated reply text out of logs. Disabled/unmounted feature status and the no-auto-post boundary are unchanged.
 - July 6, 2026: `/api/reviews/states` validates session tenant/store IDs with the shared Firestore document-ID guard before limiter keys, query filters, or diagnostics, while preserving the original numeric/string values for existing `reviewsState` equality filters.
 - July 1, 2026: `ReviewReplyTool` now requires the suggestion envelope to include `source: "ai" | "fallback"` as well as `success: true` and a non-empty `reply` before showing a generated reply or incrementing attempts. Disabled/unmounted feature status and the no-auto-post boundary are unchanged.
+- July 11, 2026: the dormant rule classifier now accepts only integer ratings from 1 through 5 and string/absent comments, matches keywords as complete words or phrases, and keeps stem-like discrimination handling in an explicit pattern. Harmless words such as `rating` therefore cannot match the hygiene keyword `rat`, while malformed future ingestion input fails closed. `npm run verify:reviews-reputation-boundary` covers these cases.
+- July 11, 2026: the persisted review-state contract is the flat `reviewsState/{reviewId}` collection with required embedded `tId` and `sId`, matching the active route, rules, and composite indexes. The disabled reply route now logs bounded `review_reply_generation_failed` diagnostics before returning its static, uncharged provider-failure fallback.
+- July 11, 2026: `npm run test:reviews:rules` uses the Firestore emulator to prove own-store and multi-store reads, numeric/string embedded scope compatibility, cross-store/cross-tenant/public denial, scope-complete list queries, malformed-scope denial, platform reads, and client/platform write denial.
 - `ReputationGuard` and `ReviewReplyTool` exist as components but are not mounted in the owner dashboard while the feature is disabled.
 - No GBP ingestion Cloud Function is active in this repo snapshot; full review product launch remains blocked.
 

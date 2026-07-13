@@ -3,6 +3,7 @@
 **Date:** February 19, 2026  
 **Audience:** Sales, Marketing (INTERNAL)  
 **Pillar:** 5 of 6
+**Usage status:** Do not use in sales or marketing. The feature is dormant, unscheduled, unmounted, and flag-disabled; the copy below is a concept draft only.
 
 ---
 
@@ -22,4 +23,4 @@ The hardest truth for a business owner: customers came once but didn't return. I
 
 ---
 
-**Last Updated:** February 19, 2026
+**Last Updated:** July 13, 2026

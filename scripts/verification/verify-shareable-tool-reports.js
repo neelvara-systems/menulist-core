@@ -241,7 +241,7 @@ assertIncludes(contactRoute, 'sanitizeForFirestore', 'MenuList public contact Fi
 assertIncludes(contactRoute, 'sourceKind: sourceContext?.sourceKind || null', 'MenuList public contact source-kind write');
 assertIncludes(contactRoute, 'sourceToolId: sourceContext?.toolId || null', 'MenuList public contact source-tool write');
 assertIncludes(contactRoute, 'sourceReportStatus: sourceContext?.reportStatus || null', 'MenuList public contact source-status write');
-assertIncludes(contactRoute, 'sourcePrimaryNumber: sourceContext?.primaryNumber || null', 'MenuList public contact source-primary write');
+assertIncludes(contactRoute, 'sourcePrimaryNumber: preserveOptionalPublicContactCount(sourceContext?.primaryNumber)', 'MenuList public contact zero-safe source-primary write');
 assertIncludes(contactRoute, 'sourceContext,', 'MenuList public contact nested source-context write');
 assertIncludes(contactRoute, 'firestoreAdmin.collection(DB_COLLECTIONS.LANDING_PAGE_ENQUIRIES).add(enquiryPayload)', 'MenuList public contact existing enquiry write');
 assertNotIncludes(contactRoute, 'DB_COLLECTIONS.SHAREABLE_TOOL_REPORTS', 'MenuList public contact must not create report storage');

@@ -21,6 +21,9 @@
  * @see __docs__/client-menu/public-routing-doctrine.md §18 T3-N-03
  */
 
+import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
+import { isSafeSummaryMapSegment } from './summaryMapParser';
+
 /**
  * Current storage shape for summary-projects writes.
  *
@@ -32,6 +35,31 @@
  * of that migration produces duplicate keys for the same data.
  */
 const WRITE_NESTED = false as const;
+function assertSafeSummaryProjectId(projectId: string): void {
+    if (
+        !projectId
+        || projectId !== projectId.trim()
+        || projectId.includes('.')
+        || !isSafeSummaryMapSegment(projectId)
+        || !isValidFirestoreDocumentId(projectId)
+    ) {
+        throw new Error('[summaryProjectsWriter] invalid projectId');
+    }
+}
+
+function assertSafeSummaryFieldPath(fieldPath: string): void {
+    const segments = fieldPath.split('.');
+    if (
+        segments.length === 0
+        || segments.some((segment) => (
+            !segment
+            || segment !== segment.trim()
+            || !isSafeSummaryMapSegment(segment)
+        ))
+    ) {
+        throw new Error('[summaryProjectsWriter] invalid fieldPath');
+    }
+}
 
 /**
  * Build a Firestore update payload that writes (or merges) a single
@@ -43,10 +71,10 @@ const WRITE_NESTED = false as const;
  */
 export function buildSummaryProjectPayload(
     projectId: string,
-    projectData: Record<string, any>,
-): Record<string, any> {
-    if (!projectId) throw new Error('[summaryProjectsWriter] projectId required');
-    if (!projectData || typeof projectData !== 'object') {
+    projectData: object,
+): Record<string, unknown> {
+    assertSafeSummaryProjectId(projectId);
+    if (!projectData || typeof projectData !== 'object' || Array.isArray(projectData)) {
         throw new Error('[summaryProjectsWriter] projectData must be an object');
     }
 
@@ -54,6 +82,23 @@ export function buildSummaryProjectPayload(
         return { projects: { [projectId]: projectData } };
     }
     return { [`projects.${projectId}`]: projectData };
+}
+
+/**
+ * Build a Firestore update payload that deletes a full project entry from the
+ * summary document. The caller supplies the Firestore delete sentinel so this
+ * helper stays SDK-agnostic and can be tested without importing Firestore.
+ */
+export function buildSummaryProjectDeletePayload(
+    projectId: string,
+    deleteValue: unknown,
+): Record<string, unknown> {
+    assertSafeSummaryProjectId(projectId);
+
+    if (WRITE_NESTED) {
+        return { projects: { [projectId]: deleteValue } };
+    }
+    return { [`projects.${projectId}`]: deleteValue };
 }
 
 /**
@@ -68,19 +113,20 @@ export function buildSummaryProjectPayload(
 export function buildSummaryProjectFieldPayload(
     projectId: string,
     fieldPath: string,
-    value: any,
-): Record<string, any> {
-    if (!projectId) throw new Error('[summaryProjectsWriter] projectId required');
-    if (!fieldPath) throw new Error('[summaryProjectsWriter] fieldPath required');
+    value: unknown,
+): Record<string, unknown> {
+    assertSafeSummaryProjectId(projectId);
+    assertSafeSummaryFieldPath(fieldPath);
 
     if (WRITE_NESTED) {
         // Build a nested object path segment-by-segment.
         const segments = fieldPath.split('.');
-        let innerDoc: Record<string, any> = {};
+        const innerDoc: Record<string, unknown> = {};
         let cursor = innerDoc;
         for (let i = 0; i < segments.length - 1; i++) {
-            cursor[segments[i]] = {};
-            cursor = cursor[segments[i]];
+            const next: Record<string, unknown> = {};
+            cursor[segments[i]] = next;
+            cursor = next;
         }
         cursor[segments[segments.length - 1]] = value;
         return { projects: { [projectId]: innerDoc } };
@@ -93,9 +139,9 @@ export function buildSummaryProjectFieldPayload(
  * Useful when writing several projects in a single round trip.
  */
 export function buildSummaryProjectsBatchPayload(
-    projects: Record<string, Record<string, any>>,
-): Record<string, any> {
-    if (!projects || typeof projects !== 'object') {
+    projects: Record<string, object>,
+): Record<string, unknown> {
+    if (!projects || typeof projects !== 'object' || Array.isArray(projects)) {
         throw new Error('[summaryProjectsWriter] projects must be an object');
     }
 
@@ -103,9 +149,10 @@ export function buildSummaryProjectsBatchPayload(
         return { projects: { ...projects } };
     }
 
-    const payload: Record<string, any> = {};
+    const payload: Record<string, unknown> = {};
     for (const [projectId, data] of Object.entries(projects)) {
-        if (!projectId || !data || typeof data !== 'object') continue;
+        if (!projectId || !data || typeof data !== 'object' || Array.isArray(data)) continue;
+        assertSafeSummaryProjectId(projectId);
         payload[`projects.${projectId}`] = data;
     }
     return payload;

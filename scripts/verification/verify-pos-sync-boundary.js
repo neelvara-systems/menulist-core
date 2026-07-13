@@ -41,7 +41,7 @@ function countOccurrences(content, needle) {
   return content.split(needle).length - 1;
 }
 
-function verifyWebhookUrlGuard(webhookUrl, serverWebhookTarget) {
+function verifyWebhookUrlGuard(webhookUrl, serverWebhookTarget, pinnedWebhookRequest) {
   [
     "const BLOCKED_HOSTNAMES = new Set([",
     "'localhost'",
@@ -51,8 +51,7 @@ function verifyWebhookUrlGuard(webhookUrl, serverWebhookTarget) {
     'if (url.username || url.password)',
     'if (url.hash)',
     'isBlockedHostname(hostname) || isPrivateIpv4(hostname) || isPrivateIpv6(hostname)',
-    "hostname.endsWith('.localhost')",
-    "hostname.endsWith('.local')",
+    'BLOCKED_HOSTNAME_SUFFIXES.some',
     'if (first === 0) return true;',
     'if (first === 10) return true;',
     'if (first === 100 && second >= 64 && second <= 127) return true;',
@@ -60,12 +59,20 @@ function verifyWebhookUrlGuard(webhookUrl, serverWebhookTarget) {
     'if (first === 169 && second === 254) return true;',
     'if (first === 172 && second >= 16 && second <= 31) return true;',
     'if (first === 192 && second === 168) return true;',
+    'if (first === 192 && second === 0 && octets[2] === 2) return true;',
+    'if (first === 198 && second === 51 && octets[2] === 100) return true;',
+    'if (first === 203 && second === 0 && octets[2] === 113) return true;',
     'if (first === 198 && (second === 18 || second === 19)) return true;',
     'if (first >= 224) return true;',
-    "if (normalized === '::1' || normalized === '::') return true;",
-    "if (normalized.startsWith('fc') || normalized.startsWith('fd')) return true;",
-    "if (normalized.startsWith('fe80:')) return true;",
-    "if (normalized.startsWith('::ffff:'))",
+    'const segments = parseIpv6Segments(normalized);',
+    '(first & 0xfe00) === 0xfc00',
+    '(first & 0xffc0) === 0xfe80',
+    '(first & 0xff00) === 0xff00',
+    'firstSixZero || ipv4Mapped',
+    'first === 0x2001 && segments[1] <= 0x01ff',
+    'first === 0x2002',
+    'first === 0x3fff && segments[1] <= 0x0fff',
+    '(first & 0xe000) !== 0x2000',
     'export function isBlockedPosSyncNetworkTarget',
   ].forEach((token) => assertIncludes(webhookUrl, token, 'POS webhook URL guard'));
 
@@ -75,10 +82,29 @@ function verifyWebhookUrlGuard(webhookUrl, serverWebhookTarget) {
     'lookup(hostname, { all: true, verbatim: true })',
     'isBlockedPosSyncNetworkTarget(hostname)',
     'isBlockedPosSyncNetworkTarget(address.address)',
+    'approvedAddresses',
     "error: 'blocked_hostname'",
     "error: 'blocked_resolved_address'",
     "error: 'dns_lookup_failed'",
   ].forEach((token) => assertIncludes(serverWebhookTarget, token, 'POS server DNS target guard'));
+
+  [
+    "import { request as httpsRequest } from 'node:https';",
+    'createPosSyncPinnedLookup',
+    'hostname.toLowerCase()',
+    'isBlockedPosSyncNetworkTarget(entry.address)',
+    'isIP(entry.address) === entry.family',
+    "'Content-Length': String(Buffer.byteLength(params.body, 'utf8'))",
+    'lookup: createPosSyncPinnedLookup(hostname, params.approvedAddresses)',
+    'agent: false',
+    'maxHeaderSize: 16 * 1024',
+    'request.setTimeout(params.timeoutMs',
+    'response.resume()',
+  ].forEach((token) => assertIncludes(pinnedWebhookRequest, token, 'POS pinned HTTPS request boundary'));
+
+  ['fetch(', "redirect: 'follow'"].forEach((token) => (
+    assertNotIncludes(pinnedWebhookRequest, token, 'POS pinned HTTPS request boundary')
+  ));
 }
 
 function verifyProtectedPosRoute(content, label, expectedRateLimitKey) {
@@ -87,11 +113,11 @@ function verifyProtectedPosRoute(content, label, expectedRateLimitKey) {
     'FEATURE_FLAGS.ENABLE_POS_SYNC',
     'requireAnyStorePermission(',
     'readBoundedJsonBody(request, POS_SYNC_ACTION_MAX_BODY_BYTES',
-    'validateAPIInput(schema, body)',
+    'validateAPIInput(schema, bodyResult.data)',
     'const tenantScope = normalizePosSyncNumericDocumentId(tenantId);',
     'const storeScope = normalizePosSyncNumericDocumentId(storeId);',
     'verifyTenantAccess(session, tenantId, storeId, request)',
-    'hashPublicRateLimitValue(storeDocumentId)',
+    'hashPublicRateLimitValue(`${tenantDocumentId}:${storeDocumentId}`)',
     expectedRateLimitKey,
     'checkRateLimit({ key:',
     'const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(storeDocumentId);',
@@ -99,23 +125,24 @@ function verifyProtectedPosRoute(content, label, expectedRateLimitKey) {
     'requireAnyStorePermissionForStoreData(',
     'validatePosSyncWebhookUrl(String(posSync.webhookUrl))',
     'validatePosSyncWebhookNetworkTarget(webhookValidation.normalizedUrl)',
-    'fetch(webhookValidation.normalizedUrl, {',
-    "redirect: 'manual'",
+    'networkValidation.approvedAddresses',
+    'postPosSyncWebhook({',
     'POS_SYNC_CONNECTION_ISSUE_MESSAGE',
     'logSecurityDiagnostic(',
     'logSecurityFailure(',
     'getBoundedSecurityStringContext',
   ].forEach((token) => assertIncludes(content, token, label));
+  assertNotIncludes(content, 'bodyResult.data as any', `${label} bounded JSON validation boundary`);
 
   assertOrder(
     content,
     [
       'readBoundedJsonBody(request, POS_SYNC_ACTION_MAX_BODY_BYTES',
-      'validateAPIInput(schema, body)',
+      'validateAPIInput(schema, bodyResult.data)',
       'const tenantScope = normalizePosSyncNumericDocumentId(tenantId);',
       'const storeScope = normalizePosSyncNumericDocumentId(storeId);',
       'verifyTenantAccess(session, tenantId, storeId, request)',
-      'hashPublicRateLimitValue(storeDocumentId)',
+      'hashPublicRateLimitValue(`${tenantDocumentId}:${storeDocumentId}`)',
       'checkRateLimit({ key:',
       'admin.firestore()',
       'const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(storeDocumentId);',
@@ -123,8 +150,7 @@ function verifyProtectedPosRoute(content, label, expectedRateLimitKey) {
       'requireAnyStorePermissionForStoreData(',
       'validatePosSyncWebhookUrl(String(posSync.webhookUrl))',
       'validatePosSyncWebhookNetworkTarget(webhookValidation.normalizedUrl)',
-      'fetch(webhookValidation.normalizedUrl, {',
-      "redirect: 'manual'",
+      'postPosSyncWebhook({',
     ],
     `${label} security order`,
   );
@@ -148,20 +174,34 @@ function verifyDeliveryRoute(deliverRoute) {
     "projectId: z.string().min(1).max(120).regex(/^[A-Za-z0-9_-]+$/).refine(isValidFirestoreDocumentId, 'Invalid project ID'),",
     'PERMISSIONS.MANAGE_INTEGRATIONS, PERMISSIONS.PUBLISH_MENU',
     'getScopedProjectData(db, tenantDocumentId, storeDocumentId, projectId)',
-    "const newVersion = await db.runTransaction(async (transaction) => {",
+    'projectId: projectDoc.id',
+    "const deliveryClaim = await db.runTransaction(async (transaction) => {",
+    'getNextPosSyncMenuVersion(currentPosSync.menuVersion)',
+    'currentPosSync.webhookSecret !== posSync.webhookSecret',
+    'Buffer.byteLength(rawBody, \'utf8\')',
+    "createHash('sha256').update(rawBody).digest('hex')",
+    'payloadHash,',
+    'resolvePosSyncDeliveryOutcome({',
+    "'posSync.lastCompletedMenuVersion': outcome.lastCompletedMenuVersion",
     "collection(DB_COLLECTIONS.POS_DELIVERY_LOGS)",
+    'const deliveryLogRef = deliveryLogsRef.doc(deliveryId);',
+    'transaction.set(deliveryLogRef, logEntry);',
     "orderBy('sentAt', 'desc')",
-    '.offset(20)',
+    '.limit(POS_SYNC_DELIVERY_LOG_RETENTION_SCAN_LIMIT)',
+    'logsSnapshot.docs.slice(POS_SYNC_DELIVERY_LOG_RETENTION_LIMIT)',
+    'POS_SYNC_DELIVERY_LOG_RETENTION_FAILED',
   ].forEach((token) => assertIncludes(deliverRoute, token, 'POS delivery route boundary'));
+  assertNotIncludes(deliverRoute, '.offset(20)', 'POS delivery retention unbounded offset query');
+  assertNotIncludes(deliverRoute, '.add(logEntry)', 'POS delivery non-atomic log write');
 
   assertOrder(
     deliverRoute,
     [
       'validatePosSyncWebhookNetworkTarget(webhookValidation.normalizedUrl)',
       'const projectData = await getScopedProjectData(db, tenantDocumentId, storeDocumentId, projectId);',
-      'const newVersion = await db.runTransaction(async (transaction) => {',
+      'const deliveryClaim = await db.runTransaction(async (transaction) => {',
       'buildMenuSnapshot(',
-      'fetch(webhookValidation.normalizedUrl, {',
+      'postPosSyncWebhook({',
     ],
     'POS delivery outbound order',
   );
@@ -192,7 +232,9 @@ function verifyTestRoute(testRoute) {
     'storeId: z.number().int().positive()',
     'tenantId: z.number().int().positive()',
     'PERMISSIONS.MANAGE_INTEGRATIONS',
-    'buildTestPayload(storeId, tenantId, store?.currencyCode || store?.currency || \'INR\')',
+    'buildTestPayload(storeId, tenantId, freshStore?.currencyCode || freshStore?.currency || \'INR\')',
+    'freshPosSync.webhookSecret !== posSync.webhookSecret',
+    'postPosSyncWebhook({',
     "'posSync.status': 'connection_issue'",
     "'posSync.lastStatus': 'failed'",
   ].forEach((token) => assertIncludes(testRoute, token, 'POS test route boundary'));
@@ -207,8 +249,9 @@ function verifyTestRoute(testRoute) {
     testRoute,
     [
       'validatePosSyncWebhookNetworkTarget(webhookValidation.normalizedUrl)',
-      'const testPayload = buildTestPayload(storeId, tenantId, store?.currencyCode || store?.currency || \'INR\');',
-      'fetch(webhookValidation.normalizedUrl, {',
+      'const freshStoreDoc = await storeRef.get();',
+      'const testPayload = buildTestPayload(storeId, tenantId, freshStore?.currencyCode || freshStore?.currency || \'INR\');',
+      'postPosSyncWebhook({',
     ],
     'POS test outbound order',
   );
@@ -305,6 +348,11 @@ function verifyDebouncedDeliveryBoundary(eventBuilder) {
     "getBoundedSecurityStringContext('storeId', storeId)",
     "getBoundedSecurityStringContext('tenantId', tenantId)",
     "getBoundedSecurityStringContext('projectId', projectId)",
+    'const debounceTimers = new Map<string, ReturnType<typeof setTimeout>>();',
+    'getPosSyncDebounceKey(storeId, tenantId, projectId)',
+    'debounceTimers.get(debounceKey)',
+    'debounceTimers.set(debounceKey, timer)',
+    'debounceTimers.clear()',
   ].forEach((token) => assertIncludes(eventBuilder, token, 'POS debounced delivery boundary'));
 
   [
@@ -314,31 +362,27 @@ function verifyDebouncedDeliveryBoundary(eventBuilder) {
   ].forEach((token) => assertNotIncludes(eventBuilder, token, 'POS debounced delivery silent failure boundary'));
 }
 
-function verifyDeliveryFailureThreshold(deliverRoute, testRoute, posSyncTypes, storeTypes, desktopPosSync, mobilePosSync) {
+function verifyDeliveryFailureThreshold(deliverRoute, testRoute, deliveryState, posSyncTypes, storeTypes, desktopPosSync, mobilePosSync) {
   [
-    'const POS_SYNC_CONNECTION_ISSUE_FAILURE_THRESHOLD = 3;',
-    'function getConsecutiveFailureCount(value: unknown): number',
+    'resolvePosSyncDeliveryOutcome({',
+    'currentConsecutiveFailures: currentPosSync.consecutiveFailures',
+    'currentLastCompletedMenuVersion: currentPosSync.lastCompletedMenuVersion',
+    'if (!outcome) return;',
     "'posSync.consecutiveFailures': POS_SYNC_CONNECTION_ISSUE_FAILURE_THRESHOLD",
-    "'posSync.consecutiveFailures': 0",
-    'const nextConsecutiveFailures = getConsecutiveFailureCount(posSync?.consecutiveFailures) + 1;',
-    'const reachedConnectionIssue = nextConsecutiveFailures >= POS_SYNC_CONNECTION_ISSUE_FAILURE_THRESHOLD',
-    "|| posSync?.status === 'connection_issue'",
-    "'posSync.status': reachedConnectionIssue ? 'connection_issue' : 'healthy'",
-    "'posSync.lastError': reachedConnectionIssue ? POS_SYNC_CONNECTION_ISSUE_MESSAGE : ''",
-    "'posSync.consecutiveFailures': nextConsecutiveFailures",
+    "'posSync.status': outcome.status",
+    "'posSync.lastError': outcome.lastError",
+    "'posSync.consecutiveFailures': outcome.consecutiveFailures",
+    "'posSync.lastCompletedMenuVersion': outcome.lastCompletedMenuVersion",
   ].forEach((token) => assertIncludes(deliverRoute, token, 'POS delivery failure threshold'));
 
-  assertOrder(
-    deliverRoute,
-    [
-      'const nextConsecutiveFailures = getConsecutiveFailureCount(posSync?.consecutiveFailures) + 1;',
-      'const reachedConnectionIssue = nextConsecutiveFailures >= POS_SYNC_CONNECTION_ISSUE_FAILURE_THRESHOLD',
-      "'posSync.status': reachedConnectionIssue ? 'connection_issue' : 'healthy'",
-      "'posSync.lastError': reachedConnectionIssue ? POS_SYNC_CONNECTION_ISSUE_MESSAGE : ''",
-      "'posSync.consecutiveFailures': nextConsecutiveFailures",
-    ],
-    'POS delivery failure threshold order',
-  );
+  [
+    'export const POS_SYNC_CONNECTION_ISSUE_FAILURE_THRESHOLD = 3;',
+    'getNextPosSyncMenuVersion',
+    'resolvePosSyncDeliveryOutcome',
+    'params.menuVersion <= getNonnegativeSafeInteger(params.currentLastCompletedMenuVersion)',
+    'Math.min(',
+    "params.currentStatus === 'connection_issue'",
+  ].forEach((token) => assertIncludes(deliveryState, token, 'POS delivery state boundary'));
 
   [
     'const POS_SYNC_CONNECTION_ISSUE_FAILURE_THRESHOLD = 3;',
@@ -348,6 +392,7 @@ function verifyDeliveryFailureThreshold(deliverRoute, testRoute, posSyncTypes, s
 
   [
     'consecutiveFailures?: number;',
+    'lastCompletedMenuVersion?: number;',
   ].forEach((token) => {
     assertIncludes(posSyncTypes, token, 'POS shared type failure counter');
     assertIncludes(storeTypes, token, 'Store type failure counter');
@@ -364,6 +409,42 @@ function verifyDeliveryFailureThreshold(deliverRoute, testRoute, posSyncTypes, s
     'consecutiveFailures: enabled && !connectionChanged ? currentPosSync.consecutiveFailures : 0',
     "status: enabled ? (connectionChanged || currentPosSync.status === 'disabled' ? 'healthy' : currentPosSync.status) : 'disabled'",
   ].forEach((token) => assertIncludes(mobilePosSync, token, 'Mobile POS sync failure counter reset'));
+}
+
+function verifyPayloadBoundary(payloadFormatter, posSyncTypes, deliverRoute) {
+  [
+    'filter((category) => typeof category?.id === \'string\'',
+    'filter((item) => (',
+    'normalizeLocalizedText',
+    'normalizeDecisionFacts',
+    'result.icon = cat.icon',
+    'result.decisionFacts = decisionFacts',
+    'result.allergens = item.allergens.filter(isString)',
+    'result.dietaryTags = item.dietaryTags.filter(isString)',
+    'result.nutritionInfo = nutritionInfo',
+    'result.materials = item.materials',
+    'result.warranty = item.warranty',
+  ].forEach((token) => assertIncludes(payloadFormatter, token, 'POS public payload boundary'));
+  [
+    'descriptionSource',
+    'ownerBoost',
+    'qualityReview',
+    'extractionIdAliases',
+  ].forEach((token) => assertNotIncludes(payloadFormatter, token, 'POS internal payload field exclusion'));
+  [
+    'payloadHash: string;',
+    'lastCompletedMenuVersion?: number;',
+    'decisionFacts?: Record<string, { value?: DecisionFactValue }>;',
+    'allergens?: string[];',
+    'nutritionInfo?: {',
+  ].forEach((token) => assertIncludes(posSyncTypes, token, 'POS payload/log shared type boundary'));
+  [
+    "const payloadBytes = Buffer.byteLength(rawBody, 'utf8');",
+    "const payloadHash = createHash('sha256').update(rawBody).digest('hex');",
+    'payloadSize: payloadBytes',
+    'payloadHash,',
+    'projectId: projectDoc.id',
+  ].forEach((token) => assertIncludes(deliverRoute, token, 'POS delivery payload/log boundary'));
 }
 
 function verifyMobileShellBoundary(mobileShell, mobileMore, mobileShare) {
@@ -398,6 +479,10 @@ function verifyDocs(packageJson, readmeDoc, specDoc, implDoc, mobileDoc, firebas
   assert(
     packageJson.scripts?.['verify:pos-sync-boundary'] === 'node scripts/verification/verify-pos-sync-boundary.js',
     'package.json must expose verify:pos-sync-boundary',
+  );
+  assert(
+    typeof packageJson.scripts?.['test:pos-sync-boundaries'] === 'string',
+    'package.json must expose POS sync behavioral boundaries',
   );
 
   const staleLaunchPattern = /Phase 2|Phase 3|post-launch|future|Future|DEFER|deferred|Deferred|placeholder|Current Phase|Cloud Function deferred|CF deferred|multi-retry/;
@@ -481,12 +566,15 @@ function verifyPosSyncBoundary() {
   const packageJson = JSON.parse(read('package.json'));
   const webhookUrl = read('src/lib/posSync/webhookUrl.ts');
   const serverWebhookTarget = read('src/lib/posSync/serverWebhookTarget.ts');
+  const pinnedWebhookRequest = read('src/lib/posSync/pinnedWebhookRequest.ts');
+  const deliveryState = read('src/lib/posSync/deliveryState.ts');
   const deliverRoute = read('src/app/api/pos-sync/deliver/route.ts');
   const testRoute = read('src/app/api/pos-sync/test/route.ts');
   const desktopPosSync = read('src/components/templates/main-app/businessSettings/tabs/PosSyncTab.tsx');
   const mobilePosSync = read('src/components/mobile/screens/MobilePosSyncScreen.tsx');
   const testResponse = read('src/lib/posSync/testResponse.ts');
   const eventBuilder = read('src/lib/posSync/eventBuilder.ts');
+  const payloadFormatter = read('src/lib/posSync/payloadFormatter.ts');
   const posSyncTypes = read('src/lib/posSync/types.ts');
   const storeTypes = read('src/types/platform/store.ts');
   const mobileShell = read('src/components/mobile/MobileShell.tsx');
@@ -501,14 +589,15 @@ function verifyPosSyncBoundary() {
   const changelogDoc = read('__docs__/changelog.md');
   const lowercaseChangelogDoc = read('__docs__/changelog.md');
 
-  verifyWebhookUrlGuard(webhookUrl, serverWebhookTarget);
+  verifyWebhookUrlGuard(webhookUrl, serverWebhookTarget, pinnedWebhookRequest);
   verifyProtectedPosRoute(deliverRoute, 'POS delivery route boundary', 'pos-deliver:${storeRateLimitHash}');
   verifyDeliveryRoute(deliverRoute);
   verifyProtectedPosRoute(testRoute, 'POS test route boundary', 'pos-test:${storeRateLimitHash}');
   verifyTestRoute(testRoute);
   verifyDesktopAndMobileParity(desktopPosSync, mobilePosSync, testResponse);
   verifyDebouncedDeliveryBoundary(eventBuilder);
-  verifyDeliveryFailureThreshold(deliverRoute, testRoute, posSyncTypes, storeTypes, desktopPosSync, mobilePosSync);
+  verifyDeliveryFailureThreshold(deliverRoute, testRoute, deliveryState, posSyncTypes, storeTypes, desktopPosSync, mobilePosSync);
+  verifyPayloadBoundary(payloadFormatter, posSyncTypes, deliverRoute);
   verifyMobileShellBoundary(mobileShell, mobileMore, mobileShare);
   verifyDocs(packageJson, readmeDoc, specDoc, implDoc, mobileDoc, firebaseDoc, auditDoc, changelogDoc, lowercaseChangelogDoc);
 }

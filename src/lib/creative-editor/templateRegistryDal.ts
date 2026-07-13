@@ -147,20 +147,20 @@ type CreativeEditorTemplateRecord = {
     productId: string;
     role?: string;
     schemaVersion?: number;
-    sId?: string;
+    sId?: string | number;
     sourceSurface: string;
     status?: "draft" | "published" | "archived";
     templateFamilyId?: string;
     templateType: CreativeEditorTemplateOrigin;
     thumbnailUrl?: string | null;
     title: string;
-    tId?: string;
+    tId?: string | number;
     modifiedBy?: string;
     modifiedOn?: unknown;
     sortIndex?: number;
     updatedAt: string;
     updatedAtMs: number;
-    uId?: string;
+    uId?: string | number;
     version?: number;
     width: number;
 };
@@ -180,11 +180,11 @@ type CreativeEditorStoreTemplateIndexRecord = {
     pId?: string;
     role?: string;
     schemaVersion: number;
-    sId?: string;
-    tId?: string;
+    sId?: string | number;
+    tId?: string | number;
     updatedAt: string;
     updatedAtMs: number;
-    uId?: string;
+    uId?: string | number;
 };
 
 type CreativeEditorPlatformCatalogRecord = {
@@ -802,7 +802,7 @@ async function saveCreativeEditorTemplateRaw(
         updatedAtMs: nowMs,
         version: (existingRecord?.version || 0) + 1,
         width: documentValue.canvas.width,
-    }) as CreativeEditorTemplateRecord;
+    }, { isNew: !existingRecord }) as CreativeEditorTemplateRecord;
     const templates = [
         record,
         ...existingRecords.filter((item) => !(
@@ -820,7 +820,7 @@ async function saveCreativeEditorTemplateRaw(
         tId: scope.tId,
         updatedAt: nowIso,
         updatedAtMs: nowMs,
-    }) as CreativeEditorStoreTemplateIndexRecord;
+    }, { isNew: !existingIndex }) as CreativeEditorStoreTemplateIndexRecord;
     await setDoc(indexRef, indexRecord);
     return toSummary(record);
 }
@@ -944,7 +944,7 @@ async function saveCreativeEditorPlatformTemplateRaw(
             updatedAtMs: nowMs,
             version: (existingRecord?.version || 0) + 1,
             width: documentValue.canvas.width,
-        }) as CreativeEditorTemplateRecord;
+        }, { isNew: !existingRecord }) as CreativeEditorTemplateRecord;
         const templates = sortPlatformRecords([
             record,
             ...existingRecords.filter((item) => !(
@@ -1087,7 +1087,7 @@ async function deleteCreativeEditorTemplateRaw(params: CreativeEditorTemplateCon
         tId: scope.tId,
         updatedAt: now.toISOString(),
         updatedAtMs: now.getTime(),
-    }) as CreativeEditorStoreTemplateIndexRecord;
+    }, { isNew: false }) as CreativeEditorStoreTemplateIndexRecord;
     await setDoc(indexRef, nextIndexRecord);
 
     // Metadata removal is the owner-visible delete. Storage cleanup runs after

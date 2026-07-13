@@ -340,7 +340,8 @@ export default function ReportLeadMonitor() {
                         }}
                     />
                     <Text type="secondary">
-                        Manual refresh. Reads {snapshot?.cost.enquiryReads || 0} recent enquiries.
+                        Manual refresh. Uses {snapshot?.cost.authReads || 1} current-user authorization read plus{' '}
+                        {snapshot?.cost.enquiryReads || 0} recent enquiry reads.
                     </Text>
                 </Space>
             </Card>

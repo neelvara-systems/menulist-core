@@ -1,7 +1,7 @@
 # Answerlattice — External Workflow Integrations — Help Documentation
 
-> **Version:** 1.1.0
-> **Last Updated:** 2026-05-24
+> **Version:** 1.2.0
+> **Last Updated:** 2026-07-13
 > **Audience:** Answerlattice Customers (SaaS Founders)
 
 ---
@@ -19,7 +19,7 @@ Instead of logging into Answerlattice to check your knowledge health, you receiv
 | Integration | What It Does | Setup Time |
 |-------------|-------------|------------|
 | **Slack** | Sends governance alerts to a Slack channel | 30 seconds |
-| **Email** | Sends critical alerts + weekly digest | 30 seconds |
+| **Email** | Sends critical alerts + nightly activity digest | 30 seconds |
 | **Linear** | Controlled rollout adapter for issue creation | By request |
 | **GitHub** | Controlled rollout adapter for issue creation | By request |
 
@@ -39,8 +39,8 @@ Instead of logging into Answerlattice to check your knowledge health, you receiv
    - Copy the Webhook URL
 4. Paste the Webhook URL into Answerlattice
 5. Select which event types you want to receive
-6. Click **Send Test Notification** to verify the connection
-7. Click **Save**
+6. Click **Save**
+7. Click **Send Test Notification** to verify the saved connection
 
 ### 3.2 — Email Setup
 
@@ -48,8 +48,8 @@ Instead of logging into Answerlattice to check your knowledge health, you receiv
 2. Click **Enable** on the Email card
 3. Enter up to 5 email addresses
 4. Select which event types you want to receive
-5. Click **Send Test Notification** to send a test email
-6. Click **Save**
+5. Click **Save**
+6. Click **Send Test Notification** to send a test email using the saved recipients
 
 ### 3.3 — Linear and GitHub
 
@@ -58,6 +58,8 @@ Linear and GitHub issue creation is available only in controlled rollout. Slack 
 ---
 
 ## §4 — Event Types Explained
+
+The current automated delivery sources are **Coverage Drop**, **AI Failure (Recurring)**, and **Nightly Summary**. The remaining event types are supported delivery schemas for controlled flows but do not yet have an active direct producer.
 
 | Event | What It Means | Recommended Action |
 |-------|--------------|-------------------|
@@ -75,7 +77,7 @@ Linear and GitHub issue creation is available only in controlled rollout. Slack 
 
 You can choose which events each integration receives:
 
-- **Slack** — Recommended: all event types (for team awareness)
+- **Slack** — Recommended: `coverage_drop`, `ai_failure_recurring`, and `nightly_summary` (the active automated producers)
 - **Email** — Recommended: `coverage_drop`, `ai_failure_recurring`, `nightly_summary` (critical + digest)
 - **Linear/GitHub** — Controlled rollout only
 
@@ -105,11 +107,11 @@ You can change filters at any time in Settings → Integrations.
 1. Go to Settings → Integrations
 2. Deselect event types you don't need
 3. For Slack: consider only enabling `coverage_drop` and `nightly_summary`
-4. For email: use the weekly digest (`nightly_summary`) instead of real-time events
+4. For email: select only the nightly activity digest (`nightly_summary`) if you want one bounded summary rather than additional critical-event emails
 
 ### "An integration stopped working"
 
-If an integration fails 10 times in a row, Answerlattice automatically disables it to prevent spam. You'll see a "Disabled — check connection" status in Settings → Integrations. Fix the connection issue, then click **Re-enable**.
+If an integration reaches 10 consecutive failed deliveries, Answerlattice opens its circuit breaker to prevent repeated provider calls. Fix and save the connection details. The runtime permits one automatic recovery probe after the 24-hour cooldown; contact support if delivery health still needs review after that probe.
 
 ---
 
@@ -121,7 +123,7 @@ If an integration fails 10 times in a row, Answerlattice automatically disables 
 | Max email recipients | 5 |
 | Max events per night | 50 per tenant |
 | Max emails per day per recipient | 20 |
-| Retry attempts per failed delivery | 3 |
+| Total adapter attempts per delivery | 3 for explicit retryable provider responses |
 
 ---
 
@@ -137,5 +139,6 @@ If an integration fails 10 times in a row, Answerlattice automatically disables 
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-07-13 | 1.2.0 | Corrected active event-source coverage, save-before-test order, nightly digest wording, total-attempt semantics, and automatic circuit-breaker recovery behavior. |
 | 2026-05-24 | 1.1.0 | Updated production scope to Slack/email, added Send Test Notification flow, delivery health, and TTL retention wording. |
 | 2026-03-09 | 1.0.0 | Initial help documentation |

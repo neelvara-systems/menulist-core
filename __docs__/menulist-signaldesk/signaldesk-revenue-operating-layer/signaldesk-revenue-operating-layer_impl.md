@@ -51,8 +51,8 @@ signaldeskRevenueControlSummaries
 | --- | --- | --- |
 | `qualify-revenue-account` | `target.review` | Deterministically creates/updates an account and creates an opportunity only when qualification passes. |
 | `upsert-commercial-opportunity` | `target.review` | Transactionally updates stage, status, offer-derived currency, value, probability, next action, SLA, reasons, founder attention, and compact forecast deltas. |
-| `upsert-commercial-offer` | `policy.approve` | Creates an immutable deterministic offer version with price and discount authority. |
-| `upsert-operating-envelope` | `policy.approve` | Requires an active pod, validates compatible referenced controls, preserves immutable versions/approval history, and stores only held/shadow/approval-only policy. |
+| `upsert-commercial-offer` | `signaldesk.configure` | Founder-admin control creates an immutable deterministic offer version with price and discount authority. |
+| `upsert-operating-envelope` | `signaldesk.configure` plus founder-role server check | Requires an active pod, validates compatible referenced controls, preserves immutable versions/approval history, and stores only held/shadow/approval-only policy. |
 | `refresh-activation-watch` | `target.review` | Transactionally derives activation from SignalDesk outcomes and closes the linked opportunity on two-surface activation. |
 | `review-market-pod` | `signaldesk.configure` + founder role | Records explicit approve/hold/reject evidence; recommendation and research paths cannot activate pods. |
 

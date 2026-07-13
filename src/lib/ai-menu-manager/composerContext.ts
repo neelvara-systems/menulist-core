@@ -112,11 +112,16 @@ export function getAiMenuManagerComposerContextData(params: {
         return { categories: [], entities: [], items: [], targets };
     }
 
-    const packet = buildAiMenuManagerContextPacket({
-        project: params.project,
-        storeName: params.storeName || 'Selected store',
-        businessType: params.businessType,
-    });
+    let packet;
+    try {
+        packet = buildAiMenuManagerContextPacket({
+            project: params.project,
+            storeName: params.storeName || 'Selected store',
+            businessType: params.businessType,
+        });
+    } catch {
+        return { categories: [], entities: [], items: [], targets };
+    }
     const itemEntities: AiMenuManagerComposerEntity[] = packet.items.map((item) => ({
         id: item.id,
         label: item.name,

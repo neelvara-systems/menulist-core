@@ -1,6 +1,6 @@
 # 🔐 Authentication & Authorization - Complete Guide
 
-**Last Updated**: November 5, 2025  
+**Last Updated**: July 13, 2026
 **Status**: Security implementation guide; not current launch certification
 
 ---
@@ -223,6 +223,20 @@ type StoreRole = 'OWNER' | 'MANAGER' | 'STAFF' | 'VIEWER';
 - **MANAGER**: Manage operations
 - **STAFF**: Limited access
 - **VIEWER**: Read-only
+
+#### Current persisted platform authorization
+
+`withAuth(..., { requiredPlatformRole: 'PLATFORM' })` is the fast signed-session admission gate. It is not sufficient by itself for routes that expose platform-wide private data or perform platform recovery mutations because a signed session can remain usable briefly after the underlying user record is downgraded, disabled, blocked, deleted, or revoked.
+
+High-risk platform routes must therefore:
+
+1. Apply their per-operator rate limiter before the authorization read.
+2. Read the exact `users/{session.uId}` document through `src/lib/auth/currentPlatformUser.ts`.
+3. Require exact document/user/email identity, `platformRole === 'PLATFORM'`, `active === true`, `isVerified === true`, no block/delete/auth-disable state, and revocation timestamps no newer than the session issuance timestamp. Negative lifecycle/block markers are fail-closed: only absent, `null`, or explicit boolean `false` is treated as unblocked/enabled; malformed legacy strings or objects cannot retain platform authority.
+4. Return generic `403 Forbidden` before platform data reads, provider calls, or writes when that current check fails.
+5. Never fall back to an email query or another user document when the canonical user document is missing.
+
+This adds one bounded direct Firestore read per protected operation. Current ops implementations include SAFE_MODE, alert mute, platform-notification tracking/recovery, owner-notification tracking/recovery, and report-lead access. Their source and behavioral gates are `npm run verify:ops-current-authorization-boundary`, `npm run test:current-platform-user`, and `npm run test:current-platform-user:emulator`.
 
 #### Usage Example
 ```typescript

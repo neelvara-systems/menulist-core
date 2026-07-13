@@ -39,7 +39,7 @@ Neelvara Systems operates software infrastructure for customer-facing business i
 
 ### What products are in the Neelvara lineup?
 
-MenuList, Answerlattice, and CampaignCue are operated by Neelvara Systems.
+MenuList and Answerlattice are operated by Neelvara Systems.
 
 ### Is MenuList part of the Neelvara lineup?
 
@@ -87,9 +87,9 @@ Avoid:
 
 If a user asks about data collected by the Neelvara website:
 
-> The Neelvara Systems website is a static public website. It may process basic hosting/CDN/security logs and visitor-initiated email inquiries. Product services such as MenuList, Answerlattice, and CampaignCue may have separate product-specific privacy policies.
+> The Neelvara Systems website is a static public website. It may process basic hosting/CDN/security logs and visitor-initiated email inquiries. Product services such as MenuList and Answerlattice may have separate product-specific privacy policies.
 
-If a user asks about product account, business, menu, support, campaign, billing, or customer interaction data:
+If a user asks about product account, business, menu, support, billing, or customer interaction data:
 
 > That question belongs to the relevant product policy and support path.
 
@@ -101,7 +101,7 @@ Do not answer product-data questions from the Neelvara company website policy un
 
 If a user asks for legal identity:
 
-> Neelvara Systems operates software infrastructure for customer-facing business information. MenuList, Answerlattice, and CampaignCue are operated by Neelvara Systems.
+> Neelvara Systems operates software infrastructure for customer-facing business information. MenuList and Answerlattice are operated by Neelvara Systems.
 
 If a user asks for GSTIN/PAN/address:
 

@@ -1,5 +1,4 @@
 export const dynamic = 'force-dynamic';
-import { AI_BLOCKED_METADATA_FIELDS } from "@config/itemMetadataConfig";
 import { getModelName } from "@constant/AI/models";
 import { getOurChargePaise, getRealCostPaise, getUnitCost } from "@constant/AI/unitCosts";
 import { AI_ACTIONS_TYPES, CHARGE_PER_CREDIT, TOKENS_PER_CREDIT } from "@constant/common";
@@ -7,9 +6,11 @@ import { PERMISSIONS } from "@constant/permissions";
 import { HarmBlockThreshold, HarmCategory } from "@google/genai";
 import { finalizeAiOperationAccounting } from "@lib/ai/accounting";
 import { checkAICapacity } from "@lib/ai/capacityCheck";
+import { normalizeNewItemMetadataOutput } from "@lib/ai/newItemMetadataOutput";
 import { getAIGatewayDiagnostics, getAIErrorDiagnostics, getAIRouteLogContext, getAIRouteSecurityContext, logAIRouteFailure } from "@lib/google/genAi/diagnostics";
 import { genAIClient } from "@lib/google/genAi";
 import { logger } from "@lib/monitoring/logger";
+import { getLinkedOutletPolicyBlockReason } from "@lib/multiOutlet/serverOutletPolicy";
 import { requireAnyStorePermission } from "@lib/permissions/server";
 import { checkAIOperationLimit } from "@lib/rateLimit/helpers";
 import { logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
@@ -169,33 +170,26 @@ function parseNewItemMetadataProviderResponse(
     }
 }
 
-function stripForbiddenGeneratedMetadata<T extends Record<string, unknown>>(generatedData: T): T {
-    const sanitized = { ...generatedData };
-    for (const field of AI_BLOCKED_METADATA_FIELDS) {
-        delete sanitized[field];
-    }
-    if (sanitized.decisionFacts && typeof sanitized.decisionFacts === 'object' && !Array.isArray(sanitized.decisionFacts)) {
-        const decisionFacts = { ...(sanitized.decisionFacts as Record<string, unknown>) };
-        for (const field of AI_BLOCKED_METADATA_FIELDS) {
-            delete decisionFacts[field];
-        }
-        (sanitized as Record<string, unknown>).decisionFacts = Object.keys(decisionFacts).length > 0 ? decisionFacts : undefined;
-    }
-    return sanitized;
-}
-
 function getNewItemMetadataClientResponseSummary(response: Record<string, unknown>) {
     const attributes = Array.isArray(response.attributes) ? response.attributes : [];
-    const description = typeof response.description === 'string' ? response.description : '';
-    const name = typeof response.name === 'string' ? response.name : '';
+    const description = response.description && typeof response.description === 'object' && !Array.isArray(response.description)
+        ? response.description as Record<string, unknown>
+        : {};
+    const name = response.name && typeof response.name === 'object' && !Array.isArray(response.name)
+        ? response.name as Record<string, unknown>
+        : {};
+    const descriptionValues = Object.values(description).filter((value): value is string => typeof value === 'string');
+    const nameValues = Object.values(name).filter((value): value is string => typeof value === 'string');
 
     return {
         attributeCount: attributes.length,
-        descriptionLength: description.length,
+        descriptionLanguageCount: descriptionValues.length,
+        descriptionTotalLength: descriptionValues.reduce((total, value) => total + value.length, 0),
         hasAttributes: attributes.length > 0,
-        hasDescription: description.trim().length > 0,
-        hasName: name.trim().length > 0,
-        nameLength: name.length,
+        hasDescription: descriptionValues.some((value) => value.trim().length > 0),
+        hasName: nameValues.some((value) => value.trim().length > 0),
+        nameLanguageCount: nameValues.length,
+        nameTotalLength: nameValues.reduce((total, value) => total + value.length, 0),
         objectKeyCount: Object.keys(response).length,
         responseShape: 'object',
         responseSummaryKind: 'new_item_metadata',
@@ -312,6 +306,21 @@ export const POST = withAuth(async (request, session) => {
             "New item metadata",
         );
         if (permissionError) return permissionError;
+
+        const outletPolicyBlockReason = await getLinkedOutletPolicyBlockReason({
+            action: 'description',
+            itemIds: [item.id],
+            projectId,
+            session,
+        });
+        if (outletPolicyBlockReason) {
+            logger.security('Outlet Policy Violation - New Item Metadata API', {
+                ...getAIRouteSecurityContext(session, request),
+                endpoint: '/api/new-item-metadata',
+                reason: outletPolicyBlockReason,
+            }, 'medium');
+            return NextResponse.json({ error: outletPolicyBlockReason }, { status: 403 });
+        }
 
         logger.info('New item metadata requested', getAIRouteLogContext({
             businessType: businessType || 'unspecified',
@@ -440,9 +449,9 @@ export const POST = withAuth(async (request, session) => {
         const endTime = new Date().getTime();
         const processingTime = endTime - startTime;
 
-        let generatedData: any;
+        let parsedGeneratedData: Record<string, unknown>;
         try {
-            generatedData = parseNewItemMetadataProviderResponse(response.text, {
+            parsedGeneratedData = parseNewItemMetadataProviderResponse(response.text, {
                 action,
                 attributeCount: itemAttributeCount,
                 businessType: businessType || 'unspecified',
@@ -496,13 +505,19 @@ export const POST = withAuth(async (request, session) => {
             return NextResponse.json({ error: 'Metadata generation failed' }, { status: 500 });
         }
 
-        if (!generatedData || typeof generatedData !== 'object' || Array.isArray(generatedData)) {
-            logAIRouteFailure('new_item_metadata_non_object_response', undefined, {
-                isArray: Array.isArray(generatedData),
+        const generatedData = normalizeNewItemMetadataOutput(parsedGeneratedData, {
+            businessType,
+            item: promptItem,
+            sourceLanguageCode: promptSourceLang.code,
+            targetLanguageCodes: targetLangCodes,
+        });
+        if (!generatedData) {
+            logAIRouteFailure('new_item_metadata_invalid_shape_response', undefined, {
+                isArray: Array.isArray(parsedGeneratedData),
                 model: AI_MODEL,
                 projectId,
                 requestId,
-                responseType: typeof generatedData,
+                responseType: typeof parsedGeneratedData,
                 sourceLang: promptSourceLang.code || 'unspecified',
                 storeId: session.sId,
                 targetLangs: targetLangCodes,
@@ -515,10 +530,10 @@ export const POST = withAuth(async (request, session) => {
                 fileId,
                 logType: 'NON_OBJECT_RESPONSE',
                 data: {
-                    isArray: Array.isArray(generatedData),
+                    isArray: Array.isArray(parsedGeneratedData),
                     model: AI_MODEL,
                     requestId,
-                    responseType: typeof generatedData,
+                    responseType: typeof parsedGeneratedData,
                     sourceLang: promptSourceLang.code || 'unspecified',
                     storeId: session.sId,
                     targetLangs: targetLangCodes,
@@ -527,7 +542,6 @@ export const POST = withAuth(async (request, session) => {
             });
             return NextResponse.json({ error: 'Metadata generation failed' }, { status: 500 });
         }
-        generatedData = stripForbiddenGeneratedMetadata(generatedData);
 
         let transactionObject = {
             transactionId: null,
@@ -604,9 +618,8 @@ export const POST = withAuth(async (request, session) => {
             throw transactionError;
         }
 
-        const generatedDataRecord = generatedData && typeof generatedData === 'object' && !Array.isArray(generatedData)
-            ? generatedData as Record<string, unknown>
-            : {};
+        const generatedDataRecord = generatedData as Record<string, unknown>;
+        const responseSummary = getNewItemMetadataClientResponseSummary(generatedDataRecord);
 
         await writeLogEntry({
             logFileName: LOG_FILE, userId, projectId, fileId, logType: 'SUCCESS_RESPONSE',
@@ -618,12 +631,7 @@ export const POST = withAuth(async (request, session) => {
                     sourceLang: promptSourceLang.code || 'unspecified',
                     targetLangCount: targetLangCodes.length,
                 },
-                responseSummary: {
-                    hasAttributes: Array.isArray(generatedDataRecord.attributes),
-                    hasDescription: typeof generatedDataRecord.description === 'string' && generatedDataRecord.description.trim().length > 0,
-                    hasName: typeof generatedDataRecord.name === 'string' && generatedDataRecord.name.trim().length > 0,
-                    objectKeyCount: Object.keys(generatedDataRecord).length,
-                },
+                responseSummary,
                 transaction: getTransactionLogSummary(),
             }
         });

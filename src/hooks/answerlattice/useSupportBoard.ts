@@ -446,7 +446,9 @@ export function useSupportBoard(tId?: number, sId?: number, actor?: Actor | null
                 sId,
                 targetAnswerId: card.relatedAnswerId || '',
                 relatedEntityIds: [relatedEntityId],
-                mutationType: ANSWERLATTICE_MUTATION_TYPE.NEW_ANSWER_REQUIRED,
+                mutationType: card.relatedAnswerId
+                    ? ANSWERLATTICE_MUTATION_TYPE.CONTENT_REFINEMENT
+                    : ANSWERLATTICE_MUTATION_TYPE.NEW_ANSWER_REQUIRED,
                 signalSummary: {
                     ticketCount: card.relatedTicketId || card.sourceType === ANSWERLATTICE_SUPPORT_BOARD_SOURCE_TYPE.TICKET ? 1 : 0,
                     chatCount: card.relatedConversationId || card.sourceType === ANSWERLATTICE_SUPPORT_BOARD_SOURCE_TYPE.CONVERSATION ? 1 : 0,

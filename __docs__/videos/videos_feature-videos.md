@@ -4,6 +4,8 @@
 **Created:** July 7, 2026
 **Primary output:** 30-60 second feature videos
 
+**Mandatory production standard:** [MenuList Founder-Approved Video Production Standard](./videos_founder-approved-production-standard.md).
+
 ## Purpose
 
 Feature videos explain one capability at a time after the main video has established the core promise.

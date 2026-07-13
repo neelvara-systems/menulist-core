@@ -95,6 +95,10 @@ function verifyMenuListBrowserSurfacesDoNotMutateStorageDirectly() {
 
 const projectsDal = read('src/database/projects/index.ts');
 const staticAssetsDal = read('src/database/static/static.ts');
+const fontPresetsDal = read('src/database/static/fontPresets.ts');
+const base64StorageHelper = read('src/database/storage/uploadBase64ToStorage.ts');
+const storagePathGenerator = read('src/lib/storage/pathGenerator.ts');
+const notesDal = read('src/database/notes/index.ts');
 const storageRules = read('storage.rules');
 const tracker = read('__docs__/production-readiness/infrastructure-risk-tracker.md');
 const uploadImpl = read('__docs__/projects/upload-file-processing/upload-file-processing_impl.md');
@@ -105,20 +109,95 @@ const packageJson = JSON.parse(read('package.json'));
 
 verifyMenuListBrowserSurfacesDoNotMutateStorageDirectly();
 
+[
+  "throw new TypeError(`invalid_storage_${field}_scope`)",
+  "throw new TypeError('invalid_storage_file_id_segment')",
+  "const tenantId = normalizeStorageScopeId(options.session?.tId, 'tenant')",
+  "const storeId = normalizeStorageScopeId(options.session?.sId, 'store')",
+  "const fileId = normalizeStorageFileId(options.fileId)",
+].forEach((token) => {
+  assert(storagePathGenerator.includes(token), `shared Storage path generator fails closed with token ${token}`);
+});
+[
+  'ECOMSAI_PLATFORM_TENANT_ID',
+  'ECOMSAI_PLATFORM_STORE_ID',
+  'useDefaults',
+  "tenantId = 'unknown'",
+  "storeId = 'default'",
+].forEach((token) => {
+  assert(!storagePathGenerator.includes(token), `shared Storage path generator rejects retired fallback token ${token}`);
+});
+
+[
+  'const requireNoteDocumentId = (value: unknown): string =>',
+  'const getNoteAttachmentFileId = (label: unknown, index: number): string =>',
+  'const storageFileId = `${requireNoteDocumentId(noteId)}/${fileId}`;',
+  'docRef.id,',
+  'const documentUpdate = composeRequestBody({ documents }, session, { isNew: false });',
+  "await cleanupNewNoteAttachments(uploadedUrls, 'create');",
+  "await cleanupNewNoteAttachments(uploadedUrls, 'update');",
+  "logRuntimeFailure('note_create_compensation_failed'",
+].forEach((token) => {
+  assert(notesDal.includes(token), `notes attachment lifecycle uses captured scoped path/compensation token ${token}`);
+});
+assert(
+  !notesDal.includes('const docId = `${data.id}/${fileId}`;'),
+  'notes attachment path must not read an omitted data.id field',
+);
+assert(
+  !notesDal.includes('await updateNote({ documents: submitData.documents, id: docRef.id })'),
+  'note create must not re-resolve active session through updateNote after its first write',
+);
+
 assert(
   !staticAssetsDal.includes('menulist-qa.appspot.com'),
   'static asset preview cleanup must not key replacement deletes to the QA Storage bucket',
 );
 [
   'const FIREBASE_STORAGE_DOWNLOAD_HOSTS = new Set',
-  'const isFirebaseStorageReference = (value: unknown): boolean',
+  'const isFirebaseStorageReference = (value: unknown): value is string',
   'trimmedValue.startsWith("gs://")',
   'FIREBASE_STORAGE_DOWNLOAD_HOSTS.has(url.hostname)',
   'url.hostname.endsWith(".firebasestorage.app")',
-  'if (isFirebaseStorageReference(data.preview)) await deleteFileByUrl(data.preview);',
+  'const prepareAssetPreview = async (',
+  'const persistPreparedAsset = async <T>(',
+  "'static_asset_replaced_preview_cleanup_failed'",
+  "'static_asset_failed_write_preview_cleanup_failed'",
+  'const result = await persist(prepared.data);',
+  '[prepared.previousPreview]',
+  '[prepared.uploadedPreview]',
 ].forEach((token) => {
-  assert(staticAssetsDal.includes(token), `static asset preview cleanup uses bucket-neutral Storage reference token ${token}`);
+  assert(staticAssetsDal.includes(token), `static asset preview replacement uses ordered bucket-neutral compensation token ${token}`);
 });
+
+assert(
+  !staticAssetsDal.includes('if (isFirebaseStorageReference(data.preview)) await deleteFileByUrl(data.preview);'),
+  'static asset preview replacement must not delete the old object before the new upload and Firestore write commit',
+);
+
+[
+  '| "ttf" | "otf" | "woff" | "woff2"',
+  "contentType: 'font/woff2'",
+  "contentType: 'font/woff'",
+  "contentType: 'font/otf'",
+  "contentType: 'font/ttf'",
+].forEach((token) => {
+  assert(base64StorageHelper.includes(token), `base64 Storage helper preserves font format token ${token}`);
+});
+
+[
+  'const uploadFontDataUrl = async',
+  'if (!isDataUrl(font.fileUrl)) return null;',
+  'font_preset_failed_create_cleanup_failed',
+  'font_preset_failed_update_cleanup_failed',
+  'font_preset_replaced_file_cleanup_failed',
+  'await deleteDoc(fontRef);',
+  'font_preset_delete_file_cleanup_failed',
+  'font_preset_sort_set_mismatch',
+].forEach((token) => {
+  assert(fontPresetsDal.includes(token), `font preset persistence/storage boundary includes ${token}`);
+});
+assert(!fontPresetsDal.includes('type: "jpeg"'), 'font preset uploads must not be mislabeled as JPEG');
 
 [
   'const getTenantScopedProjectUploadFileId',
@@ -224,8 +303,12 @@ assert(
 });
 
 assert(
-  packageJson.scripts?.['verify:storage-paths'] === 'node scripts/verification/verify-storage-path-hardening.js',
+  packageJson.scripts?.['verify:storage-paths'] === 'node scripts/verification/verify-storage-path-hardening.js && npm run test:storage-path-boundary',
   'package.json exposes verify:storage-paths',
+);
+assert(
+  packageJson.scripts?.['test:storage-path-boundary'] === 'ts-node --compiler-options \'{"module":"CommonJS"}\' -r tsconfig-paths/register scripts/verification/test-storage-path-boundary.ts',
+  'package.json exposes the executable Storage path regression',
 );
 
 if (failures > 0) {

@@ -2,7 +2,7 @@
 
 **Feature:** Owner Referral
 **Status:** Automated source/emulator contract implemented; production-host and payment sandbox QA pending
-**Last updated:** July 10, 2026
+**Last updated:** July 11, 2026
 **Audience:** Engineering, QA, security, billing, operations
 
 ---
@@ -177,8 +177,8 @@
 | --- | --- | --- |
 | OR-STATUS-001 | No referrals | Empty state; no sent/delivered claim. |
 | OR-STATUS-002 | More than ten | Only ten recent rows. |
-| OR-STATUS-003 | Attributed, no referred payment | `Waiting for payment`. |
-| OR-STATUS-004 | Referred paid, other wallet unpaid | `Waiting for both payments`. |
+| OR-STATUS-003 | Attributed, no referred payment | `Their payment pending`. |
+| OR-STATUS-004 | Internal referral remains unsettled while referrer panel is available | `Their payment pending`; internal payment state is not exposed. |
 | OR-STATUS-005 | Issued | Business name, `Credits added`, date, and 100-credit result. |
 | OR-STATUS-006 | API snapshot | No tenant/store/user/subscription/payment/token/contact/plan/price fields. |
 | OR-STATUS-007 | Cross-tenant direct read | Denied by rules. |

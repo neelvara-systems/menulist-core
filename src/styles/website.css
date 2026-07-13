@@ -4232,6 +4232,16 @@ body[data-menulist-website="true"] {
   min-height: 4rem;
 }
 
+.ws-header-feature-menu::after,
+.ws-header-resource-menu::after {
+  content: "";
+  position: absolute;
+  right: -1rem;
+  bottom: -1rem;
+  left: -1rem;
+  height: 1rem;
+}
+
 .ws-header-feature-menu__trigger,
 .ws-header-resource-menu__trigger {
   appearance: none;
@@ -4281,9 +4291,10 @@ body[data-menulist-website="true"] {
   position: fixed;
   top: 4.35rem;
   left: 50%;
-  width: min(1040px, calc(100vw - 2rem));
+  width: min(1080px, calc(100vw - 2rem));
+  max-height: calc(100dvh - 5.25rem);
   grid-template-columns: 1fr;
-  gap: var(--ws-space-3);
+  gap: var(--ws-space-2);
   border-color: color-mix(in srgb, var(--ws-border-default) 88%, transparent);
   background:
     linear-gradient(180deg, color-mix(in srgb, var(--ws-bg-primary) 98%, white 2%), var(--ws-bg-primary)),
@@ -4291,8 +4302,16 @@ body[data-menulist-website="true"] {
   box-shadow:
     0 24px 72px rgba(15, 23, 42, 0.16);
   padding: var(--ws-space-3);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   -webkit-backdrop-filter: blur(16px);
   backdrop-filter: blur(16px);
+}
+
+.ws-header-resource-menu__panel {
+  max-height: calc(100dvh - 5.25rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .ws-header-feature-menu__panel::before {
@@ -4405,9 +4424,9 @@ body[data-menulist-website="true"] {
 
 .ws-header-feature-menu__grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--ws-space-4);
-  padding: var(--ws-space-2) var(--ws-space-1);
+  grid-template-columns: 1fr;
+  gap: var(--ws-space-3);
+  padding: var(--ws-space-1);
 }
 
 .ws-header-feature-menu__group {
@@ -4418,7 +4437,7 @@ body[data-menulist-website="true"] {
 }
 
 .ws-header-feature-menu__group > p {
-  margin: 0 0 var(--ws-space-1);
+  margin: 0;
   color: var(--ws-text-muted);
   font-size: 0.74rem;
   font-weight: 800;
@@ -4429,7 +4448,8 @@ body[data-menulist-website="true"] {
 
 .ws-header-feature-menu__group > div {
   display: grid;
-  gap: 0.35rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--ws-space-2);
 }
 
 .ws-header-feature-menu__item,
@@ -4457,7 +4477,9 @@ body[data-menulist-website="true"] {
 .ws-header-feature-menu__item {
   grid-template-columns: 1.1rem minmax(0, 1fr);
   align-items: start;
-  min-height: 4.15rem;
+  min-height: 4.35rem;
+  border-color: color-mix(in srgb, var(--ws-border-subtle) 76%, transparent);
+  background: color-mix(in srgb, var(--ws-bg-subtle) 62%, transparent);
 }
 
 .ws-header-feature-menu__item svg,
@@ -4548,7 +4570,7 @@ body[data-menulist-website="true"] {
     width: min(860px, calc(100vw - 2rem));
   }
 
-  .ws-header-feature-menu__grid {
+  .ws-header-feature-menu__group > div {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: var(--ws-space-3);
   }
@@ -10930,7 +10952,7 @@ body[data-menulist-website="true"] {
   position: fixed;
   inset: 0;
   background: var(--ws-bg-backdrop);
-  z-index: 99;
+  z-index: 2147483100;
   opacity: 0;
   transition: opacity 300ms ease;
 }
@@ -10993,16 +11015,26 @@ body[data-menulist-website="true"] {
   width: min(320px, 85vw);
   background: var(--ws-bg-primary);
   box-shadow: var(--ws-shadow-drawer);
-  z-index: 100;
+  z-index: 2147483200;
   display: flex;
   flex-direction: column;
+  isolation: isolate;
+  max-height: 100dvh;
   transform: translateX(100%);
   transition: transform 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  overflow-x: hidden;
   overflow-y: auto;
 }
 
 .ws-drawer-panel--open {
   transform: translateX(0);
+}
+
+.ws-drawer-cta {
+  flex-shrink: 0;
+  padding: 1rem 1.25rem calc(1.5rem + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--ws-border-subtle);
+  background: var(--ws-bg-primary);
 }
 
 @media (max-width: 640px) {
@@ -11562,6 +11594,14 @@ body[data-menulist-website="true"] {
   color: var(--ws-text-secondary);
   font-size: clamp(1.03rem, 1vw + 0.85rem, 1.22rem);
   line-height: 1.75;
+}
+
+.ws-whatsapp-hero__availability {
+  margin: var(--ws-space-4) 0 0;
+  max-width: 720px;
+  color: var(--ws-text-secondary);
+  font-size: 0.94rem;
+  line-height: 1.6;
 }
 
 .ws-whatsapp-hero__actions,

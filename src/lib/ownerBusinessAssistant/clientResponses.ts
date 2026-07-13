@@ -1,4 +1,8 @@
 import { OWNER_BUSINESS_HEALTH_STATUS_LABELS } from './constants';
+import {
+  ownerBusinessAnalyticsResponseDataSchema,
+  ownerBusinessHealthCurrentDocSchema,
+} from './readModelBoundary';
 import type {
   OwnerBusinessAssistantAnswer,
   OwnerBusinessAnalyticsIndexDoc,
@@ -203,31 +207,14 @@ const isCacheMetadata = (value: unknown): value is ReadModelCache => (
 );
 
 const isOwnerBusinessHealthCurrentDoc = (value: unknown): value is OwnerBusinessHealthCurrentDoc => {
-  if (!isRecord(value)) return false;
-  return value.version === 1
-    && typeof value.localDate === 'string'
-    && typeof value.generatedAt === 'string'
-    && isRecord(value.sourceWindow)
-    && isOwnerBusinessHealthStatus(value.status)
-    && isRecord(value.summary)
-    && isRecord(value.blocks)
-    && Array.isArray(value.suggestedChecks)
-    && Array.isArray(value.suggestedQuestions)
-    && Array.isArray(value.supportedIntents)
-    && isRecord(value.unsupportedData)
-    && Array.isArray(value.sourceRefs)
-    && isRecord(value.cost);
+  return ownerBusinessHealthCurrentDocSchema.safeParse(value).success;
 };
 
 const isOwnerBusinessAnalyticsData = (
   value: unknown,
 ): value is OwnerBusinessAssistantAnalyticsResponse['data'] => {
   if (value === null) return true;
-  if (!isRecord(value)) return false;
-  return isRecord(value.periods)
-    && isRecord(value.unsupportedPeriods)
-    && Array.isArray(value.sourceRefs)
-    && (value.projectScope === undefined || isRecord(value.projectScope));
+  return ownerBusinessAnalyticsResponseDataSchema.safeParse(value).success;
 };
 
 const isOwnerBusinessMultiLocationStoreSummary = (

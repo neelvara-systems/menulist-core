@@ -2,7 +2,7 @@
 
 **Feature:** AI Enhancement Packs
 **Status:** ✅ Runtime Updated
-**Last Updated:** July 1, 2026
+**Last Updated:** July 13, 2026
 **Audience:** Developers, DevOps, Cost Auditing
 
 ---
@@ -19,6 +19,12 @@
 | `aiCreditTransactions` | Sub-collection of `menulistAiOperations`       | Legacy credit transaction records                          | ✅ Exists                             |
 
 **Key Decision:** No new Firestore collections are created. All data lives in existing collections with new fields.
+
+### Paid Reservation State
+
+Paid requests reuse the final `menulistAiOperations/{tId}/{sId}/{operationId}` document as a short-lived reservation shell. `accountingStatus` transitions `reserved -> consumed` or `reserved -> refunded`. A reserved shell intentionally omits `createdOn`, so the existing ordered transaction-history query cannot surface unfinished work. It records the exact charged recurring/top-up buckets, billing period, subscription ID, integer units, recovery mode, and remaining balance needed for idempotent settlement or compensation. Settlement writes the normal operation payload and `createdOn`; refunded shells are retained for fourteen days to preserve idempotency evidence and then removed by bounded maintenance.
+
+Interactive reservations receive a 30-minute recovery marker. The existing daily `menulistMaintenanceScheduler.ai_operation_detail_cleanup` task reads at most ten due reservation rows per active store (maximum 200 active stores per run), refunds stale interactive rows, and deletes expired refunded shells. Batch-image reservations use deterministic operation IDs and `durable_retry`; they remain reserved while staged output may be finalized and are refunded by terminal/cancelled/max-attempt worker paths rather than by the interactive timer.
 
 ---
 
@@ -163,11 +169,13 @@ Record of every AI Enhancement Pack purchase. Links Razorpay order/payment to th
 
 `verify-topup` requires authenticated tenant/store access plus `canManageSubscription`, validates the Razorpay checkout signature, normalizes the checkout order ID through `src/lib/billing/topupDocumentIdBoundary.ts`, reads `topups/{orderId}` before changing the subscription, and writes the credit update plus paid top-up audit record in one Firestore transaction. `create-topup-order` also normalizes the provider order ID before the pending top-up write. Both top-up routes validate the resolved billing tenant/store scope through `normalizeBillingTopupScopeDocumentId()` before top-up provider work, provider-note comparison, Firestore store refs, or top-up writes. If the top-up is already `paid`, the route returns success without adding credits again. If the order is not paid yet, the route fetches the Razorpay order and requires `order.notes.tenantId` and `order.notes.storeId` to match the normalized authenticated billing scope before updating `subscriptions.topUpCredits`.
 
-AI usage reset and consumption both write through Firestore transactions. Paid AI routes run `checkAICapacity()` before the provider call; if a billing-period reset is due, `checkAICapacity()` re-reads and resets the subscription inside a transaction. After the provider succeeds, the route calls `finalizeAiOperationAccounting()`, which records the operation and then calls `consumeAICapacity()`. Operation-log failure is monitored and does not skip credit consumption. Credit-consumption failure fails the paid response. Consumption deducts recurring `monthlyCredits` first and purchased `topUpCredits` second, leaving top-up balance untouched by billing-cycle resets.
+AI usage reset, reservation, settlement, and refund write through Firestore transactions. Paid AI routes run `checkAICapacity()` and then atomically reserve exact units before the provider call; if a billing-period reset is due, current allowance is applied inside that reservation transaction. After valid output, `finalizeAiOperationAccounting()` promotes the reservation shell into the operation row without a second debit. Provider/pre-settlement failure restores the exact charged buckets once. Reservation deducts recurring `monthlyCredits` first and purchased `topUpCredits` second, leaving top-up balance untouched by billing-cycle resets.
 
 July 1 owner AI permission hardening adds one existing store permission read before expensive AI or capacity work on business copy, campaign caption, description generation, new-item metadata, translation, image generation, image editing, batch image trigger, Menu Card design advisor, SEO generation, AI pack status, and weekly narrative routes. Rejected users can incur the permission read but do not reach capacity checks, media fetches, Cloud Tasks enqueue, provider calls, analytics Firestore reads, insight writes, operation-log writes, or credit consumption. This adds no writes for rejected requests, deletes, rules, indexes, Cloud Functions, Firebase deploy requirement, or Vercel deploy action.
 
 July 1 batch image Cloud Tasks config preflight keeps rejected misconfigured batch requests ahead of AI capacity reads and task fanout. If the app is missing the worker URL, queue id, project location, project id, or worker secret, `/api/image-generation/batch-trigger` marks the existing batch job failed with owner-safe unavailable copy and does not enqueue Cloud Tasks or call providers. Configured runs keep the existing capacity check, task enqueue, worker secret validation, provider call, Storage upload, accounting, and credit-consumption flow. This adds no new collections, rules, indexes, Cloud Function logic, Firebase deploy requirement, or Vercel deploy action.
+
+July 13 batch-trigger admission now treats limiter infrastructure as required for the expensive Cloud Tasks fanout. `checkBatchOperationLimit()` opts into the shared core limiter's strict provider-error mode; provider unavailability or an unexpected helper failure returns fixed `503` copy plus `Retry-After` before request-body parsing, permission/capacity reads, or task enqueue. Caller quota exhaustion remains `429`. Other shared rate-limit convenience wrappers keep their existing default. This changes no Firestore read/write shape, rule, index, Storage object, Cloud Function, task payload, provider accounting, or credit-debit contract.
 
 July 1 batch image prompt-cache retention is bounded by the consolidated maintenance scheduler. Cache-eligible batch worker misses write a private prepared source object under `system/aiImagePromptCache/` and an `aiImagePromptCache/{cacheKey}` doc with `expiresAt`; cache hits copy source bytes into the requesting store's own `media/menuItem/{tId}/{sId}/...` path and record a free `unitsConsumed: 0` operation. `menulistMaintenanceScheduler` now runs `ai_image_prompt_cache_cleanup` daily, scanning up to 25 expired cache docs, deleting only source paths under `system/aiImagePromptCache/`, and then deleting the cache docs. This changes Firebase Function logic and remains pending live effect until the updated scheduler can be deployed.
 
@@ -202,7 +210,10 @@ July 1 batch image prompt-cache retention is bounded by the consolidated mainten
 | Operation                            | Trigger                                                                      | Frequency         | Reads | Writes |
 | ------------------------------------ | ---------------------------------------------------------------------------- | ----------------- | ----- | ------ |
 | **Read**                             | Every paid AI operation (capacity check via `getActiveSubscriptionForStore`) | Per user action   | 1     | 0      |
-| **Write (decrement credits)**        | After successful AI operation (`consumeAICapacity` transaction)              | Per user action   | 1     | 1      |
+| **Reserve paid credits**             | Before paid provider work (`reserveAiCapacity` transaction)                   | Per paid action   | 2     | 2      |
+| **Settle operation shell**           | After successful paid output (`finalizeAiOperationAccounting`)                | Per paid success  | 2     | 1      |
+| **Refund reservation**               | Failed paid work that will not retry the same durable output                  | Per failed action | 2     | 2      |
+| **Recover due shells**               | Daily consolidated maintenance, max 10 due rows per active store              | Daily             | 0-10  | 0-2 per recovered row |
 | **Write (increment `topUpCredits`)** | Pack purchase verify-topup                                                   | Per purchase      | 0     | 1      |
 | **Write (reset `monthlyCredits`)**   | Subscription renewal or lazy reset transaction                               | Monthly per store | 0-1   | 1      |
 
@@ -244,7 +255,7 @@ await firestoreAdmin.runTransaction(async (tx) => {
 
 ### Balance Sync Optimization (Feb 2026)
 
-`consumeAICapacity()` now returns `{ monthlyCredits, topUpCredits }` after the write. All AI API routes include this as `remainingBalance` in their JSON response. Frontend services call `syncBalanceFromResponse()` which dispatches a `CustomEvent('ai-balance-update')`. `SessionProvider` listens and updates `activeSubscription` state.
+Reservation settlement returns `{ monthlyCredits, topUpCredits }` as `remainingBalance`. Paid AI API routes include this in their JSON response. Frontend services call `syncBalanceFromResponse()` which dispatches a `CustomEvent('ai-balance-update')`; `SessionProvider` listens and updates `activeSubscription` state without another Firestore read.
 
 **Result:** Eliminates 1 Firestore read per AI operation on the frontend side. The frontend no longer needs to re-fetch the subscription document after each AI call to update the displayed balance.
 
@@ -376,8 +387,8 @@ match /subscriptions/{subId} {
 
 1. No new fields needed — `monthlyCredits` and `topUpCredits` already exist on subscription documents
 2. Add the matching owner permission guard before each paid owner AI API route reaches capacity or provider work
-3. Add capacity check (`checkAICapacity`) before each paid AI API route
-4. Add credit decrement (`consumeAICapacity`) after each successful AI operation
+3. Add capacity admission (`checkAICapacity`) and an exact transactional reservation (`reserveAiCapacity`) before each paid provider call
+4. Settle the same reservation through `finalizeAiOperationAccounting()` after successful output; refund it on every failure path that will not retry the same durable work
 5. User confirmed not live yet — no migration needed (3-year freeze rule)
 
 ### Composite Index Creation (Before Launch)

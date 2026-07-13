@@ -7,7 +7,7 @@ import '@/styles/website.css';
 import { Metadata } from 'next';
 
 const title = 'WhatsApp Menu and Service List Onboarding | MenuList';
-const description = 'Send a menu, service list, rate card, package list, or PDF on WhatsApp. MenuList prepares a preview, publishes after approval, and sends back one official customer link.';
+const description = 'See how WhatsApp-first onboarding will prepare an owner-reviewed preview and official customer link. Start now with a photo or public menu link.';
 
 export const metadata: Metadata = {
   title,

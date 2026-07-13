@@ -11,7 +11,7 @@ import SectionHeader from '../components/SectionHeader';
 
 export const metadata: Metadata = {
     title: 'Pricing',
-    description: 'Founder-friendly INR pricing, paid setup, support credits, intake media processing, and AnswerLattice plans for founder-led SaaS teams.',
+    description: 'Clear INR and USD pricing, paid setup, support credits, intake media processing, and AnswerLattice plans for founder-led SaaS teams.',
     alternates: { canonical: '/pricing' },
 };
 
@@ -59,6 +59,7 @@ const PLAN_GUIDANCE: Record<string, string> = {
 };
 
 const formatPrice = (paise: number) => `₹${Math.round(paise / 100).toLocaleString('en-IN')}`;
+const formatUsdPrice = (cents: number) => `US$${Math.round(cents / 100).toLocaleString('en-US')}`;
 
 const publicPlans = getAnswerlatticePlans()
     .filter((plan) => plan.billingInterval === 'MONTH')
@@ -161,14 +162,15 @@ export default function AnswerlatticePricingPage() {
                                     )}
                                 </div>
                                 <div className="mb-1 text-4xl font-bold">{formatPrice(plan.priceINR.price)}</div>
-                                <p className="mb-1 text-sm text-[#6b6b8a]">per month, billed in INR</p>
+                                <p className="mb-1 text-sm text-[#b7b7d2]">or {formatUsdPrice(plan.priceUSD.price)} per month</p>
+                                <p className="mb-1 text-xs text-[#6b6b8a]">Choose INR or USD during workspace setup.</p>
                                 <p className="mb-6 text-sm text-[#808099]">{plan.priceINR.monthlyCredits} support credits / month</p>
                                 <div className="mb-5 rounded-xl border border-white/[0.06] bg-black/10 p-3 text-sm leading-relaxed text-[#d6d6ef]">
                                     {PLAN_GUIDANCE[plan.planId]}
                                 </div>
                                 <AnswerlatticeLink
                                     basePath={basePath}
-                                    href="/get-started"
+                                    href={`/get-started?plan=${encodeURIComponent(plan.planId)}`}
                                     data-answerlattice-event="pricing_plan_cta_clicked"
                                     data-answerlattice-label={plan.planId}
                                     className={`mb-6 block w-full rounded-xl py-3 text-center text-sm font-semibold transition-colors ${
@@ -207,14 +209,14 @@ export default function AnswerlatticePricingPage() {
                                 <AnswerlatticeLink
                                     basePath={basePath}
                                     href="/roi-calculator"
-                                    className="inline-block rounded-xl border border-white/[0.12] px-5 py-2.5 text-sm font-semibold text-[#d6d6ef] transition hover:border-white/[0.24]"
+                                    className="inline-flex min-h-11 items-center justify-center rounded-xl border border-white/[0.12] px-5 py-2.5 text-sm font-semibold text-[#d6d6ef] transition hover:border-white/[0.24]"
                                 >
                                     Estimate support ROI
                                 </AnswerlatticeLink>
                                 <AnswerlatticeLink
                                     basePath={basePath}
                                     href="/proof"
-                                    className="inline-block rounded-xl border border-white/[0.12] px-5 py-2.5 text-sm font-semibold text-[#d6d6ef] transition hover:border-white/[0.24]"
+                                    className="inline-flex min-h-11 items-center justify-center rounded-xl border border-white/[0.12] px-5 py-2.5 text-sm font-semibold text-[#d6d6ef] transition hover:border-white/[0.24]"
                                 >
                                     Review proof pack
                                 </AnswerlatticeLink>
@@ -226,6 +228,7 @@ export default function AnswerlatticePricingPage() {
                             <div className="mt-5 flex flex-wrap items-end justify-between gap-3 border-t border-white/[0.06] pt-5">
                                 <div>
                                     <div className="text-3xl font-bold text-white">{formatPrice(supportCreditPack.priceINR.price)}</div>
+                                    <div className="mt-1 text-sm font-semibold text-[#b7b7d2]">or {formatUsdPrice(supportCreditPack.priceUSD.price)}</div>
                                     <div className="text-sm text-[#6b6b8a]">{supportCreditPack.creditAmount} credits, one-time purchase</div>
                                 </div>
                                 <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-xs text-[#a0a0c0]">
@@ -243,7 +246,7 @@ export default function AnswerlatticePricingPage() {
                         </div>
                     </div>
                     <p className="mx-auto mt-8 max-w-2xl text-center text-sm leading-relaxed text-[#6b6b8a]">
-                        Public packaging stays monthly and INR-first. Usage limits protect infrastructure, but AnswerLattice is not priced as a punishment for successful support deflection.
+                        Public packaging stays monthly with INR and USD checkout. Usage limits protect infrastructure, but AnswerLattice is not priced as a punishment for successful support deflection.
                     </p>
                 </section>
                 <section className="border-b border-white/[0.06] px-6 py-16 text-center">

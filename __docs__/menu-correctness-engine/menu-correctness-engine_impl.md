@@ -313,7 +313,7 @@ if (FEATURE_FLAGS.ENABLE_MCE && data.projectId) {
 }
 
 // Existing setDoc() call writes project data + _mce together
-const updateData = await requestBodyComposer(data);
+const updateData = await requestBodyComposer(data, { isNew: false });
 await setDoc(await getDataDocRef(data.projectId), updateData, { merge: true });
 ```
 
@@ -332,7 +332,7 @@ All surfaces continue reading from the same project document. MCE does NOT modif
 | Surface        | Data Path                                              | MCE Change |
 | -------------- | ------------------------------------------------------ | ---------- |
 | QR/Web Menu    | `_client/[[...slug]]/page.tsx` → Firestore project doc | None       |
-| Digital Screen | `screen/[token]/page.tsx` → `getMenuItemsForScreen()`  | None       |
+| Digital Screen | `screen/[token]/page.tsx` → `getMenuItemsForScreenServer()` | None |
 | PDF Export     | `menuPdfGenerator.ts` → project data passed in         | None       |
 | Staff Prompt   | Firestore project doc (live read)                      | None       |
 | POS Webhook    | `triggerPosSyncDebounced()` → project data             | None       |

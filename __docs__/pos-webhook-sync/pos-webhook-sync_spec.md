@@ -2,8 +2,8 @@
 
 > **Document Type:** Business Requirements (CEO/PM readable)
 > **Status:** Implemented (Feature flag: `ENABLE_POS_SYNC: true`)
-> **Last Updated:** July 2, 2026
-> **Version:** 2.5
+> **Last Updated:** July 10, 2026
+> **Version:** 2.6
 
 ---
 
@@ -263,9 +263,9 @@ If a field exists on an item or category and it's not explicitly in the "Do NOT 
 
 ## Payload Structure (Locked)
 
-### Design Principle: Send All Item/Category Data As-Is
+### Design Principle: Send All Public-Safe Operational Item/Category Data
 
-The payload mirrors the actual `ExtractedDataItem` and `ExtractedDataCategory` structures from the codebase. No filtering, no transformation, no field omission (except internal metadata fields listed in exclusions above). POS gets the raw menu truth.
+The payload uses an explicit runtime-normalized allow-list from the actual `ExtractedDataItem` and `ExtractedDataCategory` structures. It includes current public operational fields while omitting internal metadata, provenance, timestamps, UI/theme state, malformed values, and unknown fields. A compile-time interface alone is not treated as runtime validation.
 
 This follows the same pattern as the existing `getOutputJson()` in `ShareModal.tsx` — but includes ALL fields instead of the Excel-friendly subset.
 
@@ -276,9 +276,9 @@ This follows the same pattern as the existing `getOutputJson()` in `ShareModal.t
   "event": "menu.full.sync",
   "version": 31,
   "timestamp": "2026-02-13T18:21:00Z",
-  "tenantId": "t_123",
+  "tenantId": 123,
   "projectId": "p_123",
-  "storeId": "s_123",
+  "storeId": 456,
   "currency": "INR",
   "languages": [
     { "code": "en", "name": "English", "isPrimary": true },

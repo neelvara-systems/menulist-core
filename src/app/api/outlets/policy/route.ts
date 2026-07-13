@@ -10,6 +10,7 @@ export const dynamic = 'force-dynamic';
 import { FEATURE_FLAGS } from "@config/features";
 import { DB_COLLECTIONS } from "@constant/database";
 import { PERMISSIONS } from "@constant/permissions";
+import { normalizeStoreSummaryNumericDocumentId } from "@data/shared/storeSummaryBoundary";
 import { admin } from "@lib/firebase/firebaseAdmin";
 import {
     getBoundedMultiOutletStringContext,
@@ -29,6 +30,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { verifyTenantAccess, withAuth } from "../../../../middleware/auth";
 import { hashPublicRateLimitValue } from "src/middleware/publicApi";
+import { isPlatformEntityBlocked } from "@lib/platform/entityBlock";
 
 const outletPolicySchema = z.object({
     priceOverride: z.boolean().optional(),
@@ -54,6 +56,26 @@ const schema = z.object({
     policy: outletPolicySchema,
 });
 const OUTLET_POLICY_MAX_BODY_BYTES = 8 * 1024;
+const OUTLET_POLICY_SCOPE_CHANGED_CODE = "OUTLET_POLICY_SCOPE_CHANGED";
+
+class OutletPolicyScopeChangedError extends Error {
+    readonly code = OUTLET_POLICY_SCOPE_CHANGED_CODE;
+
+    constructor() {
+        super(OUTLET_POLICY_SCOPE_CHANGED_CODE);
+        Object.setPrototypeOf(this, new.target.prototype);
+        this.name = "OutletPolicyScopeChangedError";
+    }
+}
+
+const isOutletPolicyScopeChangedError = (error: unknown): error is OutletPolicyScopeChangedError => (
+    error instanceof OutletPolicyScopeChangedError
+    || (
+        Boolean(error)
+        && typeof error === "object"
+        && (error as { code?: unknown }).code === OUTLET_POLICY_SCOPE_CHANGED_CODE
+    )
+);
 
 export const POST = withAuth(async (request, session) => {
     if (!FEATURE_FLAGS.ENABLE_MULTI_OUTLET) {
@@ -96,10 +118,7 @@ export const POST = withAuth(async (request, session) => {
         const db = admin.firestore();
         const storeRef = db.doc(`${DB_COLLECTIONS.STORES}/${storeDocumentId}`);
         const tenantRef = db.doc(`${DB_COLLECTIONS.TENANTS}/${tenantDocumentId}`);
-        const [storeSnap, tenantSnap] = await Promise.all([
-            storeRef.get(),
-            tenantRef.get(),
-        ]);
+        const storeSnap = await storeRef.get();
 
         if (!storeSnap.exists) {
             return NextResponse.json({ error: "Store not found" }, { status: 404 });
@@ -117,28 +136,42 @@ export const POST = withAuth(async (request, session) => {
         );
         if (permissionError) return permissionError;
 
-        const storesList = tenantSnap.data()?.storesList || [];
-        const hasMasterStore = storesList.some((store: any) => store?.isMaster === true);
-        const masterListRepairNeeded = storeData.isMaster === true && !hasMasterStore;
-        const masterPromoted = (
-            storeData.isMaster !== true
-            && !hasMasterStore
-            && storesList.length === 1
-            && Number(storesList[0]?.storeId) === Number(storeId)
-        );
-
-        if (storeData.isMaster !== true && !masterPromoted) {
-            return NextResponse.json({ error: "Outlet policy can only be set on master store" }, { status: 403 });
-        }
-
         const now = admin.firestore.Timestamp.now();
-        const mergedPolicy = {
-            ...(storeData.outletPolicy || DEFAULT_OUTLET_POLICY),
-            ...v.data.policy,
-        };
-        const shouldMarkCurrentStoreAsMasterInTenant = masterPromoted || masterListRepairNeeded;
-
-        await db.runTransaction(async (tx) => {
+        const policyResult = await db.runTransaction(async (tx) => {
+            const [freshStoreSnap, freshTenantSnap] = await Promise.all([
+                tx.get(storeRef),
+                tx.get(tenantRef),
+            ]);
+            const freshStore = freshStoreSnap.exists ? freshStoreSnap.data() || {} : {};
+            if (
+                !freshStoreSnap.exists
+                || !freshTenantSnap.exists
+                || normalizeStoreSummaryNumericDocumentId(freshStore.tenantId ?? freshStore.tId) !== tenantDocumentId
+                || freshStore.active === false
+                || freshStore.deleted === true
+                || isPlatformEntityBlocked(freshStore)
+            ) {
+                throw new OutletPolicyScopeChangedError();
+            }
+            const storesList = Array.isArray(freshTenantSnap.data()?.storesList)
+                ? freshTenantSnap.data()?.storesList
+                : [];
+            const hasMasterStore = storesList.some((store: any) => store?.isMaster === true);
+            const masterListRepairNeeded = freshStore.isMaster === true && !hasMasterStore;
+            const masterPromoted = (
+                freshStore.isMaster !== true
+                && !hasMasterStore
+                && storesList.length === 1
+                && Number(storesList[0]?.storeId) === Number(storeId)
+            );
+            if (freshStore.isMaster !== true && !masterPromoted) {
+                throw new OutletPolicyScopeChangedError();
+            }
+            const mergedPolicy = {
+                ...(freshStore.outletPolicy || DEFAULT_OUTLET_POLICY),
+                ...v.data.policy,
+            };
+            const shouldMarkCurrentStoreAsMasterInTenant = masterPromoted || masterListRepairNeeded;
             tx.set(storeRef, {
                 ...(masterPromoted ? { isMaster: true } : {}),
                 modifiedOn: now,
@@ -163,6 +196,7 @@ export const POST = withAuth(async (request, session) => {
                     },
                 }, { merge: true });
             }
+            return { masterPromoted, mergedPolicy };
         });
 
         revalidateTag(`menu-store-${storeDocumentId}`);
@@ -177,10 +211,13 @@ export const POST = withAuth(async (request, session) => {
 
         return NextResponse.json({
             success: true,
-            masterPromoted,
-            outletPolicy: mergedPolicy,
+            masterPromoted: policyResult.masterPromoted,
+            outletPolicy: policyResult.mergedPolicy,
         });
     } catch (error) {
+        if (isOutletPolicyScopeChangedError(error)) {
+            return NextResponse.json({ error: "Outlet policy can only be set on the current main location" }, { status: 409 });
+        }
         logMultiOutletFailure("outlet_policy_update_route_failed", error, failureContext);
         return NextResponse.json({ error: "Outlet policy update failed" }, { status: 500 });
     }

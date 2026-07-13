@@ -24,7 +24,7 @@ const PublicSignalSchema = z.object({
     entityId: z.string().trim().min(1).max(180).optional(),
     externalId: z.string().trim().min(1).max(180).optional(),
     metadata: z.record(z.unknown()).optional(),
-});
+}).strict();
 
 function sanitizeMetadata(metadata: Record<string, unknown> | undefined): Record<string, any> {
     if (!metadata) return {};
@@ -77,17 +77,25 @@ export async function POST(request: NextRequest) {
         }
 
         const body = validation.data;
-        await emitAnswerlatticeSignal({
+        const idempotencyKey = (body.externalId || request.headers.get('idempotency-key') || '').trim();
+        if (!idempotencyKey || idempotencyKey.length > 180) {
+            return apiError('IDEMPOTENCY_KEY_REQUIRED', 'Provide externalId or Idempotency-Key', 400);
+        }
+        const persisted = await emitAnswerlatticeSignal({
             type: body.type as AnswerlatticeSignalType,
             tId: auth.context.tId,
             sId: auth.context.sId,
             entityId: body.entityId,
             metadata: {
                 ...sanitizeMetadata(body.metadata),
-                externalId: body.externalId || null,
+                externalId: idempotencyKey,
+                requestId: idempotencyKey,
                 source: 'answerlattice_public_api',
             },
         });
+        if (!persisted) {
+            return apiError('SIGNAL_PERSISTENCE_UNAVAILABLE', 'Signal ingestion temporarily unavailable', 503);
+        }
 
         return NextResponse.json({
             schemaVersion: ANSWERLATTICE_PUBLIC_API_SCHEMA_VERSION,

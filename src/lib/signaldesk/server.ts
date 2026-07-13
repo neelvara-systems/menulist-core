@@ -2,6 +2,7 @@ import { FEATURE_FLAGS } from "@config/features";
 import { SIGNALDESK_COLLECTIONS, SIGNALDESK_SUMMARY_DOCS } from "@constant/signaldesk/database";
 import { SIGNALDESK_PRODUCT_CODE } from "@constant/signaldesk/product";
 import { admin, signaldeskFirestoreAdmin } from "@lib/firebase/signaldeskFirebaseAdmin";
+import { sanitizeForFirestore as sanitizeFirestoreValue } from "@lib/firestore/sanitizeForFirestore";
 import { isSignalDeskFirebaseConfigured } from "@lib/firebase/signaldeskConfig";
 import { getSignalDeskAccessLogContext, logSignalDeskFailure } from "@lib/signaldesk/apiGuards";
 import type {
@@ -94,18 +95,9 @@ const enumOrFallback = <T extends string>(
     fallback: T,
 ): T => (typeof value === "string" && allowed.has(value as T) ? value as T : fallback);
 
-const sanitizeForFirestore = (value: any): any => {
-    if (value === undefined) return null;
-    if (value === null) return null;
-    if (typeof value !== "object") return value;
-    if (value instanceof Date) return admin.firestore.Timestamp.fromDate(value);
-    if (typeof value?.isEqual === "function" && /Transform$/.test(value?.constructor?.name || "")) return value;
-    if (typeof value?.toDate === "function" && typeof value?.seconds === "number") return value;
-    if (Array.isArray(value)) return value.map(sanitizeForFirestore);
-    return Object.fromEntries(
-        Object.entries(value).map(([key, nested]) => [key, sanitizeForFirestore(nested)]),
-    );
-};
+const sanitizeForFirestore = (value: unknown) => sanitizeFirestoreValue(value, {
+    dateTransform: (date) => admin.firestore.Timestamp.fromDate(date),
+});
 
 const defaultControlRoom = (): SignalDeskControlRoomSummary => ({
     activeKillSwitchCount: 0,

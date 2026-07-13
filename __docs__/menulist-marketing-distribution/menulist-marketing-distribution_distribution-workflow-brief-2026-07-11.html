@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MenuList Distribution Workflow Brief — July 11, 2026</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #122033;
+      --muted: #5f6b7a;
+      --line: #dce4ed;
+      --paper: #f6f8fb;
+      --card: #ffffff;
+      --blue: #175cd3;
+      --blue-soft: #eaf2ff;
+      --green: #087a5b;
+      --green-soft: #e7f7f1;
+      --amber: #9a6700;
+      --amber-soft: #fff6d8;
+      --red: #b42318;
+      --red-soft: #fff0ee;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.55;
+    }
+    a { color: var(--blue); }
+    .wrap { width: min(1160px, calc(100% - 32px)); margin: 0 auto; }
+    header {
+      padding: 72px 0 54px;
+      background: linear-gradient(135deg, #0e1d33 0%, #16386d 58%, #175cd3 100%);
+      color: white;
+    }
+    .eyebrow { font-size: 13px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; opacity: .78; }
+    h1 { max-width: 920px; margin: 14px 0 16px; font-size: clamp(40px, 7vw, 76px); line-height: 1.02; letter-spacing: -.045em; }
+    header p { max-width: 780px; margin: 0; font-size: 20px; color: #dbe8ff; }
+    .meta { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 28px; }
+    .meta span { padding: 7px 10px; border: 1px solid rgba(255,255,255,.22); border-radius: 999px; font-size: 13px; }
+    main { padding: 48px 0 72px; }
+    section { margin: 0 0 56px; }
+    h2 { margin: 0 0 18px; font-size: 30px; letter-spacing: -.02em; }
+    h3 { margin: 0 0 8px; font-size: 19px; }
+    p { margin: 0 0 14px; }
+    .lead { max-width: 900px; font-size: 19px; color: #334155; }
+    .loop {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 24px;
+    }
+    .loop .step { position: relative; min-height: 112px; padding: 18px; border: 1px solid #cbd8e8; background: white; border-radius: 16px; }
+    .loop b { display: block; margin-bottom: 7px; color: var(--blue); }
+    .loop .step:not(:last-child)::after { content: "→"; position: absolute; right: -11px; top: 40px; z-index: 2; color: var(--blue); font-weight: 900; }
+    .loop .step:nth-child(4)::after { display: none; }
+    .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+    .card { padding: 20px; background: var(--card); border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 8px 26px rgba(15, 35, 65, .045); }
+    .card .tag { display: inline-block; margin-bottom: 10px; padding: 4px 8px; border-radius: 999px; background: var(--blue-soft); color: var(--blue); font-size: 12px; font-weight: 800; }
+    .card ul { margin: 10px 0 0; padding-left: 18px; }
+    .card li { margin: 5px 0; }
+    .decision { padding: 20px 22px; border-left: 5px solid var(--green); background: var(--green-soft); border-radius: 12px; }
+    .warning { border-left-color: var(--amber); background: var(--amber-soft); }
+    .reject { border-left-color: var(--red); background: var(--red-soft); }
+    table { width: 100%; border-collapse: collapse; background: white; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+    th, td { padding: 13px 14px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { background: #edf3fa; font-size: 13px; text-transform: uppercase; letter-spacing: .04em; }
+    tr:last-child td { border-bottom: 0; }
+    .timeline { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+    .week { padding: 18px; border-top: 4px solid var(--blue); background: white; border-radius: 10px 10px 16px 16px; }
+    .week strong { color: var(--blue); }
+    .sources { columns: 2; column-gap: 32px; }
+    .sources li { margin: 0 0 8px; break-inside: avoid; }
+    .small { font-size: 13px; color: var(--muted); }
+    footer { padding: 28px 0 46px; color: var(--muted); border-top: 1px solid var(--line); }
+    @media (max-width: 900px) {
+      .loop, .timeline { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .loop .step::after { display: none; }
+      .grid { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 620px) {
+      header { padding-top: 48px; }
+      .loop, .timeline, .grid { grid-template-columns: 1fr; }
+      .sources { columns: 1; }
+      th, td { padding: 10px; }
+      .table-scroll { overflow-x: auto; }
+      table { min-width: 760px; }
+    }
+    @media print {
+      body { background: white; }
+      header { background: #16386d !important; print-color-adjust: exact; }
+      .card, .step, .week { break-inside: avoid; box-shadow: none; }
+      a { color: inherit; text-decoration: none; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <div class="eyebrow">MenuList × SignalDesk · Distribution research</div>
+      <h1>Run a proof loop, not a posting machine.</h1>
+      <p>What current founder-led, content, community, creator, local-search, launch, and paid workflows have in common—and the bounded workflow MenuList should run next.</p>
+      <div class="meta"><span>July 11, 2026</span><span>Public-source research</span><span>Founder-controlled</span><span>Proof-gated</span></div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section>
+      <h2>Overview</h2>
+      <p class="lead">The research did not find a universal winning channel. It found a repeated sequence: choose a narrow audience, create useful proof, adapt it natively, earn or borrow trust, route interest into one measurable action, complete the customer outcome, and recycle only verified learning.</p>
+      <div class="loop" aria-label="Proof-led distribution loop">
+        <div class="step"><b>1 · Select</b>Narrow pod and real problem</div>
+        <div class="step"><b>2 · Prove</b>One canonical result</div>
+        <div class="step"><b>3 · Adapt</b>Channel-native derivatives</div>
+        <div class="step"><b>4 · Distribute</b>Trusted surfaces and people</div>
+        <div class="step"><b>5 · Capture</b>One measurable next action</div>
+        <div class="step"><b>6 · Activate</b>Complete the customer result</div>
+        <div class="step"><b>7 · Learn</b>Outcome, attention, objections</div>
+        <div class="step"><b>8 · Recycle</b>Proof, referral, or review</div>
+      </div>
+      <div class="decision" style="margin-top:20px"><strong>MenuList decision:</strong> the canonical asset is a permissioned example of one owner-reviewed current customer link active on two useful surfaces—not a generic marketing post.</div>
+    </section>
+
+    <section>
+      <h2>Competitors</h2>
+      <p class="lead">The relevant competition is not only vendors. It is four distribution operating models that tempt MenuList into the wrong scope.</p>
+      <div class="grid">
+        <article class="card"><span class="tag">Broadcast tools</span><h3>Schedule everywhere</h3><p>Efficient publishing, weak connection to activation. MenuList should reuse SignalDesk drafts/calendar but keep channel jobs and downstream outcomes explicit.</p></article>
+        <article class="card"><span class="tag">Restaurant suites</span><h3>Own commerce and CRM</h3><p>Owner.com, Popmenu, BentoBox, DotPe, and Petpooja compete through websites, ordering, loyalty, POS, and campaigns. MenuList should remain public-business truth and activation infrastructure.</p></article>
+        <article class="card"><span class="tag">Creator marketplaces</span><h3>Match, brief, publish, amplify</h3><p>Meta and YouTube formalize creator discovery, terms, content, disclosure, measurement, and paid reuse. MenuList needs a bounded trust-partner test, not its own marketplace.</p></article>
+        <article class="card"><span class="tag">Listing managers</span><h3>Syndicate business data</h3><p>Broad listing management adds delegation, conflict, provider, and support obligations. Keep owner-confirmed Google/Apple/Bing placement until demand and eligibility are proven.</p></article>
+        <article class="card"><span class="tag">Template ecosystems</span><h3>Artifacts create discovery</h3><p>Notion and Canva use reusable artifacts as distribution. MenuList already has a better native artifact: the live customer link and its privacy-safe powered-by path.</p></article>
+        <article class="card"><span class="tag">MenuList path</span><h3>Proof → activation → proof</h3><p>Use one verified owner outcome, distribute it with permission, measure activation and founder attention, then expand only the channel or partner that repeats the result.</p></article>
+      </div>
+    </section>
+
+    <section>
+      <h2>Observed workflows</h2>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Motion</th><th>Workflow people follow</th><th>MenuList job</th><th>Decision</th></tr></thead>
+          <tbody>
+            <tr><td>Founder-led</td><td>Small list → researched approach → useful quick result → personal follow-up → reference/referral</td><td>Audit + private preview + two-surface activation</td><td>Run now, permissioned/manual</td></tr>
+            <tr><td>Content</td><td>Outcome → pillar asset → modular derivatives → native publish → replies → downstream measurement → reshare winner</td><td>One proof packet feeding approved derivatives</td><td>Run after first proof</td></tr>
+            <tr><td>X</td><td>Listen with search/lists → helpful replies → concise proof → conversation → promote winner</td><td>Founder learning and partner discovery</td><td>Secondary channel</td></tr>
+            <tr><td>Reddit</td><td>Listen → learn rules → comment helpfully → post sparingly → measure trust → amplify proven fit</td><td>Objection learning and selective disclosed help</td><td>Listen now; no automation</td></tr>
+            <tr><td>Instagram creators</td><td>Fit → portfolio → brief/terms → native content → disclosure → organic result → permitted amplification</td><td>Visual proof and owner story</td><td>After proof; manual rights/spend</td></tr>
+            <tr><td>YouTube</td><td>Audience question → repeatable long-form → Shorts → supported links → retention/engaged-view learning</td><td>Durable case walkthrough and derived clips</td><td>After proof</td></tr>
+            <tr><td>Google/Profile</td><td>Verify → current facts/menu/photos → official link → updates/reviews → interaction measurement → correct stale facts</td><td>Primary activation and discovery surface</td><td>Use now with owner authority</td></tr>
+            <tr><td>Product/launch</td><td>Useful artifact → discovery surface → community conversation → adoption → feedback → improved artifact</td><td>Live customer link and later Product Hunt proof event</td><td>Existing loop; launch later</td></tr>
+            <tr><td>Paid</td><td>Proven organic asset → one objective → bounded audience/budget → activation economics → stop or scale</td><td>Amplify only verified proof</td><td>Deferred</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <h2>Channel jobs</h2>
+      <div class="grid">
+        <article class="card"><h3>Google / Profile</h3><p>Current-link placement and high-intent discovery. Measure menu clicks, website actions, calls, directions, or bookings where available.</p></article>
+        <article class="card"><h3>Instagram</h3><p>Visual transformation, owner story, and local creator/partner trust. Not a cold-DM automation surface.</p></article>
+        <article class="card"><h3>YouTube</h3><p>Durable explanation. Create the full case first, then Shorts; use supported click paths instead of non-clickable Shorts descriptions.</p></article>
+        <article class="card"><h3>X</h3><p>Founder narrative, ecosystem learning, product updates, and partner discovery. Conversation before scheduling volume.</p></article>
+        <article class="card"><h3>Reddit</h3><p>Listening and objection language. Comment as a useful, disclosed human when relevant; do not turn communities into lead lists.</p></article>
+        <article class="card"><h3>Partner / founder contact</h3><p>Permissioned introduction, owner response, private preview, and second-surface completion. This is the first trial's conversion layer.</p></article>
+      </div>
+    </section>
+
+    <section>
+      <h2>Guidance</h2>
+      <div class="decision"><strong>Adopt now:</strong> one permissioned Bengaluru introduction, evidence-backed audit, private preview, owner review, Google/Profile plus one additional surface, and founder-attention tracking.</div>
+      <div class="decision warning" style="margin-top:12px"><strong>Prepare after proof:</strong> one canonical proof packet, two Instagram formats, one two-to-four-minute YouTube walkthrough, derived Shorts, one founder post, and one trust-partner brief—all approval-gated.</div>
+      <div class="decision reject" style="margin-top:12px"><strong>Reject or defer:</strong> auto-publishing, social scraping, Reddit/X reply bots, cold Instagram/WhatsApp automation, creator marketplace, broad listing syndication, generic content volume, paid optimization, and autonomous spend.</div>
+    </section>
+
+    <section>
+      <h2>Thirty-day plan</h2>
+      <div class="timeline">
+        <div class="week"><strong>Week 1 · Permission</strong><p>Founder supplies one permissioned business or partner introduction and the exact sender/manual identity. Prepare one private preview.</p></div>
+        <div class="week"><strong>Week 2 · Activation</strong><p>Owner reviews and publishes. Complete Google/Profile plus one useful additional surface. Recover friction before adding volume.</p></div>
+        <div class="week"><strong>Week 3 · Proof</strong><p>Record item-level permission. Create the long-form case first, then channel-native derivatives. Queue in SignalDesk; no auto-publish.</p></div>
+        <div class="week"><strong>Week 4 · Distribution</strong><p>Publish approved proof, approach five fit partners, measure qualified responses, previews, activation, and founder attention.</p></div>
+      </div>
+      <p class="small" style="margin-top:14px">Current bottleneck: a permissioned owner/partner introduction and sender identity—not another runtime module or more market research.</p>
+    </section>
+
+    <section>
+      <h2>SignalDesk fit</h2>
+      <div class="grid">
+        <article class="card"><span class="tag">Already present</span><h3>Control and content rails</h3><ul><li>Evidence and provenance</li><li>Canonical content assets</li><li>Channel drafts and approval</li><li>Calendar and performance summaries</li><li>Trust-partner rail</li><li>Activation and outcome summaries</li></ul></article>
+        <article class="card"><span class="tag">Operating discipline</span><h3>Enforce before adding fields</h3><ul><li>One canonical proof parent</li><li>One channel job</li><li>One next action</li><li>Activation and attention measurement</li><li>Proof revocation propagation</li></ul></article>
+        <article class="card"><span class="tag">Build gate</span><h3>Runtime only after evidence</h3><p>Add a field or workflow only when the first real run exposes a repeated ambiguity that existing source, asset, draft, partner, activation, or outcome records cannot represent.</p></article>
+      </div>
+    </section>
+
+    <section>
+      <h2>Sources</h2>
+      <ul class="sources">
+        <li><a href="https://stripe.com/en-ca/guides/atlas/starting-sales">Stripe Atlas: first 10 customers</a></li>
+        <li><a href="https://blog.hubspot.com/marketing/multi-channel-content-distribution">HubSpot: multi-channel distribution</a></li>
+        <li><a href="https://offers.hubspot.com/view/content-distribution-playbook">HubSpot distribution playbook</a></li>
+        <li><a href="https://buffer.com/resources/content-repurposing-automation/">Buffer: repurposing workflow</a></li>
+        <li><a href="https://business.x.com/en/basics/organic-best-practices">X organic best practices</a></li>
+        <li><a href="https://business.x.com/en/basics/community-management">X community management</a></li>
+        <li><a href="https://redditinc.com/hubfs/Reddit%20Inc/Content/Reddit%20Pros%20organic%20playbook.pdf">Reddit Pro Organic Playbook</a></li>
+        <li><a href="https://www.business.reddit.com/learning-hub/articles/promote-organic-reddit-posts">Reddit: amplify organic wins</a></li>
+        <li><a href="https://about.fb.com/news/2024/02/creator-marketplace-for-brands-and-creators-to-collaborate-on-instagram/">Meta: Instagram Creator Marketplace</a></li>
+        <li><a href="https://support.google.com/youtube/answer/9385307?hl=en-gb">YouTube Creator Partnerships</a></li>
+        <li><a href="https://support.google.com/youtube/answer/16533387?hl=en">YouTube recommendation system</a></li>
+        <li><a href="https://support.google.com/youtube/answer/13748639">YouTube audience links</a></li>
+        <li><a href="https://business.google.com/us/business-profile/restaurants/">Google Business Profile for restaurants</a></li>
+        <li><a href="https://support.google.com/business/answer/9918094?hl=en-en">Google Business Profile performance</a></li>
+        <li><a href="https://blog.google/products-and-platforms/products/maps/ask-maps-immersive-navigation/">Google Ask Maps</a></li>
+        <li><a href="https://www.producthunt.com/launch">Product Hunt Launch Guide</a></li>
+        <li><a href="https://www.notion.com/become-a-creator">Notion creator marketplace</a></li>
+        <li><a href="https://www.canva.com/en_in/creators/">Canva Creators</a></li>
+        <li><a href="https://leons.in/bengaluru-collabs-open">Leon's Bengaluru collaborations</a></li>
+        <li><a href="https://influeat.in/">InfluEat local creator-dining pilot</a></li>
+      </ul>
+      <p class="small">Platform and vendor sources describe their own products and intended workflows. Community and local-market examples are directional. No performance claim in this brief is treated as MenuList evidence.</p>
+    </section>
+  </main>
+
+  <footer><div class="wrap">MenuList internal operating brief · Founder-controlled · No outreach, publishing, provider, spend, or deployment permission implied.</div></footer>
+</body>
+</html>

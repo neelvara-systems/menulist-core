@@ -179,6 +179,17 @@ export const RATE_LIMIT_CONFIGS = {
     },
 
     /**
+     * Answerlattice manual nightly retry - platform-only and operationally expensive.
+     * A single accepted request can execute the complete bounded nightly task list
+     * for one workspace, so normal data-write limits are too permissive here.
+     */
+    ANSWERLATTICE_MANUAL_NIGHTLY_TRIGGER: {
+        limit: 3,
+        window: 900,
+        description: 'Answerlattice manual nightly retry - 3 per 15 minutes per platform operator and workspace'
+    },
+
+    /**
      * Admin Subdomain Rename - platform-only public routing mutation.
      * Used by: POST /api/admin/subdomains/rename
      *

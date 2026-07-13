@@ -127,6 +127,7 @@ const menuCardExportCollateralDocs = [
 const menuCardExportValidation = fs.readFileSync(path.join(root, '__docs__/menu-card-export/menu-card-export_validation.md'), 'utf8');
 const menuCardExportTestCases = fs.readFileSync(path.join(root, '__docs__/menu-card-export/menu-card-export_test-cases.md'), 'utf8');
 const menuCardExportFirebase = fs.readFileSync(path.join(root, '__docs__/menu-card-export/menu-card-export_firebase.md'), 'utf8');
+const menuCardExportResearch = fs.readFileSync(path.join(root, '__docs__/menu-card-export/menu-card-export_research.md'), 'utf8');
 const productionReadinessAudit = fs.readFileSync(path.join(root, '__docs__/audits/menulist-production-readiness-audit.md'), 'utf8');
 const changelog = fs.readFileSync(path.join(root, '__docs__/changelog.md'), 'utf8');
 const internalFeedbackImpl = fs.readFileSync(path.join(root, '__docs__/projects/internal-feedback-system/internal-feedback-system_impl.md'), 'utf8');
@@ -139,6 +140,43 @@ const physicalSurfacesCodeReview = fs.readFileSync(path.join(root, '__docs__/phy
 const physicalSurfacesValidation = fs.readFileSync(path.join(root, '__docs__/physical-surfaces/physical-surfaces_validation.md'), 'utf8');
 const physicalSurfacesMarketing = fs.readFileSync(path.join(root, '__docs__/physical-surfaces/physical-surfaces_marketing.md'), 'utf8');
 const physicalSurfacesLogicVerification = fs.readFileSync(path.join(root, '__docs__/physical-surfaces/physical-surfaces_logic-verification.md'), 'utf8');
+
+const menuCardExportActiveDocs = [
+  ...menuCardExportCoreDocs,
+  ...menuCardExportCollateralDocs,
+  { label: 'Menu Card Export Firebase', content: menuCardExportFirebase },
+  { label: 'Menu Card Export research', content: menuCardExportResearch },
+  { label: 'Menu Card Export validation', content: menuCardExportValidation },
+  { label: 'Menu Card Export test cases', content: menuCardExportTestCases },
+];
+const menuCardExportTopBoundaryTokens = [
+  'Launch boundary:** Not current launch certification or deploy approval',
+  'source-gated Menu Card Export evidence only',
+  'production-readiness audit',
+  'External Certification Runbook',
+  '`npm run verify:production-readiness-local`',
+  'Digital Menu Output Constitution checks for print/menu outputs',
+  '`npm run verify:menu-card-export`',
+  'authenticated desktop/mobile browser QA',
+  'visual PDF and print-shop artifact review',
+  'provider smoke for the AI advisor where enabled',
+  'applicable target deploy evidence',
+  'production-host smoke',
+];
+menuCardExportActiveDocs.forEach(({ label, content }) => {
+  menuCardExportTopBoundaryTokens.forEach((token) => {
+    if (!content.includes(token)) failures.push(`${label} missing top launch-boundary token: ${token}`);
+  });
+});
+if (!menuCardExportResearch.includes('Market research and product-direction notes do not approve implementation or release.')) {
+  failures.push('Menu Card Export research must remain research evidence, not implementation or release approval');
+}
+if (!productionReadinessAudit.includes('Menu Card Export active-doc top-boundary checkpoint')) {
+  failures.push('Production-readiness audit missing Menu Card Export active-doc top-boundary checkpoint');
+}
+if (!changelog.includes('Menu Card Export Active Docs Top Boundary')) {
+  failures.push('Changelog missing Menu Card Export active-doc top-boundary checkpoint');
+}
 
 [
   'Validated implementation evidence; not current launch certification',

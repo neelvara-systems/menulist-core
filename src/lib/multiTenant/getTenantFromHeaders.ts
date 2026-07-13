@@ -6,12 +6,11 @@
  *   - src/app/client/obp/OBPContent.tsx
  *   - src/app/client/compliance/CompliancePageContent.tsx
  *
- * Reads middleware-set headers first (x-tenant-*), with a `resolveDomain`
- * fallback when the middleware headers are missing (e.g. direct requests,
- * header propagation issues on some CDN paths).
+ * Tenant identity is derived from the original Host authority. Middleware-set
+ * x-tenant-* values are integrity claims only and can never select a tenant.
  */
 
-import { resolveDomain } from '@lib/multiTenant/domainResolver';
+import { resolveTenantRequestIdentity } from '@lib/multiTenant/domainResolver';
 import { secureError } from '@lib/security/secureLogger';
 import { headers } from 'next/headers';
 
@@ -33,40 +32,41 @@ const sanitizeTenantLogContext = (logContext: string): string => (
  */
 export async function getTenantFromHeaders(logContext = 'ClientPage'): Promise<TenantInfo> {
     const headersList = headers();
-    const tenantSubdomain = headersList.get('x-tenant-subdomain');
-    const tenantCustomDomain = headersList.get('x-tenant-custom-domain');
-    const tenantTypeHeader = headersList.get('x-tenant-type');
-
-    // Multiple fallback headers for host detection (Vercel + standard)
-    const requestHost =
-        headersList.get('x-forwarded-host') ||        // Standard proxy header
-        headersList.get('host') ||                     // Standard host header
-        headersList.get('x-vercel-proxied-host') ||   // Vercel specific
-        headersList.get('x-vercel-deployment-url') || // Vercel deployment URL
-        process.env.VERCEL_URL;                        // Vercel env fallback
-
-    const host = requestHost ? requestHost.split(':')[0].toLowerCase() : null;
-    const protocol =
-        headersList.get('x-forwarded-proto') ||
-        (process.env.NODE_ENV === 'development' ? 'http' : 'https');
-    const origin = requestHost ? `${protocol}://${requestHost.toLowerCase()}` : null;
+    const requestHost = headersList.get('host');
+    const identity = resolveTenantRequestIdentity(requestHost, {
+        subdomain: headersList.get('x-tenant-subdomain'),
+        customDomain: headersList.get('x-tenant-custom-domain'),
+        tenantType: headersList.get('x-tenant-type'),
+    });
 
     // If still no host we're in a broken state — log once and return nulls
-    if (!host) {
+    if (!identity) {
         secureError('[Tenant Headers] No host header found', new Error('Tenant host header missing'), {
             logContext: sanitizeTenantLogContext(logContext),
-            hasForwardedHost: Boolean(headersList.get('x-forwarded-host')),
             hasHost: Boolean(headersList.get('host')),
-            hasVercelHost: Boolean(headersList.get('x-vercel-proxied-host')),
-            hasVercelUrl: Boolean(headersList.get('x-vercel-deployment-url')),
         });
+        return {
+            subdomain: null,
+            customDomain: null,
+            tenantType: null,
+            host: null,
+            origin: null,
+        };
     }
 
-    // Fallback to resolveDomain if middleware headers not set
-    const resolvedDomain = resolveDomain(host);
-    const tenantType = tenantTypeHeader || (resolvedDomain.isClient ? resolvedDomain.type : null);
-    const subdomain = tenantSubdomain || resolvedDomain.subdomain || null;
-    const customDomain = tenantCustomDomain || resolvedDomain.customDomain || null;
+    const forwardedProtocol = headersList.get('x-forwarded-proto')?.split(',')[0]?.trim().toLowerCase();
+    const isLocalRuntime = process.env.NODE_ENV === 'development'
+        || identity.hostname === 'localhost'
+        || identity.hostname === '127.0.0.1'
+        || identity.hostname.startsWith('192.168.');
+    const protocol = isLocalRuntime && forwardedProtocol !== 'https' ? 'http' : 'https';
+    const origin = `${protocol}://${identity.authority}`;
 
-    return { subdomain, customDomain, tenantType, host, origin };
+    return {
+        subdomain: identity.subdomain,
+        customDomain: identity.customDomain,
+        tenantType: identity.tenantType,
+        host: identity.hostname,
+        origin,
+    };
 }

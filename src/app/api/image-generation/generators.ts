@@ -24,6 +24,8 @@ export type GeneratedImagePayload = {
     cacheHit?: boolean;
     mimeType: string;
     promptCacheKey?: string;
+    sizeBytes?: number;
+    storagePath?: string;
     uploadedUrl?: string;
 };
 export type ImageProviderResponse = GenerateContentResponse;

@@ -6,10 +6,16 @@
  * or overlapping scheduler ticks cannot duplicate sends, cleanup, or alerts.
  */
 
-import { FieldValue, Timestamp } from 'firebase-admin/firestore';
+import { FieldPath, FieldValue, Timestamp } from 'firebase-admin/firestore';
 import * as functions from 'firebase-functions';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { aggregateDailyChatStatsLogic } from '../aggregateDailyChatStats';
+import {
+    normalizeScopeDocumentId,
+    normalizeSubscriptionDocumentId,
+    reconcileSubscriptions,
+    syncStorePlanEntitlement,
+} from '../billing/reconcileSubscriptions';
 import { SECRET_GROUPS } from '../config/secrets';
 import { DB_COLLECTIONS } from '../constants/database';
 import { FUNCTION_RETENTION_CONFIG, isFunctionFeatureEnabled } from '../constants/features';
@@ -20,7 +26,9 @@ import { sendPlatformAlertDelivery } from '../monitoring/platformNotificationDel
 import { sendTelegramAlert } from '../monitoring/telegramAlert';
 import { intakeProcessorLogic } from '../messagingOnboarding';
 import { PLATFORM_NOTIFICATION_TRIGGER_TYPES } from '../sharedData/platformNotificationRegistry';
+import { parsePlatformStoreSummary } from '../sharedData/storeSummaryBoundary';
 import { runAiProviderHealthCheckLogic } from './aiProviderHealth';
+import { recoverAiCapacityReservationsInCollectionRef } from './aiCapacityReservationRecovery';
 import { rebuildFounderMonitorSnapshotLogic } from './founderMonitorSnapshot';
 import {
     cleanupExpiredPreviewJobsLogic,
@@ -31,8 +39,12 @@ import {
     monitorExtractionHealthLogic,
 } from './menuJobCleanup';
 import { messagingSessionCleanupLogic } from './messagingSessionCleanup';
-import { revalidatePublicClientCacheForStore } from '../logic/publicCacheRevalidation';
-import { invalidateOwnerBusinessAssistantContextPackets } from '../ownerBusinessAssistant/contextPacketCacheInvalidation';
+import {
+    filterProjectReferencedImageBatchUrls,
+    getImageBatchImageUrls,
+    getImageBatchStorageCleanupUrls,
+    shouldDeleteImageBatchStorage,
+} from './imageBatchRetentionBoundary';
 
 const logger = functions.logger;
 
@@ -45,15 +57,16 @@ const MAX_DETAILS_JSON_BYTES = 12_000;
 const SCHEDULER_ALERT_CREATE_FAILED_CODE = 'MAINTENANCE_SCHEDULER_ALERT_CREATE_FAILED';
 const SCHEDULER_LEASE_RELEASE_FAILED_CODE = 'MAINTENANCE_TASK_LEASE_RELEASE_FAILED';
 const PUBLIC_MENU_DRAFT_IMAGE_DELETE_FAILED_CODE = 'PUBLIC_MENU_DRAFT_IMAGE_DELETE_FAILED';
+const PUBLIC_MENU_DRAFT_IMAGE_PATH_INVALID_CODE = 'PUBLIC_MENU_DRAFT_IMAGE_PATH_INVALID';
 const RESELLER_LICENSE_EXPIRE_FAILED_CODE = 'RESELLER_LICENSE_EXPIRE_FAILED';
-const RESELLER_PROFILE_COUNT_DECREMENT_FAILED_CODE = 'RESELLER_PROFILE_COUNT_DECREMENT_FAILED';
 const IMAGE_BATCH_STORAGE_DELETE_FAILED_CODE = 'IMAGE_BATCH_STORAGE_DELETE_FAILED';
+const IMAGE_BATCH_PROJECT_REFERENCE_CHECK_FAILED_CODE = 'IMAGE_BATCH_PROJECT_REFERENCE_CHECK_FAILED';
 const IMAGE_PROMPT_CACHE_SOURCE_DELETE_FAILED_CODE = 'IMAGE_PROMPT_CACHE_SOURCE_DELETE_FAILED';
+const AI_OPERATION_STORE_CLEANUP_FAILED_CODE = 'AI_OPERATION_STORE_CLEANUP_FAILED';
 const UNRESOLVED_CRITICAL_ALERT_TITLE = 'Still unresolved: Critical system alert';
 const UNRESOLVED_CRITICAL_ALERT_MESSAGE =
     'A critical platform alert has been unacknowledged for 30+ minutes. Review the alert record in the ops console; outbound escalation includes bounded metadata only.';
 const IMAGE_BATCH_TERMINAL_STATUSES = ['completed', 'failed', 'cancelled', 'finished', 'discarded'];
-const IMAGE_BATCH_STORAGE_DELETE_STATUSES = new Set(['completed', 'failed', 'discarded']);
 const IMAGE_BATCH_RETENTION_STORE_SCAN_LIMIT = 200;
 const IMAGE_BATCH_RETENTION_LIMIT_PER_STORE = 10;
 const IMAGE_BATCH_LEGACY_RETENTION_LIMIT_PER_STORE = 5;
@@ -103,6 +116,7 @@ interface TaskSummary {
 
 const maintenanceSecrets = Array.from(new Set([
     ...SECRET_GROUPS.AI,
+    ...SECRET_GROUPS.RAZORPAY,
     ...SECRET_GROUPS.WHATSAPP_OUTBOUND,
     ...SECRET_GROUPS.PLATFORM_ALERT_DELIVERY,
 ]));
@@ -140,13 +154,34 @@ function timestampMillis(value: unknown): number | null {
         const millis = Date.parse(value);
         return Number.isFinite(millis) ? millis : null;
     }
-    if (typeof (value as any).toMillis === 'function') {
-        return (value as any).toMillis();
-    }
-    if (typeof (value as any).seconds === 'number') {
-        return (value as any).seconds * 1000;
+    try {
+        if (typeof (value as any).toMillis === 'function') {
+            const millis = Number((value as any).toMillis());
+            return Number.isFinite(millis) ? millis : null;
+        }
+        if (typeof (value as any).seconds === 'number') {
+            const millis = (value as any).seconds * 1000;
+            return Number.isFinite(millis) ? millis : null;
+        }
+    } catch {
+        return null;
     }
     return null;
+}
+
+function normalizeMaintenanceDocumentId(value: unknown): string | null {
+    if (typeof value !== 'string') return null;
+    if (
+        !value
+        || value !== value.trim()
+        || value.length > 180
+        || value === '.'
+        || value === '..'
+        || value.includes('/')
+        || value.includes('\0')
+        || /^__.*__$/.test(value)
+    ) return null;
+    return value;
 }
 
 function shouldRunTask(task: MaintenanceTask, state: StoredTaskState | undefined, now: Date): boolean {
@@ -602,6 +637,7 @@ async function runPublicMenuDraftCleanup(): Promise<MaintenanceTaskResult> {
     }
 
     const batch = db.batch();
+    let deletedDrafts = 0;
     let deletedFiles = 0;
     let errors = 0;
     let sampleDraftCount = 0;
@@ -612,6 +648,15 @@ async function runPublicMenuDraftCleanup(): Promise<MaintenanceTaskResult> {
         const data = doc.data();
         const imagePath = typeof data.imagePath === 'string' ? data.imagePath : '';
         if (imagePath) {
+            if (!imagePath.startsWith(`publicMenuDrafts/${doc.id}/`)) {
+                errors += 1;
+                logger.warn('[public_menu_draft_cleanup] Rejected invalid draft image path', {
+                    ...getSchedulerStringContext('draftId', doc.id),
+                    failureCode: PUBLIC_MENU_DRAFT_IMAGE_PATH_INVALID_CODE,
+                    imagePathLength: imagePath.length,
+                });
+                continue;
+            }
             try {
                 await bucket.file(imagePath).delete({ ignoreNotFound: true });
                 deletedFiles += 1;
@@ -622,6 +667,9 @@ async function runPublicMenuDraftCleanup(): Promise<MaintenanceTaskResult> {
                     failureCode: PUBLIC_MENU_DRAFT_IMAGE_DELETE_FAILED_CODE,
                     ...getSchedulerErrorContext(error),
                 });
+                // Preserve the draft as the durable retry record. Deleting it
+                // here would orphan the source object permanently.
+                continue;
             }
         }
 
@@ -630,15 +678,18 @@ async function runPublicMenuDraftCleanup(): Promise<MaintenanceTaskResult> {
             sampleDraftIdLengthTotal += doc.id.length;
         }
         batch.delete(doc.ref);
+        deletedDrafts += 1;
     }
 
-    await batch.commit();
+    if (deletedDrafts > 0) {
+        await batch.commit();
+    }
 
     return {
         activity: snapshot.size > 0 || errors > 0,
         details: {
             enabled: true,
-            deletedDrafts: snapshot.size,
+            deletedDrafts,
             deletedFiles,
             errors,
             sampleDraftCount,
@@ -797,12 +848,9 @@ async function compactAiOperationDetailsInCollectionRef(params: {
 async function runAiOperationDetailCleanup(): Promise<MaintenanceTaskResult> {
     const now = Timestamp.now();
     const storesSummaryDoc = await db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc('storesSummary').get();
-    const storesSummary = storesSummaryDoc.exists ? storesSummaryDoc.data()?.stores || {} : {};
+    const storesSummary = parsePlatformStoreSummary(storesSummaryDoc.exists ? storesSummaryDoc.data() : undefined);
     const storeEntries = Object.entries(storesSummary)
-        .filter((entry) => {
-            const storeInfo = entry[1] as any;
-            return storeInfo?.active !== false && storeInfo?.tId != null;
-        })
+        .filter(([, storeInfo]) => storeInfo.active !== false)
         .slice(0, 200);
 
     const extraction = await compactAiOperationDetailsInCollectionRef({
@@ -814,38 +862,72 @@ async function runAiOperationDetailCleanup(): Promise<MaintenanceTaskResult> {
     let scanned = extraction.scanned;
     let compacted = extraction.compacted;
     let storesScanned = 0;
+    let reservationsScanned = 0;
+    let reservationsRefunded = 0;
+    let refundedReservationsDeleted = 0;
+    let storeErrors = 0;
 
-    for (const [sId, storeInfo] of storeEntries as [string, any][]) {
-        const tId = String(storeInfo.tId);
-        if (!tId || !sId) continue;
-        const result = await compactAiOperationDetailsInCollectionRef({
-            collectionRef: db.collection(DB_COLLECTIONS.MENULIST_AI_OPERATIONS).doc(tId).collection(String(sId)),
-            now,
-            limit: 10,
-        });
-        scanned += result.scanned;
-        compacted += result.compacted;
-        storesScanned++;
+    for (const [sId, storeInfo] of storeEntries) {
+        const tId = storeInfo.tId;
+        const operationCollection = db.collection(DB_COLLECTIONS.MENULIST_AI_OPERATIONS).doc(tId).collection(String(sId));
+        try {
+            const result = await compactAiOperationDetailsInCollectionRef({
+                collectionRef: operationCollection,
+                now,
+                limit: 10,
+            });
+            scanned += result.scanned;
+            compacted += result.compacted;
+            const reservationResult = await recoverAiCapacityReservationsInCollectionRef({
+                collectionRef: operationCollection,
+                db,
+                now,
+                sId: String(sId),
+                tId: String(tId),
+                limit: 10,
+            });
+            reservationsScanned += reservationResult.scanned;
+            reservationsRefunded += reservationResult.refunded;
+            refundedReservationsDeleted += reservationResult.deleted;
+            storeErrors += reservationResult.errors;
+            if (reservationResult.errors > 0) {
+                logger.warn('[ai_operation_detail_cleanup] Reservation rows failed recovery', {
+                    failureCode: AI_OPERATION_STORE_CLEANUP_FAILED_CODE,
+                    reservationErrors: reservationResult.errors,
+                    ...getSchedulerStringContext('storeId', sId),
+                    ...getSchedulerStringContext('tenantId', tId),
+                });
+            }
+        } catch (error) {
+            storeErrors += 1;
+            logger.warn('[ai_operation_detail_cleanup] Store cleanup failed', {
+                failureCode: AI_OPERATION_STORE_CLEANUP_FAILED_CODE,
+                ...getSchedulerStringContext('storeId', sId),
+                ...getSchedulerStringContext('tenantId', tId),
+                ...getSchedulerErrorContext(error),
+            });
+        }
+        storesScanned += 1;
     }
 
     return {
-        activity: compacted > 0,
+        activity: compacted > 0 || reservationsRefunded > 0 || refundedReservationsDeleted > 0 || storeErrors > 0,
         details: {
             mode: FUNCTION_RETENTION_CONFIG.AI_OPERATION_LOG_MODE,
             storesScanned,
             scanned,
             compacted,
             extraction,
+            reservationsScanned,
+            reservationsRefunded,
+            refundedReservationsDeleted,
+            storeErrors,
         },
     };
 }
 
 function isImageBatchTerminalStatus(status: unknown): status is string {
     return typeof status === 'string' && IMAGE_BATCH_TERMINAL_STATUSES.includes(status);
-}
-
-function shouldDeleteImageBatchStorage(status: string): boolean {
-    return IMAGE_BATCH_STORAGE_DELETE_STATUSES.has(status);
 }
 
 function getImageBatchActivityMillis(data: FirebaseFirestore.DocumentData): number | null {
@@ -861,21 +943,6 @@ function getImageBatchActivityMillis(data: FirebaseFirestore.DocumentData): numb
 
     if (!candidates.length) return null;
     return Math.max(...candidates);
-}
-
-function getImageBatchImageUrls(data: FirebaseFirestore.DocumentData): string[] {
-    if (!Array.isArray(data.itemsList)) return [];
-
-    const urls = new Set<string>();
-    data.itemsList.forEach((item: any) => {
-        if (!Array.isArray(item?.images)) return;
-        item.images.forEach((image: any) => {
-            if (typeof image?.url === 'string' && image.url.trim()) {
-                urls.add(image.url.trim());
-            }
-        });
-    });
-    return Array.from(urls);
 }
 
 function parseMenuItemStoragePathFromUrl(params: {
@@ -1046,6 +1113,56 @@ async function deleteImageBatchStorageUrls(params: {
     return { attempted, deleted, skipped, errors };
 }
 
+async function getUnreferencedImageBatchStorageUrls(params: {
+    data: FirebaseFirestore.DocumentData;
+    sId: string;
+    tId: string;
+    urls: string[];
+}): Promise<string[] | null> {
+    if (!params.urls.length) return [];
+    const projectId = normalizeMaintenanceDocumentId(params.data.projectId);
+    if (!projectId) {
+        logger.warn('[image_batch_job_retention_cleanup] Project reference check skipped for invalid project ID', {
+            failureCode: IMAGE_BATCH_PROJECT_REFERENCE_CHECK_FAILED_CODE,
+            ...getSchedulerStringContext('storeId', params.sId),
+            ...getSchedulerStringContext('tenantId', params.tId),
+        });
+        return null;
+    }
+
+    try {
+        const projectSnapshot = await db
+            .collection(DB_COLLECTIONS.PROJECTS)
+            .doc(params.tId)
+            .collection(params.sId)
+            .doc(projectId)
+            .get();
+        if (!projectSnapshot.exists) return params.urls;
+        const filtered = filterProjectReferencedImageBatchUrls(projectSnapshot.data(), params.urls);
+        if (!filtered.complete) {
+            logger.warn('[image_batch_job_retention_cleanup] Project reference scan exceeded safety bounds', {
+                failureCode: IMAGE_BATCH_PROJECT_REFERENCE_CHECK_FAILED_CODE,
+                candidateUrlCount: params.urls.length,
+                ...getSchedulerStringContext('projectId', projectId),
+                ...getSchedulerStringContext('storeId', params.sId),
+                ...getSchedulerStringContext('tenantId', params.tId),
+            });
+            return null;
+        }
+        return filtered.unreferencedUrls;
+    } catch (error) {
+        logger.warn('[image_batch_job_retention_cleanup] Project reference check failed', {
+            failureCode: IMAGE_BATCH_PROJECT_REFERENCE_CHECK_FAILED_CODE,
+            candidateUrlCount: params.urls.length,
+            ...getSchedulerStringContext('projectId', projectId),
+            ...getSchedulerStringContext('storeId', params.sId),
+            ...getSchedulerStringContext('tenantId', params.tId),
+            ...getSchedulerErrorContext(error),
+        });
+        return null;
+    }
+}
+
 function addStorageTotals(
     total: { attempted: number; deleted: number; skipped: number; errors: number },
     next: { attempted: number; deleted: number; skipped: number; errors: number },
@@ -1085,7 +1202,18 @@ async function compactImageBatchJobsInCollectionRef(params: {
             continue;
         }
 
-        const imageUrls = getImageBatchImageUrls(data);
+        const allImageUrls = getImageBatchImageUrls(data);
+        const candidateImageUrls = getImageBatchStorageCleanupUrls(data, status);
+        const imageUrls = await getUnreferencedImageBatchStorageUrls({
+            data,
+            sId: params.sId,
+            tId: params.tId,
+            urls: candidateImageUrls,
+        });
+        if (imageUrls === null) {
+            skipped++;
+            continue;
+        }
         let docStorage = { attempted: 0, deleted: 0, skipped: 0, errors: 0 };
         if (shouldDeleteImageBatchStorage(status) && imageUrls.length > 0) {
             docStorage = await deleteImageBatchStorageUrls({
@@ -1101,7 +1229,7 @@ async function compactImageBatchJobsInCollectionRef(params: {
         }
 
         batch.update(doc.ref, {
-            generatedImageUrlCountBeforePrune: imageUrls.length,
+            generatedImageUrlCountBeforePrune: allImageUrls.length,
             itemsExpiresAt: FieldValue.delete(),
             itemsList: FieldValue.delete(),
             itemsPrunedAt: params.now,
@@ -1151,7 +1279,17 @@ async function deleteExpiredImageBatchJobsInCollectionRef(params: {
             continue;
         }
 
-        const imageUrls = getImageBatchImageUrls(data);
+        const candidateImageUrls = getImageBatchStorageCleanupUrls(data, status);
+        const imageUrls = await getUnreferencedImageBatchStorageUrls({
+            data,
+            sId: params.sId,
+            tId: params.tId,
+            urls: candidateImageUrls,
+        });
+        if (imageUrls === null) {
+            skipped++;
+            continue;
+        }
         if (shouldDeleteImageBatchStorage(status) && imageUrls.length > 0) {
             const cleanup = await deleteImageBatchStorageUrls({
                 sId: params.sId,
@@ -1215,7 +1353,18 @@ async function compactLegacyImageBatchJobsInCollectionRef(params: {
             continue;
         }
 
-        const imageUrls = getImageBatchImageUrls(data);
+        const allImageUrls = getImageBatchImageUrls(data);
+        const candidateImageUrls = getImageBatchStorageCleanupUrls(data, data.status);
+        const imageUrls = await getUnreferencedImageBatchStorageUrls({
+            data,
+            sId: params.sId,
+            tId: params.tId,
+            urls: candidateImageUrls,
+        });
+        if (imageUrls === null) {
+            skipped++;
+            continue;
+        }
         let docStorage = { attempted: 0, deleted: 0, skipped: 0, errors: 0 };
         if (shouldDeleteImageBatchStorage(data.status) && imageUrls.length > 0) {
             docStorage = await deleteImageBatchStorageUrls({
@@ -1238,7 +1387,7 @@ async function compactLegacyImageBatchJobsInCollectionRef(params: {
 
         batch.update(doc.ref, {
             expiresAt: Timestamp.fromMillis(activityMillis + FUNCTION_RETENTION_CONFIG.IMAGE_BATCH_JOB_RETENTION_DAYS * DAY_MS),
-            generatedImageUrlCountBeforePrune: imageUrls.length,
+            generatedImageUrlCountBeforePrune: allImageUrls.length,
             itemsList: FieldValue.delete(),
             itemsPrunedAt: params.now,
             itemsPrunedReason: shouldDeleteImageBatchStorage(data.status)
@@ -1261,12 +1410,9 @@ async function compactLegacyImageBatchJobsInCollectionRef(params: {
 async function runImageBatchJobRetentionCleanup(): Promise<MaintenanceTaskResult> {
     const now = Timestamp.now();
     const storesSummaryDoc = await db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc('storesSummary').get();
-    const storesSummary = storesSummaryDoc.exists ? storesSummaryDoc.data()?.stores || {} : {};
+    const storesSummary = parsePlatformStoreSummary(storesSummaryDoc.exists ? storesSummaryDoc.data() : undefined);
     const storeEntries = Object.entries(storesSummary)
-        .filter((entry) => {
-            const storeInfo = entry[1] as any;
-            return storeInfo?.active !== false && storeInfo?.tId != null;
-        })
+        .filter(([, storeInfo]) => storeInfo.active !== false)
         .slice(0, IMAGE_BATCH_RETENTION_STORE_SCAN_LIMIT);
 
     let storesScanned = 0;
@@ -1276,9 +1422,8 @@ async function runImageBatchJobRetentionCleanup(): Promise<MaintenanceTaskResult
     let skipped = 0;
     const storage = { attempted: 0, deleted: 0, skipped: 0, errors: 0 };
 
-    for (const [sId, storeInfo] of storeEntries as [string, any][]) {
-        const tId = String(storeInfo.tId);
-        if (!tId || !sId) continue;
+    for (const [sId, storeInfo] of storeEntries) {
+        const tId = storeInfo.tId;
         const collectionRef = db.collection(DB_COLLECTIONS.IMAGE_BATCH_PROCESSING_JOBS).doc(tId).collection(String(sId));
         const expired = await deleteExpiredImageBatchJobsInCollectionRef({
             collectionRef,
@@ -1330,21 +1475,17 @@ async function runImageBatchJobRetentionCleanup(): Promise<MaintenanceTaskResult
 async function runMenuSnapshotCleanup(): Promise<MaintenanceTaskResult> {
     const now = Timestamp.now();
     const storesSummaryDoc = await db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc('storesSummary').get();
-    const storesSummary = storesSummaryDoc.exists ? storesSummaryDoc.data()?.stores || {} : {};
+    const storesSummary = parsePlatformStoreSummary(storesSummaryDoc.exists ? storesSummaryDoc.data() : undefined);
     const storeEntries = Object.entries(storesSummary)
-        .filter((entry) => {
-            const storeInfo = entry[1] as any;
-            return storeInfo?.active !== false && storeInfo?.tId != null;
-        })
+        .filter(([, storeInfo]) => storeInfo.active !== false)
         .slice(0, 200);
 
     let scanned = 0;
     let deleted = 0;
     let storesScanned = 0;
 
-    for (const [sId, storeInfo] of storeEntries as [string, any][]) {
-        const tId = String(storeInfo.tId);
-        if (!tId || !sId) continue;
+    for (const [sId, storeInfo] of storeEntries) {
+        const tId = storeInfo.tId;
         const result = await deleteExpiredDocsInCollectionRef({
             collectionRef: db.collection(DB_COLLECTIONS.MENU_SNAPSHOTS).doc(tId).collection(String(sId)),
             now,
@@ -1540,6 +1681,25 @@ async function runAiProviderHealthCheck(): Promise<MaintenanceTaskResult> {
     };
 }
 
+async function runSubscriptionReconciliation(): Promise<MaintenanceTaskResult> {
+    if (!isFunctionFeatureEnabled('ENABLE_SUBSCRIPTION_RECONCILIATION')) {
+        return { activity: false, details: { enabled: false, processed: 0, synced: 0, errors: 0 } };
+    }
+    const result = await reconcileSubscriptions();
+    if (!result.success || result.errors > 0) {
+        throw new Error(`Subscription reconciliation failed for ${result.errors} subscription(s)`);
+    }
+    return {
+        activity: result.synced > 0,
+        details: {
+            enabled: true,
+            processed: result.processed,
+            synced: result.synced,
+            errors: result.errors,
+        },
+    };
+}
+
 async function runResellerLicenseExpiry(): Promise<MaintenanceTaskResult> {
     if (!isFunctionFeatureEnabled('ENABLE_RESELLER_DASHBOARD')) {
         return {
@@ -1548,100 +1708,167 @@ async function runResellerLicenseExpiry(): Promise<MaintenanceTaskResult> {
         };
     }
 
-    const graceDate = new Date();
-    graceDate.setDate(graceDate.getDate() - 7);
-
-    const expiredSubs = await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS)
-        .where('billingMode', '==', 'manual')
-        .where('status', '==', 'active')
-        .where('validUntil', '<=', Timestamp.fromDate(graceDate))
-        .limit(100)
-        .get();
-
+    const graceDate = new Date(Date.now() - 7 * DAY_MS);
+    const graceCutoff = Timestamp.fromDate(graceDate);
+    const pageSize = 100;
+    const maxPages = 5;
+    let checked = 0;
     let expired = 0;
     let errors = 0;
-    let profileDecrementErrors = 0;
     let entitlementSyncErrors = 0;
+    let pendingEntitlementsChecked = 0;
+    let pendingEntitlementsRepaired = 0;
+    let limited = false;
 
-    for (const subDoc of expiredSubs.docs) {
-        const subData = subDoc.data();
-        const storeId = String(subData.storeId || subData.sId || '').trim();
-        const tenantId = String(subData.tenantId || subData.tId || '').trim();
-        const resellerProfileId = String(subData.resellerProfileId || subData.resellerId || '').trim();
-        const now = Timestamp.now();
+    let pendingCursor: FirebaseFirestore.QueryDocumentSnapshot | null = null;
+    for (let page = 0; page < maxPages; page += 1) {
+        let pendingQuery = db.collection(DB_COLLECTIONS.SUBSCRIPTIONS)
+            .where('billingEntitlementSyncPending', '==', true)
+            .orderBy(FieldPath.documentId())
+            .limit(pageSize);
+        if (pendingCursor) pendingQuery = pendingQuery.startAfter(pendingCursor);
+        const pendingSnapshot = await pendingQuery.get();
+        if (pendingSnapshot.empty) break;
+        pendingEntitlementsChecked += pendingSnapshot.size;
 
-        try {
-            await subDoc.ref.update({
-                status: 'expired',
-                subscriptionEndDate: now,
-                cycleEndDate: now,
-                modifiedOn: now,
-                lastWebhook: {
-                    event: 'manual_license.expired',
-                    timestamp: now,
-                },
-                analyticsEntitlement: {
-                    activePlanType: null,
-                    status: 'expired',
-                    syncedAt: now,
-                    source: 'menulistMaintenanceScheduler:resellerLicenseExpiry',
-                },
-                statuses: [
-                    ...(Array.isArray(subData.statuses) ? subData.statuses : []),
-                    {
-                        status: 'expired',
-                        timestamp: now,
-                        amount: Number(subData.amount || 0),
-                        currency: subData.currency || 'INR',
-                        remark: 'Manual license expired after grace period',
-                    },
-                ],
-            });
-
-            if (resellerProfileId) {
-                await db.collection(DB_COLLECTIONS.RESELLER_PROFILES)
-                    .doc(resellerProfileId)
-                    .update({
-                        currentActiveOfflineStores: FieldValue.increment(-1),
-                        modifiedOn: now,
-                    })
-                    .catch((profileError) => {
-                        profileDecrementErrors += 1;
-                        logger.warn('[reseller_license_expiry] Failed to decrement reseller offline count', {
-                            failureCode: RESELLER_PROFILE_COUNT_DECREMENT_FAILED_CODE,
-                            ...getSchedulerStringContext('subscriptionId', subDoc.id),
-                            ...getSchedulerStringContext('resellerProfileId', resellerProfileId),
-                            ...getSchedulerStringContext('storeId', storeId),
-                            ...getSchedulerStringContext('tenantId', tenantId),
-                            ...getSchedulerErrorContext(profileError),
-                        });
-                    });
+        for (const pendingDoc of pendingSnapshot.docs) {
+            const subscription = {
+                ...(pendingDoc.data() || {}),
+                id: pendingDoc.id,
+            } as Record<string, any>;
+            try {
+                const entitlementSynced = await syncStorePlanEntitlement(
+                    db,
+                    subscription,
+                    'menulistMaintenanceScheduler:resellerLicenseExpiryRetry',
+                );
+                if (!entitlementSynced) throw new Error('Subscription entitlement scope is invalid.');
+                await pendingDoc.ref.set({
+                    billingEntitlementSyncPending: FieldValue.delete(),
+                    modifiedOn: FieldValue.serverTimestamp(),
+                }, { merge: true });
+                pendingEntitlementsRepaired += 1;
+            } catch (entitlementError) {
+                entitlementSyncErrors += 1;
+                logger.warn('[reseller_license_expiry] Failed to retry pending entitlement sync', {
+                    failureCode: RESELLER_LICENSE_EXPIRE_FAILED_CODE,
+                    ...getSchedulerStringContext('subscriptionId', pendingDoc.id),
+                    ...getSchedulerErrorContext(entitlementError),
+                });
             }
+        }
 
-            if (storeId) {
-                try {
-                    const entitlementUpdate = {
-                        activePlanType: FieldValue.delete(),
-                        analyticsEntitlementUpdatedAt: FieldValue.serverTimestamp(),
-                    };
-                    await Promise.all([
-                        db.collection(DB_COLLECTIONS.STORES).doc(storeId).set(entitlementUpdate, { merge: true }),
-                        db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc('storesSummary').set({
-                            lastUpdated: FieldValue.serverTimestamp(),
-                            stores: {
-                                [storeId]: {
-                                    activePlanType: FieldValue.delete(),
-                                },
+        pendingCursor = pendingSnapshot.docs[pendingSnapshot.docs.length - 1] || null;
+        if (pendingSnapshot.size < pageSize || !pendingCursor) break;
+        if (page === maxPages - 1) limited = true;
+    }
+
+    for (let page = 0; page < maxPages; page += 1) {
+        const expiredSubs = await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS)
+            .where('billingMode', '==', 'manual')
+            .where('status', '==', 'active')
+            .where('validUntil', '<=', graceCutoff)
+            .limit(pageSize)
+            .get();
+        if (expiredSubs.empty) break;
+        checked += expiredSubs.size;
+
+        for (const subDoc of expiredSubs.docs) {
+            let storeId = '';
+            let tenantId = '';
+            try {
+                const application = await db.runTransaction(async (transaction) => {
+                    const currentSnapshot = await transaction.get(subDoc.ref);
+                    if (!currentSnapshot.exists) return null;
+                    const current = {
+                        ...(currentSnapshot.data() || {}),
+                        id: currentSnapshot.id,
+                    } as Record<string, any>;
+                    const subscriptionId = normalizeSubscriptionDocumentId(currentSnapshot.id);
+                    const tenantScope = normalizeScopeDocumentId(current.tenantId ?? current.tId);
+                    const storeScope = normalizeScopeDocumentId(current.storeId ?? current.sId);
+                    const validUntilMillis = timestampMillis(current.validUntil);
+                    if (
+                        !subscriptionId
+                        || !tenantScope
+                        || !storeScope
+                        || current.billingMode !== 'manual'
+                        || current.status !== 'active'
+                        || validUntilMillis === null
+                        || validUntilMillis > graceCutoff.toMillis()
+                    ) return null;
+
+                    const resellerProfileId = normalizeMaintenanceDocumentId(
+                        current.resellerProfileId || current.resellerId,
+                    );
+                    const resellerProfileRef = resellerProfileId
+                        ? db.collection(DB_COLLECTIONS.RESELLER_PROFILES).doc(resellerProfileId)
+                        : null;
+                    const resellerProfileSnapshot = resellerProfileRef
+                        ? await transaction.get(resellerProfileRef)
+                        : null;
+                    const now = Timestamp.now();
+                    const amount = Number(current.amount);
+                    const subscriptionUpdate = {
+                        billingEntitlementSyncPending: true,
+                        status: 'expired',
+                        subscriptionEndDate: now,
+                        cycleEndDate: now,
+                        modifiedOn: now,
+                        lastWebhook: {
+                            event: 'manual_license.expired',
+                            timestamp: now,
+                        },
+                        statuses: [
+                            ...(Array.isArray(current.statuses) ? current.statuses : []),
+                            {
+                                status: 'expired',
+                                timestamp: now,
+                                amount: Number.isFinite(amount) && amount >= 0 ? amount : 0,
+                                currency: current.currency || 'INR',
+                                remark: 'Manual license expired after grace period',
                             },
-                        }, { merge: true }),
-                        revalidatePublicClientCacheForStore(storeId, 'resellerLicenseExpiry', {
-                            touchDigitalScreen: true,
-                        }),
-                        invalidateOwnerBusinessAssistantContextPackets({
-                            tId: tenantId,
-                            sId: storeId,
-                        }),
-                    ]);
+                        ],
+                    };
+                    transaction.update(subDoc.ref, subscriptionUpdate);
+                    if (resellerProfileRef && resellerProfileSnapshot?.exists) {
+                        const activeOfflineStores = Number(
+                            resellerProfileSnapshot.data()?.currentActiveOfflineStores,
+                        );
+                        transaction.update(resellerProfileRef, {
+                            currentActiveOfflineStores: Number.isFinite(activeOfflineStores)
+                                ? Math.max(0, Math.floor(activeOfflineStores) - 1)
+                                : 0,
+                            modifiedOn: now,
+                        });
+                    }
+
+                    return {
+                        subscription: {
+                            ...current,
+                            ...subscriptionUpdate,
+                            id: currentSnapshot.id,
+                        },
+                        storeId: storeScope.documentId,
+                        tenantId: tenantScope.documentId,
+                    };
+                });
+                if (!application) continue;
+                storeId = application.storeId;
+                tenantId = application.tenantId;
+                expired += 1;
+
+                try {
+                    const entitlementSynced = await syncStorePlanEntitlement(
+                        db,
+                        application.subscription,
+                        'menulistMaintenanceScheduler:resellerLicenseExpiry',
+                    );
+                    if (!entitlementSynced) throw new Error('Subscription entitlement scope is invalid.');
+                    await subDoc.ref.set({
+                        billingEntitlementSyncPending: FieldValue.delete(),
+                        modifiedOn: FieldValue.serverTimestamp(),
+                    }, { merge: true });
                 } catch (entitlementError) {
                     entitlementSyncErrors += 1;
                     logger.warn('[reseller_license_expiry] Failed to sync expired manual entitlement', {
@@ -1652,31 +1879,33 @@ async function runResellerLicenseExpiry(): Promise<MaintenanceTaskResult> {
                         ...getSchedulerErrorContext(entitlementError),
                     });
                 }
+            } catch (error) {
+                errors += 1;
+                logger.error('[reseller_license_expiry] Failed to expire manual subscription', {
+                    failureCode: RESELLER_LICENSE_EXPIRE_FAILED_CODE,
+                    ...getSchedulerStringContext('subscriptionId', subDoc.id),
+                    ...getSchedulerStringContext('storeId', storeId),
+                    ...getSchedulerStringContext('tenantId', tenantId),
+                    ...getSchedulerErrorContext(error),
+                });
             }
-
-            expired += 1;
-        } catch (error) {
-            errors += 1;
-            logger.error('[reseller_license_expiry] Failed to expire manual subscription', {
-                failureCode: RESELLER_LICENSE_EXPIRE_FAILED_CODE,
-                ...getSchedulerStringContext('subscriptionId', subDoc.id),
-                ...getSchedulerStringContext('storeId', storeId),
-                ...getSchedulerStringContext('tenantId', tenantId),
-                ...getSchedulerErrorContext(error),
-            });
         }
+
+        if (expiredSubs.size < pageSize) break;
+        if (page === maxPages - 1) limited = true;
     }
 
     return {
-        activity: expired > 0 || errors > 0 || profileDecrementErrors > 0 || entitlementSyncErrors > 0,
+        activity: expired > 0 || errors > 0 || entitlementSyncErrors > 0 || pendingEntitlementsRepaired > 0,
         details: {
             enabled: true,
-            checked: expiredSubs.size,
+            checked,
             expired,
             errors,
-            profileDecrementErrors,
             entitlementSyncErrors,
-            limited: expiredSubs.size >= 100,
+            pendingEntitlementsChecked,
+            pendingEntitlementsRepaired,
+            limited,
         },
     };
 }
@@ -1685,7 +1914,7 @@ const TASKS: MaintenanceTask[] = [
     {
         name: 'messaging_intake',
         cadence: { type: 'every', minutes: 2 },
-        lockTtlMs: 4 * MINUTE_MS,
+        lockTtlMs: 10 * MINUTE_MS,
         run: runMessagingIntake,
     },
     {
@@ -1717,6 +1946,12 @@ const TASKS: MaintenanceTask[] = [
         cadence: { type: 'daily', hourUtc: 1, minuteUtc: 20, retryAfterMinutes: 60 },
         lockTtlMs: 5 * MINUTE_MS,
         run: runAiProviderHealthCheck,
+    },
+    {
+        name: 'subscription_reconciliation',
+        cadence: { type: 'daily', hourUtc: 2, minuteUtc: 20, retryAfterMinutes: 120 },
+        lockTtlMs: 10 * MINUTE_MS,
+        run: runSubscriptionReconciliation,
     },
     {
         name: 'reseller_license_expiry',

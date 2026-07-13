@@ -1,7 +1,10 @@
 # Messaging Onboarding — Mobile Support Assessment
 
 **Feature:** Messaging Onboarding
-**Last Updated:** May 17, 2026
+**Status:** Source-backed mobile assessment — not current provider launch evidence
+**Last Updated:** July 10, 2026
+
+> **Launch boundary:** Not current launch certification or deploy approval. Current source registers WhatsApp only, while checked-in Functions environments keep provider processing disabled. `/whatsapp` is informational and routes its actions to the signed-in `/create-menu` photo or public-link intake. Provider-enabled mobile behavior still requires real-device WhatsApp handoff, preview, approval, failure-path, and production-host evidence.
 
 ---
 

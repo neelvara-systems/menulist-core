@@ -8,12 +8,11 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
-import { withAuth } from '@/middleware/auth';
-import { generateWeeklyNarrativeLocally } from '../generate-local/route';
+import { POST as generateWeeklyNarrativePost } from '../generate-local/route';
 
-export const POST = withAuth(async (request: NextRequest, session) => {
+export async function POST(request: NextRequest) {
   try {
-    return await generateWeeklyNarrativeLocally(request, session);
+    return await generateWeeklyNarrativePost(request);
 
   } catch (error: any) {
     logRuntimeFailure('weekly_narrative_regeneration_failed', error, {
@@ -27,4 +26,4 @@ export const POST = withAuth(async (request: NextRequest, session) => {
       { status: 500 }
     );
   }
-});
+}

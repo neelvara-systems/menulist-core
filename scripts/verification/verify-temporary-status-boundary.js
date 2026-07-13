@@ -58,6 +58,7 @@ const packageJson = read('package.json');
 const features = read('src/config/features.ts');
 const route = read('src/app/api/store/temp-status/route.ts');
 const publicBusinessApi = read('src/app/api/public/v1/business/route.ts');
+const publicBusinessProjection = read('src/lib/publicApi/businessProjection.ts');
 const clientResponse = read('src/lib/tempStatus/clientResponse.ts');
 const desktopCard = read('src/components/templates/main-app/businessSettings/TempStatusCard.tsx');
 const mobileTempStatus = read('src/components/mobile/screens/MobileTempStatusScreen.tsx');
@@ -250,13 +251,21 @@ forbidToken(mobileHours, 'if (!res.ok) throw new Error();', 'Mobile Today Tempor
 ].forEach((token) => requireToken(obpResolvedSurface, token, 'OBP Temporary Status output'));
 
 [
-  'function getActiveTempStatus(tempStatus: any)',
-  'new Date(tempStatus.expiresAt).getTime()',
-  'expiresAtMs <= Date.now()',
+  "import { getActivePublicTempStatus, normalizePublicBusinessAttributes } from '@lib/publicApi/businessProjection';",
   'const activeTempStatus = FEATURE_FLAGS.ENABLE_TEMP_STATUS',
+  '? getActivePublicTempStatus(storeData.tempStatus)',
   'tempStatus: activeTempStatus',
 ].forEach((token) => requireToken(publicBusinessApi, token, 'Public business API active Temporary Status output'));
 forbidToken(publicBusinessApi, 'tempStatus: storeData.tempStatus ? {', 'Public business API expired Temporary Status leak');
+
+[
+  'export function getActivePublicTempStatus(',
+  'value: unknown,',
+  'const expiresAtMs = Date.parse(status.expiresAt);',
+  'if (!Number.isFinite(expiresAtMs) || expiresAtMs <= nowMs) return null;',
+  "PUBLIC_TEMP_STATUS_TYPES.has(status.type as PublicTempStatus['type'])",
+  "message.trim().slice(0, 100)",
+].forEach((token) => requireToken(publicBusinessProjection, token, 'Public business Temporary Status projection'));
 
 [
   'buildTempStatusSchema(storeData?.tempStatus)',

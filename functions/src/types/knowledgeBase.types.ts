@@ -11,7 +11,7 @@ import { SourceFileType } from "./constants";
 // STATUS CONSTANTS
 // ═══════════════════════════════════════════════════════════════════════════
 
-export const INGESTION_JOB_STATUS: Record<string, string> = {
+export const INGESTION_JOB_STATUS = {
     PENDING: "pending",
     PROCESSING: "processing",
     NEEDS_REVIEW: "needs_review",
@@ -19,21 +19,21 @@ export const INGESTION_JOB_STATUS: Record<string, string> = {
     PUBLISHED: "published",
     FAILED: "failed",
     CANCELLED: "cancelled",
-}
+} as const;
 
-export const ARTICLE_RECONCILIATION_STATUS: Record<string, string> = {
+export const ARTICLE_RECONCILIATION_STATUS = {
     UNRESOLVED: "unresolved",
     REPLACE: "replace",
     DISCARD: "discard",
     KEEP_BOTH: "keep_both",
-}
+} as const;
 
-export const ARTICLE_STATUS: Record<string, string> = {
+export const ARTICLE_STATUS = {
     DRAFT: "draft",
     NEEDS_REVIEW: "needs_review",
     PUBLISHED: "published",
     ARCHIVED: "archived",
-}
+} as const;
 
 // ═══════════════════════════════════════════════════════════════════════════
 // INGESTION JOB TYPES
@@ -44,6 +44,8 @@ export interface IngestionJobSection {
     title: string;
     description: string;
     active: boolean;
+    index?: number;
+    url?: string;
     articles?: IngestionJobArticle[];
 }
 
@@ -60,7 +62,10 @@ export interface KnowledgeBaseGeneratedFaq {
 export interface IngestionJobArticle {
     id: string;
     title: string;
-    content: any; // tiptap json with provenance
+    content?: any; // tiptap json with provenance; omitted from compact review navigation
+    active?: boolean;
+    index?: number;
+    url?: string;
     reEmbedding?: boolean;
     qualityScore?: number;
     entityIds?: string[];
@@ -72,6 +77,9 @@ export interface IngestionJobCategory {
     title: string;
     description: string;
     active: boolean;
+    icon?: string;
+    index?: number;
+    url?: string;
     sections?: IngestionJobSection[];
     articles?: IngestionJobArticle[];
 }
@@ -83,21 +91,32 @@ export interface IngestionJobCategoriesMap {
 export interface IngestionJobSourceFile {
     storagePath: string;
     fileName: string;
-    type: SourceFileType;
+    type: SourceFileType | string;
     gsUri: string;
     downloadURL: string;
+}
+
+export interface KnowledgeBaseArticleSummary {
+    id: string;
+    title: string;
+    categoryTitle: string;
+    sectionTitle?: string;
+    status: string;
+    active: boolean;
+    score?: number;
 }
 
 export interface IngestionJobArticleToReview {
     id: string;
     title: string;
     status: typeof ARTICLE_RECONCILIATION_STATUS[keyof typeof ARTICLE_RECONCILIATION_STATUS];
-    similarArticles: KnowledgeBaseArticleType[];
+    similarArticles: KnowledgeBaseArticleSummary[];
 }
 
 export interface IngestionJob {
     id: string;
-    title: string;
+    pId?: 'AL';
+    title?: string;
     status: typeof INGESTION_JOB_STATUS[keyof typeof INGESTION_JOB_STATUS];
     sourceFiles: IngestionJobSourceFile[];
 
@@ -108,14 +127,36 @@ export interface IngestionJob {
     // Task queue keys
     articlesEmbeddedCount?: number;
     articlesToEmbedCount?: number;
+    embeddingPendingArticleIds?: string[];
+    embeddingCompletedArticleIds?: string[];
+    embeddingFailedArticleIds?: string[];
+    embeddingEnqueueStatus?: 'pending' | 'queued' | 'failed';
+    embeddingRunId?: string;
+    generationRun?: {
+        id: string;
+        status: 'processing' | 'completed' | 'failed';
+        startedAt: Timestamp;
+        leaseExpiresAt: Timestamp;
+        completedAt?: Timestamp | null;
+    };
+    deletionRun?: {
+        id: string;
+        status: 'processing' | 'failed';
+        startedAt: Timestamp;
+        leaseExpiresAt: Timestamp;
+        completedAt?: Timestamp | null;
+        failedCount: number;
+    };
 
     // Runtime fields
+    errorMessage?: string;
+    failureStage?: 'generation' | 'publishing_orchestration' | 'embedding';
     publishedOn?: Timestamp;
     createdOn: Timestamp;
     modifiedOn: Timestamp;
 
-    sId: string;
-    tId: string;
+    sId: string | number;
+    tId: string | number;
     uId: string;
 }
 
@@ -179,6 +220,7 @@ export interface KnowledgeBaseArticleSource {
 
 export interface KnowledgeBaseArticleType {
     id: string;
+    pId?: 'AL';
     active: boolean;
     categoryId: string;
     sectionId: string;
@@ -188,17 +230,42 @@ export interface KnowledgeBaseArticleType {
     index: number;
     url: string;
     content: any; // JSON (Tiptap editor format)
-    embedding: any;
+    embedding?: any;
+    embeddingV2?: any;
     tags: string[];
     createdOn: Timestamp;
     modifiedOn: Timestamp;
     status: typeof ARTICLE_STATUS[keyof typeof ARTICLE_STATUS];
     jobId: string;
     sources: KnowledgeBaseArticleSource[] | null;
+    entityIds?: string[];
+    contextKeys?: string[];
     faqIds?: string[];
     generatedFaqs?: KnowledgeBaseGeneratedFaq[];
+    qualityScore?: number;
+    reconciliation?: {
+        status?: string;
+        similarArticleIds?: string[];
+        similarArticles?: KnowledgeBaseArticleSummary[];
+    };
     tId?: number; // Tenant ID — multi-tenant isolation. Inherited from parent kb_generation_jobs doc.
     sId?: number; // Store ID — multi-tenant isolation. Inherited from parent kb_generation_jobs doc.
+    embeddingStatus?: 'pending' | 'processing' | 'embedded' | 'failed';
+    embeddingCacheVersion?: string;
+    embeddingSourceHash?: string;
+    embeddingV1CacheVersion?: string | null;
+    embeddingV1SourceHash?: string | null;
+    embeddingV2CacheVersion?: string;
+    embeddingV2SourceHash?: string;
+    embeddingVersion?: 'v1' | 'v2';
+    embeddingRun?: {
+        id: string;
+        status: 'processing' | 'completed' | 'failed';
+        sourceHash: string;
+        startedAt: Timestamp;
+        leaseExpiresAt: Timestamp;
+        completedAt?: Timestamp | null;
+    };
 }
 
 export interface KnowledgeBaseArticleEmbeddingPayload {

@@ -11,6 +11,7 @@ const logger = functions.logger;
 const MANUAL_CHAT_AGGREGATION_DAY_FAILED = 'MANUAL_CHAT_AGGREGATION_DAY_FAILED';
 const MANUAL_CHAT_AGGREGATION_FAILED = 'MANUAL_CHAT_AGGREGATION_FAILED';
 const MANUAL_CHAT_AGGREGATION_STATUS_UPDATE_FAILED = 'MANUAL_CHAT_AGGREGATION_STATUS_UPDATE_FAILED';
+const ANSWERLATTICE_CHAT_DAILY_SESSION_LIMIT = 2000;
 
 /**
  * MANUAL AGGREGATION TRIGGER (PLATFORM OWNER ONLY)
@@ -59,10 +60,10 @@ export const triggerAggregationManual = onCall(functionOptions, async (request) 
 
     // Extract user role and IDs from token
     const userRole = String(context.token.platformRole || context.token.role || '');
-    const tId = context.token.tenantId as string;
-    const storeId = context.token.storeId as string;
+    const tId = String(context.token.tenantId || '').trim();
+    const storeId = String(context.token.storeId || '').trim();
 
-    if (!tId || !storeId) {
+    if (!/^[1-9]\d*$/.test(tId) || !/^[1-9]\d*$/.test(storeId)) {
         throw new HttpsError(
             'failed-precondition',
             'Tenant ID and Store ID not found in authentication token'
@@ -174,24 +175,17 @@ export const triggerAggregationManual = onCall(functionOptions, async (request) 
                 const docId = getChatAnalyticsDocId(tId, storeId, dateStr);
                 const existingDoc = await db.collection(DB_COLLECTIONS.CHAT_ANALYTICS).doc(docId).get();
 
-                if (existingDoc.exists) {
-                    logger.info('[ManualChatAggregation] Date already aggregated; skipping', {
-                        tId: getAnalyticsIdContext(tId),
-                        storeId: getAnalyticsIdContext(storeId),
-                        date: dateStr,
-                    });
-                    results.daysSkipped++;
-                    continue;
-                }
-
                 // Aggregate for this day
                 const stats = await aggregateForStoreAndDate(db, tId, storeId, targetDate);
 
-                // Save aggregation
-                if (stats.totalChats > 0) {
+                // Rebuild existing summaries as well so delayed feedback and
+                // legacy pre-product-scope documents are corrected.
+                if (stats.totalChats > 0 || existingDoc.exists) {
                     await db.collection(DB_COLLECTIONS.CHAT_ANALYTICS).doc(docId).set({
                         ...stats,
-                        createdOn: FieldValue.serverTimestamp(),
+                        createdOn: existingDoc.exists
+                            ? existingDoc.get('createdOn') || FieldValue.serverTimestamp()
+                            : FieldValue.serverTimestamp(),
                         modifiedOn: FieldValue.serverTimestamp()
                     });
 
@@ -325,16 +319,20 @@ async function aggregateForStoreAndDate(
 
     // Query all chats for this STORE on this date
     const chatsSnapshot = await db.collection(DB_COLLECTIONS.CHAT_SESSIONS)
+        .where('pId', '==', 'AL')
         .where('tId', '==', tIdNumber)  // ✅ Use number
         .where('sId', '==', storeIdNumber)  // ✅ Use number (CRITICAL: Filter by storeId)
         .where('createdOn', '>=', Timestamp.fromDate(startOfDay))  // ✅ Direct import
         .where('createdOn', '<=', Timestamp.fromDate(endOfDay))    // ✅ Direct import
+        .orderBy('createdOn', 'asc')
+        .limit(ANSWERLATTICE_CHAT_DAILY_SESSION_LIMIT + 1)
         .get();
 
     // Initialize stats
     const stats = {
-        tId,
-        sId: storeId, // CRITICAL: Include storeId
+        pId: 'AL' as const,
+        tId: tIdNumber,
+        sId: storeIdNumber, // CRITICAL: Include storeId
         date: dateStr,
         totalChats: 0,
         qnaChats: 0,
@@ -345,14 +343,17 @@ async function aggregateForStoreAndDate(
         totalFeedback: 0,
         totalRegenerations: 0,
         topQuestions: [] as Array<{ question: string; count: number }>,
-        knowledgeGaps: [] as Array<{ question: string; count: number; examples: string[] }>
+        knowledgeGaps: [] as Array<{ question: string; count: number; examples: string[] }>,
+        sourceComplete: chatsSnapshot.size <= ANSWERLATTICE_CHAT_DAILY_SESSION_LIMIT,
+        sourceSessionCount: Math.min(chatsSnapshot.size, ANSWERLATTICE_CHAT_DAILY_SESSION_LIMIT),
+        sourceLimit: ANSWERLATTICE_CHAT_DAILY_SESSION_LIMIT,
     };
 
     const questionCounts: Record<string, number> = {};
     const gapCounts: Record<string, { question: string; count: number; examples: string[] }> = {};
 
     // Process each chat session
-    chatsSnapshot.forEach((doc) => {
+    chatsSnapshot.docs.slice(0, ANSWERLATTICE_CHAT_DAILY_SESSION_LIMIT).forEach((doc) => {
         const data = doc.data();
         stats.totalChats++;
 

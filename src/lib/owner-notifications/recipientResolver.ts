@@ -1,8 +1,15 @@
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
+import {
+    normalizeOwnerNotificationDocumentId,
+    normalizeOwnerNotificationNumericScopeDocumentId,
+    type OwnerNotificationNumericScopeDocumentId,
+} from '@data/shared/ownerNotificationDeliveryBoundary';
 import { admin } from '@lib/firebase/firebaseAdmin';
-import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
-import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
+import {
+    answerlatticeAdminApp,
+    answerlatticeFirestoreAdmin,
+} from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { buildWhatsAppPhoneParam } from '@lib/phone/phoneNumber';
 import type { Firestore } from 'firebase-admin/firestore';
 import type {
@@ -16,45 +23,41 @@ function isValidEmail(value?: string): value is string {
 }
 
 function cleanEmail(value?: unknown): string | undefined {
-    return typeof value === 'string' && isValidEmail(value) ? value.trim() : undefined;
+    if (typeof value !== 'string') return undefined;
+    const email = value.trim();
+    return email.length <= 254 && isValidEmail(email) ? email : undefined;
 }
 
-function cleanString(value?: unknown): string | undefined {
-    return typeof value === 'string' && value.trim() ? value.trim() : undefined;
+function cleanString(value?: unknown, maxLength = 160): string | undefined {
+    if (typeof value !== 'string') return undefined;
+    const normalized = value
+        .replace(/[\u0000-\u001f\u007f]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    return normalized ? normalized.slice(0, maxLength) : undefined;
 }
 
 function cleanPhone(value?: unknown, context?: Record<string, any> | null): string | undefined {
-    const raw = cleanString(value);
+    const raw = cleanString(value, 64);
     if (!raw) return undefined;
 
     const phone = buildWhatsAppPhoneParam({
-        countryCode: cleanString(context?.countryCode),
-        dialCode: cleanString(context?.dialCode),
+        countryCode: cleanString(context?.countryCode, 8),
+        dialCode: cleanString(context?.dialCode, 8),
         phone: raw,
         phoneNumber: raw,
     });
     return phone.length >= 10 && phone.length <= 15 ? phone : undefined;
 }
 
-type MenuListOwnerNotificationScopeDocumentId = {
-    numericId: number;
-    documentId: string;
-};
-
-function normalizeOwnerNotificationRecipientDocumentId(value: unknown): string | null {
-    const raw = typeof value === 'string' || typeof value === 'number' ? String(value) : '';
-    const documentId = raw.trim();
-    return documentId === raw && isValidFirestoreDocumentId(documentId) ? documentId : null;
+export function normalizeOwnerNotificationRecipientDocumentId(value: unknown): string | null {
+    return normalizeOwnerNotificationDocumentId(value);
 }
 
-function normalizeMenuListOwnerNotificationScopeDocumentId(value: unknown): MenuListOwnerNotificationScopeDocumentId | null {
-    const documentId = normalizeOwnerNotificationRecipientDocumentId(value);
-    if (!documentId) return null;
-
-    const numericId = Number(documentId);
-    return Number.isSafeInteger(numericId) && numericId > 0 && String(numericId) === documentId
-        ? { numericId, documentId }
-        : null;
+export function normalizeMenuListOwnerNotificationScopeDocumentId(
+    value: unknown,
+): OwnerNotificationNumericScopeDocumentId | null {
+    return normalizeOwnerNotificationNumericScopeDocumentId(value);
 }
 
 function resolveFirstPhone(context: Record<string, any> | null | undefined, ...values: unknown[]): string | undefined {
@@ -76,38 +79,61 @@ function hasWhatsAppConsent(settings?: Record<string, any> | null): boolean {
 }
 
 function getAnswerlatticeDb(): Firestore | null {
-    const db = answerlatticeFirestoreAdmin as any;
-    return db && typeof db.collection === 'function' ? answerlatticeFirestoreAdmin : null;
+    return answerlatticeAdminApp ? answerlatticeFirestoreAdmin : null;
 }
 
 export async function resolveOwnerNotificationScope(
     event: OwnerNotificationEventDoc,
+    options: { onRead?: () => void } = {},
 ): Promise<OwnerNotificationScope> {
     if (event.productId === PRODUCT_IDS.ANSWERLATTICE) {
         const db = getAnswerlatticeDb();
-        const workspaceDocumentId = normalizeOwnerNotificationRecipientDocumentId(event.storeId);
-        if (!db || !workspaceDocumentId) return {};
+        const tenantDocumentId = normalizeOwnerNotificationRecipientDocumentId(event.tenantId);
+        const workspaceDocumentId = normalizeOwnerNotificationRecipientDocumentId(event.workspaceId ?? event.storeId);
+        if (!db || !tenantDocumentId || !workspaceDocumentId) return { readCount: 0 };
         const storeSnap = await db.collection(DB_COLLECTIONS.STORES).doc(workspaceDocumentId).get();
-        return { workspaceData: storeSnap.exists ? storeSnap.data() || null : null };
+        options.onRead?.();
+        if (!storeSnap.exists) return { readCount: 1 };
+        const workspaceData = storeSnap.data() || null;
+        const storedTenantDocumentId = normalizeOwnerNotificationRecipientDocumentId(
+            workspaceData?.tenantId ?? workspaceData?.tId,
+        );
+        return storedTenantDocumentId === tenantDocumentId
+            ? { readCount: 1, workspaceData }
+            : { readCount: 1 };
     }
 
     const tenantScope = normalizeMenuListOwnerNotificationScopeDocumentId(event.tenantId);
     const storeScope = normalizeMenuListOwnerNotificationScopeDocumentId(event.storeId);
-    if (!tenantScope || !storeScope) return {};
+    if (!tenantScope || !storeScope) return { readCount: 0 };
 
     const db = admin.firestore();
     const storeSnap = await db.collection(DB_COLLECTIONS.STORES).doc(storeScope.documentId).get();
+    options.onRead?.();
     if (storeSnap.exists) {
         const storeData = storeSnap.data() || null;
-        return Number(storeData?.tenantId) === tenantScope.numericId ? { storeData } : {};
+        const storedTenantScope = normalizeMenuListOwnerNotificationScopeDocumentId(
+            storeData?.tenantId ?? storeData?.tId,
+        );
+        return storedTenantScope?.numericId === tenantScope.numericId
+            ? { readCount: 1, storeData }
+            : { readCount: 1 };
     }
 
     const legacyStoreSnap = await db
         .collection(DB_COLLECTIONS.TENANTS).doc(tenantScope.documentId)
         .collection(DB_COLLECTIONS.STORES).doc(storeScope.documentId)
         .get();
+    options.onRead?.();
 
-    return { storeData: legacyStoreSnap.exists ? legacyStoreSnap.data() || null : null };
+    if (!legacyStoreSnap.exists) return { readCount: 2 };
+    const storeData = legacyStoreSnap.data() || null;
+    const storedTenantScope = normalizeMenuListOwnerNotificationScopeDocumentId(
+        storeData?.tenantId ?? storeData?.tId,
+    );
+    return !storedTenantScope || storedTenantScope.numericId === tenantScope.numericId
+        ? { readCount: 2, storeData }
+        : { readCount: 2 };
 }
 
 export function resolveOwnerNotificationRecipient(
@@ -131,13 +157,12 @@ export function resolveOwnerNotificationRecipient(
 
     if (event.productId === PRODUCT_IDS.ANSWERLATTICE) {
         const resolvedEmail = event.recipientRole === 'support_owner'
-            ? cleanEmail(data.supportEmail) || cleanEmail(settings.primaryEmail) || cleanEmail(hints.email)
-            : cleanEmail(settings.primaryEmail) || cleanEmail(data.ownerEmail) || cleanEmail(hints.email);
+            ? cleanEmail(data.supportEmail) || cleanEmail(settings.primaryEmail)
+            : cleanEmail(settings.primaryEmail) || cleanEmail(data.ownerEmail);
         const resolvedWhatsappNumber = resolveFirstPhone(
             phoneContext,
             settings.whatsappNumber,
             data.whatsappNumber,
-            hints.whatsappNumber,
             data.phone,
             data.phoneNumber,
         );
@@ -145,7 +170,7 @@ export function resolveOwnerNotificationRecipient(
         return {
             role: event.recipientRole,
             email: forceHintRecipient ? hintEmail || resolvedEmail : resolvedEmail,
-            name: hints.name || data.productName || data.companyName || data.businessName,
+            name: cleanString(hints.name || data.productName || data.companyName || data.businessName),
             whatsappNumber: forceHintRecipient ? hintWhatsappNumber || resolvedWhatsappNumber : resolvedWhatsappNumber,
             whatsappConsent: hasWhatsAppConsent(settings),
         };
@@ -154,8 +179,7 @@ export function resolveOwnerNotificationRecipient(
     const billingEmail = cleanEmail(settings.billingEmail);
     const primaryEmail = cleanEmail(settings.primaryEmail)
         || cleanEmail(data.contactPersonEmail)
-        || cleanEmail(data.email)
-        || cleanEmail(hints.email);
+        || cleanEmail(data.email);
 
     const email = event.recipientRole === 'billing_owner'
         ? billingEmail || primaryEmail
@@ -165,7 +189,6 @@ export function resolveOwnerNotificationRecipient(
         settings.whatsappNumber,
         data.ownerWhatsappNumber,
         data.whatsappNumber,
-        hints.whatsappNumber,
         data.phone,
         data.phoneNumber,
     );
@@ -173,7 +196,7 @@ export function resolveOwnerNotificationRecipient(
     return {
         role: event.recipientRole,
         email: forceHintRecipient ? hintEmail || email : email,
-        name: hints.name || data.name || data.businessName,
+        name: cleanString(hints.name || data.name || data.businessName),
         whatsappNumber: forceHintRecipient ? hintWhatsappNumber || whatsappNumber : whatsappNumber,
         whatsappConsent: hasWhatsAppConsent(settings),
     };

@@ -7,27 +7,16 @@
  */
 
 import { MetadataRoute } from 'next';
-import { headers } from 'next/headers';
 import {
     DISCOVERY_CRAWLERS,
     PUBLIC_DISCOVERY_DISALLOWED_PATHS,
 } from '@lib/seo/discoveryPolicy';
-import { PLATFORM_DOMAIN, PLATFORM_URL } from '@constant/urls';
+import { PLATFORM_URL } from '@constant/urls';
+import { getTenantFromHeaders } from '@lib/multiTenant/getTenantFromHeaders';
 
-export default function robots(): MetadataRoute.Robots {
-    const headersList = headers();
-    const subdomain = headersList.get('x-tenant-subdomain');
-    const customDomain = headersList.get('x-tenant-custom-domain');
-
-    // Build base URL based on domain type
-    let baseUrl: string;
-    if (customDomain) {
-        baseUrl = `https://${customDomain}`;
-    } else if (subdomain) {
-        baseUrl = `https://${subdomain}.${PLATFORM_DOMAIN}`;
-    } else {
-        baseUrl = PLATFORM_URL;
-    }
+export default async function robots(): Promise<MetadataRoute.Robots> {
+    const tenant = await getTenantFromHeaders('ClientRobotsMetadata');
+    const baseUrl = tenant.origin || PLATFORM_URL;
 
     return {
         rules: [

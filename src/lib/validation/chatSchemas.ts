@@ -53,11 +53,30 @@ const ChatMessageSchema = z.object({
         url: z.string().url().optional(),
         name: z.string().optional(),
         size: z.number().optional()
-    }).nullable().optional()
+    }).strict().nullable().optional()
+}).strict().superRefine((message, ctx) => {
+    const userContent = message.content?.trim();
+    const assistantContent = message.craftedAnswer?.trim() || message.content?.trim();
+    if (message.role === 'user' && !userContent) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'User context messages require content',
+            path: ['content'],
+        });
+    }
+    if (message.role === 'assistant' && !assistantContent) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Assistant context messages require content',
+            path: ['craftedAnswer'],
+        });
+    }
 });
 
 // Main search request schema with comprehensive validation
 export const SearchRequestSchema = z.object({
+    requestId: z.string().regex(/^[A-Za-z0-9_-]{8,120}$/, 'Invalid search request ID'),
+
     // Query validation (most critical - prevents XSS, injection, buffer overflow)
     query: z.string()
         .min(1, 'Query cannot be empty')
@@ -109,7 +128,7 @@ export const SearchRequestSchema = z.object({
         .nullable(),
 
     // Mode validation (only allow 'qna' or 'assistant')
-    mode: z.enum(['qna', 'assistant']),
+    mode: z.enum(['qna', 'assistant']).default('qna'),
 
     // Context validation (for assistant mode conversations)
     context: z.array(ChatMessageSchema)
@@ -140,7 +159,7 @@ export const SearchRequestSchema = z.object({
         .min(0)
         .max(100) // Reasonable upper bound
         .optional()
-});
+}).strict();
 
 export type SearchRequestInput = z.infer<typeof SearchRequestSchema>;
 

@@ -186,7 +186,6 @@ const storesDal = read('src/database/stores/index.tsx');
   'export type MenuPresenceSurface',
   'export type MenuPresenceUpdateResult',
   'const assertActiveSessionStore = async',
-  "await assertActiveSessionStore(storeId, 'menu_presence_store_scope_mismatch');",
   "await assertActiveSessionStore(storeId, 'starter_activation_signal_store_scope_mismatch');",
   'updateMenuPresence',
   'recordStarterActivationSignal',
@@ -196,6 +195,48 @@ const storesDal = read('src/database/stores/index.tsx');
   'confirmed,',
   'assertMenuPresenceUpdateSucceeded',
 ].forEach((token) => requireToken(storesDal, token, 'stores DAL presence guard'));
+
+const updateMenuPresenceStart = storesDal.indexOf('export const updateMenuPresence');
+const updateMenuPresenceEnd = storesDal.indexOf('export function assertMenuPresenceUpdateSucceeded', updateMenuPresenceStart);
+if (updateMenuPresenceStart < 0 || updateMenuPresenceEnd < 0) {
+  fail('stores DAL presence transaction boundary is missing');
+}
+const updateMenuPresenceBlock = storesDal.slice(updateMenuPresenceStart, updateMenuPresenceEnd);
+[
+  "const session = await assertActiveSessionStore(storeId, 'menu_presence_store_scope_mismatch');",
+  'MENU_PRESENCE_SURFACES.has(surface)',
+  'isStarterActivationSignal(options.starterSignal)',
+  "throw new Error('menu_presence_input_invalid');",
+  'const tenantId = Number(sessionTenantId);',
+  'Number.isSafeInteger(tenantId)',
+  'await runTransaction(firebaseClient, async (transaction) => {',
+  'const storeSnapshot = await transaction.get(storeRef);',
+  "throw new Error('menu_presence_store_scope_changed');",
+  'transaction.update(storeRef, storeUpdate);',
+  'transaction.set(summaryRef, {',
+  'menuPresence: { [surface]: confirmed ? now : null },',
+  'tId: tenantId,',
+  "await revalidatePublicClientCache(storeId, 'updateMenuPresence');",
+].forEach((token) => requireToken(updateMenuPresenceBlock, token, 'stores DAL atomic presence projection'));
+[
+  'await updateDoc(',
+  'mergeStoreSummaryFields(',
+].forEach((token) => forbidToken(updateMenuPresenceBlock, token, 'stores DAL atomic presence projection'));
+
+const recordStarterSignalStart = storesDal.indexOf('export const recordStarterActivationSignal');
+const recordStarterSignalEnd = storesDal.indexOf('/**\n * Update a manual presence confirmation', recordStarterSignalStart);
+if (recordStarterSignalStart < 0 || recordStarterSignalEnd < 0) {
+  fail('stores DAL starter activation signal boundary is missing');
+}
+const recordStarterSignalBlock = storesDal.slice(recordStarterSignalStart, recordStarterSignalEnd);
+[
+  '!Number.isSafeInteger(storeId)',
+  'storeId <= 0',
+  '!isStarterActivationSignal(signal)',
+  "throw new Error('starter_activation_signal_input_invalid');",
+  "await assertActiveSessionStore(storeId, 'starter_activation_signal_store_scope_mismatch');",
+  '[`starterActivationSignals.actions.${signal}`]: now,',
+].forEach((token) => requireToken(recordStarterSignalBlock, token, 'stores DAL starter activation runtime input guard'));
 
 const starterActivation = read('src/lib/onboarding/starterActivation.ts');
 [
@@ -216,6 +257,8 @@ const readme = read('__docs__/menu-presence-monitor/README.md');
   'npm run verify:menu-presence-monitor-boundary',
   'Presence confirmations and starter activation signals are owner-local writes.',
   'active session store',
+  'canonical `stores` row and its `storesSummary` projection in one transaction',
+  '`recordStarterActivationSignal()` rejects values outside the shared signal allowlist',
 ].forEach((token) => requireToken(readme, token, 'Menu Presence Monitor README'));
 forbidToken(readme, 'Key Files (Planned)', 'Menu Presence Monitor README');
 
@@ -279,6 +322,9 @@ const impl = read('__docs__/menu-presence-monitor/menu-presence-monitor_impl.md'
   'menu_presence_store_scope_mismatch',
   'starter_activation_signal_store_scope_mismatch',
   'antd-mobile `List` plus a bottom-sheet `Popup`',
+  'transactionally updates the canonical store and current `storesSummary` slot',
+  'revalidatePublicClientCache',
+  'starter_activation_signal_input_invalid',
 ].forEach((token) => requireToken(impl, token, 'Menu Presence Monitor implementation doc'));
 [
   'SwipeAction for remove',
@@ -288,9 +334,11 @@ const impl = read('__docs__/menu-presence-monitor/menu-presence-monitor_impl.md'
 const firebase = read('__docs__/menu-presence-monitor/menu-presence-monitor_firebase.md');
 [
   'npm run verify:menu-presence-monitor-boundary',
-  'Valid owner flows add no Firestore read/write beyond the existing write',
+  'one transactional store read and two transactional document writes',
   'menu_presence_store_scope_mismatch',
   'starter_activation_signal_store_scope_mismatch',
+  'post-commit public client cache invalidation',
+  'starter_activation_signal_input_invalid',
 ].forEach((token) => requireToken(firebase, token, 'Menu Presence Monitor Firebase doc'));
 
 const mobileDoc = read('__docs__/menu-presence-monitor/menu-presence-monitor_mobile-support.md');

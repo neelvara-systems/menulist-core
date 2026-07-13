@@ -2,7 +2,7 @@
 
 **Feature:** AI Enhancement Packs
 **Status:** Help/source evidence; not current launch certification
-**Last Updated:** February 9, 2026
+**Last Updated:** July 11, 2026
 **Audience:** Customers (restaurant owners, non-technical)
 **Tone:** Calm, simple, no jargon. Maximum 2-second comprehension per sentence.
 
@@ -13,6 +13,8 @@
 This help article is customer-copy source evidence only. It is not current launch certification and must not be published until the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md), `npm run verify:billing-entitlement-boundary`, Razorpay sandbox top-up smoke, desktop/mobile Billing browser QA, website/pricing copy review, target deploy evidence, and production-host smoke are recorded.
 
 Do not publish with TBD price placeholders, unverified activation timing, or provider behavior that lacks current Razorpay evidence.
+
+The current Content Credit Pack contains 250 credits. At current rates, that can cover up to 50 generated menu images or 250 description rewrites. MenuList shows the required credits before an eligible operation; monthly included capacity and internal provider economics are not owner-facing.
 
 ---
 
@@ -59,6 +61,13 @@ AI Enhancement Pack pricing must be inserted from the approved pricing source be
 ---
 
 ## What does a pack include?
+
+One Content Credit Pack adds 250 credits to the store's Pack balance.
+
+Examples at current rates:
+
+- up to 50 generated menu images; or
+- up to 250 description rewrites.
 
 An Enhancement Pack covers all AI features for your menu:
 

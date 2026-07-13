@@ -1,7 +1,9 @@
 import getActiveSession from "@lib/auth/getActiveSession";
 import { secureError } from "@lib/security/secureLogger";
 
-const summarizeDalArgs = (args: any[]) => args.slice(0, -1).map((arg) => {
+type DalOperation<T> = () => Promise<T> | T;
+
+const summarizeDalArgs = (args: unknown[]) => args.slice(0, -1).map((arg) => {
     if (arg === null || arg === undefined) return arg;
     if (Array.isArray(arg)) return { type: 'array', length: arg.length };
     if (typeof arg === 'object') {
@@ -14,67 +16,35 @@ const summarizeDalArgs = (args: any[]) => args.slice(0, -1).map((arg) => {
     return { type: typeof arg };
 });
 
-export const apiCallComposerServer = async (fn, ...args) => {
+export const apiCallComposerServer = async <T>(fn: DalOperation<T>, ...args: unknown[]): Promise<T> => {
     // Get the function name (last argument)
     const functionName = args[args.length - 1];
 
-    // List of webhook-related functions that don't require a user session
-    const ignoredFunctionsList = [
-        'createSubscriptionPayment',
-        'getSubscriptionById',
-        'cancelSubscription',
-        'updateUserSubscription',
-        'updateImageBatchProcessingJob',
-        'getImageBatchProcessingJobById',
-        'addPlatformUser',
-        'updatePlatformUser',
-        'updateTopupOrder',
-        'getSubscriptionByProviderId',
-        'updateSubscription',
-        'getSubscriptionById',
-        'getTopupByProviderOrderId',
-        'createInitialTopupEntry',
-        'getTopupById',
-        'createInitialSubscription',
-        'getSubscriptionById',
-        'createPaymentTransaction'
-    ];
+    let session = null;
+    try {
+        session = await getActiveSession();
+    } catch (sessionError) {
+        secureError('[DAL Server] Session lookup failed', new Error('dal_server_session_lookup_failed'), {
+            functionName,
+            errorName: sessionError instanceof Error ? sessionError.name : typeof sessionError,
+            params: summarizeDalArgs(args),
+        });
+        throw sessionError;
+    }
 
-    // Check if this is a webhook-related function call
-    const isIgnoredFunctionCall = ignoredFunctionsList.includes(functionName);
-
-    // Only require session for non-webhook calls
-    if (!isIgnoredFunctionCall) {
-        let session = null;
-        try {
-            session = await getActiveSession();
-        } catch (sessionError) {
-            secureError('[DAL Server] Session lookup failed', new Error('dal_server_session_lookup_failed'), {
-                functionName,
-                errorName: sessionError instanceof Error ? sessionError.name : typeof sessionError,
-                params: summarizeDalArgs(args),
-                ignoredSessionFunction: isIgnoredFunctionCall,
-            });
-        }
-
-        if (!Boolean(session?.user)) {
-            return null;
-        }
+    if (!Boolean(session?.user)) {
+        throw new Error('dal_server_session_required');
     }
 
     try {
-        const response = await fn(...args); // actual api call
+        const response = await fn(); // actual api call
         return response;
     } catch (error) {
         secureError('[DAL Server] API call failed', new Error('dal_server_call_failed'), {
             functionName,
             errorName: error instanceof Error ? error.name : typeof error,
             params: summarizeDalArgs(args),
-            ignoredSessionFunction: isIgnoredFunctionCall,
         });
-
-        // Return an empty array for data fetching operations to avoid 'not a function' errors
-        // This makes sure components expecting arrays don't crash
-        return [];
+        throw error;
     }
 }

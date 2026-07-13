@@ -15,32 +15,37 @@ import { ProjectFileType } from "./project.types";
 
 export const languageActionType = {
     IMAGE_TRANSLATION: AI_ACTIONS_TYPES.IMAGE_TRANSLATION,
-    LANGUAGE_ADDITION: AI_ACTIONS_TYPES.LANGUAGE_ADDITION
-}
+    LANGUAGE_ADDITION: AI_ACTIONS_TYPES.LANGUAGE_ADDITION,
+    ITEM_TRANSLATION: AI_ACTIONS_TYPES.ITEM_TRANSLATION,
+} as const;
+
+export type LanguageActionType = typeof languageActionType[keyof typeof languageActionType];
 
 export const descriptionActionType = {
     ADD_DESCRIPTION: AI_ACTIONS_TYPES.ADD_DESCRIPTION,
     REWRITE_DESCRIPTION: AI_ACTIONS_TYPES.REWRITE_DESCRIPTION
-}
+} as const;
+
+export type DescriptionActionType = typeof descriptionActionType[keyof typeof descriptionActionType];
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Translation API
 // ═══════════════════════════════════════════════════════════════════════════
 
 export interface TranslationAPIParams {
-    inputJson: any;
+    inputJson: Record<string, string>;
     targetLang: LanguageType;
     sourceLang: LanguageType;
-    action: keyof typeof languageActionType | string;
+    action: LanguageActionType;
     projectId: string;
     fileId: string;
 }
 
 export interface BatchTranslationAPIParams {
-    inputJson: any;
+    inputJson: Record<string, string>;
     targetLang: LanguageType[];
     sourceLang: LanguageType;
-    action: keyof typeof languageActionType | string;
+    action: LanguageActionType;
     projectId: string;
     fileId: string;
 }
@@ -53,7 +58,7 @@ export interface DescriptionAPIParams {
     itemsList: ExtractedDataItem[];
     targetLang: LanguageType[];
     sourceLang: LanguageType;
-    action: keyof typeof descriptionActionType;
+    action: DescriptionActionType;
     projectId: string;
     fileId: string;
     contentLength: "Standard" | "Detailed";

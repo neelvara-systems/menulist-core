@@ -12,6 +12,8 @@ Project Management uses a summary-first pattern:
 2. Lightweight list/public-routing truth lives in `platformSummary/projects_{sId}` under a `projects` map.
 3. Owner editor flows read the summary first, then read the selected full project.
 4. Public routes read the summary to resolve stable slugs/defaults, then read the selected full project.
+
+Client full-project reads capture one active session scope. `projectDocumentScope.ts` requires the project ID prefix/suffix to match tenant/store and rejects conflicting embedded `projectId`, tenant, or store fields. The legacy flat-project fallback remains read-only compatibility, but is accepted only after the same exact scope validation. Explicit `getProjectDataByStore()` reads permit linked-menu access only inside the active tenant and validate the requested store/project tuple before current or legacy data is returned.
 5. Any owner write that can affect public output calls the public cache revalidation path.
 
 The historical `projectsMetadata` / `projectsData` split is no longer the active implementation.
@@ -61,11 +63,11 @@ Current audited read-only callers:
 
 ### Create
 
-`addProject()` creates the full project doc, derives a permanent slug, writes the summary entry through `syncProjectToSummary()`, and optionally triggers multi-outlet propagation. Summary sync revalidates public cache. If creation promotes the new project as the default, the caller passes the previous default through the default-handoff option so the previous `isDefault` flag is cleared in the same summary write.
+`addProject()` captures one authenticated tenant/store scope, derives a Firestore-auto-ID-backed identity, checks deleted-slug reservations, and transactionally writes the full project plus summary entry. The summary transaction checks current and redirect slug ownership. A supplied deterministic default ID is read inside the transaction: if that project already exists, only missing/available summary truth is repaired, so a retry cannot reset existing `files`. Multi-outlet propagation runs only after a newly created project commits. If creation promotes the project as default, previous-default handoff is folded into that same summary mutation.
 
 ### Metadata Update
 
-`updateProjectMetadata()` updates summary-only fields such as name, description, default flag, image, slug, and special-menu display data. It preserves previous slugs for redirects and blocks reserved/recently deleted slug reuse. Default switching uses the DAL default-handoff option, so desktop and mobile callers pass previous-default or replacement-default ids into the metadata write instead of issuing separate caller-level summary writes.
+`updateProjectMetadata()` validates the project ID against one captured tenant/store scope and transactionally merges summary-only fields such as name, description, default flag, image, and special-menu display data. Slug input cannot pass through the broad summary patch: the DAL validates explicit slugs, checks current and redirect ownership, checks deleted reservations, appends the prior slug once, and caps redirect history at five. Metadata-only updates use one summary read in the transaction; name/slug changes use a preflight summary read plus the transaction read because the deleted-project reservation query cannot be made part of the document transaction. Default switching uses the same transactional summary mutation.
 
 ### Full Project Save
 
@@ -86,7 +88,13 @@ The save path keeps these optional hooks non-blocking, but failures must be obse
 
 `deleteProject()` soft-deletes the project doc, stores `deletedSummary` on that doc, removes the project from `platformSummary/projects_{sId}`, promotes a fallback default if needed, and revalidates public cache.
 
-`restoreProject()` restores lifecycle flags and rebuilds the summary from `deletedSummary` when available. If another active default already exists, the restored project is not restored as default. This prevents duplicate default public routing.
+`restoreProject()` reads the scoped project and summary in one transaction, restores lifecycle flags, and rebuilds the summary from `deletedSummary` when available. If another active default already exists, the restored project is not restored as default. The project and summary cannot become partially restored.
+
+`duplicateProject()` reads the current source project and summary in one transaction, rejects deleted/cross-store/inherited source projects, strips `_specialMenu` and deletion tombstone fields, allocates a unique current/redirect-safe slug, and commits the clone and summary together.
+
+`setProjectActive()` validates the exact project scope and existence inside one transaction, checks inherited-project deactivation policy when applicable, and writes project plus summary state together. It cannot create an active-only phantom document after a stale UI action.
+
+`deleteProject()` performs linked-outlet preflight before a transaction re-reads project and summary truth. The transaction rejects missing, mismatched, already deleted, inherited, or actively referenced base projects; captures the latest summary tombstone; removes the summary entry; and promotes the latest eligible fallback default atomically. Cache revalidation covers both the deleted project and any promoted fallback.
 
 ## Diagnostics Contract
 
@@ -114,11 +122,11 @@ Desktop Projects reset must require `assertProjectUpdateSucceeded()` before reva
 
 Editor-adjacent translation repairs that mirror translated project name, description, or special-menu display metadata into `projectsSummary` must follow the same acknowledgement rule before local saved state or success copy advances. This covers desktop `CommandCenterModal` plus mobile `BulkActionsSheet` and `ManageLanguagesSheet` metadata repair writes.
 
-Editor helper direct-save fallbacks must follow the same acknowledgement rule. `uploadedImagesList.tsx`, `descriptionGeneration.shared.ts`, and `BatchImageGenerationResultView.tsx` require `assertProjectUpdateSucceeded()` before local active-project state, generated-description persistence, batch-image selected-image state, or success copy changes when they save through `updateProject()` without a parent `onProjectDataUpdate` / `persistProject` callback. Rejected acknowledgement codes are `menu_editor_item_image_delete_project_update_rejected`, `menu_editor_description_generation_project_update_rejected`, and `image_batch_result_upload_project_update_rejected`. `descriptionGeneration.shared.ts` also routes service-layer returned-error diagnostics through `menu_editor_description_generation_returned_error_message` with bounded project/file/result-message/message-type metadata instead of raw logger warnings.
+Editor helper direct-save fallbacks must follow the same acknowledgement rule. `uploadedImagesList.tsx` and `descriptionGeneration.shared.ts` require `assertProjectUpdateSucceeded()` before local active-project state, generated-description persistence, or success copy changes when they save through `updateProject()` without a parent `onProjectDataUpdate` / `persistProject` callback. Rejected acknowledgement codes are `menu_editor_item_image_delete_project_update_rejected` and `menu_editor_description_generation_project_update_rejected`. Batch image review is stricter: `BatchImageGenerationResultView.tsx` delegates selected rows to required `onBatchImagesPersist`, and desktop/mobile parents call `appendImageBatchProjectSelections()` so current project truth is read and appended transactionally instead of saving a stale full-project snapshot. Active or pending editor saves must drain before that append. `descriptionGeneration.shared.ts` also routes service-layer returned-error diagnostics through `menu_editor_description_generation_returned_error_message` with bounded project/file/result-message/message-type metadata instead of raw logger warnings.
 
 Design publish surfaces must require `assertProjectUpdateSucceeded()` before local published state, cached project state, success copy, or post-publish verification setup changes. `src/components/templates/main-app/projects/b2cView/index.tsx` uses `projects_b2c_publish_project_update_rejected`; `src/components/mobile/screens/MobileDesignEditorScreen.tsx` uses `mobile_design_publish_project_update_rejected`.
 
-Generated project-image saves must require `assertProjectUpdateSucceeded()` before `generateAndSaveProjectImageIfMissing()` returns an image URL to desktop or mobile callers. Summary writes use `project_image_generation_summary_update_rejected`; metadata fallback writes use `project_image_generation_metadata_update_rejected`.
+Generated project-image saves persist only `{ projectImage }` through transactional `updateProjectMetadata()` and require `assertProjectUpdateSucceeded()` before returning an image URL. They no longer reconstruct/write a stale full summary. A failed metadata save deletes the newly uploaded primary object before rethrowing and uses `project_image_generation_metadata_update_rejected` for acknowledgement failure.
 
 `src/components/templates/main-app/projects/b2cView/index.tsx` uses the same helper for desktop B2C publish failures and post-publish verification setup failures. Official Page `publicPresence` saves made from the B2C editor must require `assertStoreUpdateSucceeded()` before local store state, queued OBP photo cleanup, or publish success copy changes; rejected acknowledgements use `projects_b2c_official_page_store_update_rejected`, while failed publish attempts log `projects_b2c_publish_failed` with bounded project/store/change-count metadata and fixed owner copy. If the dynamic `verifyMenuPublish` handoff cannot be prepared after a successful publish, it logs `projects_b2c_publish_verification_setup_failed` with bounded project/store/store-slug/custom-domain/public-url metadata only. The handoff URL is built with `generateProjectUrl()` so the health check targets the actual public project/menu route instead of the tenant root. The existing `verifyMenuPublish` wrapper remains responsible for callable/provider failures and keeps publish success non-blocking.
 

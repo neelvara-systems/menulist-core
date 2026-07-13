@@ -3,11 +3,21 @@ import { PRODUCT_IDS } from "@constant/product";
 import { ECOMSAI_PLATFORM_SUPPORT_USER_ROLE, ECOMSAI_PLATFORM_USER_ROLE } from "@constant/user";
 import { deleteFileByUrl } from "@database/storage/deleteFromStorage";
 import uploadBase64ToStorage from "@database/storage/uploadBase64ToStorage";
-import { collection, deleteDoc, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query, setDoc, Timestamp, where, type QueryConstraint } from "@firebase/firestore";
+import { collection, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query, runTransaction, Timestamp, where, type QueryConstraint } from "@firebase/firestore";
 import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentComposer';
+import {
+    ANSWERLATTICE_TICKET_MESSAGE_LIMIT,
+    ANSWERLATTICE_TICKET_STATUS_HISTORY_LIMIT,
+    isAnswerlatticeTicketStatusTransitionAllowed,
+    normalizeAnswerlatticeSupportTicketId,
+    parseAnswerlatticeSupportTicketDocument,
+    parseAnswerlatticeTicketMessage,
+    parseAnswerlatticeTicketMutation,
+} from '@lib/answerlattice/supportTicketLifecycle';
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import getActiveSession from "@lib/auth/getActiveSession";
 import { emitAnswerlatticeSignal } from "@lib/answerlattice/signalEmitter";
+import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirebaseClient, answerlatticeStorage } from "@lib/firebase/answerlatticeFirebaseClient";
 import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
 import { clearCapturedLogs, getCapturedLogs, getClientDebugContext } from "@lib/localLogs/localLogsTracker";
@@ -16,8 +26,10 @@ import { STORAGE_CACHE_CONTROL } from "@lib/storage/cacheControl";
 import { generateStoragePath } from "@lib/storage/pathGenerator";
 import { ANSWERLATTICE_SIGNAL_TYPE } from "@type/answerlattice";
 import { UserUploadedFileType } from "@type/common";
-import { SupportTicketType, TicketMessage } from "@type/supportTicket";
+import { SUPPORT_TICKET_STATUS, SupportTicketType, TicketMessage } from "@type/supportTicket";
 import { addDoc } from "firebase/firestore";
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import { createTimestampedRuntimeId } from '@lib/runtime/randomId';
 
 const COLLECTION = DB_COLLECTIONS.SUPPORT_TICKETS;
 const STORE_TICKETS_LIMIT = 100;
@@ -127,10 +139,10 @@ const isPlatformTicketSession = (session: any): boolean => {
     return platformRole === ECOMSAI_PLATFORM_USER_ROLE || platformRole === ECOMSAI_PLATFORM_SUPPORT_USER_ROLE;
 };
 
-const getSessionSupportTicketScope = (session: any): NormalizedSupportTicketScope | undefined => normalizeSupportTicketScope({
-    tId: session?.tId ?? session?.user?.tenantId,
-    sId: session?.sId ?? session?.user?.storeId,
-});
+const getSessionSupportTicketScope = (session: any): NormalizedSupportTicketScope | undefined => {
+    const scope = resolveAnswerlatticeSessionScope(session);
+    return scope ? { tId: scope.tenantId, sId: scope.storeId } : undefined;
+};
 
 const getRequiredSessionSupportTicketScope = (session: any): NormalizedSupportTicketScope => {
     const sessionScope = getSessionSupportTicketScope(session);
@@ -141,15 +153,16 @@ const getRequiredSessionSupportTicketScope = (session: any): NormalizedSupportTi
     return sessionScope;
 };
 
-const requireSupportTicketMutationScope = async (
+const requireSupportTicketMutationContext = async (
     scope: SupportTicketMutationScope | undefined,
     operationCode: string,
-): Promise<NormalizedSupportTicketScope | undefined> => {
+): Promise<{ scope: NormalizedSupportTicketScope; session: any }> => {
     const session = await getActiveSession();
     const ticketScope = normalizeSupportTicketScope(scope);
 
     if (isPlatformTicketSession(session)) {
-        return ticketScope;
+        if (!ticketScope) throw new Error(`${operationCode}_ticket_scope_missing`);
+        return { scope: ticketScope, session };
     }
 
     const sessionScope = getSessionSupportTicketScope(session);
@@ -163,30 +176,36 @@ const requireSupportTicketMutationScope = async (
         throw new Error(`${operationCode}_ticket_scope_mismatch`);
     }
 
-    return ticketScope;
+    return { scope: ticketScope, session };
 };
 
-const applySupportTicketMutationScope = (
-    updateData: Record<string, any>,
-    scope: NormalizedSupportTicketScope | undefined,
-) => {
-    if (scope) {
-        updateData.tId = scope.tId;
-        updateData.sId = scope.sId;
-        return updateData;
+const getRequiredTicketActor = (session: any) => {
+    const id = String(session?.user?.id || session?.uId || '').trim();
+    const name = String(session?.user?.name || session?.user?.email || '').trim();
+    const email = String(session?.user?.email || '').trim().toLowerCase();
+    if (!id || id.length > 180 || !name || name.length > 200 || email.length > 254) {
+        throw new Error('answerlattice_ticket_actor_invalid');
     }
+    return { id, name, email };
+};
 
-    delete updateData.tId;
-    delete updateData.sId;
-    return updateData;
+const requirePersistedTicket = (
+    ticketId: string,
+    value: unknown,
+    scope: NormalizedSupportTicketScope,
+): SupportTicketType => {
+    const ticket = parseAnswerlatticeSupportTicketDocument({ id: ticketId, value, scope });
+    if (!ticket) throw new Error('answerlattice_ticket_scope_or_schema_invalid');
+    return ticket;
 };
 
 const getScopedTicketConstraints = (session: any): QueryConstraint[] => {
-    if (isPlatformTicketSession(session)) return [];
+    if (isPlatformTicketSession(session)) return [where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)];
 
     const sessionScope = getRequiredSessionSupportTicketScope(session);
 
     return [
+        where('pId', '==', PRODUCT_IDS.ANSWERLATTICE),
         where("tId", "==", sessionScope.tId),
         where("sId", "==", sessionScope.sId),
     ];
@@ -205,7 +224,10 @@ const buildSupportTicketsQuery = async (
         constraints.push(where("deleted", "==", false));
     }
 
-    constraints.push(orderBy("createdOn", "desc"), limit(maxResults));
+    const boundedMaxResults = isPlatformTicketSession(session)
+        ? Math.max(1, Math.min(maxResults, PLATFORM_TICKETS_LIMIT))
+        : Math.max(1, Math.min(maxResults, STORE_TICKETS_LIMIT));
+    constraints.push(orderBy("createdOn", "desc"), limit(boundedMaxResults));
     return query(getCollectionRef(), ...constraints);
 };
 
@@ -215,7 +237,7 @@ const buildDeletedSupportTicketsQuery = async (maxResults = 100) => {
         ...getScopedTicketConstraints(session),
         where("deleted", "==", true),
         orderBy("createdOn", "desc"),
-        limit(maxResults),
+        limit(Math.max(1, Math.min(maxResults, isPlatformTicketSession(session) ? 100 : STORE_TICKETS_LIMIT))),
     ];
 
     return query(getCollectionRef(), ...constraints);
@@ -226,10 +248,14 @@ const buildDeletedSupportTicketsQuery = async (maxResults = 100) => {
  * @param data - File data with base64 content
  * @param type - File category (e.g., 'documents', 'messages')
  */
-const uploadImage = async (data: UserUploadedFileType, type = 'documents') => {
+const uploadImage = async (data: UserUploadedFileType, type = 'documents', stableId?: string) => {
 
     let uploadedUrl: any = '';
-    const docId = `${new Date().getTime()}-${data.uid}`;
+    const stablePrefix = String(stableId || '').replace(/[^A-Za-z0-9_.-]/g, '').slice(0, 120);
+    const safeUid = String(data.uid || 'file').replace(/[^A-Za-z0-9_.-]/g, '').slice(0, 80);
+    const docId = stablePrefix
+        ? `${stablePrefix}-${safeUid}`
+        : `${new Date().getTime()}-${safeUid}`;
 
     if (data.url?.includes('base64')) {
         // Get fresh session for tenant-scoped storage paths
@@ -259,6 +285,9 @@ const uploadImage = async (data: UserUploadedFileType, type = 'documents') => {
 export const addTicket = async (data: SupportTicketType) => {
     return await apiCallComposer(
         async () => {
+            if (Array.isArray(data.documents) && data.documents.length > 20) {
+                throw new Error('answerlattice_ticket_document_limit_reached');
+            }
             const capturedLogs = getCapturedLogs();
             const clientDebugContext = getClientDebugContext();
 
@@ -267,16 +296,35 @@ export const addTicket = async (data: SupportTicketType) => {
                 deleted: false,
                 logs: capturedLogs,
                 ...(clientDebugContext ? { clientDebugContext } : {}),
-            });
+            }, { isNew: true });
             delete submitData.documents;
             const files = data.documents?.filter(doc => doc.url.includes('base64')) || [];
-            if (files.length) {
-                submitData.documents = data.documents;
-                for (let i = 0; i < data.documents.length; i++) {
-                    submitData.documents[i].url = await uploadImage(data.documents[i], 'documents')
+            const uploadedTicketUrls: string[] = [];
+            let docRef: Awaited<ReturnType<typeof addDoc>>;
+            try {
+                if (files.length) {
+                    submitData.documents = data.documents.map((document) => ({ ...document }));
+                    for (let i = 0; i < data.documents.length; i++) {
+                        const isNewUpload = data.documents[i].url.includes('base64');
+                        submitData.documents[i].url = await uploadImage(data.documents[i], 'documents');
+                        if (isNewUpload) uploadedTicketUrls.push(submitData.documents[i].url);
+                    }
                 }
+                if (!parseAnswerlatticeSupportTicketDocument({
+                    id: 'pending-ticket-validation',
+                    value: submitData,
+                    scope: {
+                        tId: normalizeSupportTicketScopeValue(submitData.tId) || 0,
+                        sId: normalizeSupportTicketScopeValue(submitData.sId) || 0,
+                    },
+                })) {
+                    throw new Error('answerlattice_ticket_create_payload_invalid');
+                }
+                docRef = await addDoc(getCollectionRef(), submitData);
+            } catch (createError) {
+                await Promise.allSettled(uploadedTicketUrls.map((url) => deleteFileByUrl(url, answerlatticeStorage)));
+                throw createError;
             }
-            const docRef = await addDoc(getCollectionRef(), submitData);
             clearCapturedLogs(); // Clear only after the ticket is persisted successfully.
             const displayId = getDisplayId(docRef.id);
 
@@ -289,7 +337,7 @@ export const addTicket = async (data: SupportTicketType) => {
             const escalationMatchedEntityIds = data.escalationContext?.retrievalDebug?.canonicalResult?.matchedEntityIds || [];
             const signalEntityId = escalationMatchedEntityIds.find((id: unknown): id is string => typeof id === 'string' && Boolean(id.trim()));
 
-            emitAnswerlatticeSignal({
+            void emitAnswerlatticeSignal({
                 type: signalType,
                 entityId: signalEntityId,
                 tId: submitData.tId,
@@ -308,23 +356,19 @@ export const addTicket = async (data: SupportTicketType) => {
                         conversationId: data.escalationContext?.conversationId,
                     }),
                 },
+            }).catch((signalError) => {
+                logRuntimeFailure('answerlattice_ticket_create_signal_emit_failed', signalError, {
+                    ...getBoundedRuntimeStringContext('ticketId', docRef.id),
+                    ...getBoundedRuntimeStringContext('tenantId', submitData.tId),
+                    ...getBoundedRuntimeStringContext('storeId', submitData.sId),
+                });
             });
 
             // Notification: ticket creation confirmation (fire-and-forget)
             if (data.clientDetails?.email) {
                 triggerNotification({
                     eventType: 'TICKET_CREATED',
-                    recipientEmail: data.clientDetails.email,
-                    recipientName: data.clientDetails.storeName || undefined,
-                    referenceId: `ticket-created-${docRef.id}`,
-                    productId: PRODUCT_IDS.ANSWERLATTICE,
-                    metadata: {
-                        ticketId: docRef.id,
-                        ticketDisplayId: displayId,
-                        ticketSubject: data.subject,
-                        category: data.category,
-                        priority: data.priority,
-                    },
+                    ticketId: docRef.id,
                 });
             }
 
@@ -357,19 +401,71 @@ export function assertSupportTicketCreateSucceeded(
 export const updateTicket = async (data: any) => {
     return await apiCallComposer(
         async () => {
-            const mutationScope = await requireSupportTicketMutationScope(data, 'support_ticket_update');
-            const updateData = await answerlatticeRequestBodyComposer(data);
-            applySupportTicketMutationScope(updateData, mutationScope);
+            const ticketId = normalizeAnswerlatticeSupportTicketId(data?.id);
+            if (!ticketId) throw new Error('answerlattice_ticket_id_invalid');
+            const mutationContext = await requireSupportTicketMutationContext(data, 'support_ticket_update');
+            const actor = getRequiredTicketActor(mutationContext.session);
+            const mutation = parseAnswerlatticeTicketMutation(data);
+            const changedAt = Timestamp.now();
+            const statusMessageId = createTimestampedRuntimeId('ticket_status', 12);
 
-            const files = data.documents?.filter(doc => doc.url.includes('base64')) || [];
-            if (files.length) {
-                for (let i = 0; i < data.documents.length; i++) {
-                    updateData.documents[i].url = await uploadImage(data.documents[i], 'documents')
+            return runTransaction(answerlatticeFirebaseClient, async (transaction) => {
+                const ticketRef = getDocRef(ticketId);
+                const ticketSnapshot = await transaction.get(ticketRef);
+                if (!ticketSnapshot.exists()) throw new Error('answerlattice_ticket_not_found');
+                const currentTicket = requirePersistedTicket(
+                    ticketId,
+                    ticketSnapshot.data(),
+                    mutationContext.scope,
+                );
+
+                const updateData: Record<string, any> = {
+                    ...mutation,
+                    pId: PRODUCT_IDS.ANSWERLATTICE,
+                    tId: mutationContext.scope.tId,
+                    sId: mutationContext.scope.sId,
+                    modifiedBy: actor.name,
+                    modifiedOn: changedAt,
+                };
+
+                if (mutation.status !== undefined) {
+                    if (!isAnswerlatticeTicketStatusTransitionAllowed(currentTicket.status, mutation.status)) {
+                        throw new Error('answerlattice_ticket_status_transition_invalid');
+                    }
+                    if (mutation.status !== currentTicket.status) {
+                        const currentStatuses = Array.isArray(currentTicket.statuses) ? currentTicket.statuses : [];
+                        const currentMessages = Array.isArray(currentTicket.messages) ? currentTicket.messages : [];
+                        if (currentStatuses.length >= ANSWERLATTICE_TICKET_STATUS_HISTORY_LIMIT) {
+                            throw new Error('answerlattice_ticket_status_history_limit_reached');
+                        }
+                        if (currentMessages.length >= ANSWERLATTICE_TICKET_MESSAGE_LIMIT) {
+                            throw new Error('answerlattice_ticket_message_limit_reached');
+                        }
+                        const remark = `Status changed from ${currentTicket.status} to ${mutation.status}`;
+                        updateData.statuses = [...currentStatuses, {
+                            status: mutation.status,
+                            timestamp: changedAt,
+                            createdBy: actor,
+                            remark,
+                        }];
+                        updateData.messages = [...currentMessages, {
+                            id: statusMessageId,
+                            text: remark,
+                            type: 'system',
+                            sender: actor,
+                            timestamp: changedAt,
+                        }];
+                    }
                 }
-            }
 
-            await setDoc(getDocRef(data.id), updateData, { merge: true });
-            return updateData;
+                transaction.update(ticketRef, updateData);
+                return {
+                    ...currentTicket,
+                    ...updateData,
+                    id: ticketId,
+                    displayId: getDisplayId(ticketId),
+                } as SupportTicketType;
+            });
         },
         data,
         "updateTicket"
@@ -436,147 +532,163 @@ export function assertSupportTicketStatusUpdateSucceeded(
 
 export const addTicketMessage = async (
     ticketId: string,
-    currentMessages: TicketMessage[],
+    _currentMessages: TicketMessage[],
     message: TicketMessage,
     attachments?: any[],
     scope?: SupportTicketMutationScope,
 ) => {
     return await apiCallComposer(
         async () => {
-            const mutationScope = await requireSupportTicketMutationScope(scope, 'support_ticket_message');
+            const normalizedTicketId = normalizeAnswerlatticeSupportTicketId(ticketId);
+            if (!normalizedTicketId) throw new Error('answerlattice_ticket_id_invalid');
+            const mutationContext = await requireSupportTicketMutationContext(scope, 'support_ticket_message');
+            const actor = getRequiredTicketActor(mutationContext.session);
+            const messageId = normalizeAnswerlatticeSupportTicketId(message?.id);
+            if (!messageId) throw new Error('answerlattice_ticket_message_id_invalid');
+            const uploadedAttachmentUrls: string[] = [];
+            const persistedMessage: TicketMessage = parseAnswerlatticeTicketMessage({
+                ...message,
+                id: messageId,
+                sender: actor,
+                timestamp: Timestamp.now(),
+                attachments: undefined,
+            });
 
             // Handle file uploads for attachments (same pattern as ticket documents)
             if (attachments?.length) {
-                message.attachments = [];
-                for (let i = 0; i < attachments.length; i++) {
-                    const uploadedUrl = await uploadImage(attachments[i], 'messages');
-                    message.attachments.push({
-                        url: uploadedUrl,
-                        name: attachments[i].name,
-                        type: attachments[i].type,
-                        size: attachments[i].size
-                    });
+                if (attachments.length > 4) throw new Error('answerlattice_ticket_attachment_limit_reached');
+                persistedMessage.attachments = [];
+                try {
+                    for (let i = 0; i < attachments.length; i++) {
+                        const uploadedUrl = await uploadImage(
+                            attachments[i],
+                            'messages',
+                            `${normalizedTicketId}-${messageId}`,
+                        );
+                        uploadedAttachmentUrls.push(uploadedUrl);
+                        persistedMessage.attachments.push({
+                            url: uploadedUrl,
+                            name: String(attachments[i].name || '').slice(0, 300),
+                            type: String(attachments[i].type || '').slice(0, 120),
+                            size: Number(attachments[i].size || 0),
+                        });
+                    }
+                    parseAnswerlatticeTicketMessage(persistedMessage);
+                } catch (uploadError) {
+                    await Promise.allSettled(uploadedAttachmentUrls.map((url) => deleteFileByUrl(url, answerlatticeStorage)));
+                    throw uploadError;
                 }
             }
 
-            // Guard: prevent unbounded message array growth (Firestore 1MB doc limit)
-            const MAX_TICKET_MESSAGES = 500;
-            if (currentMessages.length >= MAX_TICKET_MESSAGES) {
-                throw new Error(`Ticket has reached maximum ${MAX_TICKET_MESSAGES} messages. Please create a new ticket.`);
+            let inserted = false;
+            let messageCount = 0;
+            try {
+                const transactionResult = await runTransaction(answerlatticeFirebaseClient, async (transaction) => {
+                    const ticketRef = getDocRef(normalizedTicketId);
+                    const ticketSnapshot = await transaction.get(ticketRef);
+                    if (!ticketSnapshot.exists()) throw new Error('answerlattice_ticket_not_found');
+                    const currentTicket = requirePersistedTicket(
+                        normalizedTicketId,
+                        ticketSnapshot.data(),
+                        mutationContext.scope,
+                    );
+                    if (currentTicket.deleted) throw new Error('answerlattice_ticket_deleted');
+                    const currentMessages = Array.isArray(currentTicket.messages) ? currentTicket.messages : [];
+                    const existingMessage = currentMessages.find((item) => item.id === messageId);
+                    if (existingMessage) {
+                        return { inserted: false, message: existingMessage, messageCount: currentMessages.length };
+                    }
+                    if (currentMessages.length >= ANSWERLATTICE_TICKET_MESSAGE_LIMIT) {
+                        throw new Error('answerlattice_ticket_message_limit_reached');
+                    }
+                    const updatedMessages = [...currentMessages, persistedMessage];
+                    transaction.update(ticketRef, {
+                        messages: updatedMessages,
+                        pId: PRODUCT_IDS.ANSWERLATTICE,
+                        tId: mutationContext.scope.tId,
+                        sId: mutationContext.scope.sId,
+                        modifiedBy: actor.name,
+                        modifiedOn: Timestamp.now(),
+                    });
+                    return { inserted: true, message: persistedMessage, messageCount: updatedMessages.length };
+                });
+                inserted = transactionResult.inserted;
+                messageCount = transactionResult.messageCount;
+                if (!inserted && uploadedAttachmentUrls.length > 0) {
+                    const existingUrls = new Set((transactionResult.message.attachments || []).map((item) => item.url));
+                    await Promise.allSettled(
+                        uploadedAttachmentUrls
+                            .filter((url) => !existingUrls.has(url))
+                            .map((url) => deleteFileByUrl(url, answerlatticeStorage)),
+                    );
+                }
+            } catch (transactionError) {
+                await Promise.allSettled(uploadedAttachmentUrls.map((url) => deleteFileByUrl(url, answerlatticeStorage)));
+                throw transactionError;
             }
-
-            // Add message to messages array (passed from parent, no DB read needed)
-            const updatedMessages = [...currentMessages, message];
-
-            // Update ticket with new message ONLY (requestBodyComposer adds timestamps)
-            // No logs - only send logs on initial ticket creation
-            const updateData = await answerlatticeRequestBodyComposer({
-                messages: updatedMessages,
-                ...(mutationScope ? mutationScope : {}),
-            });
-            applySupportTicketMutationScope(updateData, mutationScope);
-
-            const ticketRef = getDocRef(ticketId);
-            await setDoc(ticketRef, updateData, { merge: true });
 
             // Notification: ticket reply (fire-and-forget)
             // Only notify when the sender is NOT the ticket creator (i.e., support agent replied)
-            const notifyEmail = (message as any)._notifyEmail;
-            if (message.sender?.email && message.type !== 'system' && notifyEmail) {
+            if (inserted && persistedMessage.sender?.email && persistedMessage.type !== 'system') {
                 triggerNotification({
                     eventType: 'TICKET_REPLY',
-                    recipientEmail: notifyEmail,
-                    recipientName: (message as any)._notifyName || undefined,
-                    referenceId: `ticket-reply-${ticketId}-${message.id}`,
-                    productId: PRODUCT_IDS.ANSWERLATTICE,
-                    metadata: {
-                        ticketId,
-                        ticketSubject: (message as any)._ticketSubject || 'Support Request',
-                        replyPreview: message.text?.slice(0, 300) || '',
-                        replierName: message.sender.name,
-                    },
+                    ticketId,
+                    messageId: persistedMessage.id,
                 });
             }
 
             return {
-                ticketId,
-                messageId: message.id,
+                ticketId: normalizedTicketId,
+                messageId,
                 success: true,
-                messageCount: updatedMessages.length,
-                attachmentCount: message.attachments?.length || 0,
-                message,
+                messageCount,
+                attachmentCount: persistedMessage.attachments?.length || 0,
+                message: persistedMessage,
             } satisfies SupportTicketMessageAddResult;
         },
-        { ticketId, currentMessages, message, attachments },
+        { ticketId, currentMessages: _currentMessages, message, attachments },
         "addTicketMessage"
     );
 }
 
 export const updateTicketStatus = async (
     ticketId: string,
-    currentStatuses: any[],
+    _currentStatuses: any[],
     newStatus: string,
     remark: string = '',
-    changedBy: { id: string, name: string, email: string },
+    _changedBy: { id: string, name: string, email: string },
     scope?: SupportTicketMutationScope,
 ) => {
     return await apiCallComposer(
         async () => {
-            const mutationScope = await requireSupportTicketMutationScope(scope, 'support_ticket_status');
-
-            // Create new status entry for audit trail
-            const newStatusEntry = {
+            const updatedTicket = await updateTicket({
+                id: ticketId,
                 status: newStatus,
-                timestamp: Timestamp.now(),
-                createdBy: changedBy,
-                remark: remark || `Status changed to ${newStatus}`
-            };
-
-            // Add to statuses array (passed from parent, no DB read needed)
-            const updatedStatuses = [...currentStatuses, newStatusEntry];
-
-            // Update both status field and statuses array (requestBodyComposer adds timestamps)
-            // No logs - only send logs on initial ticket creation
-            const updateData = await answerlatticeRequestBodyComposer({
-                status: newStatus,
-                statuses: updatedStatuses,
-                ...(mutationScope ? mutationScope : {}),
+                tId: scope?.tId,
+                sId: scope?.sId,
             });
-            applySupportTicketMutationScope(updateData, mutationScope);
-
-            const ticketRef = getDocRef(ticketId);
-            await setDoc(ticketRef, updateData, { merge: true });
+            const statuses = Array.isArray(updatedTicket.statuses) ? updatedTicket.statuses : [];
+            const statusEntry = statuses[statuses.length - 1];
+            if (!statusEntry || statusEntry.status !== newStatus) {
+                throw new Error('answerlattice_ticket_status_update_missing_history');
+            }
 
             // Notification: ticket status changed (fire-and-forget)
             // _notifyEmail is set by the calling component with the ticket creator's email
-            const notifyEmail = (changedBy as any)._notifyEmail;
-            if (notifyEmail) {
-                triggerNotification({
-                    eventType: 'TICKET_STATUS_CHANGED',
-                    recipientEmail: notifyEmail,
-                    recipientName: (changedBy as any)._notifyName || undefined,
-                    referenceId: `ticket-status-${ticketId}-${newStatus}-${Date.now()}`,
-                    productId: PRODUCT_IDS.ANSWERLATTICE,
-                    skipDedup: true,
-                    metadata: {
-                        ticketId,
-                        ticketSubject: (changedBy as any)._ticketSubject || 'Support Request',
-                        newStatus,
-                        remark,
-                        changedByName: changedBy.name,
-                    },
-                });
-            }
+            triggerNotification({
+                eventType: 'TICKET_STATUS_CHANGED',
+                ticketId,
+            });
 
             return {
                 ticketId,
                 success: true,
                 status: newStatus,
-                statusCount: updatedStatuses.length,
-                statusEntry: newStatusEntry,
+                statusCount: statuses.length,
+                statusEntry,
             } satisfies SupportTicketStatusUpdateResult;
         },
-        { ticketId, currentStatuses, newStatus, remark, changedBy },
+        { ticketId, currentStatuses: _currentStatuses, newStatus, remark, changedBy: _changedBy },
         "updateTicketStatus"
     );
 }
@@ -584,19 +696,24 @@ export const updateTicketStatus = async (
 export const deleteTicket = async (data: any) => {
     return await apiCallComposer(
         async () => {
-            const docRef = getDocRef(data.id);
-            const ticketSnap = await getDoc(docRef);
-            const persistedTicket = ticketSnap.exists() ? ticketSnap.data() as Partial<SupportTicketType> : {};
-            const attachmentUrls = collectTicketAttachmentUrls({
-                ...persistedTicket,
-                ...data,
-                documents: data.documents || persistedTicket.documents,
-                messages: data.messages || persistedTicket.messages,
+            const ticketId = normalizeAnswerlatticeSupportTicketId(data?.id);
+            if (!ticketId) throw new Error('answerlattice_ticket_id_invalid');
+            const mutationContext = await requireSupportTicketMutationContext(data, 'support_ticket_delete');
+            if (!isPlatformTicketSession(mutationContext.session)) {
+                throw new Error('answerlattice_ticket_hard_delete_forbidden');
+            }
+            let persistedTicket: SupportTicketType | null = null;
+            await runTransaction(answerlatticeFirebaseClient, async (transaction) => {
+                const ticketRef = getDocRef(ticketId);
+                const ticketSnapshot = await transaction.get(ticketRef);
+                if (!ticketSnapshot.exists()) return;
+                persistedTicket = requirePersistedTicket(ticketId, ticketSnapshot.data(), mutationContext.scope);
+                transaction.delete(ticketRef);
             });
+            const attachmentUrls = collectTicketAttachmentUrls(persistedTicket || {});
             await Promise.allSettled(
                 attachmentUrls.map((url) => deleteFileByUrl(url, answerlatticeStorage))
             );
-            await deleteDoc(docRef);
             return null;
         },
         data,
@@ -604,20 +721,57 @@ export const deleteTicket = async (data: any) => {
     );
 }
 
-export const submitTicketSatisfaction = async (ticketId: string, rating: number, comment?: string) => {
+export const submitTicketSatisfaction = async (
+    ticketId: string,
+    rating: number,
+    comment?: string,
+    scope?: SupportTicketMutationScope,
+) => {
     return await apiCallComposer(
         async () => {
+            const normalizedTicketId = normalizeAnswerlatticeSupportTicketId(ticketId);
+            if (!normalizedTicketId) throw new Error('answerlattice_ticket_id_invalid');
+            if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+                throw new Error('answerlattice_ticket_satisfaction_rating_invalid');
+            }
+            const cleanComment = String(comment || '').trim();
+            if (cleanComment.length > 1000) throw new Error('answerlattice_ticket_satisfaction_comment_invalid');
+            const session = await getActiveSession();
+            const sessionScope = getSessionSupportTicketScope(session);
+            const ticketScope = normalizeSupportTicketScope(scope) || sessionScope;
+            if (!ticketScope || (!isPlatformTicketSession(session) && (
+                !sessionScope
+                || sessionScope.tId !== ticketScope.tId
+                || sessionScope.sId !== ticketScope.sId
+            ))) throw new Error('answerlattice_ticket_satisfaction_scope_invalid');
             const satisfaction = {
                 rating,
-                comment: comment || '',
-                submittedAt: { seconds: Math.floor(Date.now() / 1000), nanoseconds: 0 },
+                comment: cleanComment,
+                submittedAt: Timestamp.now(),
             };
-            const updateData = await answerlatticeRequestBodyComposer({ satisfaction });
-            const ticketRef = getDocRef(ticketId);
-            await setDoc(ticketRef, updateData, { merge: true });
+            await runTransaction(answerlatticeFirebaseClient, async (transaction) => {
+                const ticketRef = getDocRef(normalizedTicketId);
+                const ticketSnapshot = await transaction.get(ticketRef);
+                if (!ticketSnapshot.exists()) throw new Error('answerlattice_ticket_not_found');
+                const currentTicket = requirePersistedTicket(normalizedTicketId, ticketSnapshot.data(), ticketScope);
+                if (
+                    currentTicket.status !== SUPPORT_TICKET_STATUS.RESOLVED
+                    && currentTicket.status !== SUPPORT_TICKET_STATUS.CLOSED
+                ) throw new Error('answerlattice_ticket_satisfaction_not_available');
+                if (currentTicket.satisfaction?.submittedAt) {
+                    throw new Error('answerlattice_ticket_satisfaction_already_submitted');
+                }
+                transaction.update(ticketRef, {
+                    satisfaction,
+                    pId: PRODUCT_IDS.ANSWERLATTICE,
+                    tId: ticketScope.tId,
+                    sId: ticketScope.sId,
+                    modifiedOn: Timestamp.now(),
+                });
+            });
             return satisfaction;
         },
-        { ticketId, rating, comment },
+        { ticketId, rating, comment, scope },
         "submitTicketSatisfaction"
     );
 };
@@ -629,10 +783,18 @@ export const restoreTicket = async (data: any) => {
 export const getTicketById = async (id: string) => {
     return await apiCallComposer(
         async () => {
-            const docRef = getDocRef(id);
+            const ticketId = normalizeAnswerlatticeSupportTicketId(id);
+            if (!ticketId) throw new Error('answerlattice_ticket_id_invalid');
+            const session = await getActiveSession();
+            const sessionScope = isPlatformTicketSession(session) ? undefined : getRequiredSessionSupportTicketScope(session);
+            const docRef = getDocRef(ticketId);
             const docSnap = await getDoc(docRef);
             if (docSnap.exists()) {
-                return { ...docSnap.data(), id: docSnap.id, displayId: getDisplayId(docSnap.id) };
+                return parseAnswerlatticeSupportTicketDocument({
+                    id: docSnap.id,
+                    value: docSnap.data(),
+                    scope: sessionScope,
+                });
             }
             return null;
         },
@@ -647,11 +809,19 @@ export const subscribeTicketById = async (
     onError?: (error: Error) => void
 ) => {
     try {
+        const ticketId = normalizeAnswerlatticeSupportTicketId(id);
+        if (!ticketId) throw new Error('answerlattice_ticket_id_invalid');
+        const session = await getActiveSession();
+        const sessionScope = isPlatformTicketSession(session) ? undefined : getRequiredSessionSupportTicketScope(session);
         const unsubscribe = onSnapshot(
-            getDocRef(id),
+            getDocRef(ticketId),
             (docSnap) => {
                 if (docSnap.exists()) {
-                    onUpdate({ ...docSnap.data(), id: docSnap.id, displayId: getDisplayId(docSnap.id) } as SupportTicketType);
+                    onUpdate(parseAnswerlatticeSupportTicketDocument({
+                        id: docSnap.id,
+                        value: docSnap.data(),
+                        scope: sessionScope,
+                    }));
                     return;
                 }
                 onUpdate(null);
@@ -675,17 +845,23 @@ export const getStoresTickets = async (maxResults = STORE_TICKETS_LIMIT) => {
             const sessionScope = getRequiredSessionSupportTicketScope(session);
             const q = query(
                 getCollectionRef(),
+                where('pId', '==', PRODUCT_IDS.ANSWERLATTICE),
                 where("tId", "==", sessionScope.tId),
                 where("sId", "==", sessionScope.sId),
                 where("deleted", "==", false), // ✅ Filter at database level
                 orderBy("createdOn", "desc"),
-                limit(maxResults)
+                limit(Math.max(1, Math.min(maxResults, STORE_TICKETS_LIMIT)))
             );
 
             const querySnapshot = await getDocs(q);
             const list = [];
             querySnapshot.forEach((doc) => {
-                list.push({ id: doc.id, ...doc.data(), displayId: getDisplayId(doc.id) });
+                const ticket = parseAnswerlatticeSupportTicketDocument({
+                    id: doc.id,
+                    value: doc.data(),
+                    scope: sessionScope,
+                });
+                if (ticket) list.push(ticket);
             });
             return list;
         },
@@ -700,9 +876,12 @@ export const getSupportTickets = async (includeDeleted = false) => {
             const q = await buildSupportTicketsQuery(includeDeleted, PLATFORM_TICKETS_LIMIT);
 
             const querySnapshot = await getDocs(q);
-            const list = [];
+            const session = await getActiveSession();
+            const sessionScope = isPlatformTicketSession(session) ? undefined : getRequiredSessionSupportTicketScope(session);
+            const list: SupportTicketType[] = [];
             querySnapshot.forEach((doc) => {
-                list.push({ id: doc.id, ...doc.data(), displayId: getDisplayId(doc.id) });
+                const ticket = parseAnswerlatticeSupportTicketDocument({ id: doc.id, value: doc.data(), scope: sessionScope });
+                if (ticket) list.push(ticket);
             });
             return list;
         },
@@ -716,9 +895,12 @@ export const getDeletedSupportTickets = async (maxResults = 100) => {
             const q = await buildDeletedSupportTicketsQuery(maxResults);
 
             const querySnapshot = await getDocs(q);
-            const list = [];
+            const session = await getActiveSession();
+            const sessionScope = isPlatformTicketSession(session) ? undefined : getRequiredSessionSupportTicketScope(session);
+            const list: SupportTicketType[] = [];
             querySnapshot.forEach((doc) => {
-                list.push({ id: doc.id, ...doc.data(), displayId: getDisplayId(doc.id) });
+                const ticket = parseAnswerlatticeSupportTicketDocument({ id: doc.id, value: doc.data(), scope: sessionScope });
+                if (ticket) list.push(ticket);
             });
             return list;
         },
@@ -734,6 +916,8 @@ export const subscribeSupportTickets = async (
     includeDeleted = false
 ) => {
     try {
+        const session = await getActiveSession();
+        const sessionScope = isPlatformTicketSession(session) ? undefined : getRequiredSessionSupportTicketScope(session);
         const q = await buildSupportTicketsQuery(includeDeleted, PLATFORM_TICKETS_LIMIT);
 
         const unsubscribe = onSnapshot(
@@ -741,7 +925,8 @@ export const subscribeSupportTickets = async (
             (querySnapshot) => {
                 const list: SupportTicketType[] = [];
                 querySnapshot.forEach((doc) => {
-                    list.push({ id: doc.id, ...doc.data(), displayId: getDisplayId(doc.id) } as SupportTicketType);
+                    const ticket = parseAnswerlatticeSupportTicketDocument({ id: doc.id, value: doc.data(), scope: sessionScope });
+                    if (ticket) list.push(ticket);
                 });
                 onUpdate(list);
             },
@@ -768,11 +953,12 @@ export const subscribeStoreTickets = async (
         const sessionScope = getRequiredSessionSupportTicketScope(session);
         const q = query(
             getCollectionRef(),
+            where('pId', '==', PRODUCT_IDS.ANSWERLATTICE),
             where("tId", "==", sessionScope.tId),
             where("sId", "==", sessionScope.sId),
             where("deleted", "==", false), // ✅ Filter at database level
             orderBy("createdOn", "desc"),
-            limit(maxResults)
+            limit(Math.max(1, Math.min(maxResults, STORE_TICKETS_LIMIT)))
         );
 
         const unsubscribe = onSnapshot(
@@ -780,7 +966,12 @@ export const subscribeStoreTickets = async (
             (querySnapshot) => {
                 const list: SupportTicketType[] = [];
                 querySnapshot.forEach((doc) => {
-                    list.push({ id: doc.id, ...doc.data(), displayId: getDisplayId(doc.id) } as SupportTicketType);
+                    const ticket = parseAnswerlatticeSupportTicketDocument({
+                        id: doc.id,
+                        value: doc.data(),
+                        scope: sessionScope,
+                    });
+                    if (ticket) list.push(ticket);
                 });
                 onUpdate(list);
             },

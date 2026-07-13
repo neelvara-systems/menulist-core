@@ -1,8 +1,12 @@
 export const dynamic = 'force-dynamic';
 
 import { FEATURE_FLAGS } from '@config/features';
-import { verifyAnswerlatticeMcpSessionToken } from '@lib/answerlattice/mcpSession';
-import { ANSWERLATTICE_MCP_TOOLS, handleAnswerlatticeMcpToolCall } from '@lib/answerlattice/mcpTools';
+import { hasAnswerlatticeMcpSessionScope, verifyAnswerlatticeMcpSessionToken } from '@lib/answerlattice/mcpSession';
+import {
+    ANSWERLATTICE_MCP_TOOLS,
+    getAnswerlatticeMcpToolRequiredScope,
+    handleAnswerlatticeMcpToolCall,
+} from '@lib/answerlattice/mcpTools';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
@@ -75,7 +79,11 @@ export async function POST(request: NextRequest) {
         }
 
         if (body.method === 'tools/list') {
-            return jsonRpcResult(body.id, { tools: ANSWERLATTICE_MCP_TOOLS });
+            const tools = ANSWERLATTICE_MCP_TOOLS.filter((tool) => {
+                const requiredScope = getAnswerlatticeMcpToolRequiredScope(tool.name);
+                return requiredScope !== null && hasAnswerlatticeMcpSessionScope(session, requiredScope);
+            });
+            return jsonRpcResult(body.id, { tools });
         }
 
         if (body.method === 'tools/call') {
@@ -83,6 +91,10 @@ export async function POST(request: NextRequest) {
             const args = body.params?.arguments && typeof body.params.arguments === 'object'
                 ? body.params.arguments
                 : {};
+            const requiredScope = getAnswerlatticeMcpToolRequiredScope(toolName);
+            if (requiredScope && !hasAnswerlatticeMcpSessionScope(session, requiredScope)) {
+                return jsonRpcError(body.id, -32005, 'Tool scope not authorized', 403);
+            }
             const result = await handleAnswerlatticeMcpToolCall(session.tId, session.sId, toolName, args);
             return jsonRpcResult(body.id, result);
         }

@@ -10,6 +10,7 @@ import {
     logAuthDiagnostic,
     logAuthFailure,
 } from "./authDiagnostics";
+import { normalizeLoginUserSession } from "./loginSessionBoundary";
 
 const CLIENT_SESSION_TTL_MS = 5000;
 const AUTH_SESSION_RESPONSE_JSON_MAX_BYTES = 64 * 1024;
@@ -65,32 +66,85 @@ const getClientSessionFromApi = async (): Promise<LoginUserType | null> => {
         throw invalid;
     }
 
-    if (!(payload as any).user) {
+    const payloadRecord = payload as Record<string, unknown>;
+    if (!payloadRecord.user) {
         return null;
     }
+    if (typeof payloadRecord.user !== 'object' || Array.isArray(payloadRecord.user)) {
+        const invalid = createAuthDiagnosticError('Invalid session response', {
+            statusCode: response.status,
+        });
+        logAuthFailure('auth_session_response_invalid', invalid, {
+            responseOk: response.ok,
+            responseStatus: response.status,
+            maxBytes: AUTH_SESSION_RESPONSE_JSON_MAX_BYTES,
+        });
+        throw invalid;
+    }
 
-    return payload as LoginUserType;
+    const session = normalizeLoginUserSession(payload);
+    if (!session) {
+        const invalid = createAuthDiagnosticError('Invalid session response', {
+            statusCode: response.status,
+        });
+        logAuthFailure('auth_session_response_invalid', invalid, {
+            responseOk: response.ok,
+            responseStatus: response.status,
+            maxBytes: AUTH_SESSION_RESPONSE_JSON_MAX_BYTES,
+        });
+        throw invalid;
+    }
+    return session;
 };
+
+export const getProductScopedClientSession = (
+    session: LoginUserType | null,
+    pathname: string,
+    hostname: string,
+): LoginUserType | null => (
+    shouldUseAnswerlatticeClientScopeForRoute(session, pathname, hostname)
+        ? getAnswerlatticeScopedSession(session)
+        : session
+);
+
+export const getClientSessionScopeForCurrentStore = (
+    session: LoginUserType | null,
+    pathname: string,
+    hostname: string,
+): LoginUserType | null => {
+    const menuListSession = applyActiveStoreContextToSession(session);
+    return getProductScopedClientSession(
+        menuListSession,
+        pathname,
+        hostname,
+    );
+};
+
+const getCurrentClientSessionScope = (session: LoginUserType | null): LoginUserType | null => (
+    getClientSessionScopeForCurrentStore(
+        session,
+        window.location.pathname,
+        window.location.hostname,
+    )
+);
 
 const getActiveSession = async () => {
     if (typeof window === 'undefined') {
         const { getServerSession: sessionGetter } = await import("next-auth");
         const { authOptions } = await import(".")
         const session = await sessionGetter(authOptions);
-        return session as unknown as LoginUserType;
+        return normalizeLoginUserSession(session);
     }
 
     const now = Date.now();
     if (clientSessionCache && now - clientSessionCacheAt < CLIENT_SESSION_TTL_MS) {
-        const scopedSession = shouldUseAnswerlatticeClientScopeForRoute(clientSessionCache, window.location.pathname, window.location.hostname)
-            ? getAnswerlatticeScopedSession(clientSessionCache)
-            : clientSessionCache;
+        const scopedSession = getCurrentClientSessionScope(clientSessionCache);
         logAuthDiagnostic('auth_session_cache_hit', {
             ageMs: now - clientSessionCacheAt,
             ...getBoundedAuthStringContext('pathname', window.location.pathname),
             ...getBoundedAuthStringContext('hostname', window.location.hostname),
         }, { developmentOnly: true });
-        return applyActiveStoreContextToSession(scopedSession);
+        return scopedSession;
     }
 
     if (clientSessionRequest) {
@@ -98,37 +152,30 @@ const getActiveSession = async () => {
             ...getBoundedAuthStringContext('pathname', window.location.pathname),
             ...getBoundedAuthStringContext('hostname', window.location.hostname),
         }, { developmentOnly: true });
-        return clientSessionRequest;
+        return getCurrentClientSessionScope(await clientSessionRequest);
     }
 
-    clientSessionRequest = (async () => {
-        try {
-            logAuthDiagnostic('auth_session_fetch_start', {
-                ...getBoundedAuthStringContext('pathname', window.location.pathname),
-                ...getBoundedAuthStringContext('hostname', window.location.hostname),
-            }, { developmentOnly: true });
-            const session = await getClientSessionFromApi();
-            const sessionWithType = session as unknown as LoginUserType | null;
-            clientSessionCache = sessionWithType;
-            clientSessionCacheAt = Date.now();
-            const scopedSession = shouldUseAnswerlatticeClientScopeForRoute(sessionWithType, window.location.pathname, window.location.hostname)
-                ? getAnswerlatticeScopedSession(sessionWithType)
-                : sessionWithType;
-            const effectiveSession = applyActiveStoreContextToSession(scopedSession);
-            logAuthDiagnostic('auth_session_fetch_success', getAuthSessionLogContext(effectiveSession), { developmentOnly: true });
-            return effectiveSession;
-        } catch (error: any) {
-            logAuthFailure('auth_session_fetch_failed', error, {
-                ...getBoundedAuthStringContext('pathname', window.location.pathname),
-                ...getBoundedAuthStringContext('hostname', window.location.hostname),
-            });
-            throw error;
-        } finally {
-            clientSessionRequest = null;
-        }
-    })();
-
-    return clientSessionRequest;
+    logAuthDiagnostic('auth_session_fetch_start', {
+        ...getBoundedAuthStringContext('pathname', window.location.pathname),
+        ...getBoundedAuthStringContext('hostname', window.location.hostname),
+    }, { developmentOnly: true });
+    clientSessionRequest = getClientSessionFromApi();
+    try {
+        const session = await clientSessionRequest;
+        clientSessionCache = session;
+        clientSessionCacheAt = Date.now();
+        const effectiveSession = getCurrentClientSessionScope(session);
+        logAuthDiagnostic('auth_session_fetch_success', getAuthSessionLogContext(effectiveSession), { developmentOnly: true });
+        return effectiveSession;
+    } catch (error) {
+        logAuthFailure('auth_session_fetch_failed', error, {
+            ...getBoundedAuthStringContext('pathname', window.location.pathname),
+            ...getBoundedAuthStringContext('hostname', window.location.hostname),
+        });
+        throw error;
+    } finally {
+        clientSessionRequest = null;
+    }
 };
 
 export default getActiveSession;

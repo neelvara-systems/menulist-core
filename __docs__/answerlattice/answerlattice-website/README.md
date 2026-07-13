@@ -1,8 +1,8 @@
 # AnswerLattice Website (answerlattice.com)
 
 > **Feature:** Public marketing website for AnswerLattice product
-> **Status:** ✅ IMPLEMENTED — refreshed for approved-answers-first homepage positioning, product-led support-suite conversion, compact category-switch proof, self-service AnswerLattice, concept illustrations, agent-readable public discovery, and consent-gated Plausible marketing-site analytics
-> **Date:** 2026-06-29
+> **Status:** ✅ IMPLEMENTED — approved-answers-first positioning, interactive governance proof, plan/currency-accurate onboarding, factual trust disclosures, self-service AnswerLattice, agent-readable discovery, and consent-gated website analytics
+> **Date:** 2026-07-13
 > **Domain:** answerlattice.com (production) | answerlattice.menulist.online (Vercel Preview / QA) | localhost:3000/__answerlattice (dev)
 > **Feature Flag:** None required (static marketing site)
 > **Route Group:** `src/app/sites/answerlattice/`
@@ -57,7 +57,7 @@
 | `/page-aware-support-widget` | SEO Landing | Page-aware support widget page with concrete before/after support example and manual screenshot boundary |
 | `/hosted-help-center-for-saas` | SEO Landing | Hosted SaaS help center page for docs, FAQ, and changelog on support domains |
 | `/support-widget-for-solo-founders` | SEO Landing | Solo-founder support widget page focused on launching support before hiring a team, including optional user-attached visual context |
-| `/demo` | Demo | Static page-aware support demo with no Firebase or AI calls |
+| `/demo` | Demo | Deterministic six-stage governance simulation from source conflict through approval, release drift, safe fallback, correction, and audit evidence, with no Firebase or AI calls |
 | `/pre-onboarding` | Pre-Onboarding Kit | Public preparation page for customers using AI coding agents to create AnswerLattice-ready source packages before Knowledge Intake |
 | `/pre-onboarding.md` | Pre-Onboarding Prompt | Machine-readable master prompt for Codex, Cursor, Windsurf, Antigravity, Claude Code, and other AI agents using repo, multi-product repo, docs, website, or owner-note sources |
 | `/pre-onboarding/guide` | Pre-Onboarding Guide | End-to-end public runbook for owners and AI agents before AnswerLattice Knowledge Intake |
@@ -70,7 +70,7 @@
 | `/install.md`, `/install/**/*.md` | Machine-Readable Install Docs | Markdown mirrors generated from the AnswerLattice install contract for coding agents, including `/install/contracts.md` for the v1 widget contract |
 | `/agents/answerlattice/*` | Agent Kit Files | Public AGENTS.md, CLAUDE.md, Cursor, Windsurf, skill, and ZIP download generated from the same v1 contract |
 | `/integrations` | Integrations | Slack and email workflow notifications for support governance, including test delivery, compact health, bounded delivery, and controlled adapter boundaries |
-| `/pricing` | Pricing | INR Starter/Growth/Studio packaging, beta setup, and support-credit top-up explanation |
+| `/pricing` | Pricing | INR and USD Starter/Growth/Studio packaging, paid setup, and support-credit top-up explanation |
 | `/resources` | Resources | AnswerLattice learning hub for pre-onboarding, product evaluation, setup, feedback review, widget install, governance, and safety |
 | `/resources/launch-support-checklist` | Resource Article | Launch setup checklist for page-aware support, approved answers, fallback, and support-gap review |
 | `/resources/pre-onboarding-source-package` | Resource Article | Source-preparation guide for repo, website, docs, owner notes, policies, screenshots, and product exclusions |
@@ -90,11 +90,12 @@
 | `/comparisons/answerlattice-vs-helpdesks` | Comparison | Explains support knowledge governance versus ticket-queue ownership |
 | `/comparisons/answerlattice-vs-knowledge-bases` | Comparison | Explains page-aware runtime answers versus static article libraries |
 | `/updates` | Updates | Public product update timeline for product and website changes without using dashboard-owned changelog routes |
+| `/trust` | Trust and Data Handling | Current infrastructure/provider map, implemented retention windows, and explicit status for certification, DPA, subprocessor, residency, and full-workspace-deletion claims |
 | `/security` | Security | Trust controls for widget context, user-initiated screenshots, hosted help domains, safe ticket debugging context, tenant separation, AnswerLattice role permissions, owner-approved answers, runtime limits, and responsible disclosure |
 | `/faq` | FAQ | Grouped founder questions about setup, team access, widget context, feedback review, screenshots, hosted help, custom domains, safe ticket context, FAQ generation, pricing, tickets, runtime safety, and data handling |
 | `/about` | About | Company beliefs + AnswerLattice operating principles |
 | `/contact` | Contact | AnswerLattice-owned inquiry form plus direct contact paths for setup, demos, pricing, security, and partnerships |
-| `/get-started` | Get Started | Self-service onboarding for a new AnswerLattice workspace, with a pre-onboarding prompt for owners who have source material before signup |
+| `/get-started` | Get Started | Self-service onboarding for a selected monthly plan and INR/USD checkout, with resumable provider provisioning and a pre-onboarding prompt for source preparation |
 | `/privacy-policy` | Privacy Policy | Public privacy summary for account, team access, workspace, support, and widget data |
 | `/terms-of-service` | Terms of Service | Public terms summary for account, content, widget, and service usage |
 | `/llms.txt` | Agent Context | Short agent-readable AnswerLattice product, route, and non-goal context |
@@ -172,6 +173,7 @@
 | `src/app/sites/answerlattice/pre-onboarding/owner-guide.md/route.ts` | Machine-readable owner guide route |
 | `src/app/sites/answerlattice/pre-onboarding/agent-guide.md/route.ts` | Machine-readable agent guide route |
 | `src/lib/answerlattice/preOnboardingPrompt.ts` | Shared AnswerLattice pre-onboarding prompt text and output contract |
+| `src/app/sites/answerlattice/trust/page.tsx` | Factual public provider, retention, and claim-status page for buyer review |
 | `src/app/sites/answerlattice/security/page.tsx` | Public security/trust page with facts, runtime controls, and disclosure |
 | `src/app/sites/answerlattice/faq/page.tsx` | Public FAQ page with FAQ structured data |
 | `src/app/sites/answerlattice/contact/page.tsx` | Public contact page |
@@ -268,7 +270,7 @@ See `src/constants/productDomains.ts` for the full multi-product domain registry
 
 1. **Theme modes** — Light/System/Dark public-site theme control. Dark remains deep navy with verdigris/teal controls; light uses restrained slate text, pale surfaces, and the same verdigris action/signal language. The selected mode is AnswerLattice-scoped and stored under `answerlattice-theme`.
 2. **Tailwind CSS** — Same build pipeline as rest of app. AnswerLattice `@tailwind` directives and scoped theme rules are root-loaded through `src/app/layout.tsx` so public routes do not depend on a nested CSS chunk.
-3. **Server components by default** — Pages stay server-rendered. The public header is a small client island so the desktop Product and Resources dropdowns can stay CSS-driven at `xl` widths while narrower screens use the right-side drawer with route icons, backdrop, Escape close, body scroll lock, and link-close behavior.
+3. **Server components by default** — Pages stay server-rendered. The public header is a small client island so the desktop Product and Resources dropdowns can stay CSS-driven at `xl` widths with hover-bridge, viewport scroll containment, and Escape close, while narrower screens use the full-width phone drawer with route icons, backdrop, Escape close, body scroll lock, internal scroll containment, safe-area CTA padding, and link-close behavior.
 4. **basePath pattern** — `getBasePath()` reads `x-product-id` header + `host` to determine if dev mode. Passed as prop to components that contain links.
 5. **AnswerlatticeLink** — Wraps `next/link` with basePath prefix for dev mode compatibility.
 6. **No external dependencies** — Zero new npm packages. Uses existing Tailwind, React, and icon stack.
@@ -284,6 +286,8 @@ See `src/constants/productDomains.ts` for the full multi-product domain registry
 
 | Date | Change |
 |------|--------|
+| 2026-07-13 | Hardened AnswerLattice Product and Resources dropdowns with hover-bridge, Escape close, and viewport scroll containment; upgraded the phone drawer to full-width mobile presentation with higher overlay stacking, internal scroll isolation, and safe-area CTA behavior |
+| 2026-07-11 | Replaced the static demo switcher with a deterministic governance event, exposed INR/USD plan selection through Pricing and Get Started, added factual Trust and Data Handling disclosures, and updated privacy-provider/retention wording without claiming certification or contractual terms |
 | 2026-07-05 | Answerlattice website analytics URL minimization boundary: stripped query strings and fragments from GA4 page-location, click-link, resource target, referrer, and entry-page URL fields while bounding analytics text fields |
 | 2026-06-29 | Added a compact category-switch strip inside the homepage Support Suite so buyers can compare AnswerLattice by official answer source before opening the full `/comparisons` pages |
 | 2026-06-27 | Replaced static Prism-glass card hover glows with a pointer-tracked AnswerLattice spotlight controller so eligible card highlights follow the mouse while preserving existing theme tokens, layouts, and public product claims |

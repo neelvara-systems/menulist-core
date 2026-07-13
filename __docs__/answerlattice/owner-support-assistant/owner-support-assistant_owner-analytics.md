@@ -1,6 +1,6 @@
 # Owner Support Assistant - Owner Analytics Read Model
 
-> **Status:** DOCS FROZEN
+> **Status:** DEFERRED TARGET CONTRACT - no owner analytics summary runtime exists
 > **Created:** 2026-06-07
 > **Purpose:** Final dashboard and assistant analytics architecture for owner questions such as today, this week, last week, this month, and last month.
 

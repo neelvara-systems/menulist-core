@@ -13,11 +13,11 @@ import { NeelvaraLink } from '../SiteHeaderNav';
 
 export const metadata: Metadata = {
     title: 'Operated Products',
-    description: 'Current operated products and product website routing for Neelvara Systems.',
+    description: 'Products currently operated by Neelvara Systems and links to their official websites.',
     alternates: { canonical: buildNeelvaraUrl('/products') },
     openGraph: {
         title: 'Operated Products | Neelvara Systems',
-        description: 'Current operated products and product website routing for Neelvara Systems.',
+        description: 'Products currently operated by Neelvara Systems and links to their official websites.',
         url: buildNeelvaraUrl('/products'),
         siteName: 'Neelvara Systems',
         type: 'website',
@@ -33,7 +33,7 @@ export const metadata: Metadata = {
     twitter: {
         card: 'summary_large_image',
         title: 'Operated Products | Neelvara Systems',
-        description: 'Current operated products and product website routing for Neelvara Systems.',
+        description: 'Products currently operated by Neelvara Systems and links to their official websites.',
         images: [buildNeelvaraUrl(NEELVARA_OG_IMAGE_PATH)],
     },
 };
@@ -43,13 +43,11 @@ type ProductName = NeelvaraProductName;
 const PRODUCT_FOCUS: Record<ProductName, string[]> = {
     MenuList: ['Menus', 'Hours', 'Business profiles', 'Customer-facing details'],
     Answerlattice: ['Knowledge', 'Documentation', 'Approved answers', 'Support information'],
-    CampaignCue: ['Business context', 'Campaign preparation', 'Reusable content', 'Creative assets'],
 };
 
 const PRODUCT_CATEGORY: Record<ProductName, string> = {
     MenuList: 'Public business information',
     Answerlattice: 'Approved business answers',
-    CampaignCue: 'Reusable business context',
 };
 
 export default function NeelvaraProductsPage() {
@@ -65,22 +63,17 @@ export default function NeelvaraProductsPage() {
                         </span>
                         <h1 className="serif">Products operated by Neelvara Systems.</h1>
                         <p>
-                            The current lineup covers public facts, approved answers,
-                            and reusable business context.
+                            The current lineup covers public facts, support knowledge,
+                            and approved answers.
                         </p>
-                        <div className="nv-page-hero-meta glass">
-                            <span className="mono">company reference</span>
-                            <span className="mono">product boundaries</span>
-                            <span className="mono">separate terms</span>
-                        </div>
                     </div>
                     <PagePrismPanel
-                        eyebrow="Product map"
-                        title="Operated Products"
+                        eyebrow="Reference summary"
+                        title="Operated products"
                         rows={[
                             'MenuList: public facts',
                             'Answerlattice: approved answers',
-                            'CampaignCue: reusable context',
+                            'Separate product commitments',
                         ]}
                     />
                 </div>
@@ -88,12 +81,14 @@ export default function NeelvaraProductsPage() {
 
             <section className="nv-section nv-reveal">
                 <div className="nv-wrap nv-product-architecture">
-                    <div>
-                        <span className="nv-eyebrow mono">
-                            <span className="nv-pip" aria-hidden="true" />
-                            Product map
-                        </span>
-                        <h2 className="serif">Each product has a distinct role.</h2>
+                    <div className="nv-product-architecture-head">
+                        <div>
+                            <span className="nv-eyebrow mono">
+                                <span className="nv-pip" aria-hidden="true" />
+                                Product map
+                            </span>
+                            <h2 className="serif">Each product has a distinct role.</h2>
+                        </div>
                         <p>
                             This company website identifies the lineup. Product websites
                             explain capabilities, support, pricing, and commitments.
@@ -105,13 +100,20 @@ export default function NeelvaraProductsPage() {
                             <strong>Customer-facing business information</strong>
                         </div>
                         {NEELVARA_PRODUCT_LINEUP.map((product) => (
-                            <a className="nv-product-architecture-card" href={product.url} key={product.name}>
-                                <span className="nv-product-logo-wrap" aria-hidden="true">
-                                    <ProductLogo name={product.name} />
+                            <a
+                                className="nv-product-architecture-card"
+                                data-product={product.name.toLowerCase()}
+                                href={product.url}
+                                key={product.name}
+                            >
+                                <span className="nv-product-architecture-card-head">
+                                    <span className="nv-product-logo-wrap" aria-hidden="true">
+                                        <ProductLogo name={product.name} />
+                                    </span>
+                                    <LuExternalLink className="nv-product-architecture-link-icon" aria-hidden="true" />
                                 </span>
                                 <span className="mono">{PRODUCT_CATEGORY[product.name]}</span>
                                 <strong>{product.name}</strong>
-                                <p>{product.summary}</p>
                             </a>
                         ))}
                     </div>
@@ -121,7 +123,11 @@ export default function NeelvaraProductsPage() {
             <section className="nv-section nv-reveal">
                 <div className="nv-wrap nv-product-detail-list">
                     {NEELVARA_PRODUCT_LINEUP.map((product) => (
-                        <article className="nv-product-detail-card glass" key={product.name}>
+                        <article
+                            className="nv-product-detail-card glass"
+                            data-product={product.name.toLowerCase()}
+                            key={product.name}
+                        >
                             <div className="nv-product-detail-head">
                                 <span className="nv-product-logo-wrap" aria-hidden="true">
                                     <ProductLogo name={product.name} />

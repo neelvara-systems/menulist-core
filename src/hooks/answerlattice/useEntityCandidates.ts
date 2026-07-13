@@ -10,7 +10,6 @@
 import { FEATURE_FLAGS } from '@config/features';
 import {
     getPendingCandidates,
-    approveCandidateStatus,
     rejectCandidateStatus,
     promoteCandidate,
     mergeCandidateStatus,
@@ -20,7 +19,6 @@ import { message } from 'antd';
 import { useCallback, useEffect, useState } from 'react';
 
 const ANSWERLATTICE_ENTITY_CANDIDATES_LOAD_FAILED = 'Could not load candidates';
-const ANSWERLATTICE_ENTITY_CANDIDATE_APPROVE_FAILED = 'Could not approve candidate';
 const ANSWERLATTICE_ENTITY_CANDIDATE_REJECT_FAILED = 'Could not reject candidate';
 const ANSWERLATTICE_ENTITY_CANDIDATE_PROMOTE_FAILED = 'Could not promote candidate';
 const ANSWERLATTICE_ENTITY_CANDIDATE_MERGE_FAILED = 'Could not merge candidate';
@@ -29,7 +27,6 @@ interface UseEntityCandidatesReturn {
     candidates: AnswerlatticeEntityCandidate[];
     loading: boolean;
     error: string | null;
-    approve: (candidateId: string) => Promise<void>;
     reject: (candidateId: string) => Promise<void>;
     promote: (candidateId: string) => Promise<void>;
     merge: (candidateId: string) => Promise<void>;
@@ -58,16 +55,6 @@ export function useEntityCandidates(tId: number, sId: number): UseEntityCandidat
 
     useEffect(() => {
         refresh();
-    }, [refresh]);
-
-    const approve = useCallback(async (candidateId: string) => {
-        try {
-            await approveCandidateStatus(candidateId);
-            message.success('Candidate approved');
-            await refresh();
-        } catch {
-            message.error(ANSWERLATTICE_ENTITY_CANDIDATE_APPROVE_FAILED);
-        }
     }, [refresh]);
 
     const reject = useCallback(async (candidateId: string) => {
@@ -100,5 +87,5 @@ export function useEntityCandidates(tId: number, sId: number): UseEntityCandidat
         }
     }, [refresh]);
 
-    return { candidates, loading, error, approve, reject, promote, merge, refresh };
+    return { candidates, loading, error, reject, promote, merge, refresh };
 }

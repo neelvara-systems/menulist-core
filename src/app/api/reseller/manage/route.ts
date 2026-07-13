@@ -9,6 +9,7 @@ import {
 import { getBoundedResellerApiStringContext, logResellerApiFailure } from "@lib/billing/resellerApiDiagnostics";
 import { admin, authAdmin } from "@lib/firebase/firebaseAdmin";
 import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
+import { sanitizeForFirestore } from "@lib/firestore/sanitizeForFirestore";
 import { logger } from "@lib/monitoring/logger";
 import { getEmailValidationError, validateEmail } from "@lib/validation/emailDomainValidator";
 import { NextResponse } from "next/server";
@@ -89,9 +90,9 @@ const normalizeEmail = (email: string) => email.toLowerCase().trim();
 
 const getDb = () => admin.firestore();
 
-const removeUndefinedFields = (data: Record<string, unknown>) => Object.fromEntries(
-    Object.entries(data).filter(([, value]) => value !== undefined),
-);
+const removeUndefinedFields = (data: Record<string, unknown>) => sanitizeForFirestore(data, {
+    undefinedObjectValue: "omit",
+});
 
 async function assertResellerUniqueness(
     db: admin.firestore.Firestore,

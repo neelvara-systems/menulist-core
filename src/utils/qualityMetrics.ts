@@ -1,4 +1,4 @@
-import { KnowledgeBaseArticleType } from "@type/knowledgeBase";
+type SimilarityReference = { similarityScore?: number };
 
 /**
  * Quality flag thresholds for similarity scores
@@ -31,14 +31,21 @@ export interface QualityFlags {
  * }
  */
 export function calculateQualityFlags(
-    references?: KnowledgeBaseArticleType[]
+    references?: ReadonlyArray<SimilarityReference>
 ): QualityFlags | null {
     if (!references || references.length === 0) {
         return null;
     }
 
     // Extract similarity scores, defaulting to 0 for missing scores
-    const scores = references.map(ref => ref.similarityScore || 0);
+    const scores = references.map((reference) => (
+        typeof reference.similarityScore === 'number'
+        && Number.isFinite(reference.similarityScore)
+        && reference.similarityScore >= 0
+        && reference.similarityScore <= 1
+            ? reference.similarityScore
+            : 0
+    ));
 
     // Calculate average similarity
     const averageSimilarity = scores.reduce((sum, score) => sum + score, 0) / scores.length;

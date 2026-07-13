@@ -17,6 +17,8 @@
  *   window.AnswerlatticeWidget.setContext({ path: '/billing', title: 'Billing', feature: 'billing', workflow: 'manage_subscription' })
  *   window.AnswerlatticeWidget.page({ path: '/billing', title: 'Billing', feature: 'billing', workflow: 'manage_subscription' })
  *   window.AnswerlatticeWidget.identify({ id: 'customer_123', name: 'Jane Customer', email: 'jane@example.com' })
+ *   window.AnswerlatticeWidget.identifySigned(shortLivedToken)
+ *   window.AnswerlatticeWidget.setEvidenceLinks([{ url: 'https://errors.example.com/event/123', label: 'Error event' }])
  *   window.AnswerlatticeWidget.open()
  *   window.AnswerlatticeWidget.close()
  *   window.AnswerlatticeWidget.hide()
@@ -136,6 +138,14 @@
     var contextBundleConfig = null;
     var eventListeners = {};
     var visitorContext = null;
+    var verifiedContextToken = null;
+    var evidenceLinks = [];
+    var runtimeAuthorizationToken = null;
+    var runtimeAuthorizationExpiresAt = 0;
+    var runtimeAuthorizationRequired = null;
+    var remoteConfigRefreshTimer = null;
+    var remoteConfigRequestInFlight = false;
+    var remoteConfigRetryCount = 0;
 
     function isValidChoice(value, allowed) {
         return allowed.indexOf(value) !== -1;
@@ -692,6 +702,17 @@
         postToIframe({ type: 'answerlattice-visitor-update', visitor: visitorContext });
     }
 
+    function sendSecurityContextToIframe() {
+        postToIframe({
+            type: 'answerlattice-security-context-update',
+            verifiedContextToken: verifiedContextToken,
+            evidenceLinks: evidenceLinks,
+            runtimeAuthorizationToken: runtimeAuthorizationExpiresAt > Date.now()
+                ? runtimeAuthorizationToken
+                : null,
+        });
+    }
+
     function sendSuggestionToIframe() {
         if (pendingSuggestion && iframe && iframe.contentWindow) {
             postToIframe({ type: 'answerlattice-predictive-suggestion', suggestion: pendingSuggestion });
@@ -717,6 +738,7 @@
         sendConfigToIframe();
         sendContextToIframe();
         sendVisitorToIframe();
+        sendSecurityContextToIframe();
         sendSuggestionToIframe();
     }
 
@@ -818,10 +840,34 @@
             emitEvent('identify', { visitor: visitorContext });
             sendVisitorToIframe();
         },
+        identifySigned: function (token) {
+            verifiedContextToken = typeof token === 'string' && token.length >= 40 && token.length <= 4096 ? token : null;
+            emitEvent('identify:signed', { present: Boolean(verifiedContextToken) });
+            sendSecurityContextToIframe();
+        },
+        setEvidenceLinks: function (links) {
+            evidenceLinks = (Array.isArray(links) ? links : []).slice(0, 3).map(function (link) {
+                if (!link || typeof link !== 'object') return null;
+                try {
+                    var parsed = new URL(String(link.url || ''));
+                    if (parsed.protocol !== 'https:') return null;
+                    return {
+                        url: parsed.toString().slice(0, 1000),
+                        label: typeof link.label === 'string' ? link.label.replace(/[<>]/g, '').trim().slice(0, 80) : undefined,
+                    };
+                } catch (_) {
+                    return null;
+                }
+            }).filter(Boolean);
+            emitEvent('evidence', { count: evidenceLinks.length });
+            sendSecurityContextToIframe();
+        },
         clearIdentity: function () {
             visitorContext = null;
+            verifiedContextToken = null;
             emitEvent('identify:clear', {});
             sendVisitorToIframe();
+            sendSecurityContextToIframe();
         },
         open: function () { openWidget(); },
         close: function () { closeWidget(); },
@@ -841,6 +887,7 @@
         },
         getContext: function () { return productContext; },
         getVisitor: function () { return visitorContext; },
+        hasVerifiedIdentity: function () { return Boolean(verifiedContextToken); },
     };
 
     function requestPredictiveHelp(ctx) {
@@ -915,6 +962,51 @@
         return 'answerlattice-widget-config:' + apiKey.slice(0, 14) + ':' + widgetHost;
     }
 
+    function sanitizeRuntimeAuthorization(value) {
+        if (!value || typeof value !== 'object' || typeof value.required !== 'boolean') return null;
+        if (!value.required) {
+            return { required: false, token: null, expiresAt: 0 };
+        }
+        var token = typeof value.token === 'string' ? value.token.trim() : '';
+        var expiresAt = Number(value.expiresAt || 0);
+        if (token.length < 40 || token.length > 2048) return null;
+        if (!Number.isFinite(expiresAt) || expiresAt <= Date.now() + 5000) return null;
+        return { required: true, token: token, expiresAt: expiresAt };
+    }
+
+    function scheduleRuntimeAuthorizationRefresh() {
+        if (remoteConfigRefreshTimer) {
+            window.clearTimeout(remoteConfigRefreshTimer);
+            remoteConfigRefreshTimer = null;
+        }
+        if (!runtimeAuthorizationRequired || !runtimeAuthorizationExpiresAt) return;
+        var refreshDelay = Math.max(10000, runtimeAuthorizationExpiresAt - Date.now() - 60000);
+        remoteConfigRefreshTimer = window.setTimeout(function () {
+            loadRemoteConfig(true);
+        }, refreshDelay);
+    }
+
+    function scheduleRemoteConfigRetry() {
+        if (remoteConfigRefreshTimer) window.clearTimeout(remoteConfigRefreshTimer);
+        remoteConfigRetryCount = Math.min(remoteConfigRetryCount + 1, 6);
+        var retryDelay = Math.min(300000, 15000 * Math.pow(2, remoteConfigRetryCount - 1));
+        remoteConfigRefreshTimer = window.setTimeout(function () {
+            loadRemoteConfig(true);
+        }, retryDelay);
+    }
+
+    function applyRuntimeAuthorization(value) {
+        var authorization = sanitizeRuntimeAuthorization(value);
+        if (!authorization) return false;
+        runtimeAuthorizationRequired = authorization.required;
+        runtimeAuthorizationToken = authorization.token;
+        runtimeAuthorizationExpiresAt = authorization.expiresAt;
+        remoteConfigRetryCount = 0;
+        scheduleRuntimeAuthorizationRefresh();
+        sendSecurityContextToIframe();
+        return true;
+    }
+
     function readCachedRemoteConfig() {
         try {
             if (!window.sessionStorage) return null;
@@ -925,6 +1017,10 @@
                 window.sessionStorage.removeItem(getRemoteConfigCacheKey());
                 return null;
             }
+            if (!applyRuntimeAuthorization(cached.runtimeAuthorization)) {
+                window.sessionStorage.removeItem(getRemoteConfigCacheKey());
+                return null;
+            }
             contextBundleConfig = sanitizeBundleConfig(cached.bundle);
             return sanitizeRemoteConfig(cached.config);
         } catch (_) {
@@ -932,12 +1028,13 @@
         }
     }
 
-    function writeCachedRemoteConfig(config, ttlSeconds, bundle) {
+    function writeCachedRemoteConfig(config, ttlSeconds, bundle, runtimeAuthorization) {
         try {
             if (!window.sessionStorage) return;
             window.sessionStorage.setItem(getRemoteConfigCacheKey(), JSON.stringify({
                 config: config,
                 bundle: sanitizeBundleConfig(bundle),
+                runtimeAuthorization: runtimeAuthorization,
                 expiresAt: Date.now() + Math.max(10, Math.min(300, ttlSeconds || 60)) * 1000,
             }));
         } catch (_) {}
@@ -960,30 +1057,48 @@
         return widgetHost + '/api/widget/config' + (params.length ? '?' + params.join('&') : '');
     }
 
-    function loadRemoteConfig() {
-        if (!useRemoteConfig || !window.fetch) return;
+    function loadRemoteConfig(forceRefresh) {
+        if (!useRemoteConfig || !window.fetch || remoteConfigRequestInFlight) return;
 
-        var cachedConfig = readCachedRemoteConfig();
-        if (cachedConfig && Object.keys(cachedConfig).length) {
-            applyConfig(cachedConfig);
-            return;
+        if (!forceRefresh) {
+            var cachedConfig = readCachedRemoteConfig();
+            if (cachedConfig && Object.keys(cachedConfig).length) {
+                applyConfig(cachedConfig);
+                return;
+            }
         }
 
+        remoteConfigRequestInFlight = true;
         fetch(buildRemoteConfigUrl(), {
             method: 'GET',
             headers: { 'X-API-Key': apiKey },
         }).then(function (response) {
+            if (response.status === 401 || response.status === 403 || response.status === 404) {
+                return { terminal: true };
+            }
             if (response.status !== 200) return null;
             return response.json();
         }).then(function (data) {
-            if (!data || !data.config) return;
+            if (data && data.terminal) return;
+            if (!data || !data.config || !applyRuntimeAuthorization(data.runtimeAuthorization)) {
+                scheduleRemoteConfigRetry();
+                return;
+            }
             var remoteConfig = sanitizeRemoteConfig(data.config);
             remoteConfig.predictiveEnabled = Boolean(data.capabilities && data.capabilities.predictiveSupport);
             contextBundleConfig = sanitizeBundleConfig(data.bundles);
-            writeCachedRemoteConfig(remoteConfig, data.cacheTtlSeconds || remoteConfigCacheTtlMs / 1000, contextBundleConfig);
+            writeCachedRemoteConfig(
+                remoteConfig,
+                data.cacheTtlSeconds || remoteConfigCacheTtlMs / 1000,
+                contextBundleConfig,
+                data.runtimeAuthorization,
+            );
             applyConfig(remoteConfig);
         }).catch(function () {
             // Dashboard config is optional. Script attributes keep the widget usable.
+            scheduleRemoteConfigRetry();
+        }).then(function () {
+            remoteConfigRequestInFlight = false;
         });
     }
 

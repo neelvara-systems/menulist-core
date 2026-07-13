@@ -9,20 +9,22 @@
 
 import type { Response } from "express";
 import * as functions from "firebase-functions";
-import type { MessagingProvider } from "../types/messagingOnboarding.types";
+import type { MessagingProvider, NormalizedMessage } from "../types/messagingOnboarding.types";
 import { FEATURE_FLAGS } from "./constants";
 import { logOnboardingEvent } from "./eventLogger";
 import {
   getProviderAdapter,
   getProviderFromWebhookPath,
 } from "./providers/providerRegistry";
+import { isRetryableMessagingProviderError } from "./providers/IMessagingProvider";
 import {
-  enqueueInboundMessage,
+  enqueueInboundMessages,
   getInboundMessageId,
 } from "./inboundQueue";
 
 const logger = functions.logger;
 const WEBHOOK_QUEUE_FAILED_CODE = "WEBHOOK_QUEUE_FAILED";
+const WEBHOOK_PARSE_FAILED_CODE = "WEBHOOK_PARSE_FAILED";
 
 function getWebhookBoundedStringContext(
   label: string,
@@ -165,28 +167,47 @@ export async function messagingOnboardingWebhook(
       return;
     }
 
-    // Parse incoming message
-    const normalizedMsg = adapter.parseIncomingMessage(req);
+    let normalizedMessages: NormalizedMessage[];
+    try {
+      normalizedMessages = adapter.parseIncomingMessages(req);
+    } catch (parseError) {
+      const retryable = isRetryableMessagingProviderError(parseError);
+      logger.error("[Webhook] Failed to parse authenticated provider payload", {
+        failureCode: WEBHOOK_PARSE_FAILED_CODE,
+        provider,
+        retryable,
+        ...getWebhookRequestLogContext(req),
+        ...getWebhookErrorContext(parseError),
+      });
+      res.status(retryable ? 500 : 200).send(
+        retryable ? "Unable to process webhook" : "OK",
+      );
+      return;
+    }
 
-    if (!normalizedMsg) {
+    if (normalizedMessages.length === 0) {
       // Not a user message (status update, etc.) — acknowledge
       res.status(200).send("OK");
       return;
     }
 
-    let queued;
+    let queuedMessages: Array<{ messageId: string; created: boolean; userId: string }>;
     try {
-      queued = await enqueueInboundMessage(normalizedMsg);
+      queuedMessages = await enqueueInboundMessages(normalizedMessages);
     } catch (queueError) {
-      logger.error("[Webhook] Failed to persist inbound message", {
+      const firstMessage = normalizedMessages[0];
+      logger.error("[Webhook] Failed to persist inbound message batch", {
         failureCode: WEBHOOK_QUEUE_FAILED_CODE,
+        batchSize: normalizedMessages.length,
         ...getWebhookInboundLogContext(
           provider,
-          getInboundMessageId(normalizedMsg),
-          normalizedMsg.userId,
+          getInboundMessageId(firstMessage),
+          firstMessage.userId,
         ),
         ...getWebhookErrorContext(queueError),
       });
+      // Returning 500 causes the provider to retry the full batch. Deterministic
+      // message IDs make any records created before a partial failure idempotent.
       res.status(500).send("Queue unavailable");
       return;
     }
@@ -197,15 +218,16 @@ export async function messagingOnboardingWebhook(
     // on the next schedule tick.
     res.status(200).send("OK");
 
-    if (!queued.created) {
-      logger.info("[Webhook] Duplicate inbound message acknowledged", {
-        ...getWebhookInboundLogContext(
-          provider,
-          queued.messageId,
-          normalizedMsg.userId,
-        ),
-      });
-      return;
+    for (const queued of queuedMessages) {
+      if (!queued.created) {
+        logger.info("[Webhook] Duplicate inbound message acknowledged", {
+          ...getWebhookInboundLogContext(
+            provider,
+            queued.messageId,
+            queued.userId,
+          ),
+        });
+      }
     }
 
     return;

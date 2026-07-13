@@ -57,7 +57,16 @@ function ProposalItem({
         && proposal.suggestedChange?.draftStatus === 'generated'
         && Boolean(proposal.suggestedChange?.draftTitle);
     const canGenerateDraft = FEATURE_FLAGS.ENABLE_ANSWERLATTICE_AUTO_KNOWLEDGE
-        && proposal.mutationType === 'new_answer_required';
+        && (proposal.mutationType === 'new_answer_required' || proposal.mutationType === 'content_refinement');
+    const isRollbackProposal = proposal.mutationType === 'version_update'
+        && Boolean(proposal.suggestedChange?.rollbackAuditLogId);
+    const appliesAnswerChange = isRollbackProposal
+        || Boolean(proposal.suggestedChange?.proposedContent)
+        || Boolean(proposal.suggestedChange?.proposedScope)
+        || Boolean(proposal.suggestedChange?.proposedProductBinding)
+        || Boolean(proposal.suggestedChange?.proposedStatus)
+        || Boolean(proposal.suggestedChange?.proposedAnswerType);
+    const canApprove = hasGeneratedDraft || appliesAnswerChange;
     const actions = hasGeneratedDraft
         ? [
             <Button key="publish" type="primary" icon={<LuFileCheck />} onClick={() => onOpenDraft(proposal)}>
@@ -101,18 +110,20 @@ function ProposalItem({
                     </Button>
                 </Popconfirm>,
             ] : []),
-            <Popconfirm
+            ...(canApprove ? [<Popconfirm
                 key="approve"
-                title="Approve this proposal?"
-                description="This marks the proposal as approved for implementation."
+                title={appliesAnswerChange ? 'Approve and apply this proposal?' : 'Approve this proposal?'}
+                description={appliesAnswerChange
+                    ? 'The answer change and audit record are committed together through Governance.'
+                    : 'This marks the proposal as approved for implementation.'}
                 onConfirm={() => onApprove(proposal.id)}
                 okText="Approve"
                 okButtonProps={{ style: { backgroundColor: token.colorSuccess } }}
             >
                 <Button type="text" icon={<LuCheck />} style={{ color: token.colorSuccess }}>
-                    Approve
+                    {appliesAnswerChange ? 'Approve and apply' : 'Approve'}
                 </Button>
-            </Popconfirm>,
+            </Popconfirm>] : []),
             <Popconfirm
                 key="reject"
                 title="Reject this proposal?"
@@ -179,6 +190,34 @@ function ProposalItem({
                                 </Flex>
                             </div>
                         )}
+                        {proposal.suggestedChange?.proposedContent && (
+                            <div style={{ border: `1px solid ${token.colorBorderSecondary}`, borderRadius: token.borderRadiusLG, padding: 12, background: token.colorFillTertiary }}>
+                                <Flex vertical gap={6}>
+                                    <Text strong>{proposal.suggestedChange.draftTitle || 'Proposed answer refinement'}</Text>
+                                    <Text>{proposal.suggestedChange.proposedContent.structuredSummary}</Text>
+                                    <Text type="secondary" style={{ fontSize: 12 }}>
+                                        Review this complete replacement before approving it. The current answer remains live until approval.
+                                    </Text>
+                                </Flex>
+                            </div>
+                        )}
+                        {!canApprove && proposal.suggestedChange?.reviewReason && (
+                            <Text type="secondary">{proposal.suggestedChange.reviewReason}</Text>
+                        )}
+                        {isRollbackProposal && (
+                            <div style={{ border: `1px solid ${token.colorBorderSecondary}`, borderRadius: token.borderRadiusLG, padding: 12, background: token.colorFillTertiary }}>
+                                <Flex vertical gap={6}>
+                                    <Text strong>Prior approved answer proposed for restoration</Text>
+                                    <Text>{proposal.suggestedChange.structuredSummary}</Text>
+                                    {proposal.suggestedChange.reviewReason && (
+                                        <Text type="secondary">Reason: {proposal.suggestedChange.reviewReason}</Text>
+                                    )}
+                                    <Text type="secondary" style={{ fontSize: 12 }}>
+                                        Approval restores this version through the governed answer transaction and records the decision.
+                                    </Text>
+                                </Flex>
+                            </div>
+                        )}
                         <Text type="secondary">
                             Confidence: {Math.round(proposal.confidenceScore * 100)}% |
                             Entity: {proposal.relatedEntityIds?.[0]?.slice(0, 12) || 'unknown'}
@@ -240,14 +279,13 @@ export default function MutationProposalReview() {
     }, [approveDraft, closeDraftModal, draftForm, draftProposal, session?.uId, session?.user?.email]);
 
     const handleRegenerateDraft = useCallback(async (proposal: AnswerlatticeMutationProposal) => {
-        const regeneratedBy = String(session?.user?.email || session?.uId || 'answerlattice_owner');
         setRegeneratingId(proposal.id);
         try {
-            await regenerateDraft(proposal.id, regeneratedBy);
+            await regenerateDraft(proposal.id);
         } finally {
             setRegeneratingId(null);
         }
-    }, [regenerateDraft, session?.uId, session?.user?.email]);
+    }, [regenerateDraft]);
 
     if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_SIGNAL_MUTATION) {
         return (

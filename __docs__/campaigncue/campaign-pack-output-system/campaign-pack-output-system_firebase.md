@@ -12,7 +12,7 @@ It is derived from the existing CampaignCue overview and generated as a browser-
 | --- | --- |
 | Daily desk overview | Same existing bounded overview reads. |
 | Output pack build | 0 additional reads. |
-| Output pack UI summary, including proof deck status | 0 additional reads. |
+| Output pack UI summary, readiness, Campaign Rhythm, and proof deck status | 0 additional reads. |
 | ZIP generation | 0 Firebase reads. |
 
 ## Writes
@@ -21,6 +21,8 @@ It is derived from the existing CampaignCue overview and generated as a browser-
 | --- | --- |
 | Download campaign pack ZIP | Existing campaign action write for `export`; no new output-pack write. |
 | ZIP file creation | Browser-local only; no Firestore or Storage write. |
+| Safe reuse | Uses the existing campaign-create read/write path and creates a normal new campaign/trust report/event/idempotency result; no reuse collection or copied output artifact. |
+| Approval lifecycle | Reuses one deterministic approval document per campaign and atomically writes campaign/event/idempotency state; request adds the existing summary increment. No approval-history fan-out collection or duplicate campaign pre-read. |
 
 ## Cost Guards
 
@@ -31,6 +33,8 @@ It is derived from the existing CampaignCue overview and generated as a browser-
 - No provider connection read is needed.
 - No social posting or ad-spend API is called.
 - Campaign Proof Deck content is derived from the already-loaded output pack, Business Brain Brand Playbook, source facts, and trust summary.
+- Pack readiness and Campaign Rhythm are response-derived from the already-loaded overview.
+- Safe reuse stores two compact provenance fields on the new campaign; it does not duplicate the old pack JSON, source hash, approval, result receipt, or export files.
 
 ## Future Boundary
 

@@ -2,9 +2,29 @@
 
 **Status:** Initial implementation validated - enabled behind AMM feature flags in current config
 **Audience:** Engineering / implementation maintainers
-**Last Updated:** July 10, 2026
+**Last Updated:** July 13, 2026
 
 ---
+
+## July 13, 2026 - Selected Project Runtime Boundary
+
+Scoped, legacy, and already-loaded browser project snapshots now pass through `normalizeAiMenuManagerProjectSnapshot()` before command context, transaction-local base-hash comparison, direct patch application, already-applied checks, or terminal patch verification. The AMM-specific guard validates only fields this subsystem traverses, keeps unrelated shared-Project fields intact, applies a separate 100-file runtime cap plus established public-menu data bounds, and rejects ambiguous duplicate item/category IDs or per-item attribute IDs. The 15-file extraction constant remains a pending-upload/job limit and is not misapplied to accumulated processed project files. The guard replaces every direct Admin `data() as Project` cast and binds browser context/verification to the request or operation project ID. Patch application independently binds the selected project to the approved directive scope; composer rendering fails closed to an empty context when selected project truth is invalid. Patch verification requires one exact item/category occurrence and all targeted attribute occurrences to match the approved change.
+
+Server-backed command retries now bind a deterministic proposal ID to its exact session, tenant, store, project, action, patch hash, idempotency key, card ID, card action, and duplicated scope. Both the route pre-read and the Admin transaction reject a collision with fixed `409 Request conflict` behavior. The transaction returns the authoritative existing or newly persisted proposal, and the route responds from that persisted card so a pre-read/write race cannot acknowledge a locally rebuilt card that was not stored.
+
+Every server/Admin proposal snapshot now passes through `normalizeAiMenuManagerProposalSnapshot()` before use. The normalizer requires canonical document/session/scope/project identity, bounded timestamps and idempotency keys, exact duplicated card fields, coherent card/proposal/execution status, registered patch/hash policy, approval evidence, directive/base-snapshot identity, and receipt identity. Inbox hydration discards malformed detail rows; retry, cancel, approval, and completion transactions fail closed before a write. Direct `snapshot.data() as AiMenuManagerProposalDoc` casts are forbidden.
+
+Direct compact-session completion treats desktop/mobile operation objects as untrusted references. Grouped and single completion resolve the canonical operation bodies from the transaction's current `pendingOperations`; receipt action/title/project fields and manual-task eligibility come from that persisted truth. Duplicate requested IDs, missing cards, partial command groups, duplicate persisted IDs, and inconsistent group-size metadata fail closed before counters or receipts change. This reuses the existing completion transaction and adds no Firestore read or write.
+
+The provider-backed `/api/ai-menu-manager/plan` path uses the shared `AI_OPERATION` profile and now opts into `failClosedOnProviderError`. An unavailable Upstash provider returns fixed `503`/`Retry-After` behavior before body parsing, permission checks, capacity checks, or Gemini work. Ordinary exhausted quotas remain `429`. Deterministic command, inbox, session, proposal-action, and completion routes retain their existing read/write limiter policy.
+
+Client selected-store resolution consumes only the normalized `session.user.storeId/storeIds/stores` mapping contract and reuses `canUserAccessStore`; no top-level session aliases are accepted. For server-backed proposal approval, current project truth and the proposal base hash are compared inside the same Admin transaction that locks the execution directive, so stale cards cannot be approved between a route read and the authoritative write.
+
+Compact-session proposal references are treated as untrusted pointers. Inbox hydration deduplicates normalized proposal IDs before billed reads and returns a card only when proposal document ID, proposal ID, card ID, session ID, tenant, store, project, and card scope all match the requested inbox. Server-backed cancel, manual completion, approval, and completion also require the proposal's duplicated identity fields and compact-session scope to agree before any write.
+
+Server-backed completion requires `projectId` and registered `actionType` in every request. One authoritative transaction validates proposal identity, execution directive, patch hash, selected scope, directive expiry, resulting project state, and compact-session identity before writing the terminal proposal and receipt. Concurrent completion attempts converge on the persisted terminal status and receipt; a losing retry never returns a receipt that was not stored.
+
+New compact sessions use a rule-verifiable deterministic v2 document ID composed from normalized tenant, store, UTC session date, and bounded project ID. The direct DAL, command fallback, and server persistence independently reject a supplied session ID that does not match those fields, and server persistence rejects a mismatched pre-existing session before merging compact state. Legacy hashed `amm_` IDs remain readable/updatable for in-flight compatibility, while Firestore rules allow new client creates only under the exact `amm2_...` key.
 
 ## 1. Technical Summary
 
@@ -480,7 +500,8 @@ Input:
 Security:
 
 - `withAuth()`
-- route `sessionId` must match the deterministic `amm_` session ID shape.
+- route `sessionId` must match either the rule-verifiable deterministic `amm2_` shape or the retained legacy hashed `amm_` shape.
+- supplied IDs must also match the requested tenant, store, project, and session date before persistence or hydration; a syntactically valid ID is not authority by itself.
 - selected `projectId` must be a simple bounded Firestore document ID.
 - malformed route/query IDs return fixed invalid request responses before `getAiMenuManagerInbox()` can read session/proposal documents.
 - selected store permission and session tenant/store/project checks still apply before cards are returned.
@@ -599,7 +620,13 @@ Use a deterministic session id where safe, derived from tenant, store, project, 
 
 Deterministic selected-project actions such as price, availability, visibility, featured section, menu note, and design preset do not create a separate proposal document by default. The client DAL stores the pending operation in this capped session doc, applies the exact stored patch through the existing `updateProject()` path after approval, then moves the card to `recentReceiptSummaries` in the same session doc.
 
-Command submit, completion, and cancel use the current compact session already loaded by the AMM screen. Desktop and mobile pass that session snapshot into the client DAL, the DAL appends or removes capped pending operations locally, and then writes the daily session doc once. Completion also appends the compact receipt timeline entry in that same write. Completion and cancel verify the loaded session scope/card id before writing; they do not transaction-read the session again for deterministic cards.
+Desktop and mobile pass the current compact session into the client DAL. When that snapshot contains an immediate duplicate, command submit confirms the matching card against one current document read before returning without a write or planner/provider call. New commands transactionally re-read the daily session before merging. Command completion, grouped completion, and cancel also re-read the exact session inside their write transaction before removing pending cards or appending receipts. This prevents concurrent tabs from overwriting pending operations, messages, receipts, or counters, and makes racing duplicate commands converge on the already-persisted card group.
+
+Every compact session snapshot is untrusted at runtime, including Firestore SDK data, Admin SDK data, and a browser-provided loaded snapshot. `normalizeAiMenuManagerSessionSnapshot()` is the single projection boundary before any session field is used. It requires the exact deterministic session/scope/date/project identity; allowlists and bounds messages, summaries, cards, operations, receipts, patches, artifacts and counters; discards malformed nested rows; removes every copy of a duplicate operation ID; and canonicalizes counters to bounded nonnegative integers. Admin mutation transactions fail closed when an existing document has invalid top-level identity. Browser and Admin DAL code must not cast `snapshot.data()` directly to `AiMenuManagerSessionDoc`.
+
+Server-backed proposal detail is likewise untrusted. `normalizeAiMenuManagerProposalSnapshot()` is the only Firestore/Admin projection for `aiMenuManagerProposals/{proposalId}`. Because these rows authorize menu mutations, malformed identity or nested execution truth rejects the whole proposal rather than repairing it in place.
+
+Pending-operation kind/status and patch/hash pairs must be coherent. A single card may retain legacy `commandGroupSize: 1` without a group ID and is canonicalized to an ungrouped operation; a compound group requires one group ID and a size from two through the 25-operation cap. Receipt construction centrally bounds title/message text and emits a canonical ISO execution time before compact persistence.
 
 Before any direct client-DAL session read/write, AMM must reuse the existing Firebase Auth claim sync for the selected store context. This prevents platform/HQ or multi-store owners from preparing a card under one store context while the Firebase token still carries another store.
 

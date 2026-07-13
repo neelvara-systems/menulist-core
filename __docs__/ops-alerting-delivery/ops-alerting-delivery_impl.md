@@ -2,12 +2,16 @@
 
 **Status:** ✅ IMPLEMENTED — Ops alerts plus platform notification dashboard
 **Created:** February 20, 2026  
-**Last Updated:** June 30, 2026
+**Last Updated:** July 13, 2026
 **Audience:** Developers
 
 ---
 
 ## Architecture Overview
+
+July 13 route audit: `/api/ops/safe-mode`, `/api/ops/mute-alerts`, and `/api/ops/platform-notifications` retain signed platform admission and now require one exact current-user authorization read after a fail-closed HMAC-keyed limiter. Platform notification GET uses a bounded newest-first `systemAlerts` scan (maximum 150) for both rows and recent counts; it no longer runs five collection-wide aggregation queries. The API omits stored operator identity from the browser DTO and keeps unsafe stored metadata as presence/length summaries. SAFE_MODE transitions are transactional/idempotent, and a secondary alert-write failure is logged without turning a committed toggle into a false failure response.
+
+Replay follow-up: acknowledgement skips its update when the selected alert is already acknowledged. Manual handoff and manual-alert actions require a bounded action ID created when the operator opens the action surface. Handoff persists the action-ID hash and skips an identical repeat; manual alert creation uses a deterministic document ID with atomic Firestore `create`, returning the existing alert ID before any delivery work when the action is replayed.
 
 ```
 createAlert() [EXISTING in alerts.ts]

@@ -1,9 +1,9 @@
 # Owner Referral - Marketing Source
 
 **Feature:** Owner Referral
-**Owner-facing label:** Invite another business
+**Owner-facing label:** Invite a business owner you know
 **Status:** Internal source aligned to implemented disabled runtime; promotion not approved
-**Last updated:** July 10, 2026
+**Last updated:** July 11, 2026
 **Audience:** Founder, marketing, sales, support
 
 ---
@@ -38,7 +38,7 @@ No menu publishing, QR download, link sharing, distribution checklist, or 30-day
 
 ## Referred-Business Value
 
-- A clear introduction from another business.
+- A trusted introduction from a business owner they know.
 - 50 credits after both subscriptions are paid.
 - Credits support generated menu images, descriptions, translations, and edits.
 - No post-payment action or waiting requirement.
@@ -70,7 +70,7 @@ No menu publishing, QR download, link sharing, distribution checklist, or 30-day
 
 ### Default Share Message
 
-> We use MenuList to keep our menu and business information current from one place. You can set up yours here: [invite link]
+> We use MenuList to keep our menu and business information current from one place. I thought it could help your business too: [invite link]
 >
 > MenuList adds credits to both businesses after both MenuList subscriptions are paid.
 
@@ -106,15 +106,16 @@ Do not translate credits as cash, cashback, commission, or income.
 
 Use:
 
-- Invite another business
+- Invite a business owner you know
 - Paid MenuList subscription
 - Both subscriptions are paid
 - 100 credits
 - 50 credits
+- 100 credits can cover up to 20 generated menu images or 100 description rewrites
+- 50 credits can cover up to 10 generated menu images or 50 description rewrites
 - Pack balance
 - No referral limit
-- Waiting for payment
-- Waiting for both payments
+- Their payment pending
 - Credits added
 
 Avoid:

@@ -13,6 +13,7 @@ import {
 } from '@ant-design/icons';
 import { REFRESH_INTERVALS } from '@constant/metrics';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
+import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { getAIIntelligence, getDashboardData, type AIIntelligenceData, type DashboardData, type DateRange } from '@lib/analytics/dal';
 import { getLastAnalyticsUpdate } from '@database/chatAnalytics';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
@@ -38,6 +39,14 @@ const SystemHealthSection = lazy(() => import('../../../analytics/SystemHealthSe
 
 const { Title, Text } = Typography;
 
+const getDefaultAnalyticsDateRange = (): DateRange => {
+  const end = new Date();
+  end.setUTCHours(0, 0, 0, 0);
+  const start = new Date(end);
+  start.setUTCDate(start.getUTCDate() - 29);
+  return { start, end };
+};
+
 // ================================================================
 // MAIN COMPONENT (Wrapped with Context)
 // ================================================================
@@ -49,18 +58,16 @@ function InsightsContent() {
   const executeWithState = useAsyncAction();
 
   // Date range state
-  const [dateRange, setDateRange] = useState<DateRange>({
-    start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // Last 30 days
-    end: new Date(),
-  });
+  const [dateRange, setDateRange] = useState<DateRange>(getDefaultAnalyticsDateRange);
+  const analyticsScope = resolveAnswerlatticeSessionScope(session);
 
   // ================================================================
   // DATA FETCHING WITH SWR
   // ================================================================
 
   // Generate cache key for SWR
-  const cacheKey = session?.sId
-    ? `dashboard-${session.tId}-${session.sId}-${dateRange.start.toISOString()}-${dateRange.end.toISOString()}`
+  const cacheKey = analyticsScope
+    ? `dashboard-${analyticsScope.tenantId}-${analyticsScope.storeId}-${dateRange.start.toISOString()}-${dateRange.end.toISOString()}`
     : null;
 
   // Fetch dashboard data with SWR (automatic caching & deduplication)
@@ -79,10 +86,10 @@ function InsightsContent() {
 
   // Fetch AI intelligence data (less frequently updated)
   const { data: aiData } = useSWR<AIIntelligenceData | null>(
-    session?.sId ? `ai-${session.tId}-${session.sId}` : null,
+    analyticsScope ? `ai-${analyticsScope.tenantId}-${analyticsScope.storeId}` : null,
     async () => {
       if (!session) return null;
-      return await getAIIntelligence(session.tId.toString(), session.sId.toString());
+      return await getAIIntelligence(session);
     },
     {
       dedupingInterval: REFRESH_INTERVALS.AI_INTELLIGENCE,
@@ -92,7 +99,7 @@ function InsightsContent() {
 
   // Fetch last analytics update timestamp (for data freshness banner)
   const { data: lastUpdateTimestamp } = useSWR<Date | null>(
-    session?.sId ? `last-update-${session.tId}-${session.sId}` : null,
+    analyticsScope ? `last-update-${analyticsScope.tenantId}-${analyticsScope.storeId}` : null,
     async () => {
       if (!session) return null;
       return await getLastAnalyticsUpdate(session);
@@ -263,12 +270,24 @@ function InsightsContent() {
             );
           }
 
+          if (dashboardData?.summary.isPartial) {
+            return (
+              <Alert
+                type="warning"
+                message="Some analytics are partial"
+                description="This workspace exceeded the bounded daily analytics window. Counts shown here exclude records beyond the safety limit."
+                showIcon
+                icon={<LuAlertTriangle />}
+              />
+            );
+          }
+
           if (hasFailed) {
             return (
               <Alert
                 type="error"
                 message="Data update failed"
-                description="Retry the update. If it keeps failing, check the analytics job logs."
+                description="Refresh this view. If the failure remains, check the analytics job logs."
                 showIcon
                 icon={<LuAlertCircle />}
                 action={
@@ -278,7 +297,7 @@ function InsightsContent() {
                     onClick={handleRefresh}
                     icon={<LuRefreshCw />}
                   >
-                    Retry
+                    Refresh view
                   </Button>
                 }
               />
@@ -290,7 +309,7 @@ function InsightsContent() {
               <Alert
                 type="warning"
                 message="Historical data may be outdated"
-                description={`Last update: ${hoursSinceLastRun}h ago. Click refresh to update analytics data.`}
+                description={`Last update: ${hoursSinceLastRun}h ago. Refresh this view to check for a newer completed summary.`}
                 showIcon
                 icon={<LuAlertTriangle />}
                 action={
@@ -312,7 +331,7 @@ function InsightsContent() {
               <Alert
                 type="success"
                 message={`Historical data: Updated ${hoursSinceLastRun}h ago`}
-                description="Today's stats are always live and up-to-date."
+                description="Today's bounded activity is included directly; prior days use nightly summaries."
                 showIcon
                 icon={<LuCheckCircle />}
               />

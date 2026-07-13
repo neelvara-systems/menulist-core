@@ -1,39 +1,67 @@
 import { DB_COLLECTIONS } from "@constant/database";
-import { getOwnerRoleId } from "@data/defaultRoles";
 import uploadBase64ToStorage from "@database/storage/uploadBase64ToStorage";
 import { collection, getDocs, limit, query, where } from "@firebase/firestore";
-import { requestBodyComposer } from "@lib/apiHelper";
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import { getPhoneLookupCandidates, normalizeLoginDigits } from "@lib/auth/loginIdentifiers";
+import { normalizeStoreSwitchStoreId } from "@lib/multiOutlet/storeSwitchAccess";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
+import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
 import { removeDangerousKeys } from "@lib/security/sanitizeObject";
 import { objectNullCheck } from "@util/utils";
-import { addDoc, doc, updateDoc } from "firebase/firestore";
+import type { PlatformBlockDetails } from "@type/platform/blocking";
+import type { UserStoreMappingType } from "@type/platform/user";
+import { doc, updateDoc } from "firebase/firestore";
 
 const COLLECTION = DB_COLLECTIONS.USERS;
+const PLATFORM_USER_SCOPE_QUERY_LIMIT = 500;
+
+const normalizePlatformUserScopeId = (value: unknown, allowZero = false): number | null => {
+    const raw = typeof value === "string" || typeof value === "number" ? String(value) : "";
+    const pattern = allowZero ? /^(0|[1-9]\d*)$/ : /^[1-9]\d*$/;
+    if (!pattern.test(raw)) return null;
+    const numeric = Number(raw);
+    return Number.isSafeInteger(numeric) && String(numeric) === raw ? numeric : null;
+};
+
+export type PlatformUserRecord = {
+    active: boolean;
+    blocked?: boolean;
+    blockDetails?: PlatformBlockDetails;
+    deleted: boolean;
+    email: string;
+    id: string;
+    isVerified: boolean;
+    name: string;
+    platformRole: string;
+    profileImage: string;
+    role?: string;
+    storeId?: number;
+    storeIds: number[];
+    stores: UserStoreMappingType[];
+    tenantId?: number;
+};
 
 const getCollectionRef = () => {
     return collection(firebaseClient, COLLECTION)
 }
 
-const getDocRef = (docId: any) => {
-    return doc(firebaseClient, `${COLLECTION}`, docId)
+const getDocRef = (value: unknown) => {
+    const raw = typeof value === "string" || typeof value === "number" ? String(value) : "";
+    const documentId = raw.trim();
+    if (documentId !== raw || documentId.length > 160 || !isValidFirestoreDocumentId(documentId)) {
+        throw new Error("INVALID_PLATFORM_USER_DOCUMENT_ID");
+    }
+    return doc(firebaseClient, COLLECTION, documentId)
 }
 
-export const getUserByEmail = (email: string) => {
-    return new Promise(async (res, rej) => {
-        const q = query(getCollectionRef(), where("email", "==", email), limit(1));
-        const querySnapshot = await getDocs(q);
-        if (querySnapshot.empty) {
-            res(null);
-        } else {
-            const userDoc = querySnapshot.docs[0];
-            const data = userDoc.data();
-            // ✅ SECURITY: Remove dangerous prototype pollution keys
-            const safeData = removeDangerousKeys(data);
-            res({ ...safeData, id: userDoc.id });
-        }
-    })
+export const getUserByEmail = async (email: string) => {
+    const q = query(getCollectionRef(), where("email", "==", email), limit(1));
+    const querySnapshot = await getDocs(q);
+    if (querySnapshot.empty) return null;
+
+    const userDoc = querySnapshot.docs[0];
+    const safeData = removeDangerousKeys(userDoc.data());
+    return { ...safeData, id: userDoc.id };
 }
 
 export const normalizePhoneUsername = normalizeLoginDigits;
@@ -74,24 +102,73 @@ export const getUserByLoginIdentifier = async (identifier: string) => {
     return null;
 }
 
-export const getUserByTenantId = (tenantId: string) => {
+const getScopedPlatformUsers = async (
+    field: "storeIds" | "tenantId",
+    scopeId: unknown,
+) => {
+    const numericScopeId = normalizePlatformUserScopeId(scopeId, field === "tenantId");
+    if (numericScopeId === null) return [];
+    const values: Array<number | string> = [numericScopeId, String(numericScopeId)];
+    const snapshots = await Promise.all(values.map((value) => getDocs(query(
+        getCollectionRef(),
+        where(field, field === "storeIds" ? "array-contains" : "==", value),
+        limit(PLATFORM_USER_SCOPE_QUERY_LIMIT + 1),
+    ))));
+    const users = new Map<string, PlatformUserRecord>();
+    snapshots.forEach((snapshot) => snapshot.docs.forEach((userDoc) => {
+        const data = removeDangerousKeys(userDoc.data());
+        const storedScopeMatches = field === "tenantId"
+            ? normalizePlatformUserScopeId(data.tenantId, true) === numericScopeId
+            : Array.isArray(data.storeIds)
+                && data.storeIds.some((storeId: unknown) => normalizeStoreSwitchStoreId(storeId) === numericScopeId);
+        if (!storedScopeMatches) return;
+        const stores = Array.isArray(data.stores)
+            ? data.stores.flatMap((candidate: unknown) => {
+                if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) return [];
+                const mapping = candidate as Record<string, unknown>;
+                const mappingStoreId = normalizeStoreSwitchStoreId(mapping.storeId);
+                if (mappingStoreId === null) return [];
+                return [{
+                    name: typeof mapping.name === "string" ? mapping.name : "",
+                    role: typeof mapping.role === "string" ? mapping.role : "",
+                    storeId: mappingStoreId,
+                }];
+            })
+            : [];
+        const storeIds = Array.isArray(data.storeIds)
+            ? Array.from(new Set(data.storeIds
+                .map(normalizeStoreSwitchStoreId)
+                .filter((storeId): storeId is number => storeId !== null)))
+            : stores.map(({ storeId }) => storeId);
+        const tenantId = normalizeStoreSwitchStoreId(data.tenantId);
+        const storeId = normalizeStoreSwitchStoreId(data.storeId);
+        users.set(userDoc.id, {
+            active: data.active !== false,
+            blocked: data.blocked === true,
+            blockDetails: data.blockDetails && typeof data.blockDetails === "object"
+                ? data.blockDetails as PlatformBlockDetails
+                : undefined,
+            deleted: data.deleted === true,
+            email: typeof data.email === "string" ? data.email : "",
+            id: userDoc.id,
+            isVerified: data.isVerified === true,
+            name: typeof data.name === "string" ? data.name : "",
+            platformRole: typeof data.platformRole === "string" ? data.platformRole : "",
+            profileImage: typeof data.profileImage === "string" ? data.profileImage : "",
+            role: typeof data.role === "string" ? data.role : undefined,
+            storeId: storeId ?? undefined,
+            storeIds,
+            stores,
+            tenantId: tenantId ?? undefined,
+        });
+    }));
+    if (users.size > PLATFORM_USER_SCOPE_QUERY_LIMIT) throw new Error("PLATFORM_USER_SCOPE_LIMIT_EXCEEDED");
+    return Array.from(users.values());
+};
+
+export const getUserByTenantId = (tenantId: unknown) => {
     return apiCallComposer(
-        async () => {
-            const ref = query(getCollectionRef(), where("tenantId", "==", tenantId));
-            const querySnapshot = await getDocs(ref);
-            if (querySnapshot.empty) {
-                return ([]);
-            } else {
-                const list: any = [];
-                querySnapshot.forEach((doc) => {
-                    const data = doc.data();
-                    // ✅ SECURITY: Remove dangerous prototype pollution keys
-                    const safeData = removeDangerousKeys(data);
-                    list.push({ ...safeData, id: doc.id });
-                });
-                return (list)
-            }
-        },
+        () => getScopedPlatformUsers("tenantId", tenantId),
         tenantId,
         "getUserByTenantId"
     );
@@ -145,31 +222,6 @@ const updateUser = async (data) => {
     return data;
 }
 
-export const addPlatformUser = async (data: any) => {
-    return await apiCallComposer(
-        async () => {
-            // 🔒 EMAIL UNIQUENESS GUARD: Prevent duplicate user docs
-            // @see __docs__/auth/adr-email-uniqueness-strategy.md
-            if (data.email) {
-                const normalizedEmail = data.email.toLowerCase().trim();
-                const q = query(getCollectionRef(), where("email", "==", normalizedEmail));
-                const existing = await getDocs(q);
-                if (!existing.empty) {
-                    throw new Error("EMAIL_ALREADY_EXISTS");
-                }
-            }
-
-            //add user first
-            const userToadd = await requestBodyComposer(data)
-            const docRef = await addDoc(getCollectionRef(), userToadd);
-            userToadd.id = docRef.id;
-            return await updateUser(userToadd);
-        },
-        data,
-        "addPlatformUser"
-    );
-}
-
 export const updatePlatformUser = async (data: any) => {
     return await apiCallComposer(
         async () => {
@@ -196,93 +248,4 @@ export function assertUserUpdateSucceeded(
     if (String(savedUserId) !== String(expectedUserId)) {
         throw new Error(rejectionCode);
     }
-}
-
-export const getAllPlatformUsers = async () => {
-    return await apiCallComposer(
-        async () => {
-            const querySnapshot = await getDocs(await getCollectionRef());
-            const list = [];
-            querySnapshot.forEach((doc) => {
-                list.push({ ...doc.data(), id: doc.id })
-            });
-            return (list);
-        },
-        "getAllPlatformUsers"
-    );
-}
-
-export const getUsersByStoreId = async (storeId) => {
-
-    return await apiCallComposer(
-        async () => {
-            const ref = query(await getCollectionRef(), where("storeIds", "array-contains", storeId));
-            const querySnapshot = await getDocs(ref);
-            if (querySnapshot.empty) {
-                return ([]);
-            } else {
-                const list: any = [];
-                querySnapshot.forEach((doc) => {
-                    list.push({ ...doc.data(), id: doc.id })
-                });
-                return (list)
-            }
-        },
-        storeId,
-        "getUsersByStoreId"
-    );
-}
-
-/**
- * Add store mapping to user's stores array with Owner role
- * Called when a multi-chain owner adds a new outlet store
- * 
- * @param userId - User document ID
- * @param storeId - New store ID
- * @param storeName - Store display name
- * @param roleId - Role ID to assign (defaults to Owner role for the store)
- */
-export const addStoreToUser = async (
-    userId: string,
-    storeId: number,
-    storeName: string,
-    roleId?: string
-) => {
-    return await apiCallComposer(
-        async () => {
-            const userRef = getDocRef(userId);
-            const userDoc = await getDocs(query(getCollectionRef(), where("id", "==", userId)));
-
-            // Get current user data to append to stores array
-            let currentStores: any[] = [];
-            let currentStoreIds: number[] = [];
-
-            userDoc.forEach((doc) => {
-                const data = doc.data();
-                currentStores = data.stores || [];
-                currentStoreIds = data.storeIds || [];
-            });
-
-            // Add new store mapping with Owner role by default
-            const newStoreMapping = {
-                storeId,
-                name: storeName,
-                role: roleId || getOwnerRoleId()  // Simple role ID: 'owner'
-            };
-
-            // Append to existing stores
-            const updatedStores = [...currentStores, newStoreMapping];
-            const updatedStoreIds = [...currentStoreIds, storeId];
-
-            await updateDoc(userRef, {
-                stores: updatedStores,
-                storeIds: updatedStoreIds,
-                modifiedOn: new Date().toISOString()
-            });
-
-            return { stores: updatedStores, storeIds: updatedStoreIds };
-        },
-        { userId, storeId, storeName },
-        "addStoreToUser"
-    );
 }

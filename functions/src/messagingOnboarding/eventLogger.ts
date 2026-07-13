@@ -102,15 +102,26 @@ function getEventLoggerErrorContext(error: unknown): {
   };
 }
 
-function sanitizeEventError(error?: MsgOnboardingEvent["error"]): MsgOnboardingEvent["error"] | undefined {
+export function sanitizeEventError(
+  error?: MsgOnboardingEvent["error"],
+): MsgOnboardingEvent["error"] | undefined {
   if (!error?.code) return undefined;
+
+  const retryCount = typeof error.retryCount === "number"
+    && Number.isSafeInteger(error.retryCount)
+    && error.retryCount >= 0
+    && error.retryCount <= 100
+    ? error.retryCount
+    : undefined;
 
   return {
     code: String(error.code).slice(0, 96),
     retryable: error.retryable === true,
-    ...(typeof error.retryCount === "number" ? { retryCount: error.retryCount } : {}),
+    ...(retryCount === undefined ? {} : { retryCount }),
   };
 }
+
+export const sanitizeMessagingOnboardingEventError = sanitizeEventError;
 
 function getBoundedEventMetadataContext(
   label: string,
@@ -128,7 +139,7 @@ function isSafeEventMetadataKey(key: string): boolean {
 }
 
 function sanitizeEventMetadata(
-  metadata?: Record<string, any>,
+  metadata?: Record<string, unknown>,
 ): Record<string, SanitizedEventMetadataValue> {
   if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return {};
 
@@ -151,7 +162,12 @@ function sanitizeEventMetadata(
       continue;
     }
 
-    if (value === null || typeof value === "boolean") {
+    if (value === null) {
+      sanitized[key] = null;
+      continue;
+    }
+
+    if (typeof value === "boolean") {
       sanitized[key] = value;
       continue;
     }
@@ -187,7 +203,7 @@ export async function logOnboardingEvent(params: {
   eventType: MsgOnboardingEventType;
   sessionState: MessagingOnboardingState;
   userIdMasked: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   sessionCreatedAt?: Timestamp;
   error?: MsgOnboardingEvent["error"];
 }): Promise<void> {
@@ -196,7 +212,7 @@ export async function logOnboardingEvent(params: {
   try {
     const now = Timestamp.now();
     const sessionAgeMs = params.sessionCreatedAt
-      ? now.toMillis() - params.sessionCreatedAt.toMillis()
+      ? Math.max(0, now.toMillis() - params.sessionCreatedAt.toMillis())
       : 0;
 
     const eventId = db.collection(DB_COLLECTIONS.MESSAGING_ONBOARDING_EVENTS).doc().id;

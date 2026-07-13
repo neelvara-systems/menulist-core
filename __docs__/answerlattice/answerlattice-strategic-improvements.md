@@ -64,7 +64,7 @@ Doctrine says: "Post-mutation impact tracked (14-day window)." Not implemented.
 | **Mutation proposal review queue** — Simple list page showing pending proposals with approve/reject buttons                                                                       | Must Build   |
 | **Drift dashboard** — Show drifted answers count per entity with drill-down                                                                                                       | Should Build |
 | **Entity health score** — Composite: signal rate + drift status + answer coverage                                                                                                 | Should Build |
-| **One-click entity approval from candidates** — Currently `approveCandidateStatus` only marks status; doesn't auto-create entity. Add auto-creation with search index generation. | Must Build   |
+| **One-click entity promotion from candidates** — Implemented through the server-owned `promoteCandidate` ontology action, which creates the entity and search-index state transactionally. `approveCandidateStatus` remains only as a compatibility alias. | Shipped |
 
 ---
 

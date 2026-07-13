@@ -31,6 +31,7 @@ import {
 } from '@type/answerlattice';
 import {
     Badge,
+    Alert,
     Button,
     Card,
     Descriptions,
@@ -126,6 +127,8 @@ export default function CanonicalAnswerEditor() {
     const [createAnswerType, setCreateAnswerType] = useState<AnswerlatticeAnswerType>('explanation');
     const [editSteps, setEditSteps] = useState<AnswerlatticeProcedureStep[]>([]);
     const [createSteps, setCreateSteps] = useState<AnswerlatticeProcedureStep[]>([{ ...DEFAULT_STEP }]);
+    const [savingProposal, setSavingProposal] = useState(false);
+    const [creatingProposal, setCreatingProposal] = useState(false);
 
     const entityOptions = useMemo(() =>
         (entities || []).map(e => ({ label: `${e.name} (${e.type})`, value: e.id })),
@@ -159,14 +162,15 @@ export default function CanonicalAnswerEditor() {
     }, [form, setSelectedAnswer]);
 
     const handleSave = useCallback(async () => {
-        if (!selectedAnswer) return;
+        if (!selectedAnswer || savingProposal) return;
+        setSavingProposal(true);
         try {
             const values = await form.validateFields();
             const procedure: AnswerlatticeProcedure | undefined =
                 editAnswerType === 'procedure' && editSteps.length > 0
                     ? { steps: editSteps }
                     : undefined;
-            await update({
+            const submitted = await update({
                 id: selectedAnswer.id,
                 title: values.title,
                 status: values.status,
@@ -183,14 +187,20 @@ export default function CanonicalAnswerEditor() {
                     entityIds: values.entityIds,
                 },
             });
-            setEditMode(false);
-            setDrawerOpen(false);
+            if (submitted) {
+                setEditMode(false);
+                setDrawerOpen(false);
+            }
         } catch {
             // form validation failed
+        } finally {
+            setSavingProposal(false);
         }
-    }, [selectedAnswer, form, update, editAnswerType, editSteps]);
+    }, [selectedAnswer, savingProposal, form, update, editAnswerType, editSteps]);
 
     const handleCreate = useCallback(async () => {
+        if (creatingProposal) return;
+        setCreatingProposal(true);
         try {
             const values = await createForm.validateFields();
             const versionNorm = normalizeVersion(values.versionFrom || '1.0.0');
@@ -198,7 +208,7 @@ export default function CanonicalAnswerEditor() {
                 createAnswerType === 'procedure' && createSteps.length > 0
                     ? { steps: createSteps }
                     : undefined;
-            await create({
+            const submitted = await create({
                 tId, sId,
                 title: values.title,
                 slug: values.title.toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-'),
@@ -235,14 +245,18 @@ export default function CanonicalAnswerEditor() {
                     reviewRequired: false,
                 },
             });
-            setCreateModalOpen(false);
-            createForm.resetFields();
-            setCreateAnswerType('explanation');
-            setCreateSteps([{ ...DEFAULT_STEP }]);
+            if (submitted) {
+                setCreateModalOpen(false);
+                createForm.resetFields();
+                setCreateAnswerType('explanation');
+                setCreateSteps([{ ...DEFAULT_STEP }]);
+            }
         } catch {
             // form validation
+        } finally {
+            setCreatingProposal(false);
         }
-    }, [tId, sId, createForm, create, createAnswerType, createSteps]);
+    }, [creatingProposal, tId, sId, createForm, create, createAnswerType, createSteps]);
 
     // Step editor helpers
     const updateStep = useCallback((steps: AnswerlatticeProcedureStep[], setSteps: (s: AnswerlatticeProcedureStep[]) => void, index: number, field: keyof AnswerlatticeProcedureStep, value: any) => {
@@ -427,7 +441,7 @@ export default function CanonicalAnswerEditor() {
                             Refresh
                         </Button>
                         <Button type="primary" icon={<LuPlus />} onClick={() => setCreateModalOpen(true)}>
-                            New Answer
+                            New answer proposal
                         </Button>
                     </Space>
                 </Flex>
@@ -448,7 +462,7 @@ export default function CanonicalAnswerEditor() {
                                         Start with one answer tied to a product entity, or generate drafts from Knowledge Intake first.
                                     </Text>
                                     <Button type="primary" icon={<LuPlus />} onClick={() => setCreateModalOpen(true)}>
-                                        Create first answer
+                                        Prepare first answer
                                     </Button>
                                 </Space>
                             </Empty>
@@ -459,7 +473,7 @@ export default function CanonicalAnswerEditor() {
 
             {/* Detail/Edit Drawer */}
             <Drawer
-                title={editMode ? 'Edit Canonical Answer' : 'Canonical Answer Detail'}
+                title={editMode ? 'Propose Canonical Answer Update' : 'Canonical Answer Detail'}
                 open={drawerOpen}
                 onClose={() => { setDrawerOpen(false); setEditMode(false); }}
                 width={isMobile ? '100%' : 640}
@@ -467,10 +481,10 @@ export default function CanonicalAnswerEditor() {
                     editMode ? (
                         <Space>
                             <Button onClick={() => setEditMode(false)}>Cancel</Button>
-                            <Button type="primary" icon={<LuCheck />} onClick={handleSave}>Save</Button>
+                            <Button type="primary" icon={<LuCheck />} onClick={handleSave} loading={savingProposal}>Send for review</Button>
                         </Space>
                     ) : (
-                        <Button icon={<LuPencil />} onClick={() => setEditMode(true)}>Edit</Button>
+                        <Button icon={<LuPencil />} onClick={() => setEditMode(true)}>Prepare update</Button>
                     )
                 }
             >
@@ -567,6 +581,13 @@ export default function CanonicalAnswerEditor() {
 
                 {selectedAnswer && editMode && (
                     <Form form={form} layout="vertical">
+                        <Alert
+                            type="info"
+                            showIcon
+                            message="Updates require Governance approval"
+                            description="Submitting this form creates a review proposal. The approved answer remains unchanged until a reviewer applies it."
+                            style={{ marginBottom: 16 }}
+                        />
                         <Form.Item name="title" label="Title" rules={[{ required: true }]}>
                             <Input />
                         </Form.Item>
@@ -606,14 +627,22 @@ export default function CanonicalAnswerEditor() {
 
             {/* Create Modal */}
             <Modal
-                title="Create Canonical Answer"
+                title="Propose Canonical Answer"
                 open={createModalOpen}
                 onCancel={() => { setCreateModalOpen(false); createForm.resetFields(); }}
                 onOk={handleCreate}
-                okText="Create"
+                okText="Send for review"
+                confirmLoading={creatingProposal}
                 width={isMobile ? 'calc(100vw - 24px)' : 600}
             >
                 <Form form={createForm} layout="vertical">
+                    <Alert
+                        type="info"
+                        showIcon
+                        message="Nothing publishes directly"
+                        description="This creates a pending proposal. A Governance reviewer must approve it before it becomes an active canonical answer."
+                        style={{ marginBottom: 16 }}
+                    />
                     <Form.Item name="title" label="Title" rules={[{ required: true }]}>
                         <Input placeholder="e.g., How to configure SSO integration" />
                     </Form.Item>

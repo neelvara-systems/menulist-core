@@ -17,7 +17,7 @@ const BUNDLE_REBUILD_REASON_CODES = ['manual', 'activation_manual_rebuild'] as c
 const RebuildRequestSchema = z.object({
     reason: z.enum(BUNDLE_REBUILD_REASON_CODES).optional().default('manual'),
     force: z.boolean().optional().default(false),
-});
+}).strict();
 const BUNDLE_REBUILD_MAX_BODY_BYTES = 2 * 1024;
 
 export const POST = withAuth(async (request: NextRequest, session) => {

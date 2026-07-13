@@ -197,13 +197,16 @@ export type AssetSlot = {
 1. Load slot files.
 2. Load manifest.
 3. Verify every required slot has a manifest entry.
-4. Verify every manifest file exists.
-5. Check file sizes against output budgets.
-6. Verify every video slot has poster and fallback if required.
-7. Hash slot file, source page/component, brand context, and demo-flow files.
-8. Compare hashes with manifest source fingerprints.
-9. Report missing, stale, oversized, disconnected, and approval-blocked assets.
-10. Exit non-zero only for broken generated/approved assets; missing planned assets should be warnings until slots are marked blocking.
+4. Verify generated/approved entries match slot ID and brand, declare the slot destination and required output roles, have no orphan slot, and do not share file ownership.
+5. Require generated/approved media to have one existing slot-named brief; reject mismatched or multiply owned brief paths.
+6. Require approved status/review decisions to agree, with passing performance and valid 1-10 review scores.
+7. Verify every manifest file exists.
+8. Check required output file extensions against declared formats and file sizes against output budgets.
+9. Verify every video slot has poster and fallback if required.
+10. Hash slot file, source page/component, brand context, and demo-flow files.
+11. Require declared source paths to exist and compare the exact watched-path/hash set with manifest source fingerprints, including added or removed paths.
+12. Report missing, stale, oversized, disconnected, and approval-blocked assets.
+13. Exit non-zero for broken generated/approved assets, invalid manifest/brief/review state, and any disconnected public media file; missing planned assets should be warnings until slots are marked blocking.
 
 ## Dependency Review
 

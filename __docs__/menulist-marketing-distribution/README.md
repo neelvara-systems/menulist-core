@@ -38,6 +38,14 @@ This follows the existing MenuList marketing strategy: transformation must be vi
 | [menulist-marketing-distribution_launch-distribution-review.md](./menulist-marketing-distribution_launch-distribution-review.md) | Review of the WhatsApp-first, not WhatsApp-only launch-platform and international-acquisition plan |
 | [menulist-marketing-distribution_end-to-end-growth-research-2026-06-23.md](./menulist-marketing-distribution_end-to-end-growth-research-2026-06-23.md) | End-to-end growth research memo connecting SEO, WhatsApp, outreach, paid, partners, Product Hunt, and the private Growth Engine |
 | [menulist-marketing-distribution_market-growth-gap-audit-2026-07-10.md](./menulist-marketing-distribution_market-growth-gap-audit-2026-07-10.md) | Current competitor/platform growth-system audit separating covered capabilities, useful gaps, evidence-gated work, and wrong-fit market practices |
+| [menulist-marketing-distribution_distribution-workflow-research-2026-07-11.md](./menulist-marketing-distribution_distribution-workflow-research-2026-07-11.md) | Cross-platform operating-workflow research for founder-led, content, community, creator, partner, YouTube, local discovery, product, launch, and paid distribution |
+| [menulist-marketing-distribution_distribution-workflow-brief-2026-07-11.html](./menulist-marketing-distribution_distribution-workflow-brief-2026-07-11.html) | Self-contained executive HTML brief showing the proof-led distribution loop, channel jobs, thirty-day plan, SignalDesk fit, and sources |
+| [SignalDesk AI sales, marketing, and distribution research](../menulist-signaldesk/menulist-signaldesk_ai-sales-marketing-distribution-research-2026-07-11.md) | Current cross-functional AI workflow research and adopt/delay/reject plan for SignalDesk, including practitioner evidence and proof-gated autonomy |
+| [SignalDesk AI revenue workflow market brief](../menulist-signaldesk/menulist-signaldesk_ai-revenue-workflow-market-brief-2026-07-11.html) | Visual executive brief comparing AI revenue operating models, current SignalDesk coverage, controlled rollout gates, and direct sources |
+| [menulist-marketing-distribution_first-proof-distribution-run-operating-pack.md](./menulist-marketing-distribution_first-proof-distribution-run-operating-pack.md) | Exact first customer-proof source, asset, channel draft, approval, publication, performance, decision, and revocation run contract mapped to existing SignalDesk fields |
+| [menulist-marketing-distribution_weekly-distribution-watch.md](./menulist-marketing-distribution_weekly-distribution-watch.md) | Read-only weekly platform/distribution change watch, materiality gate, prompt, output contract, boundaries, and scheduler activation specification |
+| [menulist-marketing-distribution_pilot-proof-and-owner-learning-pack.md](./menulist-marketing-distribution_pilot-proof-and-owner-learning-pack.md) | Post-activation proof packet, permission, interviews, owner clinic, independent-review request, AssetOS handoff, and revocation operating contract |
+| [menulist-marketing-distribution_publisher-ai-distribution-readiness.md](./menulist-marketing-distribution_publisher-ai-distribution-readiness.md) | Google, Apple, Bing, and future read-only AI-distribution eligibility, consent, authority, support, and implementation gates |
 | [menulist-marketing-distribution_whatsapp-intake-playbook.md](./menulist-marketing-distribution_whatsapp-intake-playbook.md) | Owner-facing WhatsApp intake states, campaign message rules, consent guardrails, and two-surface activation handoff |
 | [menulist-marketing-distribution_whatsapp-compliance-checklist.md](./menulist-marketing-distribution_whatsapp-compliance-checklist.md) | Consent, opt-out, proof-permission, and no-bulk-outreach guardrails for WhatsApp/DM/email campaigns |
 | [menulist-marketing-distribution_whatsapp-seo-content-briefs.md](./menulist-marketing-distribution_whatsapp-seo-content-briefs.md) | WhatsApp SEO/content cluster briefs with proof gates and route deferral rules |
@@ -113,7 +121,11 @@ The WhatsApp-first moat plan, public `/whatsapp` route, test-number CTA, and cam
 5. treat Tuesday, August 11, 2026 as a conditional Product Hunt target, not a scheduled launch;
 6. fill and run the permissioned Bengaluru ten-business pilot board without scraped or invented businesses;
 7. only then launch "100 WhatsApp Lists in 100 Hours" or paid click-to-WhatsApp tests.
-8. use the pilot's proof-and-retention review to decide verified-review profiles, a small owner clinic, and any compact source-to-day-30 founder view.
+8. use `menulist-marketing-distribution_pilot-proof-and-owner-learning-pack.md` for the first real proof packet, owner interviews, clinic, and review-readiness decision;
+9. keep provider applications and integrations gated by `menulist-marketing-distribution_publisher-ai-distribution-readiness.md`.
+10. use `menulist-marketing-distribution_distribution-workflow-research-2026-07-11.md` to turn the first approved proof into channel-native derivatives and one measured distribution run, instead of starting a generic posting calendar.
+11. execute that run through `menulist-marketing-distribution_first-proof-distribution-run-operating-pack.md`; keep every source/asset on hold until the entry gates pass.
+12. keep the active `MenuList distribution watch` Codex automation in observe-only mode and review its weekly output before changing the proof run plan.
 
 ## Related Product Decision
 

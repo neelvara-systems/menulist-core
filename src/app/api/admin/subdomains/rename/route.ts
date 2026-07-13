@@ -39,6 +39,7 @@ export const dynamic = 'force-dynamic';
 
 import { DB_COLLECTIONS } from '@constant/database';
 import { isReservedSubdomain } from '@constant/reservedSlugs';
+import { normalizeStoreSummaryNumericDocumentId } from '@data/shared/storeSummaryBoundary';
 import { admin } from '@lib/firebase/firebaseAdmin';
 import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
 import { logger } from '@lib/monitoring/logger';
@@ -53,6 +54,14 @@ import {
     logSecurityFailure,
 } from '@lib/security/securityDiagnostics';
 import { touchDigitalScreenContentVersionForStoreServer } from '@lib/screen/serverScreenInvalidation';
+import {
+    getSubdomainClaimDocumentId,
+    isSubdomainUnavailableError,
+    isValidSubdomainClaimCandidate,
+    readSubdomainReservationInTransaction,
+    writeCurrentSubdomainClaim,
+    writeRedirectSubdomainClaim,
+} from '@lib/routing/subdomainClaim';
 import { slugify } from '@lib/utils/slugify';
 import { revalidateTag } from 'next/cache';
 import { NextResponse } from 'next/server';
@@ -62,7 +71,7 @@ import { withAuth } from '../../../../../middleware/auth';
 
 const TWELVE_MONTHS_MS = 365 * 24 * 60 * 60 * 1000;
 const MAX_PREVIOUS_SUBDOMAINS = 10;
-const SUBDOMAIN_PATTERN = /^[a-z0-9][a-z0-9-]{1,62}[a-z0-9]$/;
+const SUBDOMAIN_PATTERN = /^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$/;
 const ADMIN_SUBDOMAIN_RENAME_MAX_BODY_BYTES = 8 * 1024;
 const ADMIN_SUBDOMAIN_RENAME_RATE_LIMIT_KEY = 'admin-subdomain-rename';
 
@@ -112,6 +121,18 @@ function normalizeAdminSubdomainRenameScopeDocumentId(value: unknown): AdminSubd
     }
 
     return { documentId, numericId };
+}
+
+function timestampToMillis(value: unknown): number {
+    if (!value || typeof value !== 'object') return 0;
+    try {
+        const toMillis = (value as { toMillis?: unknown }).toMillis;
+        if (typeof toMillis !== 'function') return 0;
+        const millis = Number(toMillis.call(value));
+        return Number.isFinite(millis) ? millis : 0;
+    } catch {
+        return 0;
+    }
 }
 
 export const POST = withAuth(
@@ -204,8 +225,8 @@ export const POST = withAuth(
             if (!storeSnap.exists) {
                 return NextResponse.json({ error: 'Store not found' }, { status: 404 });
             }
-            const store = storeSnap.data() as Record<string, any>;
-            if (String(store?.tenantId) !== tenantScope.documentId && String(store?.tId) !== tenantScope.documentId) {
+            const store = storeSnap.data() as Record<string, unknown>;
+            if (normalizeStoreSummaryNumericDocumentId(store?.tenantId ?? store?.tId) !== tenantScope.documentId) {
                 return NextResponse.json(
                     { error: 'Store belongs to a different tenant' },
                     { status: 403 },
@@ -226,80 +247,65 @@ export const POST = withAuth(
                 );
             }
 
-            // Uniqueness: reject if another active store already uses the proposed
-            // subdomain as its current value.
-            const directCollision = await db
-                .collection(DB_COLLECTIONS.STORES)
-                .where('subdomain', '==', proposed)
-                .where('active', '==', true)
-                .limit(1)
-                .get();
-            if (!directCollision.empty) {
-                return NextResponse.json(
-                    { error: 'Another active store is already using that subdomain' },
-                    { status: 409 },
-                );
-            }
-
-            // Uniqueness: reject if the proposed subdomain is someone else's
-            // unexpired rename chain entry (a 301 target cannot be stolen).
-            const chainCollision = await db
-                .collection(DB_COLLECTIONS.STORES)
-                .where('previousSubdomainSlugs', 'array-contains', proposed)
-                .limit(5)
-                .get();
             const now = admin.firestore.Timestamp.now();
             const nowMs = now.toMillis();
-            const foreignActiveChain = chainCollision.docs.find((d) => {
-                if (d.id === storeIdStr) return false;
-                const data = d.data() as Record<string, any>;
-                const history: Array<{ subdomain?: string; expiresAt?: any }> = Array.isArray(
-                    data?.previousSubdomains,
-                )
-                    ? data.previousSubdomains
-                    : [];
-                return history.some((entry) => {
-                    if ((entry?.subdomain || '').toLowerCase() !== proposed) return false;
-                    const expiresAtMs = entry?.expiresAt?.toMillis?.() ?? 0;
-                    return expiresAtMs > nowMs;
-                });
-            });
-            if (foreignActiveChain) {
-                return NextResponse.json(
-                    { error: 'That subdomain is still reserved by another store\'s rename history' },
-                    { status: 409 },
-                );
-            }
 
-            // Build the new rename-chain entry. The chain itself is capped at
-            // MAX_PREVIOUS_SUBDOMAINS entries — expired entries drop off on
-            // subsequent renames; no background cleanup required.
-            const newHistoryEntry = {
-                subdomain: currentSubdomain,
-                renamedAt: now,
-                expiresAt: admin.firestore.Timestamp.fromMillis(nowMs + TWELVE_MONTHS_MS),
-                reason,
-                ackRef,
-            };
-            const existingHistory: Array<Record<string, any>> = Array.isArray(store?.previousSubdomains)
-                ? store.previousSubdomains
-                : [];
-            const prunedHistory = existingHistory.filter((entry) => {
-                const expiresAtMs = entry?.expiresAt?.toMillis?.() ?? 0;
-                return expiresAtMs > nowMs;
-            });
-            const nextHistory = currentSubdomain
-                ? [...prunedHistory, newHistoryEntry].slice(-MAX_PREVIOUS_SUBDOMAINS)
-                : prunedHistory;
-            const nextHistorySlugs = nextHistory
-                .map((entry) => (entry?.subdomain || '').toLowerCase())
-                .filter(Boolean);
-
-            // Transaction: update the store and write the audit record in
-            // one atomic batch so the two documents never drift.
+            // Transaction: reserve the unique slug, refresh the redirect
+            // chain, update canonical/summary state and write the audit record.
             const auditRef = db.collection(DB_COLLECTIONS.SUBDOMAIN_RENAME_LOG).doc();
             const summaryRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc('storesSummary');
-            await db.runTransaction(async (tx) => {
+            const renameResult = await db.runTransaction(async (tx) => {
+                const freshStoreSnap = await tx.get(storeRef);
+                const freshStore = freshStoreSnap.exists ? freshStoreSnap.data() || {} : {};
+                if (
+                    !freshStoreSnap.exists
+                    || normalizeStoreSummaryNumericDocumentId(freshStore.tenantId ?? freshStore.tId) !== tenantScope.documentId
+                ) {
+                    throw new Error('admin_subdomain_store_scope_changed');
+                }
+                const freshCurrentSubdomain = typeof freshStore.subdomain === 'string'
+                    ? freshStore.subdomain.toLowerCase()
+                    : '';
+                if (freshCurrentSubdomain === proposed) throw new Error('admin_subdomain_unchanged');
+
+                const reservation = await readSubdomainReservationInTransaction({
+                    db,
+                    nowMillis: nowMs,
+                    storeId: storeIdStr,
+                    subdomain: proposed,
+                    tenantId: tenantScope.documentId,
+                    transaction: tx,
+                });
+                const oldClaimRef = freshCurrentSubdomain
+                    && isValidSubdomainClaimCandidate(freshCurrentSubdomain)
+                    ? db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(getSubdomainClaimDocumentId(freshCurrentSubdomain))
+                    : null;
+                const oldClaimSnap = oldClaimRef ? await tx.get(oldClaimRef) : null;
+                const expiresAt = admin.firestore.Timestamp.fromMillis(nowMs + TWELVE_MONTHS_MS);
+                const newHistoryEntry = {
+                    subdomain: freshCurrentSubdomain,
+                    renamedAt: now,
+                    expiresAt,
+                    reason,
+                    ackRef,
+                };
+                const existingHistory: Array<Record<string, unknown>> = Array.isArray(freshStore.previousSubdomains)
+                    ? freshStore.previousSubdomains.filter(
+                        (entry): entry is Record<string, unknown> => Boolean(entry)
+                            && typeof entry === 'object'
+                            && !Array.isArray(entry),
+                    )
+                    : [];
+                const prunedHistory = existingHistory.filter((entry) => (
+                    timestampToMillis(entry.expiresAt) > nowMs
+                ));
+                const nextHistory = freshCurrentSubdomain
+                    ? [...prunedHistory, newHistoryEntry].slice(-MAX_PREVIOUS_SUBDOMAINS)
+                    : prunedHistory;
+                const nextHistorySlugs = nextHistory
+                    .map((entry) => String(entry?.subdomain || '').toLowerCase())
+                    .filter(Boolean);
+
                 tx.update(storeRef, {
                     subdomain: proposed,
                     previousSubdomains: nextHistory,
@@ -315,18 +321,38 @@ export const POST = withAuth(
                         },
                     },
                 }, { merge: true });
+                writeCurrentSubdomainClaim(tx, reservation, now);
+                if (
+                    oldClaimRef
+                    && (!oldClaimSnap?.exists || String(oldClaimSnap.data()?.storeId || '') === storeIdStr)
+                ) {
+                    writeRedirectSubdomainClaim({
+                        claimRef: oldClaimRef,
+                        expiresAt,
+                        now,
+                        storeId: storeIdStr,
+                        subdomain: freshCurrentSubdomain,
+                        tenantId: tenantScope.documentId,
+                        transaction: tx,
+                    });
+                }
                 tx.set(auditRef, {
                     storeId: storeIdStr,
                     tenantId,
-                    previousSubdomain: currentSubdomain,
+                    previousSubdomain: freshCurrentSubdomain,
                     newSubdomain: proposed,
                     renamedAt: now,
-                    expiresAt: newHistoryEntry.expiresAt,
+                    expiresAt,
                     reason,
                     ackRef,
                     operatorEmail: session?.user?.email || 'unknown',
                     operatorUserId: session?.user?.id || null,
                 });
+                return {
+                    expiresAt,
+                    historyEntryCount: nextHistory.length,
+                    previousSubdomain: freshCurrentSubdomain,
+                };
             });
 
             revalidateTag(`menu-store-${storeIdStr}`);
@@ -345,9 +371,9 @@ export const POST = withAuth(
                     ...failureContext,
                     auditIdPresent: auditRef.id.length > 0,
                     auditIdLength: auditRef.id.length,
-                    previousSubdomainPresent: currentSubdomain.length > 0,
-                    previousSubdomainLength: currentSubdomain.length,
-                    historyEntryCount: nextHistory.length,
+                    previousSubdomainPresent: renameResult.previousSubdomain.length > 0,
+                    previousSubdomainLength: renameResult.previousSubdomain.length,
+                    historyEntryCount: renameResult.historyEntryCount,
                     cacheInvalidated: true,
                     screenInvalidated: true,
                     ownerAssistantPacketInvalidated: true,
@@ -358,12 +384,21 @@ export const POST = withAuth(
             return NextResponse.json({
                 success: true,
                 storeId: storeIdStr,
-                previousSubdomain: currentSubdomain,
+                previousSubdomain: renameResult.previousSubdomain,
                 newSubdomain: proposed,
-                expiresAt: newHistoryEntry.expiresAt.toDate().toISOString(),
+                expiresAt: renameResult.expiresAt.toDate().toISOString(),
                 auditId: auditRef.id,
             });
         } catch (error) {
+            if (isSubdomainUnavailableError(error)) {
+                return NextResponse.json({ error: 'That subdomain is already reserved' }, { status: 409 });
+            }
+            if (error instanceof Error && error.message === 'admin_subdomain_unchanged') {
+                return NextResponse.json({ error: 'New subdomain matches current subdomain' }, { status: 409 });
+            }
+            if (error instanceof Error && error.message === 'admin_subdomain_store_scope_changed') {
+                return NextResponse.json({ error: 'Store scope changed during rename' }, { status: 409 });
+            }
             logSecurityFailure('admin_subdomain_rename_failed', error, failureContext);
             return NextResponse.json(
                 { error: 'Subdomain rename failed' },

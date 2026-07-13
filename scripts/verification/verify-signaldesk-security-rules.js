@@ -22,6 +22,7 @@ const summaryCollections = [
   "signaldeskDemandSignalSummaries",
   "signaldeskContentAssets",
   "signaldeskContentDistributionDrafts",
+  "signaldeskProofPermissions",
   "signaldeskResearchRuns",
   "signaldeskResearchTableRows",
   "signaldeskTrustPartnerProfiles",
@@ -47,6 +48,7 @@ const rawCollections = [
   "signaldeskDemandSignals",
   "signaldeskDataRequests",
   "signaldeskIdempotencyKeys",
+  "signaldeskRouteTokens",
 ];
 
 function assert(condition, message) {
@@ -71,6 +73,12 @@ function verifyStaticFirestoreRules() {
   assertIncludes(firestoreRules, "function canReadSignalDesk()", "Firestore internal read helper");
   assertIncludes(firestoreRules, "request.auth.token.platformRole == 'PLATFORM'", "Firestore platform admin helper");
   assertIncludes(firestoreRules, "signaldeskTeamMembers/$(request.auth.uid)", "Firestore SignalDesk member helper");
+  const teamMemberRuleStart = firestoreRules.indexOf("match /signaldeskTeamMembers/{memberId}");
+  const teamMemberRuleEnd = firestoreRules.indexOf("\n    match /", teamMemberRuleStart + 1);
+  const teamMemberRule = firestoreRules.slice(teamMemberRuleStart, teamMemberRuleEnd);
+  assert(teamMemberRuleStart >= 0, "signaldeskTeamMembers rule block exists");
+  assert(teamMemberRule.includes("memberId == request.auth.uid"), "SignalDesk member can read only their own membership record");
+  assert(!teamMemberRule.includes("isSignedInSignalDeskMember()"), "SignalDesk members cannot read other membership records");
 
   for (const collection of summaryCollections) {
     const block = getMatchBlock(firestoreRules, collection);
@@ -218,6 +226,8 @@ async function verifyRulesUnitSemantics() {
         setDoc(doc(firestore, "signaldeskCommercialOffers/offer_summary"), { pId: "SD", commercialOfferId: "offer_summary" }),
         setDoc(doc(firestore, "signaldeskOperatingEnvelopes/envelope_summary"), { pId: "SD", operatingEnvelopeId: "envelope_summary" }),
         setDoc(doc(firestore, "signaldeskActivationWatches/watch_summary"), { pId: "SD", activationWatchId: "watch_summary" }),
+        setDoc(doc(firestore, "signaldeskProofPermissions/proof_permission"), { pId: "SD", proofPermissionId: "proof_permission" }),
+        setDoc(doc(firestore, "signaldeskRouteTokens/route_token"), { pId: "SD", tokenHash: "hash-only" }),
         setDoc(doc(firestore, "signaldeskRevenueControlSummaries/current"), { pId: "SD", revenueAccountCount: 1 }),
         setDoc(doc(firestore, "signaldeskTargetSummaries/target_summary"), { pId: "SD", targetId: "target_summary" }),
         setDoc(doc(firestore, "signaldeskTargets/target_detail"), { pId: "SD", targetId: "target_detail" }),
@@ -261,7 +271,14 @@ async function verifyRulesUnitSemantics() {
     await assertFails(getDoc(doc(menuListOwner.firestore(), "signaldeskControlRoomSummaries/dashboard")));
     await assertFails(getDoc(doc(inactiveMember.firestore(), "signaldeskControlRoomSummaries/dashboard")));
     await assertSucceeds(getDoc(doc(activeMember.firestore(), "signaldeskControlRoomSummaries/dashboard")));
+    await assertSucceeds(getDoc(doc(activeMember.firestore(), "signaldeskTeamMembers/active-member")));
+    await assertFails(getDoc(doc(activeMember.firestore(), "signaldeskTeamMembers/inactive-member")));
+    await assertFails(getDocs(collection(activeMember.firestore(), "signaldeskTeamMembers")));
+    await assertSucceeds(getDoc(doc(platformAdmin.firestore(), "signaldeskTeamMembers/active-member")));
+    await assertSucceeds(getDocs(collection(platformAdmin.firestore(), "signaldeskTeamMembers")));
     await assertSucceeds(getDocs(collection(activeMember.firestore(), "signaldeskTargetSummaries")));
+    await assertSucceeds(getDoc(doc(activeMember.firestore(), "signaldeskProofPermissions/proof_permission")));
+    await assertFails(setDoc(doc(activeMember.firestore(), "signaldeskProofPermissions/client_write"), { pId: "SD" }));
     for (const [collectionName, docId] of [
       ["signaldeskRevenueAccounts", "account_summary"],
       ["signaldeskCommercialOpportunities", "opportunity_summary"],
@@ -286,6 +303,7 @@ async function verifyRulesUnitSemantics() {
       "signaldeskMessages",
       "signaldeskSuppressionLedger",
       "signaldeskContactIdentities",
+      "signaldeskRouteTokens",
     ]) {
       await assertFails(getDoc(doc(activeMember.firestore(), `${collectionName}/${collectionName}_doc`)));
       await assertFails(getDocs(collection(activeMember.firestore(), collectionName)));

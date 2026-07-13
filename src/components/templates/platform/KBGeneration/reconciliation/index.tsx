@@ -1,14 +1,14 @@
 'use client';
 
 import { assertIngestionJobWriteSucceeded, updateJob } from '@database/kb-generation/jobs';
-import { assertKnowledgeBaseArticleDeleteSucceeded, deleteArticle, getArticleById } from '@database/knowledgeBase/articles';
+import { getArticleById, getArticlesByIds } from '@database/knowledgeBase/articles';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
-import { ARTICLE_RECONCILIATION_STATUS, IngestionJob, KnowledgeBaseArticleType } from '@type/knowledgeBase';
+import { ARTICLE_RECONCILIATION_STATUS, IngestionJob } from '@type/knowledgeBase';
 import { Alert, Button, List, message, Modal, Typography } from 'antd';
 import { useState } from 'react';
 import { LuArrowRight } from 'react-icons/lu';
-import ComparisonView from './ComparisonView';
+import ComparisonView, { type ArticleWithResolvedReconciliation } from './ComparisonView';
 
 interface ReconciliationModalProps {
     open: boolean;
@@ -22,7 +22,7 @@ type ArticleToReview = NonNullable<IngestionJob['articlesToReview']>[0];
 const ReconciliationModal = ({ open, job, onClose, articlesToReview }: ReconciliationModalProps) => {
     const dispatch = useAppDispatch();
     const [drawerVisible, setDrawerVisible] = useState(false);
-    const [selectedArticle, setSelectedArticle] = useState<KnowledgeBaseArticleType | null>(null);
+    const [selectedArticle, setSelectedArticle] = useState<ArticleWithResolvedReconciliation | null>(null);
 
     const onClickResolve = async (article: ArticleToReview) => {
         dispatch(startLoader('Fetching article details...'));
@@ -34,8 +34,17 @@ const ReconciliationModal = ({ open, job, onClose, articlesToReview }: Reconcili
                 return;
             }
 
-            // The similarArticles are already on the newArticle object.
-            setSelectedArticle(newArticle);
+            const similarArticleIds = Array.from(new Set(newArticle.reconciliation.similarArticleIds || [])).slice(0, 3);
+            const similarArticles = similarArticleIds.length > 0
+                ? await getArticlesByIds(similarArticleIds)
+                : [];
+            setSelectedArticle({
+                ...newArticle,
+                reconciliation: {
+                    ...newArticle.reconciliation,
+                    similarArticles,
+                },
+            });
             setDrawerVisible(true);
         } catch (error) {
             setSelectedArticle(null);
@@ -52,13 +61,6 @@ const ReconciliationModal = ({ open, job, onClose, articlesToReview }: Reconcili
     };
 
     const onDiscardArticle = async () => {
-
-        const deleteResult = await deleteArticle(selectedArticle.id);
-        assertKnowledgeBaseArticleDeleteSucceeded(
-            deleteResult,
-            selectedArticle.id,
-            'kb_generation_reconciliation_article_delete_rejected',
-        );
         const updatedCategoriesMap = JSON.parse(JSON.stringify(job.categories || {}));
 
         if (selectedArticle.categoryId && updatedCategoriesMap[selectedArticle.categoryId]) {
@@ -77,7 +79,6 @@ const ReconciliationModal = ({ open, job, onClose, articlesToReview }: Reconcili
         }
 
         const updatedJobdata = {
-            articleIds: articlesToReview?.filter(a => a.id !== selectedArticle.id)?.map(a => a.id) || [],
             articlesToReview: articlesToReview?.filter(a => a.id !== selectedArticle.id) || [],
             categories: updatedCategoriesMap
         }

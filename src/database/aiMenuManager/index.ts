@@ -12,15 +12,23 @@ import {
     resolveAiMenuManagerCompoundCommand,
 } from '@lib/ai-menu-manager/compoundCommand';
 import { ensureFirebaseAuthForSession } from '@lib/auth/firebaseAuthSync';
+import { canUserAccessStore } from '@lib/multiOutlet/storeSwitchAccess';
 import { createRuntimeId } from '@lib/runtime/randomId';
 import {
-    buildDailySessionId,
     buildExecutionId,
     buildProposalId,
     hashStableValue,
+    isDailySessionIdForScope,
+    resolveDailySessionId,
     todaySessionDate,
 } from '@lib/ai-menu-manager/idempotency';
+import { normalizeAiMenuManagerScopeDocumentId } from '@lib/ai-menu-manager/routeIds';
 import { assertAiMenuManagerPatchAllowedForAction } from '@lib/ai-menu-manager/patchPolicy';
+import {
+    resolveCurrentAiMenuManagerOperation,
+    resolveCurrentAiMenuManagerOperationGroup,
+} from '@lib/ai-menu-manager/pendingOperationIntegrity';
+import { normalizeAiMenuManagerSessionSnapshot } from '@lib/ai-menu-manager/sessionIntegrity';
 import { applyAiMenuManagerProjectPatch } from '@lib/ai-menu-manager/actions/projectPatches';
 import { listAiMenuManagerExecutableActions } from '@lib/ai-menu-manager/actionRegistry';
 import {
@@ -52,8 +60,8 @@ import type {
 import {
     doc,
     getDoc,
+    runTransaction,
     serverTimestamp,
-    setDoc,
     Timestamp,
 } from 'firebase/firestore';
 
@@ -205,40 +213,33 @@ function isFirestorePermissionDenied(error: unknown) {
     return code === 'permission-denied' || message.toLowerCase().includes('permission');
 }
 
-function getSessionStoreIds(session: any) {
-    const storeIds = new Set<string>();
-    [
-        session?.sId,
-        session?.storeId,
-        session?.user?.storeId,
-        ...(Array.isArray(session?.user?.stores) ? session.user.stores.map((store: any) => store?.storeId ?? store?.id) : []),
-        ...(Array.isArray(session?.storeIds) ? session.storeIds : []),
-    ].forEach((entry) => {
-        const normalized = normalizeId(entry);
-        if (normalized) storeIds.add(normalized);
-    });
-    return storeIds;
-}
-
 async function resolveClientScope(storeId: string | number): Promise<ClientScope> {
     const session = await getActiveSession();
-    const tId = session?.tId ?? (session as any)?.tenantId ?? session?.user?.tenantId;
-    const requestedStoreId = normalizeId(storeId);
-    const allowedStoreIds = getSessionStoreIds(session);
+    const tenantScope = normalizeAiMenuManagerScopeDocumentId(
+        session?.tId ?? (session as any)?.tenantId ?? session?.user?.tenantId,
+    );
+    const storeScope = normalizeAiMenuManagerScopeDocumentId(storeId);
 
-    if (!session?.user || !tId || !requestedStoreId) {
+    if (!session?.user || !tenantScope || !storeScope) {
         throw new Error('Menu Manager could not access this store');
     }
 
-    if (allowedStoreIds.size > 0 && !allowedStoreIds.has(requestedStoreId)) {
+    const sessionUser = {
+        ...session.user,
+        platformRole: session?.platformRole || session.user.platformRole,
+        storeId: session.user.storeId || session?.sId,
+        storeIds: session.user.storeIds,
+        stores: session.user.stores,
+    };
+    if (!canUserAccessStore({ sessionUser, storeId: storeScope.numericId })) {
         throw new Error('Menu Manager could not access this store');
     }
 
     await ensureFirebaseAuthForSession(session);
 
     return {
-        tId,
-        sId: requestedStoreId,
+        tId: tenantScope.documentId,
+        sId: storeScope.documentId,
         userId: session?.uId || session?.user?.id,
     };
 }
@@ -249,7 +250,8 @@ function buildSessionId(params: {
     scope: ClientScope;
     projectId: string;
 }) {
-    return params.sessionId || buildDailySessionId({
+    return resolveDailySessionId({
+        sessionId: params.sessionId,
         tId: params.scope.tId,
         sId: params.scope.sId,
         projectId: params.projectId,
@@ -486,15 +488,17 @@ function getMatchingSessionSnapshot(params: {
     projectId: string;
     scope: ClientScope;
     sessionId: string;
-    snapshot?: AiMenuManagerSessionDoc | null;
+    sessionDate: string;
+    snapshot?: unknown;
 }) {
-    const snapshot = params.snapshot || null;
+    const snapshot = normalizeAiMenuManagerSessionSnapshot(params.snapshot);
     if (
         !snapshot
         || normalizeId(snapshot.sessionId) !== normalizeId(params.sessionId)
         || normalizeId(snapshot.tId) !== normalizeId(params.scope.tId)
         || normalizeId(snapshot.sId) !== normalizeId(params.scope.sId)
         || normalizeId(snapshot.projectId) !== normalizeId(params.projectId)
+        || snapshot.sessionDate !== params.sessionDate
     ) {
         return null;
     }
@@ -503,9 +507,9 @@ function getMatchingSessionSnapshot(params: {
 
 function getMatchingOperationSessionSnapshot(
     operation: AiMenuManagerPendingOperation,
-    snapshot?: AiMenuManagerSessionDoc | null,
+    snapshot?: unknown,
 ) {
-    const session = snapshot || null;
+    const session = normalizeAiMenuManagerSessionSnapshot(snapshot);
     if (
         !session
         || normalizeId(session.sessionId) !== normalizeId(operation.sessionId)
@@ -669,6 +673,7 @@ export async function sendAiMenuManagerCommand(
     const idempotencyKey = request.idempotencyKey || createAiMenuManagerIdempotencyKey('amm_cmd');
     const createdAt = nowIso();
     const context = buildAiMenuManagerContextPacket({
+        expectedProjectId: request.projectId,
         project: request.project,
         storeName: request.storeName || 'Selected store',
         businessType: request.businessType,
@@ -676,35 +681,65 @@ export async function sendAiMenuManagerCommand(
     });
     const baseProjectHash = buildAiMenuManagerContextBaseHash(context);
     const sessionRef = getSessionDocRef(sessionId);
-    const existingSession = getMatchingSessionSnapshot({
+    let existingSession = getMatchingSessionSnapshot({
         sessionId,
+        sessionDate,
         scope,
         projectId: request.projectId,
         snapshot: request.sessionSnapshot,
     });
-    const existingOperations = normalizeOperations(existingSession, request.projectId);
+    let existingOperations = normalizeOperations(existingSession, request.projectId);
     const sourceFingerprint = buildAiMenuManagerCommandFingerprint({
         baseProjectHash,
         composerContext: request.composerContext,
         text,
     });
-    const duplicateOperations = getRecentDuplicateOperations({
+    const loadedDuplicates = getRecentDuplicateOperations({
         operations: existingOperations,
         sourceFingerprint,
     });
-    if (existingSession && duplicateOperations.length > 0 && !request.replaceOperationId) {
-        return {
-            sessionId,
-            messageId: duplicateOperations[0].commandGroupId || duplicateOperations[0].operationId,
-            cards: duplicateOperations.map((operation) => operation.card),
-            operations: existingOperations,
-            session: existingSession,
-            nextRequiredAction: duplicateOperations.some((operation) => operation.card.kind === 'clarification')
-                ? 'clarification'
-                : duplicateOperations.some((operation) => operation.card.status === 'pending_approval')
-                    ? 'owner_approval'
-                    : 'none',
-        };
+    if (existingSession && loadedDuplicates.length > 0 && !request.replaceOperationId) {
+        try {
+            const sessionSnap = await getDoc(sessionRef);
+            const currentSession = getMatchingSessionSnapshot({
+                sessionId,
+                sessionDate,
+                scope,
+                projectId: request.projectId,
+                snapshot: sessionSnap.exists() ? sessionSnap.data() : null,
+            });
+            if (sessionSnap.exists() && !currentSession) {
+                throw new Error('Session identity mismatch');
+            }
+            existingSession = currentSession;
+            existingOperations = normalizeOperations(currentSession, request.projectId);
+            const currentDuplicates = getRecentDuplicateOperations({
+                operations: existingOperations,
+                sourceFingerprint,
+            });
+            if (currentSession && currentDuplicates.length > 0) {
+                return {
+                    sessionId,
+                    messageId: currentDuplicates[0].commandGroupId || currentDuplicates[0].operationId,
+                    cards: currentDuplicates.map((operation) => operation.card),
+                    operations: existingOperations,
+                    session: currentSession,
+                    nextRequiredAction: currentDuplicates.some((operation) => operation.card.kind === 'clarification')
+                        ? 'clarification'
+                        : currentDuplicates.some((operation) => operation.card.status === 'pending_approval')
+                            ? 'owner_approval'
+                            : 'none',
+                };
+            }
+        } catch (error) {
+            if (isFirestorePermissionDenied(error)) {
+                return sendAiMenuManagerServerBackedCommand({
+                    ...request,
+                    idempotencyKey,
+                }, scope);
+            }
+            throw error;
+        }
     }
     const followUp = request.replaceOperationId
         ? null
@@ -910,66 +945,110 @@ export async function sendAiMenuManagerCommand(
         createdAt,
         updatedAt: createdAt,
     }));
-    const newOperationIds = new Set(newOperations.map((operation) => operation.operationId));
-    const retainedOperations = existingOperations.filter((entry) => (
-        !newOperationIds.has(entry.operationId)
-        && (!replaceOperationId || entry.operationId !== replaceOperationId)
-    ));
-    const pendingOperations = [
-        ...newOperations,
-        ...retainedOperations,
-    ].slice(0, MAX_PENDING_OPERATIONS);
-    const recentReceiptSummaries = (existingSession?.recentReceiptSummaries || []).slice(0, MAX_RECEIPTS);
-    const nextSession: AiMenuManagerSessionDoc = sanitizeAiMenuManagerFirestoreValue({
-        sessionId,
-        tId: scope.tId,
-        sId: scope.sId,
-        projectId: request.projectId,
-        sessionDate,
-        storageMode: FEATURE_FLAGS.AI_MENU_MANAGER_SESSION_STORAGE_MODE,
-        status: 'active',
-        compactMessages: compactMessages({
-            existing: existingSession?.compactMessages,
-            ownerText: text,
-            managerText: newOperations.length > 1
-                ? `Prepared ${newOperations.length} updates. Review them, then approve together.`
-                : ['answer', 'clarification', 'unsupported'].includes(newOperations[0].card.kind)
-                    ? newOperations[0].card.message
-                    : newOperations[0].card.title,
-            messageId: commandGroupId || newOperations[0].operationId,
-        }),
-        pendingCardSummaries: pendingOperations.map(buildPendingSummary).slice(0, MAX_PENDING_SUMMARIES),
-        pendingOperations,
-        recentReceiptSummaries,
-        counters: {
-            ...(existingSession?.counters || {}),
-            commands: (existingSession?.counters?.commands || 0) + 1,
-            proposalsCreated: (existingSession?.counters?.proposalsCreated || 0)
-                + newOperations.filter((operation) => operation.card.kind === 'proposal').length,
-            approvals: existingSession?.counters?.approvals || 0,
-            executions: existingSession?.counters?.executions || 0,
-            compoundCommands: (existingSession?.counters?.compoundCommands || 0) + (compoundParts ? 1 : 0),
-            deterministicRoutes: (existingSession?.counters?.deterministicRoutes || 0) + (usedDeterministicRoute ? 1 : 0),
-            plannerAttempts: (existingSession?.counters?.plannerAttempts || 0) + (plannerAttempted ? 1 : 0),
-            plannerAccepted: (existingSession?.counters?.plannerAccepted || 0) + (plannerAccepted ? 1 : 0),
-            plannerFallbacks: (existingSession?.counters?.plannerFallbacks || 0)
-                + (plannerAttempted && !plannerAccepted ? 1 : 0),
-            clarifications: (existingSession?.counters?.clarifications || 0)
-                + newOperations.filter((operation) => operation.card.kind === 'clarification').length,
-        },
-        artifactRefs: (existingSession?.artifactRefs || []).slice(0, 20),
-        createdAt: existingSession?.createdAt || createdAt,
-        updatedAt: createdAt,
-        expiresAt: Timestamp.fromDate(ttlDate(SESSION_TTL_DAYS)),
-    });
-    const sessionPayload: Partial<AiMenuManagerSessionDoc> = sanitizeAiMenuManagerFirestoreValue({
-        ...nextSession,
-        updatedAt: serverTimestamp(),
-        ...(!existingSession ? { createdAt: serverTimestamp() } : {}),
-    });
-
+    let persisted;
     try {
-        await setDoc(sessionRef, sessionPayload, { merge: true });
+        persisted = await runTransaction(firebaseClient, async (transaction) => {
+            const sessionSnap = await transaction.get(sessionRef);
+            const currentSession = getMatchingSessionSnapshot({
+                sessionId,
+                sessionDate,
+                scope,
+                projectId: request.projectId,
+                snapshot: sessionSnap.exists() ? sessionSnap.data() : null,
+            });
+            if (sessionSnap.exists() && !currentSession) {
+                throw new Error('Session identity mismatch');
+            }
+
+            const currentOperations = normalizeOperations(currentSession, request.projectId);
+            const concurrentDuplicates = getRecentDuplicateOperations({
+                operations: currentOperations,
+                sourceFingerprint,
+            });
+            if (currentSession && concurrentDuplicates.length > 0 && !replaceOperationId) {
+                return {
+                    session: currentSession,
+                    operations: currentOperations,
+                    responseOperations: concurrentDuplicates,
+                };
+            }
+
+            const newOperationIds = new Set(newOperations.map((operation) => operation.operationId));
+            const alreadyPersisted = currentOperations.filter((operation) => newOperationIds.has(operation.operationId));
+            if (alreadyPersisted.length > 0) {
+                if (alreadyPersisted.length !== newOperations.length || !currentSession) {
+                    throw new Error('Prepared updates no longer match the selected menu');
+                }
+                return {
+                    session: currentSession,
+                    operations: currentOperations,
+                    responseOperations: alreadyPersisted,
+                };
+            }
+
+            const retainedOperations = currentOperations.filter((entry) => (
+                !newOperationIds.has(entry.operationId)
+                && (!replaceOperationId || entry.operationId !== replaceOperationId)
+            ));
+            const pendingOperations = [
+                ...newOperations,
+                ...retainedOperations,
+            ].slice(0, MAX_PENDING_OPERATIONS);
+            const recentReceiptSummaries = (currentSession?.recentReceiptSummaries || []).slice(0, MAX_RECEIPTS);
+            const nextSession: AiMenuManagerSessionDoc = sanitizeAiMenuManagerFirestoreValue({
+                sessionId,
+                tId: scope.tId,
+                sId: scope.sId,
+                projectId: request.projectId,
+                sessionDate,
+                storageMode: FEATURE_FLAGS.AI_MENU_MANAGER_SESSION_STORAGE_MODE,
+                status: 'active',
+                compactMessages: compactMessages({
+                    existing: currentSession?.compactMessages,
+                    ownerText: text,
+                    managerText: newOperations.length > 1
+                        ? `Prepared ${newOperations.length} updates. Review them, then approve together.`
+                        : ['answer', 'clarification', 'unsupported'].includes(newOperations[0].card.kind)
+                            ? newOperations[0].card.message
+                            : newOperations[0].card.title,
+                    messageId: commandGroupId || newOperations[0].operationId,
+                }),
+                pendingCardSummaries: pendingOperations.map(buildPendingSummary).slice(0, MAX_PENDING_SUMMARIES),
+                pendingOperations,
+                recentReceiptSummaries,
+                counters: {
+                    ...(currentSession?.counters || {}),
+                    commands: (currentSession?.counters?.commands || 0) + 1,
+                    proposalsCreated: (currentSession?.counters?.proposalsCreated || 0)
+                        + newOperations.filter((operation) => operation.card.kind === 'proposal').length,
+                    approvals: currentSession?.counters?.approvals || 0,
+                    executions: currentSession?.counters?.executions || 0,
+                    compoundCommands: (currentSession?.counters?.compoundCommands || 0) + (compoundParts ? 1 : 0),
+                    deterministicRoutes: (currentSession?.counters?.deterministicRoutes || 0) + (usedDeterministicRoute ? 1 : 0),
+                    plannerAttempts: (currentSession?.counters?.plannerAttempts || 0) + (plannerAttempted ? 1 : 0),
+                    plannerAccepted: (currentSession?.counters?.plannerAccepted || 0) + (plannerAccepted ? 1 : 0),
+                    plannerFallbacks: (currentSession?.counters?.plannerFallbacks || 0)
+                        + (plannerAttempted && !plannerAccepted ? 1 : 0),
+                    clarifications: (currentSession?.counters?.clarifications || 0)
+                        + newOperations.filter((operation) => operation.card.kind === 'clarification').length,
+                },
+                artifactRefs: (currentSession?.artifactRefs || []).slice(0, 20),
+                createdAt: currentSession?.createdAt || createdAt,
+                updatedAt: createdAt,
+                expiresAt: Timestamp.fromDate(ttlDate(SESSION_TTL_DAYS)),
+            });
+            const sessionPayload: Partial<AiMenuManagerSessionDoc> = sanitizeAiMenuManagerFirestoreValue({
+                ...nextSession,
+                updatedAt: serverTimestamp(),
+                ...(!currentSession ? { createdAt: serverTimestamp() } : {}),
+            });
+            transaction.set(sessionRef, sessionPayload, { merge: true });
+            return {
+                session: nextSession,
+                operations: pendingOperations,
+                responseOperations: newOperations,
+            };
+        });
     } catch (error) {
         if (isFirestorePermissionDenied(error)) {
             return sendAiMenuManagerServerBackedCommand({
@@ -982,13 +1061,13 @@ export async function sendAiMenuManagerCommand(
 
     return {
         sessionId,
-        messageId: commandGroupId || newOperations[0].operationId,
-        cards: newOperations.map((operation) => operation.card),
-        operations: pendingOperations,
-        session: nextSession,
-        nextRequiredAction: newOperations.some((operation) => operation.card.kind === 'clarification')
+        messageId: persisted.responseOperations[0].commandGroupId || persisted.responseOperations[0].operationId,
+        cards: persisted.responseOperations.map((operation) => operation.card),
+        operations: persisted.operations,
+        session: persisted.session,
+        nextRequiredAction: persisted.responseOperations.some((operation) => operation.card.kind === 'clarification')
             ? 'clarification'
-            : newOperations.some((operation) => operation.card.status === 'pending_approval')
+            : persisted.responseOperations.some((operation) => operation.card.status === 'pending_approval')
                 ? 'owner_approval'
                 : 'none',
     };
@@ -1032,13 +1111,21 @@ export async function getAiMenuManagerClientInbox(params: {
         }
         throw error;
     }
-    const session = sessionSnap.exists() ? sessionSnap.data() as AiMenuManagerSessionDoc : null;
+    const session = normalizeAiMenuManagerSessionSnapshot(sessionSnap.exists() ? sessionSnap.data() : null);
 
     if (
         !session
+        || session.sessionId !== sessionId
         || normalizeId(session.tId) !== normalizeId(scope.tId)
         || normalizeId(session.sId) !== normalizeId(scope.sId)
         || normalizeId(session.projectId) !== normalizeId(params.projectId)
+        || !isDailySessionIdForScope({
+            sessionId,
+            tId: scope.tId,
+            sId: scope.sId,
+            projectId: params.projectId,
+            sessionDate: session.sessionDate,
+        })
     ) {
         return { session: null, cards: [], receipts: [], operations: [], sessionId };
     }
@@ -1076,6 +1163,7 @@ export function buildAiMenuManagerClientExecutionDirective(params: {
     });
 
     const context = buildAiMenuManagerContextPacket({
+        expectedProjectId: params.operation.projectId,
         project: params.project,
         storeName: params.storeName || params.operation.card.scope.label,
         businessType: params.businessType,
@@ -1170,52 +1258,46 @@ export async function completeAiMenuManagerClientOperations(params: {
         throw new Error('Prepared updates no longer belong to the same request');
     }
 
-    const session = getMatchingOperationSessionSnapshot(firstOperation, params.sessionSnapshot);
-    const pendingOperationIds = new Set(normalizeOperations(session, firstOperation.projectId)
-        .map((operation) => operation.operationId));
-    if (params.operations.some((operation) => !pendingOperationIds.has(operation.operationId))) {
-        throw new Error('One or more cards no longer match the selected menu');
-    }
+    const sessionRef = getSessionDocRef(firstOperation.sessionId);
+    return runTransaction(firebaseClient, async (transaction) => {
+        const sessionSnap = await transaction.get(sessionRef);
+        const session = getMatchingOperationSessionSnapshot(
+            firstOperation,
+            sessionSnap.exists() ? sessionSnap.data() : null,
+        );
+        const currentOperations = normalizeOperations(session, firstOperation.projectId);
+        const canonicalOperations = resolveCurrentAiMenuManagerOperationGroup({
+            currentOperations,
+            requestedOperations: params.operations,
+        });
 
-    const receipts = params.operations.map((operation) => buildAiMenuManagerReceipt({
-        proposalId: operation.operationId,
-        actionType: operation.card.actionType,
-        projectId: operation.projectId,
-        status: params.result,
-        title: operation.card.title,
-        message: params.result === 'executed'
-            ? `${operation.card.title} applied.`
-            : `${operation.card.title} could not be applied.`,
-    }));
-    const completedIds = new Set(params.operations.map((operation) => operation.operationId));
-    const pendingOperations = normalizeOperations(session, firstOperation.projectId)
-        .filter((operation) => !completedIds.has(operation.operationId));
-    const compactMessagesWithReceipts = appendCompactReceipts(session.compactMessages, receipts);
-    const recentReceiptSummaries = [
-        ...receipts,
-        ...(session.recentReceiptSummaries || []).filter((receipt) => !completedIds.has(receipt.proposalId)),
-    ].slice(0, MAX_RECEIPTS);
-    const counters = {
-        ...(session.counters || {}),
-        commands: session.counters?.commands || 0,
-        proposalsCreated: session.counters?.proposalsCreated || 0,
-        approvals: (session.counters?.approvals || 0) + params.operations.length,
-        executions: (session.counters?.executions || 0)
-            + (params.result === 'executed' ? params.operations.length : 0),
-    };
-
-    await setDoc(getSessionDocRef(firstOperation.sessionId), sanitizeAiMenuManagerFirestoreValue({
-        compactMessages: compactMessagesWithReceipts,
-        pendingOperations,
-        pendingCardSummaries: pendingOperations.map(buildPendingSummary).slice(0, MAX_PENDING_SUMMARIES),
-        recentReceiptSummaries,
-        counters,
-        updatedAt: serverTimestamp(),
-    }), { merge: true });
-
-    return {
-        receipts,
-        session: {
+        const receipts = canonicalOperations.map((operation) => buildAiMenuManagerReceipt({
+            proposalId: operation.operationId,
+            actionType: operation.card.actionType,
+            projectId: operation.projectId,
+            status: params.result,
+            title: operation.card.title,
+            message: params.result === 'executed'
+                ? `${operation.card.title} applied.`
+                : `${operation.card.title} could not be applied.`,
+        }));
+        const completedIds = new Set(canonicalOperations.map((operation) => operation.operationId));
+        const pendingOperations = currentOperations
+            .filter((operation) => !completedIds.has(operation.operationId));
+        const compactMessagesWithReceipts = appendCompactReceipts(session.compactMessages, receipts);
+        const recentReceiptSummaries = [
+            ...receipts,
+            ...(session.recentReceiptSummaries || []).filter((receipt) => !completedIds.has(receipt.proposalId)),
+        ].slice(0, MAX_RECEIPTS);
+        const counters = {
+            ...(session.counters || {}),
+            commands: session.counters?.commands || 0,
+            proposalsCreated: session.counters?.proposalsCreated || 0,
+            approvals: (session.counters?.approvals || 0) + canonicalOperations.length,
+            executions: (session.counters?.executions || 0)
+                + (params.result === 'executed' ? canonicalOperations.length : 0),
+        };
+        const nextSession = {
             ...session,
             compactMessages: compactMessagesWithReceipts,
             pendingOperations,
@@ -1223,8 +1305,19 @@ export async function completeAiMenuManagerClientOperations(params: {
             recentReceiptSummaries,
             counters,
             updatedAt: nowIso(),
-        } as AiMenuManagerSessionDoc,
-    };
+        } as AiMenuManagerSessionDoc;
+
+        transaction.set(sessionRef, sanitizeAiMenuManagerFirestoreValue({
+            compactMessages: compactMessagesWithReceipts,
+            pendingOperations,
+            pendingCardSummaries: nextSession.pendingCardSummaries,
+            recentReceiptSummaries,
+            counters,
+            updatedAt: serverTimestamp(),
+        }), { merge: true });
+
+        return { receipts, session: nextSession };
+    });
 }
 
 export async function completeAiMenuManagerClientOperation(params: {
@@ -1245,56 +1338,75 @@ export async function completeAiMenuManagerClientOperation(params: {
         throw new Error('This card cannot be marked done');
     }
 
-    const receipt = buildAiMenuManagerReceipt({
-        proposalId: params.operation.operationId,
-        actionType: params.operation.card.actionType,
-        projectId: params.operation.projectId,
-        status: params.result,
-        title: params.operation.card.title,
-        message: params.message || (
-            params.result === 'manual_task'
-                ? 'Manual task marked done. No MenuList menu truth was changed by this action.'
-                : params.result === 'executed'
-                    ? `${params.operation.card.title} applied.`
-                    : `${params.operation.card.title} could not be applied.`
-        ),
-    });
     const sessionRef = getSessionDocRef(params.operation.sessionId);
-    const session = getMatchingOperationSessionSnapshot(params.operation, params.sessionSnapshot);
-    const pendingOperations = normalizeOperations(session, params.operation.projectId)
-        .filter((entry) => entry.operationId !== params.operation.operationId);
-    const recentReceiptSummaries = [
-        receipt,
-        ...(session.recentReceiptSummaries || []).filter((entry) => entry.proposalId !== params.operation.operationId),
-    ].slice(0, MAX_RECEIPTS);
-    const counters = {
-        ...(session.counters || {}),
-        commands: session.counters?.commands || 0,
-        proposalsCreated: session.counters?.proposalsCreated || 0,
-        approvals: (session.counters?.approvals || 0) + (params.result === 'manual_task' ? 0 : 1),
-        executions: (session.counters?.executions || 0) + (params.result === 'executed' ? 1 : 0),
-    };
+    return runTransaction(firebaseClient, async (transaction) => {
+        const sessionSnap = await transaction.get(sessionRef);
+        const session = getMatchingOperationSessionSnapshot(
+            params.operation,
+            sessionSnap.exists() ? sessionSnap.data() : null,
+        );
+        const currentOperations = normalizeOperations(session, params.operation.projectId);
+        const currentOperation = resolveCurrentAiMenuManagerOperation({
+            currentOperations,
+            requestedOperation: params.operation,
+        });
+        if (
+            params.result === 'manual_task'
+            && (
+                currentOperation.card.kind !== 'manual_task'
+                || !currentOperation.card.actions.includes('mark_done')
+            )
+        ) {
+            throw new Error('This card cannot be marked done');
+        }
+        const receipt = buildAiMenuManagerReceipt({
+            proposalId: currentOperation.operationId,
+            actionType: currentOperation.card.actionType,
+            projectId: currentOperation.projectId,
+            status: params.result,
+            title: currentOperation.card.title,
+            message: params.message || (
+                params.result === 'manual_task'
+                    ? 'Manual task marked done. No MenuList menu truth was changed by this action.'
+                    : params.result === 'executed'
+                        ? `${currentOperation.card.title} applied.`
+                        : `${currentOperation.card.title} could not be applied.`
+            ),
+        });
+        const pendingOperations = currentOperations
+            .filter((entry) => entry.operationId !== currentOperation.operationId);
+        const recentReceiptSummaries = [
+            receipt,
+            ...(session.recentReceiptSummaries || []).filter((entry) => entry.proposalId !== currentOperation.operationId),
+        ].slice(0, MAX_RECEIPTS);
+        const counters = {
+            ...(session.counters || {}),
+            commands: session.counters?.commands || 0,
+            proposalsCreated: session.counters?.proposalsCreated || 0,
+            approvals: (session.counters?.approvals || 0) + (params.result === 'manual_task' ? 0 : 1),
+            executions: (session.counters?.executions || 0) + (params.result === 'executed' ? 1 : 0),
+        };
+        const nextSession = {
+            ...session,
+            compactMessages: appendCompactReceipt(session.compactMessages, receipt),
+            pendingOperations,
+            pendingCardSummaries: pendingOperations.map(buildPendingSummary).slice(0, MAX_PENDING_SUMMARIES),
+            recentReceiptSummaries,
+            counters,
+            updatedAt: nowIso(),
+        } as AiMenuManagerSessionDoc;
 
-    await setDoc(sessionRef, sanitizeAiMenuManagerFirestoreValue({
-        compactMessages: appendCompactReceipt(session.compactMessages, receipt),
-        pendingOperations,
-        pendingCardSummaries: pendingOperations.map(buildPendingSummary).slice(0, MAX_PENDING_SUMMARIES),
-        recentReceiptSummaries,
-        counters,
-        updatedAt: serverTimestamp(),
-    }), { merge: true });
+        transaction.set(sessionRef, sanitizeAiMenuManagerFirestoreValue({
+            compactMessages: nextSession.compactMessages,
+            pendingOperations,
+            pendingCardSummaries: nextSession.pendingCardSummaries,
+            recentReceiptSummaries,
+            counters,
+            updatedAt: serverTimestamp(),
+        }), { merge: true });
 
-    const nextSession = {
-        ...session,
-        compactMessages: appendCompactReceipt(session.compactMessages, receipt),
-        pendingOperations,
-        pendingCardSummaries: pendingOperations.map(buildPendingSummary).slice(0, MAX_PENDING_SUMMARIES),
-        recentReceiptSummaries,
-        counters,
-        updatedAt: nowIso(),
-    } as AiMenuManagerSessionDoc;
-
-    return { receipt, session: nextSession };
+        return { receipt, session: nextSession };
+    });
 }
 
 export async function cancelAiMenuManagerClientOperation(params: {
@@ -1305,24 +1417,29 @@ export async function cancelAiMenuManagerClientOperation(params: {
     assertAiMenuManagerEnabled();
 
     const sessionRef = getSessionDocRef(params.operation.sessionId);
-    const session = getMatchingOperationSessionSnapshot(params.operation, params.sessionSnapshot);
-    const pendingOperations = normalizeOperations(session, params.operation.projectId)
-        .filter((entry) => entry.operationId !== params.operation.operationId);
+    return runTransaction(firebaseClient, async (transaction) => {
+        const sessionSnap = await transaction.get(sessionRef);
+        const session = getMatchingOperationSessionSnapshot(
+            params.operation,
+            sessionSnap.exists() ? sessionSnap.data() : null,
+        );
+        const pendingOperations = normalizeOperations(session, params.operation.projectId)
+            .filter((entry) => entry.operationId !== params.operation.operationId);
+        const nextSession = {
+            ...session,
+            pendingOperations,
+            pendingCardSummaries: pendingOperations.map(buildPendingSummary).slice(0, MAX_PENDING_SUMMARIES),
+            updatedAt: nowIso(),
+        } as AiMenuManagerSessionDoc;
 
-    await setDoc(sessionRef, sanitizeAiMenuManagerFirestoreValue({
-        pendingOperations,
-        pendingCardSummaries: pendingOperations.map(buildPendingSummary).slice(0, MAX_PENDING_SUMMARIES),
-        updatedAt: serverTimestamp(),
-    }), { merge: true });
+        transaction.set(sessionRef, sanitizeAiMenuManagerFirestoreValue({
+            pendingOperations,
+            pendingCardSummaries: nextSession.pendingCardSummaries,
+            updatedAt: serverTimestamp(),
+        }), { merge: true });
 
-    const nextSession = {
-        ...session,
-        pendingOperations,
-        pendingCardSummaries: pendingOperations.map(buildPendingSummary).slice(0, MAX_PENDING_SUMMARIES),
-        updatedAt: nowIso(),
-    } as AiMenuManagerSessionDoc;
-
-    return { status: 'cancelled', session: nextSession };
+        return { status: 'cancelled' as const, session: nextSession };
+    });
 }
 
 export async function submitAiMenuManagerProposalAction(params: {
@@ -1351,8 +1468,8 @@ export async function submitAiMenuManagerProposalAction(params: {
 export async function completeAiMenuManagerClientProposal(params: {
     proposalId: string;
     storeId: string | number;
-    projectId?: string;
-    actionType?: AiMenuManagerActionType;
+    projectId: string;
+    actionType: AiMenuManagerActionType;
     executionId: string;
     patchHash: string;
     result: AiMenuManagerProposalCompleteRequest['result'];

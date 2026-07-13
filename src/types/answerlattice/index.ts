@@ -71,7 +71,7 @@ export interface AnswerlatticeEntity extends AnswerlatticeDocumentIdentity {
     modifiedOn?: Timestamp;
     createdBy?: string;
     modifiedBy?: string;
-    uId?: number;
+    uId?: string | number;
 }
 
 export const ANSWERLATTICE_RELATION_TYPES = {
@@ -180,7 +180,7 @@ export interface AnswerlatticeCanonicalAnswer extends AnswerlatticeDocumentIdent
     modifiedOn?: Timestamp;
     createdBy?: string;
     modifiedBy?: string;
-    uId?: number;
+    uId?: string | number;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -238,7 +238,18 @@ export interface AnswerlatticeFaq extends AnswerlatticeDocumentIdentity {
     modifiedOn?: Timestamp;
     createdBy?: string;
     modifiedBy?: string;
-    uId?: number;
+    uId?: string | number;
+}
+
+/** Exact browser-safe FAQ projection. Persisted identity and audit fields stay server-side. */
+export interface AnswerlatticePublicFaq {
+    id: string;
+    question: string;
+    answer: string;
+    articleId: string | null;
+    tags: string[];
+    likes: number;
+    dislikes: number;
 }
 
 export interface AnswerlatticeGeneratedFaq {
@@ -349,11 +360,30 @@ export interface AnswerlatticeMutationProposal extends AnswerlatticeDocumentIden
         // @see __docs__/answerlattice/automatic-knowledge-creation/
         draftTitle?: string;                                           // AI-generated answer title
         draftStatus?: 'pending' | 'generated' | 'failed';             // Draft generation lifecycle
-        draftSource?: 'signal_cluster' | 'recurring_fallback' | 'onboarding_bootstrap' | 'ticket_resolution' | 'knowledge_intake';  // What triggered the draft
+        draftSource?: 'signal_cluster' | 'recurring_fallback' | 'onboarding_bootstrap' | 'ticket_resolution' | 'knowledge_intake' | 'manual_authoring';  // What triggered the draft
         draftGeneratedAt?: Timestamp;                                  // When draft was generated
         draftSignalExamples?: string[];                                // Sample signal texts used for context (max 5)
         draftEntityContext?: string;                                   // Entity name + description used
         draftPromptVersion?: string;                                   // Prompt version for reproducibility
+        draftProcessingRun?: {
+            id: string;
+            startedAt: Timestamp;
+            leaseExpiresAt: Timestamp;
+        } | null;
+        lastDraftRequestId?: string;
+
+        // Governed release rollback proposal metadata. The proposal remains
+        // pending until a human reviews it; these fields never apply changes.
+        reviewReason?: string;
+        rollbackAuditLogId?: string;
+
+        // Server-owned governance proposal payload. These additive fields keep
+        // manual authoring and approved mutations inside the same review queue.
+        proposedContent?: AnswerlatticeCanonicalAnswer['content'];
+        proposedScope?: AnswerlatticeCanonicalAnswer['scope'];
+        proposedProductBinding?: AnswerlatticeCanonicalAnswer['productBinding'];
+        proposedStatus?: AnswerlatticeAnswerStatus;
+        proposedAnswerType?: AnswerlatticeAnswerType;
 
         // Ticket → Knowledge Loop (Expansion Item #9) — additive fields, freeze-compliant
         // Tracks provenance from resolved tickets to canonical knowledge
@@ -369,6 +399,18 @@ export interface AnswerlatticeMutationProposal extends AnswerlatticeDocumentIden
 
     status: AnswerlatticeMutationStatus;
 
+    reviewedBy?: string;
+    reviewedOn?: Timestamp;
+    implementedAnswerId?: string;
+    implementedOn?: Timestamp;
+    impactTracked?: boolean;
+    impactResult?: {
+        preSignalCount: number;
+        postSignalCount: number;
+        improvementPercent: number;
+        trackedAt: Timestamp;
+    };
+
     createdOn?: Timestamp;
     modifiedOn?: Timestamp;
     createdBy?: string;
@@ -383,7 +425,17 @@ export interface AnswerlatticeSignalEvent extends AnswerlatticeDocumentIdentity 
     entityId: string;
     type: AnswerlatticeSignalType;
     timestamp: Timestamp;
+    /** Firestore TTL deadline. Optional only for legacy pre-TTL documents. */
+    expiresAt?: Timestamp;
     metadata?: Record<string, any>;
+    dedupKey?: string;
+    processingRun?: {
+        id: string;
+        status: 'processing' | 'completed' | 'failed';
+        startedAt: Timestamp;
+        leaseExpiresAt: Timestamp;
+        completedAt?: Timestamp | null;
+    };
 
     createdOn?: Timestamp;
 }
@@ -410,9 +462,26 @@ export interface AnswerlatticeRelease extends AnswerlatticeDocumentIdentity {
     releasedAt: Timestamp;
     entityChanges: string[];     // entityIds modified in this release
     status: AnswerlatticeReleaseStatus;
+    requestFingerprint?: string;
+    activation?: {
+        requestId: string;
+        startedAt: Timestamp;
+        leaseExpiresAt: Timestamp;
+    };
+    driftEvaluation?: {
+        status: 'completed' | 'failed';
+        evaluatedAnswers: number;
+        driftedAnswers: number;
+        completedAt?: Timestamp;
+        failedAt?: Timestamp;
+        failureCode?: string;
+    };
+    activatedAt?: Timestamp;
 
     createdOn?: Timestamp;
     createdBy?: string;
+    modifiedOn?: Timestamp;
+    modifiedBy?: string;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -464,6 +533,8 @@ export interface AnswerlatticeEntityCandidate extends AnswerlatticeDocumentIdent
     description: string;
 
     status: AnswerlatticeCandidateStatus;
+    promotedEntityId?: string;
+    sourceArticleIds?: string[];
 
     createdOn?: Timestamp;
     modifiedOn?: Timestamp;
@@ -676,6 +747,7 @@ export interface AnswerlatticeContextPayload {
     entityHints?: string[];        // Explicit entity references (max 5)
     userRole?: string;             // Permission level (e.g., "admin")
     plan?: string;                 // Subscription tier (e.g., "pro")
+    state?: string;                // Product state used by state-scoped canonical answers
     /**
      * Trusted runtime-only entity IDs resolved from Answerlattice-owned surface maps.
      * External client payloads cannot set this field because context validation
@@ -719,7 +791,7 @@ export interface AnswerlatticeProductSurface extends AnswerlatticeDocumentIdenti
     modifiedOn?: Timestamp;
     createdBy?: string;
     modifiedBy?: string;
-    uId?: number;
+    uId?: string | number;
 }
 
 export interface AnswerlatticeRelatedArticleRef {
@@ -1285,6 +1357,9 @@ export interface AnswerlatticeEntityGraphNode {
 }
 
 export interface AnswerlatticeEntityGraphIndex {
+    pId?: 'AL';
+    tId?: number;
+    sId?: number;
     lastRebuiltAt: Timestamp;
     version: number;
     entityCount: number;
@@ -1319,6 +1394,7 @@ export const ANSWERLATTICE_TRIGGER_ACTION_TYPES = {
     HELP_CARD: 'help_card',
     WORKFLOW_GUIDE: 'workflow_guide',
     LINK_ARTICLE: 'link_article',
+    KNOWN_ISSUE: 'known_issue',
 } as const;
 
 export type AnswerlatticeTriggerActionType = typeof ANSWERLATTICE_TRIGGER_ACTION_TYPES[keyof typeof ANSWERLATTICE_TRIGGER_ACTION_TYPES];
@@ -1342,11 +1418,13 @@ export type AnswerlatticeTriggerSource = typeof ANSWERLATTICE_TRIGGER_SOURCE[key
 
 export interface AnswerlatticePredictiveTrigger {
     id: string;
+    pId?: 'AL';
     tId: number;
     sId: number;
 
     name: string;
     description?: string;
+    kind?: 'predictive_help' | 'known_issue';
 
     conditions: {
         page?: string;
@@ -1398,12 +1476,20 @@ export interface AnswerlatticePredictiveTrigger {
         signalCount: number;
     };
 
+    knownIssue?: {
+        severity: 'info' | 'degraded' | 'outage';
+        startsAt?: Timestamp;
+        endsAt?: Timestamp | null;
+        statusPageUrl?: string;
+    };
+
     createdOn?: Timestamp;
     modifiedOn?: Timestamp;
     createdBy?: string;
 }
 
 export interface AnswerlatticePredictiveTriggerIndex {
+    pId?: 'AL';
     tId: number;
     sId: number;
     lastUpdated: Timestamp;
@@ -1427,6 +1513,10 @@ export interface AnswerlatticePredictiveSuggestion {
         entityId: string;
         entityName: string;
     }>;
+    knownIssue?: {
+        severity: 'info' | 'degraded' | 'outage';
+        statusPageUrl?: string;
+    };
 }
 
 export const ANSWERLATTICE_ONTOLOGY_CONSTRAINTS = {
@@ -1682,6 +1772,7 @@ export const ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS = {
 
 export interface AnswerlatticeKnowledgeIntakeJob extends AnswerlatticeDocumentIdentity {
     id: string;
+    pId: typeof import('@constant/product').PRODUCT_IDS.ANSWERLATTICE;
     tId: number;
     sId: number;
     title: string;
@@ -1702,6 +1793,24 @@ export interface AnswerlatticeKnowledgeIntakeJob extends AnswerlatticeDocumentId
     rejectedItemCount?: number;
     usageUnitsConsumed?: number;
     usageSummary?: Record<string, any>;
+    analysisRun?: {
+        id: string;
+        sourceHash: string;
+        status: 'processing' | 'completed' | 'failed';
+        startedAt: Timestamp;
+        leaseExpiresAt: Timestamp;
+        completedAt?: Timestamp | null;
+        createdCount?: number;
+    };
+    publishRun?: {
+        id: string;
+        status: 'processing' | 'completed' | 'failed';
+        itemIds: string[];
+        startedAt: Timestamp;
+        leaseExpiresAt: Timestamp;
+        completedAt?: Timestamp | null;
+        publishedCount?: number;
+    };
     lastAnalyzedAt?: Timestamp | null;
     publishedOn?: Timestamp | null;
     errorMessage?: string | null;
@@ -1714,12 +1823,13 @@ export interface AnswerlatticeKnowledgeIntakeJob extends AnswerlatticeDocumentId
 
 export interface AnswerlatticeKnowledgeSource extends AnswerlatticeDocumentIdentity {
     id: string;
+    pId: typeof import('@constant/product').PRODUCT_IDS.ANSWERLATTICE;
     tId: number;
     sId: number;
     jobId: string;
     type: AnswerlatticeKnowledgeSourceType;
     title: string;
-    status: 'ready' | 'needs_text' | 'failed';
+    status: 'processing' | 'ready' | 'needs_text' | 'failed';
     originUrl?: string | null;
     fileName?: string | null;
     mimeType?: string | null;
@@ -1730,6 +1840,13 @@ export interface AnswerlatticeKnowledgeSource extends AnswerlatticeDocumentIdent
     contextKeys?: string[];
     entityIds?: string[];
     metadata?: Record<string, any>;
+    processingRun?: {
+        id: string;
+        status: 'processing' | 'completed' | 'failed';
+        startedAt: Timestamp;
+        leaseExpiresAt: Timestamp;
+        completedAt?: Timestamp | null;
+    };
     errorMessage?: string | null;
     createdOn?: Timestamp;
     modifiedOn?: Timestamp;
@@ -1740,6 +1857,7 @@ export interface AnswerlatticeKnowledgeSource extends AnswerlatticeDocumentIdent
 
 export interface AnswerlatticeIntakeReviewItem extends AnswerlatticeDocumentIdentity {
     id: string;
+    pId: typeof import('@constant/product').PRODUCT_IDS.ANSWERLATTICE;
     tId: number;
     sId: number;
     jobId: string;
@@ -1769,16 +1887,19 @@ export interface AnswerlatticeIntakeReviewItem extends AnswerlatticeDocumentIden
 
 export interface AnswerlatticeKnowledgeIntakeSummary extends AnswerlatticeDocumentIdentity {
     id?: string;
+    pId: typeof import('@constant/product').PRODUCT_IDS.ANSWERLATTICE;
     tId: number;
     sId: number;
     activeJobId?: string | null;
     activeJobTitle?: string | null;
     activeJobs: number;
     recentJobs: number;
+    sourceCount?: number;
     readySources: number;
     reviewItems: number;
     acceptedItems: number;
     publishedItems: number;
+    rejectedItems?: number;
     usageUnitsConsumed?: number;
     lastJobStatus?: AnswerlatticeKnowledgeIntakeStatus | null;
     summaryHash?: string;

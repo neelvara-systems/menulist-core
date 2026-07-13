@@ -28,17 +28,15 @@
  */
 
 import { DB_COLLECTIONS } from '@constant/database';
-import { PLATFORM_DOMAIN } from '@constant/urls';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { parseSummaryProjects } from '@lib/firestore/parseSummaryProjects';
-import { parseSummaryStores } from '@lib/firestore/parseSummaryStores';
 import { isPlatformEntityBlocked } from '@lib/platform/entityBlock';
+import { getTenantFromHeaders } from '@lib/multiTenant/getTenantFromHeaders';
 import { normalizePublicOutletSlug, normalizePublicProjectSlug } from '@lib/publicRouting/pathSegments';
 import { evaluatePublicTruthIndexability } from '@lib/seo/publicTruthIndexing';
 import { secureError } from '@lib/security/secureLogger';
 import { MetadataRoute } from 'next';
 import { unstable_cache } from 'next/cache';
-import { headers } from 'next/headers';
 
 type StoreSitemapSeed = {
     storeId: string;
@@ -143,18 +141,6 @@ const logTenantSitemapFailure = (
         errorName,
     });
 };
-
-const getRequestHostname = (value: string | null): string => {
-    if (!value) return '';
-    return value
-        .split(',')[0]
-        .trim()
-        .toLowerCase()
-        .replace(/:\d+$/, '');
-};
-
-const isLocalHostname = (hostname: string): boolean =>
-    hostname === 'localhost' || hostname === '127.0.0.1' || hostname.startsWith('192.168.');
 
 const readModifiedOn = (raw: any): Date => {
     if (raw?.toDate) return raw.toDate();
@@ -290,33 +276,10 @@ const getProjectsForSitemap = unstable_cache(
 const getOutletsForSitemap = unstable_cache(
     async (tenantId: number, masterStoreId: string): Promise<OutletSitemapEntry[]> => {
         try {
-            const summarySnap = await firestoreAdmin
-                .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
-                .doc('storesSummary')
-                .get();
-            if (summarySnap.exists) {
-                const stores = parseSummaryStores(summarySnap.data());
-                const summaryOutlets = Object.entries(stores)
-                    .map(([storeId, data]: [string, any]) => {
-                        if (String(data?.storeId || storeId) === masterStoreId) return false;
-                        if (data?.tId !== tenantId) return false;
-                        if (data?.active === false) return false;
-                        if (isPlatformEntityBlocked(data)) return false;
-                        const outletSlug = normalizePublicOutletSlug(data?.outletSlug);
-                        if (!outletSlug) return null;
-                        return {
-                            outletSlug,
-                            storeId: String(data.storeId || storeId),
-                            modifiedOn: readModifiedOn(data.modifiedOn),
-                            publicStore: buildSitemapPublicStore(String(data.storeId || storeId), data),
-                        };
-                    })
-                    .filter((entry): entry is OutletSitemapEntry => Boolean(entry))
-                    .sort((a, b) => a.outletSlug.localeCompare(b.outletSlug));
-
-                if (summaryOutlets.length > 0) return summaryOutlets;
-            }
-
+            // Public tenant discovery must derive tenant membership and store
+            // identity from canonical store documents. storesSummary is a
+            // client-writable optimization and is never an authorization or
+            // public-routing source.
             const snapshot = await firestoreAdmin
                 .collection(DB_COLLECTIONS.STORES)
                 .where('tenantId', '==', tenantId)
@@ -326,6 +289,7 @@ const getOutletsForSitemap = unstable_cache(
             for (const d of snapshot.docs) {
                 if (d.id === masterStoreId) continue;
                 const data = d.data() as Record<string, any>;
+                if (isPlatformEntityBlocked(data)) continue;
                 const outletSlug = normalizePublicOutletSlug(data?.outletSlug);
                 // A-08 + G-12: outlets missing a safe slug are not routable; skip.
                 if (!outletSlug) continue;
@@ -336,7 +300,7 @@ const getOutletsForSitemap = unstable_cache(
                     publicStore: buildSitemapPublicStore(d.id, data),
                 });
             }
-            return outlets;
+            return outlets.sort((a, b) => a.outletSlug.localeCompare(b.outletSlug));
         } catch (error) {
             logTenantSitemapFailure('outlets_lookup_failed', error, {
                 tenantId,
@@ -350,22 +314,10 @@ const getOutletsForSitemap = unstable_cache(
 );
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-    const headersList = headers();
-    const subdomain = headersList.get('x-tenant-subdomain');
-    const customDomain = headersList.get('x-tenant-custom-domain');
-    const requestHostname = getRequestHostname(headersList.get('x-forwarded-host') || headersList.get('host'));
-
-    let baseUrl: string;
-    if (customDomain) {
-        baseUrl = `https://${customDomain}`;
-    } else if (subdomain && requestHostname && !isLocalHostname(requestHostname)) {
-        baseUrl = `https://${requestHostname}`;
-    } else if (subdomain) {
-        baseUrl = `https://${subdomain}.${PLATFORM_DOMAIN}`;
-    } else {
-        // Fallback — shouldn't happen in production (middleware sets headers).
-        return [];
-    }
+    const tenant = await getTenantFromHeaders('ClientSitemap');
+    const { subdomain, customDomain } = tenant;
+    const baseUrl = tenant.origin;
+    if (!baseUrl || (!subdomain && !customDomain)) return [];
 
     const seed = await getMasterStoreSeed(subdomain || '', customDomain);
     if (!seed) return [];

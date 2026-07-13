@@ -18,12 +18,19 @@
 
 ## Public Create-Menu
 
-- Image upload creates a `publicMenuDrafts` document and a `menuImageProcessingJobs` document.
-- Link upload creates a public draft and a durable extraction job.
+- Image upload atomically creates a deterministic `publicMenuDrafts` document and `menuImageProcessingJobs/public_{draftId}` document.
+- Link upload uses acquired content identity and the same atomic draft/job boundary.
+- Concurrent identical submissions return one owner/content-bound draft and cannot overwrite the winner with a different download token.
 - Supported public sources attach `sourceMetadata.identityCheck` to the job and completion fills detected business fields.
 - Worker success updates `publicMenuDrafts.extractionStatus = "completed"`.
 - Worker failure updates `publicMenuDrafts.extractionStatus = "failed"`.
+- A forged/mismatched public job fails before provider work and cannot update the referenced draft.
+- Worker completion strips arbitrary provider, owner-boost, review, confidence, and unknown envelope fields; malformed/orphan DTOs fail.
 - Claim still requires completed extraction data.
+- Claim rejects malformed TTLs, incoherent DTOs, external/wrong-bucket/wrong-prefix URLs, disallowed MIME types, and oversized sources before project writes.
+- Retrying a successfully claimed draft as the same owner returns the stored conversion receipt without duplicate project/store/tenant writes.
+- One cache/screen/context invalidation failure does not prevent the remaining effects from running.
+- Expired-draft cleanup preserves the draft when Storage deletion fails and rejects cross-draft Storage paths.
 - Claim writes a standard project file entry with `active`, `deleted`, `index`, and `extractedData.message`.
 
 ## Retry
@@ -37,12 +44,13 @@
 - `npm run verify:menu-extraction-pipeline` passes.
 - `npm run verify:menu-extraction-pipeline:dry-run` passes.
 - `src/data/shared/menuExtractionJob.ts` and `functions/src/sharedData/menuExtractionJob.ts` are byte-for-byte identical.
+- `src/data/shared/publicMenuDraftData.ts` and `functions/src/sharedData/publicMenuDraftData.ts` are byte-for-byte identical.
 - Every job producer uses a shared destination builder and emits `destinationType`.
 - Messaging HEIC/HEIF files remain accepted by the worker MIME contract.
 - Public create-menu image upload remains JPEG/PNG/WebP only; PDFs are still owner-upload/link-import capable but not public-image capable.
 - Browser cancellation updates cannot mutate server-owned job fields while changing status.
 - App job types and extraction monitor surfaces expose source and destination fields.
-- Public draft completion normalizes extracted data to the project/editor shape: category `active`, item `category`, item `active`, item `available`, attribute activity, and language `isPrimary`.
+- Public draft completion allowlists and bounds the project/editor shape: category `active`, item `category`, item `active`, item `available`, attribute activity, and exactly one primary language.
 - Review apply creates standard source file shells with `active`, `deleted`, `index`, and `extractedData.message`.
 - Public draft claim creates project IDs in `{tenantId}-{timestamp}-{storeId}` format so `/client` can load the claimed project.
 - Messaging extraction stores standard project file envelopes before approval.

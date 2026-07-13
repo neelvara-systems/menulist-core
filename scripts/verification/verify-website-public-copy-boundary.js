@@ -2,6 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const WEBSITE_LOCALE_DIR = 'public/locales/menulist.ai';
@@ -78,6 +79,23 @@ function assertNoBlockedClaims(label, content) {
     .map(({ label: claim }) => claim);
 
   assert(hits.length === 0, `${label} must not include blocked public website claims: ${hits.join(', ')}`);
+}
+
+function sha256File(relativePath) {
+  return crypto.createHash('sha256').update(fs.readFileSync(resolvePath(relativePath))).digest('hex');
+}
+
+function walkRepoFiles(relativePath) {
+  const fullPath = resolvePath(relativePath);
+  if (!fs.existsSync(fullPath)) {
+    return [];
+  }
+
+  if (fs.statSync(fullPath).isFile()) {
+    return [relativePath];
+  }
+
+  return fs.readdirSync(fullPath).flatMap((entry) => walkRepoFiles(path.posix.join(relativePath, entry)));
 }
 
 function walkStrings(value, visitor, currentPath = '') {
@@ -170,6 +188,314 @@ function verifyLocaleAndDiscoveryCopy() {
 
   assertNoBlockedClaims('public/llms.txt', read('public/llms.txt'));
   assertNoBlockedClaims('public/llms-full.txt', read('public/llms-full.txt'));
+}
+
+function verifyWhatsAppOnboardingFailClosedBoundary() {
+  const component = read('src/components/website/whatsapp/WhatsAppOnboardingPage.tsx');
+  const page = read('src/app/(website)/whatsapp/page.tsx');
+  const englishLocale = JSON.parse(read('public/locales/menulist.ai/en-US.json'));
+  const hindiLocale = JSON.parse(read('public/locales/menulist.ai/hi-IN.json'));
+  const llms = read('public/llms.txt');
+  const mainWebsiteReadme = read('__docs__/main-website/README.md');
+  const mainWebsiteImpl = read('__docs__/main-website/main-website_impl.md');
+  const mainWebsiteContent = read('__docs__/main-website/main-website_content.md');
+  const mainWebsiteMarketing = read('__docs__/main-website/main-website_marketing.md');
+  const messagingWebsite = read('__docs__/messaging-onboarding/messaging-onboarding_website.md');
+  const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
+  const changelog = read('__docs__/changelog.md');
+  const forbiddenTestNumber = '15556571424';
+  const createMenuActionCount = (component.match(/<WebsiteButton href="\/create-menu">/g) || []).length;
+
+  assert(createMenuActionCount === 2, 'WhatsApp onboarding page must route both primary actions to /create-menu');
+  assertIncludes(
+    component,
+    "t('WhatsAppOnboardingPage.availability')",
+    'WhatsApp onboarding page localized availability state',
+  );
+  [
+    'WHATSAPP_ONBOARDING_TEST_NUMBER',
+    'getWhatsAppOnboardingUrl',
+    'WhatsAppActionLink',
+    'wa.me/',
+    'data-testid="whatsapp-onboarding-cta"',
+  ].forEach((token) => assertNotIncludes(component, token, 'WhatsApp onboarding page provider-action boundary'));
+
+  assertIncludes(
+    page,
+    'See how WhatsApp-first onboarding will prepare an owner-reviewed preview and official customer link. Start now with a photo or public menu link.',
+    'WhatsApp onboarding metadata availability boundary',
+  );
+  assertNotIncludes(page, 'Send a menu, service list, rate card, package list, or PDF on WhatsApp.', 'WhatsApp onboarding stale active metadata');
+
+  const englishWhatsApp = englishLocale.Website?.WhatsAppOnboardingPage;
+  const hindiWhatsApp = hindiLocale.Website?.WhatsAppOnboardingPage;
+  assert(
+    englishWhatsApp?.availability === 'WhatsApp intake is not open yet. Start now with a photo or public menu link.',
+    'English WhatsApp onboarding availability copy must fail closed',
+  );
+  assert(
+    englishWhatsApp?.primaryCta === 'Start with a photo or link' &&
+      englishWhatsApp?.finalCta === 'Start with a photo or link',
+    'English WhatsApp onboarding actions must describe the current intake path',
+  );
+  assert(
+    typeof hindiWhatsApp?.availability === 'string' && hindiWhatsApp.availability.includes('अभी शुरू नहीं हुआ है'),
+    'Hindi WhatsApp onboarding availability copy must fail closed',
+  );
+  assert(
+    hindiWhatsApp?.primaryCta === 'Photo या link से शुरू करें' &&
+      hindiWhatsApp?.finalCta === 'Photo या link से शुरू करें',
+    'Hindi WhatsApp onboarding actions must describe the current intake path',
+  );
+  assert(!('whatsAppPrefillMessage' in englishWhatsApp), 'English locale must not keep the inactive provider prefill');
+  assert(!('whatsAppPrefillMessage' in hindiWhatsApp), 'Hindi locale must not keep the inactive provider prefill');
+
+  assertIncludes(
+    llms,
+    'current setup starts with signed-in photo or public-link intake while provider activation remains gated',
+    'WhatsApp onboarding LLM discovery availability boundary',
+  );
+
+  [
+    ['component', component],
+    ['page metadata', page],
+    ['English locale', JSON.stringify(englishWhatsApp)],
+    ['Hindi locale', JSON.stringify(hindiWhatsApp)],
+    ['LLM discovery', llms],
+    ['main website README', mainWebsiteReadme],
+    ['main website implementation', mainWebsiteImpl],
+    ['main website content', mainWebsiteContent],
+    ['main website marketing', mainWebsiteMarketing],
+    ['messaging website reference', messagingWebsite],
+  ].forEach(([label, source]) => {
+    assertNotIncludes(source, forbiddenTestNumber, `WhatsApp onboarding ${label} test-number boundary`);
+  });
+
+  [
+    [mainWebsiteReadme, 'Version 3.6.109 removes the hardcoded test-number action from `/whatsapp`.', 'Main website README WhatsApp fail-closed boundary'],
+    [mainWebsiteImpl, 'The component must not contain a test number or active `wa.me` onboarding action.', 'Main website implementation WhatsApp fail-closed boundary'],
+    [mainWebsiteContent, 'It must not contain a test number or active provider deep link before current provider activation evidence exists.', 'Main website content WhatsApp fail-closed boundary'],
+    [mainWebsiteMarketing, 'The current action routes to `/create-menu` while checked-in Functions targets remain disabled.', 'Main website marketing WhatsApp fail-closed boundary'],
+    [messagingWebsite, 'The page must not expose a test number or active `wa.me` onboarding action before provider activation is certified.', 'Messaging website WhatsApp fail-closed boundary'],
+    [productionAudit, 'Messaging Onboarding Public Intake Fail-Closed Boundary checkpoint', 'Production audit WhatsApp fail-closed checkpoint'],
+    [changelog, 'Messaging Onboarding Public Intake Fail-Closed Boundary', 'Changelog WhatsApp fail-closed entry'],
+  ].forEach(([source, token, label]) => assertIncludes(source, token, label));
+}
+
+function verifyMenuListLaunchAssetPackBoundary() {
+  const launchPack = read('__docs__/main-website/asset-production/launch-pack-2026-07/menulist-launch-pack.md');
+  const frameExtractor = read('scripts/website-assets/extract-menulist-launch-frames.mjs');
+  const frameIndex = JSON.parse(read('packages/asset-factory/published/menulist/launch-video-frames/index.json'));
+  const manifest = JSON.parse(read('packages/asset-factory/manifest/assets.json'));
+  const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
+  const changelog = read('__docs__/changelog.md');
+  const finalFrame = frameIndex.frames.find((frame) => frame.id === 'final-proof');
+  const reviewedSlotIds = [
+    'menulist.home.hero.official-source',
+    'menulist.home.og.official-source',
+    'menulist.home.public-surfaces.matrix',
+    'menulist.launch.social.square',
+    'menulist.launch.device.owner-pwa-dashboard',
+    'menulist.launch.social.linkedin',
+    'menulist.home.hero.business-truth-loop',
+    'menulist.launch.video.frame.approved-source',
+    'menulist.launch.video.frame.public-surfaces',
+    'menulist.launch.video.frame.stable-loop',
+    'menulist.launch.video.frame.final-proof',
+  ];
+
+  [
+    'AssetOS-approved synthetic asset set — not launch, publication, or deploy certification',
+    'AssetOS approval means a named file passed its slot, brand, source, size, and synthetic-data review.',
+    'It does not authorize MenuList launch, public distribution, website deployment, social posting, paid use, or production certification.',
+    'The closing frame uses the clean 5.40-second proof state',
+    'Current approval is per manifest slot and per file.',
+  ].forEach((token) => {
+    assertIncludes(launchPack, token, 'MenuList launch asset pack publication boundary');
+  });
+  assertNotIncludes(launchPack, 'Production-ready synthetic launch pack', 'MenuList launch asset pack stale readiness status');
+  assertIncludes(
+    frameExtractor,
+    "{ id: 'final-proof', time: 5.4, filename: '04-final-proof.png' }",
+    'MenuList launch final-frame clean timestamp',
+  );
+  assertNotIncludes(
+    frameExtractor,
+    "{ id: 'final-proof', time: 4.9, filename: '04-final-proof.png' }",
+    'MenuList launch final-frame occluded timestamp',
+  );
+  assert(finalFrame?.timeSeconds === 5.4, 'MenuList launch frame index must record the clean 5.40-second final frame');
+
+  for (const slotId of reviewedSlotIds) {
+    const entry = manifest.assets?.[slotId];
+    assert(entry, `AssetOS manifest must include reviewed MenuList slot ${slotId}`);
+    assert(entry.review?.decision === 'approved', `AssetOS slot ${slotId} must retain an approved review decision`);
+
+    for (const outputPath of Object.values(entry.files || {})) {
+      assert(typeof outputPath === 'string' && fs.existsSync(resolvePath(outputPath)), `AssetOS slot ${slotId} output must exist: ${outputPath}`);
+      assert(fs.statSync(resolvePath(outputPath)).size > 0, `AssetOS slot ${slotId} output must be non-empty: ${outputPath}`);
+    }
+
+    for (const [sourcePath, expectedHash] of Object.entries(entry.sourceFingerprint?.files || {})) {
+      assert(fs.existsSync(resolvePath(sourcePath)), `AssetOS slot ${slotId} watched source must exist: ${sourcePath}`);
+      assert(
+        sha256File(sourcePath) === expectedHash,
+        `AssetOS slot ${slotId} watched source fingerprint must be current: ${sourcePath}`,
+      );
+    }
+  }
+
+  const finalFrameEntry = manifest.assets['menulist.launch.video.frame.final-proof'];
+  assert(finalFrameEntry.version === 2, 'AssetOS final proof frame must record corrected version 2');
+  assertIncludes(finalFrameEntry.review.notes, 'clean 5.40-second proof state', 'AssetOS final proof frame review note');
+  assertIncludes(productionAudit, 'MenuList coordinated launch-pack AssetOS checkpoint', 'Production readiness audit launch-pack AssetOS boundary');
+  assertIncludes(changelog, 'MenuList Launch Pack AssetOS Publication Boundary', 'Changelog launch-pack AssetOS boundary');
+}
+
+function verifyAssetOsPublicMediaBoundary() {
+  const assetAudit = read('packages/asset-factory/scripts/lib/asset-audit.ts');
+  const slotRegistry = read('packages/asset-factory/slots/menulist.asset-slots.ts');
+  const manifest = JSON.parse(read('packages/asset-factory/manifest/assets.json'));
+  const screenshotGallery = read('src/components/website/features/FeatureScreenshotProofGallery.tsx');
+  const englishLocale = JSON.parse(read('public/locales/menulist.ai/en-US.json'));
+  const hindiLocale = JSON.parse(read('public/locales/menulist.ai/hi-IN.json'));
+  const imageAssetDocs = read('__docs__/main-website/main-website_image-assets.md');
+  const placeholderDocs = read(
+    '__docs__/menulist-marketing-distribution/menulist-marketing-distribution_demo-placeholder-assets.md',
+  );
+  const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
+  const changelog = read('__docs__/changelog.md');
+  const governedSlotIds = [
+    'menulist.industry.salons-spas.demo-placeholder',
+    'menulist.marketing.launch-video.poster-placeholder',
+    'menulist.industry.service-list-businesses.proof-placeholder',
+    'menulist.industry.local-service-businesses.demo-placeholder',
+    'menulist.feature.customer-feedback-loop.public-form',
+    'menulist.feature.menu-import.source-link',
+    'menulist.feature.public-discovery.presence-checklist',
+    'menulist.feature.qr-menu-links.share-kit',
+    'menulist.feature.print-ready-kit.dashboard',
+    'menulist.feature.print-ready-kit.editor',
+    'menulist.home.owner-proof.ai-menu-manager',
+    'menulist.home.owner-proof.business-health',
+  ];
+  const declaredPublicFiles = new Set(
+    Object.values(manifest.assets || {}).flatMap((entry) => Object.values(entry.files || {}).filter(Boolean)),
+  );
+  const manifestFileOwners = new Map();
+  const trackedWebsiteFiles = walkRepoFiles('public/images/website').filter((repoPath) => !repoPath.endsWith('.map'));
+
+  for (const [slotId, entry] of Object.entries(manifest.assets || {})) {
+    for (const repoPath of Object.values(entry.files || {})) {
+      if (!repoPath) continue;
+      manifestFileOwners.set(repoPath, [...(manifestFileOwners.get(repoPath) || []), slotId]);
+    }
+  }
+
+  assert(
+    /severity: 'error',\s+message: 'Public asset is not connected to an asset slot\.'/m.test(assetAudit),
+    'AssetOS disconnected public media must remain an audit error',
+  );
+  assertIncludes(assetAudit, 'Manifest does not declare the slot destination.', 'AssetOS slot-destination audit contract');
+  assertIncludes(assetAudit, 'Manifest is missing required ${output.role} output.', 'AssetOS required-output audit contract');
+  assertIncludes(assetAudit, 'Manifest entry has no slot declaration.', 'AssetOS orphan-manifest audit contract');
+  assertIncludes(assetAudit, 'Asset file is owned by multiple slots:', 'AssetOS duplicate-file ownership audit contract');
+  assertIncludes(assetAudit, 'declared source file(s) are missing.', 'AssetOS missing watched-source audit contract');
+  assertIncludes(assetAudit, 'changed, appeared, or disappeared since manifest approval.', 'AssetOS exact fingerprint drift contract');
+  assertIncludes(assetAudit, 'Manifest brief path does not match the slot ID.', 'AssetOS slot-brief path contract');
+  assertIncludes(assetAudit, 'Asset brief is owned by multiple slots:', 'AssetOS exclusive brief ownership contract');
+  assertIncludes(assetAudit, 'Approved asset status does not have an approved review decision.', 'AssetOS approved-status review contract');
+  assertIncludes(assetAudit, 'Approved review must have passing performance and 1-10 review scores.', 'AssetOS coherent approved-review contract');
+  assertIncludes(assetAudit, 'file does not match required ${outputContract.format} format.', 'AssetOS output-format contract');
+  assert(
+    [...manifestFileOwners.entries()].every(([, owners]) => owners.length === 1),
+    `AssetOS manifest files must have one owner:\n${[...manifestFileOwners.entries()]
+      .filter(([, owners]) => owners.length > 1)
+      .map(([repoPath, owners]) => `${repoPath}: ${owners.join(', ')}`)
+      .join('\n')}`,
+  );
+  assert(
+    trackedWebsiteFiles.every((repoPath) => declaredPublicFiles.has(repoPath)),
+    `AssetOS manifest must own every public website media file:\n${trackedWebsiteFiles
+      .filter((repoPath) => !declaredPublicFiles.has(repoPath))
+      .join('\n')}`,
+  );
+
+  for (const slotId of governedSlotIds) {
+    assertIncludes(slotRegistry, `id: '${slotId}'`, `AssetOS governed MenuList slot ${slotId}`);
+    const entry = manifest.assets?.[slotId];
+    assert(entry, `AssetOS manifest must include governed MenuList slot ${slotId}`);
+    assert(entry.status === 'approved', `AssetOS governed slot ${slotId} must be approved`);
+    assert(entry.review?.decision === 'approved', `AssetOS governed slot ${slotId} review must be approved`);
+    assert(entry.brief && fs.existsSync(resolvePath(entry.brief)), `AssetOS governed slot ${slotId} brief must exist`);
+    assert(
+      Object.keys(entry.sourceFingerprint?.files || {}).length > 0,
+      `AssetOS governed slot ${slotId} must have a locked source fingerprint`,
+    );
+
+    for (const outputPath of Object.values(entry.files || {})) {
+      assert(fs.existsSync(resolvePath(outputPath)), `AssetOS governed slot ${slotId} output must exist: ${outputPath}`);
+      assert(fs.statSync(resolvePath(outputPath)).size > 0, `AssetOS governed slot ${slotId} output must be non-empty: ${outputPath}`);
+    }
+
+    for (const [sourcePath, expectedHash] of Object.entries(entry.sourceFingerprint?.files || {})) {
+      assert(fs.existsSync(resolvePath(sourcePath)), `AssetOS governed slot ${slotId} source must exist: ${sourcePath}`);
+      assert(
+        sha256File(sourcePath) === expectedHash,
+        `AssetOS governed slot ${slotId} watched source fingerprint must be current: ${sourcePath}`,
+      );
+    }
+  }
+
+  [
+    'menulist.industry.salons-spas.demo-placeholder',
+    'menulist.industry.service-list-businesses.proof-placeholder',
+    'menulist.industry.local-service-businesses.demo-placeholder',
+  ].forEach((slotId) => {
+    assertIncludes(manifest.assets[slotId].review.notes, 'temporary', `AssetOS temporary-placeholder review ${slotId}`);
+  });
+  assertIncludes(placeholderDocs, 'They are not customer proof.', 'AssetOS industry placeholder customer-proof boundary');
+
+  assert(!manifest.assets['menulist.feature.customer-feedback-loop.owner-inbox'], 'Loading-state owner inbox must not remain an approved public AssetOS slot');
+  assert(!manifest.assets['menulist.feature.qr-menu-links.public-menu'], 'Broken feature-local public menu must not remain an approved public AssetOS slot');
+  assert(!fs.existsSync(resolvePath('public/images/website/features/customer-feedback-loop/owner-feedback-inbox.webp')), 'Loading-state owner inbox must stay out of public media');
+  assert(!fs.existsSync(resolvePath('public/images/website/features/qr-menu-links/public-menu.webp')), 'Broken feature-local public menu must stay out of public media');
+  assertIncludes(
+    screenshotGallery,
+    "src: '/images/website/menulist-public-menu-mobile.webp'",
+    'QR Menu Links clean customer-menu proof reuse',
+  );
+  assertNotIncludes(screenshotGallery, 'owner-feedback-inbox.webp', 'Customer Feedback loading-state proof');
+  assertNotIncludes(screenshotGallery, 'features/qr-menu-links/public-menu.webp', 'QR Menu Links broken public-menu proof');
+  assertIncludes(
+    englishLocale.Website.FeatureDetailScreenshots.customerFeedbackLoop.subtitle,
+    'private owner review surface remains held back until a clean ready-state screenshot is approved',
+    'English Customer Feedback screenshot boundary',
+  );
+  assertIncludes(
+    hindiLocale.Website.FeatureDetailScreenshots.customerFeedbackLoop.subtitle,
+    'Private owner review surface clean ready-state screenshot approve होने तक held back है',
+    'Hindi Customer Feedback screenshot boundary',
+  );
+  assertNotIncludes(
+    englishLocale.Website.FeatureDetailScreenshots.customerFeedbackLoop.subtitle,
+    'These captures show the public report path and the private owner review view',
+    'English Customer Feedback stale plural screenshot copy',
+  );
+  assertIncludes(imageAssetDocs, 'former feature-local capture was removed because visual review found a broken logo and empty media block', 'Main website rejected QR proof record');
+  assertIncludes(imageAssetDocs, 'owner-inbox proof remains held back because the current raw capture shows a loading state', 'Main website held-back owner inbox record');
+  assertIncludes(productionAudit, 'AssetOS disconnected public-media governance checkpoint', 'Production readiness audit AssetOS public-media boundary');
+  assertIncludes(productionAudit, 'AssetOS manifest-contract integrity checkpoint', 'Production readiness audit AssetOS manifest contract');
+  assertIncludes(productionAudit, 'AssetOS watched-source completeness checkpoint', 'Production readiness audit AssetOS watched-source contract');
+  assertIncludes(productionAudit, 'AssetOS brief-integrity checkpoint', 'Production readiness audit AssetOS brief contract');
+  assertIncludes(productionAudit, 'AssetOS approval-state coherence checkpoint', 'Production readiness audit AssetOS approval contract');
+  assertIncludes(productionAudit, 'AssetOS output-format checkpoint', 'Production readiness audit AssetOS format contract');
+  assertIncludes(changelog, 'AssetOS Public Media Ownership Boundary', 'Changelog AssetOS public-media boundary');
+  assertIncludes(changelog, 'Manifest ownership now means one valid slot contract', 'Changelog AssetOS manifest contract');
+  assertIncludes(changelog, 'Watched evidence cannot disappear silently', 'Changelog AssetOS watched-source contract');
+  assertIncludes(changelog, 'Approved media cannot bypass its brief', 'Changelog AssetOS brief contract');
+  assertIncludes(changelog, 'Approved now has one coherent meaning', 'Changelog AssetOS approval contract');
+  assertIncludes(changelog, 'Required roles now require the declared media format', 'Changelog AssetOS format contract');
 }
 
 function verifyPricingPublicCopyBoundary() {
@@ -793,6 +1119,9 @@ function verifyDocsBoundary() {
 verifyPackageScript();
 verifyMountedHomepageBoundary();
 verifyLocaleAndDiscoveryCopy();
+verifyWhatsAppOnboardingFailClosedBoundary();
+verifyMenuListLaunchAssetPackBoundary();
+verifyAssetOsPublicMediaBoundary();
 verifyPricingPublicCopyBoundary();
 verifyWebsiteAnalyticsBoundary();
 verifyDocsBoundary();

@@ -1,15 +1,17 @@
 # AI System Layer — Marketing & Sales Collateral
 
 **Feature:** Centralized AI Infrastructure for MenuList  
-**Status:** 📝 DOCUMENTED  
-**Last Updated:** March 12, 2026  
+**Status:** Source-gated internal positioning — not approved sales or launch collateral
+**Last Updated:** July 10, 2026
 **Audience:** Internal (not customer-facing)
+
+> **Launch boundary:** Not current launch certification or deploy approval. This document records source-gated AI System Layer evidence only. Current MenuList approval still requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:ai-accounting`, `npm run verify:functions-deploy-preflight`, `npm run verify:menu-extraction-pipeline`, scoped Firebase deploy evidence for affected MenuList Functions, target Vercel deploy evidence for affected app routes, provider smoke with target-specific key/model/quota configuration, SAFE_MODE/rate-limit/accounting/provider-health smoke, authenticated browser/device QA for affected owner/platform surfaces, and production-host smoke. Answerlattice retains separate doctrine, credentials, Firebase target, billing/cost evidence, deploy approval, and release certification; this document cannot authorize an Answerlattice deploy or release.
 
 ---
 
 ## Elevator Pitch
 
-MenuList's AI System Layer is the invisible backbone that makes every AI feature — from menu extraction to translations to image generation — reliable, cost-controlled, and predictable. It's not a product feature; it's the infrastructure that makes product features trustworthy.
+MenuList's AI System Layer provides shared gateways, model constants, bounded diagnostics, and provider-health records for covered AI paths. Billable app routes and extraction retain their existing compact ledgers. It is internal infrastructure, not a customer-facing feature or a guarantee of provider availability.
 
 ---
 
@@ -21,14 +23,14 @@ MenuList uses AI for its core value proposition: converting menu images into str
 
 Without centralized control, each feature independently manages its own Gemini calls — creating inconsistent error handling, unpredictable costs, and cascading failures when the API has issues.
 
-The AI System Layer solves this by creating one controlled pipeline for all AI operations.
+The AI System Layer reduces duplication through shared gateway patterns and source-defined route/job guards. It does not create one universal queue, limiter, circuit breaker, or usage ledger for every AI call.
 
 ### Business Value
 
-1. **Cost predictability** — Know exactly what AI costs per feature, per tenant, per month
-2. **Reliability** — One feature's AI failure doesn't bring down others
-3. **Operational simplicity** — Single place to monitor, debug, and control AI usage
-4. **Scalability** — Add new AI features without duplicating infrastructure logic
+1. **Bounded cost evidence** — Extraction and billable app routes retain their existing compact accounting records
+2. **Guarded failures** — Covered calls use shared provider classification, retry, and owner-safe failure patterns
+3. **Operational consistency** — Shared model constants, diagnostics, and daily health records reduce duplicated handling
+4. **Reusable controls** — New AI work can adopt the established gateway, SAFE_MODE, limiter, and accounting contracts where applicable
 
 ---
 
@@ -48,17 +50,17 @@ It is **infrastructure** that:
 
 ### For Product Discussions
 
-- "Every AI feature now has the same protection: rate limiting, retries, circuit breaker"
-- "We can see exactly what AI costs per feature — extraction vs descriptions vs translations"
-- "Adding a new AI feature is now 10 lines of code instead of 100"
-- "If Gemini has an outage, only affected calls fail — nothing cascades"
+- "Covered AI paths use shared provider classification and model constants; route-specific limiters, SAFE_MODE, retries, and accounting stay explicit"
+- "Extraction and billable app routes retain compact cost and operation evidence; internal calls are not described as universally metered"
+- "New AI work must adopt the existing gateway and the controls required by its route or job"
+- "Provider failures return through bounded errors and circuit-breaker behavior where the covered path implements them"
 
 ### For Technical Discussions
 
-- "Single SDK, single entry point, task-based model routing"
-- "Feature-flagged — can disable without code changes"
-- "Zero overhead on extraction (already has its own robust pipeline)"
-- "Append-only usage log with 90-day TTL — negligible cost"
+- "Single SDK family with separate MenuList app/Functions and Answerlattice gateway ownership"
+- "Expensive routes and jobs use existing feature flags, SAFE_MODE, or scheduler controls where the source contract defines them"
+- "Extraction keeps its existing queue and compact operation ledger"
+- "No universal `aiUsageLog` collection exists; current ledgers remain `MENULIST_AI_OPERATIONS` and `menulistAiOperations/{tId}/{sId}`"
 
 ---
 
@@ -73,4 +75,4 @@ It is **infrastructure** that:
 
 ---
 
-_Document Status: 📝 DOCUMENTED_
+_Document Status: Source-gated internal positioning; not approved sales or launch collateral._

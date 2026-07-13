@@ -23,6 +23,7 @@ import {
     qualifySignalDeskRevenueAccountServer,
     createSignalDeskProviderEvaluationServer,
     createSignalDeskResearchAgentRunServer,
+    createSignalDeskRouteTokenServer,
     createSignalDeskDraftServer,
     createSignalDeskEvidenceServer,
     createSignalDeskSourceQualitySnapshotServer,
@@ -39,16 +40,20 @@ import {
     recordSignalDeskTrustPartnerDeliverableServer,
     recordSignalDeskTrustPartnerMetricsServer,
     recordSignalDeskContentPerformanceServer,
+    recordSignalDeskManualContactServer,
     refreshSignalDeskProviderSourceRetentionServer,
     recordSignalDeskOutcomeServer,
+    revokeSignalDeskRouteTokenServer,
     refreshSignalDeskActivationWatchServer,
     runSignalDeskEnrichmentWaterfallServer,
     reviewSignalDeskExperimentCardServer,
     reviewSignalDeskGrowthMissionServer,
     reviewSignalDeskApprovalServer,
+    reviewSignalDeskAiShadowRunServer,
     reviewSignalDeskTrustPartnerDealServer,
     reviewSignalDeskTrustPartnerRenewalServer,
     runSignalDeskAiAssistServer,
+    runSignalDeskAiVolumeBatchServer,
     runSignalDeskSourceProviderServer,
     scoreSignalDeskTargetServer,
     seedSignalDeskDefaultsServer,
@@ -72,6 +77,7 @@ import {
     upsertSignalDeskSelfServiceCtaServer,
     upsertSignalDeskSenderDomainServer,
     upsertSignalDeskContentSourceServer,
+    upsertSignalDeskProofPermissionServer,
     upsertSignalDeskTrustPartnerProfileServer,
 } from "@lib/signaldesk/workflowServer";
 import { validateAPIInput } from "@lib/security/inputValidation";
@@ -80,6 +86,11 @@ import { withAuth } from "@/middleware/auth";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+
+// A bounded volume run can make up to 45 provider calls with per-pair dependencies
+// across three concurrent workers. Keep the route finite while allowing the
+// founder-approved batch to finish and persist its parent summary.
+export const maxDuration = 300;
 
 const ActionEnvelopeSchema = z.object({
     action: z.enum([
@@ -91,11 +102,16 @@ const ActionEnvelopeSchema = z.object({
         "create-draft",
         "review-approval",
         "export-message",
+        "record-manual-contact",
         "capture-reply",
         "record-outcome",
+        "create-route-token",
+        "revoke-route-token",
         "capture-demand-signal",
         "run-source-provider",
         "run-ai-assist",
+        "run-ai-volume-batch",
+        "review-ai-shadow-run",
         "prepare-channel-handoff",
         "upsert-channel-window-state",
         "send-approved-message",
@@ -130,6 +146,7 @@ const ActionEnvelopeSchema = z.object({
         "create-sequencer-handoff",
         "send-owned-sequence-step",
         "upsert-content-source",
+        "upsert-proof-permission",
         "create-content-asset",
         "generate-content-distribution-drafts",
         "review-content-distribution-draft",
@@ -148,12 +165,19 @@ const ActionEnvelopeSchema = z.object({
 });
 
 const SourcePolicySchema = z.object({
+    accessMethod: z.enum(["owner-supplied", "permissioned-referral", "licensed-api", "open-data", "manual-public-research", "other"]),
     allowContact: z.boolean(),
     allowEvidence: z.boolean(),
     allowPersonalization: z.boolean(),
+    allowedFields: z.array(z.string().trim().min(1).max(80)).min(1).max(30),
+    attributionRequirements: z.array(z.string().trim().min(1).max(240)).max(10).default([]),
+    blockedFields: z.array(z.string().trim().min(1).max(80)).max(30).default([]),
     expiresAt: z.string().trim().max(80).optional(),
+    lastReviewedAt: z.string().datetime({ offset: true }).optional(),
     name: z.string().trim().min(2).max(120),
     notes: z.string().trim().max(500).optional(),
+    policyOwner: z.string().trim().min(2).max(180),
+    prohibitedUses: z.array(z.string().trim().min(1).max(240)).min(1).max(20),
     provider: z.enum([
         "manual",
         "google-places",
@@ -177,7 +201,11 @@ const SourcePolicySchema = z.object({
         "anthropic",
     ]).optional(),
     retentionDays: z.number().int().min(1).max(365),
+    rawPayloadPolicy: z.enum(["never-store", "transient-only", "retention-bound"]),
+    refreshMethod: z.enum(["manual-review", "provider-refresh", "owner-refresh", "no-refresh"]),
     sourceType: z.enum(["manual-csv", "manual-research", "owned-demand", "provider", "other"]),
+    termsUrl: z.string().trim().url().max(500).optional(),
+    termsVersion: z.string().trim().max(120).optional(),
 });
 
 const ImportTargetsSchema = z.object({
@@ -206,14 +234,43 @@ const DraftSchema = z.object({
     templateId: z.string().trim().min(3).max(160).optional(),
 });
 
+const ApprovalRejectionReasonSchema = z.enum([
+    "evidence-weak-or-stale",
+    "identity-uncertain",
+    "no-customer-truth-gap",
+    "contact-route-not-allowed",
+    "already-solved",
+    "wrong-segment",
+    "duplicate",
+    "other",
+]);
+
 const ReviewApprovalSchema = z.object({
     approvalId: z.string().trim().min(3).max(160),
     reason: z.string().trim().max(500).optional(),
+    rejectionReason: ApprovalRejectionReasonSchema.optional(),
     status: z.enum(["approved", "rejected"]),
+}).superRefine((value, context) => {
+    if (value.status === "rejected" && !value.rejectionReason) {
+        context.addIssue({ code: z.ZodIssueCode.custom, message: "Rejection reason is required", path: ["rejectionReason"] });
+    }
+    if (value.status === "rejected" && value.rejectionReason === "other" && !value.reason?.trim()) {
+        context.addIssue({ code: z.ZodIssueCode.custom, message: "Rejection note is required", path: ["reason"] });
+    }
 });
 
 const ExportMessageSchema = z.object({
     approvalId: z.string().trim().min(3).max(160),
+});
+
+const ManualContactSchema = z.object({
+    idempotencyKey: z.string().trim().min(8).max(180),
+    note: z.string().trim().max(300).optional(),
+    occurredAt: z.string().datetime({ offset: true }),
+    result: z.enum(["contacted", "no-answer", "wrong-contact", "requested-later", "declined", "introduced"]),
+    route: z.enum(["email-export", "partner-intro"]),
+    sourcePolicyId: z.string().trim().min(3).max(160),
+    targetId: z.string().trim().min(3).max(160),
 });
 
 const CaptureReplySchema = z.object({
@@ -224,9 +281,34 @@ const CaptureReplySchema = z.object({
 
 const RecordOutcomeSchema = z.object({
     channel: z.enum(["email", "manual", "qr", "share", "claim"]),
+    evidenceRef: z.string().trim().max(500).optional(),
+    idempotencyKey: z.string().trim().min(8).max(180).optional(),
     outcomeType: z.enum(["route_created", "upload_started", "preview_prepared", "published", "two_surface_activation"]),
-    source: z.enum(["manual", "route-token", "demand-signal"]),
+    ownerQualifiedAt: z.string().datetime({ offset: true }).optional(),
+    ownerReviewedAt: z.string().datetime({ offset: true }).optional(),
+    source: z.enum(["manual", "demand-signal"]),
+    surfaces: z.array(z.enum(["qr", "whatsapp", "google-profile", "instagram", "website", "print", "other"])).max(7).default([]),
     targetId: z.string().trim().min(3).max(160).optional(),
+}).superRefine((value, context) => {
+    if (value.outcomeType !== "two_surface_activation") return;
+    if (!value.targetId) context.addIssue({ code: z.ZodIssueCode.custom, message: "Activation target is required", path: ["targetId"] });
+    if (!value.idempotencyKey) context.addIssue({ code: z.ZodIssueCode.custom, message: "Outcome idempotency key is required", path: ["idempotencyKey"] });
+    if (!value.evidenceRef) context.addIssue({ code: z.ZodIssueCode.custom, message: "Activation evidence is required", path: ["evidenceRef"] });
+    if (!value.ownerQualifiedAt || !value.ownerReviewedAt) context.addIssue({ code: z.ZodIssueCode.custom, message: "Owner review is required", path: ["ownerReviewedAt"] });
+    if (new Set(value.surfaces).size < 2) context.addIssue({ code: z.ZodIssueCode.custom, message: "Two distinct surfaces are required", path: ["surfaces"] });
+});
+
+const RouteTokenSchema = z.object({
+    actionId: z.string().trim().min(3).max(160).optional(),
+    channel: z.enum(["email", "manual", "qr", "share", "claim"]),
+    ctaId: z.string().trim().max(160).optional(),
+    targetId: z.string().trim().min(3).max(160),
+    templateId: z.string().trim().max(160).optional(),
+});
+
+const RevokeRouteTokenSchema = z.object({
+    reason: z.string().trim().min(3).max(500),
+    routeTokenId: z.string().trim().regex(/^route_[a-f0-9]{32}$/),
 });
 
 const CaptureDemandSignalSchema = z.object({
@@ -249,6 +331,31 @@ const AiAssistSchema = z.object({
     instruction: z.string().trim().max(500).optional(),
     targetId: z.string().trim().min(3).max(160),
     task: z.enum(["score", "evidence", "draft", "reply-classification", "approval-packet", "weekly-strategist", "vendor-audit"]),
+});
+
+const AiVolumeBatchSchema = z.object({
+    idempotencyKey: z.string().trim().min(8).max(180),
+    instruction: z.string().trim().max(500).optional(),
+    maxEstimatedCostUsd: z.number().min(0.01).max(5),
+    targetIds: z.array(z.string().trim().min(3).max(160)).min(1).max(5)
+        .refine((targetIds) => new Set(targetIds).size === targetIds.length, "Target IDs must be unique"),
+    tasks: z.array(z.enum(["score", "evidence", "draft", "reply-classification"])).min(1).max(3)
+        .refine((tasks) => new Set(tasks).size === tasks.length, "Tasks must be unique"),
+});
+
+const AiShadowReviewSchema = z.object({
+    aiRunId: z.string().trim().min(3).max(180),
+    decision: z.enum(["accepted", "edited", "rejected", "held"]),
+    founderAttentionMinutes: z.number().int().min(0).max(1440),
+    reason: z.string().trim().max(500).optional(),
+}).superRefine((value, context) => {
+    if (value.decision !== "accepted" && !value.reason) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Reason is required for this decision",
+            path: ["reason"],
+        });
+    }
 });
 
 const ChannelActionSchema = z.object({
@@ -319,7 +426,7 @@ const ModelRouteSchema = z.object({
     escalationProvider: z.enum(["gemini", "openai", "anthropic"]).optional(),
     maxCostUsd: z.number().min(0).max(100),
     status: z.enum(["active", "inactive", "hold", "blocked"]),
-    task: z.enum(["score", "evidence", "draft", "reply-classification", "approval-packet", "weekly-strategist", "vendor-audit"]),
+    task: z.enum(["score", "evidence", "draft", "reply-classification", "approval-packet", "weekly-strategist", "vendor-audit", "quality-critic"]),
 });
 
 const EnrichmentWaterfallSchema = z.object({
@@ -566,6 +673,26 @@ const ContentSourceTypeSchema = z.enum(["manual", "blog", "changelog", "proof-pa
 
 const ContentChannelSchema = z.enum(["linkedin", "x", "email", "newsletter", "partner-brief", "blog", "short-video", "other"]);
 
+const ProofPermissionScopeSchema = z.enum([
+    "internal-learning",
+    "anonymous-aggregate",
+    "business-name",
+    "logo",
+    "quotation",
+    "before-after-screenshots",
+    "public-case-study",
+    "partner-material",
+]);
+
+const PublicProofScopeSchema = z.enum([
+    "business-name",
+    "logo",
+    "quotation",
+    "before-after-screenshots",
+    "public-case-study",
+    "partner-material",
+]);
+
 const ContentSourceSchema = z.object({
     contentSourceId: z.string().trim().max(180).optional(),
     defaultAudience: ContentAudienceSchema,
@@ -583,6 +710,8 @@ const ContentAssetSchema = z.object({
     marketPodId: z.string().trim().max(160).optional(),
     primaryAudience: ContentAudienceSchema,
     proofLevel: z.enum(["owned", "customer-proof", "market-research", "internal-note"]),
+    proofPermissionId: z.string().trim().max(180).optional(),
+    proofScopes: z.array(PublicProofScopeSchema).max(6).default([]),
     riskNotes: z.array(z.string().trim().max(240)).max(6).default([]),
     sourceId: z.string().trim().max(180).optional(),
     sourceNotes: z.string().trim().max(800).optional(),
@@ -590,6 +719,24 @@ const ContentAssetSchema = z.object({
     sourceUrl: z.string().trim().max(500).optional(),
     status: z.enum(["draft", "ready", "distributed", "hold", "archived"]).optional(),
     title: z.string().trim().min(2).max(180),
+}).superRefine((value, context) => {
+    if (value.proofLevel === "customer-proof" && !value.proofPermissionId) {
+        context.addIssue({ code: z.ZodIssueCode.custom, message: "Proof permission is required", path: ["proofPermissionId"] });
+    }
+    if (value.proofLevel === "customer-proof" && value.proofScopes.length === 0) {
+        context.addIssue({ code: z.ZodIssueCode.custom, message: "At least one public proof scope is required", path: ["proofScopes"] });
+    }
+});
+
+const ProofPermissionSchema = z.object({
+    evidenceRef: z.string().trim().min(3).max(500),
+    expiresAt: z.string().datetime({ offset: true }).optional(),
+    grantedAt: z.string().datetime({ offset: true }).optional(),
+    notes: z.string().trim().max(500).optional(),
+    proofPermissionId: z.string().trim().max(180).optional(),
+    scopes: z.array(ProofPermissionScopeSchema).min(1).max(8),
+    status: z.enum(["active", "hold", "revoked", "expired"]),
+    targetId: z.string().trim().min(3).max(160),
 });
 
 const ContentDistributionDraftSchema = z.object({
@@ -705,22 +852,27 @@ const TeamMemberSchema = z.object({
 
 const permissionForAction = (action: z.infer<typeof ActionEnvelopeSchema>["action"]): SignalDeskPermission => {
     if (action === "seed-defaults") return "signaldesk.configure";
-    if (action === "create-source-policy") return "source.configure";
+    if (action === "create-source-policy") return "signaldesk.configure";
     if (action === "import-targets") return "target.review";
     if (action === "score-target") return "target.review";
     if (action === "create-evidence") return "target.review";
     if (action === "create-draft") return "draft.create";
     if (action === "review-approval") return "draft.approve";
     if (action === "export-message") return "message.export";
+    if (action === "record-manual-contact") return "target.review";
     if (action === "capture-reply") return "message.export";
     if (action === "record-outcome") return "target.review";
+    if (action === "create-route-token") return "target.review";
+    if (action === "revoke-route-token") return "signaldesk.configure";
     if (action === "run-source-provider") return "source.configure";
     if (action === "run-ai-assist") return "target.review";
+    if (action === "run-ai-volume-batch") return "signaldesk.configure";
+    if (action === "review-ai-shadow-run") return "signaldesk.configure";
     if (action === "prepare-channel-handoff") return "message.export";
     if (action === "upsert-channel-window-state") return "channel.configure";
     if (action === "send-approved-message") return "message.send";
     if (action === "upsert-provider-account") return "signaldesk.configure";
-    if (action === "upsert-budget-policy") return "policy.approve";
+    if (action === "upsert-budget-policy") return "signaldesk.configure";
     if (action === "upsert-connector-setting") return "channel.configure";
     if (action === "upsert-model-route") return "signaldesk.configure";
     if (action === "upsert-enrichment-waterfall") return "source.configure";
@@ -736,8 +888,8 @@ const permissionForAction = (action: z.infer<typeof ActionEnvelopeSchema>["actio
     if (action === "upsert-offer-cta") return "signaldesk.configure";
     if (action === "qualify-revenue-account") return "target.review";
     if (action === "upsert-commercial-opportunity") return "target.review";
-    if (action === "upsert-commercial-offer") return "policy.approve";
-    if (action === "upsert-operating-envelope") return "policy.approve";
+    if (action === "upsert-commercial-offer") return "signaldesk.configure";
+    if (action === "upsert-operating-envelope") return "signaldesk.configure";
     if (action === "refresh-activation-watch") return "target.review";
     if (action === "upsert-reply-playbook") return "draft.create";
     if (action === "create-source-quality-snapshot") return "source.configure";
@@ -750,6 +902,7 @@ const permissionForAction = (action: z.infer<typeof ActionEnvelopeSchema>["actio
     if (action === "create-sequencer-handoff") return "message.export";
     if (action === "send-owned-sequence-step") return "message.send";
     if (action === "upsert-content-source") return "source.configure";
+    if (action === "upsert-proof-permission") return "signaldesk.configure";
     if (action === "create-content-asset") return "draft.create";
     if (action === "generate-content-distribution-drafts") return "draft.create";
     if (action === "review-content-distribution-draft") return "draft.approve";
@@ -758,7 +911,7 @@ const permissionForAction = (action: z.infer<typeof ActionEnvelopeSchema>["actio
     if (action === "upsert-trust-partner-profile") return "source.configure";
     if (action === "create-trust-partner-niche-test") return "policy.approve";
     if (action === "create-trust-partner-brief") return "draft.create";
-    if (action === "review-trust-partner-deal") return "policy.approve";
+    if (action === "review-trust-partner-deal") return "signaldesk.configure";
     if (action === "record-trust-partner-deliverable") return "source.configure";
     if (action === "record-trust-partner-metrics") return "source.configure";
     if (action === "review-trust-partner-renewal") return "policy.approve";
@@ -800,10 +953,14 @@ const SIGNALDESK_MOBILE_ACTION_CLASS: Record<z.infer<typeof ActionEnvelopeSchema
     "generate-content-distribution-drafts": "configure",
     "import-targets": "configure",
     "prepare-channel-handoff": "export",
+    "record-manual-contact": "configure",
     "recommend-market-pod-plan": "configure",
     "review-market-pod": "approve",
+    "review-ai-shadow-run": "approve",
     "record-content-performance": "configure",
     "record-outcome": "configure",
+    "create-route-token": "configure",
+    "revoke-route-token": "mutate_policy",
     "refresh-activation-watch": "configure",
     "record-trust-partner-deliverable": "configure",
     "record-trust-partner-metrics": "configure",
@@ -815,6 +972,7 @@ const SIGNALDESK_MOBILE_ACTION_CLASS: Record<z.infer<typeof ActionEnvelopeSchema
     "review-trust-partner-deal": "spend",
     "review-trust-partner-renewal": "spend",
     "run-ai-assist": "provider_run",
+    "run-ai-volume-batch": "provider_run",
     "run-enrichment-waterfall": "provider_run",
     "run-source-provider": "provider_run",
     "schedule-content-distribution-draft": "schedule",
@@ -827,6 +985,7 @@ const SIGNALDESK_MOBILE_ACTION_CLASS: Record<z.infer<typeof ActionEnvelopeSchema
     "upsert-channel-window-state": "configure",
     "upsert-connector-setting": "configure",
     "upsert-content-source": "configure",
+    "upsert-proof-permission": "mutate_policy",
     "upsert-enrichment-waterfall": "provider_run",
     "upsert-model-route": "provider_run",
     "upsert-offer-cta": "configure",
@@ -848,6 +1007,8 @@ const SAFE_ACTION_ERRORS = new Set([
     "Approval is not pending",
     "Approval must be approved before export",
     "Approval not found",
+    "Approval rejection note is required for other",
+    "Approval rejection reason is required",
     "Contact use is not approved for this target",
     "Draft is required before export",
     "Draft must be approved before export",
@@ -866,6 +1027,11 @@ const SAFE_ACTION_ERRORS = new Set([
     "Content draft not found",
     "Content Distribution Rail is disabled",
     "Content source not found",
+    "PROOF_PERMISSION_REQUIRED",
+    "PROOF_PERMISSION_SCOPE_NOT_ALLOWED",
+    "PROOF_PERMISSION_TARGET_IMMUTABLE",
+    "Founder approval is required for proof permissions",
+    "Proof permission expiry must be in the future",
     "Email provider is not configured",
     "Enrichment waterfall is not active",
     "Enrichment waterfall not found",
@@ -875,6 +1041,11 @@ const SAFE_ACTION_ERRORS = new Set([
     "Google Places provider is not configured",
     "Meta provider is not configured",
     "MOBILE_READ_ONLY_ACTION_BLOCKED",
+    "Manual contact result does not match route",
+    "Manual contact idempotency conflict",
+    "Manual contact route is not allowed",
+    "Manual contact source policy changed",
+    "Manual contact timestamp is invalid",
     "No valid target rows supplied",
     "No provider results returned",
     "Owned email sequencer is disabled",
@@ -883,6 +1054,8 @@ const SAFE_ACTION_ERRORS = new Set([
     "Owned sequence step is not due",
     "Owned sequence step not found",
     "Outbound export is paused",
+    "Outbound contact is paused",
+    "Prepared email export is required",
     "Provider source policy is required",
     "Provider account is not registered",
     "Provider account is not approved",
@@ -895,15 +1068,27 @@ const SAFE_ACTION_ERRORS = new Set([
     "Sender domain is not ready",
     "SignalDesk campaign rail is paused",
     "SignalDesk AI provider calls are disabled",
+    "SignalDesk AI Volume Mode is disabled",
+    "Founder approval is required for AI volume runs",
+    "SignalDesk AI volume run is already active",
+    "AI volume batch limits are invalid",
+    "AI volume projected cost exceeds founder maximum",
+    "SignalDesk AI critic route is not active",
     "SignalDesk AI provider is not configured",
     "SignalDesk AI route is not active",
     "SignalDesk AI route provider is not enabled",
     "SignalDesk AI workers are paused",
+    "Founder approval is required for AI shadow review",
+    "AI shadow review reason is required",
+    "AI run not found",
+    "AI model evaluation not found",
+    "Only provider-backed AI assist runs can be reviewed",
     "SignalDesk assisted channels are disabled",
     "SignalDesk Firebase is not configured",
     "SignalDesk Operating Layer is disabled",
     "SignalDesk Revenue Operating Layer is disabled",
     "Revenue account not found",
+    "Route token not found",
     "Target source policy changed; retry qualification",
     "Commercial opportunity not found",
     "Commercial opportunity stage and status do not match",
@@ -934,10 +1119,21 @@ const SAFE_ACTION_ERRORS = new Set([
     "SOURCE_POLICY_RETENTION_MISSING",
     "SOURCE_POLICY_REVIEW_REQUIRED",
     "SOURCE_POLICY_USE_NOT_ALLOWED",
+    "ACTIVATION_EVIDENCE_REQUIRED",
+    "ACTIVATION_OWNER_REVIEW_REQUIRED",
+    "OUTCOME_IDEMPOTENCY_CONFLICT",
+    "OUTCOME_TIMESTAMP_INVALID",
+    "ACTIVATION_TWO_DISTINCT_SURFACES_REQUIRED",
+    "OUTCOME_BRIDGE_SIGNATURE_REQUIRED",
+    "OUTCOME_IDEMPOTENCY_KEY_REQUIRED",
+    "Activation target is required",
+    "OWNER_QUALIFIED_INTENT_REQUIRED",
+    "MenuList outcome bridge is paused",
     "Source policy is expired",
     "Target contact is not export-ready",
     "Target has prior contact or outcome",
     "Target is not draft-ready",
+    "Target is not eligible for manual contact",
     "Target is suppressed",
     "Target not found",
     "Template is inactive",
@@ -1009,7 +1205,11 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     }
 
     const rateLimit = await applySignalDeskRateLimit({
-        feature: envelope.data.action === "score-target" || envelope.data.action === "run-ai-assist" ? "AI_OPERATION" : "DATA_WRITE",
+        feature: envelope.data.action === "run-ai-volume-batch"
+            ? "BATCH_OPERATION"
+            : envelope.data.action === "score-target" || envelope.data.action === "run-ai-assist"
+                ? "AI_OPERATION"
+                : "DATA_WRITE",
         keyPrefix: `action:${envelope.data.action}`,
         request,
         session,
@@ -1083,6 +1283,25 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             if (!payload.success) return payload.response;
             return NextResponse.json({ data: await exportSignalDeskMessageServer(accessResult.access, payload.data.approvalId) });
         }
+        if (envelope.data.action === "record-manual-contact") {
+            const payload = validatePayload(ManualContactSchema, envelope.data.payload, {
+                action: envelope.data.action,
+                request,
+                session,
+            });
+            if (!payload.success) return payload.response;
+            return NextResponse.json({
+                data: await recordSignalDeskManualContactServer(accessResult.access, {
+                    idempotencyKey: payload.data.idempotencyKey,
+                    note: payload.data.note,
+                    occurredAt: payload.data.occurredAt,
+                    result: payload.data.result,
+                    route: payload.data.route,
+                    sourcePolicyId: payload.data.sourcePolicyId,
+                    targetId: payload.data.targetId,
+                }),
+            });
+        }
         if (envelope.data.action === "capture-reply") {
             const payload = validatePayload(CaptureReplySchema, envelope.data.payload, {
                 action: envelope.data.action,
@@ -1099,7 +1318,59 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await recordSignalDeskOutcomeServer(accessResult.access, payload.data as any) });
+            if (!payload.data.channel || !payload.data.outcomeType || !payload.data.source) {
+                return NextResponse.json({ error: "Invalid input" }, { status: 400 });
+            }
+            return NextResponse.json({
+                data: await recordSignalDeskOutcomeServer(accessResult.access, {
+                    channel: payload.data.channel,
+                    evidenceRef: payload.data.evidenceRef,
+                    idempotencyKey: payload.data.idempotencyKey,
+                    outcomeType: payload.data.outcomeType,
+                    ownerQualifiedAt: payload.data.ownerQualifiedAt,
+                    ownerReviewedAt: payload.data.ownerReviewedAt,
+                    source: payload.data.source,
+                    surfaces: payload.data.surfaces,
+                    targetId: payload.data.targetId,
+                }),
+            });
+        }
+        if (envelope.data.action === "create-route-token") {
+            const payload = validatePayload(RouteTokenSchema, envelope.data.payload, {
+                action: envelope.data.action,
+                request,
+                session,
+            });
+            if (!payload.success) return payload.response;
+            if (!payload.data.channel || !payload.data.targetId) {
+                return NextResponse.json({ error: "Invalid input" }, { status: 400 });
+            }
+            return NextResponse.json({
+                data: await createSignalDeskRouteTokenServer(accessResult.access, {
+                    actionId: payload.data.actionId,
+                    channel: payload.data.channel,
+                    ctaId: payload.data.ctaId,
+                    targetId: payload.data.targetId,
+                    templateId: payload.data.templateId,
+                }),
+            });
+        }
+        if (envelope.data.action === "revoke-route-token") {
+            const payload = validatePayload(RevokeRouteTokenSchema, envelope.data.payload, {
+                action: envelope.data.action,
+                request,
+                session,
+            });
+            if (!payload.success) return payload.response;
+            if (!payload.data.reason || !payload.data.routeTokenId) {
+                return NextResponse.json({ error: "Invalid input" }, { status: 400 });
+            }
+            return NextResponse.json({
+                data: await revokeSignalDeskRouteTokenServer(accessResult.access, {
+                    reason: payload.data.reason,
+                    routeTokenId: payload.data.routeTokenId,
+                }),
+            });
         }
         if (envelope.data.action === "run-source-provider") {
             const payload = validatePayload(SourceProviderRunSchema, envelope.data.payload, {
@@ -1118,6 +1389,24 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             });
             if (!payload.success) return payload.response;
             return NextResponse.json({ data: await runSignalDeskAiAssistServer(accessResult.access, payload.data as any) });
+        }
+        if (envelope.data.action === "run-ai-volume-batch") {
+            const payload = validatePayload(AiVolumeBatchSchema, envelope.data.payload, {
+                action: envelope.data.action,
+                request,
+                session,
+            });
+            if (!payload.success) return payload.response;
+            return NextResponse.json({ data: await runSignalDeskAiVolumeBatchServer(accessResult.access, payload.data as any) });
+        }
+        if (envelope.data.action === "review-ai-shadow-run") {
+            const payload = validatePayload(AiShadowReviewSchema, envelope.data.payload, {
+                action: envelope.data.action,
+                request,
+                session,
+            });
+            if (!payload.success) return payload.response;
+            return NextResponse.json({ data: await reviewSignalDeskAiShadowRunServer(accessResult.access, payload.data as any) });
         }
         if (envelope.data.action === "prepare-channel-handoff") {
             const payload = validatePayload(ChannelActionSchema, envelope.data.payload, {
@@ -1424,6 +1713,15 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             });
             if (!payload.success) return payload.response;
             return NextResponse.json({ data: await upsertSignalDeskContentSourceServer(accessResult.access, payload.data as any) });
+        }
+        if (envelope.data.action === "upsert-proof-permission") {
+            const payload = validatePayload(ProofPermissionSchema, envelope.data.payload, {
+                action: envelope.data.action,
+                request,
+                session,
+            });
+            if (!payload.success) return payload.response;
+            return NextResponse.json({ data: await upsertSignalDeskProofPermissionServer(accessResult.access, payload.data as any) });
         }
         if (envelope.data.action === "create-content-asset") {
             const payload = validatePayload(ContentAssetSchema, envelope.data.payload, {

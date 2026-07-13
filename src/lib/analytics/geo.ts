@@ -37,6 +37,26 @@ const getLocationLookupFailureContext = (timeZone?: string) => ({
   fallback: 'unknown',
 });
 
+export const toCoarseAnalyticsLocationKey = (
+  latitude: unknown,
+  longitude: unknown,
+): string | null => {
+  if (
+    typeof latitude !== 'number'
+    || typeof longitude !== 'number'
+    || !Number.isFinite(latitude)
+    || !Number.isFinite(longitude)
+    || latitude < -90
+    || latitude > 90
+    || longitude < -180
+    || longitude > 180
+  ) return null;
+
+  // Integer tenths preserve the existing ~11 km bucket without introducing
+  // dots, which are Firestore field-path separators rather than map-key data.
+  return `geo_${Math.round(latitude * 10)}_${Math.round(longitude * 10)}`;
+};
+
 const getBrowserPosition = async (): Promise<GeolocationPosition | null> => {
   if (!hasBrowserGeolocation()) return null;
 
@@ -71,11 +91,8 @@ export const getLocationInfo = async (): Promise<string> => {
     if (position) {
       const { latitude, longitude } = position.coords;
 
-      // Round coordinates to reduce precision for privacy
-      const roundedLat = Math.round(latitude * 10) / 10;
-      const roundedLng = Math.round(longitude * 10) / 10;
-
-      return `geo_${roundedLat}_${roundedLng}`;
+      const coarseLocationKey = toCoarseAnalyticsLocationKey(latitude, longitude);
+      if (coarseLocationKey) return coarseLocationKey;
     }
 
     // Fallback: Use timezone to approximate region

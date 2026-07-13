@@ -1,6 +1,6 @@
 # Owner Support Assistant - Mobile Support
 
-> **Status:** DOCS FROZEN
+> **Status:** RESPONSIVE SOURCE IMPLEMENTED - browser/device evidence pending
 > **Created:** 2026-06-07
 > **Surface:** Answerlattice responsive dashboard route, not MenuList mobile PWA shell
 
@@ -9,6 +9,8 @@
 ## Mobile Decision
 
 Owner Support Assistant should be available on mobile through the Answerlattice dashboard responsive shell at `/answerlattice/support-assistant`.
+
+The live client uses a single-column phone layout, wrapping prompt controls, bounded response parsing, and 44px refresh/input/submit/prompt/evidence/route actions. Mutation previews, destructive confirmations, ticket reply editing, and analytics-period cards below remain deferred because those runtime capabilities do not exist.
 
 It should not be added to MenuList `MobileShell`, the MenuList More tab, or any `/help-center/*` mobile route. This is an Answerlattice owner/staff management feature, not a MenuList owner app feature and not a public widget.
 

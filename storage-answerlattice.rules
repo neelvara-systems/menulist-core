@@ -15,23 +15,38 @@ service firebase.storage {
 
     function isPlatformAdmin() {
       return isAuthenticated()
-             && request.auth.token.platformRole == 'PLATFORM';
+             && request.auth.token.get('platformRole', null) == 'PLATFORM';
     }
 
     function belongsToTenant(tId) {
       return isAuthenticated()
-             && string(request.auth.token.tenantId) == string(tId);
+             && string(request.auth.token.get('tenantId', null)) == string(tId);
     }
 
     function belongsToStore(tId, sId) {
       return belongsToTenant(tId)
              && (
-               string(request.auth.token.storeId) == string(sId)
+               string(request.auth.token.get('storeId', null)) == string(sId)
                || (
-                 request.auth.token.storeIds != null
-                 && request.auth.token.storeIds.hasAny([string(sId)])
+                 request.auth.token.get('storeIds', []) is list
+                 && request.auth.token.get('storeIds', []).hasAny([string(sId)])
                )
              );
+    }
+
+    function hasKnowledgeManagementPermission() {
+      return isPlatformAdmin()
+             || request.auth.token.get('canManageKnowledge', false) == true
+             || request.auth.token.get('role', null) == 'OWNER'
+             || request.auth.token.get('role', null) == 'owner'
+             || request.auth.token.get('role', null) == 'MANAGER'
+             || request.auth.token.get('role', null) == 'manager';
+    }
+
+    function hasValidKnowledgeSourceMetadata() {
+      return request.resource.metadata.get('retentionPolicy', null) == 'delete_on_job_delete'
+             && request.resource.metadata.get('sourceUse', null) == 'knowledge_generation_only'
+             && request.resource.metadata.get('uploadedVia', null) == 'answerlattice_kb_generation';
     }
 
     function isValidImageType() {
@@ -40,7 +55,8 @@ service firebase.storage {
 
     function isValidDocumentType() {
       return request.resource.contentType.matches('application/(pdf|msword|vnd.openxmlformats-officedocument.wordprocessingml.document)')
-             || request.resource.contentType == 'text/plain';
+             || request.resource.contentType.matches('application/(json|xml)')
+             || request.resource.contentType.matches('text/(plain|markdown|csv|html|xml)');
     }
 
     function isValidKnowledgeSourceType() {
@@ -79,16 +95,19 @@ service firebase.storage {
 
     match /changelog/files/{tId}/{sId}/{fileId} {
       allow read: if belongsToStore(tId, sId);
-      allow write: if belongsToStore(tId, sId) && isValidImageOrDocumentUpload();
-      allow delete: if belongsToStore(tId, sId);
+      allow write: if belongsToStore(tId, sId)
+                   && hasKnowledgeManagementPermission()
+                   && isValidImageOrDocumentUpload();
+      allow delete: if belongsToStore(tId, sId) && hasKnowledgeManagementPermission();
     }
 
     match /ingestion_source_files/{tId}/{sId}/{fileId} {
       allow read: if isPlatformAdmin() || belongsToStore(tId, sId);
-      allow write: if (isPlatformAdmin() || belongsToStore(tId, sId))
+      allow write: if (isPlatformAdmin() || (belongsToStore(tId, sId) && hasKnowledgeManagementPermission()))
                    && isValidKnowledgeSourceType()
-                   && request.resource.size <= 50 * 1024 * 1024;
-      allow delete: if isPlatformAdmin() || belongsToStore(tId, sId);
+                   && request.resource.size <= 10 * 1024 * 1024
+                   && hasValidKnowledgeSourceMetadata();
+      allow delete: if isPlatformAdmin() || (belongsToStore(tId, sId) && hasKnowledgeManagementPermission());
     }
 
     match /answerlattice-context/public/{publicBundleId}/{version}/{filePath=**} {

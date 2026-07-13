@@ -2,13 +2,16 @@
 
 import DateTimeDisplay from '@atoms/DateTimeDisplay';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
-import { RECENTLY_VIEWED_EVENT, RecentlyViewedEntry, getRecentlyViewedEntries } from '@lib/recentlyViewed';
-import ArticleViewModal from '@organisms/ArticleViewModal';
-import ChangelogPreview from '@template/platform/changelog/ChangelogPreview';
-import { ChangelogEntry } from '@type/changelog';
-import { KnowledgeBaseArticleMeta } from '@type/knowledgeBase';
-import { Card, Empty, Flex, List, Modal, Typography, theme } from 'antd';
+import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
+import {
+    RECENTLY_VIEWED_EVENT,
+    getRecentlyViewedEntries,
+    getRecentlyViewedStorageKey,
+    type RecentlyViewedEntry,
+} from '@lib/recentlyViewed';
+import { Card, Empty, Flex, List, Typography, theme } from 'antd';
 import { useTranslations } from 'next-intl';
+import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { LuClock3, LuFileText, LuInfo, LuSparkles, LuWorkflow } from 'react-icons/lu';
 
@@ -25,6 +28,7 @@ const TYPE_ICON: Record<RecentlyViewedEntry['type'], JSX.Element> = {
 
 function RecentlyViewed() {
     const t = useTranslations('HelpCenter');
+    const router = useRouter();
     const { token } = theme.useToken();
 
     const TYPE_LABEL: Record<RecentlyViewedEntry['type'], string> = {
@@ -40,29 +44,27 @@ function RecentlyViewed() {
             description={t('noRecentViews')}
         />
     );
-    const { user } = useClientAuthSession() || {};
+    const session = useClientAuthSession();
+    const { user } = session || {};
+    const scope = resolveAnswerlatticeSessionScope(session);
     const [entries, setEntries] = useState<RecentlyViewedEntry[]>([]);
-    const [selectedArticle, setSelectedArticle] = useState<KnowledgeBaseArticleMeta | null>(null);
-    const [selectedChangelog, setSelectedChangelog] = useState<{ entry: ChangelogEntry; pageId: string } | null>(null);
-    const [isArticleModalOpen, setIsArticleModalOpen] = useState(false);
-    const [isChangelogModalOpen, setIsChangelogModalOpen] = useState(false);
 
     const loadEntries = useCallback(() => {
-        if (!user?.id) {
+        if (!user?.id || !scope) {
             setEntries([]);
             return;
         }
-        const items = getRecentlyViewedEntries(user.id);
+        const items = getRecentlyViewedEntries({ tId: scope.tenantId, sId: scope.storeId }, user.id);
         setEntries(items);
-    }, [user?.id]);
+    }, [scope?.storeId, scope?.tenantId, user?.id]);
 
     useEffect(() => {
         loadEntries();
     }, [loadEntries]);
 
     useEffect(() => {
-        if (!user?.id) return;
-        const key = `recentlyViewed:${user.id}`;
+        if (!user?.id || !scope) return;
+        const key = getRecentlyViewedStorageKey({ tId: scope.tenantId, sId: scope.storeId }, user.id);
 
         const handleCustom = (event: Event) => {
             const detail = (event as CustomEvent).detail as { storageKey?: string } | undefined;
@@ -84,37 +86,10 @@ function RecentlyViewed() {
             window.removeEventListener(RECENTLY_VIEWED_EVENT, handleCustom);
             window.removeEventListener('storage', handleStorage);
         };
-    }, [loadEntries, user?.id]);
+    }, [loadEntries, scope?.storeId, scope?.tenantId, user?.id]);
 
     const handleEntryClick = (entry: RecentlyViewedEntry) => {
-        if (entry.type === 'article') {
-            // Set article metadata - ArticleViewModal will handle caching/fetching
-            setSelectedArticle({
-                id: entry.id,
-                title: entry.title,
-                // Pass original item if available (cached data), otherwise just metadata
-                ...(entry.meta?.originalItem || {})
-            } as KnowledgeBaseArticleMeta);
-            setIsArticleModalOpen(true);
-        } else if (entry.type === 'changelog') {
-            if (entry.meta?.originalItem) {
-                setSelectedChangelog({
-                    entry: entry.meta.originalItem,
-                    pageId: entry.meta.pageId || ''
-                });
-                setIsChangelogModalOpen(true);
-            }
-        }
-    };
-
-    const handleArticleModalClose = () => {
-        setIsArticleModalOpen(false);
-        setSelectedArticle(null);
-    };
-
-    const handleChangelogModalClose = () => {
-        setIsChangelogModalOpen(false);
-        setSelectedChangelog(null);
+        router.push(entry.href);
     };
 
     const renderMeta = (entry: RecentlyViewedEntry) => {
@@ -157,8 +132,6 @@ function RecentlyViewed() {
     const flex1Style = useMemo(() => ({ flex: 1 }), []);
     const titleColorStyle = useMemo(() => ({ color: token.colorPrimary }), [token.colorPrimary]);
     const smallFontStyle = useMemo(() => ({ fontSize: 12 }), []);
-    const modalTopStyle = useMemo(() => ({ top: 20 }), []);
-    const spinnerStyle = useMemo(() => ({ minHeight: 300 }), []);
 
     // Memoize list item style generator
     const getListItemStyle = useCallback((isLast: boolean) => ({
@@ -217,31 +190,6 @@ function RecentlyViewed() {
                 )}
             </Flex>
 
-            {/* Article Modal with built-in caching */}
-            <ArticleViewModal
-                open={isArticleModalOpen}
-                onClose={handleArticleModalClose}
-                article={selectedArticle}
-            />
-
-            {isChangelogModalOpen && selectedChangelog && (
-                <Modal
-                    open={true}
-                    onCancel={handleChangelogModalClose}
-                    footer={null}
-                    width={900}
-                    style={modalTopStyle}
-                    destroyOnHidden
-                >
-                    <ChangelogPreview
-                        key={selectedChangelog.entry.id}
-                        item={selectedChangelog.entry}
-                        mode="modal"
-                        pageId={selectedChangelog.pageId}
-                        disableTracking={true}
-                    />
-                </Modal>
-            )}
         </Card>
     );
 }

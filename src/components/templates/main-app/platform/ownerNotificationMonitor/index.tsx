@@ -21,6 +21,7 @@ import {
     hasRuntimeCopyFallback,
     logRuntimeFailure,
 } from '@lib/runtime/runtimeDiagnostics';
+import { createRuntimeId } from '@lib/runtime/randomId';
 import { formatDateTime, type IntlFormatter } from '@util/dateTime';
 import {
     Alert,
@@ -59,6 +60,7 @@ const STATUS_OPTIONS: Array<{ label: string; value: OwnerNotificationOpsStatusFi
     { label: 'Pending', value: 'pending' },
     { label: 'Processing', value: 'processing' },
     { label: 'Skipped', value: 'skipped' },
+    { label: 'Invalid data', value: 'invalid' },
     { label: 'Delivered', value: 'delivered' },
     { label: 'All recent', value: 'all' },
 ];
@@ -70,6 +72,7 @@ const STATUS_COLORS: Record<string, string> = {
     partial: 'orange',
     failed: 'red',
     skipped: 'default',
+    invalid: 'magenta',
 };
 
 function formatTimestamp(value: string | null | undefined, formatter: IntlFormatter): string {
@@ -99,7 +102,7 @@ function formatMonitorError(value: unknown): string {
 }
 
 function canRetry(status: string): boolean {
-    return ['failed', 'partial', 'skipped'].includes(status);
+    return status === 'failed';
 }
 
 function normalizeWhatsappPhone(value: string): string {
@@ -160,6 +163,7 @@ export default function OwnerNotificationMonitor() {
         subjectTouched: boolean;
         body: string;
         bodyTouched: boolean;
+        actionId: string;
     } | null>(null);
 
     const loadData = useCallback(async (eventId?: string | null) => {
@@ -259,6 +263,7 @@ export default function OwnerNotificationMonitor() {
         partial: 0,
         failed: 0,
         skipped: 0,
+        invalid: 0,
     };
 
     const selectedEvent = snapshot?.selectedEvent?.id === selectedEventId ? snapshot.selectedEvent : undefined;
@@ -274,6 +279,7 @@ export default function OwnerNotificationMonitor() {
             subjectTouched: false,
             body: '',
             bodyTouched: false,
+            actionId: createRuntimeId('owner_handoff'),
         });
         void loadData(record.id);
     }, [loadData]);
@@ -566,7 +572,7 @@ export default function OwnerNotificationMonitor() {
                 showIcon
                 style={{ marginBottom: 16 }}
                 message="Cost-bounded monitor"
-                description="Manual refresh only. No realtime listener. Detail recipient lookup runs only after selecting one event. WhatsApp system sends still require the channel flag, provider config, consent, and template or session policy."
+                description="Manual refresh only. Current persisted platform authorization and one bounded recent-event window drive rows and counts. Detail recipient lookup runs only after selecting one event. WhatsApp system sends still require the channel flag, provider config, consent, and template or session policy."
             />
 
             <Card size="small" style={{ marginBottom: 16 }}>
@@ -576,18 +582,19 @@ export default function OwnerNotificationMonitor() {
                         <Select value={statusFilter} options={STATUS_OPTIONS} style={{ width: 150 }} onChange={setStatusFilter} />
                     </Space>
                     <Text type="secondary">
-                        Read cost: {snapshot?.cost.eventReads || 0} event / {snapshot?.cost.deliveryReads || 0} delivery / {snapshot?.cost.scopeReads || 0} scope / {snapshot?.cost.countQueries || 0} counts
+                        Read cost: {snapshot?.cost.authReads || 0} auth / {snapshot?.cost.eventReads || 0} event / {snapshot?.cost.deliveryReads || 0} delivery / {snapshot?.cost.scopeReads || 0} scope / {snapshot?.cost.countQueries || 0} counts
                     </Text>
                 </div>
             </Card>
 
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
-                <CountMetric label="Failed" value={counts.failed} tone={counts.failed ? 'danger' : undefined} />
-                <CountMetric label="Partial" value={counts.partial} tone={counts.partial ? 'warning' : undefined} />
-                <CountMetric label="Pending" value={counts.pending} />
-                <CountMetric label="Processing" value={counts.processing} />
-                <CountMetric label="Skipped" value={counts.skipped} />
-                <CountMetric label="Delivered" value={counts.delivered} />
+                <CountMetric label="Recent failed" value={counts.failed} tone={counts.failed ? 'danger' : undefined} />
+                <CountMetric label="Recent partial" value={counts.partial} tone={counts.partial ? 'warning' : undefined} />
+                <CountMetric label="Recent pending" value={counts.pending} />
+                <CountMetric label="Recent processing" value={counts.processing} />
+                <CountMetric label="Recent skipped" value={counts.skipped} />
+                <CountMetric label="Recent invalid" value={counts.invalid} tone={counts.invalid ? 'danger' : undefined} />
+                <CountMetric label="Recent delivered" value={counts.delivered} />
             </div>
 
             <Card
@@ -648,6 +655,14 @@ export default function OwnerNotificationMonitor() {
 
                 {selectedEvent ? (
                     <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                        {snapshot?.detailError ? (
+                            <Alert
+                                type="warning"
+                                showIcon
+                                message="Recipient detail is temporarily unavailable"
+                                description="The event is still visible, but recipient and template details could not be resolved. Refresh before a recovery action."
+                            />
+                        ) : null}
                         <Descriptions size="small" column={1} bordered>
                             <Descriptions.Item label="Event ID"><Text copyable>{selectedEvent.id}</Text></Descriptions.Item>
                             <Descriptions.Item label="Status">
@@ -735,6 +750,7 @@ export default function OwnerNotificationMonitor() {
                                 channel: prefillModal.channel,
                                 destination: prefillDestination || undefined,
                                 note: `Prepared from dashboard template ${snapshot?.manualTemplate?.templateKey || selectedEvent.triggerType}`,
+                                actionId: prefillModal.actionId,
                             });
                             setPrefillModal(null);
                         }}

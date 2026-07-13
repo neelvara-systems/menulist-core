@@ -1,4 +1,5 @@
 import { Form, Input, Rate } from 'antd';
+import { ANSWERLATTICE_FEEDBACK_TEXT_MAX_LENGTH } from '@lib/answerlattice/feedbackBoundary';
 import { useTranslations } from 'next-intl';
 
 const GeneralFeedback = () => {
@@ -18,6 +19,8 @@ const GeneralFeedback = () => {
         rules={[{ required: true, message: t('feedbackRequired') }]}
       >
         <Input.TextArea
+          maxLength={ANSWERLATTICE_FEEDBACK_TEXT_MAX_LENGTH}
+          showCount
           rows={4}
           placeholder={t('feedbackPlaceholder')}
         />

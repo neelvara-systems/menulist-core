@@ -20,6 +20,10 @@ This Firebase cost document is customer-facing menu-output cost evidence; it is 
 - **Cloud Functions:** `decisionBlocksScoring` (precomputes blocks on schedule)
 - **Estimated Monthly Cost:** **Medium-High** — scales linearly with customer traffic
 
+### Internal Menu Change Log And Snapshot Boundary
+
+The owner-side Menu Observation Layer keeps the existing one create per flushed event and one create per enabled publish snapshot; customer public pages add zero reads. Replaceable detail changes remain debounced, while completed publish/revision events intentionally remain append-only. Internal client readers page by `(timestamp, documentId)`, clamp returned rows to 500, and fail after 5,000 scanned documents rather than running unbounded. Firestore rules now require exact tenant/store claims, owner/manager/platform write authority, path/payload scope agreement, existing scoped projects, bounded canonical or supported legacy event shape, bounded snapshot structure, and deny update/delete. This changes `firestore.rules`, requires the scoped MenuList Firestore-rules deploy, adds no collection or index, and does not require a Cloud Functions or Vercel deployment.
+
 ### Public Menu External Link Normalization
 
 Public menu external link normalization is Firebase-cost neutral. It normalizes already-loaded store `publicPresence`, `socialMedia`, and `reviewUrl` fields in browser render paths before customer-facing footer, recovery, and feedback links are emitted. It adds no Firestore read/write/delete, Storage operation, Cloud Function, API route, rule, index, cache invalidation, or deploy requirement.
@@ -36,13 +40,13 @@ Menu cache revalidation rate-limit boundary: `/api/revalidate/menu` now applies 
 
 | Operation | Collection | Trigger | Frequency | Docs Read | Indexed? | Notes |
 |-----------|-----------|---------|-----------|-----------|----------|-------|
-| Store lookup (subdomain) | `stores` | Page load (SSR) | Per unique visit (cached 60s) | 1 | Yes (`subdomain` + `active`) | `getDocs` with `where("subdomain", "==", ...)`, `limit(1)`. Cached via `unstable_cache` with 60s revalidate. File: `src/app/client/[[...slug]]/page.tsx:83-100` |
-| Store lookup (custom domain) | `stores` | Page load (SSR) | Per unique visit (cached 60s) | 1 | Yes (`customDomain` + `domainVerified` + `active`) | Same pattern as subdomain. File: `src/app/client/[[...slug]]/page.tsx:104-122` |
+| Store lookup (subdomain) | `stores` + referenced `tenants/{tId}` | Page load (SSR) | Per unique visit (cached 60s) | 2 on a unique cold hit | Yes (`subdomain` + `active`) | Store query uses `limit(2)` and rejects duplicates; the tenant point read proves existence, identity, lifecycle, and platform-block eligibility. Only store fields are returned. |
+| Store lookup (custom domain) | `stores` + referenced `tenants/{tId}` | Page load (SSR) | Per unique visit (cached 60s) | 2 on a unique cold hit | Yes (`customDomain` + `domainVerified` + `active`) | Uses `limit(2)` and rejects duplicate verified rows before the tenant eligibility read. Tenant data is never part of the public payload. |
 | Project summary lookup | `platformSummary/projects_{sId}` | Page load (SSR) | Per unique menu cache miss (cached 60s) | 1 | Direct doc read | `getProjectBySlugOrDefault()` reads the store summary packet for slug/default/previousSlug routing. File: `src/app/client/[[...slug]]/page.tsx:202-244` |
 | Project data fetch | `projects/{tId}/{sId}/{projectId}` | Page load (SSR) | Per unique menu cache miss (cached 60s) | 1 | Direct doc read | `getProjectData()` reads the resolved project by immutable ID. File: `src/app/client/[[...slug]]/page.tsx:138-149` |
 | Embedded Decision Blocks | `projects/{tId}/{sId}/{projectId}` | Page load (SSR) | 0 extra reads | N/A | N/A | Public decision blocks are read from `projectData.publicDecisionBlocks` after the project doc is loaded. File: `src/app/client/[[...slug]]/page.tsx:185-193` |
 | Store details (full) | `stores` | Page load (SSR) | 0 extra reads after host lookup | N/A | N/A | Menu rendering reuses the store object returned by the subdomain/custom-domain lookup instead of calling `getStoreById()`. File: `src/app/client/[[...slug]]/page.tsx:1684-1686` |
-| Outlet lookup | `stores` | Multi-outlet project or outlet path | Only when first slug may be an outlet | 0-1 | Yes (`tenantId` + `outletSlug` / `previousOutletSlugs` + `active`) | `getStoreByOutletSlug()` is cached and only runs for master stores when `ENABLE_MULTI_OUTLET` is on. File: `src/app/client/[[...slug]]/page.tsx:1614-1644` |
+| Outlet lookup | `stores` + referenced `tenants/{tId}` | Multi-outlet project or outlet path | Only when first slug may be an outlet | 0 or 2 on a unique cold hit | Yes (`tenantId` + `outletSlug` / `previousOutletSlugs` + `active`) | `getStoreByOutletSlug()` rejects duplicate current/history rows and applies the same canonical store/tenant identity and lifecycle boundary. |
 | Master project (multi-outlet) | `projects/{tId}/{sId}/{masterProjectId}` | Page load (SSR) | Only for outlet projects linked to a master project | 1 | Direct doc read | Required to merge master truth with outlet overrides before public render. File: `src/app/client/[[...slug]]/page.tsx:312-333` |
 | Active special menu project | `projects/{tId}/{sId}/{activeSpecialMenuId}` | Store has active special menu | Only when `activeSpecialMenuId` exists | 1 | Direct doc read | Zero extra reads for normal menus; active special menus replace or overlay the base project. File: `src/app/client/[[...slug]]/page.tsx:356-420` |
 | SEO metadata / viewport store lookup | `stores` | Metadata and viewport generation | Per unique cache miss | 0-1 | Same cached helper as page render | Uses shared `getStoreBySubdomain()` / `getStoreByCustomDomain()` helpers with `unstable_cache` and `client-stores` tag. File: `src/lib/firestore/clientStoreLookup.ts:45-116` |
@@ -119,7 +123,7 @@ Public menu project document-ID boundary: `getProjectData()` normalizes the reso
 ### Warnings: Expensive Patterns
 - **Multi-outlet resolution**: Adds +1 read per page load for outlet stores (reads master project)
 - **Heavy project docs**: ~50KB per project doc. Firestore charges per document, not per byte, but large docs increase transfer time
-- **Tenant block enforcement**: Inherited tenant-block checks use `stores/{storeId}.tenantBlocked` after platform tenant block/unblock has synced the store. Legacy stores without that field still fall back to a tenant-doc read on store-cache misses until `scripts/backfill-store-tenant-block-state.ts` is reviewed and run with `--write`, matching `--confirm-project`, and a scoped `--tenant-id`, `--store-id`, or explicit `--all-stores`.
+- **Tenant eligibility enforcement**: Every unique public store/outlet cache fill reads the canonical referenced tenant and rejects missing, inactive, deleted, identity-mismatched, or platform-blocked tenants. If compact/legacy store or tenant identity aliases coexist, all present aliases must resolve to the same exact positive document ID; `??` fallback is not used to hide a conflicting alias. The denormalized store `tenantBlocked` mirror remains an early store-level rejection signal, but it is not accepted as a substitute for canonical tenant truth. Tenant fields are eligibility-only and never rendered.
 
 ---
 
@@ -127,7 +131,7 @@ Public menu project document-ID boundary: `getProjectData()` normalizes the reso
 
 | Resource | Operations/month | Unit Cost | Monthly Cost |
 |----------|-----------------|-----------|-------------|
-| Firestore Reads (store lookup) | 100,000 ÷ cache factor (~10x) = 10,000 | $0.06/100K | $0.01 |
+| Firestore Reads (store + tenant eligibility) | 2 × (100,000 ÷ cache factor ~10x) = 20,000 unique-hit reads | $0.06/100K | ~$0.01 |
 | Firestore Reads (project summary) | 10,000 | $0.06/100K | $0.01 |
 | Firestore Reads (project data) | 10,000 | $0.06/100K | $0.01 |
 | Firestore Reads (decision blocks) | 0 extra reads | $0.06/100K | $0.00 |

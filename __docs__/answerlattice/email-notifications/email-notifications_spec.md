@@ -40,11 +40,11 @@ Users who submit support tickets have no way to know when their ticket is answer
 
 - **Generic** — System supports any event type via template registry. Not ticket-specific.
 - **Fire-and-forget** — Notification failure never blocks the triggering operation
-- **Idempotent** — Same event + reference ID = no duplicate email unless caller explicitly skips dedupe for unique/test events
+- **Idempotent** — Every event/reference is transactionally claimed before SMTP. Same or concurrent identity cannot create a second active sender; unique tests use a unique server-generated reference rather than bypassing dedupe.
 - **Rate-limited** — Max 20 emails per recipient per day (prevents spam on rapid status changes)
 - **Feature-flagged** — `ENABLE_ANSWERLATTICE_NOTIFICATIONS` (ON for launch; can be disabled globally)
 - **Verifiable** — Product owners can send a rate-limited test email before inviting customers.
-- **Abuse-bounded** — Internal client route validates known ticket events only and throttles each authenticated user.
+- **Abuse-bounded** — The client route fails limiting closed, requires current support permission, accepts only strict ticket/message identity, and derives recipient/content/reference from the exact current-workspace ticket.
 
 ---
 
@@ -54,8 +54,8 @@ Users who submit support tickets have no way to know when their ticket is answer
 |-----------|------------|-----|
 | SMTP transport | Lifecycle messaging (`src/lib/messaging/index.ts`) | Same nodemailer, same env vars (SMTP_HOST, SMTP_USER, SMTP_PASS) |
 | Email styling | Lifecycle messaging templates | Same infrastructure-grade tone, same CSS styles |
-| Auth pattern | `withAuth()` middleware | API route protected by session auth |
-| Logging | Firestore `answerlattice_notificationLogs` collection | Answerlattice-scoped append-only delivery/failure log |
+| Auth pattern | `withAuth()` plus current Answerlattice access control | Session and current `canManageSupport` both required |
+| Logging | Firestore `answerlattice_notificationLogs` collection | Answerlattice-scoped transaction-owned delivery state/log |
 
 ---
 

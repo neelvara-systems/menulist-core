@@ -4,6 +4,8 @@
 **Created:** July 7, 2026
 **Scope:** MenuList launch, marketing, distribution, and video positioning in the AI/search era
 
+**Mandatory production standard:** [MenuList Founder-Approved Video Production Standard](./videos_founder-approved-production-standard.md). AI-era positioning must inherit its owner-control, visual, typography, audio, claim, and approval rules.
+
 ## Verdict
 
 Adopt the market direction with strict claim boundaries.
@@ -24,6 +26,8 @@ Use both lines together:
 
 - Product line: one approved customer link for menu, services, and business details.
 - Market line: ready for customers, search, and AI-era discovery.
+
+For the evidence-led conversion model, measurement ladder, UTM standard, and A/B test plan, use [videos_launch-video-conversion-research.md](./videos_launch-video-conversion-research.md). AI-era relevance earns attention; setup relief, product proof, owner approval, and one concrete CTA create the conversion path.
 
 ## What Changes
 

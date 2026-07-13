@@ -9,7 +9,6 @@ type NotificationDiagnosticPayload = {
     recipientEmail?: unknown;
     recipientName?: unknown;
     metadata?: unknown;
-    skipDedup?: unknown;
 };
 
 export const getBoundedNotificationStringContext = (
@@ -29,7 +28,6 @@ export const getNotificationPayloadLogContext = (
 ): NotificationLogContext => ({
     eventType: typeof payload.eventType === 'string' ? payload.eventType.slice(0, 80) : undefined,
     productId: typeof payload.productId === 'string' ? payload.productId.slice(0, 24) : undefined,
-    skipDedup: Boolean(payload.skipDedup),
     metadataPresent: Boolean(payload.metadata),
     metadataKeyCount: payload.metadata && typeof payload.metadata === 'object'
         ? Object.keys(payload.metadata as Record<string, unknown>).length

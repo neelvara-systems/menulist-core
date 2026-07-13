@@ -3,6 +3,7 @@
 **Date:** February 19, 2026  
 **Audience:** Potential Customers (PUBLIC)  
 **Pillar:** 6 of 6
+**Publication status:** Not approved. No current runtime or public route delivers this feature; the copy below is a future concept and must not be published while prerequisite flags, scheduler, and UI remain inactive.
 
 ---
 
@@ -43,4 +44,4 @@ A: Check your reviews, service quality, menu accuracy, and competitive landscape
 
 ---
 
-**Last Updated:** February 19, 2026
+**Last Updated:** July 13, 2026

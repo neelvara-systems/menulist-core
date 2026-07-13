@@ -3,6 +3,12 @@ export const runtime = 'nodejs';
 
 import { DB_COLLECTIONS } from '@constant/database';
 import { admin, firestoreAdmin } from '@lib/firebase/firebaseAdmin';
+import { sanitizeForFirestore } from '@lib/firestore/sanitizeForFirestore';
+import {
+    normalizePublicContactReferrer,
+    normalizePublicContactSourcePath,
+    preserveOptionalPublicContactCount,
+} from '@lib/publicContact/contactBoundary';
 import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { withCORS } from '@lib/security/corsValidation';
 import { getBoundedSecurityStringContext, logSecurityFailure } from '@lib/security/securityDiagnostics';
@@ -118,24 +124,10 @@ const cleanShareableToolReportSourceContext = (
     };
 };
 
-const sanitizeForFirestore = (value: unknown): unknown => {
-    if (value === undefined) return null;
-    if (value === null) return null;
-    if (value instanceof admin.firestore.Timestamp) return value;
-    if (Array.isArray(value)) return value.map(sanitizeForFirestore);
-    if (typeof value === 'object') {
-        return Object.fromEntries(
-            Object.entries(value as Record<string, unknown>).map(([key, nestedValue]) => [
-                key,
-                sanitizeForFirestore(nestedValue),
-            ]),
-        );
-    }
-    return value;
-};
-
 async function postMenuListContact(request: NextRequest) {
-    const rateLimitResponse = await checkPublicRateLimit(request, 'MENULIST_CONTACT_FORM');
+    const rateLimitResponse = await checkPublicRateLimit(request, 'MENULIST_CONTACT_FORM', {
+        failClosed: true,
+    });
     if (rateLimitResponse) return rateLimitResponse;
 
     const bodyResult = await readBoundedJsonBody(request, MENULIST_PUBLIC_CONTACT_MAX_BODY_BYTES, {
@@ -185,7 +177,7 @@ async function postMenuListContact(request: NextRequest) {
             sourceKind: sourceContext?.sourceKind || null,
             sourceToolId: sourceContext?.toolId || null,
             sourceReportStatus: sourceContext?.reportStatus || null,
-            sourcePrimaryNumber: sourceContext?.primaryNumber || null,
+            sourcePrimaryNumber: preserveOptionalPublicContactCount(sourceContext?.primaryNumber),
             sourceContext,
             status: 'new',
             name: clean(body.name, 120),
@@ -194,8 +186,8 @@ async function postMenuListContact(request: NextRequest) {
             helpTopic,
             message: clean(body.message, 2000),
             agreeToTerms: body.agreeToTerms,
-            sourcePath: clean(body.sourcePath, 240),
-            referrer: clean(request.headers.get('referer'), 300),
+            sourcePath: normalizePublicContactSourcePath(body.sourcePath),
+            referrer: normalizePublicContactReferrer(request.headers.get('referer')),
             userAgent: clean(request.headers.get('user-agent'), 300),
             ipHash: hashPublicRateLimitValue(ip),
             createdOn: now,

@@ -2,7 +2,7 @@
 
 **Feature:** AI Enhancement Packs (Outcome-Based AI Pricing & Usage Tracking)
 **Status:** 📝 Specification Complete
-**Last Updated:** February 10, 2026
+**Last Updated:** July 11, 2026
 **Audience:** CEO, PM, Clients, Non-developers
 
 ---
@@ -13,13 +13,13 @@
 
 AI Enhancement Packs are one-time purchasable bundles that unlock additional AI capabilities beyond what's included in a subscription plan. When a subscriber's included AI capacity is used, they purchase a pack to continue using enhancement features like image regeneration, description rewrites, tone adjustments, and bulk translations.
 
-**Internally**, the system tracks every AI operation using a unit-based cost accounting model. **Externally**, customers never see units, credits, tokens, or consumption metrics. They see outcomes: "Generate 50 menu images", "Rewrite descriptions for your full menu", "Add 3 new languages".
+**Internally**, the system tracks every AI operation using a unit-based cost accounting model. **Externally**, the purchasable Pack and referral rewards show exact credit amounts with concrete outcome examples. Monthly included capacity, provider costs, margins, and overdraft policy remain private.
 
 ### Why Does It Matter?
 
 - **Revenue Protection:** AI operations cost real money (Gemini API calls). Without metering, a single heavy user could erode margins for the entire platform.
 - **Fair Usage:** Subscribers get generous included capacity. Heavy users pay proportionally through packs.
-- **Simplicity:** One pack, one price. No tiers, no credit math, no usage dashboards.
+- **Simplicity:** One pack, one price, one credit amount, and concrete examples. No tiers or usage dashboard.
 - **Doctrine Compliance:** MenuList is infrastructure. Infrastructure bills simply. It doesn't ask users to optimize.
 
 ### Who Is It For?
@@ -30,13 +30,27 @@ AI Enhancement Packs are one-time purchasable bundles that unlock additional AI 
 
 ### What Is NOT In Scope
 
-- Exposing credits, tokens, units, or any consumption metric to customers
+- Exposing provider tokens, provider costs, margins, monthly included capacity, overdraft policy, or internal valuation to customers
 - Usage dashboards, meters, countdowns, or progress bars
 - Per-feature or per-pack separate balances
 - Overage pricing (pay-per-use beyond capacity)
 - A/B pricing experiments
 - Human review add-ons
 - Free tier for AI enhancements (extraction and first-pass descriptions remain free)
+
+---
+
+## July 11, 2026 Founder Transparency Amendment
+
+The older sections below preserve implementation history and may describe the former rule that hid all credit amounts. That rule is superseded for purchasable Pack credits and owner-referral reward credits.
+
+The current contract is:
+
+1. `Content Credit Pack` displays `250 credits` on website pricing, desktop Billing, and mobile Billing.
+2. Every purchase card displays a current example: up to 50 generated menu images or 250 description rewrites.
+3. Operation rates used in public examples come from `src/data/shared/contentCreditPolicy.ts` and are consumed by `src/constants/AI/unitCosts.ts`.
+4. Public copy does not publish a rupee-per-credit value, provider cost, margin, monthly included-credit allowance, or overdraft allowance.
+5. Changes to charged operation rates must update the public-safe policy first so runtime examples and accounting remain aligned.
 
 ---
 
@@ -56,7 +70,7 @@ AI Enhancement Packs are one-time purchasable bundles that unlock additional AI 
 
 - Subscribers use AI features without thinking about limits
 - Heavy users purchase packs without friction or confusion
-- Support never explains credits, tokens, or internal mechanics
+- Support explains Pack credits through concrete outcomes without exposing provider or margin mechanics
 - Founder can see exact AI costs per tenant per month in admin dashboard
 - System silently blocks when capacity is exhausted — no errors, no drama
 
@@ -523,17 +537,17 @@ Each subscription plan includes a base amount of AI capacity (internal units). T
 - "Provided as-is" — no quality guarantees on AI output
 - "Under current system conditions" — protects against Gemini pricing changes
 - "Inactive for extended periods" — dormancy guardrail (does not define threshold — intentional)
-- No mention of credits, tokens, units, or internal metrics
+- Pack credit amounts may be named; provider tokens, monthly included capacity, margins, and internal metrics are not published
 
-### Support Script (Never-Say List)
+### Support Language Boundary
 
-Support agents must NEVER use these words when discussing AI features:
+Support can name purchased or rewarded credits and explain them through current outcomes. It must not expose provider or margin mechanics:
 
-| Forbidden   | Use Instead                                    |
-| ----------- | ---------------------------------------------- |
-| Credits     | "AI enhancements"                              |
-| Tokens      | "AI features"                                  |
-| Units       | "Your plan" / "Enhancement pack"               |
+| Forbidden | Use Instead |
+| --- | --- |
+| Provider tokens | "Credits" or the eligible outcome |
+| Rupee-per-credit/provider cost | Current Pack price and exact credit amount |
+| Monthly included-credit allowance | "AI features included in your plan" |
 | Balance     | "Your AI features"                             |
 | Quota       | "Your plan includes..."                        |
 | Consumption | "Usage" (only if absolutely necessary)         |
@@ -576,8 +590,8 @@ Support agents must NEVER use these words when discussing AI features:
 
 ### Scenario 5: "Show me exactly what I'm paying for"
 
-**Response:** "Your enhancement pack includes AI features for your menu — image generation, descriptions, and translations. Everything is handled automatically."
-**Why this works:** Lists outcomes, not units. "Handled automatically" shuts down further inquiry.
+**Response:** "The Content Credit Pack adds 250 credits. At current rates, that can cover up to 50 generated menu images or 250 description rewrites. MenuList shows the required credits before you confirm an eligible action."
+**Why this works:** It gives an exact, owner-readable denominator without exposing provider economics.
 
 ---
 
@@ -588,7 +602,7 @@ Support agents must NEVER use these words when discussing AI features:
 ```
 ┌─────────────────────────────────────────────────┐
 │                CUSTOMER LAYER                    │
-│  (Never sees credits, tokens, units, meters)     │
+│  (Sees Pack credits and concrete outcomes)       │
 │                                                   │
 │  Subscription ──→ Included Capacity (invisible)   │
 │  Pack Purchase ──→ Added Capacity (invisible)     │
@@ -751,13 +765,11 @@ The codebase already has a fully functional pricing, billing, and credit system.
 | B2B  | Starter API | ₹4,999              | $149                | 200                   | 500                   | Month/Year |
 | B2B  | Pro API     | ₹18,999             | $499                | 1000                  | 2000                  | Month/Year |
 
-#### Credit Packs (One-Time Top-ups, `creditPacksList` in same file)
+#### Credit Pack (One-Time Top-up, `aiEnhancementPacksList` in same file)
 
-| Pack         | Credit Amount | Price (INR) | Price (USD) |
-| ------------ | ------------- | ----------- | ----------- |
-| Starter Pack | 100 credits   | ₹1,250      | $15         |
-| Value Pack   | 250 credits   | ₹2,999      | $35         |
-| Pro Pack     | 500 credits   | ₹4,999      | $60         |
+| Pack | Credit Amount | Price (INR) | Price (USD) | Current examples |
+| --- | ---: | ---: | ---: | --- |
+| Content Credit Pack | 250 credits | ₹2,999 | $29 | Up to 50 generated menu images or 250 description rewrites |
 
 #### Feature List (`src/data/PlatformFeaturesList.ts`)
 
@@ -856,15 +868,9 @@ The payment system was designed provider-agnostic from the start:
 
 **Correct approach:** Credits stay on the subscription document. AI operations decrement `monthlyCredits` first, then `topUpCredits`. Pack purchases add to `topUpCredits` (already working). No new documents needed.
 
-#### Conflict 3: Credit Visibility in UI
+#### Conflict 3: Credit Visibility in UI - Superseded July 11, 2026
 
-| Component                    | Current (Violates Doctrine)                                                 | Required (Doctrine-Compliant)                 |
-| ---------------------------- | --------------------------------------------------------------------------- | --------------------------------------------- |
-| `CreditsPackModal.tsx` title | "Top Up Your AI Credits"                                                    | "Get more AI enhancements for your menu"      |
-| `CreditsPackModal.tsx` desc  | "Need more power for advanced image generation? Top up with a credit pack." | "Unlock additional AI features for your menu" |
-| `CreditPackCard.tsx` amount  | Shows `pack.creditAmount` (100, 250, 500)                                   | Remove — show outcome description instead     |
-| `CreditPackCard.tsx` label   | "One-Time AI Credits"                                                       | "AI Enhancement Pack"                         |
-| `usePaymentHandler.ts`       | `name: 'MenuList.ai Credit Pack'`                                           | `name: 'MenuList.ai AI Enhancement Pack'`     |
+The former outcome-only rule was replaced by transparent Pack credit amounts plus exact examples. `CreditPackCard.tsx` now renders `pack.creditAmount` and examples calculated from `src/data/shared/contentCreditPolicy.ts`. Monthly included capacity and internal economics remain hidden.
 
 #### Conflict 4: Feature List Says "Unlimited"
 
@@ -889,7 +895,7 @@ The `Price` interface and every plan object includes `monthlyCredits`. Under the
 
 **Resolution:** Keep field name as-is for backward compatibility. Ensure no UI component renders `monthlyCredits` to the user. Add code comment: `// INTERNAL: Never display to end user. See AI Enhancement Packs doctrine.`
 
-#### Conflict 6: CreditPack Interface Exposes Credits
+#### Conflict 6: CreditPack Interface Exposes Credits - Resolved
 
 The `CreditPack` interface in `common.ts` has `creditAmount: number` and the `creditPacksList` array is exported and used in:
 
@@ -897,10 +903,7 @@ The `CreditPack` interface in `common.ts` has `creditAmount: number` and the `cr
 - `verify-topup/route.ts` — to calculate credits to add
 - `CreditPackCard.tsx` — to display credit amount to user
 
-**Resolution (Two-Step):**
-
-1. **UI Layer (immediate):** Stop rendering `creditAmount` to user. Show outcome descriptions instead.
-2. **Data Layer (when Razorpay flow reworked):** Rename `CreditPack` to `AIEnhancementPack`, rename `creditAmount` to `internalUnits`, update all consumers.
+**Resolution:** The type is `AIEnhancementPack`, while `creditAmount` remains the canonical purchased amount and is intentionally visible for Pack and referral-credit transparency. Provider cost and other internal economic fields remain server-only.
 
 #### Conflict 7: Pricing Strategy Doc Mismatch
 
@@ -978,11 +981,11 @@ Two parallel billing systems exist. The entire `billingStripe/` folder and Strip
 
 | ChatGPT Suggestion                         | Verdict     | Notes                                                            |
 | ------------------------------------------ | ----------- | ---------------------------------------------------------------- |
-| Internal credits + external outcome packs  | ✅ ACCEPTED | Core model — validated against doctrine and codebase             |
+| Internal accounting + public Pack credits and outcomes | ✅ AMENDED | Pack/referral credits are transparent; provider economics stay internal |
 | One pack at launch                         | ✅ ACCEPTED | Correct simplification — keep multi-tier system provision        |
 | Extraction + base desc = free              | ✅ ACCEPTED | `ADD_DESCRIPTION` vs `REWRITE_DESCRIPTION` already distinguished |
 | Support scripts / never-say list           | ✅ ACCEPTED | Fully aligned with Language Governance                           |
-| ToS clause (outcome-based, no credits)     | ✅ ACCEPTED | Legally sound, doctrine-clean                                    |
+| ToS clause with Pack credits and no provider economics | ✅ AMENDED | Must follow current legal review and credit-transparency contract |
 | Dispute stress-test responses              | ✅ ACCEPTED | 5 scenarios covered, all doctrine-safe                           |
 | Sales objection cheat-sheet                | ✅ ACCEPTED | 10 objections handled without leaking internals                  |
 | 1-page AI doctrine summary                 | ✅ ACCEPTED | Internal governance doc for future hires                         |

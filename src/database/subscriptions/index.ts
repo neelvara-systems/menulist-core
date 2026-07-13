@@ -2,13 +2,16 @@ import { FEATURE_FLAGS } from "@config/features";
 import { DB_COLLECTIONS } from "@constant/database";
 import { requestBodyComposer } from "@lib/apiHelper";
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
-import { normalizeBillingSubscriptionDocumentId } from "@lib/billing/subscriptionDocumentIdBoundary";
+import {
+    normalizeBillingSubscriptionDocumentId,
+    normalizeBillingSubscriptionScopeDocumentId,
+} from "@lib/billing/subscriptionDocumentIdBoundary";
 import { validateTransition } from "@lib/billing/subscriptionStateMachine";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
 import { MinimalStoreDataType } from "@type/platform/store";
 import { FirestoreSubscriptionDoc } from "@type/razorpay";
 import { getGracePeriodInfo } from "@util/razorpay";
-import { collection, doc, getDoc, getDocs, limit, query, setDoc, Timestamp, where } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, limit, orderBy, query, setDoc, Timestamp, where } from "firebase/firestore";
 
 const COLLECTION = DB_COLLECTIONS.SUBSCRIPTIONS;
 const activeSubscriptionRequests = new Map<string, Promise<FirestoreSubscriptionDoc | null>>();
@@ -36,13 +39,17 @@ const getDocRef = (docId: string) => {
  * Returns the raw subscription document or null.
  */
 const fetchSubscriptionRaw = async (tenantId: number, storeId: number): Promise<FirestoreSubscriptionDoc | null> => {
+    const tenantScope = normalizeBillingSubscriptionScopeDocumentId(tenantId);
+    const storeScope = normalizeBillingSubscriptionScopeDocumentId(storeId);
+    if (!tenantScope || !storeScope) return null;
     const now = Timestamp.now();
     const q = query(
         getCollectionRef(),
         where("status", "in", ["active", "past_due", "cancelled", "paused"]),
         where("cycleEndDate", ">=", now),
-        where("tenantId", "==", tenantId),
-        where("storeId", "==", storeId),
+        where("tenantId", "==", tenantScope.numericId),
+        where("storeId", "==", storeScope.numericId),
+        orderBy("cycleEndDate", "desc"),
         limit(1)
     );
 
@@ -54,14 +61,14 @@ const fetchSubscriptionRaw = async (tenantId: number, storeId: number): Promise<
         const pausedFallbackQuery = query(
             getCollectionRef(),
             where("status", "==", "paused"),
-            where("tenantId", "==", tenantId),
-            where("storeId", "==", storeId),
+            where("tenantId", "==", tenantScope.numericId),
+            where("storeId", "==", storeScope.numericId),
             limit(1)
         );
         const pausedSnapshot = await getDocs(pausedFallbackQuery);
         if (!pausedSnapshot.empty) {
             const pausedDoc = pausedSnapshot.docs[0];
-            return { id: pausedDoc.id, ...pausedDoc.data() } as FirestoreSubscriptionDoc;
+            return { ...pausedDoc.data(), id: pausedDoc.id } as FirestoreSubscriptionDoc;
         }
         // Pending subscriptions have not started a billing cycle yet, so they
         // do not have cycle dates. Keep them visible on Billing so the owner
@@ -69,20 +76,20 @@ const fetchSubscriptionRaw = async (tenantId: number, storeId: number): Promise<
         const pendingQuery = query(
             getCollectionRef(),
             where("status", "==", "pending"),
-            where("tenantId", "==", tenantId),
-            where("storeId", "==", storeId),
+            where("tenantId", "==", tenantScope.numericId),
+            where("storeId", "==", storeScope.numericId),
             limit(1)
         );
         const pendingSnapshot = await getDocs(pendingQuery);
         if (!pendingSnapshot.empty) {
             const pendingDoc = pendingSnapshot.docs[0];
-            return { id: pendingDoc.id, ...pendingDoc.data() } as FirestoreSubscriptionDoc;
+            return { ...pendingDoc.data(), id: pendingDoc.id } as FirestoreSubscriptionDoc;
         }
         return null;
     }
 
     const docSnap = querySnapshot.docs[0];
-    return { id: docSnap.id, ...docSnap.data() } as FirestoreSubscriptionDoc;
+    return { ...docSnap.data(), id: docSnap.id } as FirestoreSubscriptionDoc;
 };
 
 /**
@@ -116,7 +123,7 @@ export function getMasterStoreIdFromList(storesList?: MinimalStoreDataType[]): n
     const normalizedStores = storesList
         .map((store) => {
             const storeId = Number(store?.storeId);
-            return Number.isFinite(storeId) && storeId > 0
+            return Number.isSafeInteger(storeId) && storeId > 0
                 ? { store, storeId }
                 : null;
         })
@@ -154,14 +161,17 @@ export const getActiveSubscriptionForStore = async (
     storeId: number,
     tenantStoresList?: MinimalStoreDataType[],
 ): Promise<FirestoreSubscriptionDoc | null> => {
-    const requestKey = `${tenantId}:${storeId}`;
+    const tenantScope = normalizeBillingSubscriptionScopeDocumentId(tenantId);
+    const storeScope = normalizeBillingSubscriptionScopeDocumentId(storeId);
+    if (!tenantScope || !storeScope) return null;
+    const requestKey = `${tenantScope.documentId}:${storeScope.documentId}`;
     const shouldDedupeRequest = typeof window !== 'undefined';
     const existingRequest = shouldDedupeRequest ? activeSubscriptionRequests.get(requestKey) : null;
     if (existingRequest) return existingRequest;
 
     const request = apiCallComposer(
         async () => {
-            const raw = await fetchSubscriptionRaw(tenantId, storeId);
+            const raw = await fetchSubscriptionRaw(tenantScope.numericId, storeScope.numericId);
             if (raw) return await expireIfGracePeriodEnded(raw);
 
             // BT4: Outlet fallback — outlet has no subscription, check master's
@@ -171,7 +181,7 @@ export const getActiveSubscriptionForStore = async (
             if (tenantStoresList) {
                 masterStoreId = getMasterStoreIdFromList(tenantStoresList);
             } else {
-                const tenantRef = doc(firebaseClient, DB_COLLECTIONS.TENANTS, String(tenantId));
+                const tenantRef = doc(firebaseClient, DB_COLLECTIONS.TENANTS, tenantScope.documentId);
                 const tenantSnap = await getDoc(tenantRef);
                 if (tenantSnap.exists()) {
                     const tenantData = tenantSnap.data();
@@ -179,13 +189,13 @@ export const getActiveSubscriptionForStore = async (
                 }
             }
 
-            if (!masterStoreId || masterStoreId === storeId) return null;
+            if (!masterStoreId || masterStoreId === storeScope.numericId) return null;
 
-            const masterRaw = await fetchSubscriptionRaw(tenantId, masterStoreId);
+            const masterRaw = await fetchSubscriptionRaw(tenantScope.numericId, masterStoreId);
             if (!masterRaw) return null;
             return await expireIfGracePeriodEnded(masterRaw);
         },
-        `getActiveSubscriptionForStore: ${storeId}`
+        `getActiveSubscriptionForStore: ${storeScope.documentId}`
     ).finally(() => {
         if (shouldDedupeRequest) {
             activeSubscriptionRequests.delete(requestKey);
@@ -209,7 +219,7 @@ export const createInitialSubscription = async (providerSubscriptionId: string, 
     return await apiCallComposer(
         async () => {
             const docRef = getDocRef(providerSubscriptionId); // Use the provider ID for the doc ref
-            const processedData = await requestBodyComposer(data);
+            const processedData = await requestBodyComposer(data, { isNew: true });
             await setDoc(docRef, processedData); // Use setDoc to create with a specific ID
         },
         "createInitialSubscription"
@@ -225,7 +235,7 @@ export const updateSubscription = async (subscriptionId: string, data: Partial<F
     return await apiCallComposer(
         async () => {
             const docRef = getDocRef(subscriptionId);
-            const processedData = await requestBodyComposer(data);
+            const processedData = await requestBodyComposer(data, { isNew: false });
             await setDoc(docRef, processedData, { merge: true });
         },
         "updateSubscription"

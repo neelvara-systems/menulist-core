@@ -2,7 +2,7 @@
 
 **Feature:** AI Enhancement Packs
 **Status:** Marketing/source evidence; not current launch certification
-**Last Updated:** February 9, 2026
+**Last Updated:** July 11, 2026
 **Audience:** Sales, Marketing, Founder
 
 ---
@@ -12,6 +12,8 @@
 This marketing collateral is source evidence only. It is not current launch certification and must not be used externally until the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md), `npm run verify:billing-entitlement-boundary`, Razorpay sandbox top-up smoke, desktop/mobile Billing browser QA, website/pricing copy review, target deploy evidence, and production-host smoke are recorded.
 
 Do not publish or sell with TBD price placeholders, unverified activation timing, or provider behavior that lacks current Razorpay evidence.
+
+Current approved Pack presentation is transparent: `250 credits`, with examples of up to 50 generated menu images or 250 description rewrites. Do not publish provider cost, margin, monthly included capacity, overdraft, or a rupee-per-credit conversion.
 
 ---
 
@@ -36,20 +38,20 @@ MenuList includes AI features as part of every subscription. For businesses with
 | General                 | "AI features are included in your plan. Enhancement Packs are available when your business needs more." |
 | For chains              | "Each outlet can get its own Enhancement Pack — capacity is managed per store."                         |
 | For seasonal businesses | "Buy an Enhancement Pack when you update your menu. Use it at your own pace."                           |
-| Simplicity              | "One pack. One price. No math."                                                                         |
+| Simplicity              | "One pack. 250 credits. Clear examples of what they can do."                                            |
 
 ### Forbidden Messages
 
 | Never Say                      | Why                                             |
 | ------------------------------ | ----------------------------------------------- |
 | "Unlimited AI"                 | Creates false expectation — will cause disputes |
-| "X credits included"           | Exposes internal mechanics                      |
+| "X monthly credits included"   | Monthly included capacity remains private       |
 | "Track your AI usage"          | Invites monitoring — forbidden by doctrine      |
 | "AI-powered enhancement"       | "AI-powered" is forbidden language              |
 | "Smart menu optimization"      | "Smart" and "optimization" are forbidden        |
 | "You're running low"           | Shifts responsibility to owner                  |
 | "Check your remaining balance" | Invites monitoring                              |
-| "Per-image pricing"            | Exposes internal cost structure                 |
+| "₹X per generated image"       | Creates a misleading currency conversion        |
 
 ---
 

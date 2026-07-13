@@ -12,6 +12,7 @@
  */
 
 import { DB_COLLECTIONS } from "@constant/database";
+import { normalizeMenuChangeLogScope } from "@database/menuChangeLog/menuChangeLogBoundary";
 import { replaceUndefined } from "@lib/apiHelper";
 import { firebaseClient as db } from "@lib/firebase/firebaseClient";
 import type { LogMOLParams, MOLEvent } from "@type/mol.types";
@@ -32,12 +33,15 @@ export async function logMOLEvent(params: LogMOLParams): Promise<void> {
     const { tId, sId, ...eventData } = params;
 
     try {
+        const scope = normalizeMenuChangeLogScope({ tId, sId });
+        if (!scope) throw new TypeError("Invalid MOL tenant/store scope");
+
         // Build collection path with tenant isolation
         const molCollectionRef = collection(
             db,
             DB_COLLECTIONS.MENU_CHANGE_LOG,
-            String(tId),
-            String(sId),
+            String(scope.tId),
+            String(scope.sId),
         );
 
         // Generate new document reference
@@ -48,6 +52,8 @@ export async function logMOLEvent(params: LogMOLParams): Promise<void> {
             id: eventRef.id,
             ...eventData,
             createdOn: Timestamp.now(),
+            tId: scope.tId,
+            sId: scope.sId,
         });
 
         // Write to Firestore
@@ -83,20 +89,17 @@ export function logPriceChange(params: {
     tId: number;
     sId: number;
 }): void {
-    // Fire and forget - don't await
-    setImmediate(() => {
-        logMOLEvent({
-            type: params.attributeId ? "ATTRIBUTE_PRICE_CHANGED" : "PRICE_CHANGED",
-            projectId: params.projectId,
-            actorUserId: params.actorUserId,
-            entityType: params.attributeId ? "ATTRIBUTE" : "ITEM",
-            entityId: params.attributeId || params.itemId,
-            before: { price: params.oldPrice ?? null },
-            after: { price: params.newPrice ?? null },
-            version: params.version,
-            tId: params.tId,
-            sId: params.sId,
-        });
+    void logMOLEvent({
+        type: params.attributeId ? "ATTRIBUTE_PRICE_CHANGED" : "PRICE_CHANGED",
+        projectId: params.projectId,
+        actorUserId: params.actorUserId,
+        entityType: params.attributeId ? "ATTRIBUTE" : "ITEM",
+        entityId: params.attributeId || params.itemId,
+        before: { price: params.oldPrice ?? null },
+        after: { price: params.newPrice ?? null },
+        version: params.version,
+        tId: params.tId,
+        sId: params.sId,
     });
 }
 
@@ -117,22 +120,20 @@ export function logPDFEvent(params: {
     url?: string;
     error?: string;
 }): void {
-    setImmediate(() => {
-        logMOLEvent({
-            type: params.type,
-            projectId: params.projectId,
-            actorUserId: params.actorUserId,
-            entityType: "SYSTEM",
-            entityId: params.projectId,
-            before: null,
-            after: params.url
-                ? { url: params.url, version: params.version }
-                : params.error
-                    ? { error: params.error, version: params.version }
-                    : { version: params.version },
-            version: params.version,
-            tId: params.tId,
-            sId: params.sId,
-        });
+    void logMOLEvent({
+        type: params.type,
+        projectId: params.projectId,
+        actorUserId: params.actorUserId,
+        entityType: "SYSTEM",
+        entityId: params.projectId,
+        before: null,
+        after: params.url
+            ? { url: params.url, version: params.version }
+            : params.error
+                ? { error: params.error, version: params.version }
+                : { version: params.version },
+        version: params.version,
+        tId: params.tId,
+        sId: params.sId,
     });
 }

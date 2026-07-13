@@ -14,6 +14,7 @@
 import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
+import { parseAnswerlatticeEntityGraphIndex } from '@lib/answerlattice/runtimeSummaryContracts';
 import type {
     AnswerlatticeCanonicalAnswer,
     AnswerlatticeEntityGraphIndex,
@@ -70,7 +71,9 @@ export async function loadGraphIndex(
             .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
             .doc(`entityGraphIndex_${tId}_${sId}`)
             .get();
-        const value = snap.exists ? snap.data() as AnswerlatticeEntityGraphIndex : null;
+        const value = snap.exists
+            ? parseAnswerlatticeEntityGraphIndex(snap.data(), { tId, sId })
+            : null;
         graphIndexCache.set(cacheKey, {
             expiresAt: Date.now() + GRAPH_INDEX_CACHE_TTL_MS,
             value,

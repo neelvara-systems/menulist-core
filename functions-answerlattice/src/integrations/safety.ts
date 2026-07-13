@@ -28,6 +28,24 @@ const SECRET_PATTERNS = [
 ];
 
 const EVENT_TYPE_SET = new Set<string>(Object.values(INTEGRATION_EVENT_TYPES));
+const UNSAFE_OBJECT_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+const SENSITIVE_PAYLOAD_KEY_PATTERN = /token|secret|password|passphrase|webhook|api[_-]?key|private[_-]?key|authorization|credential/i;
+const MAX_INTEGRATION_PAYLOAD_KEYS = 40;
+const MAX_INTEGRATION_PAYLOAD_ARRAY_ITEMS = 5;
+
+function asRecord(value: unknown): Record<string, unknown> {
+    return value && typeof value === 'object' && !Array.isArray(value)
+        ? value as Record<string, unknown>
+        : {};
+}
+
+function redactSecrets(value: string): string {
+    let redacted = value;
+    for (const pattern of SECRET_PATTERNS) {
+        redacted = redacted.replace(pattern, '[redacted]');
+    }
+    return redacted;
+}
 
 export function safeText(value: unknown, maxLength = 200): string {
     if (value === null || value === undefined) return '';
@@ -36,6 +54,29 @@ export function safeText(value: unknown, maxLength = 200): string {
         .replace(/\s+/g, ' ')
         .trim()
         .slice(0, maxLength);
+}
+
+export function safePayloadCount(value: unknown, maxValue = 1_000_000_000): number {
+    if (typeof value !== 'number' || !Number.isFinite(value)) return 0;
+    return Math.min(Math.max(0, Math.trunc(value)), maxValue);
+}
+
+export function safePayloadRatio(value: unknown): number {
+    if (typeof value !== 'number' || !Number.isFinite(value)) return 0;
+    return Math.min(Math.max(0, value), 1);
+}
+
+export function safePayloadStringArray(
+    value: unknown,
+    maxItems = MAX_INTEGRATION_PAYLOAD_ARRAY_ITEMS,
+    maxItemLength = 160,
+): string[] {
+    if (!Array.isArray(value)) return [];
+    return value
+        .slice(0, Math.max(0, maxItems))
+        .filter((item): item is string => typeof item === 'string')
+        .map(item => redactSecrets(safeText(item, maxItemLength)))
+        .filter(Boolean);
 }
 
 export function escapeHtml(value: unknown, maxLength = 400): string {
@@ -48,10 +89,7 @@ export function escapeHtml(value: unknown, maxLength = 400): string {
 }
 
 export function sanitizeDeliveryError(value: unknown, maxLength = 180): string {
-    let message = safeText(value instanceof Error ? value.message : value, maxLength * 2);
-    for (const pattern of SECRET_PATTERNS) {
-        message = message.replace(pattern, '[redacted]');
-    }
+    const message = redactSecrets(safeText(value instanceof Error ? value.message : value, maxLength * 2));
     return message.slice(0, maxLength) || 'Delivery failed';
 }
 
@@ -75,6 +113,7 @@ function normalizeSlackWebhook(value: unknown): string {
         if (url.protocol !== 'https:') return '';
         if (url.hostname !== 'hooks.slack.com') return '';
         if (!url.pathname.startsWith('/services/')) return '';
+        if (url.search || url.hash) return '';
         return url.toString();
     } catch {
         return '';
@@ -107,47 +146,51 @@ function normalizeToken(value: unknown, maxLength = 300): string {
     return value.trim().slice(0, maxLength);
 }
 
-export function normalizeSlackConfig(value: any): SlackConfig {
-    const webhookUrl = normalizeSlackWebhook(value?.webhookUrl);
-    const channel = safeText(value?.channel, 80);
-    const eventFilters = normalizeEventFilters(value?.eventFilters);
+export function normalizeSlackConfig(value: unknown): SlackConfig {
+    const data = asRecord(value);
+    const webhookUrl = normalizeSlackWebhook(data.webhookUrl);
+    const channel = safeText(data.channel, 80);
+    const eventFilters = normalizeEventFilters(data.eventFilters);
     return {
-        enabled: normalizeBoolean(value?.enabled) && Boolean(webhookUrl),
+        enabled: normalizeBoolean(data.enabled) && Boolean(webhookUrl),
         webhookUrl,
         channel,
         eventFilters,
     };
 }
 
-export function normalizeEmailConfig(value: any): EmailConfig {
-    const recipients = normalizeEmailRecipients(value?.recipients);
-    const eventFilters = normalizeEventFilters(value?.eventFilters);
+export function normalizeEmailConfig(value: unknown): EmailConfig {
+    const data = asRecord(value);
+    const recipients = normalizeEmailRecipients(data.recipients);
+    const eventFilters = normalizeEventFilters(data.eventFilters);
     return {
-        enabled: normalizeBoolean(value?.enabled) && recipients.length > 0,
+        enabled: normalizeBoolean(data.enabled) && recipients.length > 0,
         recipients,
         eventFilters,
     };
 }
 
-export function normalizeLinearConfig(value: any): LinearConfig {
-    const apiKey = normalizeToken(value?.apiKey);
-    const teamId = safeText(value?.teamId, 120);
-    const eventFilters = normalizeEventFilters(value?.eventFilters);
+export function normalizeLinearConfig(value: unknown): LinearConfig {
+    const data = asRecord(value);
+    const apiKey = normalizeToken(data.apiKey);
+    const teamId = safeText(data.teamId, 120);
+    const eventFilters = normalizeEventFilters(data.eventFilters);
     return {
-        enabled: normalizeBoolean(value?.enabled) && Boolean(apiKey) && Boolean(teamId),
+        enabled: normalizeBoolean(data.enabled) && Boolean(apiKey) && Boolean(teamId),
         apiKey,
         teamId,
         eventFilters,
     };
 }
 
-export function normalizeGithubConfig(value: any): GithubConfig {
-    const token = normalizeToken(value?.token);
-    const owner = normalizeGithubSlug(value?.owner);
-    const repo = normalizeGithubSlug(value?.repo);
-    const eventFilters = normalizeEventFilters(value?.eventFilters);
+export function normalizeGithubConfig(value: unknown): GithubConfig {
+    const data = asRecord(value);
+    const token = normalizeToken(data.token);
+    const owner = normalizeGithubSlug(data.owner);
+    const repo = normalizeGithubSlug(data.repo);
+    const eventFilters = normalizeEventFilters(data.eventFilters);
     return {
-        enabled: normalizeBoolean(value?.enabled) && Boolean(token) && Boolean(owner) && Boolean(repo),
+        enabled: normalizeBoolean(data.enabled) && Boolean(token) && Boolean(owner) && Boolean(repo),
         token,
         owner,
         repo,
@@ -155,45 +198,64 @@ export function normalizeGithubConfig(value: any): GithubConfig {
     };
 }
 
-function normalizeCircuitBreaker(value: any): IntegrationConfig['circuitBreaker'] {
+function normalizeCircuitBreaker(value: unknown): IntegrationConfig['circuitBreaker'] {
+    const data = asRecord(value);
     const fallback: IntegrationConfig['circuitBreaker'] = {
-        slack: { consecutiveFailures: 0, disabledAt: null },
-        email: { consecutiveFailures: 0, disabledAt: null },
-        linear: { consecutiveFailures: 0, disabledAt: null },
-        github: { consecutiveFailures: 0, disabledAt: null },
+        slack: { consecutiveFailures: 0, disabledAt: null, probeStartedAt: null },
+        email: { consecutiveFailures: 0, disabledAt: null, probeStartedAt: null },
+        linear: { consecutiveFailures: 0, disabledAt: null, probeStartedAt: null },
+        github: { consecutiveFailures: 0, disabledAt: null, probeStartedAt: null },
     };
     const out: IntegrationConfig['circuitBreaker'] = { ...fallback };
     for (const adapter of Object.values(ADAPTER_TYPES) as AdapterType[]) {
-        const state = value?.[adapter];
-        const failures = Number(state?.consecutiveFailures || 0);
+        const state = asRecord(data[adapter]);
+        const failures = Number(state.consecutiveFailures || 0);
         out[adapter] = {
             consecutiveFailures: Number.isFinite(failures) ? Math.max(0, Math.min(failures, 1000)) : 0,
-            disabledAt: state?.disabledAt instanceof Timestamp ? state.disabledAt : null,
+            disabledAt: state.disabledAt instanceof Timestamp ? state.disabledAt : null,
+            probeStartedAt: state.probeStartedAt instanceof Timestamp ? state.probeStartedAt : null,
         };
     }
     return out;
 }
 
-export function normalizeIntegrationConfig(value: any): IntegrationConfig {
+export function normalizeIntegrationConfig(
+    value: unknown,
+    identity: Pick<IntegrationConfig, 'pId' | 'tId' | 'sId'>,
+): IntegrationConfig {
+    const data = asRecord(value);
     return {
-        slack: normalizeSlackConfig(value?.slack),
-        email: normalizeEmailConfig(value?.email),
-        linear: normalizeLinearConfig(value?.linear),
-        github: normalizeGithubConfig(value?.github),
-        circuitBreaker: normalizeCircuitBreaker(value?.circuitBreaker),
-        modifiedOn: value?.modifiedOn instanceof Timestamp ? value.modifiedOn : Timestamp.now(),
+        ...identity,
+        slack: normalizeSlackConfig(data.slack),
+        email: normalizeEmailConfig(data.email),
+        linear: normalizeLinearConfig(data.linear),
+        github: normalizeGithubConfig(data.github),
+        circuitBreaker: normalizeCircuitBreaker(data.circuitBreaker),
+        modifiedOn: data.modifiedOn instanceof Timestamp ? data.modifiedOn : Timestamp.now(),
     };
 }
 
-export function sanitizeIntegrationPayload(payload: Record<string, any>): Record<string, any> {
-    const sanitized: Record<string, any> = {};
-    for (const [key, value] of Object.entries(payload || {})) {
-        if (/token|secret|password|webhook|apiKey|authorization/i.test(key)) continue;
+export function sanitizeIntegrationPayload(payload: Record<string, unknown>): Record<string, unknown> {
+    const sanitized: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(payload || {}).slice(0, MAX_INTEGRATION_PAYLOAD_KEYS)) {
+        if (
+            !key
+            || key.length > 80
+            || UNSAFE_OBJECT_KEYS.has(key)
+            || SENSITIVE_PAYLOAD_KEY_PATTERN.test(key)
+        ) continue;
         if (Array.isArray(value)) {
-            sanitized[key] = value.slice(0, 5).map(item => typeof item === 'string' ? safeText(item, 180) : item);
+            sanitized[key] = value
+                .slice(0, MAX_INTEGRATION_PAYLOAD_ARRAY_ITEMS)
+                .flatMap((item) => {
+                    if (typeof item === 'string') return [redactSecrets(safeText(item, 180))];
+                    if (typeof item === 'boolean' || item === null) return [item];
+                    if (typeof item === 'number' && Number.isFinite(item)) return [item];
+                    return [];
+                });
         } else if (typeof value === 'string') {
-            sanitized[key] = safeText(value, 300);
-        } else if (typeof value === 'number' || typeof value === 'boolean' || value === null) {
+            sanitized[key] = redactSecrets(safeText(value, 300));
+        } else if ((typeof value === 'number' && Number.isFinite(value)) || typeof value === 'boolean' || value === null) {
             sanitized[key] = value;
         }
     }

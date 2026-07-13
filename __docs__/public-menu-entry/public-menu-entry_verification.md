@@ -1,14 +1,16 @@
 # Public Menu Entry — Verification Log
 
 **Version:** 1.0
-**Status:** ✅ PRODUCTION AUDIT PASSED WITH EXTERNAL CONDITIONS
-**Last Updated:** July 1, 2026
+**Status:** HISTORICAL SOURCE/LOCAL/QA EVIDENCE — not current launch or deploy certification
+**Last Updated:** July 10, 2026
+
+> **Launch boundary:** Not current launch certification or deploy approval. This document is source-gated Public Menu Entry evidence only. The `/create-menu` page is public, but source submission, acquisition, extraction, preview polling, claim, and publish require a signed-in owner. Current release approval still requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:menu-extraction-pipeline`, `npm run verify:public-business-truth`, `npm run verify:auth-security-failure-matrix`, signed-in desktop/mobile browser QA, physical-device camera/link/preview/claim QA, Gemini extraction provider smoke, Razorpay sandbox evidence where conversion is in scope, applicable target Firebase/Vercel deploy evidence, and production-host smoke.
 
 ---
 
 ## Scope
 
-This log tracks the May 20, 2026 production-audit and final-review pass for the public menu entry / starter activation flow.
+This log preserves the May 20, 2026 source/local/QA audit and final-review evidence for the public menu entry / starter activation flow. It does not certify the current worktree, target environment, external providers, deploy state, or production host.
 
 Covered:
 
@@ -164,7 +166,7 @@ Result:
 
 ---
 
-## Production Conditions
+## External Certification Conditions
 
 Before public traffic:
 

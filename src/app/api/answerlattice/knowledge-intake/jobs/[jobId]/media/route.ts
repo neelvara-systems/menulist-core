@@ -33,7 +33,7 @@ const FormFieldsSchema = z.object({
     tags: z.array(z.string().trim().max(80)).max(20).optional(),
     contextKeys: z.array(z.string().trim().max(100)).max(20).optional(),
     entityIds: z.array(z.string().trim().max(160)).max(25).optional(),
-});
+}).strict();
 
 const parseListField = (value: FormDataEntryValue | null): string[] | undefined => {
     if (typeof value !== 'string') return undefined;
@@ -142,8 +142,8 @@ export const POST = withAuth(async (request: NextRequest, session, params: { job
 
         return NextResponse.json({
             source: serializeIntakeValue(result.source),
-            usage: result.usage,
-        });
+            usage: { unitsConsumed: result.usage.unitsConsumed },
+        }, { headers: { 'Cache-Control': 'private, no-store' } });
     } catch (error) {
         if (error instanceof z.ZodError) {
             return NextResponse.json({ error: 'Invalid media source details.' }, { status: 400 });

@@ -1,5 +1,6 @@
 import TimeSlotPresetForm, { DEFAULT_PRESET_COLORS } from '@atoms/timeSlotPresetForm';
 import { assertProjectPresetCascadeSucceeded, removePresetFromAllCategories, updatePresetInAllCategories } from '@database/projects';
+import { isValidClockRange } from '@lib/menu/timeSlotPresetBoundary';
 import { assertTimeSlotPresetUpdateSucceeded, generatePresetId, updateTimeSlotPresets } from '@database/stores';
 import { TimeSlotPreset } from '@type/platform/store';
 import { formatClockTime } from '@util/dateTime';
@@ -80,10 +81,7 @@ const TimeSlotPresetsTab: React.FC<TimeSlotPresetsTabProps> = ({
             return;
         }
 
-        const startMinutes = parseInt(formData.startTime.split(':')[0]) * 60 + parseInt(formData.startTime.split(':')[1]);
-        const endMinutes = parseInt(formData.endTime.split(':')[0]) * 60 + parseInt(formData.endTime.split(':')[1]);
-
-        if (startMinutes >= endMinutes) {
+        if (!isValidClockRange(formData.startTime, formData.endTime)) {
             message.error(t('endAfterStart'));
             return;
         }

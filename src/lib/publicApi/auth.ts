@@ -17,16 +17,30 @@ import { shouldUseSharedAnswerlatticeFirebase } from "@lib/firebase/answerlattic
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
 import { isPlatformEntityBlocked } from "@lib/platform/entityBlock";
+import {
+    isMenuListPublicApiProductEntity,
+    isMenuListPublicApiStoreIdentityConsistent,
+    isMenuListPublicApiTenantIdentityConsistent,
+    resolveMenuListPublicApiTenantDocumentId,
+} from '@lib/publicApi/menuListScope';
+import { isMenuListPublicApiEntityEligible } from "@lib/publicApi/targetEligibility";
+import { buildPullApiETagPayload } from "@lib/publicApi/responseIdentity";
 import { getBoundedSecurityStringContext } from "@lib/security/securityDiagnostics";
+import { isRequestOriginAllowed, normalizeRequestOrigin } from '@lib/security/requestOrigin';
 import { secureLog } from "@lib/security/secureLogger";
 import { createHash } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { getClientIp, hashPublicRateLimitValue } from "src/middleware/publicApi";
+import type { StorePublicApiCredentialScope } from "@type/platform/store";
 
 /** Current schema version for pull API responses */
 export const PULL_API_SCHEMA_VERSION = "1.0";
 export const PULL_API_RESPONSE_CACHE_CONTROL = "private, max-age=60, stale-while-revalidate=300";
+export const PULL_API_ERROR_CACHE_CONTROL = "private, no-store";
 export const PULL_API_RESPONSE_VARY = "X-API-Key";
+export const PULL_API_KEY_RATE_LIMIT = 60;
+export const PULL_API_PREAUTH_RATE_LIMIT = PULL_API_KEY_RATE_LIMIT * 4;
+export const PULL_API_RATE_LIMIT_WINDOW_SECONDS = 60;
 const PUBLIC_API_KEY_PATTERN = /^(ml|cn|al)_[A-Za-z0-9_-]{20,128}$/;
 
 export function normalizePublicApiDocumentId(value: unknown): string | null {
@@ -45,42 +59,32 @@ export function normalizeMenuListPublicApiNumericId(value: unknown): number | nu
         : null;
 }
 
-function normalizePublicApiKey(apiKey: string | null): string | null {
+const isAnswerlatticeWidgetStoreInScope = (
+    storeData: Record<string, any>,
+    storeDocumentId: string,
+): boolean => {
+    const storeId = normalizeMenuListPublicApiNumericId(storeDocumentId);
+    const storedStoreId = normalizeMenuListPublicApiNumericId(
+        storeData.sId ?? storeData.storeId ?? storeData.id ?? storeDocumentId,
+    );
+    const tenantId = normalizeMenuListPublicApiNumericId(storeData.tId ?? storeData.tenantId);
+    return storeData.pId === 'AL'
+        && storeId !== null
+        && storedStoreId === storeId
+        && tenantId !== null
+        && storeData.active !== false
+        && storeData.deleted !== true
+        && !isPlatformEntityBlocked(storeData);
+};
+
+export function normalizePublicApiKey(apiKey: string | null): string | null {
     const normalizedApiKey = apiKey?.trim();
     if (!normalizedApiKey || normalizedApiKey.length < 10) return null;
     if (!PUBLIC_API_KEY_PATTERN.test(normalizedApiKey)) return null;
     return normalizedApiKey;
 }
 
-export function normalizeRequestOrigin(origin: string | null | undefined): string | null {
-    const trimmed = origin?.trim();
-    if (!trimmed || trimmed === 'null') return null;
-
-    try {
-        const parsed = new URL(trimmed);
-        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null;
-        return parsed.origin;
-    } catch {
-        return null;
-    }
-}
-
-export function isRequestOriginAllowed(
-    requestOrigin: string | null | undefined,
-    allowedOrigins: unknown,
-): boolean {
-    if (!Array.isArray(allowedOrigins) || allowedOrigins.length === 0) return true;
-
-    const normalizedAllowed = allowedOrigins
-        .filter((origin): origin is string => typeof origin === 'string')
-        .map(normalizeRequestOrigin)
-        .filter((origin): origin is string => Boolean(origin));
-
-    if (normalizedAllowed.length === 0) return false;
-
-    const normalizedRequestOrigin = normalizeRequestOrigin(requestOrigin);
-    return Boolean(normalizedRequestOrigin && normalizedAllowed.includes(normalizedRequestOrigin));
-}
+export { isRequestOriginAllowed, normalizeRequestOrigin };
 
 /**
  * Hash an API key using SHA-256.
@@ -99,6 +103,10 @@ export function generateETag(payload: Record<string, any>): string {
     return createHash('sha256').update(json).digest('hex').slice(0, 32);
 }
 
+export function generatePullApiETag(payload: Record<string, unknown>): string {
+    return generateETag(buildPullApiETagPayload(payload));
+}
+
 export function buildPullApiResponseHeaders(etag: string): Record<string, string> {
     return {
         'Cache-Control': PULL_API_RESPONSE_CACHE_CONTROL,
@@ -107,22 +115,29 @@ export function buildPullApiResponseHeaders(etag: string): Record<string, string
     };
 }
 
-export async function isMenuListPublicApiTargetAllowed(storeData: any): Promise<boolean> {
-    if (!storeData) return false;
-    if (storeData.active === false || storeData.deleted === true || isPlatformEntityBlocked(storeData)) return false;
+export async function isMenuListPublicApiTargetAllowed(
+    storeData: any,
+    storeDocumentId: string,
+): Promise<boolean> {
+    if (
+        !isMenuListPublicApiEntityEligible(storeData)
+        || !isMenuListPublicApiProductEntity(storeData)
+        || !isMenuListPublicApiStoreIdentityConsistent(storeData, storeDocumentId)
+    ) return false;
 
-    const tenantId = storeData.tenantId ?? storeData.tId;
-    if (tenantId == null || tenantId === '') return false;
-    const tenantNumericId = normalizeMenuListPublicApiNumericId(tenantId);
-    if (tenantNumericId == null) return false;
-    const tenantDocumentId = String(tenantNumericId);
+    const tenantDocumentId = resolveMenuListPublicApiTenantDocumentId(storeData);
+    if (!tenantDocumentId) return false;
 
     const tenantSnap = await admin.firestore()
         .collection(DB_COLLECTIONS.TENANTS)
         .doc(tenantDocumentId)
         .get();
 
-    return tenantSnap.exists && !isPlatformEntityBlocked(tenantSnap.data());
+    const tenantData = tenantSnap.data();
+    return tenantSnap.exists
+        && isMenuListPublicApiEntityEligible(tenantData)
+        && isMenuListPublicApiProductEntity(tenantData)
+        && isMenuListPublicApiTenantIdentityConsistent(tenantData, tenantDocumentId);
 }
 
 /**
@@ -138,6 +153,35 @@ export function apiError(
         { error: { code, message } },
         { status, headers },
     );
+}
+
+export function pullApiError(
+    code: string,
+    message: string,
+    status: number,
+    headers: Record<string, string> = {},
+): NextResponse {
+    return apiError(code, message, status, {
+        'Cache-Control': PULL_API_ERROR_CACHE_CONTROL,
+        'Vary': PULL_API_RESPONSE_VARY,
+        ...headers,
+    });
+}
+
+export function pullApiRateLimitError(result: {
+    reason?: 'limit_exceeded' | 'provider_unavailable';
+    resetAt: number;
+}): NextResponse {
+    const retryAfter = String(Math.max(Math.ceil((result.resetAt - Date.now()) / 1000), 1));
+    if (result.reason === 'provider_unavailable') {
+        return pullApiError('SERVICE_UNAVAILABLE', 'Service temporarily unavailable', 503, {
+            'Retry-After': retryAfter,
+        });
+    }
+
+    return pullApiError('RATE_LIMIT_EXCEEDED', 'Too many requests', 429, {
+        'Retry-After': retryAfter,
+    });
 }
 
 /**
@@ -169,14 +213,7 @@ export function logApiRequest(
  * @returns Store data if valid key, null if invalid
  */
 export type PublicApiCredentialSource = 'publicApi' | 'answerlatticeWidgetApi';
-export type PublicApiCredentialScope =
-    | 'public:read'
-    | 'signals:write'
-    | 'widget:config'
-    | 'widget:content'
-    | 'widget:search'
-    | 'widget:feedback'
-    | 'widget:predictive';
+export type PublicApiCredentialScope = StorePublicApiCredentialScope;
 
 export type PublicApiKeyValidationResult = {
     credential?: Record<string, any>;
@@ -292,7 +329,7 @@ export async function validatePublicApiKey(
         const multiKeySnapshot = await getCredentialDb()
             .collection(DB_COLLECTIONS.STORES)
             .where('answerlatticeWidgetApi.keyHashes', 'array-contains', keyHash)
-            .limit(1)
+            .limit(2)
             .get();
 
         if (!multiKeySnapshot.empty) return multiKeySnapshot;
@@ -300,13 +337,18 @@ export async function validatePublicApiKey(
         return getCredentialDb()
             .collection(DB_COLLECTIONS.STORES)
             .where('answerlatticeWidgetApi.apiKeyHash', '==', keyHash)
-            .limit(1)
+            .limit(2)
             .get();
     };
 
     if (preferAnswerlatticeWidgetApi) {
         const widgetSnapshot = await queryAnswerlatticeWidgetApi();
         if (!widgetSnapshot.empty) {
+            if (widgetSnapshot.docs.length !== 1) {
+                secureLog('[Public API] Ambiguous Answerlattice widget API key rejected');
+                rememberValidationCache(cacheKey, cacheTtl, null);
+                return null;
+            }
             const doc = widgetSnapshot.docs[0];
             const storeDocumentId = normalizePublicApiDocumentId(doc.id);
             if (!storeDocumentId) {
@@ -314,8 +356,14 @@ export async function validatePublicApiKey(
                 return null;
             }
             const storeData = doc.data();
-            const widgetCredential = getAnswerlatticeWidgetKeyRecordByHash(storeData.answerlatticeWidgetApi, keyHash)
-                || storeData.answerlatticeWidgetApi;
+            const widgetCredential = getAnswerlatticeWidgetKeyRecordByHash(storeData.answerlatticeWidgetApi, keyHash);
+            if (
+                !widgetCredential
+                || !isAnswerlatticeWidgetStoreInScope(storeData, storeDocumentId)
+            ) {
+                rememberValidationCache(cacheKey, cacheTtl, null);
+                return null;
+            }
             const result: PublicApiKeyValidationResult = {
                 credential: widgetCredential,
                 credentialSource: 'answerlatticeWidgetApi',
@@ -330,21 +378,33 @@ export async function validatePublicApiKey(
     let snapshot: FirebaseFirestore.QuerySnapshot | null = null;
 
     if (includePublicApi) {
-        // Primary: lookup by hash (secure)
-        snapshot = await getCredentialDb()
-            .collection(DB_COLLECTIONS.STORES)
-            .where('publicApi.apiKeyHash', '==', keyHash)
-            .limit(1)
-            .get();
-
-        // Fallback: lookup by raw key (backward compat for pre-migration keys)
-        if (snapshot.empty && allowLegacyRawFallback) {
-            snapshot = await getCredentialDb()
+        // Read both current and legacy representations while compatibility is
+        // enabled. A credential duplicated across representations on different
+        // stores must fail closed instead of letting lookup order select a tenant.
+        const [hashedSnapshot, legacyRawSnapshot] = await Promise.all([
+            getCredentialDb()
                 .collection(DB_COLLECTIONS.STORES)
-                .where('publicApi.apiKey', '==', normalizedApiKey)
-                .limit(1)
-                .get();
+                .where('publicApi.apiKeyHash', '==', keyHash)
+                .limit(2)
+                .get(),
+            allowLegacyRawFallback
+                ? getCredentialDb()
+                    .collection(DB_COLLECTIONS.STORES)
+                    .where('publicApi.apiKey', '==', normalizedApiKey)
+                    .limit(2)
+                    .get()
+                : Promise.resolve(null),
+        ]);
+        const publicCredentialDocumentPaths = new Set([
+            ...hashedSnapshot.docs.map((doc) => doc.ref.path),
+            ...(legacyRawSnapshot?.docs.map((doc) => doc.ref.path) || []),
+        ]);
+        if (publicCredentialDocumentPaths.size > 1) {
+            secureLog('[Public API] Ambiguous cross-representation API key rejected');
+            rememberValidationCache(cacheKey, cacheTtl, null);
+            return null;
         }
+        snapshot = !hashedSnapshot.empty ? hashedSnapshot : legacyRawSnapshot;
     }
 
     if (
@@ -362,6 +422,11 @@ export async function validatePublicApiKey(
         rememberValidationCache(cacheKey, cacheTtl, null);
         return null;
     }
+    if (snapshot.docs.length !== 1) {
+        secureLog('[Public API] Ambiguous API key rejected');
+        rememberValidationCache(cacheKey, cacheTtl, null);
+        return null;
+    }
 
     const doc = snapshot.docs[0];
     const storeDocumentId = normalizePublicApiDocumentId(doc.id);
@@ -371,8 +436,18 @@ export async function validatePublicApiKey(
     }
     const storeData = doc.data();
     const widgetCredential = credentialSource === 'answerlatticeWidgetApi'
-        ? getAnswerlatticeWidgetKeyRecordByHash(storeData.answerlatticeWidgetApi, keyHash) || storeData.answerlatticeWidgetApi
+        ? getAnswerlatticeWidgetKeyRecordByHash(storeData.answerlatticeWidgetApi, keyHash)
         : undefined;
+    if (
+        credentialSource === 'answerlatticeWidgetApi'
+        && (
+            !widgetCredential
+            || !isAnswerlatticeWidgetStoreInScope(storeData, storeDocumentId)
+        )
+    ) {
+        rememberValidationCache(cacheKey, cacheTtl, null);
+        return null;
+    }
     const result: PublicApiKeyValidationResult = {
         credential: credentialSource === 'publicApi'
             ? storeData.publicApi
@@ -419,7 +494,7 @@ export function buildPublicApiCorsHeaders(request: NextRequest): Record<string, 
     return {
         'Access-Control-Allow-Origin': origin,
         'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, X-API-Key',
+        'Access-Control-Allow-Headers': 'Content-Type, X-API-Key, X-Answerlattice-Widget-Runtime, Idempotency-Key',
         'Access-Control-Max-Age': '600',
         'Vary': 'Origin',
     };

@@ -20,22 +20,30 @@ if (process.env.FUNCTIONS_EMULATOR === 'true') {
     require('firebase-functions/logger').info('[Answerlattice Dev] Loaded .env.local for emulator');
 }
 
-import { onDocumentCreated } from 'firebase-functions/v2/firestore';
+import { onDocumentCreated, onDocumentUpdated } from 'firebase-functions/v2/firestore';
 import { HttpsError, onCall, onRequest } from 'firebase-functions/v2/https';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { onTaskDispatched } from 'firebase-functions/v2/tasks';
 import * as logger from 'firebase-functions/logger';
 import { runAnswerlatticeMasterScheduler } from './answerlattice/answerlatticeMasterScheduler';
+import {
+    isAnswerlatticeManualSchedulerAuthorized,
+    parseAnswerlatticeManualSchedulerRequest,
+} from './answerlattice/manualSchedulerBoundary';
 import { assertAnswerlatticePlatformCallable } from './callableAuth';
 import { ANSWERLATTICE_SECRET_GROUPS, readAnswerlatticeCronSecret } from './config/secrets';
 import { DB_COLLECTIONS } from './constants/database';
 import { FUNCTION_FLAGS } from './constants/features';
+import { firestoreAdmin } from './firebaseAdmin';
 import { processEvent } from './integrations/eventProcessor';
+import { updateEventStatus } from './integrations/deliveryLogger';
 import { IntegrationEvent } from './integrations/types';
 import { embedArticleWorkerLogic } from './logic/embedArticleWorker';
+import { startGenerationLogic } from './logic/startGeneration';
+import { dispatchPublishingEmbeddingTasks, finalizePublishingJob } from './logic/kbPublishingLifecycle';
 import { publishApprovedJobLogic } from './logic/publishApprovedJob';
 import { regenerateEmbeddingLogic } from './logic/regenerateEmbedding';
-import { EmbedArticleType, IngestionJobCategoriesMap } from './types';
+import { EmbedArticleType, INGESTION_JOB_STATUS, IngestionJob, IngestionJobCategoriesMap } from './types';
 
 const ANSWERLATTICE_AI_OPTIONS = {
     region: 'us-central1' as const,
@@ -45,9 +53,31 @@ const ANSWERLATTICE_AI_OPTIONS = {
     secrets: ANSWERLATTICE_SECRET_GROUPS.AI,
 };
 
+const ANSWERLATTICE_KB_EVENT_OPTIONS = {
+    region: 'us-central1' as const,
+    timeoutSeconds: 540,
+    memory: '1GiB' as const,
+    maxInstances: 2,
+    secrets: ANSWERLATTICE_SECRET_GROUPS.AI,
+};
+
+const ANSWERLATTICE_EMBED_TASK_OPTIONS = {
+    ...ANSWERLATTICE_AI_OPTIONS,
+    retryConfig: {
+        maxAttempts: 3,
+        maxBackoffSeconds: 120,
+        maxDoublings: 2,
+        minBackoffSeconds: 10,
+    },
+    rateLimits: {
+        maxConcurrentDispatches: 3,
+        maxDispatchesPerSecond: 3,
+    },
+};
+
 function assertFirestoreDocumentId(value: unknown, fieldName: string): string {
     const id = typeof value === 'string' ? value.trim() : '';
-    if (!id || id === '.' || id === '..' || id.includes('/') || /^__.*__$/.test(id)) {
+    if (id !== value || !id || id.length > 180 || id === '.' || id === '..' || id.includes('/') || /^__.*__$/.test(id)) {
         throw new HttpsError('invalid-argument', `${fieldName} must be a valid Firestore document ID.`);
     }
     return id;
@@ -71,6 +101,53 @@ function getKbTaskContext(articleData: EmbedArticleType, jobId: string): Record<
     };
 }
 
+// KB generation lifecycle lives in the Answerlattice Firebase project. The
+// owner route redirects to Knowledge Intake, but the internal platform import
+// tool and persisted legacy jobs still require this production-safe pipeline.
+export const startGeneration = onDocumentCreated(
+    {
+        ...ANSWERLATTICE_KB_EVENT_OPTIONS,
+        document: `${DB_COLLECTIONS.KB_GENERATION_JOBS}/{jobId}`,
+        retry: false,
+    },
+    async (event) => {
+        if (!event.data) return;
+        const jobId = assertFirestoreDocumentId(event.params.jobId, 'jobId');
+        await startGenerationLogic(jobId, event.id);
+    },
+);
+
+export const retryGeneration = onDocumentUpdated(
+    {
+        ...ANSWERLATTICE_KB_EVENT_OPTIONS,
+        document: `${DB_COLLECTIONS.KB_GENERATION_JOBS}/{jobId}`,
+        retry: false,
+    },
+    async (event) => {
+        const before = event.data?.before.data() as IngestionJob | undefined;
+        const after = event.data?.after.data() as IngestionJob | undefined;
+        if (!before || !after) return;
+        if (before.status !== INGESTION_JOB_STATUS.FAILED || after.status !== INGESTION_JOB_STATUS.PENDING) return;
+        const jobId = assertFirestoreDocumentId(event.params.jobId, 'jobId');
+        await startGenerationLogic(jobId, event.id);
+    },
+);
+
+export const finalizePublish = onDocumentUpdated(
+    {
+        ...ANSWERLATTICE_KB_EVENT_OPTIONS,
+        document: `${DB_COLLECTIONS.KB_GENERATION_JOBS}/{jobId}`,
+        retry: true,
+    },
+    async (event) => {
+        const after = event.data?.after.data() as IngestionJob | undefined;
+        if (!after || after.status !== INGESTION_JOB_STATUS.PUBLISHING) return;
+        const jobId = assertFirestoreDocumentId(event.params.jobId, 'jobId');
+        await dispatchPublishingEmbeddingTasks(jobId, after);
+        await finalizePublishingJob(jobId);
+    },
+);
+
 function getAnswerlatticeIndexStringContext(label: string, value: unknown): Record<string, number | boolean> {
     const text = typeof value === 'string' ? value : '';
     return {
@@ -85,13 +162,6 @@ function getManualSchedulerScopeContext(scope?: { tId: number; sId: number } | n
         hasTenantScope: Number.isFinite(scope?.tId),
         hasStoreScope: Number.isFinite(scope?.sId),
     };
-}
-
-function getManualSchedulerScopeErrorResponse(error: unknown): { code: string; status: number } {
-    if (error instanceof HttpsError && error.code === 'invalid-argument') {
-        return { code: 'ANSWERLATTICE_MANUAL_SCOPE_INVALID', status: 400 };
-    }
-    return { code: 'ANSWERLATTICE_MANUAL_SCOPE_INVALID', status: 400 };
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -128,23 +198,12 @@ export const answerlatticeNightly = onSchedule(
 // ═══════════════════════════════════════════════════════════════
 
 function isManualTriggerAuthorized(req: any): boolean {
-    if (process.env.FUNCTIONS_EMULATOR === 'true') return true;
-
-    const cronSecret = readAnswerlatticeCronSecret();
     const authHeader = req.get?.('authorization') || req.headers?.authorization || '';
-
-    return Boolean(cronSecret && authHeader === `Bearer ${cronSecret}`);
-}
-
-function parseManualTenantScope(req: any): { tId: number; sId: number } | null {
-    const body = req.body && typeof req.body === 'object' ? req.body : {};
-    const tId = Number(body.tId);
-    const sId = Number(body.sId);
-    if (!Number.isFinite(tId) && !Number.isFinite(sId)) return null;
-    if (!Number.isInteger(tId) || tId <= 0 || !Number.isInteger(sId) || sId <= 0) {
-        throw new HttpsError('invalid-argument', 'Both tId and sId are required for scoped Answerlattice nightly retry.');
-    }
-    return { tId, sId };
+    return isAnswerlatticeManualSchedulerAuthorized({
+        authorizationHeader: authHeader,
+        cronSecret: readAnswerlatticeCronSecret(),
+        emulator: process.env.FUNCTIONS_EMULATOR === 'true',
+    });
 }
 
 export const triggerAnswerlatticeNightly = onRequest(
@@ -156,6 +215,19 @@ export const triggerAnswerlatticeNightly = onRequest(
         secrets: ANSWERLATTICE_SECRET_GROUPS.MANUAL_SCHEDULER_WITH_AI,
     },
     async (req, res) => {
+        if (req.method !== 'POST') {
+            res.set('Allow', 'POST');
+            res.status(405).json({ error: 'Method not allowed' });
+            return;
+        }
+        if (!String(req.get?.('content-type') || '').toLowerCase().startsWith('application/json')) {
+            res.status(415).json({ error: 'Content-Type must be application/json' });
+            return;
+        }
+        if (Buffer.byteLength(req.rawBody || Buffer.from(JSON.stringify(req.body || {}))) > 2 * 1024) {
+            res.status(413).json({ error: 'Request body too large' });
+            return;
+        }
         if (!isManualTriggerAuthorized(req)) {
             logger.warn('[Answerlattice Manual] Unauthorized manual scheduler trigger blocked', {
                 failureCode: 'answerlattice_manual_scheduler_unauthorized',
@@ -166,14 +238,14 @@ export const triggerAnswerlatticeNightly = onRequest(
             return;
         }
 
-        let scope: { tId: number; sId: number } | null = null;
+        let parsedRequest: ReturnType<typeof parseAnswerlatticeManualSchedulerRequest>;
         try {
-            scope = parseManualTenantScope(req);
-        } catch (error) {
-            const response = getManualSchedulerScopeErrorResponse(error);
-            res.status(response.status).json({ error: response.code });
+            parsedRequest = parseAnswerlatticeManualSchedulerRequest(req.body);
+        } catch {
+            res.status(400).json({ error: 'ANSWERLATTICE_MANUAL_SCOPE_INVALID' });
             return;
         }
+        const scope = parsedRequest.scope;
 
         logger.info('[Answerlattice Manual] Triggered master scheduler manually...', {
             ...getManualSchedulerScopeContext(scope),
@@ -181,7 +253,7 @@ export const triggerAnswerlatticeNightly = onRequest(
         const result = await runAnswerlatticeMasterScheduler({
             trigger: 'manual',
             triggeredBy: 'cron_secret',
-            forceAllTenants: !scope,
+            forceAllTenants: parsedRequest.forceAllTenants,
             tenantScope: scope ? [scope] : undefined,
         });
         logger.info('[Answerlattice Manual] Complete', {
@@ -206,9 +278,13 @@ export const processIntegrationEvent = onDocumentCreated(
     {
         region: 'us-central1',
         document: `${DB_COLLECTIONS.ANSWERLATTICE_INTEGRATION_EVENTS}/{eventId}`,
-        timeoutSeconds: 60,
+        // Four sequential adapters can consume up to ~145 seconds across their
+        // bounded attempts/backoff. Keep enough headroom to persist final state.
+        timeoutSeconds: 240,
         memory: '256MiB',
         maxInstances: 5,
+        retry: true,
+        secrets: ANSWERLATTICE_SECRET_GROUPS.WORKFLOW_INTEGRATIONS,
     },
     async (firestoreEvent) => {
         if (!FUNCTION_FLAGS.ENABLE_ANSWERLATTICE_WORKFLOW_INTEGRATIONS) return;
@@ -227,7 +303,20 @@ export const processIntegrationEvent = onDocumentCreated(
             ...getAnswerlatticeIndexStringContext('eventId', eventId),
         });
 
-        const result = await processEvent(eventId, event);
+        let result: Awaited<ReturnType<typeof processEvent>>;
+        try {
+            result = await processEvent(eventId, event);
+        } catch (error) {
+            const statusUpdated = await updateEventStatus(eventId, 'failed', event);
+            logger.error('[Answerlattice Integration] Event processor invocation failed', {
+                failureCode: 'answerlattice_integration_processor_invocation_failed',
+                eventType: event.eventType,
+                ...getAnswerlatticeIndexStringContext('eventId', eventId),
+                sourceErrorName: error instanceof Error ? error.name.slice(0, 80) : typeof error,
+                statusUpdated,
+            });
+            throw error;
+        }
 
         logger.info('[Answerlattice Integration] Event processed', {
             ...getAnswerlatticeIndexStringContext('eventId', eventId),
@@ -243,15 +332,23 @@ export const processIntegrationEvent = onDocumentCreated(
 // answerlatticeFunctions so separate-mode production does not fall back to MenuList.
 // ═══════════════════════════════════════════════════════════════
 
-export const embedArticleWorker = onTaskDispatched(ANSWERLATTICE_AI_OPTIONS, async (request) => {
-    const { articleData, jobId } = request.data as { articleData: EmbedArticleType; jobId: string };
+export const embedArticleWorker = onTaskDispatched(ANSWERLATTICE_EMBED_TASK_OPTIONS, async (request) => {
+    const { articleData, embeddingRunId, jobId } = request.data as {
+        articleData: EmbedArticleType;
+        embeddingRunId?: string;
+        jobId: string;
+    };
 
     if (!articleData?.id || !jobId) {
         throw new HttpsError('invalid-argument', 'Missing required payload: articleData.id, jobId.');
     }
 
     logger.info('[Answerlattice KB] Re-embedding queued article', getKbTaskContext(articleData, jobId));
-    await embedArticleWorkerLogic(articleData, jobId);
+    await embedArticleWorkerLogic(articleData, jobId, {
+        embeddingRunId,
+        retryCount: request.retryCount,
+        finalAttempt: request.retryCount >= 2,
+    });
 });
 
 export const regenerateEmbedding = onCall(ANSWERLATTICE_AI_OPTIONS, async (request) => {
@@ -280,4 +377,26 @@ export const publishApprovedJobFn = onCall(ANSWERLATTICE_AI_OPTIONS, async (requ
         ...getKbCallableContext(safeJobId, 'jobId', caller),
     });
     return publishApprovedJobLogic(safeJobId, finalCategories);
+});
+
+export const dev_triggerStartGeneration = onCall(ANSWERLATTICE_AI_OPTIONS, async (request) => {
+    if (process.env.FUNCTIONS_EMULATOR !== 'true') {
+        throw new HttpsError('failed-precondition', 'This callable is available only in the local emulator.');
+    }
+    assertAnswerlatticePlatformCallable(request, 'dev_triggerStartGeneration');
+    const safeJobId = assertFirestoreDocumentId(request.data?.jobId, 'jobId');
+    return startGenerationLogic(safeJobId);
+});
+
+export const dev_triggerFinalizePublish = onCall(ANSWERLATTICE_AI_OPTIONS, async (request) => {
+    if (process.env.FUNCTIONS_EMULATOR !== 'true') {
+        throw new HttpsError('failed-precondition', 'This callable is available only in the local emulator.');
+    }
+    assertAnswerlatticePlatformCallable(request, 'dev_triggerFinalizePublish');
+    const safeJobId = assertFirestoreDocumentId(request.data?.jobId, 'jobId');
+    const snapshot = await firestoreAdmin.collection(DB_COLLECTIONS.KB_GENERATION_JOBS).doc(safeJobId).get();
+    if (!snapshot.exists) throw new HttpsError('not-found', 'Job not found.');
+    const job = { id: snapshot.id, ...snapshot.data() } as IngestionJob;
+    await dispatchPublishingEmbeddingTasks(safeJobId, job);
+    return finalizePublishingJob(safeJobId);
 });

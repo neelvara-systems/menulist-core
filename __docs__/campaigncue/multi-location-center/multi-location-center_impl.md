@@ -26,7 +26,7 @@ Every CampaignCue entity that can vary by location must support `locationId` or 
 
 | Object | Purpose |
 | --- | --- |
-| `locations` | Location profile and channel connection metadata. |
+| `locations` | Location profile and manual channel-readiness metadata. |
 | `locationGroups` | Grouping for campaign planning and reporting. |
 | `locationCampaignDrafts` | Location-specific campaign output. |
 | `locationApprovalStates` | Approval status per output version. |

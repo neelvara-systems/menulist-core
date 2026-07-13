@@ -13,9 +13,11 @@ import {
     logAuthFailure,
 } from '@lib/auth/authDiagnostics';
 import {
+    AuthUserIdentityConflictError,
     getAuthUserByEmail,
     getAuthUserByLoginIdentifier,
 } from '@lib/auth/serverUserContext';
+import { getPhoneUserDocumentId } from '@lib/auth/phoneUserIdentity';
 import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
 import { admin, firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { sendOwnerNotificationWhatsApp } from '@lib/owner-notifications/channels/whatsapp';
@@ -29,6 +31,7 @@ import { secureLog } from '@lib/security/secureLogger';
 
 const OTP_TTL_MS = 5 * 60 * 1000;
 const LOGIN_TOKEN_TTL_MS = 10 * 60 * 1000;
+const VERIFICATION_LEASE_MS = 60 * 1000;
 const MAX_ATTEMPTS = 5;
 const OTP_LENGTH = 6;
 const GRAPH_TEMPLATE_LANGUAGE = 'en';
@@ -43,6 +46,7 @@ export class PhoneOtpError extends Error {
     ) {
         super(message);
         this.name = 'PhoneOtpError';
+        Object.setPrototypeOf(this, PhoneOtpError.prototype);
     }
 }
 
@@ -115,6 +119,7 @@ const matchesStoredPhoneCountry = (data: any, phone: NormalizedPhoneOtpNumber) =
 const getAuthUserByLocalPhoneAndCountry = async (phone: NormalizedPhoneOtpNumber) => {
     const localPhoneCandidates = getLocalPhoneCandidates(phone);
     if (!localPhoneCandidates.length || (!phone.dialCode && !phone.countryCode)) return null;
+    const matches = new Map<string, Record<string, unknown>>();
 
     for (const candidate of localPhoneCandidates) {
         const snapshot = await firestoreAdmin
@@ -123,13 +128,13 @@ const getAuthUserByLocalPhoneAndCountry = async (phone: NormalizedPhoneOtpNumber
             .limit(5)
             .get();
 
-        const match = snapshot.docs.find((doc) => matchesStoredPhoneCountry(doc.data(), phone));
-        if (match) {
-            return { ...removeDangerousKeys(match.data()), id: match.id };
-        }
+        snapshot.docs
+            .filter((doc) => matchesStoredPhoneCountry(doc.data(), phone))
+            .forEach((doc) => matches.set(doc.id, { ...removeDangerousKeys(doc.data()), id: doc.id }));
     }
 
-    return null;
+    if (matches.size > 1) throw new AuthUserIdentityConflictError();
+    return matches.values().next().value || null;
 };
 
 export const normalizePhoneForOtp = (input: string | PhoneOtpNumberInput): NormalizedPhoneOtpNumber => {
@@ -358,7 +363,10 @@ async function ensurePhoneOtpUser(phone: NormalizedPhoneOtpNumber): Promise<any>
         };
     }
 
-    const userId = `phone_${hmac(`user:${phone.e164}`).slice(0, 24)}`;
+    const userId = getPhoneUserDocumentId(phone.e164);
+    if (!userId) {
+        throw new PhoneOtpError('invalid_phone', 'Enter a valid phone number.');
+    }
     const userRef = firestoreAdmin.collection(DB_COLLECTIONS.USERS).doc(userId);
     const existingDeterministicUser = await userRef.get();
     if (existingDeterministicUser.exists) {
@@ -478,33 +486,42 @@ export async function verifyPhoneOtpChallenge(params: {
     }
 
     const challengeRef = firestoreAdmin.collection(DB_COLLECTIONS.AUTH_PHONE_OTP_CHALLENGES).doc(challengeId);
-    const challenge = await firestoreAdmin.runTransaction(async (transaction) => {
+    const verificationOperationId = crypto.randomBytes(16).toString('hex');
+    const challengeDecision = await firestoreAdmin.runTransaction(async (transaction) => {
         const snapshot = await transaction.get(challengeRef);
         if (!snapshot.exists) {
-            throw new PhoneOtpError('invalid_code', 'Invalid verification code.');
+            return { outcome: 'invalid_code' as const };
         }
 
         const data = snapshot.data() || {};
-        if (data.status !== 'pending') {
-            throw new PhoneOtpError('invalid_code', 'Invalid verification code.');
-        }
-
+        const nowMs = Date.now();
+        const now = admin.firestore.Timestamp.fromMillis(nowMs);
         const expiresAtMs = timestampToMillis(data.expiresAt);
-        if (!expiresAtMs || expiresAtMs <= Date.now()) {
+        if (!expiresAtMs || expiresAtMs <= nowMs) {
             transaction.update(challengeRef, {
                 status: 'expired',
-                updatedAt: admin.firestore.Timestamp.now(),
+                updatedAt: now,
+                verificationOperationId: admin.firestore.FieldValue.delete(),
+                verificationReservedUntil: admin.firestore.FieldValue.delete(),
             });
-            throw new PhoneOtpError('expired', 'Verification code expired.');
+            return { outcome: 'expired' as const };
         }
 
         const attempts = Number(data.attempts || 0);
         if (attempts >= MAX_ATTEMPTS) {
             transaction.update(challengeRef, {
                 status: 'too_many_attempts',
-                updatedAt: admin.firestore.Timestamp.now(),
+                updatedAt: now,
+                verificationOperationId: admin.firestore.FieldValue.delete(),
+                verificationReservedUntil: admin.firestore.FieldValue.delete(),
             });
-            throw new PhoneOtpError('too_many_attempts', 'Too many attempts.');
+            return { outcome: 'too_many_attempts' as const };
+        }
+
+        const isRecoveringExpiredReservation = data.status === 'verifying'
+            && timestampToMillis(data.verificationReservedUntil) <= nowMs;
+        if (data.status !== 'pending' && !isRecoveringExpiredReservation) {
+            return { outcome: 'invalid_code' as const };
         }
 
         const actualHash = hashOtp({
@@ -514,22 +531,29 @@ export async function verifyPhoneOtpChallenge(params: {
         });
         const expectedHash = String(data.otpHash || '');
         if (!expectedHash || !timingSafeHashCompare(actualHash, expectedHash)) {
+            const nextAttempts = attempts + 1;
+            const tooManyAttempts = nextAttempts >= MAX_ATTEMPTS;
             transaction.update(challengeRef, {
-                attempts: attempts + 1,
-                lastAttemptAt: admin.firestore.Timestamp.now(),
-                updatedAt: admin.firestore.Timestamp.now(),
+                attempts: nextAttempts,
+                lastAttemptAt: now,
+                status: tooManyAttempts ? 'too_many_attempts' : 'pending',
+                updatedAt: now,
+                verificationOperationId: admin.firestore.FieldValue.delete(),
+                verificationReservedUntil: admin.firestore.FieldValue.delete(),
             });
-            throw new PhoneOtpError('invalid_code', 'Invalid verification code.');
+            return { outcome: tooManyAttempts ? 'too_many_attempts' as const : 'invalid_code' as const };
         }
 
         transaction.update(challengeRef, {
-            attempts: attempts + 1,
-            status: 'verified',
-            verifiedAt: admin.firestore.Timestamp.now(),
-            updatedAt: admin.firestore.Timestamp.now(),
+            attempts,
+            status: 'verifying',
+            updatedAt: now,
+            verificationOperationId,
+            verificationReservedUntil: admin.firestore.Timestamp.fromMillis(nowMs + VERIFICATION_LEASE_MS),
         });
 
         return {
+            outcome: 'reserved' as const,
             countryCode: String(data.countryCode || ''),
             dialCode: String(data.dialCode || ''),
             phoneE164: String(data.phoneE164 || ''),
@@ -537,43 +561,123 @@ export async function verifyPhoneOtpChallenge(params: {
         };
     });
 
-    const phone = normalizePhoneForOtp({
-        countryCode: challenge.countryCode,
-        dialCode: challenge.dialCode,
-        phone: challenge.phoneE164 || challenge.phoneUsername,
-    });
-    const dbUser = await ensurePhoneOtpUser(phone);
-    const dbUserId = normalizePhoneOtpUserDocumentId(dbUser?.id);
-    if (!dbUser?.email || !dbUserId) {
-        throw new PhoneOtpError('user_not_found', 'User not found.');
+    if (challengeDecision.outcome === 'expired') {
+        throw new PhoneOtpError('expired', 'Verification code expired.');
+    }
+    if (challengeDecision.outcome === 'too_many_attempts') {
+        throw new PhoneOtpError('too_many_attempts', 'Too many attempts.');
+    }
+    if (challengeDecision.outcome !== 'reserved') {
+        throw new PhoneOtpError('invalid_code', 'Invalid verification code.');
     }
 
-    const loginToken = generateLoginToken();
-    const loginTokenHash = hashLoginToken(loginToken);
-    const nowMs = Date.now();
-    await firestoreAdmin.collection(DB_COLLECTIONS.AUTH_PHONE_OTP_LOGIN_TOKENS).doc(loginTokenHash).set({
-        id: loginTokenHash,
-        status: 'active',
-        challengeId,
-        userId: dbUserId,
-        email: String(dbUser.email).toLowerCase().trim(),
-        phoneHash: hmac(`phone:${phone.e164}`),
-        phoneLast4: phone.digits.slice(-4),
-        createdAt: admin.firestore.Timestamp.fromMillis(nowMs),
-        expiresAt: admin.firestore.Timestamp.fromMillis(nowMs + LOGIN_TOKEN_TTL_MS),
+    const phone = normalizePhoneForOtp({
+        countryCode: challengeDecision.countryCode,
+        dialCode: challengeDecision.dialCode,
+        phone: challengeDecision.phoneE164 || challengeDecision.phoneUsername,
     });
+    try {
+        const dbUser = await ensurePhoneOtpUser(phone);
+        const dbUserId = normalizePhoneOtpUserDocumentId(dbUser?.id);
+        const normalizedEmail = typeof dbUser?.email === 'string' ? dbUser.email.toLowerCase().trim() : '';
+        if (!normalizedEmail || !dbUserId) {
+            throw new PhoneOtpError('user_not_found', 'User not found.');
+        }
 
-    await challengeRef.set({
-        loginTokenHash,
-        loginTokenExpiresAt: admin.firestore.Timestamp.fromMillis(nowMs + LOGIN_TOKEN_TTL_MS),
-        updatedAt: admin.firestore.Timestamp.now(),
-    }, { merge: true });
+        const loginToken = generateLoginToken();
+        const loginTokenHash = hashLoginToken(loginToken);
+        const loginTokenRef = firestoreAdmin.collection(DB_COLLECTIONS.AUTH_PHONE_OTP_LOGIN_TOKENS).doc(loginTokenHash);
+        const userRef = firestoreAdmin.collection(DB_COLLECTIONS.USERS).doc(dbUserId);
+        const nowMs = Date.now();
+        const finalDecision = await firestoreAdmin.runTransaction(async (transaction) => {
+            const [challengeSnapshot, userSnapshot] = await Promise.all([
+                transaction.get(challengeRef),
+                transaction.get(userRef),
+            ]);
+            const challengeData = challengeSnapshot.data() || {};
+            const userData = userSnapshot.data() || {};
+            if (
+                !challengeSnapshot.exists
+                || challengeData.status !== 'verifying'
+                || challengeData.verificationOperationId !== verificationOperationId
+                || !userSnapshot.exists
+                || String(userData.email || '').toLowerCase().trim() !== normalizedEmail
+            ) {
+                return { outcome: 'invalid_code' as const };
+            }
 
-    return {
-        loginToken,
-        expiresInSeconds: Math.floor(LOGIN_TOKEN_TTL_MS / 1000),
-        phoneMasked: phone.masked,
-    };
+            const challengeExpiresAtMs = timestampToMillis(challengeData.expiresAt);
+            if (!challengeExpiresAtMs || challengeExpiresAtMs <= nowMs) {
+                transaction.update(challengeRef, {
+                    status: 'expired',
+                    updatedAt: admin.firestore.Timestamp.fromMillis(nowMs),
+                    verificationOperationId: admin.firestore.FieldValue.delete(),
+                    verificationReservedUntil: admin.firestore.FieldValue.delete(),
+                });
+                return { outcome: 'expired' as const };
+            }
+
+            const loginTokenExpiresAt = admin.firestore.Timestamp.fromMillis(nowMs + LOGIN_TOKEN_TTL_MS);
+            transaction.create(loginTokenRef, {
+                id: loginTokenHash,
+                status: 'active',
+                challengeId,
+                userId: dbUserId,
+                email: normalizedEmail,
+                phoneHash: hmac(`phone:${phone.e164}`),
+                phoneLast4: phone.digits.slice(-4),
+                createdAt: admin.firestore.Timestamp.fromMillis(nowMs),
+                expiresAt: loginTokenExpiresAt,
+            });
+            transaction.update(challengeRef, {
+                status: 'verified',
+                verifiedAt: admin.firestore.Timestamp.fromMillis(nowMs),
+                loginTokenHash,
+                loginTokenExpiresAt,
+                updatedAt: admin.firestore.Timestamp.fromMillis(nowMs),
+                verificationOperationId: admin.firestore.FieldValue.delete(),
+                verificationReservedUntil: admin.firestore.FieldValue.delete(),
+            });
+            return { outcome: 'verified' as const };
+        });
+
+        if (finalDecision.outcome === 'expired') {
+            throw new PhoneOtpError('expired', 'Verification code expired.');
+        }
+        if (finalDecision.outcome !== 'verified') {
+            throw new PhoneOtpError('invalid_code', 'Invalid verification code.');
+        }
+
+        return {
+            loginToken,
+            expiresInSeconds: Math.floor(LOGIN_TOKEN_TTL_MS / 1000),
+            phoneMasked: phone.masked,
+        };
+    } catch (error) {
+        try {
+            await firestoreAdmin.runTransaction(async (transaction) => {
+                const snapshot = await transaction.get(challengeRef);
+                const data = snapshot.data() || {};
+                if (!snapshot.exists || data.status !== 'verifying' || data.verificationOperationId !== verificationOperationId) {
+                    return;
+                }
+                const nowMs = Date.now();
+                transaction.update(challengeRef, {
+                    status: timestampToMillis(data.expiresAt) <= nowMs ? 'expired' : 'pending',
+                    updatedAt: admin.firestore.Timestamp.fromMillis(nowMs),
+                    verificationOperationId: admin.firestore.FieldValue.delete(),
+                    verificationReservedUntil: admin.firestore.FieldValue.delete(),
+                });
+            });
+        } catch (releaseError) {
+            logAuthFailure(
+                'phone_otp_verification_reservation_release_failed',
+                releaseError,
+                getBoundedAuthStringContext('challengeId', challengeId),
+            );
+        }
+        throw error;
+    }
 }
 
 export async function consumePhoneOtpLoginToken(params: {
@@ -589,15 +693,15 @@ export async function consumePhoneOtpLoginToken(params: {
     }
 
     const tokenRef = firestoreAdmin.collection(DB_COLLECTIONS.AUTH_PHONE_OTP_LOGIN_TOKENS).doc(hashLoginToken(token));
-    const tokenData = await firestoreAdmin.runTransaction(async (transaction) => {
+    const tokenDecision = await firestoreAdmin.runTransaction(async (transaction) => {
         const snapshot = await transaction.get(tokenRef);
         if (!snapshot.exists) {
-            throw new PhoneOtpError('invalid_token', 'Invalid phone login token.');
+            return { outcome: 'invalid_token' as const, userId: '' };
         }
 
         const data = snapshot.data() || {};
         if (data.status !== 'active' || data.consumedAt) {
-            throw new PhoneOtpError('invalid_token', 'Invalid phone login token.');
+            return { outcome: 'invalid_token' as const, userId: String(data.userId || '') };
         }
 
         const expiresAtMs = timestampToMillis(data.expiresAt);
@@ -606,7 +710,21 @@ export async function consumePhoneOtpLoginToken(params: {
                 status: 'expired',
                 updatedAt: admin.firestore.Timestamp.now(),
             });
-            throw new PhoneOtpError('expired', 'Phone login token expired.');
+            return { outcome: 'expired' as const, userId: String(data.userId || '') };
+        }
+
+        const tokenUserId = normalizePhoneOtpUserDocumentId(data.userId);
+        if (!tokenUserId) {
+            return { outcome: 'user_not_found' as const, userId: String(data.userId || '') };
+        }
+        const userRef = firestoreAdmin.collection(DB_COLLECTIONS.USERS).doc(tokenUserId);
+        const userSnapshot = await transaction.get(userRef);
+        const dbUser = userSnapshot.data() || {};
+        if (
+            !userSnapshot.exists
+            || String(dbUser.email || '').toLowerCase().trim() !== String(data.email || '').toLowerCase().trim()
+        ) {
+            return { outcome: 'user_not_found' as const, userId: tokenUserId };
         }
 
         transaction.update(tokenRef, {
@@ -616,27 +734,31 @@ export async function consumePhoneOtpLoginToken(params: {
         });
 
         return {
-            email: String(data.email || '').toLowerCase().trim(),
-            userId: String(data.userId || ''),
+            outcome: 'consumed' as const,
+            user: {
+                ...removeDangerousKeys(dbUser),
+                id: tokenUserId,
+            },
+            userId: tokenUserId,
         };
     });
 
-    const dbUser = await getAuthUserByEmail(tokenData.email);
-    const tokenUserId = normalizePhoneOtpUserDocumentId(tokenData.userId);
-    const dbUserId = normalizePhoneOtpUserDocumentId(dbUser?.id);
-    if (!dbUser || !tokenUserId || !dbUserId || dbUserId !== tokenUserId) {
+    if (tokenDecision.outcome === 'expired') {
+        throw new PhoneOtpError('expired', 'Phone login token expired.');
+    }
+    if (tokenDecision.outcome === 'user_not_found') {
         logAuthFailure(
             'phone_otp_user_not_found',
             new Error('phone_otp_user_not_found'),
-            getBoundedAuthStringContext('userId', tokenData.userId),
+            getBoundedAuthStringContext('userId', tokenDecision.userId),
         );
         throw new PhoneOtpError('user_not_found', 'User not found.');
     }
+    if (tokenDecision.outcome !== 'consumed') {
+        throw new PhoneOtpError('invalid_token', 'Invalid phone login token.');
+    }
 
-    return {
-        ...dbUser,
-        id: dbUserId,
-    };
+    return tokenDecision.user;
 }
 
 export const hashRequestValueForPhoneOtp = (value: string) => (

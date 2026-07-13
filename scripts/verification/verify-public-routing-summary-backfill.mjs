@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 /**
- * Read-only verifier for public routing summary readiness.
+ * Read-only verifier for internal store-summary parity and public project-summary readiness.
  *
  * Purpose:
- *   Prove whether legacy OBP/sitemap collection fallbacks can be removed
- *   safely. This script does not write to Firestore.
+ *   Compare the internal storesSummary read model with canonical stores and
+ *   verify public project summaries. Public store identity/routing remains
+ *   canonical-store-owned. This script does not write to Firestore.
  *
  * Usage:
  *   FIREBASE_PROJECT_ID=menulist-qa node scripts/verification/verify-public-routing-summary-backfill.mjs
@@ -25,6 +26,9 @@ import { getApps, initializeApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 
 const args = process.argv.slice(2);
+const DEFAULT_STORE_READ_LIMIT = 1_500;
+const MAX_PROJECTS_PER_STORE = 500;
+const UNSAFE_SUMMARY_PATH_SEGMENTS = new Set(['__proto__', 'constructor', 'prototype']);
 
 function hasFlag(name) {
   return args.includes(name);
@@ -40,12 +44,12 @@ function printHelp() {
   console.log(`
 verify-public-routing-summary-backfill
 
-Read-only readiness check for removing public routing collection fallbacks.
+Read-only parity check for internal store summaries and public project summaries.
 
 Options:
   --tenant-id <id>   Limit the check to one tenant.
   --store-id <id>    Limit the check to one store.
-  --limit <n>        Limit live store docs read from the stores query.
+  --limit <n>        Limit live store docs read from the stores query (default 1500).
   --skip-projects   Skip projects_{storeId} summary checks.
   --json            Print machine-readable JSON.
   --help            Show this help.
@@ -66,15 +70,30 @@ const limitArg = getArg('--limit');
 const skipProjects = hasFlag('--skip-projects');
 const jsonOutput = hasFlag('--json');
 
-const tenantId = tenantIdArg == null ? null : Number(tenantIdArg);
-if (tenantIdArg != null && !Number.isFinite(tenantId)) {
-  console.error('--tenant-id must be a number');
+function normalizePositiveNumericDocumentId(value) {
+  const documentId = typeof value === 'number' ? String(value) : value;
+  if (typeof documentId !== 'string' || !/^[1-9]\d*$/.test(documentId)) return null;
+  const numericId = Number(documentId);
+  return Number.isSafeInteger(numericId) && numericId > 0 && String(numericId) === documentId
+    ? { documentId, numericId }
+    : null;
+}
+
+const tenantScope = tenantIdArg == null ? null : normalizePositiveNumericDocumentId(tenantIdArg);
+if (tenantIdArg != null && !tenantScope) {
+  console.error('--tenant-id must be an exact positive numeric document ID');
   process.exit(1);
 }
 
-const queryLimit = limitArg == null ? null : Number(limitArg);
-if (limitArg != null && (!Number.isInteger(queryLimit) || queryLimit <= 0)) {
-  console.error('--limit must be a positive integer');
+const storeScope = storeIdArg == null ? null : normalizePositiveNumericDocumentId(storeIdArg);
+if (storeIdArg != null && !storeScope) {
+  console.error('--store-id must be an exact positive numeric document ID');
+  process.exit(1);
+}
+
+const queryLimit = limitArg == null ? DEFAULT_STORE_READ_LIMIT : Number(limitArg);
+if (!Number.isInteger(queryLimit) || queryLimit <= 0 || queryLimit > DEFAULT_STORE_READ_LIMIT) {
+  console.error(`--limit must be a positive integer no greater than ${DEFAULT_STORE_READ_LIMIT}`);
   process.exit(1);
 }
 
@@ -90,96 +109,98 @@ if (!getApps().length) {
 
 const db = getFirestore();
 
-function parseSummaryStores(data) {
-  if (!data || typeof data !== 'object') return {};
-  const result = {};
+function isRecord(value) {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
 
-  if (data.stores && typeof data.stores === 'object' && !Array.isArray(data.stores)) {
-    for (const [storeId, storeData] of Object.entries(data.stores)) {
-      if (storeData && typeof storeData === 'object') {
-        result[storeId] = { ...storeData };
+function isSafeSummarySegment(value) {
+  return value.length > 0 && !UNSAFE_SUMMARY_PATH_SEGMENTS.has(value);
+}
+
+function createSafeRecord(source) {
+  const result = Object.create(null);
+  if (!isRecord(source)) return result;
+  for (const [key, value] of Object.entries(source)) {
+    if (isSafeSummarySegment(key)) result[key] = value;
+  }
+  return result;
+}
+
+function parseSummaryMap(data, namespace) {
+  const result = Object.create(null);
+  if (!isRecord(data) || !isSafeSummarySegment(namespace) || namespace.includes('.')) return result;
+
+  if (isRecord(data[namespace])) {
+    for (const [entityId, entityData] of Object.entries(data[namespace])) {
+      if (isSafeSummarySegment(entityId) && isRecord(entityData)) {
+        result[entityId] = createSafeRecord(entityData);
       }
     }
   }
 
+  const prefix = `${namespace}.`;
   for (const [key, value] of Object.entries(data)) {
-    if (!key.startsWith('stores.')) continue;
-    const rest = key.slice('stores.'.length);
-    if (!rest) continue;
-    const [storeId, ...fieldPath] = rest.split('.');
-    if (!storeId) continue;
-    if (!result[storeId]) result[storeId] = {};
+    if (!key.startsWith(prefix)) continue;
+    const segments = key.slice(prefix.length).split('.');
+    if (segments.length === 0 || !segments.every(isSafeSummarySegment)) continue;
+    const [entityId, ...fieldPath] = segments;
+    if (!result[entityId]) result[entityId] = createSafeRecord();
 
     if (fieldPath.length === 0) {
-      if (value && typeof value === 'object') {
-        result[storeId] = { ...result[storeId], ...value };
+      if (isRecord(value)) {
+        result[entityId] = Object.assign(createSafeRecord(), result[entityId], createSafeRecord(value));
       }
       continue;
     }
 
-    let target = result[storeId];
-    for (let i = 0; i < fieldPath.length - 1; i += 1) {
-      const segment = fieldPath[i];
-      if (!target[segment] || typeof target[segment] !== 'object') {
-        target[segment] = {};
-      }
-      target = target[segment];
+    let target = result[entityId];
+    for (let index = 0; index < fieldPath.length - 1; index += 1) {
+      const segment = fieldPath[index];
+      const next = isRecord(target[segment]) ? createSafeRecord(target[segment]) : createSafeRecord();
+      target[segment] = next;
+      target = next;
     }
     target[fieldPath[fieldPath.length - 1]] = value;
   }
 
+  return result;
+}
+
+function parseSummaryStores(data) {
+  const result = Object.create(null);
+  for (const [rawStoreId, rawEntry] of Object.entries(parseSummaryMap(data, 'stores'))) {
+    const normalizedStore = normalizePositiveNumericDocumentId(rawStoreId);
+    const normalizedTenant = normalizePositiveNumericDocumentId(rawEntry.tId ?? rawEntry.tenantId);
+    const embeddedStore = rawEntry.storeId === undefined
+      ? normalizedStore
+      : normalizePositiveNumericDocumentId(rawEntry.storeId);
+    if (!normalizedStore || !normalizedTenant || embeddedStore?.documentId !== normalizedStore.documentId) continue;
+    result[normalizedStore.documentId] = Object.assign(createSafeRecord(rawEntry), {
+      storeId: normalizedStore.documentId,
+      tId: normalizedTenant.documentId,
+    });
+  }
   return result;
 }
 
 function parseSummaryProjects(data) {
-  if (!data || typeof data !== 'object') return {};
-  const result = {};
-
-  if (data.projects && typeof data.projects === 'object' && !Array.isArray(data.projects)) {
-    for (const [projectId, projectData] of Object.entries(data.projects)) {
-      if (projectData && typeof projectData === 'object') {
-        result[projectId] = { ...projectData };
-      }
-    }
-  }
-
-  for (const [key, value] of Object.entries(data)) {
-    if (!key.startsWith('projects.')) continue;
-    const rest = key.slice('projects.'.length);
-    if (!rest) continue;
-
-    const [projectId, ...fieldPath] = rest.split('.');
-    if (!projectId) continue;
-    if (!result[projectId]) result[projectId] = {};
-
-    if (fieldPath.length === 0) {
-      if (value && typeof value === 'object') {
-        result[projectId] = { ...result[projectId], ...value };
-      }
-      continue;
-    }
-
-    let target = result[projectId];
-    for (let i = 0; i < fieldPath.length - 1; i += 1) {
-      const segment = fieldPath[i];
-      if (!target[segment] || typeof target[segment] !== 'object') {
-        target[segment] = {};
-      }
-      target = target[segment];
-    }
-    target[fieldPath[fieldPath.length - 1]] = value;
-  }
-
-  return result;
+  return parseSummaryMap(data, 'projects');
 }
 
 function normalizeStore(doc) {
   const data = doc.data() || {};
-  const storeId = String(data.storeId ?? doc.id);
+  const storeScope = normalizePositiveNumericDocumentId(doc.id);
+  const tenantScope = normalizePositiveNumericDocumentId(data.tenantId ?? data.tId);
+  const embeddedStoreScope = data.storeId === undefined
+    ? storeScope
+    : normalizePositiveNumericDocumentId(data.storeId);
+  if (!storeScope || !tenantScope || embeddedStoreScope?.documentId !== storeScope.documentId) {
+    throw new Error('canonical_store_identity_invalid');
+  }
   return {
     docId: doc.id,
-    storeId,
-    tenantId: data.tenantId,
+    storeId: storeScope.documentId,
+    tenantId: tenantScope.documentId,
     name: data.name || '',
     active: data.active,
     blocked: data.blocked,
@@ -193,9 +214,13 @@ async function loadCanonicalProjectEntries(store) {
   if (store.tenantId == null || store.storeId == null) return [];
   const snapshot = await db
     .collection('projects')
-    .doc(String(store.tenantId))
-    .collection(String(store.storeId))
+    .doc(store.tenantId)
+    .collection(store.storeId)
+    .limit(MAX_PROJECTS_PER_STORE + 1)
     .get();
+  if (snapshot.size > MAX_PROJECTS_PER_STORE) {
+    throw new Error('canonical_project_inventory_exceeds_verifier_limit');
+  }
   return snapshot.docs.map((doc) => ({
     projectId: doc.id,
     ...(doc.data() || {}),
@@ -215,19 +240,20 @@ function issue(severity, code, message, context = {}) {
 }
 
 async function loadLiveStores() {
-  if (storeIdArg) {
-    const doc = await db.collection('stores').doc(String(storeIdArg)).get();
+  if (storeScope) {
+    const doc = await db.collection('stores').doc(storeScope.documentId).get();
     return doc.exists ? [normalizeStore(doc)] : [];
   }
 
   let query = db.collection('stores');
-  if (tenantId != null) {
-    query = query.where('tenantId', '==', tenantId);
+  if (tenantScope) {
+    query = query.where('tenantId', '==', tenantScope.numericId);
   }
-  if (queryLimit != null) {
-    query = query.limit(queryLimit);
-  }
+  query = query.limit(limitArg == null ? queryLimit + 1 : queryLimit);
   const snapshot = await query.get();
+  if (limitArg == null && snapshot.size > queryLimit) {
+    throw new Error('canonical_store_inventory_exceeds_verifier_limit');
+  }
   return snapshot.docs.map(normalizeStore);
 }
 
@@ -316,7 +342,7 @@ async function main() {
     findings.push(issue(
       'error',
       'stores-summary-missing',
-      'Missing platformSummary/storesSummary; OBP and sitemap outlet fallbacks cannot be removed.',
+      'Missing platformSummary/storesSummary; internal scheduler and operational read-model parity is unavailable.',
     ));
   }
 
@@ -494,8 +520,8 @@ async function main() {
     }
 
     console.log(errors.length === 0
-      ? '\nResult: summary-backed routing is ready for the checked scope.'
-      : '\nResult: keep legacy public routing fallbacks for the checked scope.');
+      ? '\nResult: internal store-summary parity and public project-summary readiness pass for the checked scope.'
+      : '\nResult: repair the reported internal summary or public project-summary gaps before relying on the affected read model.');
   }
 
   process.exitCode = errors.length === 0 ? 0 : 2;

@@ -95,7 +95,8 @@ Stored in `kb_articles` collection (separate from categories):
 | id              | string           | Firestore auto-ID                            |
 | title           | string           | Article title                                |
 | content         | any (JSON)       | TipTap editor content                        |
-| embedding       | Vector (768-dim) | Semantic search vector                       |
+| embedding       | Vector (768-dim) | Legacy `gemini-embedding-001` rollback vector |
+| embeddingV2     | Vector (768-dim) | Active `gemini-embedding-2` search vector    |
 | categoryId      | string           | Parent category                              |
 | sectionId       | string           | Parent section (optional)                    |
 | categoryTitle   | string           | Denormalized for search context              |
@@ -232,9 +233,9 @@ All deletes wrapped in `Modal.confirm` for safety.
 
 ## 9. Embedding Integration
 
-Each article has an `embedding` field (768-dimension vector from `text-embedding-004`).
+Each searchable article has an active `embeddingV2` field: a 768-dimension vector from `gemini-embedding-2`. The legacy `embedding` field is a separate `gemini-embedding-001` vector space retained only for migration rollback. Query vectors and document vectors must always use the same registry version and field.
 
-**Embedding input format:**
+**Canonical source input:**
 
 ```
 Category: {categoryTitle}
@@ -243,12 +244,16 @@ Title: {articleTitle}
 Content: {plainTextFromTipTapJSON}
 ```
 
+The normalized source is hashed for reuse. The v2 provider request then uses Google's Embedding 2 retrieval format: documents are sent as `title: {title} | text: {canonicalSource}` and queries as `task: question answering | query: {query}`. Embedding 2 requests do not send the legacy `taskType` option.
+
 **When embeddings are generated:**
 
 1. On article creation/publish via KB Generation Pipeline
 2. On manual trigger via `/api/helpCenter/article-embedding` route
 3. On category/section title change via Cloud Function `embedArticleWorker`
 4. On manual re-embed via Cloud Function `regenerateEmbedding`
+
+During the v2 migration, article create/update paths require the v2 write and preserve or best-effort dual-write the legacy v1 vector for rollback. The bounded `embedding_v2_migration` task in the existing Answerlattice master scheduler re-embeds published active articles in batches and stores cursor/count/status state in `platformSummary/answerlatticeEmbeddingV2Migration`.
 
 ---
 

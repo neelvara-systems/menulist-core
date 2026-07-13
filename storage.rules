@@ -51,7 +51,22 @@ service firebase.storage {
 
     function isPlatformAdmin() {
       return isAuthenticated()
-             && request.auth.token.platformRole == 'PLATFORM';
+             && request.auth.token.get('platformRole', null) == 'PLATFORM';
+    }
+
+    function hasAnswerlatticeKnowledgeManagementPermission() {
+      return isPlatformAdmin()
+             || request.auth.token.get('canManageKnowledge', false) == true
+             || request.auth.token.get('role', null) == 'OWNER'
+             || request.auth.token.get('role', null) == 'owner'
+             || request.auth.token.get('role', null) == 'MANAGER'
+             || request.auth.token.get('role', null) == 'manager';
+    }
+
+    function hasValidAnswerlatticeKnowledgeSourceMetadata() {
+      return request.resource.metadata.get('retentionPolicy', null) == 'delete_on_job_delete'
+             && request.resource.metadata.get('sourceUse', null) == 'knowledge_generation_only'
+             && request.resource.metadata.get('uploadedVia', null) == 'answerlattice_kb_generation';
     }
     
     /**
@@ -67,7 +82,8 @@ service firebase.storage {
 
     function isValidDocumentType() {
       return request.resource.contentType.matches('application/(pdf|msword|vnd.openxmlformats-officedocument.wordprocessingml.document)')
-             || request.resource.contentType == 'text/plain';
+             || request.resource.contentType.matches('application/(json|xml)')
+             || request.resource.contentType.matches('text/(plain|markdown|csv|html|xml)');
     }
 
     function isValidKnowledgeSourceType() {
@@ -132,7 +148,9 @@ service firebase.storage {
      */
     match /chatSessions/chatimages/{tId}/{sId}/{imageId} {
       allow read: if belongsToStore(tId, sId);
-      allow write: if belongsToStore(tId, sId) && isValidImageUpload();
+      allow write: if belongsToStore(tId, sId)
+                   && isValidImageType()
+                   && request.resource.size <= 5 * 1024 * 1024;
       allow delete: if belongsToStore(tId, sId);
     }
     
@@ -162,8 +180,10 @@ service firebase.storage {
      */
     match /changelog/files/{tId}/{sId}/{fileId} {
       allow read: if belongsToStore(tId, sId);
-      allow write: if belongsToStore(tId, sId) && isValidImageOrDocumentUpload();
-      allow delete: if belongsToStore(tId, sId);
+      allow write: if belongsToStore(tId, sId)
+                   && hasAnswerlatticeKnowledgeManagementPermission()
+                   && isValidImageOrDocumentUpload();
+      allow delete: if belongsToStore(tId, sId) && hasAnswerlatticeKnowledgeManagementPermission();
     }
 
     /**
@@ -216,10 +236,11 @@ service firebase.storage {
      */
     match /ingestion_source_files/{tId}/{sId}/{fileId} {
       allow read: if isPlatformAdmin() || belongsToStore(tId, sId);
-      allow write: if (isPlatformAdmin() || belongsToStore(tId, sId))
+      allow write: if (isPlatformAdmin() || (belongsToStore(tId, sId) && hasAnswerlatticeKnowledgeManagementPermission()))
                    && isValidKnowledgeSourceType()
-                   && request.resource.size <= 50 * 1024 * 1024;
-      allow delete: if isPlatformAdmin() || belongsToStore(tId, sId);
+                   && request.resource.size <= 10 * 1024 * 1024
+                   && hasValidAnswerlatticeKnowledgeSourceMetadata();
+      allow delete: if isPlatformAdmin() || (belongsToStore(tId, sId) && hasAnswerlatticeKnowledgeManagementPermission());
     }
 
     /**

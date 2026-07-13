@@ -1,6 +1,11 @@
 import { DB_COLLECTIONS } from '@constant/database';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
+import { normalizeAnswerlatticeScopeDocumentId } from '@lib/answerlattice/sessionScope';
 import { normalizeAnswerlatticeResolvedEntityId } from './governanceIdBoundary';
+import {
+    parseAnswerlatticeRetrievalEntity,
+    parseAnswerlatticeRetrievalSearchIndex,
+} from './retrievalContracts';
 import { answerlatticeTokenize } from './tokenizer';
 import type { AnswerlatticeEntity, AnswerlatticeEntitySearchIndex } from '@type/answerlattice';
 
@@ -71,6 +76,7 @@ const scoreIndexEntry = (
 
 const getEntityDocsById = async (
     entityIds: string[],
+    scope: { tId: number; sId: number },
 ): Promise<Map<string, AnswerlatticeEntity>> => {
     const db = getAnswerlatticeAdminDb();
     const normalizedEntityIds = Array.from(new Set(
@@ -87,7 +93,12 @@ const getEntityDocsById = async (
 
     docs.forEach((doc: any) => {
         if (!doc.exists) return;
-        entities.set(doc.id, { ...(doc.data() || {}), id: doc.id } as AnswerlatticeEntity);
+        try {
+            const entity = parseAnswerlatticeRetrievalEntity({ ...(doc.data() || {}), id: doc.id }, scope);
+            entities.set(entity.id, entity);
+        } catch {
+            // Malformed or cross-scope persisted rows are omitted from lookup.
+        }
     });
 
     return entities;
@@ -102,6 +113,10 @@ export async function searchAnswerlatticeEntityLookupOptions(
     scope: { tId: number; sId: number },
     queryText: string,
 ): Promise<AnswerlatticeEntityLookupOption[]> {
+    const tId = typeof scope.tId === 'number' ? normalizeAnswerlatticeScopeDocumentId(scope.tId) : null;
+    const sId = typeof scope.sId === 'number' ? normalizeAnswerlatticeScopeDocumentId(scope.sId) : null;
+    if (!tId || !sId) return [];
+    const exactScope = { tId, sId };
     const normalizedQuery = normalizeAnswerlatticeEntityLookupQuery(queryText);
     const queryTokens = getAnswerlatticeEntityLookupTokens(normalizedQuery);
     if (queryTokens.length === 0) return [];
@@ -109,22 +124,29 @@ export async function searchAnswerlatticeEntityLookupOptions(
     const db = getAnswerlatticeAdminDb();
     const indexRef = db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITY_SEARCH_INDEX);
     const prefixSnapshot = await indexRef
-        .where('tId', '==', Number(scope.tId))
-        .where('sId', '==', Number(scope.sId))
+        .where('tId', '==', tId)
+        .where('sId', '==', sId)
         .where('prefixTokens', 'array-contains-any', queryTokens)
         .limit(MAX_INDEX_MATCHES)
         .get();
 
     const snapshot = prefixSnapshot.empty
         ? await indexRef
-            .where('tId', '==', Number(scope.tId))
-            .where('sId', '==', Number(scope.sId))
+            .where('tId', '==', tId)
+            .where('sId', '==', sId)
             .limit(MAX_LEGACY_INDEX_READS)
             .get()
         : prefixSnapshot;
 
     const ranked = snapshot.docs
-        .map((doc: any) => ({ ...(doc.data() || {}), id: doc.id } as AnswerlatticeEntitySearchIndex))
+        .map((doc: any) => {
+            try {
+                return parseAnswerlatticeRetrievalSearchIndex({ ...(doc.data() || {}), id: doc.id }, exactScope);
+            } catch {
+                return null;
+            }
+        })
+        .filter((entry): entry is AnswerlatticeEntitySearchIndex => entry !== null)
         .map((entry) => {
             const scored = scoreIndexEntry(entry, queryTokens);
             return { entry, ...scored };
@@ -135,14 +157,13 @@ export async function searchAnswerlatticeEntityLookupOptions(
 
     if (!ranked.length) return [];
 
-    const entitiesById = await getEntityDocsById(ranked.map(item => item.entry.entityId));
+    const entitiesById = await getEntityDocsById(ranked.map(item => item.entry.entityId), exactScope);
 
     return ranked
         .map((item): AnswerlatticeEntityLookupOption | null => {
             const entityId = normalizeAnswerlatticeResolvedEntityId(item.entry.entityId);
             const entity = entityId ? entitiesById.get(entityId) : null;
             if (!entity) return null;
-            if (Number(entity.tId) !== Number(scope.tId) || Number(entity.sId) !== Number(scope.sId)) return null;
             if (!isReturnableEntityStatus(entity.status)) return null;
 
             return {

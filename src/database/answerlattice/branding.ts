@@ -57,7 +57,7 @@ export const saveBrandingConfig = async (
                 tId,
                 sId,
                 branding: config,
-            });
+            }, { isNew: false });
             await setDoc(getBrandingDocRef(tId, sId), composedData, { merge: true });
             return config;
         },

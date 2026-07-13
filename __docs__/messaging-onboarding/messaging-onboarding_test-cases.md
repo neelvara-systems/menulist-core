@@ -1,9 +1,11 @@
 # Messaging Onboarding — Test Cases & Use Cases
 
 **Feature:** Messaging Onboarding — Zero-Friction SMB Acquisition Engine
-**Status:** Implementation-Complete Test Matrix
-**Last Updated:** May 17, 2026
+**Status:** Source-backed test matrix — not current target or provider certification
+**Last Updated:** July 13, 2026
 **Sources:** ChatGPT conversation (Feb 16, 2026), Cascade architecture review, codebase cross-check, multi-provider architecture design, May 17 runtime audit
+
+> **Launch boundary:** Not current launch certification or deploy approval. Current source registers WhatsApp only, while checked-in Functions environments keep provider processing disabled. Test-case definitions and historical results do not replace current target enablement/deploy evidence, real-provider smoke, browser/device QA, production-host smoke, or External Certification Runbook evidence.
 
 ---
 
@@ -31,7 +33,8 @@
 | R. WhatsApp Delivery Reality       | 3       | P0       |
 | S. Extreme Abuse & Cost Attacks    | 2       | P0       |
 | T. Session Edge Corruption         | 5       | P0       |
-| **Total**                          | **159** |          |
+| U. Production Hardening            | 21      | P0       |
+| **Total**                          | **175** |          |
 
 ---
 
@@ -255,6 +258,9 @@
 | M-11 | **Intake processor concurrent run safety**       | Intake processor takes 3 min (slow). Next scheduled run starts at 2 min.               | Session state checked atomically via Firestore transaction before processing. If already VALIDATING_ASSETS, skip. No double-processing.                                                                      | P1       |
 | M-12 | **Quality score below threshold**                | Extraction completes with quality score 15/100 (2 items, very partial)                 | Blank prevention gate checks items > 0. With 2 items: PASSES gate (not blank). Preview generated with warning note: "This menu looks incomplete." Quality score stored for analytics.                        | P1       |
 | M-13 | **Preview token only generated at preview time** | Session in COLLECTING_INPUT state                                                      | `previewToken` is null. `previewUrl` is null. Token only generated when state transitions to PREVIEW_READY via extraction watcher.                                                                           | P0       |
+| M-14 | **Concurrent existing-owner claim**             | Two publish transactions target the same phone-matched, unscoped legacy user           | Exactly one transaction assigns tenant/store and commits its tenant. The other re-reads assigned scope, returns owner-claim conflict, and leaves no tenant/store/project.                                      | P0       |
+| M-15 | **Concurrent new phone identity claim**         | Two publish transactions target one phone with no existing user                        | Both derive the same canonical `phone_{digest}` user ID. Exactly one creates the user and tenant; the other rolls back without a second business.                                                             | P0       |
+| M-16 | **Phone owner already scoped or mismatched**    | Publish finds a user whose phone differs or whose tenant/store/store mapping is present | Owner claim fails before tenant/store creation. Approve recovers the session to `AWAITING_APPROVAL` and returns 409 without retrying the non-retryable identity conflict.                                      | P0       |
 
 ---
 
@@ -517,6 +523,25 @@ RESULT: ✅ No lost uploads. No partial menu. Clean restart.
 | U-05 | **Oversized file size precheck**              | Send media metadata with `fileSize > MAX_FILE_SIZE_BYTES`                              | File is rejected before provider media download. `UPLOAD_REJECTED` is logged with precheck metadata.                                                       | P0       |
 | U-06 | **Hourly health/cost snapshot**               | Run intake processor after health interval                                             | `systemHealth/messaging_onboarding_{hour}` contains publish-rate, failure, cost, and source-retention metrics; alerts are created only when thresholds hit. | P0       |
 | U-07 | **Published source retention visibility**     | Publish sessions with retained source uploads, then run health monitor                 | LIVE-session media remains available for project source preview; health snapshot reports sampled retained bytes and warns before deletion is considered.     | P1       |
+| U-08 | **Batched provider webhook** | One signed webhook contains multiple entries, changes, and messages | Every valid message is normalized in source order and bulk-created before ACK. Partial persistence returns 500; retry creates only missing rows. | P0 |
+| U-09 | **Reply delivery fails after state mutation** | Session handling succeeds, but the provider send fails | Queue checkpoints the fixed reply before delivery. Retry sends that reply without rerunning the session mutation. | P0 |
+| U-10 | **Upload arrives during asset validation** | Media is appended while the model evaluates the prior upload set | Stale validation is discarded. Session atomically returns to `AWAITING_MORE_UPLOADS` with the current upload set. | P0 |
+| U-11 | **Concurrent first uploads** | Multiple first media messages race for one provider user | Exactly one active session wins. Session creation, rate counters, and `activeSessionId` commit together. | P0 |
+| U-12 | **Concurrent upload cap** | Multiple appends race near 15 files | Transactional append stores at most 15 distinct uploads; duplicate/rejected Storage files are cleaned. | P0 |
+| U-13 | **Stored upload integrity before model use** | Persist a wrong bucket/path, MIME extension, byte length, signature, or SHA-256 and run Asset Intelligence | Record or bytes are rejected before Gemini. The server reads only the exact Admin Storage path and does not fetch the persisted public URL. | P0 |
+| U-14 | **Gemini inline request ceiling** | Validate files whose base64-expanded request estimate exceeds 18 MiB | Files use bounded Gemini Files API uploads instead of an oversized inline request. Known provider files and local temp files are cleaned on success and partial failure. | P0 |
+| U-15 | **Re-upload after failed extraction** | Leave a `FAILED` session with a bound failed job, then upload a valid replacement | Append, stale extraction/preview reset, job unbinding, timer reset, and `FAILED` → `COLLECTING_INPUT` commit atomically. A crash cannot leave an appended file in `FAILED`. | P0 |
+| U-16 | **Invalid upload abuse in every active media state** | Send invalid bytes in collecting, processing, and post-preview states; reach the third rejection | Every rejection increments the same transactional counter. The third rejection atomically writes session `COOLDOWN` plus the per-user 24-hour cooldown and later messages cannot bypass it through the active session. | P0 |
+| U-17 | **Full resend isolates the replacement cycle** | Start from a preview with old uploads, append three replacement uploads, and trigger restart | The session retains only the three post-preview uploads, clears stale extraction and outbound-delivery state, and does not send the old menu through the next validation/extraction cycle. | P0 |
+| U-18 | **Crash after handler mutation but before queue checkpoint** | Persist the initial-session or invalid-upload mutation, leave the inbound row without `handlerCompletedAt`, then replay it | The deterministic original reply is checkpointed and sent; the session/upload/invalid-attempt mutation is not repeated. | P0 |
+| U-19 | **Poison, expired, and stale outbound delivery claims** | Exhaust five claims, claim an expired preview/fix row, and attempt completion with an older lease token | Poison/expired rows are discarded and stop matching the pending query; a stale token cannot clear a newer claim; the next healthy pending row remains reachable. | P0 |
+| U-20 | **Hard expiry races active runtime work** | Let a non-terminal session cross `expiresAt` immediately before active lookup, upload/rejection commit, intake claim, validation commit/enqueue, or extraction finalization | The authoritative transaction records `EXPIRED` (and `FAILED` first for interrupted validation/processing), clears pending delivery/job state, and prevents another upload, model/job run, preview, or provider recovery message before the daily cleanup sweep. | P0 |
+| U-21 | **Full resend from a 15-source preview and old-preview publish cleanup** | Start with 15 authoritative source files, stage three replacements, then separately publish an old preview with two staged replacements | All three replacement files remain admissible and become the only next extraction input. Publishing retains only authoritative project sources, moves staged paths to the durable cleanup queue, deletes them idempotently, and clears the queue without deleting authoritative files. | P0 |
+| U-22 | **Malformed upload-cleanup row cannot poison the retry batch** | Persist a cleanup selector with a cross-session or otherwise invalid raw Storage path, then run the cleanup worker | The worker deletes no unvalidated path, retains the raw pointer for investigation or later safe recovery, transactionally clears only the retry selector, and leaves later valid rows reachable by the bounded daily query. | P0 |
+| U-23 | **Cleanup completion infrastructure fails after core mutation commit** | Commit full resend/publish/fix cleanup pointers, then fail the cleanup completion transaction | The cleanup worker returns a retryable failure without escaping into the already-committed owner flow; pointers and selector remain durable for the scheduler. | P0 |
+| U-24 | **Concurrent orphan cleanup accounting** | Let two cleanup workers read and delete the same two queued paths before either completion transaction commits | Both workers converge on an empty queue, while the aggregate drained count records each removed queue pointer exactly once. | P0 |
+| U-25 | **Terminal cooldown retention cleanup** | Leave a valid `COOLDOWN` session beyond the 48-hour cleanup safety threshold | The scheduler deletes its validated session-owned uploads and session document without reopening or transitioning the terminal cooldown state. | P0 |
+| U-26 | **Invalid terminal row cannot recycle through retention cleanup** | Leave an expired terminal document with a forged embedded session ID beyond the retention threshold | The scheduler never follows its unvalidated Storage or target identifiers, precondition-deletes only the queried document, emits a bounded orphan warning, and leaves the other session untouched. | P0 |
 
 ---
 
@@ -544,8 +569,8 @@ RESULT: ✅ No lost uploads. No partial menu. Clean restart.
 | R. WhatsApp Delivery Reality       | 3        | 0        | 0        | 3       |
 | S. Extreme Abuse & Cost Attacks    | 2        | 0        | 0        | 2       |
 | T. Session Edge Corruption         | 4        | 1        | 0        | 5       |
-| U. Production Hardening            | 6        | 1        | 0        | 7       |
-| **Total**                          | **122**  | **34**   | **10**   | **166** |
+| U. Production Hardening            | 25       | 1        | 0        | 26      |
+| **Total**                          | **141**  | **34**   | **10**   | **185** |
 
 ---
 
@@ -574,10 +599,10 @@ Before any real users touch this system:
 - [ ] R-01 through R-03: WhatsApp delivery reality
 - [ ] S-01, S-02: Extreme abuse & cost attacks
 - [ ] T-01 through T-03, T-05: Session edge corruption & recovery
-- [ ] U-01 through U-06: Production hardening queue/idempotency/feature-flag/cost guardrails
+- [ ] U-01 through U-06 and U-08 through U-26: Production hardening, queue, concurrency, delivery leases, replacement staging/cleanup convergence, terminal cooldown retention and poison-row retirement, hard-expiry enforcement, snapshot, model-input, storage-integrity, state-recovery, and cost guardrails
 
-**Total P0 tests: 122. ALL must pass before controlled testing.**
+**Total P0 tests: 141. ALL must pass before controlled testing.**
 
 ---
 
-_Document Status: Implementation-Complete (v4.1 — 166 total test cases (122 P0). Added May 17, 2026 production hardening cases for durable inbound queue, idempotent already-live publish retry, runtime feature flags, pre-download rejection, hourly health/cost snapshots, and source retention visibility.)_
+_Document Status: Implementation-Complete (v4.9 — 185 total test cases (141 P0). July 13 hardening adds bounded replacement staging/cleanup with poison/failure/concurrency convergence, cooldown retention and safe invalid-terminal retirement, deterministic pre-checkpoint replay replies, bounded outbound delivery leases, producer invalidation, and transactional 24-hour hard-expiry regressions.)_

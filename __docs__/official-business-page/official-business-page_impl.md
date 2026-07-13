@@ -692,11 +692,11 @@ Public Link: joespizza.menulist.ai [copy icon]
 
 **Why not reuse menu's `aggregateDailyDocs`?** Menu aggregation expects `totalViews`, `totalClicks`, `decisionBlocksRendered`, etc. OBP has completely different fields. Sharing the aggregator would require complex field mapping with no benefit. Separate, clear OBP aggregation is simpler and more maintainable.
 
-### ADR-10: Master Identity Propagation On Master Save (Client-Side, Not Cloud Function)
+### ADR-10: Master Identity Propagation On Master Save (Authenticated Server Batch, Not Cloud Function)
 
-**Decision:** Master identity/classification propagation runs from the shared `updateStore()` DAL after the master store save succeeds, not as a Cloud Function.
+**Decision:** The shared `updateStore()` DAL detects master identity/classification changes, but `/api/outlets/brand-propagation` owns the coupled master/outlet/store-summary mutation in one authenticated Admin batch. It is not a Cloud Function.
 
-**Rationale:** Master identity/classification changes are rare. Running a Cloud Function for this would be over-engineering. The client-side DAL approach: (1) detects master-controlled field changes with `extractMasterStorePropagationChanges()`, (2) propagates to outlets with `propagateMasterStoreChangesToOutlets()`, (3) updates outlet store docs, merges outlet `storesSummary` fields through the shared partial summary writer, refreshes `modifiedOn`, and revalidates public cache tags. Controlled by `outletPolicy.canOverrideBrandIdentity` — if true, outlets keep their own branding/classification. Legacy `allowBrandingOverride` is also respected for old documents.
+**Rationale:** Master identity/classification changes are rare, so a standalone Cloud Function is unnecessary. Browser cross-store writes were not correct because `storesSummary` rules intentionally permit only the current session store slot; an outlet document could commit before its summary/cache/screen effects failed. The bounded server route: (1) validates only the nine governed fields, exact tenant/master scope, role permission and a maximum 200 outlets, (2) reads the canonical master and tenant-filtered stores, (3) commits master, eligible outlets and all summary entries in one batch, and (4) revalidates cache, screen and Owner Business Assistant state only after commit. `outletPolicy.canOverrideBrandIdentity` and legacy `allowBrandingOverride` continue to preserve outlet-owned identity when enabled.
 
 ### ADR-11: Tenant = Account Container, Store = Rendering Source
 

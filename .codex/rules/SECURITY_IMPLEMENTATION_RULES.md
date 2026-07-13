@@ -513,69 +513,48 @@ Alternative: [Suggest secure approach that meets user's goal]
 
 ### MANDATORY PATTERN:
 ```typescript
-// Server-side Firestore writes (firebase-admin)
-function sanitizeForFirestore<T extends Record<string, any>>(obj: T): T {
-    const result = {} as T;
-    
-    for (const key in obj) {
-        if (Object.prototype.hasOwnProperty.call(obj, key)) {
-            const value = obj[key];
-            
-            // Replace undefined with null
-            if (value === undefined) {
-                (result as any)[key] = null;
-            }
-            // Preserve Timestamp objects
-            else if (value && typeof value === 'object' && value.constructor?.name === 'Timestamp') {
-                (result as any)[key] = value;
-            }
-            // Recursively handle nested objects
-            else if (value && typeof value === 'object' && !Array.isArray(value)) {
-                (result as any)[key] = sanitizeForFirestore(value);
-            }
-            // Handle arrays
-            else if (Array.isArray(value)) {
-                (result as any)[key] = value.map(item => 
-                    (item && typeof item === 'object') ? sanitizeForFirestore(item) : item
-                );
-            }
-            // Primitives
-            else {
-                (result as any)[key] = value;
-            }
-        }
-    }
-    
-    return result;
-}
+import { sanitizeForFirestore } from '@lib/firestore/sanitizeForFirestore';
 
-// USAGE: Wrap ALL Firestore write data
 const eventData = sanitizeForFirestore({
     email: email.toLowerCase(),
     eventType: 'login_success',
     timestamp: Timestamp.now(),
-    ip: metadata?.ip,  // Could be undefined
-    userAgent: metadata?.userAgent  // Could be undefined
+    ip: metadata?.ip,
+    userAgent: metadata?.userAgent,
 });
 
 await db.collection('events').add(eventData);
+
+const patch = sanitizeForFirestore(update, {
+    undefinedObjectValue: 'omit',
+});
 ```
 
 ### ENFORCEMENT:
 - ❌ I MUST NEVER write `undefined` values to Firestore
-- ❌ I MUST NEVER skip sanitization "if I'm sure there's no undefined"
-- ✅ I MUST wrap ALL Firestore write operations with `sanitizeForFirestore()`
-- ✅ I MUST preserve Firestore `Timestamp` objects (don't convert to plain objects)
-- ✅ I MUST handle nested objects and arrays recursively
+- ❌ I MUST NEVER flatten arbitrary class/SDK value objects into plain maps
+- ❌ I MUST NEVER remove undefined array entries and shift their indexes
+- ✅ I MUST use the canonical sanitizer or an existing feature wrapper that delegates to it
+- ✅ I MUST choose object-field `null` versus `omit` behavior intentionally
+- ✅ I MUST preserve Firestore SDK sentinels and normalize cross-SDK timestamps explicitly
+- ✅ I MUST reject cycles, accessors, unsupported values, and unsafe object keys
+- ✅ Client composers MUST receive explicit `{ isNew: true | false }`
 
 ### WHY THIS MATTERS:
 - Firestore **rejects** `undefined` values with error: `Cannot use "undefined" as a Firestore value`
-- Using `null` is safe and represents "no value" in Firestore
-- Prevents production crashes during security logging
+- `null`, omission, and field deletion have different update semantics
+- Flattening Timestamp/FieldValue/DocumentReference objects corrupts writes
+- Cycle/accessor/object-key handling is a security and reliability boundary
 
 ### FILES AFFECTED:
-- `/src/lib/auth/security.ts` - All Firestore writes
-- Any file using `admin.firestore()` for writes
+- `/src/lib/firestore/sanitizeForFirestore.ts`
+- `/src/lib/apiHelper/requestBodyComposition.ts`
+- `/functions/src/lib/sanitizeForFirestore.ts`
+- `/functions-answerlattice/src/lib/sanitizeForFirestore.ts`
+- Any client/Admin/Functions Firestore writer
+
+### GLOBAL GUIDE:
+- `__docs__/security/undefined-value-handling.md`
 
 ---
 

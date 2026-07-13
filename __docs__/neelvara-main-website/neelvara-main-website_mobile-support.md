@@ -43,7 +43,7 @@ Required:
 - no fixed headers covering content
 - no large hero that hides all next-section context
 - footer legal links visible on mobile
-- Neelvara current-color Prism glass relayout keeps the full desktop/tablet hero studio mock, but hides the large mock on small phones so the entity ledger starts inside the first mobile viewport. Secondary page Prism panels compact before they can force horizontal scroll.
+- The homepage hero flows directly into the compact company summary on every viewport. Secondary page Prism panels compact before they can force horizontal scroll.
 
 ---
 

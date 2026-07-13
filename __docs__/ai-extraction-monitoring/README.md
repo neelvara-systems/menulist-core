@@ -1,10 +1,12 @@
 # AI Extraction Internal Monitoring Dashboard
 
 **Feature:** Internal monitoring dashboard for the menu extraction pipeline  
-**Status:** ✅ IMPLEMENTED — Feature flag OFF (`ENABLE_EXTRACTION_MONITORING_DASHBOARD`)  
+**Status:** Enabled internal platform surface — not current launch or deploy certification
 **Source:** ChatGPT extraction hardening session (Mar 2026) → Cascade codebase validation  
 **Feature Flag:** `ENABLE_EXTRACTION_MONITORING_DASHBOARD`  
-**Last Updated:** July 5, 2026
+**Last Updated:** July 10, 2026
+
+> **Launch boundary:** Not current launch certification or deploy approval. This document records source-gated AI Extraction Monitoring evidence only. Current source sets `ENABLE_EXTRACTION_MONITORING_DASHBOARD=true` and exposes platform-only desktop routes at `/ops/extraction` and `/platform/extraction-monitor` plus `MobileExtractionMonitorScreen` inside `MobileShell`. Cross-tenant job reads and `MENULIST_AI_OPERATIONS` reads are Firestore-rule-gated to platform admins; ordinary authenticated users retain own-job reads only. Current release approval still requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:ai-accounting`, `npm run verify:menu-extraction-pipeline`, `npm run verify:agent-readiness`, `npm run verify:mobile-shell-route-map`, `npm run verify:auth-security-failure-matrix`, authenticated platform desktop/mobile browser QA, bounded read/cost and desktop retry smoke, current extraction/provider smoke, applicable target Firebase rules/index/Functions and Vercel deploy evidence, and production-host smoke.
 
 ---
 
@@ -37,7 +39,8 @@ An internal-only dashboard that gives the solo founder fast visibility into extr
 
 ### Route & Access
 
-- **Route:** `/ops/extraction` (under Ops Control Room)
+- **Desktop routes:** `/ops/extraction` and `/platform/extraction-monitor`
+- **Mobile route state:** `MobileShell` → More → Platform → Extraction Monitor
 - **Access:** `platformRole === 'PLATFORM'` only
 - **Navigation:** Ops Control Room → "Extraction Monitor" button, or direct URL
 
@@ -47,18 +50,17 @@ An internal-only dashboard that gives the solo founder fast visibility into extr
 | ------------------- | -------------------------------------------- | ------------------------------------------ |
 | Job documents       | `menuImageProcessingJobs`                    | Job status, timing, errors, quality scores |
 | AI operations       | `MENULIST_AI_OPERATIONS`                     | Token usage, cost per extraction, job/tenant/store context |
-| Extraction learning | `platformSummary/extractionLearning`         | Correction patterns (10.2)                 |
 
 No separate `aiUsageLog` collection is read by this dashboard. Current extraction cost data comes from `MENULIST_AI_OPERATIONS`; billable app-route operations live in `menulistAiOperations/{tId}/{sId}` outside this extraction monitor.
 
 ### Dashboard Sections
 
 1. **Health Overview** — Active/pending/failed job counts, avg processing time, failure rate
-2. **Quality Metrics** — Avg quality score, confidence distribution, HCR trend
+2. **Quality Metrics** — Avg quality score, confidence distribution, low-quality rate
 3. **Job Feed** — Recent jobs with status, scores, timing
 4. **Job Inspector** — Drill into any job: normalized extraction output, stored raw provider responses, file results, token usage, owner units, retry status, and acknowledged raw-data copy actions with bounded failure diagnostics
 5. **Cost Monitor** — Gemini calls/day, actual INR cost/extraction, daily spend, and highest job cost. Values are stored as paise and rendered as INR. Platform rows include `jobId`, tenant/store/user context, destination, source, token counts, failure status/error code, retry-after seconds when present, and Firestore `createdAt` timestamps. If the standalone cost-panel compatibility load fails, the panel logs bounded `extraction_cost_monitor_load_failed` diagnostics and shows fixed "Cost metrics unavailable" copy instead of reporting zero extraction calls.
-6. **Ops Alerts** — Scheduler-driven alerts for stuck jobs, failure spikes, and quality drops
+6. **Mobile summary** — Manual-refresh health, cost, quality, and recent-job cards. Mobile does not expose the desktop Job Inspector or retry action.
 
 ---
 
@@ -85,4 +87,5 @@ No separate `aiUsageLog` collection is read by this dashboard. Current extractio
 
 ---
 
-_Last Updated: July 5, 2026_
+_Document Status: Enabled internal platform surface; not current launch or deploy certification._
+_Last Updated: July 10, 2026_

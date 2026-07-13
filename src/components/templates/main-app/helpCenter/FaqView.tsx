@@ -7,7 +7,7 @@ import { useFeedback } from '@hook/useFeedback';
 import { fetchAnswerlatticePublicFaqs } from '@lib/answerlattice/publicContentClient';
 import { getStoredContentFeedback, removeStoredContentFeedback, storeContentFeedback } from '@lib/contentFeedbackStorage';
 import FeedbackSection from '@molecules/FeedbackSection';
-import type { AnswerlatticeFaq } from '@type/answerlattice';
+import type { AnswerlatticePublicFaq } from '@type/answerlattice';
 import { Button, Collapse, Empty, Flex, Skeleton, Tag, Typography } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useEffect, useMemo, useState } from 'react';
@@ -28,7 +28,7 @@ const FallbackFaqs = () => {
     return <Collapse accordion items={faqs} />;
 };
 
-const FaqAnswer = ({ faq }: { faq: AnswerlatticeFaq }) => {
+const FaqAnswer = ({ faq }: { faq: AnswerlatticePublicFaq }) => {
     const feedback = useFeedback(
         {
             contentType: 'faq',
@@ -40,14 +40,14 @@ const FaqAnswer = ({ faq }: { faq: AnswerlatticeFaq }) => {
             updateFeedback: async (contentId, type, increment) => {
                 return await updateFaqFeedbackGeneric(contentId, type, increment);
             },
-            storeFeedback: (userId, contentId, type) => {
-                storeContentFeedback('faq', userId, contentId, type);
+            storeFeedback: (scope, userId, contentId, type) => {
+                storeContentFeedback('faq', scope, userId, contentId, type);
             },
-            getStoredFeedback: (userId, contentId) => {
-                return getStoredContentFeedback('faq', userId, contentId);
+            getStoredFeedback: (scope, userId, contentId) => {
+                return getStoredContentFeedback('faq', scope, userId, contentId);
             },
-            removeStoredFeedback: (userId, contentId) => {
-                removeStoredContentFeedback('faq', userId, contentId);
+            removeStoredFeedback: (scope, userId, contentId) => {
+                removeStoredContentFeedback('faq', scope, userId, contentId);
             },
         },
     );
@@ -75,6 +75,7 @@ const FaqAnswer = ({ faq }: { faq: AnswerlatticeFaq }) => {
                 dislikes={feedback.dislikes}
                 feedbackGiven={feedback.feedbackGiven}
                 isFeedbackModalVisible={feedback.isFeedbackModalVisible}
+                isSubmitting={feedback.isSubmitting}
                 onFeedback={feedback.handleFeedback}
                 onFeedbackSubmit={feedback.handleFeedbackSubmit}
                 onModalClose={() => feedback.setIsFeedbackModalVisible(false)}
@@ -86,7 +87,7 @@ const FaqAnswer = ({ faq }: { faq: AnswerlatticeFaq }) => {
 
 const FaqView = () => {
     const [loading, setLoading] = useState(Boolean(FEATURE_FLAGS.ENABLE_ANSWERLATTICE_FAQ_MANAGEMENT));
-    const [faqs, setFaqs] = useState<AnswerlatticeFaq[]>([]);
+    const [faqs, setFaqs] = useState<AnswerlatticePublicFaq[]>([]);
     const [failed, setFailed] = useState(false);
 
     useEffect(() => {

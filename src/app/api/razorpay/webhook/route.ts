@@ -3,18 +3,19 @@ import { DB_COLLECTIONS } from "@constant/database";
 import { DEFAULT_PRODUCT_ID } from '@constant/product';
 import { getPlanDetailsFromConstants, getSubscriptionEndDate } from "@lib/billing/billingUtils";
 import {
+    applyProductSubscriptionPayment,
+    applyProductSubscriptionWebhookEvent,
     getProductSubscriptionById,
     safeSyncProductSubscriptionEntitlementFromSubscription,
-    updateProductSubscription,
     writeProductPaymentTransactionAudit,
 } from "@lib/billing/productBillingServer";
+import { getProviderCycleBillingPeriodKey } from '@lib/billing/billingPeriod';
 import {
     getBoundedRazorpayStringContext,
     getRazorpayFailureLogData,
     logRazorpayNonBlockingFailure,
 } from "@lib/billing/razorpayDiagnostics";
 import { isAnswerlatticeBillingProduct, normalizeBillingProductId } from "@lib/billing/productBillingPlans";
-import { validateTransition } from "@lib/billing/subscriptionStateMachine";
 import { admin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import { logger } from "@lib/monitoring/logger";
 import {
@@ -27,6 +28,7 @@ import { razorpayClient } from "@lib/razorpay/razorpay";
 import { validateRazorpayWebhookSignature } from "@lib/razorpay/webhook-validator";
 import { markResellerTransactionsActiveForSubscription } from "@lib/reseller/resellerLedger";
 import { safelyRecordOwnerReferralPaymentAndRepair } from '@lib/ownerReferral/ownerReferralSettlementServer';
+import { sanitizeForFirestore } from '@lib/firestore/sanitizeForFirestore';
 import { readBoundedTextBody, rejectInvalidOrOversizedDeclaredBody } from "@lib/security/boundedRequestBody";
 import { FirestoreSubscriptionDoc } from "@type/razorpay";
 import { Timestamp } from "firebase/firestore";
@@ -39,17 +41,7 @@ const LOG_FILE = "razorpay-subscription.log";
 const RAZORPAY_WEBHOOK_MAX_BODY_BYTES = 256 * 1024;
 
 const sanitizeForAdminFirestore = (value: any): any => {
-    if (value === undefined) return null;
-    if (value === null) return null;
-    if (Array.isArray(value)) return value.map(sanitizeForAdminFirestore);
-    if (value instanceof Date) return value;
-    if (typeof value === 'object') {
-        return Object.fromEntries(
-            Object.entries(value).map(([key, nestedValue]) => [key, sanitizeForAdminFirestore(nestedValue)])
-        );
-    }
-
-    return value;
+    return sanitizeForFirestore(value);
 };
 
 const normalizeNumericId = (value: unknown): number | null => {
@@ -229,24 +221,6 @@ const getRazorpayPaymentFailureRemark = (eventType: string | undefined) => {
     return 'Payment failed';
 };
 
-const writePaymentTransactionAudit = async (data: any): Promise<string> => {
-    const tenantId = normalizeNumericId(data?.tenantId ?? data?.tId);
-    const storeId = normalizeNumericId(data?.storeId ?? data?.sId);
-    const now = admin.firestore.FieldValue.serverTimestamp();
-
-    const docRef = await firestoreAdmin.collection(DB_COLLECTIONS.PAYMENT_TRANSACTIONS).add({
-        ...sanitizeForAdminFirestore(data),
-        tenantId,
-        storeId,
-        tId: data?.tId ?? tenantId,
-        sId: data?.sId ?? storeId,
-        createdOn: now,
-        modifiedOn: now,
-    });
-
-    return docRef.id;
-};
-
 const getInvoiceById = async (eventPayloadToUpload: any, invoiceId: string) => {
     try {
         const invoice = await razorpayClient.invoices.fetch(invoiceId);
@@ -349,7 +323,6 @@ export async function POST(request: NextRequest) {
         eventPayloadToUpload.productId = eventProductId;
         eventPayloadToUpload.pId = eventProductId;
         const getSubscription = (id: string) => getProductSubscriptionById(eventProductId, id);
-        const updateSubscriptionForProduct = (id: string, data: Partial<FirestoreSubscriptionDoc>) => updateProductSubscription(eventProductId, id, data);
         const syncSubscriptionForProduct = (subscription: FirestoreSubscriptionDoc, source: string) =>
             safeSyncProductSubscriptionEntitlementFromSubscription(eventProductId, subscription, source);
         const markResellerTransactionsForProduct = async (subscriptionId: string, source: string) => {
@@ -387,7 +360,7 @@ export async function POST(request: NextRequest) {
         }
         // await writeLogEntry({ logFileName: LOG_FILE, logType: `RAZORPAY_WEBHOOK_EVENT_${event.event}`, data: eventPayloadToUpload });
         const auditSummary = buildPaymentTransactionAudit(eventPayloadToUpload);
-        await writeProductPaymentTransactionAudit(eventProductId, auditSummary);
+        await writeProductPaymentTransactionAudit(eventProductId, auditSummary, webhookClaim.eventKey);
         const paymentAmountPaise = Number(paymentEntity?.amount || auditSummary.amount || 0);
         const paymentOccurredAt = paymentEntity?.created_at ? Number(paymentEntity.created_at) * 1000 : Date.now();
         if (event.event === 'order.paid' || event.event === 'subscription.charged') {
@@ -552,27 +525,26 @@ export async function POST(request: NextRequest) {
                 if (paymentEntity?.subscription_id) {
                     const internalSub = await getSubscription(paymentEntity.subscription_id);
                     if (internalSub) {
-                        if (!validateTransition(internalSub.status, 'past_due', `webhook:${event.event}`)) {
-                            break;
-                        }
                         const pastDueSince = internalSub.pastDueSinceAt || Timestamp.now();
-                        await updateSubscriptionForProduct(internalSub.id, {
-                            status: 'past_due',
-                            pastDueSinceAt: pastDueSince,
-                            lastWebhook: { event: event.event, timestamp: Timestamp.now() },
-                            statuses: [
-                                ...internalSub.statuses,
-                                {
-                                    status: event.event === 'subscription.pending' ? 'pending_retry' : 'payment.failed',
-                                    timestamp: Timestamp.now(),
-                                    amount: paymentEntity.amount,
-                                    currency: paymentEntity.currency,
-                                    remark: getRazorpayPaymentFailureRemark(event.event),
-                                },
-                            ],
+                        const statusApplication = await applyProductSubscriptionWebhookEvent(eventProductId, {
+                            eventKey: webhookClaim.eventKey,
+                            nextStatus: 'past_due',
+                            statusEntry: {
+                                status: event.event === 'subscription.pending' ? 'pending_retry' : 'payment.failed',
+                                timestamp: Timestamp.now(),
+                                amount: paymentEntity.amount,
+                                currency: paymentEntity.currency,
+                                remark: getRazorpayPaymentFailureRemark(event.event),
+                            },
+                            subscriptionId: internalSub.id,
+                            update: {
+                                pastDueSinceAt: pastDueSince,
+                                lastWebhook: { event: event.event, timestamp: Timestamp.now() },
+                            },
                         });
+                        if (!statusApplication || (!statusApplication.applied && !statusApplication.duplicate)) break;
                         await syncSubscriptionForProduct(
-                            { ...internalSub, status: 'past_due' },
+                            statusApplication.subscription,
                             `webhook:${event.event}`,
                         );
                     }
@@ -581,27 +553,26 @@ export async function POST(request: NextRequest) {
                     if (subscriptionEntity?.id) {
                         const internalSub = await getSubscription(subscriptionEntity.id);
                         if (internalSub) {
-                            if (!validateTransition(internalSub.status, 'past_due', `webhook:${event.event}`)) {
-                                break;
-                            }
                             const pastDueSince = internalSub.pastDueSinceAt || Timestamp.now();
-                            await updateSubscriptionForProduct(internalSub.id, {
-                                status: 'past_due',
-                                pastDueSinceAt: pastDueSince,
-                                lastWebhook: { event: event.event, timestamp: Timestamp.now() },
-                                statuses: [
-                                    ...internalSub.statuses,
-                                    {
-                                        status: event.event === 'subscription.pending' ? 'pending_retry' : 'halted',
-                                        timestamp: Timestamp.now(),
-                                        amount: internalSub.amount,
-                                        currency: internalSub.currency,
-                                        remark: `Subscription ${event.event} — payment retry in progress`,
-                                    },
-                                ],
+                            const statusApplication = await applyProductSubscriptionWebhookEvent(eventProductId, {
+                                eventKey: webhookClaim.eventKey,
+                                nextStatus: 'past_due',
+                                statusEntry: {
+                                    status: event.event === 'subscription.pending' ? 'pending_retry' : 'halted',
+                                    timestamp: Timestamp.now(),
+                                    amount: internalSub.amount,
+                                    currency: internalSub.currency,
+                                    remark: `Subscription ${event.event} — payment retry in progress`,
+                                },
+                                subscriptionId: internalSub.id,
+                                update: {
+                                    pastDueSinceAt: pastDueSince,
+                                    lastWebhook: { event: event.event, timestamp: Timestamp.now() },
+                                },
                             });
+                            if (!statusApplication || (!statusApplication.applied && !statusApplication.duplicate)) break;
                             await syncSubscriptionForProduct(
-                                { ...internalSub, status: 'past_due' },
+                                statusApplication.subscription,
                                 `webhook:${event.event}`,
                             );
                         }
@@ -618,9 +589,6 @@ export async function POST(request: NextRequest) {
                 const planDetails = getPlanDetailsFromConstants(subscriptionEntity.notes);
 
                 if (internalSub && planDetails) {
-                    if (!validateTransition(internalSub.status, 'active', `webhook:${event.event}`)) {
-                        break;
-                    }
                     const paymentMethod = {
                         type: paymentEntity?.method || "",
                         brand: paymentEntity?.card?.network || "",
@@ -629,23 +597,11 @@ export async function POST(request: NextRequest) {
                         upiTransactionId: paymentEntity?.acquirer_data?.upi_transaction_id || "",
                     };
 
-                    // Compute billing-period key from Razorpay's new cycle start (anchor day)
-                    const newCycleStart = new Date(subscriptionEntity.current_start * 1000);
-                    const rawAnchorDay = newCycleStart.getDate();
-                    const now = new Date();
-                    let bpYear = now.getFullYear();
-                    let bpMonth = now.getMonth() + 1;
-                    const daysInMonth = new Date(bpYear, now.getMonth() + 1, 0).getDate();
-                    const anchorDay = Math.min(rawAnchorDay, daysInMonth);
-                    if (now.getDate() < anchorDay) { bpMonth -= 1; if (bpMonth === 0) { bpMonth = 12; bpYear -= 1; } }
-                    const currentBillingPeriod = bpYear * 100 + bpMonth;
-
-                    // Idempotency guard: prevent duplicate payment IDs in billingHistory
+                    const currentBillingPeriod = getProviderCycleBillingPeriodKey(subscriptionEntity.current_start);
+                    if (currentBillingPeriod === null) {
+                        throw new Error('Invalid provider billing cycle.');
+                    }
                     const paymentHistoryId = paymentEntity?.id || `${event.event}-${subscriptionEntity.id}-${subscriptionEntity.current_start || Date.now()}`;
-                    const updatedBillingHistory = internalSub.billingHistory.includes(paymentHistoryId)
-                        ? internalSub.billingHistory
-                        : [...internalSub.billingHistory, paymentHistoryId];
-
                     const updatePayload: Partial<FirestoreSubscriptionDoc> = {
                         status: 'active',
                         cycleStartDate: Timestamp.fromMillis(subscriptionEntity.current_start * 1000),
@@ -656,30 +612,31 @@ export async function POST(request: NextRequest) {
                         pastDueSinceAt: null,
                         totalPaymentsNeededCount: subscriptionEntity.total_count,
                         totalPaymentsMadeCount: subscriptionEntity.paid_count,
-                        monthlyCredits: internalSub.monthlyCreditsAllowance,
-                        creditsLastResetMonth: currentBillingPeriod,
                         paymentMethod,
                         lastWebhook: { event: event.event, timestamp: Timestamp.now() },
-                        billingHistory: updatedBillingHistory,
-                        statuses: [
-                            ...internalSub.statuses,
-                            {
-                                status: event.event === 'subscription.activated' ? "activated" : "charged",
-                                timestamp: Timestamp.now(),
-                                amount: paymentEntity?.amount || internalSub.amount || 0,
-                                currency: paymentEntity?.currency || internalSub.currency || 'INR',
-                                remark: event.event === 'subscription.activated' ? "Subscription activated" : "Subscription charged",
-                            },
-                        ],
                     };
-                    await updateSubscriptionForProduct(internalSub.id, updatePayload);
+                    const paymentApplication = await applyProductSubscriptionPayment(eventProductId, {
+                        billingPeriod: currentBillingPeriod,
+                        paymentHistoryId,
+                        statusEntry: {
+                            status: event.event === 'subscription.activated' ? 'activated' : 'charged',
+                            timestamp: Timestamp.now(),
+                            amount: paymentEntity?.amount || internalSub.amount || 0,
+                            currency: paymentEntity?.currency || internalSub.currency || 'INR',
+                            remark: event.event === 'subscription.activated' ? 'Subscription activated' : 'Subscription charged',
+                        },
+                        subscriptionId: internalSub.id,
+                        update: updatePayload,
+                    });
+                    if (!paymentApplication || (!paymentApplication.applied && !paymentApplication.duplicate)) {
+                        break;
+                    }
+                    const appliedSubscription = paymentApplication.subscription;
                     await markResellerTransactionsForProduct(internalSub.id, `webhook:${event.event}`);
                     await syncSubscriptionForProduct(
                         {
-                            ...internalSub,
-                            ...updatePayload,
-                            status: 'active',
-                            planId: planDetails.planId || internalSub.planId,
+                            ...appliedSubscription,
+                            planId: planDetails.planId || appliedSubscription.planId,
                         } as FirestoreSubscriptionDoc,
                         `webhook:${event.event}`,
                     );
@@ -697,16 +654,15 @@ export async function POST(request: NextRequest) {
                             },
                         });
                     }
-                    if (internalSub.status !== 'active') {
+                    if (paymentApplication.applied && paymentApplication.previousSubscription.status !== 'active') {
                         const activatedSubscription = {
-                            ...internalSub,
-                            ...updatePayload,
+                            ...appliedSubscription,
                             id: internalSub.id,
-                            planId: planDetails.planId || internalSub.planId,
+                            planId: planDetails.planId || appliedSubscription.planId,
                             status: 'active',
                         } as FirestoreSubscriptionDoc;
-                        const replacementSubscriptionId = (internalSub as any).founderMonitorReplacementForSubscriptionId;
-                        const replacementMrrPaise = Number((internalSub as any).founderMonitorReplacementMrrPaise || 0);
+                        const replacementSubscriptionId = (paymentApplication.previousSubscription as any).founderMonitorReplacementForSubscriptionId;
+                        const replacementMrrPaise = Number((paymentApplication.previousSubscription as any).founderMonitorReplacementMrrPaise || 0);
                         if (replacementSubscriptionId && replacementMrrPaise > 0) {
                             await recordFounderSubscriptionMrrChange({
                                 eventKey: `${replacementSubscriptionId}:${internalSub.id}`,
@@ -815,34 +771,35 @@ export async function POST(request: NextRequest) {
                 if (!subscriptionEntity?.id) break;
                 const internalSub = await getSubscription(subscriptionEntity.id);
                 if (internalSub) {
-                    if (!validateTransition(internalSub.status, 'completed', 'webhook:subscription.completed')) {
-                        break;
-                    }
-                    await updateSubscriptionForProduct(internalSub.id, {
-                        status: 'completed',
-                        lastWebhook: { event: event.event, timestamp: Timestamp.now() },
-                        statuses: [
-                            ...internalSub.statuses,
-                            {
-                                status: "completed",
-                                timestamp: Timestamp.now(),
-                                amount: subscriptionEntity.amount,
-                                currency: subscriptionEntity.currency,
-                                remark: "Subscription completed",
-                            },
-                        ],
-                        subscriptionEndDate: subscriptionEntity.ended_at ? Timestamp.fromMillis(subscriptionEntity.ended_at * 1000) : Timestamp.now(),
+                    const statusApplication = await applyProductSubscriptionWebhookEvent(eventProductId, {
+                        eventKey: webhookClaim.eventKey,
+                        nextStatus: 'completed',
+                        statusEntry: {
+                            status: 'completed',
+                            timestamp: Timestamp.now(),
+                            amount: subscriptionEntity.amount,
+                            currency: subscriptionEntity.currency,
+                            remark: 'Subscription completed',
+                        },
+                        subscriptionId: internalSub.id,
+                        update: {
+                            lastWebhook: { event: event.event, timestamp: Timestamp.now() },
+                            subscriptionEndDate: subscriptionEntity.ended_at ? Timestamp.fromMillis(subscriptionEntity.ended_at * 1000) : Timestamp.now(),
+                        },
                     });
+                    if (!statusApplication || (!statusApplication.applied && !statusApplication.duplicate)) break;
                     await syncSubscriptionForProduct(
-                        { ...internalSub, status: 'completed' },
+                        statusApplication.subscription,
                         'webhook:subscription.completed',
                     );
-                    await recordFounderSubscriptionChurn({
-                        productId: eventProductId,
-                        source: 'webhook:subscription.completed',
-                        subscription: { ...internalSub, status: 'completed' },
-                        occurredAt: subscriptionEntity.ended_at ? subscriptionEntity.ended_at * 1000 : Date.now(),
-                    });
+                    if (statusApplication.applied) {
+                        await recordFounderSubscriptionChurn({
+                            productId: eventProductId,
+                            source: 'webhook:subscription.completed',
+                            subscription: statusApplication.subscription,
+                            occurredAt: subscriptionEntity.ended_at ? subscriptionEntity.ended_at * 1000 : Date.now(),
+                        });
+                    }
                 }
                 break;
             }
@@ -853,34 +810,35 @@ export async function POST(request: NextRequest) {
                 if (cancelledSubEntity?.id) {
                     const cancelledInternalSub = await getSubscription(cancelledSubEntity.id);
                     if (cancelledInternalSub) {
-                        if (!validateTransition(cancelledInternalSub.status, 'cancelled', 'webhook:subscription.cancelled')) {
-                            break;
-                        }
-                        await updateSubscriptionForProduct(cancelledInternalSub.id, {
-                            status: 'cancelled',
-                            lastWebhook: { event: event.event, timestamp: Timestamp.now() },
-                            subscriptionEndDate: cancelledSubEntity.ended_at ? Timestamp.fromMillis(cancelledSubEntity.ended_at * 1000) : (cancelledInternalSub.cycleEndDate || Timestamp.now()),
-                            statuses: [
-                                ...cancelledInternalSub.statuses,
-                                {
-                                    status: "cancelled",
-                                    timestamp: Timestamp.now(),
-                                    amount: cancelledInternalSub.amount,
-                                    currency: cancelledInternalSub.currency,
-                                    remark: "Subscription cancelled by Razorpay webhook",
-                                },
-                            ],
+                        const statusApplication = await applyProductSubscriptionWebhookEvent(eventProductId, {
+                            eventKey: webhookClaim.eventKey,
+                            nextStatus: 'cancelled',
+                            statusEntry: {
+                                status: 'cancelled',
+                                timestamp: Timestamp.now(),
+                                amount: cancelledInternalSub.amount,
+                                currency: cancelledInternalSub.currency,
+                                remark: 'Subscription cancelled by Razorpay webhook',
+                            },
+                            subscriptionId: cancelledInternalSub.id,
+                            update: {
+                                lastWebhook: { event: event.event, timestamp: Timestamp.now() },
+                                subscriptionEndDate: cancelledSubEntity.ended_at ? Timestamp.fromMillis(cancelledSubEntity.ended_at * 1000) : (cancelledInternalSub.cycleEndDate || Timestamp.now()),
+                            },
                         });
+                        if (!statusApplication || (!statusApplication.applied && !statusApplication.duplicate)) break;
                         await syncSubscriptionForProduct(
-                            { ...cancelledInternalSub, status: 'cancelled' },
+                            statusApplication.subscription,
                             'webhook:subscription.cancelled',
                         );
-                        await recordFounderSubscriptionChurn({
-                            productId: eventProductId,
-                            source: 'webhook:subscription.cancelled',
-                            subscription: { ...cancelledInternalSub, status: 'cancelled' },
-                            occurredAt: cancelledSubEntity.ended_at ? cancelledSubEntity.ended_at * 1000 : Date.now(),
-                        });
+                        if (statusApplication.applied) {
+                            await recordFounderSubscriptionChurn({
+                                productId: eventProductId,
+                                source: 'webhook:subscription.cancelled',
+                                subscription: statusApplication.subscription,
+                                occurredAt: cancelledSubEntity.ended_at ? cancelledSubEntity.ended_at * 1000 : Date.now(),
+                            });
+                        }
                         if (shouldSendMenuListBillingMessages) {
                             try {
                                 const { sendLifecycleMessage } = await import('@lib/messaging');
@@ -927,25 +885,24 @@ export async function POST(request: NextRequest) {
                 if (!pausedSubEntity?.id) break;
                 const pausedInternalSub = await getSubscription(pausedSubEntity.id);
                 if (pausedInternalSub) {
-                    if (!validateTransition(pausedInternalSub.status, 'paused', 'webhook:subscription.paused')) {
-                        break;
-                    }
-                    await updateSubscriptionForProduct(pausedInternalSub.id, {
-                        status: 'paused',
-                        lastWebhook: { event: event.event, timestamp: Timestamp.now() },
-                        statuses: [
-                            ...pausedInternalSub.statuses,
-                            {
-                                status: "paused",
-                                timestamp: Timestamp.now(),
-                                amount: pausedInternalSub.amount,
-                                currency: pausedInternalSub.currency,
-                                remark: `Subscription paused by ${pausedSubEntity.pause_initiated_by || 'system'}`,
-                            },
-                        ],
+                    const statusApplication = await applyProductSubscriptionWebhookEvent(eventProductId, {
+                        eventKey: webhookClaim.eventKey,
+                        nextStatus: 'paused',
+                        statusEntry: {
+                            status: 'paused',
+                            timestamp: Timestamp.now(),
+                            amount: pausedInternalSub.amount,
+                            currency: pausedInternalSub.currency,
+                            remark: `Subscription paused by ${pausedSubEntity.pause_initiated_by || 'system'}`,
+                        },
+                        subscriptionId: pausedInternalSub.id,
+                        update: {
+                            lastWebhook: { event: event.event, timestamp: Timestamp.now() },
+                        },
                     });
+                    if (!statusApplication || (!statusApplication.applied && !statusApplication.duplicate)) break;
                     await syncSubscriptionForProduct(
-                        { ...pausedInternalSub, status: 'paused' },
+                        statusApplication.subscription,
                         'webhook:subscription.paused',
                     );
                     if (shouldSendMenuListBillingMessages) {
@@ -994,21 +951,24 @@ export async function POST(request: NextRequest) {
                 if (!updatedSubEntity?.id) break;
                 const updatedInternalSub = await getSubscription(updatedSubEntity.id);
                 if (updatedInternalSub && updatedSubEntity.quantity !== undefined) {
-                    const nextSubscription = {
-                        ...updatedInternalSub,
-                        quantity: updatedSubEntity.quantity,
-                    } as FirestoreSubscriptionDoc;
-                    await updateSubscriptionForProduct(updatedInternalSub.id, {
-                        quantity: updatedSubEntity.quantity,
-                        lastWebhook: { event: event.event, timestamp: Timestamp.now() },
+                    const quantity = Number(updatedSubEntity.quantity);
+                    if (!Number.isSafeInteger(quantity) || quantity <= 0 || quantity > 10_000) break;
+                    const statusApplication = await applyProductSubscriptionWebhookEvent(eventProductId, {
+                        eventKey: webhookClaim.eventKey,
+                        subscriptionId: updatedInternalSub.id,
+                        update: {
+                            quantity,
+                            lastWebhook: { event: event.event, timestamp: Timestamp.now() },
+                        },
                     });
-                    if (updatedInternalSub.status === 'active' || updatedInternalSub.status === 'past_due') {
+                    if (!statusApplication || (!statusApplication.applied && !statusApplication.duplicate)) break;
+                    if (statusApplication.applied && (updatedInternalSub.status === 'active' || updatedInternalSub.status === 'past_due')) {
                         await recordFounderSubscriptionMrrChange({
                             eventKey: webhookClaim.eventKey,
                             productId: eventProductId,
                             previousSubscription: updatedInternalSub,
                             source: 'webhook:subscription.updated',
-                            subscription: nextSubscription,
+                            subscription: statusApplication.subscription,
                             occurredAt: updatedSubEntity.updated_at ? updatedSubEntity.updated_at * 1000 : Date.now(),
                         });
                     }
@@ -1022,25 +982,24 @@ export async function POST(request: NextRequest) {
                 if (!resumedSubEntity?.id) break;
                 const resumedInternalSub = await getSubscription(resumedSubEntity.id);
                 if (resumedInternalSub) {
-                    if (!validateTransition(resumedInternalSub.status, 'active', 'webhook:subscription.resumed')) {
-                        break;
-                    }
-                    await updateSubscriptionForProduct(resumedInternalSub.id, {
-                        status: 'active',
-                        lastWebhook: { event: event.event, timestamp: Timestamp.now() },
-                        statuses: [
-                            ...resumedInternalSub.statuses,
-                            {
-                                status: "resumed",
-                                timestamp: Timestamp.now(),
-                                amount: resumedInternalSub.amount,
-                                currency: resumedInternalSub.currency,
-                                remark: `Subscription resumed by ${resumedSubEntity.resume_initiated_by || 'system'}`,
-                            },
-                        ],
+                    const statusApplication = await applyProductSubscriptionWebhookEvent(eventProductId, {
+                        eventKey: webhookClaim.eventKey,
+                        nextStatus: 'active',
+                        statusEntry: {
+                            status: 'resumed',
+                            timestamp: Timestamp.now(),
+                            amount: resumedInternalSub.amount,
+                            currency: resumedInternalSub.currency,
+                            remark: `Subscription resumed by ${resumedSubEntity.resume_initiated_by || 'system'}`,
+                        },
+                        subscriptionId: resumedInternalSub.id,
+                        update: {
+                            lastWebhook: { event: event.event, timestamp: Timestamp.now() },
+                        },
                     });
+                    if (!statusApplication || (!statusApplication.applied && !statusApplication.duplicate)) break;
                     await syncSubscriptionForProduct(
-                        { ...resumedInternalSub, status: 'active' },
+                        statusApplication.subscription,
                         'webhook:subscription.resumed',
                     );
                     if (shouldSendMenuListBillingMessages) {

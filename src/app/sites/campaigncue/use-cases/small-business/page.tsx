@@ -33,6 +33,8 @@ import {
 import CampaignCueAiSummary from "../../components/CampaignCueAiSummary";
 import CampaignCueMobileNavigation from "../../components/CampaignCueMobileNavigation";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
     title: `${CAMPAIGNCUE_SMALL_BUSINESS_USE_CASE.title} - CampaignCue`,
     description: CAMPAIGNCUE_SMALL_BUSINESS_USE_CASE.metaDescription,
@@ -151,6 +153,10 @@ function UseCaseHeroPreview() {
                                 Price checked
                             </span>
                             <span>
+                                <LuClipboardCheck aria-hidden="true" />
+                                Stock and capacity checked
+                            </span>
+                            <span>
                                 <LuShieldCheck aria-hidden="true" />
                                 Export first
                             </span>
@@ -177,7 +183,7 @@ function SourceToPackVisual() {
             <section>
                 <span>Source facts</span>
                 <strong>Lunch combo</strong>
-                <p>Rs 249, today 12-3 PM, pickup link, owner photo, and staff note.</p>
+                <p>Rs 249, today 12-3 PM, stock ready, capacity available, pickup link, owner photo, and staff note.</p>
                 <div>
                     <span>Photo ready</span>
                     <span>Price ready</span>

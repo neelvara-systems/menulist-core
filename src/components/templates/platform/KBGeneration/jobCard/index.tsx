@@ -105,6 +105,9 @@ const JobCard: React.FC<JobCardProps> = ({ job, onReviewClick }) => {
     gradient: `linear-gradient(135deg, ${token.colorBgBase} 0%, ${token.colorBgBase} 100%)`,
   };
   const jobCardStyle: React.CSSProperties = { background: statusConfig.gradient, width: '100%', borderRadius: 28, };
+  const canDelete = status === INGESTION_JOB_STATUS.NEEDS_REVIEW
+    || status === INGESTION_JOB_STATUS.FAILED
+    || status === INGESTION_JOB_STATUS.CANCELLED;
 
   const stepItems = [
     { key: INGESTION_JOB_STATUS.PENDING, title: 'Created' },
@@ -192,16 +195,16 @@ const JobCard: React.FC<JobCardProps> = ({ job, onReviewClick }) => {
         </Row>}
 
         <Flex gap={8} style={{ width: '100%' }} justify='flex-end'>
-          <Popconfirm
+          {canDelete && <Popconfirm
             key="delete"
             title="Delete the job"
-            description="Are you sure you want to delete this job and all its articles? This action cannot be undone."
+            description="Delete this job, its unpublished generated articles, and source files? This action cannot be undone."
             onConfirm={handleDelete}
             okText="Yes"
             cancelText="No"
           >
             <Button danger type='text' icon={<LuTrash />} onClick={(e) => e.stopPropagation()} >Delete Job</Button>
-          </Popconfirm>
+          </Popconfirm>}
           {status === INGESTION_JOB_STATUS.FAILED && (
             <Popconfirm title="Retry this job?" description="The job will be reprocessed from the same source files." onConfirm={handleRetry} okText="Retry">
               <Button type='default' icon={<LuRefreshCw />} onClick={(e) => e.stopPropagation()}>Retry Job</Button>

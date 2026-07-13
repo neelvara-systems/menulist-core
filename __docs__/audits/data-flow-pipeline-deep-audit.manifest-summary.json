@@ -1,0 +1,38 @@
+{
+  "generatedAt": "2026-07-13T13:06:27.856Z",
+  "repositoryHead": "7d7078804c7a1a4a9f77d9a77d56f67b083a4f86",
+  "totalDiscoveredFiles": 7340,
+  "vanishedDuringInventory": 0,
+  "inScopeFiles": 7124,
+  "excludedFiles": 216,
+  "byCategory": {
+    "documentation/contract": 2747,
+    "ui-component": 1023,
+    "shared-runtime": 861,
+    "asset/public-output": 453,
+    "nextjs-entrypoint": 361,
+    "runtime/support": 338,
+    "verifier/test": 292,
+    "firebase-functions": 273,
+    "api-route": 212,
+    "constant/config/data": 127,
+    "data-access-layer": 100,
+    "configuration/data": 96,
+    "hook/state-flow": 72,
+    "type/schema-contract": 70,
+    "presentation/public-output": 48,
+    "script/maintenance": 31,
+    "security-rules": 8,
+    "redux-state": 7,
+    "test": 4,
+    "middleware/routing": 1
+  },
+  "byReviewStatus": {
+    "inventory-only": 6071,
+    "reviewed": 806,
+    "in-progress": 247
+  },
+  "manifest": "__docs__/audits/data-flow-pipeline-deep-audit.manifest.csv",
+  "exclusions": "__docs__/audits/data-flow-pipeline-deep-audit.exclusions.csv",
+  "reviewState": "__docs__/audits/data-flow-pipeline-deep-audit.review-state.json"
+}

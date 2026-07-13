@@ -1,9 +1,11 @@
 # Messaging Onboarding — Implementation Plan
 
 **Feature:** Messaging Onboarding — Zero-Friction SMB Acquisition Engine
-**Status:** Implementation-Complete — WhatsApp runtime exists; checked-in provider processing defaults off until real credentials and webhook registration are configured
+**Status:** Source-implemented, provider-disabled — not a current launch or deploy certification
 **Architecture:** Firebase Cloud Functions + Firestore State Machine + Provider-Agnostic Adapter Layer
-**Last Updated:** July 2, 2026
+**Last Updated:** July 13, 2026
+
+> **Launch boundary:** Not current launch certification or deploy approval. Current source registers WhatsApp only, while checked-in Functions environments keep provider processing disabled. `/whatsapp` is informational and routes its actions to the signed-in `/create-menu` photo or public-link intake. Production use still requires current audit/runbook/local aggregate evidence, a final owned provider account, real Meta secrets, webhook registration, explicit target enablement and scoped deploy evidence, provider smoke, browser/device QA, and production-host smoke.
 
 ---
 
@@ -24,11 +26,11 @@
 │                                                                        │
 │  WhatsAppAdapter                │  Additional adapters require review │
 │    ├─ verifyWebhook()           │    ├─ verifyWebhook()               │
-│    ├─ parseIncomingMessage()    │    ├─ parseIncomingMessage()         │
+│    ├─ parseIncomingMessages()   │    ├─ parseIncomingMessages()        │
 │    ├─ downloadMedia()           │    ├─ downloadMedia()               │
 │    └─ sendMessage()             │    └─ sendMessage()                 │
 │                                                                        │
-│  Output: NormalizedMessage { provider, userId, media, text }          │
+│  Output: NormalizedMessage[] { provider, userId, media, text }        │
 └──────────────────────┬─────────────────────────────────────────────────┘
                        │ NormalizedMessage
                        ▼
@@ -37,7 +39,8 @@
 │                                                                        │
 │  inboundQueue                                                          │
 │    ├─ Dedup key: SHA-256(provider + providerMessageId)                │
-│    ├─ Persist sanitized NormalizedMessage before webhook ACK          │
+│    ├─ Bulk-create every sanitized message in a provider batch         │
+│    ├─ Checkpoint session handling before outbound reply delivery      │
 │    └─ Process from menulistMaintenanceScheduler.messaging_intake      │
 │       after durable provider ACK                                      │
 └──────────────────────┬─────────────────────────────────────────────────┘
@@ -48,8 +51,8 @@
 │                                                                        │
 │  webhookHandler (onRequest — per-provider routes)                     │
 │    ├─ providerAdapter.verifyWebhook()                                 │
-│    ├─ providerAdapter.parseIncomingMessage() → NormalizedMessage      │
-│    ├─ inboundQueue.enqueueInboundMessage()                            │
+│    ├─ providerAdapter.parseIncomingMessages() → NormalizedMessage[]   │
+│    ├─ inboundQueue.enqueueInboundMessages()                           │
 │    └─ ACK provider only after queue write succeeds                    │
 │                                                                        │
 │  inboundQueue/processQueuedInboundMessage                              │
@@ -287,8 +290,8 @@ interface IMessagingProvider {
   /** Verify incoming webhook authenticity (signature check) */
   verifyWebhook(req: functions.https.Request): boolean;
 
-  /** Parse raw webhook payload into normalized message */
-  parseIncomingMessage(req: functions.https.Request): NormalizedMessage | null;
+  /** Parse every user message in a potentially batched webhook */
+  parseIncomingMessages(req: functions.https.Request): NormalizedMessage[];
 
   /** Download media file from provider API to Buffer */
   downloadMedia(providerMediaId: string): Promise<Buffer>;
@@ -323,7 +326,7 @@ interface NormalizedMessage {
     fileName?: string; // Original filename (if available)
   };
   timestamp: Date;
-  rawPayload: unknown; // Original webhook payload (for debugging)
+  rawPayload: unknown; // Runtime-only; the durable queue always stores null
 }
 
 /** Supported messaging providers */
@@ -361,7 +364,7 @@ Current source registers WhatsApp only. Non-WhatsApp provider adapters are reser
 ```typescript
 // functions/src/messagingOnboarding/providers/whatsapp/WhatsAppAdapter.ts
 // Implements IMessagingProvider for Meta WhatsApp Cloud API
-// ~200 lines: verifyWebhook (HMAC-SHA256), parseIncomingMessage (Meta payload),
+// verifyWebhook (HMAC-SHA256), parseIncomingMessages (all Meta entries/changes/messages),
 //             downloadMedia (Graph API), sendTextMessage/sendLinkMessage
 // See §8.3 for WhatsApp-specific API patterns
 ```
@@ -407,7 +410,7 @@ interface MessagingOnboardingSession {
   provider: MessagingProvider; // 'whatsapp' | 'telegram' — which provider originated this session
   providerUserId: string; // Provider-specific user ID (phone for WA, chatId for Telegram)
   providerDisplayId: string; // Human-readable (E.164 phone for WA, @username for Telegram)
-  providerMessageIds: string[]; // Legacy first-message trace only. Durable dedup lives in messagingOnboardingInboundMessages.
+  providerMessageIds: string[]; // First-session, full-resend, and invalid-upload reply markers. Durable general dedup lives in messagingOnboardingInboundMessages.
 
   // State
   state: MessagingOnboardingState; // State machine enum
@@ -525,6 +528,7 @@ type MessagingOnboardingState =
 ```typescript
 interface MessagingOnboardingRateLimit {
   userHash: string; // SHA-256 of '{provider}:{providerUserId}' (never store raw)
+  activeSessionId?: string | null; // transactionally serialized first-session admission
   sessionsToday: number;
   sessionsThisWeek: number;
   processingRunsThisWeek: number;
@@ -562,6 +566,9 @@ interface MessagingOnboardingInboundMessage {
   maxAttempts: number;
   nextAttemptAt: Timestamp;
   processingStartedAt?: Timestamp | null;
+  processingToken?: string | null;
+  handlerCompletedAt?: Timestamp | null;
+  replyText?: string | null; // bounded fixed reply used for delivery retries
   processedAt?: Timestamp | null;
   lastError?: string | null;
   createdAt: Timestamp;
@@ -616,9 +623,9 @@ Each registered provider gets its own webhook endpoint. The current source regis
 ```typescript
 // 1. Resolve provider from URL path
 // 2. providerAdapter.verifyWebhook(req) — reject if invalid
-// 3. providerAdapter.parseIncomingMessage(req) → NormalizedMessage
-// 4. inboundQueue.enqueueInboundMessage(normalizedMessage) — durable dedup write
-// 5. Send provider ACK only after queue write succeeds
+// 3. providerAdapter.parseIncomingMessages(req) → NormalizedMessage[]
+// 4. inboundQueue.enqueueInboundMessages(messages) — bulk durable dedup writes
+// 5. Send provider ACK only after every message is durably written
 // 6. menulistMaintenanceScheduler.messaging_intake drains pending queue items every 2 minutes
 // Must ACK provider quickly after durable queue write
 ```
@@ -630,9 +637,9 @@ Each registered provider gets its own webhook endpoint. The current source regis
 // 1. Runtime feature flag check → if OFF, return 200 (no processing)
 // 2. Provider enabled check → if provider not in MESSAGING_ONBOARDING_PROVIDERS, return 200
 // 3. Signature verification → reject invalid provider signatures
-// 4. Parse to NormalizedMessage → if unsupported/no message, ACK and stop
-// 5. Durable queue dedup → if same providerMessageId already exists, ACK and stop
-// 6. Immediate best-effort processing → queue remains retryable if interrupted
+// 4. Parse every batched message → status-only/no-message payloads ACK and stop
+// 5. Bulk durable queue dedup → partial failure returns 500; retry is idempotent
+// 6. Scheduled queue claim handles state, checkpoints the reply, then delivers it
 
 // sessionEngine.handleMessage(msg) still owns product-state checks after queue claim:
 // 1. Existing LIVE session check → reply with dashboard link
@@ -648,7 +655,7 @@ Each registered provider gets its own webhook endpoint. The current source regis
 | ----------------------- | ------------------------------------------------------ | --------------------------- |
 | `COLLECTING_INPUT`      | Store upload, reset intake timer                       | No reply (waiting for more) |
 | `AWAITING_MORE_UPLOADS` | Store upload, reset intake timer (same as COLLECTING)  | No reply                    |
-| `VALIDATING_ASSETS`     | Store upload, mark pending                             | No reply                    |
+| `VALIDATING_ASSETS`     | Store upload; stale model result is discarded and intake restarts | No reply       |
 | `PROCESSING_MENU`       | Store upload, set `pendingUploadsWhileProcessing=true` | No reply                    |
 | `PREVIEW_READY`         | If ≥3: full resend. If <3: reply with preview link     | Reply with preview link     |
 | `AWAITING_APPROVAL`     | If ≥3: full resend. If <3: reply with preview link     | Reply with preview link     |
@@ -801,6 +808,8 @@ functions/package.json              # May need axios for provider API calls
 | 11  | Webhook durability             | `messagingOnboardingInboundMessages` queue stores sanitized messages before ACK; raw provider payload is not persisted |
 | 12  | No sensitive data in logs      | User IDs are masked in onboarding events and logs; provider payloads are not stored in the queue |
 | 13  | Firestore rules                | `messagingOnboardingSessions`, inbound queue, rate limits, and events are admin-only access                    |
+
+The 24-hour session boundary is enforced at every active runtime edge, not only by the daily cleanup sweep. Active-session lookup expires stale non-terminal rows before routing another message, while upload append and invalid-upload accounting re-check `expiresAt` transactionally after provider download. Intake claim, validation commit/failure, extraction enqueue, and extraction success/failure also re-read `expiresAt` inside their authoritative transaction. Expired validation/processing work records the required `FAILED` → `EXPIRED` audit path, clears pending delivery/lease state, unbinds any terminal extraction job, and cannot create a job, preview, recovery message, or additional model work after expiry.
 
 ---
 
@@ -968,7 +977,7 @@ Key functions reused:
     name: `${businessName} - Main Store`,
     isMaster: true,
   }],
-  tenantId: newTenantId, // From platformSummary.tenants.count + 1
+  tenantId: newTenantId, // Collision-checked canonical platform counter allocation
   tenantKey: businessName.toLowerCase().replaceAll(" ", "_"),
   createdOn: Timestamp.now(),
   modifiedOn: Timestamp.now(),
@@ -1103,7 +1112,8 @@ if (
   session.state === "AWAITING_APPROVAL"
 ) {
   if (newUploadCount >= FULL_RESEND_THRESHOLD) {
-    // Full resend → restart session
+    // Full resend → keep only uploads received after the latest preview,
+    // clear stale extracted/delivery state, and restart the session.
     resetToCollectingInput(session);
   } else {
     // Partial addition → reply with existing preview link
@@ -1115,6 +1125,8 @@ if (
 ```
 
 **Rationale:** 3+ images strongly signals "I'm sending a whole new menu," not "I want to add one more page." This threshold is a constant in `constants.ts`, easily adjustable.
+
+The restart transaction must not retain pre-preview uploads in the new extraction input. Post-preview files stage in `replacementUploads` (maximum 15) instead of consuming the authoritative 15-file `uploads` cap. On the third replacement file, the transaction promotes only the staged set to `uploads`, clears `replacementUploads`, resets extracted business/menu/project data and obsolete preview/fix/reminder leases, and moves superseded Storage paths into `pendingUploadCleanupPaths` (maximum 45). Immediate idempotent deletion is followed by the daily scheduler when Storage is unavailable. Publishing the old preview moves its 1-2 staged files into the same cleanup queue without adding them to the project; a fix request queues all prior source/staged files and starts a clean upload set. Legacy rows that appended post-preview files into `uploads` are split by the latest preview timestamp on their next read/mutation. A malformed cleanup row is never allowed to consume the bounded retry batch forever: its raw pointers are retained without deletion, while a transaction clears only `uploadCleanupPending` and emits a bounded contract-failure log so later valid rows remain reachable. Operational Firestore read/completion failures return a durable retry result rather than escaping after the core user mutation has committed, and concurrent workers report only the pointers their completion transaction actually removed. Terminal `COOLDOWN` sessions remain immutable during the 24-hour abuse window and become eligible for the same safe 48-hour retention cleanup as `EXPIRED` sessions. If a terminal document itself is invalid after that retention threshold, the scheduler precondition-deletes only the queried document reference; it never follows an unvalidated embedded session ID or Storage path, and emits a bounded error so any deliberately untouched orphan can be investigated without blocking later rows.
 
 #### 8.2.6 Extraction Completion Detection
 
@@ -1171,8 +1183,9 @@ The preview page `/msg-preview/[sessionId]` calls the Next.js API route `/api/ms
 3. If the session is `PUBLISHING`, returns a 409 "already in progress" response
 4. **Double-publish protection (CRITICAL):** Uses a Firestore transaction to atomically read session state AND update it to `PUBLISHING`. If state is not `AWAITING_APPROVAL`, the transaction rejects.
 5. Calls `executeMessagingOnboardingPublish()` from `src/lib/messaging-onboarding/publish.ts`
-6. The publish executor runs one Firestore transaction for tenant + store + user + project + summary + session `LIVE` finalization
-7. After the transaction commits, `executeMessagingOnboardingPublish()` revalidates public cache tags; the intake scheduler sends the provider confirmation from `confirmationPending=true`
+6. Before tenant/store creation, the publish transaction re-reads and claims the exact phone-owner document. New messaging owners and phone-OTP owners share the same HMAC-derived `phone_{digest}` document ID. Existing users must still match the normalized phone and have no tenant, store, or store mapping.
+7. The publish executor then creates tenant + store + claimed user + project + summary + session `LIVE` finalization in that same transaction. A concurrent or already-scoped phone claim rolls the whole transaction back and returns 409 without a retry.
+8. After the transaction commits, `executeMessagingOnboardingPublish()` revalidates public cache tags; the intake scheduler sends the provider confirmation from `confirmationPending=true`
 
 ```typescript
 // Double-publish protection pattern (inside approve API route)
@@ -1887,7 +1900,15 @@ export function maskUserId(providerUserId: string): string {
 | Preview API routes           | `PREVIEW_VIEWED`, `PREVIEW_APPROVED`, `PREVIEW_FIX_REQUESTED`                                                                                                                         | On preview page interactions                    |
 | Provider adapters            | `MESSAGE_SENT`, `MESSAGE_SEND_FAILED`, `PROVIDER_MEDIA_DOWNLOAD_FAILED`                                                                                                               | On provider API calls                           |
 
-`assetIntelligence.ts` diagnostics are bounded. Upload-fetch failures log `ASSET_VALIDATION_UPLOAD_FETCH_FAILED` with upload count/index and ID/URL/MIME length metadata only. Unsafe upload URLs are rejected with `ASSET_VALIDATION_UPLOAD_URL_REJECTED` before fetch unless the Firebase Storage download URL decodes to the same configured bucket, the same `upload.storagePath`, and the `messagingOnboarding/{sessionId}/{uploadId.ext}` shape created by `sessionEngine.ts`. The same prefetch path validates the upload URL through the shared Functions public HTTPS/DNS target guard, fetches only the normalized validated URL, and reads the response through `readResponseUint8ArrayWithLimit()` so oversize headers or streams are rejected with `ASSET_VALIDATION_UPLOAD_TOO_LARGE` before base64 conversion. Gemini parse failures log `ASSET_VALIDATION_RESPONSE_PARSE_FAILED` with response length and source error name/code/status only. Raw upload IDs, raw storage URLs, raw Gemini response snippets, and raw exception messages must not be logged.
+`assetIntelligence.ts` diagnostics are bounded. Asset Intelligence never re-fetches an owned object through its persisted public token URL. `assetStorageBoundary.ts` first requires the configured Firebase bucket URL to decode to the exact immutable `messagingOnboarding/{sessionId}/{uploadId.ext}` path, then the Functions Admin Storage SDK streams that exact object with CRC validation, a 15-second timeout, and a 10 MB byte ceiling. The downloaded bytes must match the persisted byte length, MIME signature, and SHA-256 before Gemini can see them. Invalid records and mismatched bytes use `ASSET_VALIDATION_UPLOAD_RECORD_REJECTED` or `ASSET_VALIDATION_UPLOAD_INTEGRITY_REJECTED`; Storage read failures use `ASSET_VALIDATION_UPLOAD_FETCH_FAILED`.
+
+Gemini inline media is used only when the estimated base64-expanded request remains at or below the conservative 18 MiB application ceiling, below the provider's 20 MB `generateContent` inline request limit. Larger valid sessions use temporary Gemini Files API references with three-way bounded upload concurrency. Every known provider file is deleted in `finally`, including partial-upload failure, and every local temp file is deleted per upload. Provider/temp cleanup failures log count/length metadata only. Gemini parse failures log `ASSET_VALIDATION_RESPONSE_PARSE_FAILED` with response length and source error name/code/status only. Raw upload IDs, raw Storage URLs, provider file names, raw Gemini response snippets, and raw exception messages must not be logged.
+
+`sessionEngine.ts` applies failed-session recovery and invalid-upload cooldown atomically. A valid upload received in `FAILED` appends the source, clears stale job/extraction/preview fields, and writes `COLLECTING_INPUT` in one transaction. The third invalid upload in any media-accepting active state writes both `COOLDOWN` and the per-user 24-hour cooldown in the same transaction, so an active session cannot bypass the new-session rate check.
+
+Queue/session replay is deterministic across the narrow gap between a committed session mutation and the inbound queue handler checkpoint. The session keeps the initial provider message ID plus bounded full-resend and invalid-upload reply markers. A replay reconstructs `FIRST_UPLOAD` or `NON_MENU_FILE` without creating a second session, upload, restart, or invalid-upload strike. General provider-message dedup remains owned by `messagingOnboardingInboundMessages`.
+
+Pending preview, confirmation, and fix deliveries use token-bound five-minute leases and a maximum of five acquired claims. A poison row is discarded and logged after the ceiling instead of starving the next `.limit(1)` candidate. Expired preview/fix rows are discarded, while a live publish confirmation remains deliverable. Every producer transition resets its new delivery counter/lease and invalidates obsolete preview, fix, or reminder leases so an older cycle cannot become eligible again.
 
 `sessionEngine.ts` duplicate-upload cleanup is non-blocking but observable. If a duplicate media upload is detected after Storage upload, the engine still attempts to delete the orphaned object and returns no owner reply for the duplicate. Failed cleanup logs `Duplicate upload cleanup failed` with session ID, upload ID, and Storage path presence/length metadata plus bounded source error name/code only. It must not log raw session IDs, upload IDs, Storage paths, provider media IDs, hashes, file names, or exception text.
 
@@ -2465,4 +2486,4 @@ The preview page lives at `src/app/(global-pages)/msg-preview/[sessionId]/page.t
 
 ---
 
-_Document Status: Implementation-Complete (v3.7 — May 17, 2026 Firebase cost audit removed redundant active-session dedup writes, replaced inbound queue pre-create reads with atomic create, added TTL fields for inbound queue and shared lifecycle events, aligned source-retention health sampling with existing Firestore indexes, and preserved the production hardening from v3.6.)_
+_Document Status: Source implementation current (v3.13 — July 13, 2026 delivery leases, pre-checkpoint replay replies, producer invalidation, bounded replacement staging/cleanup, poison/failure/concurrency cleanup convergence, safe invalid-terminal retirement, cooldown retention, and transactional hard-expiry enforcement are documented. Provider enablement and hosted smoke remain separate launch evidence.)_

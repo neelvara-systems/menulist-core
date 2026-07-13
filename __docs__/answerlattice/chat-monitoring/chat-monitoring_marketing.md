@@ -8,9 +8,9 @@
 
 ## 1. Elevator Pitch
 
-**One-liner:** "Monitor every AI conversation, filter by quality, calculate ROI, and get AI-generated weekly reports — all from one dashboard."
+**One-liner:** "Review every support conversation, find answer gaps, calculate ROI, and get source-backed weekly reports from one dashboard."
 
-**30 seconds:** MenuList's Chat Monitoring gives platform administrators complete visibility into AI chatbot performance. See every conversation, filter by AI answer quality (Good/Low/Very Low based on confidence scores), triage with status/priority/tags, add internal team notes, calculate ROI metrics, and receive AI-generated weekly performance narratives. Quality issues surface instantly — before customers complain.
+**30 seconds:** Answerlattice Chat Monitoring gives support operators visibility into answer performance. Review conversations, filter by answer quality, triage with status/priority/tags, add internal notes, calculate ROI metrics, and receive source-backed weekly summaries. Quality issues surface before they become recurring support work.
 
 ---
 
@@ -20,13 +20,13 @@
 |-------|---------|
 | **Quality-based filtering** | Filter by AI confidence: Good ≥60%, Low <60%, Very Low <40% |
 | **9 filter types** | Mode, feedback, status, priority, quality, tags, notes, unread, date range |
-| **AI weekly digest** | Gemini generates narrative + highlights + recommendations automatically |
+| **Weekly digest** | Deterministic analytics summaries explain volume, feedback, and recurring answer gaps |
 | **ROI calculator** | Quantify hours saved, cost saved, automation rate |
 | **Knowledge gap detection** | AI identifies topics where KB needs improvement |
 | **Internal notes** | Rich text team notes on conversations (not visible to users) |
 | **Export** | CSV + Markdown transcript export |
 | **99.95% cheaper reads** | Aggregated analytics vs raw session scanning |
-| **Cost** | ~$0.16/month for 10 stores (including Gemini) |
+| **Scheduled provider cost** | No model call for deterministic feedback or weekly projections |
 
 ---
 
@@ -35,7 +35,7 @@
 | Feature | MenuList | Intercom | Zendesk | Freshdesk |
 |---------|:--------:|:--------:|:-------:|:---------:|
 | Quality-based filtering | ✅ (similarity scores) | ❌ | ❌ | ❌ |
-| AI weekly digest | ✅ (Gemini) | ❌ | ⚠️ (paid add-on) | ❌ |
+| Source-backed weekly digest | ✅ | ❌ | ⚠️ (paid add-on) | ❌ |
 | ROI calculator | ✅ Built-in | ❌ | ❌ | ❌ |
 | Knowledge gap detection | ✅ | ❌ | ❌ | ❌ |
 | Internal notes | ✅ Rich text | ✅ | ✅ | ✅ |

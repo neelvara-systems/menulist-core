@@ -5,7 +5,11 @@ import { CHARGE_PER_CREDIT, TOKENS_PER_CREDIT } from "@constant/common";
 import { PERMISSIONS } from "@constant/permissions";
 import { HarmBlockThreshold, HarmCategory } from "@google/genai";
 import { finalizeAiOperationAccounting } from "@lib/ai/accounting";
-import { checkAICapacity } from "@lib/ai/capacityCheck";
+import {
+    normalizeDescriptionGenerationResult,
+    resolveDescriptionBillingAction,
+} from "@lib/ai/descriptionOutput";
+import { checkAICapacity, refundAiCapacityReservationSafely, reserveAiCapacity } from "@lib/ai/capacityCheck";
 import { getAIGatewayDiagnostics, getAIErrorDiagnostics, getAIRouteLogContext, getAIRouteSecurityContext, logAIRouteFailure } from "@lib/google/genAi/diagnostics";
 import { genAIClient } from "@lib/google/genAi";
 import { logger } from "@lib/monitoring/logger";
@@ -19,7 +23,7 @@ import { DescriptionRequestSchema } from "@lib/validation/apiSchemas";
 import { DescriptionAPIParams } from "@template/main-app/projects/types";
 import { writeErrorLogEntry, writeLogEntry, writeMissingParamsLogEntry } from 'logs/utils';
 import { NextResponse } from 'next/server';
-import { verifyTenantAccess, withAuth } from "../../../middleware/auth";
+import { withAuth } from "../../../middleware/auth";
 import descriptionPrompt, { descriptionPromptSystemInstruction } from "./prompt";
 
 const AI_MODEL = getModelName('DESCRIPTION_GENERATION');
@@ -195,6 +199,7 @@ export const POST = withAuth(async (request, session) => {
     // ✅ Auth failures automatically logged to Sentry
     const userId = session.user.id;
     const requestId = crypto.randomUUID();
+    let capacityReservation: Awaited<ReturnType<typeof reserveAiCapacity>> | null = null;
     try {
 
         // �️ SAFE_MODE: Block expensive operations during system maintenance
@@ -239,6 +244,8 @@ export const POST = withAuth(async (request, session) => {
 
         const validated = validation.data;
         const { itemsList, targetLang, sourceLang, projectId, fileId, contentLength, tone } = validated;
+        const requestedAction = validated.action as DescriptionAPIParams['action'];
+        const action = resolveDescriptionBillingAction(requestedAction, itemsList);
         const targetLangList = (Array.isArray(targetLang) ? targetLang : [targetLang]) as Array<{ code?: string }>;
         const targetLangCodes = targetLangList.map((language) => language?.code || 'unspecified');
         const itemSummary = {
@@ -259,7 +266,7 @@ export const POST = withAuth(async (request, session) => {
         if (permissionError) return permissionError;
 
         logger.info('Description generation requested', getAIRouteLogContext({
-            action: validated.action,
+            action,
             contentLength,
             itemCount: itemsList.length,
             model: AI_MODEL,
@@ -272,23 +279,6 @@ export const POST = withAuth(async (request, session) => {
             tone: tone || 'default',
             userId,
         }));
-
-        // 🔒 TENANT ISOLATION: Verify user owns this project
-        if (projectId) {
-            // Extract tenantId from projectId if embedded (format: tId_sId_projectId)
-            // or verify through session context
-            const tenantId = session.tId;
-            const storeId = session.sId;
-
-            if (!verifyTenantAccess(session, tenantId, storeId, request)) {
-                logger.security('Tenant Access Violation - Description API', {
-                    ...getAIRouteSecurityContext(session, request),
-                    endpoint: '/api/descriptions',
-                    attemptedProject: getAIRouteLogContext({ projectId }),
-                }, 'critical');
-                return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-            }
-        }
 
         const outletPolicyBlockReason = await getLinkedOutletPolicyBlockReason({
             action: "description",
@@ -306,9 +296,6 @@ export const POST = withAuth(async (request, session) => {
             return NextResponse.json({ error: outletPolicyBlockReason }, { status: 403 });
         }
 
-        // Map validated action to expected prompt action type
-        const action = validated.action as DescriptionAPIParams['action'];
-
         // 🔋 AI CAPACITY CHECK: Verify store has sufficient capacity
         const capacityCheck = await checkAICapacity(
             session.tId,
@@ -322,6 +309,18 @@ export const POST = withAuth(async (request, session) => {
                     : 'Additional AI enhancements needed for your menu.',
                 code: capacityCheck.reason,
             }, { status: 402 });
+        }
+        if (capacityCheck.unitsRequired > 0) {
+            capacityReservation = await reserveAiCapacity({
+                action,
+                pId: session.pId ?? session.user?.pId ?? session.user?.productId,
+                sId: session.sId,
+                source: '/api/descriptions',
+                subscription: capacityCheck.subscription!,
+                tId: session.tId,
+                uId: session.uId ?? session.user?.id,
+                unitsToReserve: capacityCheck.unitsRequired,
+            });
         }
 
         const startTime = new Date().getTime();
@@ -487,9 +486,13 @@ export const POST = withAuth(async (request, session) => {
             return NextResponse.json({ error: 'Description generation failed' }, { status: 500 });
         }
 
-        // Type guard — ensure response is an object (not array, string, null, etc.)
-        if (!generatedData || typeof generatedData !== 'object' || Array.isArray(generatedData)) {
-            logAIRouteFailure('description_generation_non_object_response', undefined, {
+        const normalizedGeneratedData = normalizeDescriptionGenerationResult(
+            generatedData,
+            itemsList.map((item) => item.id),
+            targetLangCodes,
+        );
+        if (!normalizedGeneratedData) {
+            logAIRouteFailure('description_generation_invalid_shape_response', undefined, {
                 isArray: Array.isArray(generatedData),
                 model: AI_MODEL,
                 projectId,
@@ -519,6 +522,7 @@ export const POST = withAuth(async (request, session) => {
             });
             return NextResponse.json({ error: 'Description generation failed' }, { status: 500 });
         }
+        generatedData = normalizedGeneratedData;
 
         // Response ID validation — verify returned IDs match requested IDs to prevent data corruption
         const requestedIds = new Set(itemsList.map((item: any) => item.id));
@@ -585,12 +589,14 @@ export const POST = withAuth(async (request, session) => {
         try {
             transactionObject.unitsConsumed = getUnitCost(transactionObject.action);
             const accounting = await finalizeAiOperationAccounting({
+                capacityReservation: capacityReservation || undefined,
                 capacitySubscription: capacityCheck.subscription,
                 context: { userId, projectId, fileId, requestId, action },
                 input: transactionObject,
                 logLabel: 'Description generation',
                 session,
             });
+            capacityReservation = null;
             transactionObject.unitsConsumed = accounting.unitsConsumed;
             transactionObject.transactionId = accounting.transactionId;
             remainingBalance = accounting.remainingBalance;
@@ -634,7 +640,7 @@ export const POST = withAuth(async (request, session) => {
         });
 
         logger.info('Description generation completed', getAIRouteLogContext({
-            action: validated.action,
+            action,
             fileId,
             itemCount: itemsList.length,
             processingTime,
@@ -670,5 +676,10 @@ export const POST = withAuth(async (request, session) => {
         }
         await writeErrorLogEntry(LOG_FILE, error);
         return NextResponse.json({ error: 'Description generation failed' }, { status: 500 });
+    } finally {
+        await refundAiCapacityReservationSafely(capacityReservation, 'description_request_did_not_settle', {
+            endpoint: '/api/descriptions',
+            requestId,
+        });
     }
 });

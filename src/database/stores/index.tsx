@@ -8,24 +8,30 @@ import {
     propagateMasterStoreChangesToOutlets,
 } from "@database/multiOutlet/brandPropagation";
 import { getBoundedStoreStringContext, logStoreDataFailure } from "@database/stores/storeDiagnostics";
-import { mergeStoreSummaryFields, syncStoreToSummary, type StoreDistributionPresenceSummary, updateStoresCountInPlatformSummary } from "@database/platformSummary";
+import {
+    buildStoreSummaryEntry,
+    reserveNextPlatformEntityId,
+    type StoreSummaryData,
+} from "@database/platformSummary";
 import { uploadPreparedMediaImage } from "@database/storage/uploadPreparedMediaImage";
 import { collection, getDocs, limit, query, where } from "@firebase/firestore";
 import { resolveBusinessDayEndTime } from "@lib/analytics/businessDay";
-import { TrackingEvent, trackEvent } from "@lib/analytics/unified";
 import { requestBodyComposer } from "@lib/apiHelper";
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
+import { AUTH_BROWSER_REQUEST_POLICY } from "@lib/auth/browserRequestPolicy";
 import getActiveSession from "@lib/auth/getActiveSession";
 import { revalidatePublicClientCache } from "@lib/cache/publicClientCache";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
 import { normalizeStoreLanguagePolicy } from "@lib/localization/languagePolicy";
 import { isDataUrl } from "@lib/media/mediaStorage";
+import { normalizeTimeSlotPresets } from "@lib/menu/timeSlotPresetBoundary";
 import { touchDigitalScreenContentVersion } from "@lib/screen/screenInvalidation";
-import type { StarterActivationSignal } from "@lib/onboarding/starterActivation";
+import { readJsonResponseWithLimit } from "@lib/security/boundedResponseBody";
+import { isStarterActivationSignal, type StarterActivationSignal } from "@lib/onboarding/starterActivation";
 import { generateOwnCustomUid } from "@lib/utils/generateOwnCustomUid";
 import { computeSchedulerHour } from "@lib/utils/schedulerHour";
-import { TimeSlotPreset } from "@type/platform/store";
-import { deleteField, doc, getDoc, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
+import { StoreDataType, TimeSlotPreset } from "@type/platform/store";
+import { deleteField, doc, getDoc, runTransaction, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
 
 const COLLECTION = DB_COLLECTIONS.STORES;
 const DIGITAL_SCREEN_STORE_OUTPUT_FIELDS = [
@@ -43,6 +49,75 @@ const DIGITAL_SCREEN_STORE_OUTPUT_FIELDS = [
     'subdomain',
     'tenantName',
 ] as const;
+const SUBDOMAIN_ASSIGN_RESPONSE_MAX_BYTES = 8 * 1024;
+
+const buildSummaryDataFromStore = (store: Record<string, any>): StoreSummaryData => ({
+    tId: store.tenantId,
+    businessType: store.businessType || 'unknown',
+    businessCategory: resolveStoreBusinessCategory(store.businessType || '', store.businessCategory),
+    active: store.active ?? true,
+    blocked: store.blocked ?? false,
+    tenantBlocked: store.tenantBlocked,
+    name: store.name || '',
+    tenantName: store.tenantName || '',
+    subdomain: store.subdomain,
+    isMaster: store.isMaster,
+    outletSlug: store.outletSlug,
+    city: store.city,
+    addressLine: store.addressLine,
+    logo: store.logo,
+    workingHours: store.workingHours,
+    timeZone: store.timeZone,
+    businessDayEndTime: store.businessDayEndTime,
+    schedulerHour: store.schedulerHour,
+    activePlanType: store.activePlanType,
+    menuPresence: store.menuPresence,
+    presence: store.presence,
+    modifiedOn: store.modifiedOn,
+});
+
+const upsertTenantStoreListEntry = (
+    storesList: unknown,
+    store: Record<string, any>,
+) => {
+    const current = Array.isArray(storesList)
+        ? storesList.filter((entry): entry is Record<string, any> => Boolean(entry) && typeof entry === 'object' && !Array.isArray(entry))
+        : [];
+    const nextEntry = {
+        storeId: store.storeId,
+        name: store.name || '',
+        tenantName: store.tenantName || '',
+    };
+    let inserted = false;
+    const next = current.flatMap((entry) => {
+        if (String(entry.storeId) !== String(store.storeId)) return [entry];
+        if (inserted) return [];
+        inserted = true;
+        return [{ ...entry, ...nextEntry }];
+    });
+    return inserted ? next : [...next, nextEntry];
+};
+
+async function assignStoreSubdomain(subdomain: string): Promise<string> {
+    const response = await fetch('/api/subdomain/check', {
+        ...AUTH_BROWSER_REQUEST_POLICY,
+        body: JSON.stringify({ subdomain }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+    });
+    const payload = await readJsonResponseWithLimit<unknown>(response, SUBDOMAIN_ASSIGN_RESPONSE_MAX_BYTES);
+    if (
+        !response.ok
+        || !payload
+        || typeof payload !== 'object'
+        || Array.isArray(payload)
+        || (payload as { success?: unknown }).success !== true
+        || typeof (payload as { subdomain?: unknown }).subdomain !== 'string'
+    ) {
+        throw new Error('store_subdomain_assignment_rejected');
+    }
+    return (payload as { subdomain: string }).subdomain;
+}
 
 const getCollectionRef = () => {
     return collection(firebaseClient, COLLECTION)
@@ -90,13 +165,47 @@ export const getAllStoresByTenantId = async (tenantId: any) => {
     );
 }
 
-export const readStoreById = async (id: number) => {
+const isStoreDataType = (value: unknown, expectedStoreId: number): value is StoreDataType => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+    const store = value as Partial<StoreDataType>;
+    return Number.isSafeInteger(store.storeId)
+        && store.storeId === expectedStoreId
+        && Number.isSafeInteger(store.tenantId)
+        && Number(store.tenantId) > 0
+        && typeof store.storeKey === 'string'
+        && typeof store.tenantName === 'string'
+        && typeof store.active === 'boolean'
+        && typeof store.deleted === 'boolean'
+        && typeof store.name === 'string'
+        && typeof store.email === 'string'
+        && typeof store.phoneNumber === 'string'
+        && typeof store.logo === 'string'
+        && typeof store.city === 'string'
+        && typeof store.state === 'string'
+        && typeof store.currencyCode === 'string'
+        && typeof store.currencySymbol === 'string'
+        && typeof store.businessType === 'string'
+        && typeof store.businessCategory === 'string'
+        && typeof store.contactPersonName === 'string'
+        && typeof store.contactPersonEmail === 'string'
+        && typeof store.contactPersonNumber === 'string'
+        && Array.isArray(store.roles);
+};
+
+export const readStoreById = async (id: number): Promise<StoreDataType | null> => {
+    if (!Number.isSafeInteger(id) || id <= 0) return null;
     const collectionDocRef = await getDocRef(id);
     const docSnap = await getDoc(collectionDocRef);
-    if (docSnap.exists()) {
-        return docSnap.data();
+    if (!docSnap.exists()) return null;
+
+    const storeData = docSnap.data();
+    if (!isStoreDataType(storeData, id)) {
+        logStoreDataFailure('store_document_shape_invalid', new Error('store_document_shape_invalid'), {
+            storeId: id,
+        });
+        return null;
     }
-    return null;
+    return storeData;
 }
 
 export const getStoreById = async (id: number) => {
@@ -188,6 +297,9 @@ const updateLogoImage = async (data) => {
 export const addStore = async (data: any, from: string = "") => {
     return await apiCallComposer(
         async () => {
+            if (from !== "onboarding") {
+                data.storeId = await reserveNextPlatformEntityId('store');
+            }
             if ('activeLanguages' in data || 'defaultLanguage' in data || 'language' in data) {
                 const normalizedLanguagePolicy = normalizeStoreLanguagePolicy(data);
                 data.activeLanguages = normalizedLanguagePolicy.activeLanguages;
@@ -228,35 +340,34 @@ export const addStore = async (data: any, from: string = "") => {
             const schedulerHour = data.schedulerHour ?? computeSchedulerHour(data.timeZone, data.businessDayEndTime);
             data.schedulerHour = schedulerHour;
 
-            await setDoc(getDocRef(data.id), await requestBodyComposer(data));
-            if (from != "onboarding") {
-                await updateStoresCountInPlatformSummary()
+            const storeId = Number(data.storeId);
+            const tenantId = Number(data.tenantId);
+            if (!Number.isSafeInteger(storeId) || storeId <= 0 || !Number.isSafeInteger(tenantId) || tenantId <= 0) {
+                throw new Error('store_create_scope_invalid');
             }
+            const storeRef = getDocRef(storeId);
+            const tenantRef = doc(firebaseClient, DB_COLLECTIONS.TENANTS, String(tenantId));
+            const summaryRef = doc(firebaseClient, DB_COLLECTIONS.PLATFORM_SUMMARY, 'storesSummary');
+            const composedStore = await requestBodyComposer(data, { isNew: true });
+            await runTransaction(firebaseClient, async (transaction) => {
+                const [storeSnapshot, tenantSnapshot] = await Promise.all([
+                    transaction.get(storeRef),
+                    transaction.get(tenantRef),
+                ]);
+                if (storeSnapshot.exists()) throw new Error('store_create_id_conflict');
+                if (!tenantSnapshot.exists()) throw new Error('store_create_tenant_missing');
+                if (String(tenantSnapshot.data()?.tenantId) !== String(tenantId)) {
+                    throw new Error('store_create_tenant_scope_mismatch');
+                }
 
-            // Sync to storesSummary for Cloud Function optimization
-            // See: __docs__/patterns/summary-document-pattern.md
-            await syncStoreToSummary(data.storeId, {
-                tId: data.tenantId,
-                businessType: data.businessType || 'unknown',
-                businessCategory,
-                active: true,
-                blocked: data.blocked ?? false,
-                name: data.name || '',
-                tenantName: data.tenantName || '',
-                subdomain: data.subdomain,
-                isMaster: data.isMaster,
-                outletSlug: data.outletSlug,
-                city: data.city,
-                addressLine: data.addressLine,
-                logo: data.logo,
-                workingHours: data.workingHours,
-                timeZone: data.timeZone,
-                businessDayEndTime: data.businessDayEndTime,
-                schedulerHour,
-                activePlanType: data.activePlanType,
-                menuPresence: data.menuPresence,
-                presence: data.presence,
-                modifiedOn: data.modifiedOn,
+                transaction.set(storeRef, composedStore);
+                transaction.set(summaryRef, {
+                    lastUpdated: serverTimestamp(),
+                    stores: { [String(storeId)]: buildStoreSummaryEntry(buildSummaryDataFromStore(data)) },
+                }, { merge: true });
+                transaction.update(tenantRef, {
+                    storesList: upsertTenantStoreListEntry(tenantSnapshot.data()?.storesList, data),
+                });
             });
             await revalidatePublicClientCache(data.storeId, "addStore");
 
@@ -321,27 +432,15 @@ export const updateStore = async (data: any) => {
                         wasPublished,
                         subdomainChanged,
                     });
-                    // T5-N-02: Emit analytics event for security/support signal.
-                    // Fire-and-forget: don't block the save if tracking fails.
-                    trackEvent(TrackingEvent.SUBDOMAIN_MUTATION_BLOCKED, {
-                        storeId: data.id,
-                        tenantId: data.tenantId,
-                        attemptedSubdomain: data.subdomain,
-                        currentSubdomain: current?.subdomain,
-                    }).catch((error) => {
-                        logStoreDataFailure('store_subdomain_block_analytics_signal_failed', error, {
-                            ...getBoundedStoreStringContext('storeId', data.id),
-                            ...getBoundedStoreStringContext('tenantId', data.tenantId),
-                            ...getBoundedStoreStringContext('currentSubdomain', current?.subdomain),
-                            ...getBoundedStoreStringContext('attemptedSubdomain', data.subdomain),
-                            wasPublished,
-                            subdomainChanged,
-                        });
-                    });
                     throw new Error('This public link is locked after first publish.');
                 }
             }
 
+            const requestedBusinessType = data.businessType;
+            const requestedBusinessCategory = data.businessCategory;
+            const requestedBusinessDayEndTime = data.businessDayEndTime;
+            const requestedSchedulerHour = data.schedulerHour;
+            const requestedTimeZone = data.timeZone;
             const summaryFields = [
                 'businessType',
                 'businessCategory',
@@ -366,9 +465,12 @@ export const updateStore = async (data: any) => {
             ];
             const hasSummaryFieldChanges = summaryFields.some(field => data[field] !== undefined);
             const needsSchedulerRecompute = data.timeZone !== undefined || data.businessDayEndTime !== undefined;
-            const needsBusinessCategoryResolution = hasSummaryFieldChanges || needsSchedulerRecompute;
+            const needsBusinessCategoryResolution = requestedBusinessType !== undefined
+                || requestedBusinessCategory !== undefined;
             const hasPropagationFieldChanges = hasMasterStorePropagationFields(data);
-            const existingStore = (needsBusinessCategoryResolution || hasPropagationFieldChanges) ? await getCurrentStoreData() : {};
+            const existingStore = (hasSummaryFieldChanges || needsSchedulerRecompute || hasPropagationFieldChanges)
+                ? await getCurrentStoreData()
+                : {};
             const effectiveBusinessType = data.businessType ?? existingStore.businessType;
             const effectiveBusinessCategory = data.businessCategory !== undefined
                 ? data.businessCategory
@@ -378,12 +480,13 @@ export const updateStore = async (data: any) => {
             const effectiveTimeZone = data.timeZone ?? existingStore.timeZone;
             const effectiveBusinessDayEndTime = data.businessDayEndTime ?? existingStore.businessDayEndTime;
 
-            const businessCategory = needsBusinessCategoryResolution
-                ? resolveStoreBusinessCategory(effectiveBusinessType || '', effectiveBusinessCategory)
-                : undefined;
-            if (needsBusinessCategoryResolution && businessCategory) {
+            const businessCategory = resolveStoreBusinessCategory(
+                effectiveBusinessType || '',
+                effectiveBusinessCategory,
+            );
+            if (needsBusinessCategoryResolution) {
                 data.businessCategory = businessCategory;
-            } else {
+            } else if (requestedBusinessCategory === undefined) {
                 delete data.businessCategory;
             }
 
@@ -398,44 +501,6 @@ export const updateStore = async (data: any) => {
                 data.schedulerHour = data.schedulerHour ?? computeSchedulerHour(effectiveTimeZone, nextBusinessDayEndTime);
             }
 
-            await updateDoc(getDocRef(data.id), await requestBodyComposer(data));
-
-            // Sync to storesSummary for Cloud Function optimization
-            // See: __docs__/patterns/summary-document-pattern.md
-            // Only sync if summary-relevant fields are present in the update
-            const summaryTenantId = data.tenantId ?? existingStore.tenantId;
-
-            if (hasSummaryFieldChanges && summaryTenantId) {
-                await syncStoreToSummary(data.storeId, {
-                    tId: summaryTenantId,
-                    businessType: effectiveBusinessType || 'unknown',
-                    businessCategory,
-                    active: data.active ?? existingStore.active ?? true,
-                    blocked: data.blocked ?? existingStore.blocked ?? false,
-                    name: data.name ?? existingStore.name ?? '',
-                    tenantName: data.tenantName ?? existingStore.tenantName ?? '',
-                    subdomain: data.subdomain ?? existingStore.subdomain,
-                    isMaster: data.isMaster ?? existingStore.isMaster,
-                    outletSlug: data.outletSlug ?? existingStore.outletSlug,
-                    city: data.city ?? existingStore.city,
-                    addressLine: data.addressLine ?? existingStore.addressLine,
-                    logo: data.logo ?? existingStore.logo,
-                    workingHours: data.workingHours ?? existingStore.workingHours,
-                    timeZone: data.timeZone ?? existingStore.timeZone,
-                    businessDayEndTime: data.businessDayEndTime ?? existingStore.businessDayEndTime,
-                    schedulerHour: data.schedulerHour ?? existingStore.schedulerHour,
-                    activePlanType: data.activePlanType ?? existingStore.activePlanType,
-                    menuPresence: data.menuPresence ?? existingStore.menuPresence,
-                    presence: data.presence ?? existingStore.presence,
-                    modifiedOn: data.modifiedOn ?? existingStore.modifiedOn,
-                });
-            } else if (hasSummaryFieldChanges && !summaryTenantId) {
-                logStoreDataFailure('store_summary_sync_skipped_missing_tenant', undefined, {
-                    ...getBoundedStoreStringContext('storeId', data.storeId),
-                });
-            }
-            // Skip sync if no summary-relevant fields present in update
-
             const propagationSource = data.businessCategory !== undefined && effectiveBusinessType
                 ? { ...data, businessType: effectiveBusinessType }
                 : data;
@@ -443,12 +508,121 @@ export const updateStore = async (data: any) => {
                 ? extractMasterStorePropagationChanges(propagationSource)
                 : null;
             const isMasterStore = (data.isMaster ?? existingStore.isMaster) === true;
-            if (propagationChanges && isMasterStore && summaryTenantId && data.storeId) {
+            const summaryTenantId = data.tenantId ?? existingStore.tenantId;
+            let propagationHandledByServer = false;
+            let subdomainHandledByServer = false;
+            if (data.subdomain !== undefined) {
+                data.subdomain = await assignStoreSubdomain(String(data.subdomain));
+                subdomainHandledByServer = true;
+            }
+            if (propagationChanges && isMasterStore) {
+                if (!summaryTenantId || !data.storeId) {
+                    logStoreDataFailure('store_brand_propagation_scope_missing', undefined, {
+                        ...getBoundedStoreStringContext('storeId', data.storeId),
+                        ...getBoundedStoreStringContext('tenantId', summaryTenantId),
+                    });
+                    throw new Error('store_brand_propagation_scope_missing');
+                }
                 await propagateMasterStoreChangesToOutlets(
                     Number(summaryTenantId),
                     Number(data.storeId),
                     propagationChanges,
                 );
+                propagationHandledByServer = true;
+            }
+
+            const directStoreUpdate = { ...data };
+            if (propagationHandledByServer && propagationChanges) {
+                for (const field of Object.keys(propagationChanges)) delete directStoreUpdate[field];
+                delete directStoreUpdate.modifiedOn;
+            }
+            if (subdomainHandledByServer) delete directStoreUpdate.subdomain;
+            const composedDirectStoreUpdate = await requestBodyComposer(directStoreUpdate, { isNew: false });
+
+            // Sync to storesSummary for Cloud Function optimization
+            // See: __docs__/patterns/summary-document-pattern.md
+            // Only sync if summary-relevant fields are present in the update
+            const serverSummaryFields = new Set<string>([
+                ...(propagationHandledByServer && propagationChanges ? Object.keys(propagationChanges) : []),
+                ...(propagationHandledByServer ? ['modifiedOn'] : []),
+                ...(subdomainHandledByServer ? ['subdomain'] : []),
+            ]);
+            const hasClientSummaryFieldChanges = summaryFields.some((field) => (
+                data[field] !== undefined && !serverSummaryFields.has(field)
+            ));
+
+            if (hasClientSummaryFieldChanges) {
+                const storeId = Number(data.storeId);
+                if (!Number.isSafeInteger(storeId) || storeId <= 0) {
+                    throw new Error('store_summary_scope_invalid');
+                }
+                const storeRef = getDocRef(storeId);
+                const summaryRef = doc(firebaseClient, DB_COLLECTIONS.PLATFORM_SUMMARY, 'storesSummary');
+                await runTransaction(firebaseClient, async (transaction) => {
+                    const freshStoreSnapshot = await transaction.get(storeRef);
+                    if (!freshStoreSnapshot.exists()) throw new Error('store_update_target_missing');
+                    const freshStore = freshStoreSnapshot.data();
+                    const tenantId = Number(composedDirectStoreUpdate.tenantId ?? freshStore.tenantId);
+                    if (!Number.isSafeInteger(tenantId) || tenantId <= 0) {
+                        throw new Error('store_summary_scope_invalid');
+                    }
+                    if (
+                        String(freshStore.storeId) !== String(storeId)
+                        || String(freshStore.tenantId) !== String(tenantId)
+                    ) {
+                        throw new Error('store_update_scope_changed');
+                    }
+                    const tenantRef = doc(firebaseClient, DB_COLLECTIONS.TENANTS, String(tenantId));
+                    const shouldSyncTenantList = Object.prototype.hasOwnProperty.call(composedDirectStoreUpdate, 'name')
+                        || Object.prototype.hasOwnProperty.call(composedDirectStoreUpdate, 'tenantName');
+                    const tenantSnapshot = shouldSyncTenantList ? await transaction.get(tenantRef) : null;
+                    if (shouldSyncTenantList && !tenantSnapshot?.exists()) {
+                        throw new Error('store_update_tenant_missing');
+                    }
+
+                    const transactionUpdate = { ...composedDirectStoreUpdate };
+                    const transactionBusinessType = requestedBusinessType ?? freshStore.businessType;
+                    const transactionBusinessCategory = resolveStoreBusinessCategory(
+                        transactionBusinessType || '',
+                        requestedBusinessCategory ?? freshStore.businessCategory,
+                    );
+                    if (needsBusinessCategoryResolution) {
+                        transactionUpdate.businessCategory = transactionBusinessCategory;
+                    }
+                    if (requestedBusinessDayEndTime !== undefined) {
+                        transactionUpdate.businessDayEndTime = resolveBusinessDayEndTime(
+                            transactionBusinessType,
+                            requestedBusinessDayEndTime,
+                            transactionBusinessCategory,
+                        );
+                    }
+                    if (needsSchedulerRecompute) {
+                        const transactionBusinessDayEndTime = resolveBusinessDayEndTime(
+                            transactionBusinessType,
+                            transactionUpdate.businessDayEndTime ?? freshStore.businessDayEndTime,
+                            transactionBusinessCategory,
+                        );
+                        transactionUpdate.businessDayEndTime = transactionBusinessDayEndTime;
+                        transactionUpdate.schedulerHour = requestedSchedulerHour ?? computeSchedulerHour(
+                            requestedTimeZone ?? freshStore.timeZone,
+                            transactionBusinessDayEndTime,
+                        );
+                    }
+
+                    const nextStore = { ...freshStore, ...transactionUpdate };
+                    transaction.update(storeRef, transactionUpdate);
+                    transaction.set(summaryRef, {
+                        lastUpdated: serverTimestamp(),
+                        stores: { [String(storeId)]: buildStoreSummaryEntry(buildSummaryDataFromStore(nextStore)) },
+                    }, { merge: true });
+                    if (tenantSnapshot) {
+                        transaction.update(tenantRef, {
+                            storesList: upsertTenantStoreListEntry(tenantSnapshot.data()?.storesList, nextStore),
+                        });
+                    }
+                });
+            } else {
+                await updateDoc(getDocRef(data.id), composedDirectStoreUpdate);
             }
 
             // Public OBP/menu/screen store lookup uses shared Data Cache tags.
@@ -523,10 +697,15 @@ export function assertTimeSlotPresetUpdateSucceeded(result: unknown): asserts re
 export const updateTimeSlotPresets = async (storeId: number, timeSlotPresets: TimeSlotPreset[]) => {
     return await apiCallComposer(
         async () => {
+            if (!Number.isSafeInteger(storeId) || storeId <= 0) {
+                throw new Error('time_slot_preset_store_scope_invalid');
+            }
+            await assertActiveSessionStore(storeId, 'time_slot_preset_store_scope_mismatch');
+            const normalizedPresets = normalizeTimeSlotPresets(timeSlotPresets);
             const docRef = getDocRef(`${storeId}`);
-            await setDoc(docRef, { modifiedOn: serverTimestamp(), timeSlotPresets }, { merge: true });
+            await setDoc(docRef, { modifiedOn: serverTimestamp(), timeSlotPresets: normalizedPresets }, { merge: true });
             await revalidatePublicClientCache(storeId, "updateTimeSlotPresets");
-            return { success: true, timeSlotPresets } satisfies TimeSlotPresetUpdateResult;
+            return { success: true, timeSlotPresets: normalizedPresets } satisfies TimeSlotPresetUpdateResult;
         },
         { storeId, timeSlotPresets },
         "updateTimeSlotPresets"
@@ -539,6 +718,13 @@ export const updateTimeSlotPresets = async (storeId: number, timeSlotPresets: Ti
 // ============================
 
 export type MenuPresenceSurface = 'googleBusiness' | 'appleBusiness' | 'bingPlaces' | 'instagramBio' | 'whatsappProfile';
+const MENU_PRESENCE_SURFACES = new Set<MenuPresenceSurface>([
+    'googleBusiness',
+    'appleBusiness',
+    'bingPlaces',
+    'instagramBio',
+    'whatsappProfile',
+]);
 
 export type MenuPresenceUpdateResult = {
     success: true;
@@ -565,6 +751,9 @@ export const recordStarterActivationSignal = async (
 ) => {
     return await apiCallComposer(
         async () => {
+            if (!Number.isSafeInteger(storeId) || storeId <= 0 || !isStarterActivationSignal(signal)) {
+                throw new Error('starter_activation_signal_input_invalid');
+            }
             await assertActiveSessionStore(storeId, 'starter_activation_signal_store_scope_mismatch');
             const now = new Date().toISOString();
             await updateDoc(getDocRef(`${storeId}`), {
@@ -591,33 +780,59 @@ export const updateMenuPresence = async (
 ) => {
     return await apiCallComposer(
         async () => {
-            await assertActiveSessionStore(storeId, 'menu_presence_store_scope_mismatch');
-            const docRef = getDocRef(`${storeId}`);
-            const now = new Date().toISOString();
-            if (confirmed) {
-                const updatePayload: Record<string, string> = {
-                    [`menuPresence.${surface}`]: now,
-                };
-                if (options?.starterSignal) {
-                    updatePayload[`starterActivationSignals.actions.${options.starterSignal}`] = now;
-                    updatePayload['starterActivationSignals.lastSignalAt'] = now;
-                }
-                await updateDoc(docRef, updatePayload);
-                const menuPresenceSummary: StoreDistributionPresenceSummary = { [surface]: now };
-                await mergeStoreSummaryFields(storeId, {
-                    menuPresence: menuPresenceSummary,
-                    modifiedOn: now,
-                });
-            } else {
-                await updateDoc(docRef, {
-                    [`menuPresence.${surface}`]: deleteField(),
-                });
-                const menuPresenceSummary: StoreDistributionPresenceSummary = { [surface]: null };
-                await mergeStoreSummaryFields(storeId, {
-                    menuPresence: menuPresenceSummary,
-                    modifiedOn: now,
-                });
+            const session = await assertActiveSessionStore(storeId, 'menu_presence_store_scope_mismatch');
+            if (
+                !Number.isSafeInteger(storeId)
+                || storeId <= 0
+                || !MENU_PRESENCE_SURFACES.has(surface)
+                || typeof confirmed !== 'boolean'
+                || (options?.starterSignal !== undefined && !isStarterActivationSignal(options.starterSignal))
+            ) {
+                throw new Error('menu_presence_input_invalid');
             }
+            const sessionTenantId = String(session.tId ?? '').trim();
+            const tenantId = Number(sessionTenantId);
+            if (!/^[1-9]\d*$/.test(sessionTenantId) || !Number.isSafeInteger(tenantId)) {
+                throw new Error('menu_presence_tenant_scope_invalid');
+            }
+            const storeRef = getDocRef(`${storeId}`);
+            const summaryRef = doc(firebaseClient, DB_COLLECTIONS.PLATFORM_SUMMARY, 'storesSummary');
+            const now = new Date().toISOString();
+            await runTransaction(firebaseClient, async (transaction) => {
+                const storeSnapshot = await transaction.get(storeRef);
+                if (!storeSnapshot.exists()) throw new Error('menu_presence_store_missing');
+                const store = storeSnapshot.data();
+                if (
+                    String(store.storeId) !== String(storeId)
+                    || String(store.tenantId) !== sessionTenantId
+                ) {
+                    throw new Error('menu_presence_store_scope_changed');
+                }
+
+                const storeUpdate: Record<string, unknown> = confirmed
+                    ? {
+                        [`menuPresence.${surface}`]: now,
+                    }
+                    : {
+                        [`menuPresence.${surface}`]: deleteField(),
+                    };
+                if (confirmed && options?.starterSignal) {
+                    storeUpdate[`starterActivationSignals.actions.${options.starterSignal}`] = now;
+                    storeUpdate['starterActivationSignals.lastSignalAt'] = now;
+                }
+                transaction.update(storeRef, storeUpdate);
+                transaction.set(summaryRef, {
+                    lastUpdated: serverTimestamp(),
+                    stores: {
+                        [String(storeId)]: {
+                            menuPresence: { [surface]: confirmed ? now : null },
+                            modifiedOn: now,
+                            tId: tenantId,
+                        },
+                    },
+                }, { merge: true });
+            });
+            await revalidatePublicClientCache(storeId, 'updateMenuPresence');
             return {
                 success: true,
                 storeId,

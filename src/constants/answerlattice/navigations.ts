@@ -15,6 +15,7 @@ import {
     LuBookOpen,
     LuBoxes,
     LuCode,
+    LuClipboardCheck,
     LuCreditCard,
     LuFileInput,
     LuFlame,
@@ -23,11 +24,13 @@ import {
     LuHeart,
     LuHelpCircle,
     LuHistory,
+    LuAlertCircle,
     LuLayoutDashboard,
     LuLayers,
     LuLanguages,
     LuMailCheck,
     LuKanbanSquare,
+    LuListChecks,
     LuMessageSquare,
     LuPaintbrush,
     LuReceipt,
@@ -179,14 +182,16 @@ export const ANSWERLATTICE_LAUNCH_SETUP_SUB_NAV: AnswerlatticeNavItem[] = [
 ];
 
 export const ANSWERLATTICE_SUPPORT_CONTROL_SUB_NAV: AnswerlatticeNavItem[] = [
-    { key: 'support-knowledge-base', label: 'Knowledge Base', route: ANSWERLATTICE_ROUTES.KNOWLEDGE_BASE, icon: LuBookOpen, managementOnly: true, requiredPermission: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_KNOWLEDGE },
-    { key: 'support-faqs', label: 'FAQs', route: ANSWERLATTICE_ROUTES.FAQS, icon: LuHelpCircle, managementOnly: true, requiredPermission: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_KNOWLEDGE, featureFlag: 'ENABLE_ANSWERLATTICE_FAQ_MANAGEMENT' },
-    { key: 'support-changelog', label: 'Changelog', route: ANSWERLATTICE_ROUTES.CHANGELOG, icon: LuReceipt, managementOnly: true, requiredPermission: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_KNOWLEDGE },
+    { key: 'support-assistant', label: 'Daily Brief', route: ANSWERLATTICE_ROUTES.SUPPORT_ASSISTANT, icon: LuListChecks, managementOnly: true, requiredPermission: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_SUPPORT, featureFlag: 'ENABLE_ANSWERLATTICE_OWNER_SUPPORT_ASSISTANT' },
     { key: 'support-board', label: 'Support Board', route: ANSWERLATTICE_ROUTES.SUPPORT_BOARD, icon: LuKanbanSquare, managementOnly: true, requiredPermission: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_SUPPORT, featureFlag: 'ENABLE_ANSWERLATTICE_SUPPORT_BOARD' },
     { key: 'support-tickets', label: 'Ticket Inbox', route: ANSWERLATTICE_ROUTES.TICKETS, icon: LuTicket, managementOnly: true, requiredPermission: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_SUPPORT },
     { key: 'support-conversations', label: 'Conversations', route: ANSWERLATTICE_ROUTES.CONVERSATIONS, icon: LuMessageSquare, managementOnly: true, requiredPermission: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_SUPPORT },
     { key: 'support-feedback', label: 'Feedback', route: ANSWERLATTICE_ROUTES.FEEDBACK, icon: LuHeart, managementOnly: true, requiredPermission: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_SUPPORT, featureFlag: 'ENABLE_ANSWERLATTICE_FEEDBACK_REVIEW' },
     { key: 'support-weekly-digest', label: 'Weekly Digest', route: ANSWERLATTICE_ROUTES.WEEKLY_DIGEST, icon: LuMailCheck, managementOnly: true, requiredPermission: ANSWERLATTICE_PERMISSION_KEYS.VIEW_READINESS, featureFlag: 'ENABLE_ANSWERLATTICE_WEEKLY_DIGEST' },
+    { key: 'support-knowledge-base', label: 'Knowledge Base', route: ANSWERLATTICE_ROUTES.KNOWLEDGE_BASE, icon: LuBookOpen, managementOnly: true, requiredPermission: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_KNOWLEDGE },
+    { key: 'support-faqs', label: 'FAQs', route: ANSWERLATTICE_ROUTES.FAQS, icon: LuHelpCircle, managementOnly: true, requiredPermission: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_KNOWLEDGE, featureFlag: 'ENABLE_ANSWERLATTICE_FAQ_MANAGEMENT' },
+    { key: 'support-changelog', label: 'Changelog', route: ANSWERLATTICE_ROUTES.CHANGELOG, icon: LuReceipt, managementOnly: true, requiredPermission: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_KNOWLEDGE },
+    { key: 'support-known-issues', label: 'Known Issues', route: ANSWERLATTICE_ROUTES.KNOWN_ISSUES, icon: LuAlertCircle, managementOnly: true, requiredPermission: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_GOVERNANCE, featureFlag: 'ENABLE_ANSWERLATTICE_KNOWN_ISSUES' },
 ];
 
 export const ANSWERLATTICE_WIDGET_SUB_NAV: AnswerlatticeNavItem[] = [
@@ -207,6 +212,7 @@ export const ANSWERLATTICE_BILLING_SUB_NAV: AnswerlatticeNavItem[] = [
 ];
 
 export const ANSWERLATTICE_GOVERNANCE_SUB_NAV: AnswerlatticeNavItem[] = [
+    { key: 'governance-answer-tests', label: 'Answer Tests', route: ANSWERLATTICE_ROUTES.ANSWER_TESTS, icon: LuClipboardCheck, requiredPermission: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_GOVERNANCE, featureFlag: 'ENABLE_ANSWERLATTICE_ANSWER_TESTS' },
     { key: 'governance-answers', label: 'Canonical Answers', route: getAnswerlatticeGovernanceRoute(ANSWERLATTICE_GOVERNANCE_TABS.ANSWERS), icon: LuBookOpen, requiredPermission: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_GOVERNANCE },
     { key: 'governance-entities', label: 'Product Ontology', route: getAnswerlatticeGovernanceRoute(ANSWERLATTICE_GOVERNANCE_TABS.ENTITIES), icon: LuBoxes, requiredPermission: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_GOVERNANCE },
     { key: 'governance-analytics', label: 'Answer Analytics', route: getAnswerlatticeGovernanceRoute(ANSWERLATTICE_GOVERNANCE_TABS.ANALYTICS), icon: LuBarChart3, requiredPermission: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_GOVERNANCE },

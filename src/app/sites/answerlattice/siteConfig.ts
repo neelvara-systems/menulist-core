@@ -30,7 +30,7 @@ export const ANSWERLATTICE_PUBLIC_PAGES: Array<{
     {
         path: '/product',
         title: 'Product | AnswerLattice',
-        description: 'Turn scattered docs, tickets, releases, screenshots, recordings, notes, and product context into standard support knowledge, approved answers, hosted help, FAQs, and reviewable gaps.',
+        description: 'Turn scattered product material into approved support, then test critical answers before releases, show temporary issue notices, review compact support health, and export approved support truth.',
         priority: 0.9,
         changeFrequency: 'weekly',
     },
@@ -72,7 +72,7 @@ export const ANSWERLATTICE_PUBLIC_PAGES: Array<{
     {
         path: '/demo',
         title: 'Demo | AnswerLattice',
-        description: 'See the AnswerLattice support loop in 60 seconds: safe page context, approved answers, hosted help, ticket fallback, and reviewable support gaps.',
+        description: 'Follow a deterministic AnswerLattice governance event from source conflict through approval, release drift, safe fallback, correction, and audit evidence.',
         priority: 0.9,
         changeFrequency: 'weekly',
     },
@@ -193,7 +193,7 @@ export const ANSWERLATTICE_PUBLIC_PAGES: Array<{
     {
         path: '/developers',
         title: 'Developers | AnswerLattice',
-        description: 'AnswerLattice developer docs for widget install, safe page context, verification, framework quickstarts, and agent install packets.',
+        description: 'AnswerLattice developer docs for widget install, safe page context, optional signed visitor context, bounded evidence links, verification, framework quickstarts, and agent install packets.',
         priority: 0.78,
         changeFrequency: 'monthly',
     },
@@ -249,7 +249,7 @@ export const ANSWERLATTICE_PUBLIC_PAGES: Array<{
     {
         path: '/pricing',
         title: 'Pricing | AnswerLattice',
-        description: 'Founder-friendly INR pricing, paid setup, support credits, intake media processing, and AnswerLattice plans for founder-led SaaS teams.',
+        description: 'Clear INR and USD pricing, paid setup, support credits, intake media processing, and AnswerLattice plans for founder-led SaaS teams.',
         priority: 0.85,
         changeFrequency: 'weekly',
     },
@@ -270,21 +270,28 @@ export const ANSWERLATTICE_PUBLIC_PAGES: Array<{
     {
         path: '/get-started',
         title: 'Get Started | AnswerLattice',
-        description: 'Create your AnswerLattice workspace, add your app, invite the first team members, teach AnswerLattice from starter sources, pick pages where users need help, and get a widget key for in-app support.',
+        description: 'Choose an AnswerLattice monthly plan and INR or USD checkout, create the workspace safely, add your app, pick support pages, and get a one-time widget key.',
         priority: 0.85,
         changeFrequency: 'weekly',
     },
     {
+        path: '/trust',
+        title: 'Trust and Data Handling | AnswerLattice',
+        description: 'Current AnswerLattice infrastructure, provider, retention, security-review, and compliance-claim facts for buyers and technical reviewers.',
+        priority: 0.72,
+        changeFrequency: 'monthly',
+    },
+    {
         path: '/security',
         title: 'Security | AnswerLattice',
-        description: 'Security for the AnswerLattice support layer: safe page hints, explicit screenshots, bounded source intake, allowed origins, blocked routes, compiled context, scoped workspaces, role permissions, and owner-approved answers.',
+        description: 'Security for the AnswerLattice support layer: safe page hints, optional signed visitor context, bounded evidence links and source intake, scoped workspaces, role permissions, approved answers, and bounded export.',
         priority: 0.7,
         changeFrequency: 'monthly',
     },
     {
         path: '/security-one-pager',
         title: 'Security and Ops One-Pager | AnswerLattice',
-        description: 'Shareable AnswerLattice security and operations summary for allowed origins, blocked routes, safe context, safe source intake, team roles, manual screenshots, hashed keys, owner approval, and rate limits.',
+        description: 'Shareable AnswerLattice security and operations summary for allowed origins, signed context, evidence links, source intake, team roles, hashed keys, approval, bounded export, and rate limits.',
         priority: 0.68,
         changeFrequency: 'monthly',
     },

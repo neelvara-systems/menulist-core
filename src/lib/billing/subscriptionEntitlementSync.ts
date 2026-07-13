@@ -6,7 +6,10 @@ import { secureError } from '@lib/security/secureLogger';
 import type { FirestoreSubscriptionDoc, PaymentStatus } from '@type/razorpay';
 import { revalidateTag } from 'next/cache';
 import { getBoundedRazorpayStringContext, getRazorpayFailureLogData } from './razorpayDiagnostics';
-import { normalizeBillingSubscriptionDocumentId } from './subscriptionDocumentIdBoundary';
+import {
+    normalizeBillingSubscriptionDocumentId,
+    normalizeBillingSubscriptionScopeDocumentId,
+} from './subscriptionDocumentIdBoundary';
 
 export interface SubscriptionEntitlementSyncInput {
     id?: string;
@@ -53,52 +56,119 @@ export function isSubscriptionEntitlementSynced(
     return syncedPlanType === desiredActivePlanType;
 }
 
+const toTimestampMillis = (value: unknown): number => {
+    if (!value || typeof value !== 'object') return 0;
+    try {
+        const toMillis = (value as { toMillis?: unknown }).toMillis;
+        if (typeof toMillis === 'function') {
+            const millis = Number(toMillis.call(value));
+            return Number.isFinite(millis) ? millis : 0;
+        }
+        const seconds = Number((value as { seconds?: unknown }).seconds);
+        return Number.isFinite(seconds) ? seconds * 1000 : 0;
+    } catch {
+        return 0;
+    }
+};
+
 export async function syncStorePlanEntitlementFromSubscription(
     subscription: SubscriptionEntitlementSyncInput,
     source: string,
 ): Promise<void> {
-    const storeId = String(subscription.storeId || '').trim();
-    if (!storeId) return;
+    const subscriptionId = normalizeBillingSubscriptionDocumentId(subscription.id);
+    const expectedTenantScope = normalizeBillingSubscriptionScopeDocumentId(subscription.tenantId);
+    const expectedStoreScope = normalizeBillingSubscriptionScopeDocumentId(subscription.storeId);
+    if (!subscriptionId || !expectedTenantScope || !expectedStoreScope) return;
 
-    const activePlanType = getActivePlanTypeForSubscription(subscription);
-    const entitlementValue = activePlanType || admin.firestore.FieldValue.delete();
-    const syncedAt = admin.firestore.FieldValue.serverTimestamp();
+    const subscriptionsRef = firestoreAdmin.collection(DB_COLLECTIONS.SUBSCRIPTIONS);
+    const subscriptionRef = subscriptionsRef.doc(subscriptionId);
+    const activeSubscriptionsQuery = subscriptionsRef
+        .where('status', '==', 'active')
+        .where('storeId', '==', expectedStoreScope.numericId)
+        .where('tenantId', '==', expectedTenantScope.numericId)
+        .where('cycleEndDate', '>=', admin.firestore.Timestamp.now())
+        .orderBy('cycleEndDate', 'desc')
+        .limit(10);
+    const syncResult = await firestoreAdmin.runTransaction(async (transaction) => {
+        const [subscriptionSnapshot, activeSubscriptionsSnapshot] = await Promise.all([
+            transaction.get(subscriptionRef),
+            transaction.get(activeSubscriptionsQuery),
+        ]);
+        if (!subscriptionSnapshot.exists) return null;
 
-    await Promise.all([
-        firestoreAdmin.collection(DB_COLLECTIONS.STORES).doc(storeId).set({
+        const current = {
+            ...(subscriptionSnapshot.data() as FirestoreSubscriptionDoc),
+            id: subscriptionSnapshot.id,
+        } as FirestoreSubscriptionDoc;
+        const currentTenantScope = normalizeBillingSubscriptionScopeDocumentId(current.tenantId ?? current.tId);
+        const currentStoreScope = normalizeBillingSubscriptionScopeDocumentId(current.storeId ?? current.sId);
+        if (
+            !currentTenantScope
+            || !currentStoreScope
+            || currentTenantScope.numericId !== expectedTenantScope.numericId
+            || currentStoreScope.numericId !== expectedStoreScope.numericId
+        ) {
+            return null;
+        }
+
+        const activeSubscription = activeSubscriptionsSnapshot.docs
+            .map((snapshot) => ({
+                ...(snapshot.data() as FirestoreSubscriptionDoc),
+                id: snapshot.id,
+            } as FirestoreSubscriptionDoc))
+            .filter((candidate) => (
+                normalizeBillingSubscriptionScopeDocumentId(candidate.tenantId ?? candidate.tId)?.numericId
+                    === expectedTenantScope.numericId
+                && normalizeBillingSubscriptionScopeDocumentId(candidate.storeId ?? candidate.sId)?.numericId
+                    === expectedStoreScope.numericId
+            ))
+            .sort((left, right) => toTimestampMillis(right.cycleEndDate) - toTimestampMillis(left.cycleEndDate))[0]
+            || null;
+        const activePlanType = activeSubscription
+            ? getActivePlanTypeForSubscription(activeSubscription)
+            : null;
+        const entitlementValue = activePlanType || admin.firestore.FieldValue.delete();
+        const activeSubscriptionIdValue = activeSubscription?.id || admin.firestore.FieldValue.delete();
+        const syncedAt = admin.firestore.FieldValue.serverTimestamp();
+
+        transaction.set(firestoreAdmin.collection(DB_COLLECTIONS.STORES).doc(currentStoreScope.documentId), {
             activePlanType: entitlementValue,
             analyticsEntitlementUpdatedAt: syncedAt,
-        }, { merge: true }),
-        firestoreAdmin.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc('storesSummary').set({
+            billingSubscriptionId: activeSubscriptionIdValue,
+        }, { merge: true });
+        transaction.set(firestoreAdmin.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc('storesSummary'), {
             lastUpdated: syncedAt,
             stores: {
-                [storeId]: {
+                [currentStoreScope.documentId]: {
                     activePlanType: entitlementValue,
+                    billingSubscriptionId: activeSubscriptionIdValue,
                 },
             },
-        }, { merge: true }),
-    ]);
-
-    const subscriptionId = normalizeBillingSubscriptionDocumentId(subscription.id);
-    if (subscriptionId) {
-        await firestoreAdmin.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId).set({
+        }, { merge: true });
+        transaction.set(subscriptionRef, {
             analyticsEntitlement: {
                 activePlanType,
-                status: subscription.status || null,
+                status: current.status || null,
                 syncedAt,
                 source,
             },
-            }, { merge: true });
-    }
+        }, { merge: true });
 
-    revalidateTag(`menu-store-${storeId}`);
-    revalidateTag(`store-${storeId}`);
+        return {
+            storeId: currentStoreScope.documentId,
+            tenantId: currentTenantScope.numericId,
+        };
+    });
+    if (!syncResult) return;
+
+    revalidateTag(`menu-store-${syncResult.storeId}`);
+    revalidateTag(`store-${syncResult.storeId}`);
     revalidateTag('client-stores');
     revalidateTag('screen-data');
-    await touchDigitalScreenContentVersionForStoreServer(storeId, 'subscriptionEntitlementSync');
+    await touchDigitalScreenContentVersionForStoreServer(syncResult.storeId, 'subscriptionEntitlementSync');
     await invalidateOwnerBusinessAssistantPacketCache({
-        tId: subscription.tenantId,
-        sId: storeId,
+        tId: syncResult.tenantId,
+        sId: syncResult.storeId,
     });
 }
 

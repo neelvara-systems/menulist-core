@@ -3,8 +3,10 @@ import {
     type CustomerAppDashboardSummary,
 } from '@database/ownerDashboard';
 import { getAnalyticsSchedulerCacheKey } from '@lib/analytics/dateKey';
+import { normalizeCustomerAppDashboardReadModel } from '@lib/analytics/readBoundary';
 import {
     getCachedData,
+    removeCachedData,
     setCachedData,
     shouldRevalidate,
 } from '@lib/cache/swrLocalStorageProvider';
@@ -24,15 +26,28 @@ function createCacheKey(tId: string, sId: string): string {
     return `customerAppDashboard-${tId}-${sId}`;
 }
 
-async function cachedFetcher<T>(
+function normalizeCachedDashboard(
+    value: unknown,
+    tId: string,
+    sId: string,
+): CustomerAppDashboardSummary | undefined {
+    const normalized = normalizeCustomerAppDashboardReadModel(value, tId, sId);
+    return normalized ? { ...normalized, lastFetched: new Date() } : undefined;
+}
+
+async function cachedFetcher(
     cacheKey: string,
-    fetcher: () => Promise<T | null>,
+    fetcher: () => Promise<CustomerAppDashboardSummary | null>,
     schedulerCacheKey: string,
-): Promise<T | null> {
+    tId: string,
+    sId: string,
+): Promise<CustomerAppDashboardSummary | null> {
     if (!shouldRevalidate(cacheKey, schedulerCacheKey)) {
-        const cached = getCachedData<T>(cacheKey, undefined, schedulerCacheKey);
+        const cached = getCachedData<unknown>(cacheKey, undefined, schedulerCacheKey);
         if (cached !== undefined) {
-            return cached;
+            const normalized = normalizeCachedDashboard(cached, tId, sId);
+            if (normalized) return normalized;
+            removeCachedData(cacheKey);
         }
     }
 
@@ -43,12 +58,20 @@ async function cachedFetcher<T>(
     return data;
 }
 
-function getInitialCachedValue<T>(cacheKey: string | null, schedulerCacheKey: string): T | undefined {
+function getInitialCachedValue(
+    cacheKey: string | null,
+    schedulerCacheKey: string,
+    tId: string | null,
+    sId: string | null,
+): CustomerAppDashboardSummary | undefined {
     if (typeof window === 'undefined' || !cacheKey) {
         return undefined;
     }
-
-    return getCachedData<T>(cacheKey, undefined, schedulerCacheKey);
+    const cached = getCachedData<unknown>(cacheKey, undefined, schedulerCacheKey);
+    if (cached === undefined || !tId || !sId) return undefined;
+    const normalized = normalizeCachedDashboard(cached, tId, sId);
+    if (!normalized) removeCachedData(cacheKey);
+    return normalized;
 }
 
 export function useCustomerAppDashboard() {
@@ -62,8 +85,8 @@ export function useCustomerAppDashboard() {
     const canFetch = Boolean(tId && sId);
     const cacheKey = canFetch ? createCacheKey(tId!, sId!) : null;
     const fallbackData = useMemo(
-        () => getInitialCachedValue<CustomerAppDashboardSummary>(cacheKey, schedulerCacheKey),
-        [cacheKey, schedulerCacheKey],
+        () => getInitialCachedValue(cacheKey, schedulerCacheKey, tId, sId),
+        [cacheKey, schedulerCacheKey, sId, tId],
     );
 
     const { data, error, isLoading, mutate } = useSWR(
@@ -72,6 +95,8 @@ export function useCustomerAppDashboard() {
             cacheKey!,
             () => getCustomerAppDashboardSummary(tId!, sId!),
             schedulerCacheKey,
+            tId!,
+            sId!,
         ),
         {
             ...SWR_CONFIG,

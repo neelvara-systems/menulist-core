@@ -10,7 +10,7 @@ import OnboardingForm from './OnboardingForm';
 
 export const metadata: Metadata = {
     title: 'Get Started',
-    description: 'Create your AnswerLattice workspace, add your app, organize scattered product knowledge, pick pages where users need help, and get a widget key for in-app support.',
+    description: 'Choose a monthly plan and INR or USD checkout, create your AnswerLattice workspace safely, add your app, pick support pages, and get a one-time widget key.',
     alternates: { canonical: '/get-started' },
 };
 
@@ -44,8 +44,21 @@ const FIRST_SESSION = [
     'Review the first approved answers',
 ];
 
-export default function AnswerlatticeGetStartedPage() {
+type AnswerlatticeGetStartedPageProps = {
+    searchParams?: Record<string, string | string[] | undefined>;
+};
+
+const readSingleSearchParam = (value: string | string[] | undefined): string => (
+    Array.isArray(value) ? String(value[0] || '') : String(value || '')
+);
+
+export default function AnswerlatticeGetStartedPage({ searchParams }: AnswerlatticeGetStartedPageProps) {
     const basePath = getBasePath();
+    const requestedPlanId = readSingleSearchParam(searchParams?.plan);
+    const initialPlanId = ['answerlattice_starter', 'answerlattice_growth', 'answerlattice_studio'].includes(requestedPlanId)
+        ? requestedPlanId
+        : 'answerlattice_starter';
+    const initialCurrency = readSingleSearchParam(searchParams?.currency).toUpperCase() === 'USD' ? 'USD' : 'INR';
 
     return (
         <>
@@ -117,7 +130,7 @@ export default function AnswerlatticeGetStartedPage() {
                             </div>
 
                             {/* Right: Self-service signup form */}
-                            <OnboardingForm />
+                            <OnboardingForm initialCurrency={initialCurrency} initialPlanId={initialPlanId} />
                         </div>
                     </div>
                 </section>
@@ -147,7 +160,7 @@ export default function AnswerlatticeGetStartedPage() {
                 <section className="border-t border-white/[0.06] px-6 py-16 text-center">
                     <p className="text-sm text-[#6b6b8a]">
                         Not ready to apply?{' '}
-                        <AnswerlatticeLink basePath={basePath} href="/product" className="text-teal-300 hover:text-teal-200">
+                        <AnswerlatticeLink basePath={basePath} href="/product" className="inline-flex min-h-11 items-center justify-center text-teal-300 hover:text-teal-200">
                             Learn more about how AnswerLattice works
                         </AnswerlatticeLink>
                     </p>

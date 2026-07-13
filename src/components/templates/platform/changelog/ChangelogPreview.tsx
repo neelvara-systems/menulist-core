@@ -3,8 +3,7 @@
 import DateTimeDisplay from '@atoms/DateTimeDisplay';
 import { getHelpCenterArticleRouteSegment, helpCenterArticleRouting, helpCenterChangelogRouting, helpCenterTabRouting } from '@constant/navigations';
 import FeedbackSection from '@molecules/FeedbackSection';
-import { addContentFeedback, getContentFeedbackForEntry, type ContentFeedbackItem } from '@database/contentFeedback';
-import { updateChangelogFeedbackGeneric } from '@database/feedback/genericFeedback';
+import { getContentFeedbackForEntry, type ContentFeedbackItem, updateContentFeedbackWithAudit } from '@database/contentFeedback';
 import { useContentViewTracking } from '@hook/useContentViewTracking';
 import { useFeedback } from '@hook/useFeedback';
 import { useKBCategoriesCache } from '@hook/useKBCategoriesCache';
@@ -14,6 +13,7 @@ import { getStoredContentFeedback, removeStoredContentFeedback, storeContentFeed
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import ArticleViewModal from '@organisms/ArticleViewModal';
 import { ChangelogEntry } from '@type/changelog';
+import type { AnswerlatticeReadableChangelogEntry } from '@lib/answerlattice/publicContentBoundary';
 import { KnowledgeBaseArticleMeta } from '@type/knowledgeBase';
 import { getYouTubeID } from '@util/utils';
 import { Alert, Breadcrumb, Card, Flex, Grid, Image, List, Skeleton, Tag, Typography, theme } from 'antd';
@@ -24,7 +24,7 @@ const { Title, Text } = Typography;
 const { useToken } = theme;
 
 interface ChangelogPreviewProps {
-    item: ChangelogEntry;
+    item: AnswerlatticeReadableChangelogEntry;
     pageId?: string; // Required if showFeedback is true
     mode: 'modal' | 'inline';
     disableTracking?: boolean; // Disable view tracking when viewing from Recently Viewed
@@ -83,10 +83,8 @@ const ChangelogPreview: React.FC<ChangelogPreviewProps> = ({ item, pageId, mode,
                   href: helpCenterChangelogRouting(item.id),
                   meta: {
                       tags: item.tags,
-                      version: item.version || null,
-                      releasedOn: item.releasedOn || null,
-                      fullEntry: item, // Store complete changelog entry
-                      pageId: pageId || '', // Store pageId for feedback
+                      ...(item.version ? { version: item.version } : {}),
+                      ...(pageId ? { pageId } : {}),
                   },
               }
             : null
@@ -102,20 +100,27 @@ const ChangelogPreview: React.FC<ChangelogPreviewProps> = ({ item, pageId, mode,
             initialDislikes: item.dislikes,
         },
         {
-            updateFeedback: async (contentId, type, increment, pageId) => {
+            updateFeedback: async (contentId, type, increment, pageId, comment, action) => {
                 if (!pageId) throw new Error('pageId required for changelog');
-                return await updateChangelogFeedbackGeneric(pageId, contentId, type, increment);
+                return await updateContentFeedbackWithAudit({
+                    type: 'changelog',
+                    contentId,
+                    pageId,
+                    sentiment: type,
+                    increment,
+                    comment,
+                    action,
+                });
             },
-            storeFeedback: (userId, contentId, type) => {
-                storeContentFeedback('changelog', userId, contentId, type);
+            storeFeedback: (scope, userId, contentId, type) => {
+                storeContentFeedback('changelog', scope, userId, contentId, type);
             },
-            getStoredFeedback: (userId, contentId) => {
-                return getStoredContentFeedback('changelog', userId, contentId);
+            getStoredFeedback: (scope, userId, contentId) => {
+                return getStoredContentFeedback('changelog', scope, userId, contentId);
             },
-            removeStoredFeedback: (userId, contentId) => {
-                removeStoredContentFeedback('changelog', userId, contentId);
+            removeStoredFeedback: (scope, userId, contentId) => {
+                removeStoredContentFeedback('changelog', scope, userId, contentId);
             },
-            submitComment: addContentFeedback,
         }
     );
 
@@ -363,6 +368,7 @@ const ChangelogPreview: React.FC<ChangelogPreviewProps> = ({ item, pageId, mode,
                 dislikes={feedback.dislikes}
                 feedbackGiven={feedback.feedbackGiven}
                 isFeedbackModalVisible={feedback.isFeedbackModalVisible}
+                isSubmitting={feedback.isSubmitting}
                 onFeedback={feedback.handleFeedback}
                 onFeedbackSubmit={feedback.handleFeedbackSubmit}
                 onModalClose={() => feedback.setIsFeedbackModalVisible(false)}

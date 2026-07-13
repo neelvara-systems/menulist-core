@@ -29,7 +29,7 @@ const ReviewItemIdSchema = z.string()
 
 const PublishSchema = z.object({
     itemIds: z.array(ReviewItemIdSchema).max(50).optional(),
-}).optional();
+}).strict().optional();
 const KNOWLEDGE_INTAKE_PUBLISH_MAX_BODY_BYTES = 16 * 1024;
 
 export const POST = withAuth(async (request: NextRequest, session, params: { jobId: string }) => {
@@ -65,7 +65,7 @@ export const POST = withAuth(async (request: NextRequest, session, params: { job
             publishedCount: result.published.length,
             scope: access.context.scope,
         }));
-        return NextResponse.json({ result: serializeIntakeValue(result) });
+        return NextResponse.json({ result: serializeIntakeValue(result) }, { headers: { 'Cache-Control': 'private, no-store' } });
     } catch (error) {
         if (error instanceof z.ZodError) {
             return NextResponse.json({ error: 'Invalid publish request.' }, { status: 400 });

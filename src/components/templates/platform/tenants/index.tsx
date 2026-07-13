@@ -4,6 +4,7 @@ import { getPlatformSummary } from '@database/platformSummary';
 import { getAllTenants } from '@database/tenants';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import type { PlatformCounterSnapshot } from '@lib/platform/platformCounterAllocator';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { StoreDataType } from '@type/platform/store';
 import { TenantDataType } from '@type/platform/tenant';
@@ -18,7 +19,7 @@ function TenantsDashboard({ tenantsList, setTenantsList }) {
 
     const [tenantModal, setTenantModal] = useState<{ active: boolean, data: TenantDataType | null }>({ active: false, data: null })
     const [storeModal, setStoreModal] = useState<{ active: boolean, data: StoreDataType | null, tenantData: TenantDataType | null }>({ active: false, data: null, tenantData: null })
-    const [platformSummary, setPlatformSummary] = useState([])
+    const [platformSummary, setPlatformSummary] = useState<PlatformCounterSnapshot | null>(null)
     const dispatch = useAppDispatch()
 
     useEffect(() => {
@@ -111,9 +112,12 @@ function TenantsDashboard({ tenantsList, setTenantsList }) {
         }
     ];
 
-    const updateLocalPlatformSummary = (type) => {
-        let platformCopy = removeObjRef(platformSummary);
-        platformCopy[type].count = platformCopy[type].count + 1;
+    const updateLocalPlatformSummary = (type, allocatedId) => {
+        let platformCopy = removeObjRef(platformSummary || {
+            stores: { count: 0 },
+            tenants: { count: 0 },
+        });
+        platformCopy[type].count = Math.max(Number(platformCopy[type].count) || 0, Number(allocatedId) || 0);
         setPlatformSummary(platformCopy)
     }
 
@@ -123,7 +127,7 @@ function TenantsDashboard({ tenantsList, setTenantsList }) {
             let index = tenantsCopy.findIndex((u) => u.tenantId == updatedTenant.tenantId)
             if (index == -1) {
                 tenantsCopy.push(updatedTenant)
-                updateLocalPlatformSummary(DB_COLLECTIONS.TENANTS)
+                updateLocalPlatformSummary(DB_COLLECTIONS.TENANTS, updatedTenant.tenantId)
             } else {
                 tenantsCopy[index] = updatedTenant
             }
@@ -140,7 +144,7 @@ function TenantsDashboard({ tenantsList, setTenantsList }) {
             let index = tenantDetails.storesList.findIndex((u) => u.storeId == updatedStore.storeId)
             if (index == -1) {
                 tenantDetails.storesList.push(updatedStore)
-                updateLocalPlatformSummary(DB_COLLECTIONS.STORES)
+                updateLocalPlatformSummary(DB_COLLECTIONS.STORES, updatedStore.storeId)
             } else {
                 tenantDetails.storesList[index] = updatedStore
             }

@@ -55,6 +55,7 @@ export type AnswerlatticeDeveloperDoc = {
         title: string;
         description: string;
         bullets: string[];
+        code?: string;
     }>;
 };
 

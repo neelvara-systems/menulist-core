@@ -1,4 +1,4 @@
-import type { MediaImageType, MediaImageVariantId } from './imageProfiles';
+import { getMediaImageProfile, type MediaImageType, type MediaImageVariantId } from './imageProfiles';
 
 export interface MediaStoragePathInput {
     entityId: string;
@@ -10,12 +10,35 @@ export interface MediaStoragePathInput {
     variant: MediaImageVariantId;
 }
 
-function sanitizePathSegment(value: string): string {
-    return value
-        .trim()
-        .replace(/[^a-zA-Z0-9_-]+/g, '-')
-        .replace(/^-+|-+$/g, '')
-        .slice(0, 96) || 'unknown';
+const MAX_MEDIA_STORAGE_PATH_SEGMENT_LENGTH = 160;
+const MEDIA_STORAGE_PATH_SEGMENT_PATTERN = /^[a-zA-Z0-9_-]+$/;
+const MEDIA_STORAGE_EXTENSION_PATTERN = /^(?:jpe?g|png|webp)$/;
+
+export function normalizeMediaStoragePathSegment(value: unknown, label: string): string {
+    const rawSegment = typeof value === 'string' || typeof value === 'number'
+        ? String(value)
+        : '';
+    const segment = rawSegment.trim();
+
+    if (
+        !segment
+        || segment !== rawSegment
+        || segment.length > MAX_MEDIA_STORAGE_PATH_SEGMENT_LENGTH
+        || !MEDIA_STORAGE_PATH_SEGMENT_PATTERN.test(segment)
+    ) {
+        throw new Error(`INVALID_MEDIA_STORAGE_${label.toUpperCase()}`);
+    }
+
+    return segment;
+}
+
+export function isValidMediaStoragePathSegment(value: unknown): boolean {
+    try {
+        normalizeMediaStoragePathSegment(value, 'segment');
+        return true;
+    } catch {
+        return false;
+    }
 }
 
 export function getMediaDataFingerprint(value: string): string {
@@ -65,11 +88,21 @@ export function buildMediaStoragePath({
     tenantId,
     variant,
 }: MediaStoragePathInput): string {
-    const cleanTenantId = sanitizePathSegment(tenantId);
-    const cleanStoreId = sanitizePathSegment(storeId);
-    const cleanEntityId = sanitizePathSegment(entityId);
-    const cleanMediaId = sanitizePathSegment(mediaId);
-    const cleanExtension = sanitizePathSegment(extension.replace(/^\./, '')) || 'webp';
+    const profileConfig = getMediaImageProfile(profile);
+    if (!profileConfig) throw new Error('INVALID_MEDIA_STORAGE_PROFILE');
+    if (!profileConfig.variants.some((entry) => entry.id === variant)) {
+        throw new Error('INVALID_MEDIA_STORAGE_VARIANT');
+    }
+
+    const cleanTenantId = normalizeMediaStoragePathSegment(tenantId, 'tenant_id');
+    const cleanStoreId = normalizeMediaStoragePathSegment(storeId, 'store_id');
+    const cleanEntityId = normalizeMediaStoragePathSegment(entityId, 'entity_id');
+    const cleanMediaId = normalizeMediaStoragePathSegment(mediaId, 'media_id');
+    const extensionWithoutDot = extension.replace(/^\./, '');
+    const cleanExtension = extensionWithoutDot.toLowerCase();
+    if (!MEDIA_STORAGE_EXTENSION_PATTERN.test(cleanExtension)) {
+        throw new Error('INVALID_MEDIA_STORAGE_EXTENSION');
+    }
 
     return `media/${profile}/${cleanTenantId}/${cleanStoreId}/${cleanEntityId}/${cleanMediaId}_${variant}.${cleanExtension}`;
 }

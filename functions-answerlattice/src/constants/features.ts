@@ -9,6 +9,13 @@
 
 export const FUNCTION_FLAGS = {
     /**
+     * Builds bounded daily conversation summaries used by the owner analytics UI.
+     * Runs inside the existing Answerlattice nightly scheduler. No separate
+     * scheduler or realtime trigger is created.
+     */
+    ENABLE_ANSWERLATTICE_CHAT_ANALYTICS: true,
+
+    /**
      * Answerlattice Drift Detection + Signal Mutation nightly batch
      *
      * Runs as a scheduled Cloud Function to:
@@ -19,7 +26,7 @@ export const FUNCTION_FLAGS = {
      * 5. Detect recurring fallbacks → auto proposals
      * 6. Track post-mutation impact (14-day window)
      * 7. Auto-adjust confidence scores
-     * 8. Archive expired signals (12-month TTL)
+     * 8. Preserve expiresAt metadata while Firestore TTL performs retention cleanup
      *
      * Requires: Answerlattice collections seeded with entities + canonical answers
      *

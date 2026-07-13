@@ -1,5 +1,10 @@
 import crypto, { randomUUID } from "crypto";
 import { DB_COLLECTIONS } from "@constant/database";
+import {
+    getReusableImagePromptCacheSource,
+    IMAGE_PROMPT_CACHE_KEY_VERSION,
+    IMAGE_PROMPT_CACHE_STORAGE_PREFIX,
+} from "@lib/ai/imagePromptCacheBoundary";
 import { firestoreAdmin, storageAdmin, admin } from "@lib/firebase/firebaseAdmin";
 import { getMediaImageProfile } from "@lib/media/imageProfiles";
 import { buildMediaStoragePath, getMediaFileExtension } from "@lib/media/mediaStorage";
@@ -9,9 +14,7 @@ import { getBoundedRuntimeStringContext, logRuntimeDiagnostic, logRuntimeFailure
 import { STORAGE_CACHE_CONTROL } from "@lib/storage/cacheControl";
 import { GenerateImageViaApiPayloadGenerationConfiType } from "@template/main-app/projects/types";
 
-const IMAGE_PROMPT_CACHE_VERSION = 1;
 const IMAGE_PROMPT_CACHE_TTL_DAYS = 90;
-const IMAGE_PROMPT_CACHE_STORAGE_PREFIX = `system/aiImagePromptCache/v${IMAGE_PROMPT_CACHE_VERSION}`;
 const IMAGE_PROMPT_CACHE_SOURCE = "ai-image-prompt-cache";
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -40,6 +43,8 @@ type PromptCacheImagePayload = {
     cacheHit?: boolean;
     mimeType: string;
     promptCacheKey?: string;
+    sizeBytes?: number;
+    storagePath?: string;
     uploadedUrl?: string;
 };
 
@@ -73,6 +78,7 @@ function getPromptCacheLogContext(params: {
 
 function getImagePromptCacheKey(params: {
     aiModel: string;
+    destinationMediaId?: string;
     generationConfig: GenerateImageViaApiPayloadGenerationConfiType;
     prompt: string;
 }): string {
@@ -80,7 +86,7 @@ function getImagePromptCacheKey(params: {
         .update(JSON.stringify({
             aiModel: params.aiModel,
             config: normalizePromptCacheConfig(params.generationConfig),
-            version: IMAGE_PROMPT_CACHE_VERSION,
+            version: IMAGE_PROMPT_CACHE_KEY_VERSION,
             prompt: params.prompt
         }))
         .digest("hex");
@@ -117,6 +123,7 @@ export function isImagePromptCacheEligible(params: {
 
 export async function copyCachedImagePromptToStore(params: {
     aiModel: string;
+    destinationMediaId?: string;
     entityId: string;
     generationConfig: GenerateImageViaApiPayloadGenerationConfiType;
     prompt: string;
@@ -137,27 +144,30 @@ export async function copyCachedImagePromptToStore(params: {
         if (!snap.exists) return null;
 
         const cacheDoc = snap.data() as CachedPromptImageDoc;
-        const sourcePath = String(cacheDoc?.sourcePath || "");
-        const mimeType = String(cacheDoc?.mimeType || "image/webp");
-        if (!sourcePath.startsWith(`${IMAGE_PROMPT_CACHE_STORAGE_PREFIX}/`) || !isCacheDocFresh(cacheDoc)) {
+        if (!isCacheDocFresh(cacheDoc)) {
             return null;
         }
 
         const bucket = storageAdmin.bucket();
+        const sourcePath = typeof cacheDoc.sourcePath === 'string' ? cacheDoc.sourcePath : '';
+        if (!sourcePath.startsWith(`${IMAGE_PROMPT_CACHE_STORAGE_PREFIX}/`)) return null;
         const [buffer] = await bucket.file(sourcePath).download();
-        const profile = getMediaImageProfile("menuItem");
-        const maxBytes = profile.maxOutputSizeKB * 1024;
-        if (!buffer.length || buffer.length > maxBytes) {
+        const reusableSource = getReusableImagePromptCacheSource(
+            cacheDoc as Record<string, unknown>,
+            cacheKey,
+            buffer,
+        );
+        if (!reusableSource) {
             logRuntimeDiagnostic("ai_image_prompt_cache_source_rejected", {
                 ...logContext,
                 sourceBytes: buffer.length,
-                maxBytes,
             });
             return null;
         }
 
-        const extension = getMediaFileExtension(mimeType);
-        const mediaId = `cache_${cacheKey.slice(0, 16)}_${createUppercaseRandomIdSegment(6)}`;
+        const { extension, mimeType } = reusableSource;
+        const profile = getMediaImageProfile("menuItem");
+        const mediaId = params.destinationMediaId || `cache_${cacheKey.slice(0, 16)}_${createUppercaseRandomIdSegment(6)}`;
         const destinationPath = buildMediaStoragePath({
             entityId: params.entityId,
             extension,
@@ -175,7 +185,7 @@ export async function copyCachedImagePromptToStore(params: {
                 contentType: mimeType,
                 metadata: {
                     cacheKey,
-                    cacheVersion: String(IMAGE_PROMPT_CACHE_VERSION),
+                    cacheVersion: String(IMAGE_PROMPT_CACHE_KEY_VERSION),
                     firebaseStorageDownloadTokens: token,
                     promptCacheHit: "true",
                     profile: "menuItem",
@@ -188,12 +198,6 @@ export async function copyCachedImagePromptToStore(params: {
             resumable: false,
         });
 
-        await getImagePromptCacheRef(cacheKey).set({
-            hitCount: admin.firestore.FieldValue.increment(1),
-            lastHitAt: admin.firestore.Timestamp.now(),
-            updatedAt: admin.firestore.Timestamp.now(),
-        }, { merge: true });
-
         logRuntimeDiagnostic("ai_image_prompt_cache_hit", logContext);
 
         return {
@@ -201,6 +205,8 @@ export async function copyCachedImagePromptToStore(params: {
             cacheHit: true,
             mimeType,
             promptCacheKey: cacheKey,
+            sizeBytes: buffer.length,
+            storagePath: destinationPath,
             uploadedUrl: getPublicDownloadUrl(destinationPath, token),
         };
     } catch (error) {
@@ -236,7 +242,7 @@ export async function writeImagePromptCacheSource(params: {
                 contentType: prepared.mimeType,
                 metadata: {
                     cacheKey,
-                    cacheVersion: String(IMAGE_PROMPT_CACHE_VERSION),
+                    cacheVersion: String(IMAGE_PROMPT_CACHE_KEY_VERSION),
                     checksum: prepared.checksum,
                     height: String(prepared.height),
                     originalMimeType: prepared.originalMimeType,
@@ -256,7 +262,7 @@ export async function writeImagePromptCacheSource(params: {
             createdAt: now,
             expiresAt: admin.firestore.Timestamp.fromMillis(Date.now() + IMAGE_PROMPT_CACHE_TTL_DAYS * DAY_MS),
             height: prepared.height,
-            keyVersion: IMAGE_PROMPT_CACHE_VERSION,
+            keyVersion: IMAGE_PROMPT_CACHE_KEY_VERSION,
             mimeType: prepared.mimeType,
             outputSizeBytes: prepared.sizeBytes,
             promptLength: params.prompt.length,

@@ -1,7 +1,7 @@
 # Knowledge Base — Mobile Support Assessment
 
-> **Version:** 1.0.0
-> **Last Updated:** 2026-03-02
+> **Version:** 1.0.1
+> **Last Updated:** 2026-07-13
 > **Audience:** Mobile team, Product
 
 ---
@@ -62,3 +62,5 @@ Mobile support expectation:
 - split panes stack vertically inside the mobile wrapper;
 - modals and drawers fit the viewport;
 - large content authoring remains better on desktop through the desktop-tools shortcut.
+
+The Embedding 2 migration adds no separate mobile flow or navigation. The shared responsive article modal now derives “Search ready” from the active `embeddingV2` field, so desktop and mobile administration cannot report readiness from a legacy-only vector.

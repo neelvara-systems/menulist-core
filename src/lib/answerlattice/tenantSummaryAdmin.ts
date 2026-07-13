@@ -3,19 +3,79 @@ import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebase
 import * as admin from 'firebase-admin';
 
 export const ANSWERLATTICE_TENANT_SUMMARY_DOC_ID = 'answerlatticeTenantsSummary';
+export const ANSWERLATTICE_TENANT_SUMMARY_SHARD_COUNT = 64;
+export const ANSWERLATTICE_TENANT_SUMMARY_SHARD_PREFIX = 'answerlatticeTenantsSummaryShard_';
+export const ANSWERLATTICE_TENANT_SUMMARY_SHARD_TYPE = 'answerlattice_tenant_registry_shard';
 
-const normalizeTenantStore = (tId: number | string, sId: number | string) => {
-    const tenantId = Number(tId);
-    const storeId = Number(sId);
-    if (!Number.isFinite(tenantId) || tenantId <= 0 || !Number.isFinite(storeId) || storeId <= 0) {
+const normalizeTenantStore = (tId: unknown, sId: unknown) => {
+    if (
+        typeof tId !== 'number'
+        || !Number.isSafeInteger(tId)
+        || tId <= 0
+        || typeof sId !== 'number'
+        || !Number.isSafeInteger(sId)
+        || sId <= 0
+    ) {
         return null;
     }
-    return { tId: tenantId, sId: storeId };
+    return { tId, sId };
 };
 
+export const getAnswerlatticeTenantSummaryShardId = (tId: number, sId: number) => {
+    const scope = normalizeTenantStore(tId, sId);
+    if (!scope) throw new Error('Cannot build Answerlattice tenant summary shard without valid tId and sId.');
+    const key = `${scope.tId}_${scope.sId}`;
+    let hash = 2166136261;
+    for (let index = 0; index < key.length; index += 1) {
+        hash ^= key.charCodeAt(index);
+        hash = Math.imul(hash, 16777619);
+    }
+    const foldedHash = ((hash >>> 0) ^ (hash >>> 16)) >>> 0;
+    const shard = foldedHash % ANSWERLATTICE_TENANT_SUMMARY_SHARD_COUNT;
+    return `${ANSWERLATTICE_TENANT_SUMMARY_SHARD_PREFIX}${String(shard).padStart(2, '0')}`;
+};
+
+const timestampMillis = (value: any): number => {
+    if (typeof value?.toMillis === 'function') return value.toMillis();
+    if (typeof value?.seconds === 'number') return value.seconds * 1000;
+    if (value instanceof Date) return value.getTime();
+    const parsed = typeof value === 'string' || typeof value === 'number' ? new Date(value).getTime() : 0;
+    return Number.isFinite(parsed) ? parsed : 0;
+};
+
+export async function readAnswerlatticeTenantSummaryDataAdmin(
+    db: FirebaseFirestore.Firestore,
+): Promise<{ tenants: Record<string, any>; updatedAt?: unknown; readDocs: number }> {
+    const collection = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY);
+    const [legacySnapshot, shardSnapshot] = await Promise.all([
+        collection.doc(ANSWERLATTICE_TENANT_SUMMARY_DOC_ID).get(),
+        collection
+            .where('summaryType', '==', ANSWERLATTICE_TENANT_SUMMARY_SHARD_TYPE)
+            .limit(ANSWERLATTICE_TENANT_SUMMARY_SHARD_COUNT)
+            .get(),
+    ]);
+    const documents = [
+        ...(legacySnapshot.exists ? [legacySnapshot.data() || {}] : []),
+        ...shardSnapshot.docs.map((document) => document.data()),
+    ];
+    const tenants: Record<string, any> = {};
+    let updatedAt: unknown;
+    documents.forEach((document) => {
+        if (document.tenants && typeof document.tenants === 'object' && !Array.isArray(document.tenants)) {
+            Object.assign(tenants, document.tenants);
+        }
+        if (timestampMillis(document.updatedAt) > timestampMillis(updatedAt)) updatedAt = document.updatedAt;
+    });
+    return {
+        tenants,
+        updatedAt,
+        readDocs: (legacySnapshot.exists ? 1 : 0) + shardSnapshot.size,
+    };
+}
+
 export async function upsertAnswerlatticeTenantSummaryAdmin(params: {
-    tId: number | string;
-    sId: number | string;
+    tId: number;
+    sId: number;
     source: string;
     active?: boolean;
     hasEntities?: boolean;
@@ -39,19 +99,23 @@ export async function upsertAnswerlatticeTenantSummaryAdmin(params: {
     const entry: Record<string, any> = {
         pId: 'AL',
         ...scope,
-        active: params.active !== false,
-        hasEntities: params.hasEntities,
         source: params.source,
         lastSeenAt: now,
         updatedAt: now,
     };
+    if (params.active !== undefined) entry.active = params.active;
+    if (params.hasEntities !== undefined) entry.hasEntities = params.hasEntities;
     if (params.timeZone) entry.timeZone = String(params.timeZone).slice(0, 80);
     if (params.businessDayEndTime) entry.businessDayEndTime = String(params.businessDayEndTime).slice(0, 5);
     if (Number.isInteger(params.schedulerHour) && Number(params.schedulerHour) >= 0 && Number(params.schedulerHour) <= 23) {
         entry.schedulerHour = Number(params.schedulerHour);
     }
 
-    await db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(ANSWERLATTICE_TENANT_SUMMARY_DOC_ID).set({
+    await db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(
+        getAnswerlatticeTenantSummaryShardId(scope.tId, scope.sId),
+    ).set({
+        summaryType: ANSWERLATTICE_TENANT_SUMMARY_SHARD_TYPE,
+        shardVersion: 1,
         tenants: {
             [key]: entry,
         },

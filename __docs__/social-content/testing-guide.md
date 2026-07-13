@@ -187,4 +187,12 @@ After testing, verify in Firebase:
 
 1. `campaigns/{tId}/{sId}/{campaignId}` - Campaign status updated
 2. `campaignExports/{tId}/{sId}/{exportId}` - Export recorded by `completeCampaign`
+
+### Campaign action retry and partial-failure regression
+
+- Complete the same prepared campaign twice with the same scoped project/type/surface/method. Expect one `complete_{campaignId}` export, one `totalCompleted` increment, one resolved campaign status, and the campaign absent from Today on both acknowledgements.
+- Send two concurrent skip attempts for the same suggested campaign. Expect one skip-count increment, one total/type skip increment, and the same persisted skip/suppression acknowledgement from the retry.
+- Change the caller project/type/surface while keeping the campaign ID. Expect a rejected acknowledgement and zero campaign/export/summary writes.
+- For a non-suppressed skip, seed a stale `suppressedUntil` field. Expect the transaction to delete it.
+- Seed a legacy `completed` campaign without `complete_{campaignId}`. Expect fail-closed reconciliation rather than a guessed duplicate export.
 3. `platformSummary/campaigns_{sId}` - Summary updated

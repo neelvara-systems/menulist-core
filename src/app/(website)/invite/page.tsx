@@ -7,11 +7,11 @@ import OwnerReferralInviteClient from './OwnerReferralInviteClient';
 
 export const metadata: Metadata = {
     title: 'Business owner invitation - MenuList',
-    description: 'A MenuList business invited you to create your official customer link.',
+    description: 'A business owner you know invited you to create your official customer link.',
     alternates: { canonical: '/create-menu' },
     openGraph: {
         title: 'Business owner invitation - MenuList',
-        description: 'A MenuList business invited you to create your official customer link.',
+        description: 'A business owner you know invited you to create your official customer link.',
         type: 'website',
     },
     robots: { index: false, follow: false, nocache: true },

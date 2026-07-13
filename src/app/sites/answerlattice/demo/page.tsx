@@ -9,7 +9,7 @@ import AnswerlatticePublicDemo from './AnswerlatticePublicDemo';
 
 export const metadata: Metadata = {
     title: 'AnswerLattice Demo',
-    description: 'See the AnswerLattice support loop in 60 seconds: safe page context, approved answers, hosted help, ticket fallback, and reviewable support gaps.',
+    description: 'See a complete AnswerLattice governance event: conflicting sources, human approval, release drift, safe fallback, and corrected support truth.',
     alternates: { canonical: '/demo' },
 };
 
@@ -37,17 +37,17 @@ export default function AnswerlatticeDemoPage() {
                         <div className="mx-auto mb-10 max-w-3xl text-center">
                             <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Interactive demo</p>
                             <h1 className="text-4xl font-bold leading-tight sm:text-5xl">
-                                See the support loop in 60 seconds.
+                                See an answer stay correct through change.
                             </h1>
                             <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
-                                Switch product pages and ask the same kind of question. AnswerLattice uses safe page context, approved support knowledge, and fallback gaps to show how users get help before you hire support.
+                                Follow one answer from conflicting sources to approval, release drift, safe fallback, and a corrected answer across every support surface.
                             </p>
                             <PageProofStrip
                                 className="mt-8 text-left"
                                 items={[
-                                    { label: 'Shows', value: 'Same question, different approved support path' },
-                                    { label: 'Proves', value: 'Approved source before fallback' },
-                                    { label: 'Demo mode', value: 'Product simulation with sample support content' },
+                                    { label: 'Shows', value: 'Conflict, proposal, approval, drift, and correction' },
+                                    { label: 'Proves', value: 'Stale policy is blocked before it reaches users' },
+                                    { label: 'Demo mode', value: 'Deterministic simulation with sample product policy' },
                                 ]}
                             />
                         </div>
@@ -55,7 +55,7 @@ export default function AnswerlatticeDemoPage() {
                         <div className="mx-auto mb-8 max-w-3xl rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5 text-center">
                             <h2 className="text-lg font-semibold text-white">What to notice</h2>
                             <p className="mt-2 text-sm leading-relaxed text-[#a0a0c0]">
-                                The generic answer stays broad. AnswerLattice uses the product page, links related help, and marks uncovered questions as gaps. This product simulation uses sample content and does not call Firebase or an AI provider.
+                                AnswerLattice does not choose between conflicting sources by guessing. A human approves authority, a release change creates drift, and support surfaces fall back safely until the corrected answer is validated. This simulation uses sample content and makes no Firebase or AI provider call.
                             </p>
                         </div>
 

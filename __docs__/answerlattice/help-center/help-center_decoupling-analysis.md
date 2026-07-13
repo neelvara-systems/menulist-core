@@ -161,7 +161,7 @@ As of 2026-05-25, MenuList `/help-center` behaves as an independent Answerlattic
 - **Firebase Auth** (via NextAuth) — Session management
 
 **Gemini dependencies:**
-- `text-embedding-004` — Query and article embeddings
+- `gemini-embedding-2` — Active query and article embeddings through a versioned model/field/cache registry
 - `gemini-2.5-flash` — Answer generation
 - `gemini-2.5-pro` — Image analysis
 - `@google/genai` SDK — Direct Gemini API usage

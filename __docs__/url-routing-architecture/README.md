@@ -78,7 +78,23 @@ Tenant (account container — billing, stores list)
        └── Project (menu data — items, categories, prices)
 ```
 
-**Critical fact:** For public rendering, ONLY store is read. Tenant is NEVER fetched during public page rendering. This is an explicit architecture decision documented in `src/types/platform/tenant.ts:12-13`.
+**Critical fact:** The store remains the only entity whose fields are rendered as public business truth. On a cold cached lookup, the resolver also reads the referenced canonical tenant document for lifecycle/block eligibility and exact identity; tenant fields are never merged into or exposed by the public store payload.
+
+### Durable Subdomain Claim Boundary
+
+Subdomain ownership is serialized through `platformSummary/subdomainClaim_{subdomain}` by `src/lib/routing/subdomainClaim.ts`. Onboarding, owner assignment, and platform rename read the claim plus the canonical `stores.subdomain` and active `previousSubdomainSlugs` compatibility paths inside the same Firestore transaction that writes the canonical store and claim. A claim held by another store, any other canonical owner, an active redirect-history owner, or a saturated 20-row history lookup fails closed.
+
+`GET /api/subdomain/check` is advisory and performs the same reservation reads in a read-only transaction after authentication, permission, normalization, and rate limiting. `POST /api/subdomain/check` owns the durable owner assignment. Platform rename writes the new current claim and converts the prior claim into a 12-month redirect claim in the same transaction as the store, summary, and audit updates. The compatibility queries remain necessary while historical stores without claim documents can exist; they are not separate preflight authority and cannot race the claim write.
+
+Brand subdomain master-store admission is enforced inside both authenticated GET and POST transactions by `src/lib/routing/subdomainOwnerScope.ts`. An explicit `isMaster: true` store may check or assign the brand host; an explicit outlet (`isMaster: false`) is denied and continues to use the brand host plus its `outletSlug` path. A legacy store without an `isMaster` marker remains compatible only when bounded canonical `tenantId`/`tId` queries prove it is the tenant's sole store. Any sibling or ambiguous legacy topology fails closed and must be corrected through the main-location record rather than granting an outlet a second brand host.
+
+### Durable Custom-Domain Claim Boundary
+
+MenuList custom-domain ownership is serialized through `platformSummary/customDomainClaim_{domain}` by `src/lib/routing/customDomainClaim.ts`. `POST /api/domain` reserves a normalized domain with a request-unique reservation ID in the same transaction that rechecks the current session tenant/store lifecycle and `MANAGE_PUBLIC_PRESENCE`. Active reservations and release leases block every competing request, including another request from the same store; only the same reservation ID can finalize. Each lease expires after 15 minutes so an interrupted cleanup does not strand the hostname forever.
+
+The provider call occurs only after reservation. A Vercel `409` is not accepted by itself: the route requires MenuList claim/store provenance and confirms the domain is already attached to the configured Vercel project. Replacement and removal write the old claim as `releasing` before provider deletion, await the provider result, and only then mark it `released`. This prevents delayed cleanup from deleting a newly claimed provider binding. Missing legacy claims are locked before cleanup; duplicate rows, mismatched claim owners, and in-progress legacy states return `409` without selecting a winner. A malformed legacy hostname can be removed from the current store, but provider cleanup is skipped and reported because an invalid hostname cannot be sent safely to Vercel.
+
+`GET /api/domain` rechecks current tenant/store identity and claim ownership before and after the provider read. When compact and legacy identity aliases coexist (`storeId`/`sId`, `tenantId`/`tId`), every present value must normalize to the same exact positive document ID; conflicting legacy aliases fail closed. Verification becomes true only when Vercel reports both explicit DNS configuration and membership in MenuList's configured project; explicit DNS misconfiguration or project absence clears verification, while infrastructure errors preserve the last stored state. The 10-second provider deadline covers headers and bounded response-body parsing, and an aborted or malformed success body is not accepted as provider truth. Every committed add, verification transition, or removal attempts public cache invalidation. Responses report `providerStatusPending`, `refreshPending`, `providerCleanupPending`, or `claimReleasePending` when authoritative state committed but a provider or derived effect still needs recovery.
 
 ### Current URL Flow
 
@@ -174,7 +190,9 @@ Customer opens: storypizza.menulist.ai/pune/menu
                     └────────────────────────┘
 ```
 
-Public client pages use `src/lib/multiTenant/getTenantFromHeaders.ts` for middleware-set tenant headers and host fallbacks. Missing-host diagnostics are bounded: the helper logs header-presence booleans through secure logging and does not emit raw request header values. Domain lookup failure diagnostics in `src/lib/multiTenant/domainLookup.ts` are bounded the same way: lookup type and value length only, not raw subdomain/custom-domain values.
+Public client pages use `src/lib/multiTenant/getTenantFromHeaders.ts` to derive tenant identity from the original validated `Host` authority. Middleware deletes caller-supplied `x-tenant-*` values before forwarding its own request headers; those headers are integrity claims only and cannot override `Host`. `x-forwarded-host`, Vercel deployment hosts, and environment fallbacks are not tenant selectors. Missing or malformed Host diagnostics are bounded through secure logging and do not emit raw request header values. Domain lookup failure diagnostics in `src/lib/multiTenant/domainLookup.ts` are bounded the same way: lookup type and value length only, not raw subdomain/custom-domain values.
+
+The same middleware-owned boundary applies to `x-product-id`, `x-product-name`, `x-product-base-path`, and Answerlattice hosted-help routing headers. Every rewrite and pass-through path removes caller values first; product/alias metadata is re-added only from the resolved Host/path branch. Server layouts may use those values for bounded base-path presentation, but a public request cannot choose a product or alias by supplying the header directly.
 
 Tenant sitemap lookup failures in `src/app/client/sitemap.ts` keep the same public fallback behavior, but now log capped `tenant_sitemap_*_failed` diagnostics with fallback-policy labels. Master-store lookup failure returns an empty sitemap, outlet lookup failure omits outlet sitemap entries, and project lookup failure omits project sitemap entries. The diagnostic context includes only tenant/subdomain/custom-domain/store identifier presence and length metadata plus source error name, never raw hostnames, domains, store IDs, tenant IDs, project slugs, sitemap URLs, or exception text.
 
@@ -214,7 +232,7 @@ Owner subdomain availability checks (`GET /api/subdomain/check`) use session-sco
 
 Mobile Domain Settings subdomain saves must require an explicit `updateStore()` acknowledgement before local public URL state or saved copy changes. A swallowed store-write fallback is treated as `mobile_domain_settings_subdomain_store_update_rejected` and routes through the fixed failure path.
 
-Owner custom-domain management (`POST/GET/DELETE /api/domain`) uses session-scoped `MANAGE_PUBLIC_PRESENCE`, rejects mutation bodies above 4KB before Vercel/provider or store work, stores only HMAC-hashed owner/store key material in the domain-management rate limiter, logs bounded provider diagnostics, and revalidates public menu/OBP cache after successful domain state writes.
+Owner custom-domain management (`POST/GET/DELETE /api/domain`) uses session-scoped `MANAGE_PUBLIC_PRESENCE`, re-reads canonical tenant and store lifecycle/identity inside every claim or verification transaction, rejects mutation bodies above 4KB before Vercel/provider or store work, stores only HMAC-hashed owner/store key material in the domain-management rate limiter, logs bounded provider diagnostics, and revalidates public menu/OBP cache after committed domain state writes. Durable request-unique claims serialize provider coordination; duplicate or ambiguous legacy ownership fails closed.
 
 Desktop Domain Settings, embedded Custom Domain, and Mobile Domain Settings browser calls to `/api/domain` and `/api/subdomain/check` use the shared authenticated browser request policy before bounded response parsing. This keeps owner domain setup uncached, same-origin, and manual-redirect across desktop/mobile surfaces without duplicating fetch policy blocks.
 
@@ -487,7 +505,7 @@ When a multi-store tenant's master store OBP is visited and the tenant has >1 ac
 - `storypizza.menulist.ai/pune` → Pune outlet OBP (via outletSlug routing, ADR-11)
 - `storypizza.menulist.ai/pune/food-menu` → Pune outlet's "Food Menu" project
 
-**Detection:** `OBPContent.tsx` checks `countActiveStoresForTenant()` → if >1, renders `BrandOBPContent` instead of single-store OBP.
+**Detection:** `OBPContent.tsx` checks `countActiveStoresForTenant()` against active canonical store documents for that tenant → if >1, renders `BrandOBPContent` instead of single-store OBP. Public mode/location selection does not trust the client-writable global store summary.
 
 **Single-store brands (95%):** Zero visible difference — `countActiveStoresForTenant` returns 1, normal OBP renders.
 

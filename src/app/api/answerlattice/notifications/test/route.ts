@@ -13,7 +13,7 @@ import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
 import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
-import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
+import { isAnswerlatticeStoreInScope, resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { getNotificationReadiness, sendNotification } from '@lib/notifications';
 import { checkRateLimit } from '@lib/rateLimit';
@@ -74,8 +74,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         }
 
         const storeData = storeSnap.data() || {};
-        const storeTenantId = Number(storeData.tenantId || storeData.tId);
-        if (Number.isFinite(storeTenantId) && storeTenantId !== scope.tenantId) {
+        if (!isAnswerlatticeStoreInScope(storeData, scope, storeSnap.id)) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
@@ -90,7 +89,6 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             recipientEmail: supportEmail,
             recipientName: storeData.productName || storeData.companyName || 'there',
             referenceId: `notification-test-${scope.tenantId}-${scope.storeId}-${Date.now()}`,
-            skipDedup: true,
             metadata: {
                 tenantId: scope.tenantId,
                 storeId: scope.storeId,

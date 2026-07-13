@@ -8,9 +8,9 @@
  * Called from: decisionBlocksScoring.ts (nightly scheduler)
  * Feature flag: ENABLE_EXTRACTION_LEARNING
  *
- * Firebase cost: ~$0.002/month at 100 stores
+ * Firebase cost: volume-dependent; see the feature Firebase cost contract
  * - 1 read (storesSummary — shared with scheduler)
- * - N reads (1 per store with corrections)
+ * - paginated reads of each active store's 30-day MOL window
  * - 1 write (platformSummary/extractionLearning)
  * - 1 write (telemetry)
  *
@@ -18,9 +18,11 @@
  */
 
 import * as admin from 'firebase-admin';
-import { FieldValue, Timestamp } from 'firebase-admin/firestore';
+import { FieldPath, FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { DB_COLLECTIONS } from '../constants/database';
+import { parsePlatformStoreSummary } from '../sharedData/storeSummaryBoundary';
 import { analyticsLogger, getAnalyticsErrorContext, getAnalyticsIdContext } from './analyticsDiagnostics';
+import { readExtractionCorrectionContribution } from './extractionLearningBoundary';
 
 // ================================================================
 // TYPES
@@ -30,20 +32,21 @@ interface ExtractionLearningResult {
     totalCorrections: number;
     storesProcessed: number;
     storesWithCorrections: number;
+    storesFailed: number;
     readsCount: number;
     writesCount: number;
 }
 
 interface FieldStats {
     corrections: number;
-    total: number;
-    rate: number;
+    total: null;
+    rate: null;
 }
 
 interface ConfidenceCalibration {
-    total: number;
+    total: null;
     corrected: number;
-    accuracy: number;
+    accuracy: null;
 }
 
 // ================================================================
@@ -51,6 +54,8 @@ interface ConfidenceCalibration {
 // ================================================================
 
 const ROLLING_WINDOW_DAYS = 30;
+const CHANGE_LOG_PAGE_SIZE = 500;
+const MAX_CHANGE_LOG_DOCUMENTS_PER_STORE = 50_000;
 
 // ================================================================
 // MAIN FUNCTION
@@ -66,6 +71,7 @@ export async function processExtractionLearningForAllStores(): Promise<Extractio
         totalCorrections: 0,
         storesProcessed: 0,
         storesWithCorrections: 0,
+        storesFailed: 0,
         readsCount: 0,
         writesCount: 0,
     };
@@ -84,13 +90,12 @@ export async function processExtractionLearningForAllStores(): Promise<Extractio
         categoryId: { corrections: 0 },
         tags: { corrections: 0 },
     };
-    // Note: `total` per confidence level is not tracked yet (requires counting all
-    // extracted items at each level, not just corrections). For v1, `corrected` count
-    // is sufficient — `accuracy` defaults to 1.0 when total is unknown.
-    const confidenceCalibration: Record<string, { total: number; corrected: number }> = {
-        high: { total: 0, corrected: 0 },
-        medium: { total: 0, corrected: 0 },
-        low: { total: 0, corrected: 0 },
+    // The authoritative denominator (all extracted fields by confidence) is not
+    // persisted today. Keep correction counts, but never manufacture accuracy.
+    const confidenceCalibration: Record<string, { corrected: number }> = {
+        high: { corrected: 0 },
+        medium: { corrected: 0 },
+        low: { corrected: 0 },
     };
 
     try {
@@ -98,50 +103,81 @@ export async function processExtractionLearningForAllStores(): Promise<Extractio
         const storesSummaryDoc = await db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc('storesSummary').get();
         result.readsCount++;
 
-        const storesSummary = storesSummaryDoc.exists ? storesSummaryDoc.data()?.stores || {} : {};
+        const storesSummary = parsePlatformStoreSummary(storesSummaryDoc.exists ? storesSummaryDoc.data() : undefined);
         const storeIds = Object.keys(storesSummary);
 
         for (const sId of storeIds) {
             const storeInfo = storesSummary[sId];
-            const tId = storeInfo.tId != null ? String(storeInfo.tId) : '';
+            const tId = storeInfo.tId;
 
             if (storeInfo.active === false || !tId) continue;
 
             try {
-                // Query EXTRACTION_CORRECTION events for this store
+                // Store IDs are the current nested collection IDs, so page on
+                // the automatic timestamp index and filter event type locally.
                 const changeLogRef = db.collection(DB_COLLECTIONS.MENU_CHANGE_LOG)
                     .doc(tId)
                     .collection(sId);
+                let storeCorrectionCount = 0;
+                let documentsScanned = 0;
+                const storeByField: Record<string, number> = {
+                    name: 0,
+                    price: 0,
+                    description: 0,
+                    categoryId: 0,
+                    tags: 0,
+                };
+                const storeByConfidence: Record<string, number> = {
+                    high: 0,
+                    medium: 0,
+                    low: 0,
+                };
+                let lastDocument: FirebaseFirestore.QueryDocumentSnapshot | undefined;
 
-                const correctionsSnapshot = await changeLogRef
-                    .where('changeType', '==', 'EXTRACTION_CORRECTION')
-                    .where('timestamp', '>=', windowStartTimestamp)
-                    .get();
+                while (true) {
+                    if (documentsScanned >= MAX_CHANGE_LOG_DOCUMENTS_PER_STORE) {
+                        throw new RangeError('Extraction learning store scan limit exceeded');
+                    }
+                    let correctionQuery = changeLogRef
+                        .where('timestamp', '>=', windowStartTimestamp)
+                        .orderBy('timestamp', 'asc')
+                        .orderBy(FieldPath.documentId(), 'asc')
+                        .limit(CHANGE_LOG_PAGE_SIZE);
+                    if (lastDocument) correctionQuery = correctionQuery.startAfter(lastDocument);
 
-                result.readsCount++;
-                result.storesProcessed++;
+                    const correctionsSnapshot = await correctionQuery.get();
+                    result.readsCount += Math.max(1, correctionsSnapshot.size);
+                    documentsScanned += correctionsSnapshot.size;
 
-                if (correctionsSnapshot.empty) continue;
+                    for (const document of correctionsSnapshot.docs) {
+                        const data = document.data();
+                        const contribution = readExtractionCorrectionContribution(data);
+                        if (contribution.total === 0) continue;
 
-                result.storesWithCorrections++;
-
-                for (const doc of correctionsSnapshot.docs) {
-                    const data = doc.data();
-                    result.totalCorrections++;
-
-                    // Aggregate by field
-                    const field = data.oldValue?.field || data.newValue?.field;
-                    if (field && byField[field]) {
-                        byField[field].corrections++;
+                        storeCorrectionCount += contribution.total;
+                        for (const [field, count] of Object.entries(contribution.byField)) {
+                            storeByField[field] += count;
+                        }
+                        for (const [confidence, count] of Object.entries(contribution.byConfidence)) {
+                            storeByConfidence[confidence] += count;
+                        }
                     }
 
-                    // Aggregate confidence calibration
-                    const confidence = data.oldValue?.confidence;
-                    if (confidence && confidenceCalibration[confidence]) {
-                        confidenceCalibration[confidence].corrected++;
-                    }
+                    if (correctionsSnapshot.size < CHANGE_LOG_PAGE_SIZE) break;
+                    lastDocument = correctionsSnapshot.docs[correctionsSnapshot.docs.length - 1];
                 }
-            } catch (storeError: any) {
+
+                result.storesProcessed++;
+                result.totalCorrections += storeCorrectionCount;
+                for (const [field, count] of Object.entries(storeByField)) {
+                    byField[field].corrections += count;
+                }
+                for (const [confidence, count] of Object.entries(storeByConfidence)) {
+                    confidenceCalibration[confidence].corrected += count;
+                }
+                if (storeCorrectionCount > 0) result.storesWithCorrections++;
+            } catch (storeError: unknown) {
+                result.storesFailed++;
                 analyticsLogger.warn('[ExtractionLearning] Error processing store', {
                     storeId: getAnalyticsIdContext(sId),
                     error: getAnalyticsErrorContext(storeError),
@@ -149,52 +185,48 @@ export async function processExtractionLearningForAllStores(): Promise<Extractio
             }
         }
 
-        // Compute rates
-        const totalExtractedItems = result.totalCorrections > 0
-            ? Math.max(result.totalCorrections * 5, 100) // Rough estimate: corrections are ~20% of extractions
-            : 0;
-
         const byFieldWithRates: Record<string, FieldStats> = {};
         for (const [field, stats] of Object.entries(byField)) {
             byFieldWithRates[field] = {
                 corrections: stats.corrections,
-                total: totalExtractedItems,
-                rate: totalExtractedItems > 0 ? stats.corrections / totalExtractedItems : 0,
+                total: null,
+                rate: null,
             };
         }
 
         const calibrationWithAccuracy: Record<string, ConfidenceCalibration> = {};
         for (const [level, stats] of Object.entries(confidenceCalibration)) {
             calibrationWithAccuracy[level] = {
-                total: stats.total,
+                total: null,
                 corrected: stats.corrected,
-                accuracy: stats.total > 0 ? 1 - (stats.corrected / stats.total) : 1,
+                accuracy: null,
             };
         }
 
         // Write aggregate to platformSummary/extractionLearning (1 write)
-        const correctionRate = totalExtractedItems > 0 ? result.totalCorrections / totalExtractedItems : 0;
-
         await db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc('extractionLearning').set({
             computedAt: FieldValue.serverTimestamp(),
             windowDays: ROLLING_WINDOW_DAYS,
             totalCorrections: result.totalCorrections,
-            correctionRate: Math.round(correctionRate * 1000) / 1000,
+            correctionRate: null,
+            correctionRateStatus: 'unavailable_without_extraction_denominator',
             byField: byFieldWithRates,
             confidenceCalibration: calibrationWithAccuracy,
             storesWithCorrections: result.storesWithCorrections,
+            storesFailed: result.storesFailed,
         }, { merge: true });
         result.writesCount++;
 
         analyticsLogger.info('[ExtractionLearning] Aggregation complete', {
             storesProcessed: result.storesProcessed,
             storesWithCorrections: result.storesWithCorrections,
+            storesFailed: result.storesFailed,
             totalCorrections: result.totalCorrections,
-            correctionRatePercent: Number((correctionRate * 100).toFixed(1)),
+            correctionRateAvailable: false,
         });
 
         return result;
-    } catch (error: any) {
+    } catch (error: unknown) {
         analyticsLogger.error('[ExtractionLearning] Fatal error', {
             error: getAnalyticsErrorContext(error),
         });

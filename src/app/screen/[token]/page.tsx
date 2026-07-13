@@ -20,6 +20,7 @@ import { FEATURE_FLAGS } from "@config/features";
 import { getMenuItemsForScreenServer, getScreenDataByTokenServer, getUsableScreenMenuProjection } from "@database/campaigns/serverScreen";
 import { SCREEN_CONFIG } from "@lib/screen/screenRenderer";
 import { generateScreenSlides } from "@lib/screen/slideGenerator";
+import { isValidScreenToken } from "@lib/screen/utils";
 import { unstable_cache } from "next/cache";
 import { notFound } from "next/navigation";
 import MenuBoardDisplay from "./MenuBoardDisplay";
@@ -72,7 +73,7 @@ export default async function ScreenPage({ params, searchParams }: PageProps) {
     const { token } = params;
 
     // Validate token format
-    if (!token || token.length < 6 || token.length > 24) {
+    if (!isValidScreenToken(token)) {
         notFound();
     }
 

@@ -5,6 +5,8 @@
 **Source:** [Master production blueprint](./videos_launch-product-marketing-production-blueprint.md)
 **Scope:** Standalone production handoff for Video 11.
 
+**Mandatory production standard:** [MenuList Founder-Approved Video Production Standard](./videos_founder-approved-production-standard.md). Apply it to this video's messaging, Inter typography, website gradient emphasis, UI styling, motion, transitions, logo slate, Indian-English voice, brand music, aspect-ratio adaptation, and encoded-MP4 QA.
+
 ## Shared Positioning
 
 MenuList must be shown as public-business truth infrastructure for SMBs, not as a standalone QR menu app, generic AI restaurant software, or flashy SaaS dashboard.
@@ -152,3 +154,17 @@ Use steady music with slightly more operational rhythm. Use light connection sou
 ### P. CTA
 
 One master list. Controlled outlet flexibility.
+
+### Q. Conversion Contract
+
+- Funnel stage: high-intent evaluation for multi-location operators.
+- Belief change: `HQ can keep shared public truth consistent while approved outlet differences remain controlled.`
+- Proof moment: one master list -> linked outlets -> permitted local price/status variation -> outlet-specific customer pages.
+- Display close: `One master list. Controlled outlet flexibility.`
+- Linked action: companion `Create customer link` -> `/create-menu`.
+- Primary metric: qualified multi-location create-link starts and first approved publish.
+- Guard metric: no implication that outlet changes propagate automatically without governance or approval.
+- Asset/UTM pattern: `multi_location_v1_controlled_flexibility_45s_<aspect>`.
+- Paid eligibility: blocked until the multi-location demo state, audience, and deeper product milestones are approved.
+
+Use the [conversion brief template](./videos_conversion-brief-template.md) and [campaign ledger](./videos_campaign-measurement-ledger.md).

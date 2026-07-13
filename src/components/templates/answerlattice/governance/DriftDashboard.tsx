@@ -15,13 +15,11 @@ import { FEATURE_FLAGS } from '@config/features';
 import { useCanonicalAnswers } from '@hook/answerlattice/useCanonicalAnswers';
 import { useEntities } from '@hook/answerlattice/useEntities';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
-import { updateCanonicalAnswer, updateAnswerGovernance } from '@database/answerlattice/canonicalAnswers';
-import { addAuditLog } from '@database/answerlattice/auditLogs';
+import { validateCanonicalAnswerDrift } from '@database/answerlattice/canonicalAnswers';
 import { evaluateDriftForTenant } from '@lib/answerlattice/driftDetection';
 import {
     AnswerlatticeCanonicalAnswer,
     ANSWERLATTICE_DRIFT_CLASS,
-    ANSWERLATTICE_VALIDATION_SOURCE,
 } from '@type/answerlattice';
 import {
     Badge,
@@ -41,7 +39,6 @@ import {
     message,
     theme,
 } from 'antd';
-import { Timestamp } from 'firebase/firestore';
 import { useCallback, useMemo, useState } from 'react';
 import {
     LuAlertTriangle,
@@ -160,39 +157,14 @@ export default function DriftDashboard() {
 
     const handleResolve = useCallback(async (answer: AnswerlatticeCanonicalAnswer) => {
         try {
-            // Clear drift flag and mark as revalidated
-            await updateAnswerGovernance(answer.id, {
-                driftFlag: false,
-                driftReason: undefined,
-                reviewRequired: false,
-            });
-            // Update validation timestamp
-            await updateCanonicalAnswer({
-                id: answer.id,
-                validation: {
-                    ...answer.validation,
-                    lastValidatedOn: Timestamp.now(),
-                    validationSource: ANSWERLATTICE_VALIDATION_SOURCE.MANUAL,
-                    validatedBy: 'admin',
-                },
-            });
-            await addAuditLog({
-                tId, sId,
-                action: 'drift_manually_resolved',
-                entityType: 'canonicalAnswer',
-                entityId: answer.id,
-                previousState: { driftFlag: true, driftReason: answer.governance.driftReason },
-                newState: { driftFlag: false },
-                performedBy: 'admin',
-                timestamp: Timestamp.now(),
-            });
+            await validateCanonicalAnswerDrift(answer.id);
             message.success('Drift resolved and answer revalidated');
             setDetailModalOpen(false);
             await refresh();
         } catch (err) {
             message.error('Failed to resolve drift');
         }
-    }, [tId, sId, refresh]);
+    }, [refresh]);
 
     if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_GOVERNANCE_UI) return null;
 

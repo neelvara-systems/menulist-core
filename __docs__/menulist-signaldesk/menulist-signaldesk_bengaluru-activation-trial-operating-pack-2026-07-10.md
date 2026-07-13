@@ -104,10 +104,10 @@ Do not enter personal contact details. Business identities and source URLs expir
 
 | Slot | Business | Category | Neighborhood | Official source | Current-list gap | Evidence date | Fit | Permission basis | Next action |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 01 | Pending | Pending | Indiranagar | Pending | Pending | Pending | Unreviewed | None | Research evidence |
-| 02 | Pending | Pending | Indiranagar | Pending | Pending | Pending | Unreviewed | None | Research evidence |
-| 03 | Pending | Pending | Indiranagar | Pending | Pending | Pending | Unreviewed | None | Research evidence |
-| 04 | Pending | Pending | Indiranagar | Pending | Pending | Pending | Unreviewed | None | Research evidence |
+| 01 | Nuha Patisserie & Cafe | Patisserie/cafe | Indiranagar | https://cafenuha.com/ | Official Menu link resolves to the same page section showing three selection items without prices while the page states 12+ pastry varieties daily; owner has not confirmed completeness | 2026-07-10 | Pass | None | Hold for founder or partner introduction; no contact |
+| 02 | Grumpy Girl Coffee | Cafe | Indiranagar | https://grumpygirlcoffee.in/ | Official page exposes named menu cards and some prices, but the fetched page did not provide a complete independently reviewable current list and some indexed items had no visible price | 2026-07-10 | Unsure | None | Re-review the official menu experience before admission; no contact |
+| 03 | Eddy's Cafe | Cafe | Indiranagar | https://www.eddyscafe.com/menu | Official menu route presents a 14-image menu; item names, prices, and availability were not machine-readable in the reviewed page | 2026-07-10 | Pass | None | Hold for founder or partner introduction; no contact |
+| 04 | Nanav Cafe | Cafe | Indiranagar | https://www.nanavcafe.com/ | Official first-party page exposes a broad menu with item names and prices in readable page content; no clear current-list gap was established | 2026-07-10 | Fail | None | Close unless later owner evidence shows a different problem |
 | 05 | Pending | Pending | Indiranagar | Pending | Pending | Pending | Unreviewed | None | Research evidence |
 | 06 | Pending | Pending | Indiranagar | Pending | Pending | Pending | Unreviewed | None | Research evidence |
 | 07 | Pending | Pending | Indiranagar | Pending | Pending | Pending | Unreviewed | None | Research evidence |
@@ -116,7 +116,7 @@ Do not enter personal contact details. Business identities and source URLs expir
 | 10 | Pending | Pending | Indiranagar | Pending | Pending | Pending | Unreviewed | None | Research evidence |
 | 11 | Pending | Pending | Indiranagar | Pending | Pending | Pending | Unreviewed | None | Research evidence |
 | 12 | Pending | Pending | Indiranagar | Pending | Pending | Pending | Unreviewed | None | Research evidence |
-| 13 | Pending | Pending | Koramangala | Pending | Pending | Pending | Unreviewed | None | Research evidence |
+| 13 | Vienna Bakehouse & Kitchen | Bakery/cafe | Koramangala | https://www.viennabakehouse.com/media/menu.pdf | Official site links the full menu as a PDF while the main page shows category-level descriptions; current item details depend on the PDF | 2026-07-10 | Pass | None | Hold for founder or partner introduction; no contact |
 | 14 | Pending | Pending | Koramangala | Pending | Pending | Pending | Unreviewed | None | Research evidence |
 | 15 | Pending | Pending | Koramangala | Pending | Pending | Pending | Unreviewed | None | Research evidence |
 | 16 | Pending | Pending | Koramangala | Pending | Pending | Pending | Unreviewed | None | Research evidence |
@@ -129,6 +129,10 @@ Do not enter personal contact details. Business identities and source URLs expir
 | 23 | Pending | Pending | Koramangala | Pending | Pending | Pending | Unreviewed | None | Research evidence |
 | 24 | Pending | Pending | Koramangala | Pending | Pending | Pending | Unreviewed | None | Research evidence |
 | 25 | Pending | Pending | Koramangala | Pending | Pending | Pending | Unreviewed | None | Research evidence |
+
+### July 10 Evidence Review Note
+
+The first daily cap of five public evidence-only reviews is complete: three `Pass`, one `Unsure`, and one `Fail`. Reviews used official first-party websites/menu destinations only. No phone, email, social handle, personal identity, customer data, outreach permission, or inferred consent was copied into the board. A `Pass` is an internal fit signal only; it does not authorize contact.
 
 ## Evidence Packet
 

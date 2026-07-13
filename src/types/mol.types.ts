@@ -74,16 +74,20 @@ export interface MOLEvent {
     entityId: string;
 
     /** State before change (null for create events) */
-    before: Record<string, any> | null;
+    before: Record<string, unknown> | null;
 
     /** State after change (null for delete events) */
-    after: Record<string, any> | null;
+    after: Record<string, unknown> | null;
 
     /** Integrity version at time of event */
     version: number;
 
     /** Timestamp when event was created */
     createdOn: Timestamp;
+
+    /** Tenant/store path identity persisted for rules validation */
+    tId: number;
+    sId: number;
 }
 
 /**
@@ -95,8 +99,8 @@ export interface LogMOLParams {
     actorUserId: string;
     entityType: MOLEntityType;
     entityId: string;
-    before: Record<string, any> | null;
-    after: Record<string, any> | null;
+    before: Record<string, unknown> | null;
+    after: Record<string, unknown> | null;
     version: number;
     tId: number;
     sId: number;

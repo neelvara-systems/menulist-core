@@ -38,6 +38,7 @@ import { createHash } from 'crypto';
 import type { Firestore } from 'firebase-admin/firestore';
 import { Timestamp } from 'firebase-admin/firestore';
 import * as nodemailer from 'nodemailer';
+import { claimNotificationDelivery, finalizeNotificationDelivery } from './deliveryClaim';
 import { getSmtpConfigFromEnv, isSmtpConfigured } from './smtpConfig';
 import {
     getBoundedNotificationStringContext,
@@ -69,8 +70,6 @@ export interface NotificationPayload {
     from?: string;
     /** Product owning this notification. Answerlattice writes logs to Answerlattice Firebase. */
     productId?: ProductId | string;
-    /** Optional: skip idempotency check (for time-sensitive notifications) */
-    skipDedup?: boolean;
 }
 
 type NotificationLogTarget = {
@@ -140,6 +139,9 @@ function getTransporter(): nodemailer.Transporter | null {
         port: smtpConfig.port,
         secure: smtpConfig.secure,
         auth: { user: smtpConfig.user, pass: smtpConfig.pass },
+        connectionTimeout: 10_000,
+        greetingTimeout: 10_000,
+        socketTimeout: 15_000,
     });
     return cachedTransporter;
 }
@@ -148,6 +150,7 @@ async function sendViaSMTP(
     to: string,
     subject: string,
     html: string,
+    messageId: string,
     from?: string,
 ): Promise<{ ok: boolean; messageId?: string; error?: string }> {
     const transporter = getTransporter();
@@ -160,6 +163,7 @@ async function sendViaSMTP(
             to,
             subject,
             html,
+            messageId,
         });
         return { ok: true, messageId: info.messageId };
     } catch {
@@ -179,26 +183,6 @@ function getNotificationDeliveryError(result: { ok: boolean; error?: string }): 
 // ================================================================
 // IDEMPOTENCY (dedup within 24h by eventType + referenceId)
 // ================================================================
-
-async function isDuplicate(
-    target: NotificationLogTarget,
-    eventType: string,
-    referenceId: string
-): Promise<boolean> {
-    try {
-        const docSnap = await target.db
-            .collection(target.collectionName)
-            .doc(getSafeLogId(eventType, referenceId))
-            .get();
-        return docSnap.exists && docSnap.data()?.status === 'sent';
-    } catch (error) {
-        logNotificationFailure('notification_duplicate_check_failed', error, {
-            eventType,
-            ...getBoundedNotificationStringContext('referenceId', referenceId),
-        });
-        return true;
-    }
-}
 
 // ================================================================
 // RATE LIMIT (per recipient per day)
@@ -223,9 +207,10 @@ async function isRateLimited(target: NotificationLogTarget, recipientEmail: stri
     }
 }
 
-async function writeNotificationLog(
+async function finalizeNotificationLog(
     target: NotificationLogTarget,
     payload: NotificationPayload,
+    claimId: string,
     status: 'sent' | 'failed' | 'skipped',
     details: {
         subject?: string;
@@ -235,11 +220,14 @@ async function writeNotificationLog(
     } = {}
 ): Promise<void> {
     try {
-        const createdAt = Timestamp.now();
-        await target.db
+        const logRef = target.db
             .collection(target.collectionName)
-            .doc(getSafeLogId(payload.eventType, payload.referenceId))
-            .set({
+            .doc(getSafeLogId(payload.eventType, payload.referenceId));
+        const finalized = await finalizeNotificationDelivery({
+            claimId,
+            ref: logRef,
+            status,
+            fields: {
                 productId: payload.productId || null,
                 eventType: payload.eventType,
                 recipientEmail: payload.recipientEmail,
@@ -249,11 +237,14 @@ async function writeNotificationLog(
                 messageId: details.messageId || null,
                 error: details.error || null,
                 reason: details.reason || null,
-                createdAt,
                 ...(payload.productId === PRODUCT_IDS.ANSWERLATTICE
-                    ? getAnswerlatticeRetentionFields('notificationLogs', createdAt)
+                    ? getAnswerlatticeRetentionFields('notificationLogs', Timestamp.now())
                     : {}),
-            }, { merge: true });
+            },
+        });
+        if (!finalized) {
+            logNotificationFailure('notification_log_claim_lost', undefined, getNotificationPayloadLogContext(payload));
+        }
     } catch (error) {
         logNotificationFailure('notification_log_write_failed', error, getNotificationPayloadLogContext(payload));
     }
@@ -278,7 +269,6 @@ export async function sendNotification(payload: NotificationPayload): Promise<bo
             metadata,
             from,
             productId = PRODUCT_IDS.ANSWERLATTICE,
-            skipDedup = false,
         } = payload;
 
         // 1. Feature flag
@@ -330,12 +320,25 @@ export async function sendNotification(payload: NotificationPayload): Promise<bo
             return false;
         }
 
-        // 3. Idempotency
-        if (!skipDedup && await isDuplicate(logTarget, eventType, referenceId)) return false;
+        // 3. Transactional idempotency claim. This serializes concurrent route
+        // retries before any rate-limit query or SMTP side effect.
+        const logRef = logTarget.db
+            .collection(logTarget.collectionName)
+            .doc(getSafeLogId(eventType, referenceId));
+        const claim = await claimNotificationDelivery({
+            ref: logRef,
+            fields: {
+                eventType,
+                productId,
+                recipientEmail,
+                referenceId,
+            },
+        });
+        if (!claim.claimed) return false;
 
         // 4. Rate limit
         if (await isRateLimited(logTarget, recipientEmail)) {
-            await writeNotificationLog(logTarget, { ...payload, productId }, 'skipped', { reason: 'rate_limited' });
+            await finalizeNotificationLog(logTarget, { ...payload, productId }, claim.claimId, 'skipped', { reason: 'rate_limited' });
             return false;
         }
 
@@ -348,15 +351,21 @@ export async function sendNotification(payload: NotificationPayload): Promise<bo
             logNotificationFailure('notification_template_not_found', undefined, {
                 ...getNotificationPayloadLogContext({ ...payload, productId }),
             });
-            await writeNotificationLog(logTarget, { ...payload, productId }, 'failed', { error: 'template_not_found' });
+            await finalizeNotificationLog(logTarget, { ...payload, productId }, claim.claimId, 'failed', { error: 'template_not_found' });
             return false;
         }
 
         // 6. Send
-        const result = await sendViaSMTP(recipientEmail, template.subject, template.html, from);
+        const result = await sendViaSMTP(
+            recipientEmail,
+            template.subject,
+            template.html,
+            `<${getSafeLogId(eventType, referenceId)}@menulist.ai>`,
+            from,
+        );
 
         // 7. Log. This is the production diagnostic trail for delivery failure.
-        await writeNotificationLog(logTarget, { ...payload, productId }, result.ok ? 'sent' : 'failed', {
+        await finalizeNotificationLog(logTarget, { ...payload, productId }, claim.claimId, result.ok ? 'sent' : 'failed', {
             subject: template.subject,
             messageId: result.messageId || null,
             error: getNotificationDeliveryError(result),

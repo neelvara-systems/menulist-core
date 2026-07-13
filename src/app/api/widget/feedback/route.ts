@@ -17,15 +17,19 @@ import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
 import { normalizeAnswerlatticeSearchHistoryId } from '@lib/answerlattice/searchHistoryIdBoundary';
+import { normalizeAnswerlatticeScopeDocumentId } from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import {
     handlePublicApiCorsPreflight,
     hashApiKey,
     hasPublicApiCredentialScope,
-    isRequestOriginAllowed,
     validatePublicApiKey,
     withPublicApiCors,
 } from '@lib/publicApi/auth';
+import {
+    ANSWERLATTICE_WIDGET_RUNTIME_TOKEN_HEADER,
+    isAnswerlatticeWidgetRuntimeRequestAuthorized,
+} from '@lib/answerlattice/widgetRuntimeTokenServer';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
@@ -33,11 +37,12 @@ import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import * as admin from 'firebase-admin';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { getClientIp, hashPublicRateLimitValue } from 'src/middleware/publicApi';
 
 const FeedbackRequestSchema = z.object({
     searchHistoryId: z.string().trim().max(180).refine((value) => normalizeAnswerlatticeSearchHistoryId(value) === value),
     isGood: z.boolean(),
-});
+}).strict();
 const WIDGET_FEEDBACK_MAX_BODY_BYTES = 2 * 1024;
 const WIDGET_AUTH_CACHE_TTL_MS = 15_000;
 
@@ -45,7 +50,11 @@ const jsonResponse = (
     request: NextRequest,
     body: Record<string, any>,
     init?: ResponseInit,
-): NextResponse => withPublicApiCors(NextResponse.json(body, init), request);
+): NextResponse => {
+    const response = NextResponse.json(body, init);
+    if (!response.headers.has('Cache-Control')) response.headers.set('Cache-Control', 'private, no-store');
+    return withPublicApiCors(response, request);
+};
 
 export function OPTIONS(request: NextRequest) {
     return handlePublicApiCorsPreflight(request);
@@ -77,8 +86,6 @@ const buildWidgetFeedbackContextMetadata = (historyData: Record<string, any>) =>
         answerSource: cleanSignalContextText(historyData.answerSource, 80),
         confidence: cleanSignalContextText(historyData.confidence, 40),
         visitorId: cleanSignalContextText(historyData.visitorId, 120),
-        visitorName: cleanSignalContextText(historyData.visitorName, 160),
-        visitorEmail: cleanSignalContextText(historyData.visitorEmail, 180),
         widgetSessionId: cleanSignalContextText(historyData.widgetSessionId, 120),
         requestOrigin: cleanSignalContextText(historyData.requestOrigin, 180),
         requestPath: cleanSignalContextText(historyData.requestPath, 180),
@@ -110,37 +117,46 @@ export async function POST(request: NextRequest) {
         }
 
         const apiKeyRateLimitId = hashApiKey(apiKey).slice(0, 16);
-        const rateLimitConfig = getRateLimitForFeature('AI_OPERATION');
+        const rateLimitConfig = getRateLimitForFeature('FEEDBACK_SUBMISSION');
+        const preAuthRateLimitResult = await checkRateLimit({
+            key: `widget-feedback-preauth:${hashPublicRateLimitValue(getClientIp(request))}`,
+            limit: Math.max(rateLimitConfig.limit * 4, 60),
+            window: rateLimitConfig.window,
+            failClosedOnProviderError: true,
+        });
+        if (!preAuthRateLimitResult.allowed) {
+            const providerUnavailable = preAuthRateLimitResult.reason === 'provider_unavailable';
+            const retryAfter = Math.max(Math.ceil((preAuthRateLimitResult.resetAt - Date.now()) / 1000), 1);
+            return jsonResponse(request, {
+                error: providerUnavailable
+                    ? 'Feedback is temporarily unavailable. Please try again later.'
+                    : 'Rate limit exceeded',
+            }, {
+                status: providerUnavailable ? 503 : 429,
+                headers: { 'Cache-Control': 'no-store', 'Retry-After': String(retryAfter) },
+            });
+        }
         const rateLimitResult = await checkRateLimit({
             key: `widget-feedback:${apiKeyRateLimitId}`,
             limit: rateLimitConfig.limit,
             window: rateLimitConfig.window,
+            failClosedOnProviderError: true,
         });
-        if (
-            rateLimitResult.allowed
-            && FEATURE_FLAGS.ENABLE_RATE_LIMITING
-            && rateLimitResult.current === 0
-            && rateLimitResult.remaining === rateLimitConfig.limit
-        ) {
-            return jsonResponse(
-                request,
-                { error: 'Feedback is temporarily unavailable. Please try again later.' },
-                {
-                    status: 503,
-                    headers: { 'Cache-Control': 'no-store' },
-                }
-            );
-        }
         if (!rateLimitResult.allowed) {
-            const retryAfter = Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000);
+            const providerUnavailable = rateLimitResult.reason === 'provider_unavailable';
+            const retryAfter = Math.max(Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000), 1);
             return jsonResponse(
                 request,
-                { error: 'Rate limit exceeded' },
                 {
-                    status: 429,
+                    error: providerUnavailable
+                        ? 'Feedback is temporarily unavailable. Please try again later.'
+                        : 'Rate limit exceeded',
+                },
+                {
+                    status: providerUnavailable ? 503 : 429,
                     headers: {
                         'Cache-Control': 'no-store',
-                        'Retry-After': String(Math.max(retryAfter, 1)),
+                        'Retry-After': String(retryAfter),
                     },
                 }
             );
@@ -168,9 +184,9 @@ export async function POST(request: NextRequest) {
         if (!hasPublicApiCredentialScope(credential, 'widget:feedback')) {
             return jsonResponse(request, { error: 'Invalid API key' }, { status: 401 });
         }
-        const tId = Number(storeData.tenantId || storeData.tId);
-        const sId = Number(storeData.id || storeId);
-        if (!Number.isFinite(tId) || !Number.isFinite(sId) || tId <= 0 || sId <= 0) {
+        const tId = normalizeAnswerlatticeScopeDocumentId(storeData.tenantId ?? storeData.tId);
+        const sId = normalizeAnswerlatticeScopeDocumentId(storeData.id ?? storeId);
+        if (tId === null || sId === null) {
             logRuntimeFailure('answerlattice_widget_feedback_invalid_workspace_context', undefined, {
                 ...getBoundedRuntimeStringContext('storeId', storeId),
             });
@@ -178,7 +194,14 @@ export async function POST(request: NextRequest) {
         }
 
         const requestOrigin = request.headers.get('origin');
-        if (!isRequestOriginAllowed(requestOrigin, storeData.widgetAllowedOrigins)) {
+        if (!isAnswerlatticeWidgetRuntimeRequestAuthorized({
+            requestOrigin,
+            allowedOrigins: storeData.widgetAllowedOrigins,
+            runtimeToken: request.headers.get(ANSWERLATTICE_WIDGET_RUNTIME_TOKEN_HEADER),
+            apiKey,
+            tId,
+            sId,
+        })) {
             return jsonResponse(request, { error: 'Origin not allowed' }, { status: 403 });
         }
 
@@ -205,33 +228,38 @@ export async function POST(request: NextRequest) {
         const historyRef = answerlatticeFirestoreAdmin
             .collection(DB_COLLECTIONS.AI_SEARCH_HISTORY)
             .doc(searchHistoryId);
-        const historyDoc = await historyRef.get();
-        const historyData = historyDoc.exists ? historyDoc.data() : null;
-        if (
-            !historyData ||
-            Number(historyData.tId) !== tId ||
-            Number(historyData.sId) !== sId ||
-            !isWidgetSearchHistoryRow(historyData)
-        ) {
+        let historyData: Record<string, any> | null = null;
+        let feedbackCreated = false;
+        await answerlatticeFirestoreAdmin.runTransaction(async (transaction) => {
+            const historyDoc = await transaction.get(historyRef);
+            const current = historyDoc.exists ? historyDoc.data() : null;
+            if (
+                !current
+                || current.pId !== PRODUCT_IDS.ANSWERLATTICE
+                || normalizeAnswerlatticeScopeDocumentId(current.tId) !== tId
+                || normalizeAnswerlatticeScopeDocumentId(current.sId) !== sId
+                || !isWidgetSearchHistoryRow(current)
+            ) return;
+            historyData = current;
+            const alreadySubmitted = typeof current.submittedAt !== 'undefined'
+                || typeof current.isGood === 'boolean';
+            if (alreadySubmitted) return;
+            const now = admin.firestore.Timestamp.now();
+            transaction.set(historyRef, {
+                isGood,
+                reasonsToImprove: [],
+                comments: '',
+                submittedAt: now,
+                modifiedOn: now,
+            }, { merge: true });
+            feedbackCreated = true;
+        });
+        if (!historyData) {
             return jsonResponse(request, { error: 'Search record not found' }, { status: 404 });
         }
 
-        const alreadySubmitted = typeof historyData.submittedAt !== 'undefined'
-            || typeof historyData.isGood === 'boolean';
-        if (alreadySubmitted && historyData.isGood === isGood) {
-            return jsonResponse(request, { success: true });
-        }
-
-        await historyRef.set({
-            isGood,
-            reasonsToImprove: [],
-            comments: '',
-            submittedAt: admin.firestore.Timestamp.now(),
-            modifiedOn: admin.firestore.Timestamp.now(),
-        }, { merge: true });
-
         // Emit Answerlattice signal for negative feedback (feeds mutation pipeline)
-        if (!isGood && FEATURE_FLAGS.ENABLE_ANSWERLATTICE_SIGNAL_MUTATION) {
+        if (feedbackCreated && !isGood && FEATURE_FLAGS.ENABLE_ANSWERLATTICE_SIGNAL_MUTATION) {
             try {
                 const { emitAnswerlatticeSignal } = await import('@lib/answerlattice/signalEmitter');
                 const { ANSWERLATTICE_SIGNAL_TYPE } = await import('@type/answerlattice');

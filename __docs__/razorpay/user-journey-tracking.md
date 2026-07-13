@@ -82,7 +82,7 @@ paymentMethod: { type: "card"|"upi", brand, last4, upiId }
 | 1 | Razorpay charges user → sends `subscription.charged` webhook | External (Razorpay) | — |
 | 2 | Webhook handler validates signature (HMAC-SHA256) | `api/razorpay/webhook/route.ts` | `validateRazorpayWebhookSignature()` |
 | 3 | Fetches invoice data from Razorpay | `api/razorpay/webhook/route.ts` | `getInvoiceById()` |
-| 4 | Saves full event to payment transactions collection | `api/razorpay/webhook/route.ts` | `createPaymentTransaction()` |
+| 4 | Writes a bounded deterministic audit summary to the payment ledger | `api/razorpay/webhook/route.ts` | `writeProductPaymentTransactionAudit()` |
 | 5 | Looks up internal subscription by Razorpay sub ID | `api/razorpay/webhook/route.ts` | `getSubscriptionById()` |
 | 6 | Resets monthly credits, updates cycle dates, clears pastDueSinceAt, appends billing history (with idempotency check) | `api/razorpay/webhook/route.ts` | `updateSubscription()` |
 | 7 | Next time user loads any page → SessionProvider fetches updated doc | `sessionProvider.tsx` | `getActiveSubscriptionForStore()` |
@@ -419,7 +419,7 @@ Credits are carried forward identically to upgrades.
 | 6 | User pays → verify topup | `usePaymentHandler.ts` | POST `/api/razorpay/verify-topup` |
 | 7 | Server adds credits to subscription doc | `api/razorpay/verify-topup/route.ts` | Updates `topUpCredits` |
 | 8 | Frontend: updates `topUpCredits` in-place + confetti | `billing/index.tsx` | `setActiveSubscription({ ...activeSubscription, topUpCredits: ... })` |
-| 9 | Webhook `order.paid` fires → saves to payment transactions | `api/razorpay/webhook/route.ts` | `createPaymentTransaction()` |
+| 9 | Webhook `order.paid` writes the deterministic payment audit summary | `api/razorpay/webhook/route.ts` | `writeProductPaymentTransactionAudit()` |
 
 **Note:** Top-up is an **order** (one-time payment), not a subscription charge. Different Razorpay flow but same checkout experience.
 

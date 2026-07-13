@@ -72,15 +72,15 @@ Click the metadata popover to:
 
 ---
 
-## Weekly AI Digest
+## Weekly Digest
 
-Navigate to Weekly Digest to see the AI-generated performance summary:
+Navigate to Weekly Digest to see the source-backed performance summary:
 - **Executive narrative** — 2-3 paragraph summary of the week
 - **Key highlights** — What went well
 - **Recommendations** — What needs attention
 - **Key metrics** — Volume change, satisfaction change, top category
 
-Click **Regenerate** to create a fresh report on demand.
+Click **Regenerate** only when you want an explicit model-assisted wording refresh. The scheduled summary itself is deterministic and uses completed analytics data.
 
 ---
 

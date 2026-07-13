@@ -10,8 +10,16 @@
  */
 
 import { getChatDashboardAggregatesOptimized } from '@database/chatAnalytics';
+import {
+  parseAnswerlatticeFeedbackIntelligence,
+  parseAnswerlatticeWeeklySummary,
+  type AnswerlatticeFeedbackIntelligence,
+  type AnswerlatticeWeeklySummary,
+} from '@lib/answerlattice/analyticsIntelligenceContracts';
+import { getAnswerlatticeAnalyticsQueryWindow } from '@lib/answerlattice/chatAnalyticsContracts';
+import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
+import { answerlatticeFirebaseClient } from '@lib/firebase/answerlatticeFirebaseClient';
 import type { NormalizedKnowledgeGap, NormalizedTopQuestion } from './normalizer';
-import { firebaseClient } from '@lib/firebase/firebaseClient';
 import { doc, getDoc } from 'firebase/firestore';
 import { getBoundedAnalyticsStringContext, logAnalyticsFailure } from './analyticsDiagnostics';
 
@@ -22,21 +30,10 @@ export interface DateRange {
 
 type AnalyticsDalLogContext = Record<string, boolean | number | string | null | undefined>;
 
-const getDateRangeDays = (dateRange: DateRange | null | undefined): number => {
-  const startMs = dateRange?.start instanceof Date ? dateRange.start.getTime() : Number.NaN;
-  const endMs = dateRange?.end instanceof Date ? dateRange.end.getTime() : Number.NaN;
-
-  if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) {
-    return 0;
-  }
-
-  return Math.ceil((endMs - startMs) / (1000 * 60 * 60 * 24));
-};
-
 const getAnalyticsDalDateRangeContext = (dateRange: DateRange | null | undefined): AnalyticsDalLogContext => ({
   hasStartDate: dateRange?.start instanceof Date && Number.isFinite(dateRange.start.getTime()),
   hasEndDate: dateRange?.end instanceof Date && Number.isFinite(dateRange.end.getTime()),
-  dateRangeDays: getDateRangeDays(dateRange),
+  dateRangeDays: getAnswerlatticeAnalyticsQueryWindow(dateRange)?.dayCount ?? 0,
 });
 
 const getAnalyticsDalScopeContext = (
@@ -47,10 +44,10 @@ const getAnalyticsDalScopeContext = (
   ...getBoundedAnalyticsStringContext('storeId', storeId),
 });
 
-const getAnalyticsDalSessionContext = (session: any): AnalyticsDalLogContext => getAnalyticsDalScopeContext(
-  session?.tId ?? session?.tenantId,
-  session?.sId ?? session?.storeId,
-);
+const getAnalyticsDalSessionContext = (session: unknown): AnalyticsDalLogContext => {
+  const scope = resolveAnswerlatticeSessionScope(session);
+  return getAnalyticsDalScopeContext(scope?.tenantId, scope?.storeId);
+};
 
 // ================================================================
 // TYPE DEFINITIONS
@@ -63,6 +60,7 @@ export interface DashboardData {
     satisfactionRate: number;
     avgMessagesPerChat: number;
     knowledgeGaps: number;
+    isPartial: boolean;
     trends: {
       chatsChange: number;
       satisfactionChange: number;
@@ -93,33 +91,8 @@ export interface DashboardData {
 }
 
 export interface AIIntelligenceData {
-  weeklySummary?: {
-    weekStart: string;
-    weekEnd: string;
-    narrative: string;
-    highlights: string[];
-    recommendations: string[];
-    keyMetrics: {
-      volumeChange: number;
-      satisfactionChange: number;
-      topCategory: string;
-    };
-    generatedAt: string;
-  };
-  feedbackIntelligence?: {
-    date: string;
-    themes: Array<{
-      theme: string;
-      count: number;
-      severity: 'low' | 'medium' | 'high';
-      examples: string[];
-      suggestedActions: string[];
-    }>;
-    summary: string;
-    topIssues: string[];
-    recommendations: string[];
-    generatedAt: string;
-  };
+  weeklySummary?: AnswerlatticeWeeklySummary;
+  feedbackIntelligence?: AnswerlatticeFeedbackIntelligence;
 }
 
 // ================================================================
@@ -132,13 +105,10 @@ export interface AIIntelligenceData {
  */
 export async function getDashboardData(
   dateRange: DateRange,
-  session: any
+  session: unknown,
 ): Promise<DashboardData> {
   try {
-    // Calculate days from date range
-    const days = getDateRangeDays(dateRange);
-    
-    const { statistics, topQuestions, knowledgeGaps } = await getChatDashboardAggregatesOptimized(session, days);
+    const { statistics, topQuestions, knowledgeGaps } = await getChatDashboardAggregatesOptimized(session, dateRange);
 
     // Transform to unified format
     return {
@@ -148,9 +118,10 @@ export async function getDashboardData(
         satisfactionRate: statistics?.satisfactionRate || 0,
         avgMessagesPerChat: statistics?.avgMessagesPerChat || 0,
         knowledgeGaps: knowledgeGaps?.length || 0,
+        isPartial: statistics?.isPartial === true,
         trends: {
-          chatsChange: statistics?.trends?.chatsChange || 0,
-          satisfactionChange: statistics?.trends?.satisfactionChange || 0,
+          chatsChange: 0,
+          satisfactionChange: 0,
         },
       },
       topQuestions: topQuestions || [],
@@ -159,9 +130,9 @@ export async function getDashboardData(
         positive: statistics?.positiveFeedback || 0,
         negative: statistics?.negativeFeedback || 0,
         total: statistics?.totalFeedback || 0,
-        recent: statistics?.recentFeedback || [],
+        recent: [],
       },
-      health: generateHealthMetrics(statistics),
+      health: generateHealthMetrics(statistics, knowledgeGaps || []),
     };
   } catch (error) {
     logAnalyticsFailure('analytics_dashboard_data_fetch_failed', error, {
@@ -176,13 +147,31 @@ export async function getDashboardData(
  * Fetch AI-generated intelligence data
  */
 export async function getAIIntelligence(
-  tenantId: string,
-  storeId: string
+  session: unknown,
 ): Promise<AIIntelligenceData> {
+  const scope = resolveAnswerlatticeSessionScope(session);
+  if (!scope) throw new Error('answerlattice_analytics_intelligence_scope_missing');
+
   try {
     // Fetch from insights/{tId}/stores/{sId}/ai/*
-    const weeklyRef = doc(firebaseClient, `insights/${tenantId}/stores/${storeId}/ai/weekly`);
-    const feedbackRef = doc(firebaseClient, `insights/${tenantId}/stores/${storeId}/ai/feedback`);
+    const weeklyRef = doc(
+      answerlatticeFirebaseClient,
+      'insights',
+      String(scope.tenantId),
+      'stores',
+      String(scope.storeId),
+      'ai',
+      'weekly',
+    );
+    const feedbackRef = doc(
+      answerlatticeFirebaseClient,
+      'insights',
+      String(scope.tenantId),
+      'stores',
+      String(scope.storeId),
+      'ai',
+      'feedback',
+    );
 
     const [weeklyDoc, feedbackDoc] = await Promise.all([
       getDoc(weeklyRef),
@@ -190,44 +179,25 @@ export async function getAIIntelligence(
     ]);
 
     // Parse weekly summary
-    let weeklySummary: AIIntelligenceData['weeklySummary'];
-    if (weeklyDoc.exists) {
-      const data = weeklyDoc.data();
-      weeklySummary = {
-        weekStart: data?.weekStart || '',
-        weekEnd: data?.weekEnd || '',
-        narrative: data?.narrative || '',
-        highlights: data?.highlights || [],
-        recommendations: data?.recommendations || [],
-        keyMetrics: data?.keyMetrics || {
-          volumeChange: 0,
-          satisfactionChange: 0,
-          topCategory: 'General',
-        },
-        generatedAt: data?.generatedAt?.toDate().toISOString() || new Date().toISOString(),
-      };
-    }
+    const weeklySummary = weeklyDoc.exists()
+      ? parseAnswerlatticeWeeklySummary(weeklyDoc.data(), scope) ?? undefined
+      : undefined;
 
     // Parse feedback intelligence
-    let feedbackIntelligence: AIIntelligenceData['feedbackIntelligence'];
-    if (feedbackDoc.exists) {
-      const data = feedbackDoc.data();
-      feedbackIntelligence = {
-        date: data?.date || '',
-        themes: data?.themes || [],
-        summary: data?.summary || '',
-        topIssues: data?.topIssues || [],
-        recommendations: data?.recommendations || [],
-        generatedAt: data?.generatedAt?.toDate().toISOString() || new Date().toISOString(),
-      };
-    }
+    const feedbackIntelligence = feedbackDoc.exists()
+      ? parseAnswerlatticeFeedbackIntelligence(feedbackDoc.data(), scope) ?? undefined
+      : undefined;
 
     return {
       weeklySummary,
       feedbackIntelligence,
     };
   } catch (error) {
-    logAnalyticsFailure('analytics_ai_intelligence_fetch_failed', error, getAnalyticsDalScopeContext(tenantId, storeId));
+    logAnalyticsFailure(
+      'analytics_ai_intelligence_fetch_failed',
+      error,
+      getAnalyticsDalScopeContext(scope.tenantId, scope.storeId),
+    );
     throw error;
   }
 }
@@ -237,13 +207,10 @@ export async function getAIIntelligence(
  */
 export async function getSummaryMetrics(
   dateRange: DateRange,
-  session: any
+  session: unknown,
 ): Promise<DashboardData['summary']> {
   try {
-    // Calculate days from date range
-    const days = getDateRangeDays(dateRange);
-    
-    const { statistics, knowledgeGaps } = await getChatDashboardAggregatesOptimized(session, days);
+    const { statistics, knowledgeGaps } = await getChatDashboardAggregatesOptimized(session, dateRange);
 
     return {
       totalChats: statistics?.totalChats || 0,
@@ -251,9 +218,10 @@ export async function getSummaryMetrics(
       satisfactionRate: statistics?.satisfactionRate || 0,
       avgMessagesPerChat: statistics?.avgMessagesPerChat || 0,
       knowledgeGaps: knowledgeGaps?.length || 0,
+      isPartial: statistics?.isPartial === true,
       trends: {
-        chatsChange: statistics?.trends?.chatsChange || 0,
-        satisfactionChange: statistics?.trends?.satisfactionChange || 0,
+        chatsChange: 0,
+        satisfactionChange: 0,
       },
     };
   } catch (error) {
@@ -321,7 +289,13 @@ export async function getAnalytics(
 /**
  * Generate system health metrics from statistics
  */
-function generateHealthMetrics(statistics: any): DashboardData['health'] {
+function generateHealthMetrics(
+  statistics: {
+    totalChats?: number;
+    satisfactionRate?: number;
+  } | null | undefined,
+  knowledgeGaps: NormalizedKnowledgeGap[],
+): DashboardData['health'] {
   const metrics: DashboardData['health'] = [];
 
   // Only emit health metrics backed by analytics aggregates. Infrastructure
@@ -329,8 +303,9 @@ function generateHealthMetrics(statistics: any): DashboardData['health'] {
 
   // KB Coverage based on knowledge gaps
   const totalQueries = statistics?.totalChats || 0;
-  const unansweredQueries = statistics?.knowledgeGaps?.length || 0;
-  const coverage = totalQueries > 0 ? ((totalQueries - unansweredQueries) / totalQueries) * 100 : 100;
+  const unansweredQueries = knowledgeGaps.reduce((total, gap) => total + Math.max(0, Number(gap.count) || 0), 0);
+  const rawCoverage = totalQueries > 0 ? ((totalQueries - unansweredQueries) / totalQueries) * 100 : 100;
+  const coverage = Math.min(100, Math.max(0, rawCoverage));
   
   metrics.push({
     name: 'Knowledge Base Coverage',

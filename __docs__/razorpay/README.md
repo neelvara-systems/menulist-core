@@ -1,7 +1,7 @@
 # Razorpay Payment System — Documentation Hub
 
 **Status:** Billing architecture reference; not current launch certification | Razorpay is the ONLY payment provider
-**Last Updated:** July 6, 2026
+**Last Updated:** July 13, 2026
 
 > **Launch Boundary:** This hub records the frozen Razorpay billing architecture and source-gated implementation evidence, not current MenuList production-launch approval. Current release approval requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, `npm run verify:billing-entitlement-boundary`, Razorpay sandbox subscription/top-up/reseller/webhook smoke, desktop/mobile Billing browser QA, past-due grace-period display fallback coverage, target deploy evidence, and production-host smoke.
 
@@ -72,11 +72,12 @@ All 34 files are inventoried in [§2 — File Inventory](./razorpay_impl.md#2-fi
 - **Top-ups:** One-time Razorpay Orders (not Subscriptions)
 - **Billing history:** Sourced from webhook event log (`paymentTransactions` collection, append-only lean v2 summaries)
 - **Payment action body caps:** Authenticated subscription, top-up, verification, upgrade, pause/resume, cancel, and onboarding billing JSON routes use bounded request parsing before Zod validation, provider calls, or Firestore writes.
+- **Answerlattice billing permission:** Shared Razorpay mutations re-read the current Answerlattice workspace membership and persisted role and require `canManageBilling`; general management access alone does not authorize payment changes.
 - **Document-ID boundary:** Subscription document refs pass through `src/lib/billing/subscriptionDocumentIdBoundary.ts` before DAL, AI capacity, entitlement sync, and top-up verification refs.
 - **Top-up order document-ID boundary:** Raw top-up order refs pass through `src/lib/billing/topupDocumentIdBoundary.ts` before pending writes, idempotency reads, and paid audit writes; whitespace-mutated order IDs fail before Firestore refs.
 - **Webhook cheap-fail:** Missing signature/secret, oversized bodies above 256KB, and IP-rate-limited bursts are rejected before raw-body signature verification or Firestore idempotency work.
 - **Webhook idempotency:** Signed webhook events are claimed in server-only `razorpayWebhookEvents/{eventKey}` before billing mutations, so duplicate retries do not repeat writes.
 - **State machine:** All status transitions validated by `subscriptionStateMachine.ts`; invalid transitions are blocked before status writes.
 - **DAL architecture:** 3-layer composition — `fetchSubscriptionRaw` → `expireIfGracePeriodEnded` → `getActiveSubscriptionForStore`
-- **Reconciliation:** Runs in Firebase nightly scheduler (2:30 AM UTC) via `functions/src/billing/reconcileSubscriptions.ts` — syncs Firestore ↔ Razorpay
+- **Reconciliation:** Runs as the leased `subscription_reconciliation` task in `menulistMaintenanceScheduler` at 2:20 AM UTC via `functions/src/billing/reconcileSubscriptions.ts` — syncs Firestore ↔ Razorpay
 - **Architecture status:** FROZEN — only new plans, price changes, credit packs allowed; no structural changes

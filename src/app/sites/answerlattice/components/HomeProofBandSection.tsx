@@ -47,12 +47,23 @@ const PROOF_POINTS: ProofPoint[] = [
         title: 'Messy sources get a preparation path',
         detail: 'Docs, files, screenshots, recordings, owner notes, and release updates can be packaged before setup.',
     },
+    {
+        icon: LuShieldCheck,
+        title: 'Critical answers can be tested before release',
+        detail: 'Save important questions, run deterministic approved-answer checks, and recheck only the cases connected to a release.',
+    },
+    {
+        icon: LuMessageSquare,
+        title: 'Temporary issues stay separate from permanent answers',
+        detail: 'Show a contextual, expiring widget notice while an issue is active without rewriting approved support knowledge.',
+    },
 ];
 
 const PROOF_LINKS = [
     { href: '/demo', label: 'Product simulation' },
     { href: '/proof', label: 'Proof pack' },
     { href: '/roi-calculator', label: 'ROI calculator' },
+    { href: '/trust', label: 'Trust facts' },
     { href: '/security-one-pager', label: 'Security one-pager' },
 ];
 
@@ -100,7 +111,7 @@ export default function HomeProofBandSection({ basePath = '' }: { basePath?: str
 
                 <div className="mt-6 flex flex-col gap-3 rounded-2xl border border-teal-300/20 bg-teal-400/[0.045] p-5 text-sm leading-relaxed text-[#d6d6ef] sm:flex-row sm:items-center sm:justify-between">
                     <p>
-                        Evaluate AnswerLattice through concrete product proof: demo, preview screens, install verifier, ROI calculator, proof pack, and security handoff.
+                        Evaluate AnswerLattice through concrete product proof: governance demo, install verifier, ROI calculator, proof pack, current trust facts, and security handoff.
                     </p>
                     <LuCalculator aria-hidden className="hidden shrink-0 text-teal-200 sm:block" size={24} />
                 </div>

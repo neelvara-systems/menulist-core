@@ -20,18 +20,16 @@ export function logHoursUpdated(params: {
     tId: number;
     sId: number;
 }): void {
-    setImmediate(() => {
-        logMOLEvent({
-            type: "HOURS_WEEKLY_UPDATED",
-            projectId: String(params.storeId),
-            actorUserId: params.actorUserId,
-            entityType: "STORE_HOURS",
-            entityId: String(params.storeId),
-            before: params.before ? { workingHours: params.before } : null,
-            after: { workingHours: params.after },
-            version: Date.now(),
-            tId: params.tId,
-            sId: params.sId,
-        });
+    void logMOLEvent({
+        type: "HOURS_WEEKLY_UPDATED",
+        projectId: String(params.storeId),
+        actorUserId: params.actorUserId,
+        entityType: "STORE_HOURS",
+        entityId: String(params.storeId),
+        before: params.before ? { workingHours: params.before } : null,
+        after: { workingHours: params.after },
+        version: Date.now(),
+        tId: params.tId,
+        sId: params.sId,
     });
 }

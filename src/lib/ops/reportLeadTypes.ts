@@ -38,6 +38,7 @@ export interface ReportLeadRow {
 }
 
 export interface ReportLeadOpsCost {
+  authReads: 1;
   enquiryReads: number;
   writes: 0;
   scanLimit: number;

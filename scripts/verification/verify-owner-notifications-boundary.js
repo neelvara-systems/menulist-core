@@ -51,6 +51,67 @@ function verifyRegistryMirror(appRegistry, functionsRegistry) {
   ].forEach((token) => assertIncludes(appRegistry, token, 'Owner notification registry'));
 }
 
+function verifyDeliveryBoundaryMirror(appBoundary, functionsBoundary) {
+  assert(
+    normalizeLineEndings(appBoundary) === normalizeLineEndings(functionsBoundary),
+    'Owner notification delivery boundary must be copied byte-for-byte to functions/src/sharedData',
+  );
+
+  [
+    'normalizeOwnerNotificationDocumentId',
+    'normalizeOwnerNotificationNumericScopeDocumentId',
+    'normalizeOwnerNotificationReferenceId',
+    'getNextOwnerNotificationProcessingAttempt',
+    'MAX_OWNER_NOTIFICATION_PROCESSING_ATTEMPTS = 2',
+    "status !== 'pending' && status !== 'failed'",
+    'normalizedAttempt >= MAX_OWNER_NOTIFICATION_PROCESSING_ATTEMPTS',
+  ].forEach((token) => assertIncludes(appBoundary, token, 'Owner notification delivery boundary'));
+}
+
+function verifyLifecycleSubscriptionIndexes(firestoreIndexes, answerlatticeFirestoreIndexes) {
+  const parsed = JSON.parse(firestoreIndexes);
+  const answerlatticeParsed = JSON.parse(answerlatticeFirestoreIndexes);
+  const subscriptions = Array.isArray(parsed.indexes)
+    ? parsed.indexes.filter((index) => index.collectionGroup === 'subscriptions')
+    : [];
+  const hasFields = (expected) => subscriptions.some((index) => (
+    index.queryScope === 'COLLECTION'
+    && JSON.stringify(index.fields) === JSON.stringify(expected)
+  ));
+
+  assert(hasFields([
+    { fieldPath: 'status', order: 'ASCENDING' },
+    { fieldPath: 'renewsOn', order: 'ASCENDING' },
+  ]), 'Lifecycle renewal reminder query must keep its subscriptions composite index');
+  assert(hasFields([
+    { fieldPath: 'status', order: 'ASCENDING' },
+    { fieldPath: 'pastDueSinceAt', order: 'ASCENDING' },
+  ]), 'Lifecycle suspension warning query must keep its subscriptions composite index');
+  const hasCollectionFields = (collectionGroup, expected) => parsed.indexes.some((index) => (
+    index.collectionGroup === collectionGroup
+    && index.queryScope === 'COLLECTION'
+    && JSON.stringify(index.fields) === JSON.stringify(expected)
+  ));
+  assert(hasCollectionFields('ownerNotificationEvents', [
+    { fieldPath: 'status', order: 'ASCENDING' },
+    { fieldPath: 'updatedAt', order: 'ASCENDING' },
+  ]), 'Owner notification retry query must keep its status/updatedAt index');
+  assert(hasCollectionFields('ownerNotificationDeliveries', [
+    { fieldPath: 'status', order: 'ASCENDING' },
+    { fieldPath: 'createdAt', order: 'ASCENDING' },
+  ]), 'Owner notification digest query must keep its status/createdAt index');
+  const detailIndex = [
+    { fieldPath: 'eventId', order: 'ASCENDING' },
+    { fieldPath: 'createdAt', order: 'DESCENDING' },
+  ];
+  assert(hasCollectionFields('ownerNotificationDeliveries', detailIndex), 'MenuList owner notification detail must keep its newest-first event index');
+  assert(answerlatticeParsed.indexes.some((index) => (
+    index.collectionGroup === 'ownerNotificationDeliveries'
+    && index.queryScope === 'COLLECTION'
+    && JSON.stringify(index.fields) === JSON.stringify(detailIndex)
+  )), 'Answerlattice owner notification detail must keep its newest-first event index');
+}
+
 function verifyFirestoreDocumentIdHelper(helper) {
   [
     'RESERVED_FIRESTORE_DOCUMENT_ID_PATTERN = /^__.*__$/',
@@ -85,27 +146,46 @@ function verifyOpsRoute(route) {
     'eventId: OwnerNotificationEventIdSchema',
     "action: z.literal('manualSend')",
     "action: z.literal('manualHandoff')",
+    'const OwnerNotificationActionIdSchema = z.string()',
+    'actionId: OwnerNotificationActionIdSchema',
     'Math.min(Math.max(limit * 3, 40), 90)',
-    'countQueries: EVENT_STATUSES.length',
-    'Manual refresh only. No realtime listener.',
-    'Detail recipient resolution runs only after selecting one event.',
+    'authReads: 1',
+    'countQueries: 0',
+    'Manual refresh only. One current-user authorization read and one bounded recent-event scan.',
+    'Counts and filters describe that same product-scoped recent window',
+    'detail recipient resolution runs only after selecting one event.',
     "headers: { 'Cache-Control': 'no-store' }",
     'hashPublicRateLimitValue(userId)',
     'key: `owner-notification-ops:${userRateLimitHash}`',
+    'key: `owner-notification-ops-read:${operatorRateLimitHash}`',
+    'failClosedOnProviderError: true',
+    'getCurrentPlatformUser(session)',
+    "accessModel: 'current_persisted_platform_user'",
     'readBoundedJsonBody(request, OWNER_NOTIFICATION_OPS_ACTION_MAX_BODY_BYTES',
     'validateAPIInput(PostActionSchema, body)',
     'manualRecipientOverride: true',
     'normalizeDestinationForAudit',
     'recipientMasked',
     'manualHandoffAt',
+    'const committed = await params.db.runTransaction(async (transaction) =>',
+    'const existingDeliverySnapshot = await transaction.get(deliveryRef);',
+    'transaction.create(deliveryRef, sanitizeForFirestore({',
+    'transaction.update(eventRef, sanitizeForFirestore({',
     "logOpsFailure('owner_notifications_route_failed'",
     "logOpsFailure('owner_notifications_action_failed'",
     "logger.security('Owner Notification Ops Action Validation Failed'",
     'getBoundedSecurityRouteContext(session, request)',
+    "status: notFound ? 404 : 409",
+    "status: EVENT_STATUSES.includes(data.status) ? data.status : 'invalid'",
+    "channel: data.channel === 'email' || data.channel === 'whatsapp' ? data.channel : 'invalid'",
+    "referenceId: `manual-${eventId}-${params.actionId}`",
+    "const deliveryId = safeId(`manual|${eventId}|${params.actionId}`);",
   ].forEach((token) => assertIncludes(route, token, 'Owner notification ops API route'));
 
   assertOrder(route, [
-    'const rateLimitResult = await checkRateLimit({',
+    'key: `owner-notification-ops:${userRateLimitHash}`',
+    'let operatorUserId: string;',
+    'operatorUserId = currentPlatformUser.documentId;',
     'readBoundedJsonBody(request, OWNER_NOTIFICATION_OPS_ACTION_MAX_BODY_BYTES',
     'validateAPIInput(PostActionSchema, body)',
     'const db = getDbForProduct(validation.data.productId);',
@@ -117,6 +197,7 @@ function verifyOpsRoute(route) {
     '.doc(eventId)',
     'const deliveriesSnap = await params.db',
     '.where(\'eventId\', \'==\', eventId)',
+    ".orderBy('createdAt', 'desc')",
     '.limit(DELIVERY_DETAIL_LIMIT)',
   ], 'Owner notification detail delivery query boundary');
 
@@ -140,7 +221,7 @@ function verifyOpsRoute(route) {
   ].forEach((token) => assertNotIncludes(route, token, 'Owner notification ops API route'));
 }
 
-function verifyCore(core, recipientResolver, whatsappChannel) {
+function verifyCore(core, recipientResolver, whatsappChannel, appLifecycle) {
   [
     'if (!FEATURE_FLAGS.ENABLE_OWNER_NOTIFICATIONS)',
     'ENABLE_OWNER_NOTIFICATION_MENULIST_MIGRATION',
@@ -148,10 +229,20 @@ function verifyCore(core, recipientResolver, whatsappChannel) {
     'getOwnerNotificationRegistryEntry(input.productId, input.triggerType)',
     'const dedupeKey = getDedupeKey(input);',
     'const eventId = safeId(dedupeKey);',
-    'const existing = await ref.get();',
-    'if (!existing.exists) {',
+    'const existing = await transaction.get(ref);',
+    'if (existing.exists) {',
+    'transaction.create(ref, doc);',
+    'options.processExisting === false',
+    "claimReason: 'not_found_or_product_mismatch'",
+    "claimReason: 'not_claimable'",
+    'getNextOwnerNotificationProcessingAttempt(',
+    "current.productId !== productId",
+    "error: 'scope_not_found_or_mismatch'",
+    'tenantId: event.tenantId',
+    'const existing = await transaction.get(deliveryRef);',
+    'attempt: params.event.processingAttempt || 1',
+    'lastAttemptAt: attemptedAt',
     'processImmediately',
-    "if (event.status === 'delivered')",
     'MAX_PER_RECIPIENT_PER_DAY = 20',
     'MAX_PER_STORE_PER_DAY = 10',
     'incrementRateLimit',
@@ -165,16 +256,20 @@ function verifyCore(core, recipientResolver, whatsappChannel) {
   ].forEach((token) => assertIncludes(core, token, 'Owner notification app core'));
 
   [
-    "import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';",
-    'function normalizeOwnerNotificationRecipientDocumentId(value: unknown): string | null',
-    'function normalizeMenuListOwnerNotificationScopeDocumentId(value: unknown): MenuListOwnerNotificationScopeDocumentId | null',
-    'Number.isSafeInteger(numericId) && numericId > 0 && String(numericId) === documentId',
-    'const workspaceDocumentId = normalizeOwnerNotificationRecipientDocumentId(event.storeId);',
+    'normalizeOwnerNotificationDocumentId',
+    'normalizeOwnerNotificationNumericScopeDocumentId',
+    'const tenantDocumentId = normalizeOwnerNotificationRecipientDocumentId(event.tenantId);',
+    'const workspaceDocumentId = normalizeOwnerNotificationRecipientDocumentId(event.workspaceId ?? event.storeId);',
     'const storeSnap = await db.collection(DB_COLLECTIONS.STORES).doc(workspaceDocumentId).get();',
+    'const storedTenantDocumentId = normalizeOwnerNotificationRecipientDocumentId(',
+    '? { readCount: 1, workspaceData }',
+    ': { readCount: 1 };',
     'const tenantScope = normalizeMenuListOwnerNotificationScopeDocumentId(event.tenantId);',
     'const storeScope = normalizeMenuListOwnerNotificationScopeDocumentId(event.storeId);',
     'const storeSnap = await db.collection(DB_COLLECTIONS.STORES).doc(storeScope.documentId).get();',
-    'Number(storeData?.tenantId) === tenantScope.numericId',
+    'storeData?.tenantId ?? storeData?.tId',
+    'storedTenantScope?.numericId === tenantScope.numericId',
+    '!storedTenantScope || storedTenantScope.numericId === tenantScope.numericId',
     'DB_COLLECTIONS.TENANTS',
     'manualRecipientOverride === true',
     'forceHintRecipient ? hintEmail || email : email',
@@ -193,16 +288,36 @@ function verifyCore(core, recipientResolver, whatsappChannel) {
   ], 'MenuList owner notification recipient lookup order');
 
   assertOrder(recipientResolver, [
-    'const workspaceDocumentId = normalizeOwnerNotificationRecipientDocumentId(event.storeId);',
-    'if (!db || !workspaceDocumentId) return {};',
+    'const tenantDocumentId = normalizeOwnerNotificationRecipientDocumentId(event.tenantId);',
+    'const workspaceDocumentId = normalizeOwnerNotificationRecipientDocumentId(event.workspaceId ?? event.storeId);',
+    'if (!db || !tenantDocumentId || !workspaceDocumentId) return { readCount: 0 };',
     'const storeSnap = await db.collection(DB_COLLECTIONS.STORES).doc(workspaceDocumentId).get();',
+    '? { readCount: 1, workspaceData }',
   ], 'Answerlattice owner notification recipient workspace ID boundary');
 
   [
     'doc(String(event.storeId))',
     'doc(String(event.tenantId))',
     'const storeSnap = await db.collection(DB_COLLECTIONS.STORES).doc(event.storeId).get();',
+    'cleanEmail(data.email)\n        || cleanEmail(hints.email)',
+    'data.whatsappNumber,\n            hints.whatsappNumber',
   ].forEach((token) => assertNotIncludes(recipientResolver, token, 'Owner notification recipient resolver'));
+
+  [
+    'normalizeOwnerNotificationNumericScopeDocumentId(payload.storeId)',
+    'normalizeOwnerNotificationNumericScopeDocumentId(payload.tenantId)',
+    'normalizeOwnerNotificationReferenceId(payload.referenceId)',
+    'resolveAuthoritativeLifecycleRecipient',
+    'normalizeOwnerNotificationNumericScopeDocumentId(store.tenantId ?? store.tId)',
+    'claimLifecycleDelivery',
+    'transaction.create(ref, {',
+    'db.collection(MESSAGE_LOGS).doc(documentId).set({',
+  ].forEach((token) => assertIncludes(appLifecycle, token, 'App lifecycle delivery boundary'));
+
+  [
+    'db.collection(MESSAGE_LOGS).add({',
+    'sendViaSMTP(recipientEmail, template.subject, template.html)',
+  ].forEach((token) => assertNotIncludes(appLifecycle, token, 'App lifecycle legacy delivery boundary'));
 
   [
     'encodeURIComponent(phoneNumberId)',
@@ -218,7 +333,7 @@ function verifyCore(core, recipientResolver, whatsappChannel) {
     'console.log',
     'console.warn',
     'console.error',
-  ].forEach((token) => assertNotIncludes(core + recipientResolver + whatsappChannel, token, 'Owner notification app notification stack'));
+  ].forEach((token) => assertNotIncludes(core + recipientResolver + whatsappChannel + appLifecycle, token, 'Owner notification app notification stack'));
 }
 
 function verifyFunctionsProcessor(processor, scheduler, messagingEngine, smtpProvider, stalenessCheck) {
@@ -234,9 +349,18 @@ function verifyFunctionsProcessor(processor, scheduler, messagingEngine, smtpPro
     "fallbackPolicy: 'skip_owner_notification_without_registry_entry'",
     "logger.warn('[OwnerNotifications] Unknown stored MenuList trigger skipped'",
     "fallbackPolicy: 'mark_owner_notification_skipped_without_registry_entry'",
-    'getOwnerNotificationTriggerLogContext(payload.eventType)',
+    'getOwnerNotificationTriggerLogContext(normalizedPayload.eventType)',
     'getOwnerNotificationTriggerLogContext(event.triggerType)',
-    'db.collection(DB_COLLECTIONS.STORES).doc(event.storeId).get()',
+    'normalizeOwnerNotificationNumericScopeDocumentId(payload.tenantId)',
+    'normalizeOwnerNotificationNumericScopeDocumentId(payload.storeId)',
+    'normalizeOwnerNotificationReferenceId(payload.referenceId)',
+    'getNextOwnerNotificationProcessingAttempt(',
+    'const existing = await tx.get(eventRef);',
+    'if (!existing.exists) tx.create(eventRef, eventDoc);',
+    'const event = await claimOwnerNotificationEvent(eventRef);',
+    'db.collection(DB_COLLECTIONS.STORES).doc(storeScope.documentId).get()',
+    'normalizeOwnerNotificationNumericScopeDocumentId(data.tenantId ?? data.tId)',
+    "['ML', 'store', event.tenantId, event.storeId, todayKey()]",
     'DB_COLLECTIONS.TENANTS',
     'encodeURIComponent(phoneNumberId)',
     'OWNER_NOTIFICATION_WHATSAPP_RESPONSE_JSON_MAX_BYTES = 64 * 1024',
@@ -249,12 +373,24 @@ function verifyFunctionsProcessor(processor, scheduler, messagingEngine, smtpPro
     'retryFailedOwnerNotifications',
     'getOwnerNotificationDigest',
     'failureCode: OWNER_NOTIFICATION_PROCESSING_FAILED',
+    'const existing = await tx.get(deliveryRef);',
+    'attempt: params.event.processingAttempt || 1',
+    ".where('updatedAt', '>=', Timestamp.fromMillis(yesterdayMs))",
+    ".orderBy('updatedAt', 'asc')",
+    ".where('createdAt', '>=', Timestamp.fromMillis(yesterdayMs))",
+    '.count()',
+    'const sent = sentSnap.data().count;',
+    'const failed = failedSnap.data().count;',
   ].forEach((token) => assertIncludes(processor, token, 'Functions owner notification processor'));
 
   assertOrder(processor, [
-    'let storeDoc = await db.collection(DB_COLLECTIONS.STORES).doc(event.storeId).get();',
+    'const tenantScope = normalizeOwnerNotificationNumericScopeDocumentId(event.tenantId);',
+    'const storeScope = normalizeOwnerNotificationNumericScopeDocumentId(event.storeId);',
+    'let storeDoc = await db.collection(DB_COLLECTIONS.STORES).doc(storeScope.documentId).get();',
     'if (!storeDoc.exists) {',
-    '.collection(DB_COLLECTIONS.TENANTS).doc(event.tenantId)',
+    '.collection(DB_COLLECTIONS.TENANTS).doc(tenantScope.documentId)',
+    'if (!storeDoc.exists) return null;',
+    'const storedTenantScope = normalizeOwnerNotificationNumericScopeDocumentId(data.tenantId ?? data.tId);',
   ], 'Functions MenuList owner notification store lookup order');
 
   [
@@ -271,6 +407,10 @@ function verifyFunctionsProcessor(processor, scheduler, messagingEngine, smtpPro
     "logger.warn('[OwnerNotifications] Unknown MenuList trigger', { eventType: payload.eventType });",
     'eventType: payload.eventType',
     'eventType: event.triggerType',
+    '|| event.recipientHints?.email',
+    'event.recipientHints?.whatsappNumber',
+    '.limit(200)',
+    'docs.filter((doc)',
   ].forEach((token) => assertNotIncludes(processor, token, 'Functions owner notification processor'));
 
   [
@@ -287,6 +427,12 @@ function verifyFunctionsProcessor(processor, scheduler, messagingEngine, smtpPro
     "logger.error('[Messaging] Idempotency check failed, skipping send'",
     "logger.error('[Messaging] Rate limit check failed, skipping send'",
     "logger.error('[Messaging] Retry send failed while marking retry consumed'",
+    'normalizeOwnerNotificationNumericScopeDocumentId(payload.storeId)',
+    'normalizeOwnerNotificationNumericScopeDocumentId(payload.tenantId)',
+    'normalizeOwnerNotificationReferenceId(payload.referenceId)',
+    'claimMessageDelivery({',
+    'transaction.create(claimRef, {',
+    'db.collection(DB_COLLECTIONS.MESSAGE_LOGS).doc(documentId).set(log, { merge: true })',
     'return true;',
   ].forEach((token) => assertIncludes(messagingEngine, token, 'Functions legacy lifecycle messaging fail-closed diagnostics'));
 
@@ -329,15 +475,20 @@ function verifyFunctionsProcessor(processor, scheduler, messagingEngine, smtpPro
     "failureCode: STALENESS_LIFECYCLE_DELIVERY_FAILED",
     "eventType: 'MENU_STALE'",
     'storeId: getAnalyticsIdContext(sId)',
-    'tenantId: getAnalyticsIdContext(storeData.tId)',
+    'tenantId: getAnalyticsIdContext(tId)',
     'referenceId: getAnalyticsIdContext(staleReferenceId)',
     'messageLogWritten: true',
     "fallbackPolicy: 'keep_detection_cooldown_and_continue'",
     'error: getAnalyticsErrorContext(deliveryError)',
+    'normalizeOwnerNotificationNumericScopeDocumentId(storeData.tId)',
+    'claimStalenessDetection(db, {',
+    'return db.runTransaction(async (transaction) => {',
+    'getStalenessCheckpointId(params.tId, params.sId)',
   ].forEach((token) => assertIncludes(stalenessCheck, token, 'Functions staleness lifecycle delivery diagnostics'));
 
   [
     '} catch {\n                    // Detection cooldown remains intact even if delivery fails.',
+    'db.collection(DB_COLLECTIONS.MESSAGE_LOGS).add({',
   ].forEach((token) => assertNotIncludes(stalenessCheck, token, 'Functions staleness lifecycle delivery silent catch'));
 }
 
@@ -360,14 +511,15 @@ function verifyMonitor(monitor, responseHelper) {
     'window.open(whatsappWebHref',
     'Record Manual',
     'Cost-bounded monitor',
-    'No realtime listener.',
+    'Current persisted platform authorization and one bounded recent-event window drive rows and counts.',
     'Read cost:',
   ].forEach((token) => assertIncludes(monitor, token, 'Owner notification monitor UI'));
 
   [
     'OWNER_NOTIFICATION_MONITOR_RESPONSE_JSON_MAX_BYTES = 256 * 1024',
     'readJsonResponseWithLimit<unknown>',
-    "value.feature.accessModel === 'platform_role'",
+    "value.feature.accessModel === 'current_persisted_platform_user'",
+    'isNonNegativeSafeInteger(value.authReads)',
     'value.feature.realtimeListeners === false',
     'isOwnerNotificationEventRow',
     'isOwnerNotificationDeliveryRow',
@@ -468,6 +620,7 @@ function verifyDocsAndPackage(
 ) {
   [
     '"verify:owner-notifications-boundary": "node scripts/verification/verify-owner-notifications-boundary.js"',
+    '"test:owner-notification-delivery-boundaries":',
   ].forEach((token) => assertIncludes(packageJson, token, 'package.json owner notification verifier'));
 
   [
@@ -487,7 +640,7 @@ function verifyDocsAndPackage(
     'copied byte-for-byte to `functions/src/sharedData/ownerNotificationRegistry.ts`',
     'platformRole === \'PLATFORM\'',
     'no realtime listener',
-    'reject bodies above 8KB before event reads',
+    'rejects bodies above 8KB before event reads',
     'simple Firestore document ID',
     'Dashboard load/action responses are parsed by the shared owner-notification client response helper',
     'July 5 template-output follow-up',
@@ -500,6 +653,11 @@ function verifyDocsAndPackage(
     'owner_notification_lifecycle_flag_check_failed',
     'trigger presence/length/type metadata only',
     'Source gate: `npm run verify:owner-notifications-boundary`',
+    'July 10 transactional tenant-boundary follow-up',
+    '`processingAttempt`',
+    '`scope_not_found_or_mismatch`',
+    '`metadata.manualRecipientOverride === true`',
+    '`npm run test:owner-notification-delivery-boundaries`',
   ].forEach((token) => assertIncludes(implDoc, token, 'Owner notification implementation docs'));
 
   [
@@ -519,11 +677,16 @@ function verifyDocsAndPackage(
     'record the exact scoped target list and reason in `__docs__/audits/menulist-production-readiness-audit.md` before retry',
     'Production deploys require QA evidence and explicit production deploy approval.',
     'do not reuse older broad Functions command shapes',
-    'No composite index was added',
+    '`ownerNotificationEvents(status ASC, updatedAt ASC)`',
+    '`ownerNotificationDeliveries(status ASC, createdAt ASC)`',
     'The platform dashboard at `/ops/owner-notifications` is intentionally manual and bounded',
-    'POST recovery actions keep the platform-role gate',
+    'GET and POST keep signed platform admission',
     'simple Firestore document ID',
     'does not run Firestore reads/writes, SMTP, WhatsApp, browser smoke, Firebase deploy, or Vercel deploy',
+    'July 10 tenant/idempotency follow-up',
+    '`scope_not_found_or_mismatch`',
+    'July 10 deploy evidence',
+    'No target was uploaded',
   ].forEach((token) => assertIncludes(firebaseDoc, token, 'Owner notification Firebase docs'));
   [
     'firebase deploy --only functions:',
@@ -575,6 +738,8 @@ function verifyDocsAndPackage(
 		    'Lifecycle messaging fail-closed checkpoint',
 		    'SMTP port configuration fail-closed checkpoint',
 		    'Staleness lifecycle delivery diagnostics checkpoint',
+		    'Owner-notification tenant/idempotency checkpoint',
+		    'Owner-notification restart 16 Firebase deploy checkpoint',
 		  ].forEach((token) => assertIncludes(auditDoc, token, 'Production audit owner notification checkpoint'));
 
 			  [
@@ -593,6 +758,7 @@ function verifyDocsAndPackage(
 		    'Lifecycle Messaging Fail Closed',
 		    'SMTP Port Configuration Fail Closed',
 		    'Staleness Lifecycle Delivery Diagnostics',
+		    'Owner Notification Tenant And Delivery Claim Boundary',
 		    '`npm run verify:owner-notifications-boundary`',
 		  ].forEach((token) => assertIncludes(changelogDoc, token, 'Changelog owner notification checkpoint'));
 
@@ -610,6 +776,8 @@ function verifyDocsAndPackage(
 		    'arbitrary `failureReason` strings cannot print into owner emails',
 		    'Owner-notification migration flag-read follow-up',
 		    'owner_notification_lifecycle_flag_check_failed',
+		    'July 10, 2026 Transactional Delivery Boundary',
+		    'deterministic SHA-256 `messageLogs` document',
 			  ].forEach((token) => assertIncludes(lifecycleImplDoc, token, 'Lifecycle messaging implementation fail-closed docs'));
 
 			  [
@@ -623,6 +791,8 @@ function verifyDocsAndPackage(
 		    'missing or invalid `SMTP_PORT` adds zero SMTP sends',
 		    'July 5 staleness delivery diagnostics update',
 		    'adds no Firestore reads or writes beyond the already-written staleness detection row',
+		    'July 10, 2026 Transaction And Tenant Cost Boundary',
+		    '`messageLogs/{sha256}` transaction claim',
 		    'July 5 template output update',
 		    'publish-health failure codes render fixed owner copy instead of arbitrary `failureReason` strings',
 		  ].forEach((token) => assertIncludes(lifecycleFirebaseDoc, token, 'Lifecycle messaging Firebase fail-closed docs'));
@@ -633,9 +803,14 @@ function verifyOwnerNotificationsBoundary() {
     packageJson: read('package.json'),
     appRegistry: read('src/data/shared/ownerNotificationRegistry.ts'),
     functionsRegistry: read('functions/src/sharedData/ownerNotificationRegistry.ts'),
+    appDeliveryBoundary: read('src/data/shared/ownerNotificationDeliveryBoundary.ts'),
+    functionsDeliveryBoundary: read('functions/src/sharedData/ownerNotificationDeliveryBoundary.ts'),
+    firestoreIndexes: read('firestore.indexes.json'),
+    answerlatticeFirestoreIndexes: read('firestore-answerlattice.indexes.json'),
     firestoreDocumentId: read('src/lib/firebase/firestoreDocumentId.ts'),
     route: read('src/app/api/ops/owner-notifications/route.ts'),
     core: read('src/lib/owner-notifications/index.ts'),
+    appLifecycle: read('src/lib/messaging/index.ts'),
     recipientResolver: read('src/lib/owner-notifications/recipientResolver.ts'),
     whatsappChannel: read('src/lib/owner-notifications/channels/whatsapp.ts'),
     processor: read('functions/src/ownerNotifications/processor.ts'),
@@ -661,9 +836,11 @@ function verifyOwnerNotificationsBoundary() {
   };
 
   verifyRegistryMirror(files.appRegistry, files.functionsRegistry);
+  verifyDeliveryBoundaryMirror(files.appDeliveryBoundary, files.functionsDeliveryBoundary);
+  verifyLifecycleSubscriptionIndexes(files.firestoreIndexes, files.answerlatticeFirestoreIndexes);
   verifyFirestoreDocumentIdHelper(files.firestoreDocumentId);
   verifyOpsRoute(files.route);
-  verifyCore(files.core, files.recipientResolver, files.whatsappChannel);
+  verifyCore(files.core, files.recipientResolver, files.whatsappChannel, files.appLifecycle);
   verifyFunctionsProcessor(files.processor, files.scheduler, files.messagingEngine, files.smtpProvider, files.stalenessCheck);
   verifyMonitor(files.monitor, files.responseHelper);
   verifyTemplateOutputBoundaries(

@@ -10,18 +10,13 @@
  */
 
 import firebaseConfig from "./config";
+import { getDeploymentStage } from '@constant/deploymentTargets';
+import {
+    normalizeAnswerlatticeFirebaseBoundaryMode,
+    resolveAnswerlatticeFirebaseBoundary,
+} from '@data/shared/answerlatticeFirebaseBoundary';
 
 export type AnswerlatticeFirebaseMode = 'shared' | 'separate';
-
-const normalizeAnswerlatticeFirebaseMode = (value?: string): AnswerlatticeFirebaseMode | null => {
-    const normalized = value?.trim().toLowerCase();
-    if (!normalized) return null;
-
-    if (['shared', 'same', 'default'].includes(normalized)) return 'shared';
-    if (['separate', 'isolated', 'dedicated'].includes(normalized)) return 'separate';
-
-    return null;
-};
 
 const answerlatticeFirebaseConfig = {
     apiKey: process.env.NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_API_KEY,
@@ -37,18 +32,18 @@ const answerlatticeFirestoreDatabaseId =
     process.env.ANSWERLATTICE_FIRESTORE_DATABASE_ID ||
     undefined;
 
-const answerlatticeFirebaseModeOverride = normalizeAnswerlatticeFirebaseMode(
-    process.env.NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_MODE ||
-    process.env.ANSWERLATTICE_FIREBASE_MODE
-);
-
-const defaultFirebaseProjectId = firebaseConfig.projectId || process.env.FIREBASE_PROJECT_ID;
+const answerlatticeFirebaseModeValue = process.env.NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_MODE
+    || process.env.ANSWERLATTICE_FIREBASE_MODE;
+const answerlatticeFirebaseModeOverride = normalizeAnswerlatticeFirebaseBoundaryMode(answerlatticeFirebaseModeValue);
 const answerlatticeFirebaseProjectId = answerlatticeFirebaseConfig.projectId || process.env.ANSWERLATTICE_FIREBASE_PROJECT_ID;
-const isSameFirebaseProject = Boolean(
-    defaultFirebaseProjectId &&
-    answerlatticeFirebaseProjectId &&
-    defaultFirebaseProjectId === answerlatticeFirebaseProjectId
-);
+const answerlatticeDeploymentStage = getDeploymentStage();
+const answerlatticeFirebaseBoundary = resolveAnswerlatticeFirebaseBoundary({
+    allowEmulatorProject: Boolean(process.env.FIRESTORE_EMULATOR_HOST || process.env.FUNCTIONS_EMULATOR === 'true'),
+    allowShared: answerlatticeDeploymentStage === 'local',
+    configuredProjectId: answerlatticeFirebaseProjectId,
+    modeValue: answerlatticeFirebaseModeValue,
+    stage: answerlatticeDeploymentStage,
+});
 
 const hasDefaultFirebaseConfig = Boolean(firebaseConfig.apiKey && firebaseConfig.projectId && firebaseConfig.appId);
 const hasAnswerlatticeFirebaseConfig = Boolean(
@@ -57,17 +52,18 @@ const hasAnswerlatticeFirebaseConfig = Boolean(
     answerlatticeFirebaseConfig.appId
 );
 
-const answerlatticeFirebaseMode: AnswerlatticeFirebaseMode =
-    answerlatticeFirebaseModeOverride ||
-    (isSameFirebaseProject ? 'shared' : 'separate');
+const answerlatticeFirebaseMode: AnswerlatticeFirebaseMode = answerlatticeFirebaseBoundary.mode;
 
 const shouldUseSharedAnswerlatticeFirebase = answerlatticeFirebaseMode === 'shared';
 const isAnswerlatticeFirebaseConfigured = shouldUseSharedAnswerlatticeFirebase
-    ? hasDefaultFirebaseConfig
-    : hasAnswerlatticeFirebaseConfig;
+    ? answerlatticeFirebaseBoundary.valid && hasDefaultFirebaseConfig
+    : answerlatticeFirebaseBoundary.valid && hasAnswerlatticeFirebaseConfig;
 
 export {
+    answerlatticeFirebaseBoundary,
     answerlatticeFirebaseMode,
+    answerlatticeFirebaseModeOverride,
+    answerlatticeFirebaseProjectId,
     answerlatticeFirestoreDatabaseId,
     hasAnswerlatticeFirebaseConfig,
     isAnswerlatticeFirebaseConfigured,

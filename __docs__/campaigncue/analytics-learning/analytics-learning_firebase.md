@@ -8,16 +8,17 @@ Current runtime:
 | --- | --- |
 | `campaigncueWorkspaces/{workspaceId}/events/{eventId}` | Observed campaign and asset actions. |
 | `campaigncueWorkspaces/{workspaceId}/analyticsSummaries/dashboard` | Precomputed dashboard metrics. |
+| `campaigncueWorkspaces/{workspaceId}/campaigns/{campaignId}` | Compact result counters plus the latest bounded owner-reported receipt and one-variable experiment. |
 
-Logical expansion:
+Not active and not required for owner-reported learning:
 
 | Collection | Purpose |
 | --- | --- |
-| `campaigncueWorkspaces/{workspaceId}/campaignEvents` | Raw observed and manual campaign events. |
-| `campaigncueWorkspaces/{workspaceId}/metricSnapshots` | Imported provider metric snapshots. |
-| `campaigncueWorkspaces/{workspaceId}/campaignSummaries` | Precomputed result summaries. |
-| `campaigncueWorkspaces/{workspaceId}/learningSignals` | Next-cue signals. |
-| `campaigncueWorkspaces/{workspaceId}/clientReports` | Agency/client report snapshots. |
+| `campaignEvents` | Do not duplicate the existing bounded `events` path. |
+| `metricSnapshots` | Add only with an approved provider-import contract, quotas, confidence labels, and retention. |
+| `campaignSummaries` | Do not add while bounded campaign documents plus dashboard summary answer current owner views. |
+| `learningSignals` | Keep the next one-variable suggestion derived from campaign/result state until independent lifecycle needs are proven. |
+| `clientReports` | Add only with a separate agency share/retention contract. |
 
 ## Cost Guardrails
 
@@ -27,6 +28,9 @@ Logical expansion:
 - Metrics imports must use bounded schedules and provider quotas.
 - Avoid real-time listeners for large metric sets.
 - Manual result edits should update summary docs in batch.
+- `not_used` remains a result receipt but does not set campaign status to used or store a use time.
+- Manual receipt events use `owner_reported` confidence; provider attribution is never inferred.
+- No result receipt, learning signal, or experiment collection is added.
 
 ## Security
 

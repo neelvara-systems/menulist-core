@@ -121,7 +121,7 @@ Read the output groups:
 | Stale | A source file changed after the asset was accepted. |
 | Oversized | Asset file is larger than the allowed budget. |
 | Approval Required | Asset needs founder review before public use. |
-| Disconnected | Public file exists but is not owned by a slot. |
+| Disconnected | Public file exists but is not owned by a slot; this is an audit error. |
 
 Current healthy result should have:
 
@@ -130,6 +130,18 @@ Current healthy result should have:
 - no oversized generated assets;
 - no disconnected public assets;
 - expected warnings for planned/founder-review assets.
+
+Any disconnected public website asset makes `npm run assets:audit` exit nonzero. Register and review the file, move an internal-only source out of `public/`, or remove a rejected derivative while preserving its raw source in the internal asset-production archive.
+
+Manifest ownership must also be internally consistent. Each generated or approved entry must have a declared slot, match that slot's brand and ID, include the slot destination, provide every required output role, and own each file exclusively. Orphan entries, missing destination/output mappings, and duplicate file owners make the audit exit nonzero.
+
+Source evidence is exact, not best-effort. Every source path declared by a live slot must exist. After fingerprints are locked, the audit treats changed content, a newly watched source, a deleted source file, or a source removed from the slot contract as drift that must be reviewed before relocking.
+
+Generated and approved media must also keep its slot-specific brief at `packages/asset-factory/briefs/<slot-id>.md`. A missing brief, a brief path that names another slot, or one brief claimed by multiple slots blocks the audit. Planned/nonblocking slots may remain warnings until generation starts.
+
+Approval fields must agree. `status: approved` requires `review.decision: approved`. An approved decision requires `performance: pass` plus strategic-fit, brand-fit, and narrative-clarity scores from 1 through 10. Automatic slots may remain generated with a warning while review is pending, but they cannot claim approved status without coherent review evidence.
+
+Required output roles must also use their declared format. A WebP primary, PNG social image, SVG fallback, WebM primary video, or MP4 fallback cannot be satisfied by a differently named file type even when the file exists and is within budget.
 
 ### 2. Create Or Refresh A Brief
 

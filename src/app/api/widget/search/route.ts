@@ -15,9 +15,7 @@ export const dynamic = 'force-dynamic';
  */
 
 import { FEATURE_FLAGS } from '@config/features';
-import { AI_ACTIONS_TYPES } from '@constant/common';
 import { PRODUCT_IDS } from '@constant/product';
-import { recordAiOperation } from '@lib/ai/operationLog';
 import {
     ANSWERLATTICE_CHAT_IMAGE_MAX_BASE64_LENGTH,
     ANSWERLATTICE_CHAT_IMAGE_MAX_BYTES,
@@ -29,17 +27,30 @@ import {
     handlePublicApiCorsPreflight,
     hashApiKey,
     hasPublicApiCredentialScope,
-    isRequestOriginAllowed,
     validatePublicApiKey,
     withPublicApiCors,
 } from '@lib/publicApi/auth';
+import {
+    ANSWERLATTICE_WIDGET_RUNTIME_TOKEN_HEADER,
+    isAnswerlatticeWidgetRuntimeRequestAuthorized,
+} from '@lib/answerlattice/widgetRuntimeTokenServer';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { coreSearch } from '@lib/search/searchCore';
+import {
+    normalizeAnswerlatticeEvidenceLinks,
+    verifyAnswerlatticeVisitorToken,
+} from '@lib/answerlattice/verifiedWidgetContextServer';
+import { normalizeAnswerlatticeScopeDocumentId } from '@lib/answerlattice/sessionScope';
+import {
+    AnswerlatticeSupportSearchCapacityError,
+    createAnswerlatticeSupportSearchAccounting,
+} from '@lib/answerlattice/supportSearchAccounting';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { getClientIp, hashPublicRateLimitValue } from 'src/middleware/publicApi';
 
 const MAX_QUERY_LENGTH = 500;
 const WIDGET_SEARCH_MAX_BODY_BYTES = ANSWERLATTICE_CHAT_IMAGE_MAX_BASE64_LENGTH + (64 * 1024);
@@ -52,17 +63,23 @@ const WidgetVisitorSchema = z.object({
     email: z.string().max(180).optional(),
 }).strip();
 const WidgetSearchRequestSchema = z.object({
+    requestId: z.string().regex(/^[A-Za-z0-9_-]{8,120}$/),
     query: z.string().trim().min(1).max(MAX_QUERY_LENGTH),
     context: z.unknown().optional(),
     visitor: WidgetVisitorSchema.optional(),
     sessionId: z.string().max(120).optional(),
+    verifiedContextToken: z.string().max(4096).optional(),
+    evidenceLinks: z.array(z.object({
+        url: z.string().max(1000),
+        label: z.string().max(80).optional(),
+    }).strict()).max(3).optional(),
     conversationHistory: z.array(z.object({
         role: z.enum(['user', 'assistant']),
-        content: z.string().max(2000).optional(),
-    })).max(5).optional(),
+        content: z.string().trim().min(1).max(2000),
+    }).strict()).max(5).optional(),
     imageBase64: z.string().optional(),
     imageMimeType: z.string().optional(),
-}).superRefine((value, ctx) => {
+}).strict().superRefine((value, ctx) => {
     if (Boolean(value.imageBase64) !== Boolean(value.imageMimeType)) {
         ctx.addIssue({
             code: z.ZodIssueCode.custom,
@@ -73,6 +90,16 @@ const WidgetSearchRequestSchema = z.object({
 });
 
 const isLikelyBase64 = (value: string): boolean => /^[A-Za-z0-9+/]+={0,2}$/.test(value);
+
+const stripUnverifiedSensitiveContext = (value: unknown): unknown => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
+    const publicContext = { ...(value as Record<string, unknown>) };
+    delete publicContext.plan;
+    delete publicContext.role;
+    delete publicContext.userRole;
+    delete publicContext.locale;
+    return publicContext;
+};
 
 const cleanWidgetIdentityText = (value: unknown, maxLength = 160): string | null => {
     const text = String(value || '').replace(/\s+/g, ' ').trim();
@@ -100,7 +127,35 @@ const jsonResponse = (
     request: NextRequest,
     body: Record<string, any>,
     init?: ResponseInit,
-): NextResponse => withPublicApiCors(NextResponse.json(body, init), request);
+): NextResponse => {
+    const response = NextResponse.json(body, init);
+    if (!response.headers.has('Cache-Control')) response.headers.set('Cache-Control', 'private, no-store');
+    return withPublicApiCors(response, request);
+};
+
+const widgetRateLimitResponse = (
+    request: NextRequest,
+    result: Awaited<ReturnType<typeof checkRateLimit>>,
+) => {
+    if (result.allowed) return null;
+    const providerUnavailable = result.reason === 'provider_unavailable';
+    const retryAfter = Math.max(Math.ceil((result.resetAt - Date.now()) / 1000), 1);
+    return jsonResponse(
+        request,
+        {
+            error: providerUnavailable
+                ? 'Search is temporarily unavailable. Please try again later.'
+                : 'Rate limit exceeded. Please try again later.',
+        },
+        {
+            status: providerUnavailable ? 503 : 429,
+            headers: {
+                'Cache-Control': 'no-store',
+                'Retry-After': String(retryAfter),
+            },
+        },
+    );
+};
 
 export function OPTIONS(request: NextRequest) {
     return handlePublicApiCorsPreflight(request);
@@ -122,42 +177,25 @@ export async function POST(request: NextRequest) {
             return jsonResponse(request, { error: 'Invalid API key' }, { status: 401 });
         }
 
-        const apiKeyRateLimitId = hashApiKey(apiKey).slice(0, 16);
         const rateLimitConfig = getRateLimitForFeature('AI_OPERATION');
+        const preAuthRateLimitResult = await checkRateLimit({
+            key: `widget-preauth:${hashPublicRateLimitValue(getClientIp(request))}`,
+            limit: Math.max(rateLimitConfig.limit * 4, 60),
+            window: rateLimitConfig.window,
+            failClosedOnProviderError: true,
+        });
+        const preAuthRateLimitResponse = widgetRateLimitResponse(request, preAuthRateLimitResult);
+        if (preAuthRateLimitResponse) return preAuthRateLimitResponse;
+
+        const apiKeyRateLimitId = hashApiKey(apiKey).slice(0, 16);
         const rateLimitResult = await checkRateLimit({
             key: `widget:${apiKeyRateLimitId}`,
             limit: rateLimitConfig.limit,
             window: rateLimitConfig.window,
+            failClosedOnProviderError: true,
         });
-        if (
-            rateLimitResult.allowed
-            && FEATURE_FLAGS.ENABLE_RATE_LIMITING
-            && rateLimitResult.current === 0
-            && rateLimitResult.remaining === rateLimitConfig.limit
-        ) {
-            return jsonResponse(
-                request,
-                { error: 'Search is temporarily unavailable. Please try again later.' },
-                {
-                    status: 503,
-                    headers: { 'Cache-Control': 'no-store' },
-                }
-            );
-        }
-        if (!rateLimitResult.allowed) {
-            const retryAfter = Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000);
-            return jsonResponse(
-                request,
-                { error: 'Rate limit exceeded. Please try again later.' },
-                {
-                    status: 429,
-                    headers: {
-                        'Cache-Control': 'no-store',
-                        'Retry-After': String(Math.max(retryAfter, 1)),
-                    },
-                }
-            );
-        }
+        const apiKeyRateLimitResponse = widgetRateLimitResponse(request, rateLimitResult);
+        if (apiKeyRateLimitResponse) return apiKeyRateLimitResponse;
 
         const authResult = await validatePublicApiKey(apiKey, {
             allowLegacyRawFallback: false,
@@ -181,9 +219,9 @@ export async function POST(request: NextRequest) {
         if (!hasPublicApiCredentialScope(credential, 'widget:search')) {
             return jsonResponse(request, { error: 'Invalid API key' }, { status: 401 });
         }
-        const tId = Number(storeData.tenantId || storeData.tId);
-        const sId = Number(storeData.id || storeId);
-        if (!Number.isFinite(tId) || !Number.isFinite(sId) || tId <= 0 || sId <= 0) {
+        const tId = normalizeAnswerlatticeScopeDocumentId(storeData.tenantId ?? storeData.tId);
+        const sId = normalizeAnswerlatticeScopeDocumentId(storeData.id ?? storeId);
+        if (!tId || !sId) {
             logRuntimeFailure('answerlattice_widget_search_invalid_workspace_context', undefined, {
                 ...getBoundedRuntimeStringContext('storeId', storeId),
             });
@@ -192,7 +230,14 @@ export async function POST(request: NextRequest) {
 
         // ===== ORIGIN ALLOWLIST CHECK =====
         const requestOrigin = request.headers.get('origin');
-        if (!isRequestOriginAllowed(requestOrigin, storeData.widgetAllowedOrigins)) {
+        if (!isAnswerlatticeWidgetRuntimeRequestAuthorized({
+            requestOrigin,
+            allowedOrigins: storeData.widgetAllowedOrigins,
+            runtimeToken: request.headers.get(ANSWERLATTICE_WIDGET_RUNTIME_TOKEN_HEADER),
+            apiKey,
+            tId,
+            sId,
+        })) {
             return jsonResponse(request, { error: 'Origin not allowed' }, { status: 403 });
         }
 
@@ -214,16 +259,46 @@ export async function POST(request: NextRequest) {
             return jsonResponse(request, { error: 'Query is required' }, { status: 400 });
         }
         const body = validation.data;
+        const requestId = body.requestId;
         const query = body.query;
+
+        const hasVerifiedContextToken = Boolean(body.verifiedContextToken);
+        const verifiedVisitor = body.verifiedContextToken
+            ? FEATURE_FLAGS.ENABLE_ANSWERLATTICE_VERIFIED_CONTEXT
+                ? verifyAnswerlatticeVisitorToken(body.verifiedContextToken, storeData.answerlatticeVerifiedContext)
+                : null
+            : null;
+        const verifiedContextRejected = hasVerifiedContextToken && !verifiedVisitor;
+        const acceptUnsignedVisitor = !hasVerifiedContextToken;
+        const evidenceLinks = FEATURE_FLAGS.ENABLE_ANSWERLATTICE_EXTERNAL_EVIDENCE_LINKS
+            ? normalizeAnswerlatticeEvidenceLinks(body.evidenceLinks, storeData.answerlatticeEvidenceAllowedHosts)
+            : [];
 
         // ===== CONTEXT-AWARE SUPPORT =====
         let validatedContext: import('@lib/validation/contextSchema').ValidatedContextPayload | undefined;
         if (body.context && FEATURE_FLAGS.ENABLE_ANSWERLATTICE_CONTEXT_AWARE) {
             try {
                 const { AnswerlatticeContextSchema } = await import('@lib/validation/contextSchema');
-                validatedContext = AnswerlatticeContextSchema.parse(body.context);
+                validatedContext = AnswerlatticeContextSchema.parse(
+                    verifiedContextRejected
+                        ? stripUnverifiedSensitiveContext(body.context)
+                        : body.context,
+                );
             } catch {
                 validatedContext = undefined;
+            }
+        }
+        if (verifiedVisitor && FEATURE_FLAGS.ENABLE_ANSWERLATTICE_CONTEXT_AWARE) {
+            try {
+                const { AnswerlatticeContextSchema } = await import('@lib/validation/contextSchema');
+                validatedContext = AnswerlatticeContextSchema.parse({
+                    ...(validatedContext || {}),
+                    ...(verifiedVisitor.plan ? { plan: verifiedVisitor.plan } : {}),
+                    ...(verifiedVisitor.role ? { role: verifiedVisitor.role, userRole: verifiedVisitor.role } : {}),
+                    ...(verifiedVisitor.locale ? { locale: verifiedVisitor.locale } : {}),
+                });
+            } catch {
+                return jsonResponse(request, { error: 'Invalid verified context claims' }, { status: 401 });
             }
         }
 
@@ -271,26 +346,45 @@ export async function POST(request: NextRequest) {
 
         // ===== CORE SEARCH — Single source of truth =====
         const operationStart = Date.now();
+        const supportSearchAccounting = createAnswerlatticeSupportSearchAccounting({
+            actor: {
+                id: verifiedVisitor?.id || 'widget',
+                name: verifiedVisitor?.name || null,
+                email: verifiedVisitor?.email || null,
+            },
+            mountContext: 'widget',
+            requestId,
+            scope: { tId, sId },
+        });
         const result = await coreSearch({
             query,
             mountContext: 'widget',
             tId,
             sId,
-            uId: cleanWidgetIdentityText(body.visitor?.id || body.visitor?.customerId, 120) || 'widget',
+            uId: verifiedVisitor?.id
+                || (acceptUnsignedVisitor ? cleanWidgetIdentityText(body.visitor?.id || body.visitor?.customerId, 120) : null)
+                || 'widget',
             mode: conversationHistory && conversationHistory.length > 0 ? 'assistant' : 'qna',
             productContext: validatedContext,
             conversationHistory,
             imageBuffer,
             requestMetadata: {
-                visitorId: cleanWidgetIdentityText(body.visitor?.id || body.visitor?.customerId, 120),
-                visitorName: cleanWidgetIdentityText(body.visitor?.name || body.visitor?.displayName, 160),
-                visitorEmail: cleanWidgetEmail(body.visitor?.email),
+                visitorId: verifiedVisitor?.id
+                    || (acceptUnsignedVisitor ? cleanWidgetIdentityText(body.visitor?.id || body.visitor?.customerId, 120) : null),
+                visitorName: verifiedVisitor?.name
+                    || (acceptUnsignedVisitor ? cleanWidgetIdentityText(body.visitor?.name || body.visitor?.displayName, 160) : null),
+                visitorEmail: verifiedVisitor?.email
+                    || (acceptUnsignedVisitor ? cleanWidgetEmail(body.visitor?.email) : null),
                 widgetSessionId: cleanWidgetIdentityText(body.sessionId, 120),
                 requestOrigin: cleanWidgetIdentityText(requestOrigin, 180),
                 requestPath: cleanWidgetIdentityText(validatedContext?.path, 180),
                 userAgentFamily: detectUserAgentFamily(request.headers.get('user-agent')),
+                visitorVerified: Boolean(verifiedVisitor),
+                evidenceLinks,
             },
+            beforeAiProviderCall: supportSearchAccounting.beforeAiProviderCall,
         });
+        await supportSearchAccounting.settle(result, Date.now() - operationStart);
 
         // ===== FORMAT RESPONSE for Widget frontend =====
         // Widget expects: answer (not craftedAnswer), canonical, references (compact: id+title only)
@@ -340,43 +434,18 @@ export async function POST(request: NextRequest) {
             };
         }
 
-        if (result.aiProviderUsed) {
-            recordAiOperation({
-                action: AI_ACTIONS_TYPES.ANSWERLATTICE_WIDGET_SEARCH,
-                billingMode: 'public',
-                clientResponse: {
-                    aiProviderOperations: result.aiProviderOperations || [],
-                    answerType: result.answerType || null,
-                    answerSource: result.answerSource || null,
-                    canonical: Boolean(result.canonical),
-                    imageProcessed: Boolean(result.imageProcessed),
-                    referencesCount: compactReferences.length,
-                    searchHistoryId: result.searchHistoryId || null,
-                    suggestedQuestionsCount: result.suggestedQuestions?.length || 0,
-                },
-                model: 'coreSearch',
-                pId: PRODUCT_IDS.ANSWERLATTICE,
-                processingTime: Date.now() - operationStart,
-                promptTokenCount: result.aiProviderTokenUsage?.promptTokenCount || 0,
-                sId,
-                source: 'answerlattice_widget_search',
-                tId,
-                totalTokenCount: result.aiProviderTokenUsage?.totalTokenCount || 0,
-                candidatesTokenCount: result.aiProviderTokenUsage?.candidatesTokenCount || 0,
-                tokenCountSource: result.aiProviderTokenUsage?.tokenCountSource || 'none',
-                uId: 'widget',
-            }).catch((error) => {
-                logRuntimeFailure('answerlattice_widget_search_operation_log_failed', error, {
-                    ...getBoundedRuntimeStringContext('tenantId', tId),
-                    ...getBoundedRuntimeStringContext('storeId', sId),
-                    ...getBoundedRuntimeStringContext('searchHistoryId', result.searchHistoryId),
-                });
-            });
-        }
-
         return jsonResponse(request, response);
 
     } catch (err: any) {
+        if (err instanceof AnswerlatticeSupportSearchCapacityError) {
+            return jsonResponse(request, {
+                error: err.message,
+                code: err.code,
+                remainingCredits: err.remaining,
+                requiredCredits: err.required,
+            }, { status: err.status });
+        }
+
         if (isAIProviderRateLimitError(err)) {
             const retryAfter = getAIProviderRetryAfter(err) || 60;
             return jsonResponse(

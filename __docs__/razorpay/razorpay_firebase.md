@@ -1,7 +1,7 @@
 # Razorpay — Firebase Cost Tracking
 
 **Purpose:** Track ALL Firestore reads/writes/deletes for the Razorpay billing system.
-**Last Updated:** July 6, 2026
+**Last Updated:** July 10, 2026
 
 ---
 
@@ -11,13 +11,19 @@ Desktop and mobile retry-payment and invoice external-link diagnostics are secur
 
 Billing entitlement boundary source gate: `npm run verify:billing-entitlement-boundary`. The source gate is Firebase-cost neutral and performs no provider calls, Firestore writes, Storage writes, deploys, or browser smoke. It checks that payment routes still use bounded bodies, validation, tenant/billing permission checks, rate limits where applicable, server-side Razorpay truth checks before subscription/top-up writes, browser response shape acknowledgement, and entitlement/cache sync anchors.
 
+July 10 transactional lifecycle/upgrade boundary changes ordering and consistency, not the owner-visible billing model. Cancel, pause, resume, webhook, payment, and grace-expiry status/history writes now serialize against the current subscription document. Upgrade carry-forward uses one transaction with two subscription reads and two document writes instead of two independent merge writes; the replacement's existing top-up balance is preserved and the carry marker makes replay a no-op. Entitlement sync reads the source subscription plus the bounded current-active subscription query, then transactionally writes `stores/{storeId}`, `platformSummary/storesSummary`, and the source subscription's `analyticsEntitlement`; cache/screen/assistant invalidation still follows confirmed commit. The existing MenuList `subscriptions` composite index on `status + storeId + tenantId + cycleEndDate` supports the authoritative active-subscription query. No rules, Storage operations, Cloud Functions, scheduled functions, dependencies, owner settings, or Vercel deploy action are added.
+
 July 6 payment verification rate-limit boundary is Firebase-cost neutral for valid checkout verification. `/api/razorpay/verify-subscription` and `/api/razorpay/verify-topup` now run the shared `PAYMENT_VERIFICATION` limiter with HMAC-hashed authenticated user key material before bounded request-body parsing, Razorpay checkout signature checks, provider payment/order/subscription fetches, payment capture, subscription/top-up reads, or billing writes. The 20-per-hour user ceiling allows normal checkout completion, browser retry, and webhook race recovery while bounding repeated provider verification attempts. Rate-limited attempts stop with 429 before Firestore reads/writes or Razorpay provider calls. This adds no Firestore reads/writes/deletes for valid verification, no provider-call count changes for valid verification, no Storage operations, rules, indexes, Cloud Functions, Firebase deploy requirement, Vercel deploy action, or owner-facing settings.
 
 July 5 past-due grace-period display fallback is Firebase-cost neutral. `getGracePeriodDisplayInfo()` centralizes owner-visible countdown/fallback metadata for Desktop Billing, Mobile Billing, and authenticated pricing subscription-management. Valid `pastDueSinceAt` records keep the same countdown; missing or malformed legacy `past_due` records show fixed "Grace period details unavailable." recovery copy. This adds no Firestore reads/writes/deletes, Storage operations, Cloud Functions, Razorpay provider calls, billing route calls, cache invalidations, rules, indexes, schema changes, owner-facing settings, Firebase deploy requirement, or Vercel deploy action.
 
 July 6 MenuList Billing Subscription Document ID Boundary is Firebase-cost neutral. Valid Razorpay subscription IDs keep the same reads/writes for subscription create/update/get-by-id, AI capacity reset/consume, entitlement sync, and top-up verification. Malformed, reserved, empty, whitespace-mutated, or path-shaped IDs fail or return null before Firestore document refs. This adds no Firestore reads/writes/deletes, Storage operations, provider calls, cache invalidations beyond existing entitlement sync, rules, indexes, Cloud Functions, Firebase deploy requirement, Vercel deploy action, or owner-facing settings.
 
-July 6 MenuList Billing Subscription Scope Document ID Boundary is Firebase-cost neutral. Valid tenant/store subscription scope keeps the same direct subscription queries and outlet-to-master fallback behavior. Malformed, reserved, empty, whitespace-mutated, decimal, zero, negative, unsafe, nonnumeric, or path-shaped tenant/store scope fails before subscription queries or the fallback `tenants/{tenantId}` read. This adds no Firestore reads/writes/deletes for valid subscription checks, no Storage operations, provider calls, cache invalidations, rules, indexes, Cloud Functions, Firebase deploy requirement, Vercel deploy action, or owner-facing settings.
+July 10 MenuList Billing Subscription Scope Document ID Boundary is Firebase-cost neutral. The shared boundary now protects both browser and server subscription DALs. Valid tenant/store scope keeps the same direct queries and outlet-to-master fallback; malformed scope fails before query/ref/cache-key construction, and Firestore document IDs override embedded data IDs. This adds no Firestore reads/writes/deletes for valid checks, Storage operations, provider calls, cache invalidations, rules, indexes, Cloud Functions, Firebase deploy requirement, Vercel deploy action, or owner-facing settings.
+
+July 13 MenuList session billing scope admission is Firebase-cost neutral. `resolveBillingScopeFromSession()` now applies the same exact positive document-ID projector before a protected Razorpay route can rate-limit, authorize, call the provider, or read/write billing truth. Explicit pre-onboarding nulls and zero/exponent/whitespace/decimal/unsafe aliases return no scope instead of becoming tenant/store `0`. Valid requests keep the same operations. This adds no Firestore reads/writes/deletes, Storage operations, provider calls, cache invalidations, rules, indexes, Cloud Functions, Firebase deploy requirement, Vercel deploy action, or owner-facing settings.
+
+July 13 MenuList billing-history scope admission is Firebase-cost neutral for valid owners and reduces malformed-request cost. Desktop/mobile now preserve the signed tenant value for exact DAL admission, and `getBillingHistoryForStore()` validates both tenant and store before building the `payment_transactions` query. Valid scope keeps the same bounded newest-50 read. Null, zero, exponent, whitespace, decimal, leading-zero, unsafe, or otherwise malformed scope performs zero reads instead of querying tenant/store `0` or another coerced identity. This changes no writes/deletes, Storage operations, provider calls, cache invalidations, rules, indexes, Cloud Functions, Firebase deploy requirement, Vercel deploy action, or owner-facing settings.
 
 July 6 MenuList Top-Up Order Document ID Boundary is Firebase-cost neutral. Valid Razorpay order IDs keep the same pending top-up write, idempotency read, subscription credit update, and paid audit write. Malformed, reserved, empty, whitespace-mutated, or path-shaped order IDs fail before `topups/{orderId}` document refs. This adds no Firestore reads/writes/deletes, Storage operations, provider calls beyond existing valid Razorpay order/payment verification, cache invalidations, rules, indexes, Cloud Functions, Firebase deploy requirement, Vercel deploy action, or owner-facing settings.
 
@@ -27,19 +33,20 @@ July 6 MenuList Top-Up Scope Document ID Boundary is Firebase-cost neutral. Vali
 
 ## Nightly Reconciliation (`functions/src/billing/reconcileSubscriptions.ts`)
 
-**Trigger:** Nightly scheduler at 2:30 AM UTC (Firebase Cloud Function)
+**Trigger:** Leased `subscription_reconciliation` maintenance task at 2:20 AM UTC (Firebase Cloud Function)
 **Feature flag:** `ENABLE_SUBSCRIPTION_RECONCILIATION`
 
 | Operation | Collection | Count per run | Type | Description |
 |-----------|-----------|---------------|------|-------------|
-| Query | `subscriptions` | 1 read | READ | `where('status', 'in', ['active', 'past_due', 'paused'])` — fetches all alive subs |
-| Fetch docs | `subscriptions` | N reads | READ | N = number of alive subscriptions (typically 1 per active store) |
-| Update | `subscriptions` | 0-N writes | WRITE | Only writes if mismatch found (status, cycleDates, paidCount, renewsOn, lastWebhook) |
+| Paged query | `subscriptions` | N reads in 100-row pages | READ | `where('status', 'in', ['active', 'past_due', 'paused'])`, ordered by Firestore document ID; no unbounded snapshot is retained |
+| Transaction re-read | `subscriptions` | N reads | READ | Rechecks authoritative Firestore ID, exact provider ID and current state immediately before any update |
+| Update | `subscriptions` | 0-N writes | WRITE | Only writes a mismatch; status history, recovery timestamp, cycle dates, paid count, renew date, billing-period credit reset and `lastWebhook` are committed together |
+| Entitlement repair | `subscriptions`, `stores`, `platformSummary` | mismatch-only transaction | READ/WRITE | Reads the triggering subscription plus at most 10 current active subscriptions and writes the authoritative store/platform/subscription mirrors before cache invalidation |
 
 **Cost estimate (per night):**
-- **Best case (no mismatches):** 1 query + N doc reads = ~N+1 reads, 0 writes
-- **Worst case (all mismatched):** 1 query + N doc reads + N writes
-- **Typical:** N+1 reads, 0-2 writes (mismatches are rare — webhooks handle 99%+ of updates)
+- **Best case (no mismatches):** approximately 2N reads (paged admission plus transaction recheck), 0 writes
+- **Worst case (all mismatched):** approximately 2N base reads + N subscription writes + scoped entitlement transaction reads/writes
+- **Typical:** 2N reads and few writes; webhook success keeps reconciliation changes rare
 
 **External API calls (not Firebase):**
 - Razorpay `subscriptions.fetch()` — 1 call per alive subscription per night
@@ -141,16 +148,20 @@ Mutation routes use the direct lookup variant when no explicit subscription ID i
 
 Provider order/payment identifiers remain in the billing-owned top-up ledger for reconciliation. The Founder Monitor revenue movement side effect uses a hashed movement key and does not copy the raw payment id into the platform read model.
 
+The pending `topups/{orderId}` document is the immutable settlement snapshot. Verification derives product identity from provider notes, requires the request product to match, and reconciles the snapshot against provider order/payment ID, tenant, store, pack, credit amount, smallest-unit amount, and currency before and inside the credit transaction. Missing or divergent snapshots fail closed; live pack constants cannot change a paid order's credits after checkout begins.
+
+Successful subscription payments use one transaction over `subscriptions/{subscriptionId}`. The provider payment ID is the idempotency key, recurring credits reset only when the persisted billing-period key changes, and top-up credits are never accepted from a stale caller payload. Non-payment provider events use a separate event-keyed subscription transaction so retries and concurrent lifecycle events cannot duplicate or lose status history. `payment_transactions/{webhookEventKey}` is deterministic on webhook replay.
+
 ## Billing History
 
 Owner-facing desktop/mobile billing history reads the unified payment transaction ledger with:
 
 - tenant/store equality filters
-- successful payment events only: `subscription.charged` and `order.paid`
+- successful payment/credit events only: `subscription.charged`, `order.paid`, and `owner_referral.reward_issued`
 - `created_at desc`
 - `limit(50)`
 
-This keeps the billing UI bounded for long-running stores. A future full export should use a separate paginated/export path rather than widening the owner page query.
+This keeps the billing UI bounded for long-running stores. Ledger writes remain server-only; the browser DAL exposes no payment-transaction creator. The formatter accepts valid seconds/milliseconds, `Date`, and Firestore Timestamp shapes and omits malformed dates instead of presenting them as a payment at the current time. A future full export should use a separate paginated/export path rather than widening the owner page query.
 
 ---
 
@@ -173,6 +184,8 @@ July 6 billing mutation scope document-ID boundary is Firebase-cost neutral. Val
 July 1 billing mutation target-gate hardening adds no Firestore reads/writes/deletes beyond the existing store read already performed by `canManageBillingMutation()`, no Storage operations, no provider calls beyond valid existing billing paths, no billing route calls, no Cloud Functions, indexes, rules, cache invalidations, schema changes, or owner-visible settings. It only rejects missing, cross-tenant, inactive, soft-deleted, or platform-blocked store targets before subscription, top-up, cancellation, pause, resume, or upgrade mutation work continues.
 
 Razorpay webhook payment-failure diagnostic hardening adds no Firestore reads/writes beyond the existing webhook event, subscription status, payment transaction, entitlement/reseller, lifecycle/internal notification, and alert writes. It changes only fixed alert/remark text, bounded provider-error metadata, bounded provider event-id/event-key breadcrumbs, and bounded diagnostics for failed non-blocking webhook notification/alert/status-bookkeeping handoffs.
+
+July 10 payment replay and settlement hardening keeps the same successful-path subscription/top-up write counts. Subscription payment and lifecycle writes now use transactions, top-up verification repeats immutable snapshot reconciliation inside its existing transaction, and webhook audit writes target one deterministic document per provider event. The subscription document adds a bounded recent `webhookEventHistory` array (maximum 100 keys) solely for partial-failure retry idempotency. No collection, index, rule, provider call, or cache layer was added.
 
 Authenticated billing mutation notification diagnostic hardening adds no Firestore reads/writes/deletes beyond existing lifecycle/internal notification send attempts and message-log behavior. It changes only bounded diagnostics for failed fire-and-forget notification imports/sends after successful verify-subscription, verify-topup, cancel, pause, resume, and upgrade operations; owner-facing payment responses and billing mutations are unchanged.
 

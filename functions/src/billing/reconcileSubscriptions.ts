@@ -12,10 +12,10 @@
  * compares with Razorpay's authoritative state, and syncs mismatches.
  * This is the safety net for webhook failures.
  *
- * Called from: decisionBlocksScoring.ts nightly scheduler
+ * Called from: menulistMaintenanceScheduler.ts daily leased task
  */
 
-import { FieldValue, Timestamp } from 'firebase-admin/firestore';
+import { FieldPath, FieldValue, Timestamp } from 'firebase-admin/firestore';
 import * as functions from 'firebase-functions';
 import { DB_COLLECTIONS } from '../constants/database';
 import { firestoreAdmin } from '../firebaseAdmin';
@@ -108,50 +108,151 @@ function getActivePlanTypeForSubscription(sub: Record<string, any>, status: Paym
     return normalizePlanId(sub.planId);
 }
 
-async function syncStorePlanEntitlement(
+const POSITIVE_NUMERIC_DOCUMENT_ID_PATTERN = /^[1-9]\d*$/;
+const RESERVED_FIRESTORE_DOCUMENT_ID_PATTERN = /^__.*__$/;
+
+export function normalizeSubscriptionDocumentId(value: unknown): string | null {
+    if (typeof value !== 'string') return null;
+    if (
+        !value
+        || value !== value.trim()
+        || value.length > 180
+        || value === '.'
+        || value === '..'
+        || value.includes('/')
+        || value.includes('\0')
+        || RESERVED_FIRESTORE_DOCUMENT_ID_PATTERN.test(value)
+    ) return null;
+    return value;
+}
+
+export function normalizeScopeDocumentId(value: unknown): { documentId: string; numericId: number } | null {
+    if (typeof value !== 'string' && typeof value !== 'number') return null;
+    const documentId = String(value);
+    if (!POSITIVE_NUMERIC_DOCUMENT_ID_PATTERN.test(documentId)) return null;
+    const numericId = Number(documentId);
+    if (!Number.isSafeInteger(numericId) || numericId <= 0 || String(numericId) !== documentId) return null;
+    return { documentId, numericId };
+}
+
+function toTimestampMillis(value: unknown): number {
+    if (!value || typeof value !== 'object') return 0;
+    try {
+        const toMillis = (value as { toMillis?: unknown }).toMillis;
+        if (typeof toMillis === 'function') {
+            const millis = Number(toMillis.call(value));
+            return Number.isFinite(millis) ? millis : 0;
+        }
+        const seconds = Number((value as { seconds?: unknown }).seconds);
+        return Number.isFinite(seconds) ? seconds * 1000 : 0;
+    } catch {
+        return 0;
+    }
+}
+
+export async function syncStorePlanEntitlement(
     db: FirebaseFirestore.Firestore,
     sub: Record<string, any>,
-    activePlanType: string | null,
     source: string,
-): Promise<void> {
-    const storeId = String(sub.storeId || '').trim();
-    if (!storeId) return;
+): Promise<boolean> {
+    const subscriptionId = normalizeSubscriptionDocumentId(sub.id);
+    const expectedTenantScope = normalizeScopeDocumentId(sub.tenantId ?? sub.tId);
+    const expectedStoreScope = normalizeScopeDocumentId(sub.storeId ?? sub.sId);
+    if (
+        !subscriptionId
+        || !expectedTenantScope
+        || !expectedStoreScope
+    ) return false;
 
-    const entitlementValue = activePlanType || FieldValue.delete();
-    const syncedAt = FieldValue.serverTimestamp();
+    const subscriptionsRef = db.collection(DB_COLLECTIONS.SUBSCRIPTIONS);
+    const subscriptionRef = subscriptionsRef.doc(subscriptionId);
+    const activeSubscriptionsQuery = subscriptionsRef
+        .where('status', '==', 'active')
+        .where('storeId', '==', expectedStoreScope.numericId)
+        .where('tenantId', '==', expectedTenantScope.numericId)
+        .where('cycleEndDate', '>=', Timestamp.now())
+        .orderBy('cycleEndDate', 'desc')
+        .limit(10);
+    const syncResult = await db.runTransaction(async (transaction) => {
+        const [subscriptionSnapshot, activeSubscriptionsSnapshot] = await Promise.all([
+            transaction.get(subscriptionRef),
+            transaction.get(activeSubscriptionsQuery),
+        ]);
+        if (!subscriptionSnapshot.exists) return null;
 
-    await Promise.all([
-        db.collection(DB_COLLECTIONS.STORES).doc(storeId).set({
+        const current = {
+            ...(subscriptionSnapshot.data() || {}),
+            id: subscriptionSnapshot.id,
+        } as Record<string, any>;
+        const currentTenantScope = normalizeScopeDocumentId(current.tenantId ?? current.tId);
+        const currentStoreScope = normalizeScopeDocumentId(current.storeId ?? current.sId);
+        if (
+            !currentTenantScope
+            || !currentStoreScope
+            || currentTenantScope.numericId !== expectedTenantScope.numericId
+            || currentStoreScope.numericId !== expectedStoreScope.numericId
+        ) return null;
+
+        const activeSubscription = activeSubscriptionsSnapshot.docs
+            .map((activeSnapshot) => ({
+                ...(activeSnapshot.data() || {}),
+                id: activeSnapshot.id,
+            } as Record<string, any>))
+            .filter((candidate) => (
+                normalizeScopeDocumentId(candidate.tenantId ?? candidate.tId)?.numericId
+                    === expectedTenantScope.numericId
+                && normalizeScopeDocumentId(candidate.storeId ?? candidate.sId)?.numericId
+                    === expectedStoreScope.numericId
+            ))
+            .sort((left, right) => toTimestampMillis(right.cycleEndDate) - toTimestampMillis(left.cycleEndDate))[0]
+            || null;
+        const activePlanType = activeSubscription
+            ? getActivePlanTypeForSubscription(activeSubscription, activeSubscription.status)
+            : null;
+        const entitlementValue = activePlanType || FieldValue.delete();
+        const activeSubscriptionIdValue = activeSubscription?.id || FieldValue.delete();
+        const syncedAt = FieldValue.serverTimestamp();
+
+        transaction.set(db.collection(DB_COLLECTIONS.STORES).doc(currentStoreScope.documentId), {
             activePlanType: entitlementValue,
             analyticsEntitlementUpdatedAt: syncedAt,
-        }, { merge: true }),
-        db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc('storesSummary').set({
+            billingSubscriptionId: activeSubscriptionIdValue,
+        }, { merge: true });
+        transaction.set(db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc('storesSummary'), {
             lastUpdated: syncedAt,
             stores: {
-                [storeId]: {
+                [currentStoreScope.documentId]: {
                     activePlanType: entitlementValue,
+                    billingSubscriptionId: activeSubscriptionIdValue,
                 },
             },
-        }, { merge: true }),
-        db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(sub.id).set({
+        }, { merge: true });
+        transaction.set(subscriptionRef, {
             analyticsEntitlement: {
                 activePlanType,
-                status: sub.status || null,
+                status: current.status || null,
                 syncedAt,
                 source,
             },
-        }, { merge: true }),
-    ]);
+        }, { merge: true });
+
+        return {
+            storeId: currentStoreScope.documentId,
+            tenantId: currentTenantScope.numericId,
+        };
+    });
+    if (!syncResult) return false;
 
     await Promise.all([
-        revalidatePublicClientCacheForStore(storeId, source, {
+        revalidatePublicClientCacheForStore(syncResult.storeId, source, {
             touchDigitalScreen: true,
         }),
         invalidateOwnerBusinessAssistantContextPackets({
-            tId: sub.tenantId ?? sub.tId,
-            sId: storeId,
+            tId: syncResult.tenantId,
+            sId: syncResult.storeId,
         }),
     ]);
+    return true;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -205,11 +306,33 @@ function validateTransition(from: string, to: string, context: string): boolean 
 const RAZORPAY_SUBSCRIPTION_ID_PATTERN = /^sub_[A-Za-z0-9]+$/;
 
 function getRazorpayManagedSubscriptionId(sub: Record<string, any>): string | null {
-    const providerSubscriptionId = String(sub.providerSubscriptionId || '').trim();
+    if (typeof sub.providerSubscriptionId !== 'string') return null;
+    const providerSubscriptionId = sub.providerSubscriptionId;
+    if (providerSubscriptionId !== providerSubscriptionId.trim()) return null;
     if (sub.paymentProvider && sub.paymentProvider !== 'razorpay') return null;
     if (sub.billingMode === 'manual') return null;
     if (!RAZORPAY_SUBSCRIPTION_ID_PATTERN.test(providerSubscriptionId)) return null;
     return providerSubscriptionId;
+}
+
+function getProviderEpochMillis(value: unknown): number | null {
+    const seconds = Number(value);
+    if (!Number.isSafeInteger(seconds) || seconds <= 0) return null;
+    const millis = seconds * 1000;
+    return Number.isSafeInteger(millis) ? millis : null;
+}
+
+function getProviderBillingPeriod(value: unknown): number | null {
+    const millis = getProviderEpochMillis(value);
+    if (millis === null) return null;
+    const date = new Date(millis);
+    if (!Number.isFinite(date.getTime())) return null;
+    return date.getUTCFullYear() * 100 + date.getUTCMonth() + 1;
+}
+
+function getNonNegativeSafeInteger(value: unknown): number | null {
+    const numericValue = Number(value);
+    return Number.isSafeInteger(numericValue) && numericValue >= 0 ? numericValue : null;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -257,142 +380,190 @@ export async function reconcileSubscriptions(): Promise<ReconciliationResult> {
 
     const db = firestoreAdmin;
 
-    // 1. Query all subscriptions that should be "alive"
-    const snapshot = await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS)
-        .where('status', 'in', ['active', 'past_due', 'paused'])
-        .get();
+    const subscriptionsRef = db.collection(DB_COLLECTIONS.SUBSCRIPTIONS);
+    const pageSize = 100;
+    let lastDocument: FirebaseFirestore.QueryDocumentSnapshot | null = null;
+    let foundSubscriptions = false;
 
-    if (snapshot.empty) {
-        logger.info('[Reconciliation] No active subscriptions to reconcile');
-        return {
-            success: true,
-            processed: 0,
-            synced: 0,
-            errors: 0,
-            durationMs: Date.now() - startTime,
-        };
+    while (true) {
+        let pageQuery = subscriptionsRef
+            .where('status', 'in', ['active', 'past_due', 'paused'])
+            .orderBy(FieldPath.documentId())
+            .limit(pageSize);
+        if (lastDocument) pageQuery = pageQuery.startAfter(lastDocument);
+        const snapshot = await pageQuery.get();
+        if (snapshot.empty) break;
+        foundSubscriptions = true;
+
+        // Fetch provider truth outside the transaction, then re-read local truth
+        // inside the transaction before applying any change.
+        for (const docSnap of snapshot.docs) {
+            const sub = { ...docSnap.data(), id: docSnap.id } as Record<string, any>;
+            processed++;
+            let providerSubId: string | null = null;
+
+            try {
+                if (!RAZORPAY_SUBSCRIPTION_ID_PATTERN.test(docSnap.id)) continue;
+                providerSubId = getRazorpayManagedSubscriptionId(sub);
+                if (!providerSubId || providerSubId !== docSnap.id) continue;
+
+                const razorpay = getRazorpayClient();
+                const rzpSub = await razorpay.subscriptions.fetch(providerSubId);
+                const application = await db.runTransaction(async (transaction) => {
+                    const currentSnapshot = await transaction.get(docSnap.ref);
+                    if (!currentSnapshot.exists) return null;
+                    const current = {
+                        ...(currentSnapshot.data() || {}),
+                        id: currentSnapshot.id,
+                    } as Record<string, any>;
+                    if (getRazorpayManagedSubscriptionId(current) !== providerSubId) return null;
+
+                    const updates: Record<string, any> = {};
+                    const changes: Array<{ field: string; local: string; remote: string }> = [];
+                    const rzpStatus = RAZORPAY_STATUS_MAP[String(rzpSub.status || '')];
+                    if (
+                        rzpStatus
+                        && rzpStatus !== current.status
+                        && validateTransition(current.status, rzpStatus, 'reconciliation:status-sync')
+                    ) {
+                        updates.status = rzpStatus;
+                        updates.statuses = [
+                            ...(Array.isArray(current.statuses) ? current.statuses : []),
+                            {
+                                status: rzpStatus,
+                                timestamp: Timestamp.now(),
+                                amount: Number.isFinite(Number(current.amount)) ? Number(current.amount) : 0,
+                                currency: current.currency || 'INR',
+                                remark: `Reconciled from Razorpay status ${String(rzpSub.status || 'unknown')}`,
+                            },
+                        ];
+                        if (rzpStatus === 'past_due') {
+                            updates.pastDueSinceAt = current.pastDueSinceAt || Timestamp.now();
+                        } else if (rzpStatus === 'active') {
+                            updates.pastDueSinceAt = null;
+                        }
+                        changes.push({ field: 'status', local: String(current.status), remote: rzpStatus });
+                    }
+
+                    const rzpCycleStart = getProviderEpochMillis(rzpSub.current_start);
+                    const rzpCycleEnd = getProviderEpochMillis(rzpSub.current_end);
+                    const localCycleStart = toTimestampMillis(current.cycleStartDate);
+                    const localCycleEnd = toTimestampMillis(current.cycleEndDate);
+                    if (
+                        rzpCycleStart !== null
+                        && rzpCycleEnd !== null
+                        && rzpCycleEnd >= rzpCycleStart
+                        && rzpCycleStart > localCycleStart
+                    ) {
+                        updates.cycleStartDate = Timestamp.fromMillis(rzpCycleStart);
+                        updates.cycleEndDate = Timestamp.fromMillis(rzpCycleEnd);
+                        const billingPeriod = getProviderBillingPeriod(rzpSub.current_start);
+                        const finalStatus = (updates.status || current.status) as PaymentStatus;
+                        if (billingPeriod !== null && finalStatus === 'active' && Number(current.creditsLastResetMonth) !== billingPeriod) {
+                            const allowance = getNonNegativeSafeInteger(current.monthlyCreditsAllowance);
+                            if (allowance === null) throw new Error('Subscription monthly credit allowance is invalid.');
+                            updates.monthlyCredits = allowance;
+                            updates.creditsLastResetMonth = billingPeriod;
+                        }
+                        changes.push({
+                            field: 'cycleDates',
+                            local: `${new Date(localCycleStart).toISOString()} -> ${new Date(localCycleEnd).toISOString()}`,
+                            remote: `${new Date(rzpCycleStart).toISOString()} -> ${new Date(rzpCycleEnd).toISOString()}`,
+                        });
+                    }
+
+                    const providerPaidCount = getNonNegativeSafeInteger(rzpSub.paid_count);
+                    const localPaidCount = getNonNegativeSafeInteger(current.totalPaymentsMadeCount);
+                    if (providerPaidCount !== null && providerPaidCount !== localPaidCount) {
+                        updates.totalPaymentsMadeCount = providerPaidCount;
+                        changes.push({
+                            field: 'paidCount',
+                            local: String(current.totalPaymentsMadeCount),
+                            remote: String(providerPaidCount),
+                        });
+                    }
+
+                    const rzpChargeAt = getProviderEpochMillis(rzpSub.charge_at);
+                    const localRenewsOn = toTimestampMillis(current.renewsOn);
+                    if (rzpChargeAt !== null && Math.abs(rzpChargeAt - localRenewsOn) > 86400000) {
+                        updates.renewsOn = Timestamp.fromMillis(rzpChargeAt);
+                        changes.push({
+                            field: 'renewsOn',
+                            local: new Date(localRenewsOn).toISOString(),
+                            remote: new Date(rzpChargeAt).toISOString(),
+                        });
+                    }
+
+                    const finalStatus = (updates.status || current.status) as PaymentStatus;
+                    const desiredActivePlanType = getActivePlanTypeForSubscription(current, finalStatus);
+                    const syncedActivePlanType = current.analyticsEntitlement?.activePlanType ?? null;
+                    const shouldSyncEntitlement = syncedActivePlanType !== desiredActivePlanType
+                        || Boolean(updates.status && updates.status !== current.status);
+                    if (Object.keys(updates).length > 0) {
+                        updates.lastWebhook = {
+                            event: 'reconciliation.sync',
+                            timestamp: FieldValue.serverTimestamp(),
+                        };
+                        updates.modifiedOn = FieldValue.serverTimestamp();
+                        transaction.update(docSnap.ref, updates);
+                    }
+
+                    return {
+                        changes,
+                        desiredActivePlanType,
+                        previousActivePlanType: syncedActivePlanType,
+                        shouldSyncEntitlement,
+                        subscription: { ...current, ...updates, id: currentSnapshot.id },
+                        updatesApplied: Object.keys(updates).length > 0,
+                        updates,
+                    };
+                });
+                if (!application) continue;
+
+                application.changes.forEach((change) => syncDetails.push({
+                    subId: docSnap.id,
+                    ...change,
+                }));
+                if (application.updatesApplied) {
+                    synced++;
+                    logger.info('[Reconciliation] Subscription synced', {
+                        ...getReconciliationSubscriptionLogContext(application.subscription, providerSubId),
+                        ...getReconciliationUpdateLogContext(application.updates),
+                    });
+                }
+                if (application.shouldSyncEntitlement) {
+                    const entitlementSynced = await syncStorePlanEntitlement(
+                        db,
+                        application.subscription,
+                        'reconciliation:subscription-entitlement',
+                    );
+                    if (!entitlementSynced) {
+                        throw new Error('Subscription entitlement scope is invalid.');
+                    }
+                    synced++;
+                    syncDetails.push({
+                        subId: docSnap.id,
+                        field: 'analyticsEntitlement',
+                        local: String(application.previousActivePlanType),
+                        remote: String(application.desiredActivePlanType),
+                    });
+                }
+            } catch (subError: any) {
+                errors++;
+                logger.error('[Reconciliation] Failed to process subscription', {
+                    failureCode: BILLING_SUBSCRIPTION_RECONCILIATION_SUBSCRIPTION_FAILED,
+                    ...getReconciliationSubscriptionLogContext(sub, providerSubId),
+                    ...getReconciliationErrorContext(subError),
+                });
+            }
+        }
+
+        lastDocument = snapshot.docs[snapshot.docs.length - 1] || null;
+        if (snapshot.size < pageSize || !lastDocument) break;
     }
 
-    logger.info(`[Reconciliation] Found ${snapshot.size} subscriptions to check`);
-
-    // 2. For each subscription, fetch from Razorpay and compare
-    for (const docSnap of snapshot.docs) {
-        const sub = { id: docSnap.id, ...docSnap.data() } as any;
-        processed++;
-        let providerSubId: string | null = null;
-
-        try {
-            providerSubId = getRazorpayManagedSubscriptionId(sub);
-            if (!providerSubId) {
-                continue;
-            }
-
-            const razorpay = getRazorpayClient();
-            const rzpSub = await razorpay.subscriptions.fetch(providerSubId);
-            const updates: Record<string, any> = {};
-            const rzpStatus = RAZORPAY_STATUS_MAP[rzpSub.status];
-
-            // 2a. Status mismatch
-            if (rzpStatus && rzpStatus !== sub.status && validateTransition(sub.status, rzpStatus, 'reconciliation:status-sync')) {
-                updates.status = rzpStatus;
-                syncDetails.push({
-                    subId: sub.id,
-                    field: 'status',
-                    local: sub.status,
-                    remote: rzpStatus,
-                });
-            }
-
-            // 2b. Cycle dates mismatch (only if Razorpay has newer data)
-            if (rzpSub.current_start && rzpSub.current_end) {
-                const rzpCycleStart = rzpSub.current_start * 1000;
-                const rzpCycleEnd = rzpSub.current_end * 1000;
-                const localCycleStart = sub.cycleStartDate?.toMillis?.() || 0;
-                const localCycleEnd = sub.cycleEndDate?.toMillis?.() || 0;
-
-                // Only sync if Razorpay's cycle is NEWER (start is later)
-                if (rzpCycleStart > localCycleStart) {
-                    updates.cycleStartDate = Timestamp.fromMillis(rzpCycleStart);
-                    updates.cycleEndDate = Timestamp.fromMillis(rzpCycleEnd);
-                    syncDetails.push({
-                        subId: sub.id,
-                        field: 'cycleDates',
-                        local: `${new Date(localCycleStart).toISOString()} → ${new Date(localCycleEnd).toISOString()}`,
-                        remote: `${new Date(rzpCycleStart).toISOString()} → ${new Date(rzpCycleEnd).toISOString()}`,
-                    });
-                }
-            }
-
-            // 2c. Paid count mismatch
-            if (rzpSub.paid_count != null && rzpSub.paid_count !== sub.totalPaymentsMadeCount) {
-                updates.totalPaymentsMadeCount = rzpSub.paid_count;
-                syncDetails.push({
-                    subId: sub.id,
-                    field: 'paidCount',
-                    local: String(sub.totalPaymentsMadeCount),
-                    remote: String(rzpSub.paid_count),
-                });
-            }
-
-            // 2d. charge_at (renewsOn) mismatch
-            if (rzpSub.charge_at) {
-                const rzpChargeAt = rzpSub.charge_at * 1000;
-                const localRenewsOn = sub.renewsOn?.toMillis?.() || 0;
-                if (Math.abs(rzpChargeAt - localRenewsOn) > 86400000) { // >1 day difference
-                    updates.renewsOn = Timestamp.fromMillis(rzpChargeAt);
-                    syncDetails.push({
-                        subId: sub.id,
-                        field: 'renewsOn',
-                        local: new Date(localRenewsOn).toISOString(),
-                        remote: new Date(rzpChargeAt).toISOString(),
-                    });
-                }
-            }
-
-            const finalStatus = (updates.status || sub.status) as PaymentStatus;
-            const desiredActivePlanType = getActivePlanTypeForSubscription(sub, finalStatus);
-            const syncedActivePlanType = sub.analyticsEntitlement?.activePlanType ?? null;
-            const shouldSyncEntitlement = syncedActivePlanType !== desiredActivePlanType
-                || (updates.status && updates.status !== sub.status);
-
-            // 3. Apply updates if any mismatch found
-            if (Object.keys(updates).length > 0) {
-                updates.lastWebhook = {
-                    event: 'reconciliation.sync',
-                    timestamp: FieldValue.serverTimestamp(),
-                };
-                await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(sub.id).update(updates);
-                synced++;
-
-                logger.info('[Reconciliation] Subscription synced', {
-                    ...getReconciliationSubscriptionLogContext(sub, providerSubId),
-                    ...getReconciliationUpdateLogContext(updates),
-                });
-            }
-
-            if (shouldSyncEntitlement) {
-                await syncStorePlanEntitlement(
-                    db,
-                    { ...sub, status: finalStatus },
-                    desiredActivePlanType,
-                    'reconciliation:subscription-entitlement',
-                );
-                synced++;
-                syncDetails.push({
-                    subId: sub.id,
-                    field: 'analyticsEntitlement',
-                    local: String(syncedActivePlanType),
-                    remote: String(desiredActivePlanType),
-                });
-            }
-        } catch (subError: any) {
-            errors++;
-            logger.error('[Reconciliation] Failed to process subscription', {
-                failureCode: BILLING_SUBSCRIPTION_RECONCILIATION_SUBSCRIPTION_FAILED,
-                ...getReconciliationSubscriptionLogContext(sub, providerSubId),
-                ...getReconciliationErrorContext(subError),
-            });
-        }
+    if (!foundSubscriptions) {
+        logger.info('[Reconciliation] No active subscriptions to reconcile');
     }
 
     const result: ReconciliationResult = {

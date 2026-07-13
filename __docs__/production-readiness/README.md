@@ -16,19 +16,21 @@ Structured pre-launch verification checklist. Run through each section before on
 
 For the remaining external/runtime gates that local source checks cannot prove, use [External Certification Runbook](./external-certification-runbook.md).
 
+For active outages, security events, wrong public truth, billing/provider failures, or rollback decisions, use the [MenuList Incident Response Runbook](./incident-response-runbook.md). The incident runbook governs response work only; it does not replace launch certification evidence.
+
 Status meaning: ✅ means the repository, static configuration, or documented platform capability is currently confirmed for that row. It does not override missing deploy, provider, browser/device, owner-controlled setup, or production-host evidence. When a row depends on those external conditions, the matching External Certification Runbook gate remains the launch authority.
 
-## Current External Certification Snapshot (July 9, 2026)
+## Current External Certification Snapshot (July 11, 2026)
 
-The local source boundary is green, but this is not launch approval. `npm run verify:production-readiness-local` passes with 95/95 checks, including 91 child root `verify:*` scripts, docs links, typecheck, lint, and `git diff --check`. The following external gates still decide production certification:
+The current local source boundary passes 109/109 checks, including 105 child verifiers, docs links, typecheck, lint, and diff integrity, but this is not launch approval. Restart 84 also closed the Answerlattice public-brand/claim-copy drift, aligned the no-free-product-plans gate with the active paid-plan selector, added Firestore-emulator proof for phone OTP attempt/token atomicity, and restored a fully current AssetOS audit/review. The following external gates still decide production certification:
 
 | Gate | Current state | External blocker |
 |------|---------------|------------------|
 | Gate 1 Firebase Functions deploy | Blocked | Scoped `menulist-qa` deploy preflight passes, then Firebase Cloud Resource Manager returns HTTP 403 before upload. |
 | Gate 2 Tenant-block mirror backfill | Blocked | Safety verifier passes, but the bounded read-only `menulist-qa` dry run cannot review the target dataset because Firebase project access returns permission denied. |
 | Gate 2A Firebase Storage rules deploy | Blocked | `npm run verify:storage-paths` passes, but scoped `menulist-qa` Storage deploy stops at Service Usage HTTP 403 before rules upload. |
-| Gate 3 True mobile/browser QA | Blocked | Authenticated owner-shell mobile QA has source harness coverage but still needs an eligible non-production owner store with active subscription or unexpired starter activation; real-device QA remains pending. |
-| Gate 4 Razorpay sandbox smoke | Partial only | Read-only test-mode provider credential auth passed; full checkout, payment verification, webhook, compensation, top-up, reseller, state-parity, and no-real-charge smoke remains pending. |
+| Gate 3 True mobile/browser QA | Blocked | The local loopback customer-worker smoke passed with only `/offline` cached and no stale menu, while the owner harness covers Today, Menu, Share, More, MobileShell containment, screenshots, overflow/clipping, active state, and 44x44px targets. Production worker registration/install, an eligible owner fixture, authenticated owner-shell execution, and real-device QA remain pending. |
+| Gate 4 Razorpay sandbox smoke | Partial only | The maintained read-only preflight passes for payments, orders, plans, and subscriptions plus synthetic raw-body webhook signature validation; full checkout, payment verification, real webhook delivery, compensation, top-up, reseller, state-parity, and no-real-charge smoke remains pending. |
 | Gate 5 WhatsApp provider smoke | Blocked | Checked local/functions dotenv files keep messaging onboarding absent or disabled and contain no WhatsApp provider secrets; non-production Meta app, secrets, deployed webhook, registration, and target enablement remain pending. |
 | Gate 6 POS webhook provider smoke | Blocked | `npm run verify:pos-sync-boundary` passes, but controlled public HTTPS receiver, receiver-side signature verification, test delivery, publish delivery, failed-endpoint evidence, and secret-rotation proof remain pending. |
 | Gate 7 Batch image worker | Blocked | Root `.env` has project/location/queue/HTTPS worker URL but lacks `BATCH_IMAGE_GENERATION_WORKER_SECRET`; worker deploy and controlled Cloud Tasks enqueue/worker smoke remain pending. |
@@ -44,8 +46,8 @@ Do not convert this table into ✅ status until the corresponding runbook gate h
 |-------|--------|-------|
 | Vercel production deployment active | ☐ | Verify at vercel.com |
 | Custom domain configured (menulist.ai) | ☐ | DNS + SSL |
-| CDN caching active for public pages | ✅ | Vercel Edge Network automatic |
-| SSL auto-renewal | ✅ | Vercel managed |
+| CDN caching active for public pages | ☐ | Source cache headers and Vercel-compatible cache policy exist; Gate 8 must verify production response headers, cache hits, invalidation, and CDN behavior. |
+| SSL auto-renewal | ☐ | Vercel-managed certificates are expected only after the production custom domain is active; Gate 8 must verify the certificate chain and renewal state. |
 | Firebase project on Blaze plan | ☐ | Required for Cloud Functions |
 | GCP budget alerts configured | ☐ | Set at ₹500, ₹1000, ₹2000 thresholds |
 | Cloud Billing export to BigQuery configured | ☐ | Pre-production cost visibility. Enable Standard + Detailed usage export for billing account `Firebase Payment` into `menulist.cloud_billing_export` or a dedicated FinOps project. |
@@ -66,12 +68,13 @@ Do not convert this table into ✅ status until the corresponding runbook gate h
 |-------|--------|-------|
 | Firestore security rules deployed | ☐ | Use `firebase deploy --only firestore:rules --project menulist-qa --config firebase.json` after targeted validation passes; production rules deploy requires QA evidence and explicit production approval. |
 | No public write access in rules | ✅ | Verified in SS audit (Feb 7) |
-| Rate limiting active (Upstash) | ✅ | `ENABLE_RATE_LIMITING: true`; public menu setup and draft claim routes fail closed on provider outage, but the launch endpoint still needs live Upstash verification before public traffic. |
-| Sentry configured (prod project) | ✅ | Dual dev/prod Sentry projects |
-| HTTPS enforced | ✅ | Vercel automatic |
+| Rate limiting active (Upstash) | ☐ | `ENABLE_RATE_LIMITING: true` and protected public flows fail closed in source, but target credentials, live Upstash behavior, limits, and outage handling still need non-production verification. |
+| Sentry configured (prod project) | ☐ | Source integration and production env templates exist; the production DSN, release/source-map association, and captured test event still need target verification. |
+| HTTPS enforced | ☐ | Middleware configures HSTS for production responses, but Gate 8 must verify production HTTP-to-HTTPS behavior, TLS, and the delivered HSTS header. |
 | CSP headers active | ✅ | Middleware.ts |
 | Auth session security | ✅ | NextAuth with secure cookies |
 | System strengthening fixes applied | ✅ | `npm run verify:system-strengthening` source-gates SS-1 through SS-9 from `__docs__/system-strengthening/`; this is local proof only, not live production certification. |
+| Incident response runbook maintained | ✅ | [MenuList Incident Response Runbook](./incident-response-runbook.md) records severity, containment, SAFE_MODE limits, rollback discipline, recovery gates, communication, and durable evidence requirements. A QA tabletop/live drill remains external evidence. |
 
 ---
 
@@ -84,7 +87,7 @@ Do not convert this table into ✅ status until the corresponding runbook gate h
 | Images load correctly | ☐ | Check Firebase Storage CDN |
 | QR code scans correctly | ☐ | Test with 3 different apps (see below) |
 | OBP page loads with schema.org | ☐ | Check with Google Rich Results Test |
-| Menu works offline (CDN cached) | ✅ | Edge caching handles this |
+| Customer app shows an offline fallback without cached menu content | ☐ | A July 11 local loopback smoke manually registered the development worker, severed the harness proxy upstream, rendered `/offline`, and found no cached menu content. Production registration/install and physical-device airplane-mode evidence still need Gate 3/Gate 8 verification. |
 | Menu renders on slow 3G | ☐ | Chrome DevTools network throttle |
 | Menu renders on old Android | ☐ | Test with real device or BrowserStack |
 | Menu renders on Safari iPhone | ☐ | Test with real device |
@@ -235,6 +238,12 @@ Each must:
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.61 | July 11, 2026 | Refreshed the External Certification Runbook to the verified 98/98 local boundary with 94 child verifiers, all five external-only harness syntax checks, and current Functions/Storage blocker wording while preserving older run evidence as history |
+| 1.60 | July 11, 2026 | Recorded a passing local loopback customer-worker smoke with a temporary Chrome profile, `/offline`-only cache inspection, severed harness-proxy upstream, 390x844 fallback capture, and explicit non-certification boundaries for production registration/install and real devices; Gate 3 remains blocked |
+| 1.59 | July 11, 2026 | Corrected six externally dependent checklist rows: source support for CDN caching, managed TLS, Upstash, Sentry, HTTPS/HSTS, and the customer offline fallback is documented, but each remains unchecked until provider/browser/production-host evidence exists; customer menu content remains intentionally uncached |
+| 1.58 | July 11, 2026 | Replaced the ad-hoc Razorpay credential probe with `smoke:razorpay-sandbox-readonly`: hard live-key refusal, matching test-key checks, bounded payments/orders/plans/subscriptions reads, and synthetic raw-body signature validation; full Gate 4 payment flows remain pending |
+| 1.57 | July 11, 2026 | Expanded the authenticated owner-shell harness from Menu-only checks to Today/Menu/Share/More navigation, per-tab screenshots, MobileShell/hash/active-state checks, overflow/clipping detection, and 44x44px navigation evidence; Gate 3 remains blocked until an eligible explicit fixture and browser/device run are available |
+| 1.56 | July 11, 2026 | Added the MenuList Incident Response Runbook and refreshed the local aggregate source-gate snapshot to 97/97 checks with 93 child verifiers; live drill and target access remain external evidence |
 | 1.55 | July 9, 2026 | Clarified checklist status semantics: ✅ rows confirm repo/static/platform evidence only for that row and do not override missing deploy, provider, browser/device, owner-controlled setup, or production-host evidence from the External Certification Runbook |
 | 1.54 | July 9, 2026 | Added the current external certification snapshot: local source gates pass with 95/95 checks, while Gate 1 Functions, Gate 2 backfill, Gate 2A Storage, Gate 3 mobile/browser QA, Gate 4 full Razorpay sandbox, Gate 5 WhatsApp provider setup, Gate 6 POS receiver smoke, Gate 7 batch worker secret/Cloud Tasks smoke, and Gate 8 production-host smoke remain blocked or partial until runbook evidence is recorded |
 | 1.53 | July 2, 2026 | Clarified mobile operational specs, strategy bucket-list, and Multi-Outlet AI extraction analysis: mobile screen/navigation specs are reference docs pending active audit, External Certification Runbook evidence, `verify:mobile-shell-route-map`, feature-specific mobile/source gates, owner-shell mobile QA, real-device QA where relevant, target deploy evidence, and production-host smoke; future strategy candidates are not implementation approval; Multi-Outlet AI extraction analysis remains historical pending multi-location/menu-extraction source gates, linked outlet extraction QA, provider smoke, deploy evidence where rules/functions change, and target smoke |

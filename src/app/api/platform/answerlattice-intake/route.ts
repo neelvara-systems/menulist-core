@@ -2,11 +2,15 @@ export const dynamic = 'force-dynamic';
 
 import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
+import { PRODUCT_IDS } from '@constant/product';
 import {
     getAnswerlatticeSecurityLogContext,
     getBoundedAnswerlatticeStringContext,
 } from '@lib/answerlattice/diagnostics';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
+import { readAnswerlatticeTenantSummaryDataAdmin } from '@lib/answerlattice/tenantSummaryAdmin';
+import { parseAnswerlatticeKnowledgeIntakeJob } from '@lib/answerlattice/knowledgeIntakeContracts';
+import { normalizeAnswerlatticeIntakeUsageLedgerId } from '@lib/answerlattice/billingDocumentIdBoundary';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { logger } from '@lib/monitoring/logger';
 import { checkRateLimit } from '@lib/rateLimit';
@@ -20,15 +24,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { withPlatformAuth } from '../../../../middleware/auth';
 
-const TENANT_SUMMARY_DOC_ID = 'answerlatticeTenantsSummary';
 const SCHEDULER_LOG_LIMIT = 8;
 const ANSWERLATTICE_INTAKE_MONITOR_RATE_LIMIT_KEY = 'answerlattice-intake-monitor';
+const ANSWERLATTICE_INTAKE_MANUAL_TRIGGER_RATE_LIMIT_KEY = 'answerlattice-intake-manual-trigger';
 
 const QuerySchema = z.object({
     limit: z.coerce.number().int().min(5).max(25).optional().default(10),
     tId: z.coerce.number().int().positive().optional(),
     sId: z.coerce.number().int().positive().optional(),
-}).refine((value) => {
+}).strict().refine((value) => {
     const hasTenant = value.tId !== undefined;
     const hasStore = value.sId !== undefined;
     return hasTenant === hasStore;
@@ -38,7 +42,7 @@ const TriggerSchema = z.object({
     action: z.literal('trigger-nightly'),
     tId: z.coerce.number().int().positive(),
     sId: z.coerce.number().int().positive(),
-});
+}).strict();
 const ANSWERLATTICE_INTAKE_TRIGGER_MAX_BODY_BYTES = 2 * 1024;
 const ANSWERLATTICE_MANUAL_TRIGGER_RESPONSE_MAX_BYTES = 512 * 1024;
 const ANSWERLATTICE_MANUAL_TRIGGER_PATH = '/triggerAnswerlatticeNightly';
@@ -81,11 +85,12 @@ type ManualTriggerResultSummary = {
     tasks: ManualTriggerTaskSummary[];
 };
 
-function toIso(value: any): string | null {
+function toIso(value: unknown): string | null {
     if (!value) return null;
     try {
-        if (typeof value.toDate === 'function') return value.toDate().toISOString();
-        if (typeof value.seconds === 'number') return new Date(value.seconds * 1000).toISOString();
+        const timestamp = value as { seconds?: unknown; toDate?: unknown };
+        if (typeof timestamp.toDate === 'function') return (timestamp.toDate as () => Date)().toISOString();
+        if (typeof timestamp.seconds === 'number') return new Date(timestamp.seconds * 1000).toISOString();
         if (value instanceof Date) return value.toISOString();
         if (typeof value === 'string' || typeof value === 'number') {
             const date = new Date(value);
@@ -106,13 +111,13 @@ function cleanText(value: unknown, max = 220): string {
 }
 
 function safeNumber(value: unknown): number {
-    const parsed = Number(value || 0);
-    return Number.isFinite(parsed) ? parsed : 0;
+    const parsed = value === undefined || value === null ? 0 : Number(value);
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
 }
 
 function safeNullableNumber(value: unknown): number | null {
     const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : null;
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
 }
 
 function scopeKey(tId: number, sId: number) {
@@ -168,21 +173,29 @@ function summarizeManualTriggerResult(payload: unknown): ManualTriggerResultSumm
     };
 }
 
-function parseTenantOptions(data: Record<string, any> | undefined): TenantOption[] {
+function parseTenantOptions(data: Record<string, unknown> | undefined): TenantOption[] {
     const tenants = data?.tenants;
     if (!tenants || typeof tenants !== 'object' || Array.isArray(tenants)) return [];
 
     const result: TenantOption[] = [];
     for (const [key, value] of Object.entries(tenants)) {
-        const item = value && typeof value === 'object' ? value as Record<string, any> : {};
-        const tId = safeNumber(item.tId);
-        const sId = safeNumber(item.sId);
-        if (!Number.isInteger(tId) || tId <= 0 || !Number.isInteger(sId) || sId <= 0) continue;
+        const item = isRecord(value) ? value : {};
+        const tId = Number(item.tId);
+        const sId = Number(item.sId);
+        const productId = cleanText(item.pId, 12).toUpperCase();
+        if (
+            productId !== PRODUCT_IDS.ANSWERLATTICE
+            || !Number.isSafeInteger(tId)
+            || tId <= 0
+            || !Number.isSafeInteger(sId)
+            || sId <= 0
+            || key !== scopeKey(tId, sId)
+        ) continue;
         result.push({
             key: key || scopeKey(tId, sId),
             tId,
             sId,
-            active: item.active !== false,
+            active: item.active === true,
             hasEntities: typeof item.hasEntities === 'boolean' ? item.hasEntities : undefined,
             source: cleanText(item.source, 120) || null,
             timeZone: cleanText(item.timeZone, 80) || null,
@@ -195,8 +208,14 @@ function parseTenantOptions(data: Record<string, any> | undefined): TenantOption
     return result.sort((a, b) => `${a.tId}/${a.sId}`.localeCompare(`${b.tId}/${b.sId}`));
 }
 
-function serializeJob(doc: FirebaseFirestore.QueryDocumentSnapshot) {
-    const data = doc.data() || {};
+function serializeJob(
+    doc: FirebaseFirestore.QueryDocumentSnapshot,
+    scope: { tId: number; sId: number },
+) {
+    const data = parseAnswerlatticeKnowledgeIntakeJob(doc.data(), doc.id);
+    if (data.tId !== scope.tId || data.sId !== scope.sId) {
+        throw new Error('Answerlattice intake monitor job scope is invalid.');
+    }
     return {
         id: doc.id,
         tId: safeNumber(data.tId),
@@ -204,7 +223,7 @@ function serializeJob(doc: FirebaseFirestore.QueryDocumentSnapshot) {
         title: cleanText(data.title || doc.id),
         status: cleanText(data.status, 80) || 'unknown',
         sourceCount: safeNumber(data.sourceCount),
-        readySourceCount: safeNumber(data.readySourceCount ?? data.sourceReadyCount ?? data.sourceCount),
+        readySourceCount: safeNumber(data.readySourceCount ?? data.sourceCount),
         reviewItemCount: safeNumber(data.reviewItemCount),
         acceptedItemCount: safeNumber(data.acceptedItemCount),
         publishedItemCount: safeNumber(data.publishedItemCount),
@@ -218,8 +237,25 @@ function serializeJob(doc: FirebaseFirestore.QueryDocumentSnapshot) {
     };
 }
 
-function serializeLedger(doc: FirebaseFirestore.QueryDocumentSnapshot) {
+function serializeLedger(
+    doc: FirebaseFirestore.QueryDocumentSnapshot,
+    scope: { tId: number; sId: number },
+) {
     const data = doc.data() || {};
+    if (
+        !normalizeAnswerlatticeIntakeUsageLedgerId(doc.id)
+        || data.id !== doc.id
+        || String(data.pId || '').trim().toUpperCase() !== PRODUCT_IDS.ANSWERLATTICE
+        || Number(data.tId) !== scope.tId
+        || Number(data.sId) !== scope.sId
+    ) {
+        throw new Error('Answerlattice intake monitor usage ledger scope is invalid.');
+    }
+    const status = cleanText(data.status, 80) || 'unknown';
+    const isRefunded = status === 'refunded' || status === 'failed_refunded';
+    const chargedMonthlyCredits = safeNumber(data.chargedMonthlyCredits);
+    const chargedTopUpCredits = safeNumber(data.chargedTopUpCredits);
+    const hasExplicitRefundAllocation = data.refundedMonthlyCredits != null || data.refundedTopUpCredits != null;
     return {
         id: doc.id,
         tId: safeNumber(data.tId),
@@ -227,7 +263,7 @@ function serializeLedger(doc: FirebaseFirestore.QueryDocumentSnapshot) {
         jobId: cleanText(data.jobId, 160) || null,
         sourceId: cleanText(data.sourceId, 160) || null,
         action: cleanText(data.action, 120) || 'unknown',
-        status: cleanText(data.status, 80) || 'unknown',
+        status,
         provider: cleanText(data.provider, 80) || null,
         model: cleanText(data.model, 120) || null,
         fileName: cleanText(data.fileName, 180) || null,
@@ -235,8 +271,15 @@ function serializeLedger(doc: FirebaseFirestore.QueryDocumentSnapshot) {
         byteSize: safeNumber(data.byteSize),
         unitsReserved: safeNumber(data.unitsReserved),
         unitsCharged: safeNumber(data.unitsCharged),
-        chargedMonthlyCredits: safeNumber(data.chargedMonthlyCredits),
-        chargedTopUpCredits: safeNumber(data.chargedTopUpCredits),
+        chargedMonthlyCredits,
+        chargedTopUpCredits,
+        refundedMonthlyCredits: hasExplicitRefundAllocation
+            ? safeNumber(data.refundedMonthlyCredits)
+            : isRefunded ? chargedMonthlyCredits : 0,
+        refundedTopUpCredits: hasExplicitRefundAllocation
+            ? safeNumber(data.refundedTopUpCredits)
+            : isRefunded ? chargedTopUpCredits : 0,
+        expiredMonthlyCredits: safeNumber(data.expiredMonthlyCredits),
         createdOn: toIso(data.createdOn),
         settledOn: toIso(data.settledOn),
         refundedOn: toIso(data.refundedOn),
@@ -368,10 +411,11 @@ async function resolveManualTriggerTarget(triggerUrl: string) {
 }
 
 async function loadTenantOptions(db: FirebaseFirestore.Firestore) {
-    const summarySnap = await db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(TENANT_SUMMARY_DOC_ID).get();
+    const summary = await readAnswerlatticeTenantSummaryDataAdmin(db);
     return {
-        tenants: parseTenantOptions(summarySnap.data()),
-        tenantSummaryUpdatedAt: toIso(summarySnap.data()?.updatedAt),
+        tenants: parseTenantOptions(summary),
+        tenantSummaryUpdatedAt: toIso(summary.updatedAt),
+        tenantSummaryReadDocs: summary.readDocs,
     };
 }
 
@@ -402,6 +446,49 @@ async function checkAnswerlatticeIntakeMonitorReadRateLimit(request: NextRequest
             retryAfter: waitSeconds,
             resetAt: rateLimit.resetAt,
         },
+        {
+            headers: {
+                'Cache-Control': 'private, no-store',
+                'Retry-After': String(waitSeconds),
+                'X-RateLimit-Limit': String(rateLimitConfig.limit),
+                'X-RateLimit-Remaining': String(rateLimit.remaining),
+                'X-RateLimit-Reset': String(rateLimit.resetAt),
+            },
+            status: 429,
+        },
+    );
+}
+
+async function checkAnswerlatticeManualTriggerRateLimit(
+    request: NextRequest,
+    session: any,
+    scope: { tId: number; sId: number },
+) {
+    const rateLimitConfig = getRateLimitForFeature('ANSWERLATTICE_MANUAL_NIGHTLY_TRIGGER');
+    const userId = session?.uId || session?.user?.id || 'platform';
+    const rateLimit = await checkRateLimit({
+        key: buildAnswerlatticeRateLimitKey(
+            ANSWERLATTICE_INTAKE_MANUAL_TRIGGER_RATE_LIMIT_KEY,
+            `${userId}:${scope.tId}:${scope.sId}`,
+        ),
+        ...rateLimitConfig,
+    });
+    if (rateLimit.allowed) return null;
+
+    const waitSeconds = Math.max(1, Math.ceil((rateLimit.resetAt - Date.now()) / 1000));
+    logger.security('Rate Limit Exceeded - Answerlattice Manual Nightly Trigger', {
+        ...getAnswerlatticeSecurityLogContext(session, request, request.nextUrl.pathname, {
+            ...getBoundedAnswerlatticeStringContext('userId', userId),
+            ...getBoundedAnswerlatticeStringContext('tenantId', scope.tId),
+            ...getBoundedAnswerlatticeStringContext('storeId', scope.sId),
+        }),
+        limit: rateLimitConfig.limit,
+        waitSeconds,
+        window: rateLimitConfig.window,
+    }, 'high');
+
+    return NextResponse.json(
+        { error: 'Manual retry limit reached. Please wait before running it again.' },
         {
             headers: {
                 'Cache-Control': 'private, no-store',
@@ -521,8 +608,8 @@ export const GET = withPlatformAuth(async (request: NextRequest, session: any) =
                     .get(),
             ]);
 
-            jobs = jobsSnap.docs.map(serializeJob);
-            ledger = ledgerSnap.docs.map(serializeLedger);
+            jobs = jobsSnap.docs.map(doc => serializeJob(doc, selectedScope));
+            ledger = ledgerSnap.docs.map(doc => serializeLedger(doc, selectedScope));
         }
 
         const failedJobs = jobs.filter(job => job.status === 'failed');
@@ -542,7 +629,7 @@ export const GET = withPlatformAuth(async (request: NextRequest, session: any) =
                 ledgerChargedUnits: ledger.reduce((sum, row) => sum + row.unitsCharged, 0),
                 ledgerRefundedUnits: ledger
                     .filter(row => row.status === 'refunded' || row.status === 'failed_refunded')
-                    .reduce((sum, row) => sum + row.unitsReserved, 0),
+                    .reduce((sum, row) => sum + row.refundedMonthlyCredits + row.refundedTopUpCredits, 0),
                 mediaExtractions: ledger.filter(row => row.action.toLowerCase().includes('ocr') || row.action.toLowerCase().includes('transcription')).length,
                 latestSchedulerRun,
             }
@@ -587,7 +674,7 @@ export const GET = withPlatformAuth(async (request: NextRequest, session: any) =
     }
 });
 
-export const POST = withPlatformAuth(async (request: NextRequest) => {
+export const POST = withPlatformAuth(async (request: NextRequest, session: any) => {
     if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_INTAKE_PLATFORM_MONITOR) {
         return NextResponse.json({ error: 'Answerlattice intake monitor is disabled.' }, { status: 404 });
     }
@@ -614,7 +701,9 @@ export const POST = withPlatformAuth(async (request: NextRequest) => {
     }
 
     const { tId, sId } = validation.data;
-    const secret = process.env.ANSWERLATTICE_CRON_SECRET || process.env.CRON_SECRET;
+    const rateLimitResponse = await checkAnswerlatticeManualTriggerRateLimit(request, session, { tId, sId });
+    if (rateLimitResponse) return rateLimitResponse;
+    const secret = process.env.ANSWERLATTICE_CRON_SECRET;
     const triggerUrl = getManualTriggerUrl();
     if (!secret || !triggerUrl) {
         return NextResponse.json({ error: 'Answerlattice manual scheduler trigger is not configured.' }, { status: 503 });
@@ -623,7 +712,7 @@ export const POST = withPlatformAuth(async (request: NextRequest) => {
     try {
         const { tenants } = await loadTenantOptions(db);
         const selectedTenant = tenants.find(item => item.tId === tId && item.sId === sId);
-        if (!selectedTenant) {
+        if (!selectedTenant || !selectedTenant.active) {
             return NextResponse.json({ error: 'Selected Answerlattice workspace is not present in answerlatticeTenantsSummary.' }, { status: 404 });
         }
 

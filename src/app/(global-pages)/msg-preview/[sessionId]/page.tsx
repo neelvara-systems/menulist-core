@@ -12,6 +12,7 @@
 import { useParams, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { secureError } from "@lib/security/secureLogger";
+import { BUSINESS_TYPES } from "@data/shared/businessTypes";
 import {
   getMessagingPreviewClientStatus,
   isMessagingPreviewMaxReachedError,
@@ -19,12 +20,22 @@ import {
   readMessagingPreviewDataResponse,
   readMessagingPreviewFixResponse,
   type MessagingPreviewData,
+  type MessagingPreviewLocalizedText,
   type MessagingPreviewPublishedResult,
 } from "@lib/messaging-onboarding/previewClientResponse";
 
 interface FixIssue {
   value: string;
   label: string;
+}
+
+function getPreviewText(
+  value: MessagingPreviewLocalizedText | undefined,
+  fallback: string,
+): string {
+  if (typeof value === "string") return value;
+  if (value?.en) return value.en;
+  return value ? Object.values(value)[0] || fallback : fallback;
 }
 
 const MSG_PREVIEW_PUBLISH_FAILED = "Publishing failed. Try again.";
@@ -442,6 +453,7 @@ export default function MsgPreviewPage() {
                 type="text"
                 value={businessName}
                 onChange={(e) => setBusinessName(e.target.value)}
+                maxLength={100}
                 style={styles.input}
                 autoFocus
               />
@@ -468,13 +480,16 @@ export default function MsgPreviewPage() {
           <label style={styles.label}>Business Type</label>
           {editingType ? (
             <div style={styles.editRow}>
-              <input
-                type="text"
+              <select
                 value={businessType}
                 onChange={(e) => setBusinessType(e.target.value)}
                 style={styles.input}
                 autoFocus
-              />
+              >
+                {BUSINESS_TYPES.map((type) => (
+                  <option key={type.value} value={type.value}>{type.label}</option>
+                ))}
+              </select>
               <button
                 onClick={() => setEditingType(false)}
                 style={styles.saveBtn}
@@ -508,6 +523,7 @@ export default function MsgPreviewPage() {
                 type="text"
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
+                maxLength={200}
                 style={styles.input}
                 autoFocus
               />
@@ -538,28 +554,36 @@ export default function MsgPreviewPage() {
         <h2 style={styles.sectionTitle}>
           Menu ({categories.length} categories, {items.length} items)
         </h2>
-        {categories.map((cat: any, catIdx: number) => {
+        {categories.map((cat, catIdx) => {
           const catItems = items.filter(
-            (item: any) => item.category === cat.id || item.category === cat.name?.en,
+            (item) => item.category === cat.id || item.category === getPreviewText(cat.name, ""),
           );
           return (
             <div key={catIdx} style={styles.category}>
               <h3 style={styles.categoryName}>
-                {cat.name?.en || cat.name || `Category ${catIdx + 1}`}
+                {getPreviewText(cat.name, `Category ${catIdx + 1}`)}
               </h3>
               {catItems.length === 0 && (
                 <p style={styles.emptyCategory}>No items in this category</p>
               )}
-              {catItems.map((item: any, itemIdx: number) => (
+              {catItems.map((item, itemIdx) => (
                 <div key={itemIdx} style={styles.menuItem}>
                   <div style={styles.itemInfo}>
                     <span style={styles.itemName}>
-                      {item.name?.en || item.name || `Item ${itemIdx + 1}`}
+                      {getPreviewText(item.name, `Item ${itemIdx + 1}`)}
                     </span>
-                    {item.description?.en && (
+                    {item.description && (
                       <span style={styles.itemDesc}>
-                        {item.description.en}
+                        {getPreviewText(item.description, "")}
                       </span>
+                    )}
+                    {item.attributes?.map((attribute) => (
+                      <span key={attribute.id} style={styles.itemAttribute}>
+                        {getPreviewText(attribute.name, "Option")}: {attribute.price || "—"}
+                      </span>
+                    ))}
+                    {item.available === false && (
+                      <span style={styles.itemUnavailable}>Unavailable</span>
                     )}
                   </div>
                   <span style={styles.itemPrice}>
@@ -796,6 +820,19 @@ const styles: Record<string, React.CSSProperties> = {
     display: "block",
     fontSize: 12,
     color: "#888",
+    marginTop: 2,
+  },
+  itemUnavailable: {
+    display: "block",
+    fontSize: 12,
+    color: "#9a3412",
+    fontWeight: 600,
+    marginTop: 2,
+  },
+  itemAttribute: {
+    display: "block",
+    fontSize: 12,
+    color: "#555",
     marginTop: 2,
   },
   itemPrice: {

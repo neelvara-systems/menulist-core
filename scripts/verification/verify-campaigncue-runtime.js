@@ -42,6 +42,10 @@ function verifyFeatureFlags() {
   assertIncludes(flags, "ENABLE_CAMPAIGNCUE_ANALYTICS: true", "CampaignCue analytics flag");
   assertIncludes(flags, "ENABLE_CAMPAIGNCUE_PUBLISHING: false", "CampaignCue publishing flag");
   assertIncludes(flags, "ENABLE_CAMPAIGNCUE_BILLING: false", "CampaignCue billing flag");
+  assertIncludes(flags, "ENABLE_CAMPAIGNCUE_AI_ASSISTANCE_PLAN: true", "CampaignCue AI assistance plan flag");
+  assertIncludes(flags, "ENABLE_CAMPAIGNCUE_AI_PROVIDER_CALLS: false", "CampaignCue AI provider-call gate");
+  assertIncludes(flags, "ENABLE_CAMPAIGNCUE_PATTERN_CUE: true", "CampaignCue Pattern Cue deterministic surface flag");
+  assertIncludes(flags, "ENABLE_CAMPAIGNCUE_PATTERN_CUE_MODEL_ASSIST: false", "CampaignCue Pattern Cue model assist gate");
   assertIncludes(flags, "ENABLE_SHARED_CREATIVE_EDITOR: true", "Shared creative editor flag");
   assertIncludes(flags, "ENABLE_SHARED_CREATIVE_EDITOR_INTERACTIVE_CANVAS: true", "Shared creative editor interactive canvas flag");
   assertIncludes(flags, "ENABLE_SHARED_CREATIVE_EDITOR_FABRIC_ADAPTER: true", "Shared creative editor Fabric adapter flag");
@@ -183,6 +187,7 @@ function verifyServerRuntime() {
   const server = read("src/lib/campaigncue/server.ts");
   const cueLayersServer = read("src/lib/campaigncue/cue-layers/server.ts");
   const dailyDesk = read("src/lib/campaigncue/dailyDesk.ts");
+  const operatingLoop = read("src/lib/campaigncue/operatingLoop.ts");
   const decisionEngine = read("src/lib/campaigncue/decisionEngine.ts");
   const dailyDeskConstants = read("src/constants/campaigncue/dailyDesk.ts");
   const campaigncueTypes = read("src/types/campaigncue.ts");
@@ -207,6 +212,8 @@ function verifyServerRuntime() {
   assertIncludes(server, "campaigncueFirestoreAdmin as firestoreAdmin", "CampaignCue server dedicated Firestore Admin");
   assertIncludes(server, "firestoreAdmin as menuListFirestoreAdmin", "CampaignCue server MenuList source-read Admin");
   assertIncludes(server, "menuListFirestoreAdmin.collection(DB_COLLECTIONS.STORES)", "CampaignCue source bootstrap reads MenuList store profile");
+  assertIncludes(server, "sourceInputs.flatMap((sourceInput) => sourceInputToFacts(sourceInput))", "CampaignCue source fact flattening does not pass the array index as the optional clock");
+  assertNotIncludes(server, "sourceInputs.flatMap(sourceInputToFacts)", "CampaignCue source fact flattening must not bind the flatMap index to the optional Date parameter");
   assertNotIncludes(server, "Promise.all([ref.get(), readStoreData(scope)])", "CampaignCue workspace load avoids repeat MenuList source reads");
   assertIncludes(server, "firestoreAdmin.collection(CAMPAIGNCUE_COLLECTIONS.WORKSPACES)", "CampaignCue workspace writes use dedicated Admin");
   assertIncludes(server, "CAMPAIGNCUE_PAGE_SIZE", "CampaignCue server bounded list limit");
@@ -241,6 +248,12 @@ function verifyServerRuntime() {
   assertIncludes(server, "firstMissingInput?.ownerQuestion", "CampaignCue server returns owner-facing missing input reason");
   assertIncludes(server, "responseError: decisionGateMessage", "CampaignCue decision-gate rejection completes idempotency as replayable error");
   assertIncludes(server, "Daily Campaign Desk is computed from the same overview documents", "CampaignCue daily desk adds no overview read");
+  assertIncludes(campaigncueTypes, "CampaignCueAIAssistancePlan", "CampaignCue AI assistance plan type");
+  assertIncludes(dailyDesk, "buildCampaignCueAIAssistancePlan", "CampaignCue Daily Desk derives AI assistance plan");
+  assertIncludes(dailyDesk, "instructions/assistant-work-plan.md", "CampaignCue output ZIP includes assistant work plan");
+  assertIncludes(dailyDesk, "providerCalls: 0", "CampaignCue AI assistance plan records zero provider calls");
+  assertIncludes(dailyDesk, "firestoreReads: 0", "CampaignCue AI assistance plan records zero Firestore reads");
+  assertIncludes(dailyDesk, "firestoreDeletes: 0", "CampaignCue AI assistance plan records zero Firestore deletes");
   assertIncludes(server, "normalizeCampaignCueWorkspace", "CampaignCue server normalizes legacy workspace delivery settings");
   assertIncludes(server, "providerConnections: []", "CampaignCue overview avoids active provider connection reads");
   assertIncludes(server, "readsPerLoad: 8", "CampaignCue overview read cost excludes provider connection collection");
@@ -259,8 +272,10 @@ function verifyServerRuntime() {
   assertIncludes(server, "...brandPlaybookSourceRefs(businessBrain)", "CampaignCue initial source snapshot records Brand Playbook provenance");
   assertIncludes(server, "...brandPlaybookSourceRefs(params.businessBrain)", "CampaignCue merged source snapshot records Brand Playbook provenance");
   assertIncludes(server, "isCampaignSourceInputRef", "CampaignCue has a shared campaign-source predicate");
-  assertIncludes(server, "const hasManualSourceInput = sourceRefs.some(isCampaignSourceInputRef)", "CampaignCue merged source snapshot does not treat Brand Playbook as a manual campaign input");
-  assertIncludes(server, "sourceSnapshot.sourceRefs.filter(isCampaignSourceInputRef)", "CampaignCue opportunity source refs do not treat Brand Playbook as current campaign input");
+  assertIncludes(server, "isCampaignSourceInputRef(sourceRef) && !isCampaignPatternSourceRef(sourceRef)", "CampaignCue merged source snapshot excludes Brand Playbook and inspiration refs from manual business truth");
+  assertIncludes(server, "const snapshotSourceRefs = businessSourceInputs.length", "CampaignCue opportunity source refs prefer active business source inputs");
+  assertIncludes(server, "sourceSnapshot.sourceRefs.filter((sourceRef) => (", "CampaignCue opportunity source refs filter compact snapshot refs");
+  assertIncludes(server, "isCampaignSourceInputRef(sourceRef) && !isCampaignPatternSourceRef(sourceRef)", "CampaignCue opportunity source refs exclude Brand Playbook and pattern refs from current campaign input");
   assertIncludes(server, "brand_playbook_avoid_term", "CampaignCue trust report warns on Brand Playbook avoid-list terms");
   assertIncludes(businessPatchBlock, "mergeBrandPlaybookPatch", "CampaignCue business patch stores Brand Playbook through existing profile save");
   assertIncludes(server, "buildUgcDialogueActionBrief", "CampaignCue server builds structured UGC dialogue/action briefs");
@@ -329,6 +344,19 @@ function verifyServerRuntime() {
   assertIncludes(dailyDesk, "downloadBundle", "CampaignCue output pack exposes structured download bundle files");
   assertIncludes(dailyDesk, "miniPage", "CampaignCue output pack includes mini-page and QR brief contract");
   assertIncludes(dailyDesk, "proofDeck", "CampaignCue output pack includes Campaign Proof Deck contract");
+  assertIncludes(dailyDesk, "const freshness = evaluateCampaignCuePackFreshness({", "CampaignCue output pack evaluates persisted-pack freshness safely");
+  assertIncludes(dailyDesk, "now: params.now,", "CampaignCue output pack uses the caller clock for deterministic freshness checks");
+  assertIncludes(dailyDesk, "const packStatus = outputPackStatusFromCampaign(params.campaign, params.missingInputs, freshness.status);", "CampaignCue output pack file status uses evaluated freshness instead of only saved status");
+  assertIncludes(dailyDesk, "freshness,", "CampaignCue output pack exposes evaluated freshness");
+  assertIncludes(dailyDesk, "const commercialEvaluation = evaluateCampaignCueCommercialGate({", "CampaignCue output pack re-evaluates current commercial policy and source inputs");
+  assertIncludes(dailyDesk, "commercialSafety,", "CampaignCue output pack exposes the persisted commercial gate shape");
+  assertIncludes(dailyDesk, "language: {", "CampaignCue output pack exposes normalized language policy");
+  assertIncludes(dailyDesk, "presencePassport: {", "CampaignCue output pack exposes the owner-managed presence passport");
+  assertIncludes(dailyDesk, "staffExecution: {", "CampaignCue output pack exposes staff execution steps and completion prompt");
+  assertIncludes(dailyDesk, "const learning = params.campaign.pack?.experiment || buildCampaignCueExperimentSuggestion({", "CampaignCue output pack preserves its experiment or derives one deterministically");
+  assertIncludes(dailyDesk, "learning,", "CampaignCue output pack exposes the selected experiment");
+  assertNotIncludes(dailyDesk, "outputPack as CampaignCueOutputPack", "CampaignCue pack review cannot hide output-contract drift behind a cast");
+  assertIncludes(operatingLoop, "Array.from(text.matchAll(pattern))", "CampaignCue explicit-price parsing is compatible with the repository TypeScript target");
   assertIncludes(dailyDesk, "proof-deck/campaign-proof-deck.md", "CampaignCue output pack writes proof deck brief file");
   assertIncludes(dailyDesk, "This is a review brief", "CampaignCue proof deck preserves brief-only boundary");
   assertIncludes(dailyDesk, "dialogue/action beat sheet", "CampaignCue proof deck captures UGC dialogue/action reference");
@@ -462,6 +490,9 @@ function verifyClientRuntime() {
   assertIncludes(app, "campaigncue_workspace_response_parse_failed", "CampaignCue workspace response parse diagnostic");
   assertIncludes(app, "campaigncue_workspace_response_rejected", "CampaignCue workspace response rejected diagnostic");
   assertIncludes(app, "campaigncue_workspace_response_invalid", "CampaignCue workspace response invalid diagnostic");
+  assertIncludes(app, "if (payload.ok === false)", "CampaignCue workspace narrows failed acknowledgements before reading failure-only fields");
+  assertIncludes(app, '"message" in payload && payload.message', "CampaignCue campaign action guards the bounded failure acknowledgement message");
+  assertIncludes(app, '"Action could not be recorded."', "CampaignCue campaign action retains a fixed failure fallback");
   assertIncludes(app, "isCampaignCueOverviewData", "CampaignCue workspace overview response guard");
   assertIncludes(app, "isCueLayerBootPackageData", "CampaignCue CueLayers boot response guard");
   assertIncludes(app, "isCueLayerUploadResultData", "CampaignCue CueLayers upload response guard");
@@ -495,7 +526,7 @@ function verifyClientRuntime() {
     "Google local drafts",
     "Ad handoffs",
     "Can this be used?",
-    "Posting reminders",
+    "Manual campaign reminders",
     "Photos and files",
     "Usage summary",
     "Approvals and handoff",
@@ -526,7 +557,8 @@ function verifyClientRuntime() {
   assertIncludes(app, "No owner action is needed", "CampaignCue setup blocker uses owner-safe copy");
   assertIncludes(app, "Download campaign pack ZIP", "CampaignCue owner can download full campaign pack ZIP");
   assertIncludes(app, "buildCampaignPackZipBlob", "CampaignCue owner export builds the ZIP before recording export");
-  assertIncludes(app, "downloadCampaignPackZip", "CampaignCue owner export exposes a ZIP download helper");
+  assertIncludes(app, "recordAction(editorContext.campaign as CampaignCueCampaign, \"export\")", "CampaignCue editor ZIP uses protected export action");
+  assertNotIncludes(app, "downloadCampaignPackZip", "CampaignCue editor has no pre-authorization ZIP download helper");
   assertIncludes(app, "downloadBlob(exportZip.filename, exportZip.blob)", "CampaignCue export downloads ZIP only after protected action succeeds");
   assertIncludes(app, "campaign-pack.json", "CampaignCue ZIP includes machine-readable output pack contract");
   assertIncludes(app, "campaign-pack-summary.md", "CampaignCue ZIP keeps readable campaign summary");
@@ -543,6 +575,10 @@ function verifyClientRuntime() {
   assertIncludes(app, "Manual handoff", "CampaignCue outputs show manual handoff steps");
   assertIncludes(app, "Missing input inbox", "CampaignCue owner home surfaces missing input inbox");
   assertIncludes(app, "Why this recommendation", "CampaignCue owner home explains deterministic recommendation");
+  assertIncludes(app, "AI assistance plan", "CampaignCue owner home surfaces bounded AI assistance");
+  assertIncludes(app, "The model does not choose campaigns, change protected facts, or post anywhere.", "CampaignCue AI assistance copy preserves owner boundary");
+  assertIncludes(app, "AIAssistancePlan", "CampaignCue owner UI renders AI assistance plan component");
+  assertIncludes(app, "## AI assistance plan", "CampaignCue pack export includes AI assistance summary");
   assertIncludes(app, "CampaignCue decides from facts, recipes, readiness, and memory", "CampaignCue owner home rejects AI-oracle positioning");
   assertIncludes(app, "DecisionEvidenceCard", "CampaignCue owner UI renders decision evidence card");
   assertIncludes(app, "decision.score.finalScore", "CampaignCue owner UI shows decision score");
@@ -1368,7 +1404,7 @@ function verifyRouteBoundary() {
   assertIncludes(middleware, "productNotFoundResponse(product, product.devPathPrefix)", "CampaignCue local-dev unknown feature slug returns product 404");
   assertIncludes(middleware, "productConfig.id === 'campaigncue'", "CampaignCue product-domain route special case");
   assertIncludes(campaignCueRouteBlock, "shouldBypassDomainRouting(pathname)", "CampaignCue product domain preserves API/internal bypass routes");
-  assertIncludes(campaignCueRouteBlock, "NextResponse.next()", "CampaignCue product domain bypass routes pass through without site rewrite");
+  assertIncludes(campaignCueRouteBlock, "nextWithProductHeaders(request, productConfig)", "CampaignCue product domain bypass routes pass through with sanitized product headers and without site rewrite");
   assertIncludes(middleware, "getCampaignCueWorkspaceRewritePath(strippedPath)", "CampaignCue local dev /__campaigncue/app rewrite");
   assertIncludes(productDomains, "Public product websites belong under src/app/sites/[productId]", "Product domain route-boundary comment");
   assertIncludes(routingDoc, "Product Site Vs Product App Routes", "Global routing doc product site/app boundary");
@@ -1464,7 +1500,7 @@ function verifyDocsAlignment() {
   assertIncludes(publicSite, "href: CAMPAIGNCUE_WEBSITE_FEATURE_PATHS.creativeStudio", "CampaignCue public homepage links Creative Studio capability page");
   assertIncludes(publicSite, "href: CAMPAIGNCUE_WEBSITE_FEATURE_PATHS.cueLayers", "CampaignCue public homepage links CueLayers capability page");
   assertIncludes(publicSite, "href: CAMPAIGNCUE_WEBSITE_FEATURE_PATHS.creativeTrustCenter", "CampaignCue public homepage links Creative Trust Center capability page");
-  assertIncludes(publicSite, "Know what to promote today. Get copy, creative, print notes, and review checks ready to copy or download.", "CampaignCue public hero uses the simplified SMB-owner promise");
+  assertIncludes(publicSite, "Know what is safe and useful to promote today. Get the checked pack, staff handoff, and owner-controlled files ready to use.", "CampaignCue public hero reflects the governed operating-loop promise");
   assertIncludes(publicSite, "Copy or download", "CampaignCue public proof strip keeps a simple owner action label");
   assertIncludes(publicFeatureRoute, "getCampaignCueWebsiteFeature(params.featureSlug)", "CampaignCue feature route resolves pages from product-scoped feature constants");
   assertIncludes(read("src/middleware.ts"), "isInvalidCampaignCuePublicFeaturePath", "CampaignCue middleware rejects unknown public feature slugs before rewrite");

@@ -1,0 +1,156 @@
+#!/usr/bin/env ts-node
+
+import assert from 'node:assert/strict';
+import type { AnswerlatticeAccessContext } from '../../src/lib/answerlattice/accessControl';
+import { executeAnswerlatticeReleaseAction } from '../../src/lib/answerlattice/releaseServer';
+import { answerlatticeFirestoreAdmin as db } from '../../src/lib/firebase/answerlatticeFirebaseAdmin';
+import { Timestamp } from 'firebase-admin/firestore';
+
+const access: AnswerlatticeAccessContext = {
+    canUseManagement: true,
+    currentRoleId: 'owner',
+    isPlatformAdmin: false,
+    permissions: {} as AnswerlatticeAccessContext['permissions'],
+    roles: [],
+    scope: { tenantId: 1, storeId: 101 },
+    storeName: 'Example',
+    user: { id: 'owner-1', email: 'owner@example.com', name: 'Owner' },
+};
+
+const createAction = (requestId: string, versionNormalized: number, entityChanges = ['billing']) => ({
+    action: 'create' as const,
+    requestId,
+    versionLabel: `v${versionNormalized}`,
+    versionNormalized,
+    releasedAt: '2026-07-11T10:00:00.000Z',
+    entityChanges,
+});
+
+async function run(): Promise<void> {
+    if (!process.env.FIRESTORE_EMULATOR_HOST) throw new Error('FIRESTORE_EMULATOR_HOST is required');
+    if (!db) throw new Error('Answerlattice Firestore Admin is required');
+    for (const name of [
+        'answerlattice_entities',
+        'answerlattice_canonicalAnswers',
+        'answerlattice_releases',
+        'answerlattice_auditLogs',
+        'platformSummary',
+    ]) {
+        await db.recursiveDelete(db.collection(name));
+    }
+
+    await db.collection('answerlattice_entities').doc('billing').set({ pId: 'AL', tId: 1, sId: 101, name: 'Billing' });
+    await db.collection('answerlattice_entities').doc('other-workspace').set({ pId: 'AL', tId: 2, sId: 202, name: 'Other' });
+    await db.collection('answerlattice_entities').doc('coercive-scope').set({ pId: 'AL', tId: '1', sId: '101', name: 'Coercive' });
+    await db.collection('answerlattice_canonicalAnswers').doc('answer-billing').set({
+        pId: 'AL',
+        tId: 1,
+        sId: 101,
+        status: 'active',
+        scope: { entityIds: ['billing'] },
+        productBinding: { lastValidatedInVersion: 1 },
+        governance: { driftFlag: false, driftReason: null },
+    });
+    await db.collection('answerlattice_canonicalAnswers').doc('other-product').set({
+        pId: 'ML',
+        tId: 1,
+        sId: 101,
+        status: 'active',
+        scope: { entityIds: ['billing'] },
+        productBinding: { lastValidatedInVersion: 1 },
+        governance: { driftFlag: false, driftReason: null },
+    });
+
+    const created = await executeAnswerlatticeReleaseAction(createAction('release_request_1', 2), access);
+    assert.equal(created.action, 'create');
+    assert.equal(created.replayed, false);
+    const replay = await executeAnswerlatticeReleaseAction(createAction('release_request_1', 2), access);
+    assert.equal(replay.replayed, true);
+    await assert.rejects(
+        executeAnswerlatticeReleaseAction(createAction('release_request_1', 3), access),
+        (error: unknown) => Number((error as { status?: unknown })?.status) === 409,
+    );
+    await assert.rejects(
+        executeAnswerlatticeReleaseAction(createAction('release_request_2', 3, ['other-workspace']), access),
+        (error: unknown) => Number((error as { status?: unknown })?.status) === 400,
+    );
+    await assert.rejects(
+        executeAnswerlatticeReleaseAction(createAction('release_request_coercive', 3, ['coercive-scope']), access),
+        (error: unknown) => Number((error as { status?: unknown })?.status) === 400,
+    );
+
+    if (created.action !== 'create') throw new Error('Expected created release');
+    const activation = await executeAnswerlatticeReleaseAction({
+        action: 'activate',
+        requestId: 'release_activate_1',
+        releaseId: created.releaseId,
+    }, access);
+    assert.equal(activation.action, 'activate');
+    assert.equal(activation.status, 'active');
+    assert.equal(activation.evaluatedAnswers, 1);
+    assert.equal(activation.driftedAnswers, 1);
+    const answer = (await db.collection('answerlattice_canonicalAnswers').doc('answer-billing').get()).data();
+    assert.equal(answer?.governance?.driftFlag, true);
+    assert.match(answer?.governance?.driftReason || '', /version_mismatch/);
+    const release = (await db.collection('answerlattice_releases').doc(created.releaseId).get()).data();
+    assert.equal(release?.status, 'active');
+    assert.equal(release?.driftEvaluation?.status, 'completed');
+    const sourceVersions = (await db.collection('platformSummary').doc('sourceVersions_1_101').get()).data();
+    assert.equal(sourceVersions?.releases, 1);
+    const activeReplay = await executeAnswerlatticeReleaseAction({
+        action: 'activate',
+        requestId: 'release_activate_replay',
+        releaseId: created.releaseId,
+    }, access);
+    assert.equal(activeReplay.replayed, true);
+
+    const second = await executeAnswerlatticeReleaseAction(createAction('release_request_3', 3), access);
+    if (second.action !== 'create') throw new Error('Expected second release');
+    await db.collection('answerlattice_canonicalAnswers').doc('malformed-answer').set({
+        pId: 'AL', tId: 1, sId: 101, status: 'active', scope: { entityIds: ['billing'] },
+        productBinding: {}, governance: { driftFlag: false },
+    });
+    await assert.rejects(executeAnswerlatticeReleaseAction({
+        action: 'activate',
+        requestId: 'release_activate_2',
+        releaseId: second.releaseId,
+    }, access));
+    const failed = (await db.collection('answerlattice_releases').doc(second.releaseId).get()).data();
+    assert.equal(failed?.status, 'pending', 'failed activation must be retryable, not stranded processing');
+    assert.equal(failed?.driftEvaluation?.status, 'failed');
+    await db.collection('answerlattice_canonicalAnswers').doc('malformed-answer').update({
+        productBinding: { lastValidatedInVersion: 2 },
+    });
+    await db.collection('answerlattice_canonicalAnswers').doc('malformed-answer').update({
+        productBinding: { lastValidatedInVersion: '2' },
+    });
+    await assert.rejects(executeAnswerlatticeReleaseAction({
+        action: 'activate',
+        requestId: 'release_activate_string_version',
+        releaseId: second.releaseId,
+    }, access));
+    await db.collection('answerlattice_canonicalAnswers').doc('malformed-answer').update({
+        productBinding: { lastValidatedInVersion: 2 },
+    });
+    const retried = await executeAnswerlatticeReleaseAction({
+        action: 'activate',
+        requestId: 'release_activate_3',
+        releaseId: second.releaseId,
+    }, access);
+    assert.equal(retried.status, 'active');
+
+    const audit = await db.collection('answerlattice_auditLogs')
+        .where('pId', '==', 'AL')
+        .where('tId', '==', 1)
+        .where('sId', '==', 101)
+        .get();
+    assert.ok(audit.size >= 5, 'release lifecycle and drift changes must be audited');
+    assert.ok(Timestamp.now().toMillis() > 0);
+}
+
+run()
+    .then(() => process.stdout.write('Answerlattice release emulator tests passed.\n'))
+    .catch((error) => {
+        process.stderr.write(`${error instanceof Error ? error.stack || error.message : String(error)}\n`);
+        process.exit(1);
+    });

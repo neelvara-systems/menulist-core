@@ -4,6 +4,8 @@
 **Created:** July 7, 2026
 **Primary output:** 60-75 second launch film plus 30-second launch cut
 
+**Mandatory production standard:** [MenuList Founder-Approved Video Production Standard](./videos_founder-approved-production-standard.md).
+
 ## Purpose
 
 The launch / hero video explains MenuList in one clean story.

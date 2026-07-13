@@ -92,7 +92,7 @@ export const addBlog = async (data: any) => {
         async () => {
 
             //add user first
-            const docRef = await addDoc(getCollectionRef(), await requestBodyComposer(data));
+            const docRef = await addDoc(getCollectionRef(), await requestBodyComposer(data, { isNew: true }));
             data.id = docRef.id
             if (data.imageToUpdate) {
                 const newUrl = await updateImage(data)

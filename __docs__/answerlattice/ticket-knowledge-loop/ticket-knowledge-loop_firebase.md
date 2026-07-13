@@ -37,7 +37,7 @@
 | Audit log writes | Write | 0-5 | One per extraction attempt |
 | **Total per tenant** | | **~66-76** | |
 
-Existing-answer lookup failures during dedupe are non-blocking. They log `ANSWERLATTICE_TICKET_KNOWLEDGE_EXISTING_ANSWERS_LOAD_FAILED` with source error name/code/status, tenant/store scope booleans, and bounded entity identifier metadata before continuing with an empty title list.
+Existing-answer lookup failures during dedupe are non-blocking. They log `ANSWERLATTICE_TICKET_KNOWLEDGE_EXISTING_ANSWERS_LOAD_FAILED` with source error name/code/status, tenant/store scope booleans, and bounded entity identifier metadata before continuing with an empty title list. Entity loads and proposal merges independently require exact stored product/tenant/store identity. Merge counters are exact nonnegative safe integers; only an absent legacy counter can be derived from the admitted ticket-ID list, and malformed counters abort the transaction. Entity read failures use `ANSWERLATTICE_TICKET_KNOWLEDGE_ENTITY_LOAD_FAILED` rather than being reported as missing truth.
 
 ### Enhanced Signal Emission (Frontend, Per Ticket Resolution)
 
@@ -116,7 +116,7 @@ No new composite indexes required.
 
 All frontend operations use existing DAL:
 - `emitAnswerlatticeSignal()` — enhanced metadata (signalEmitter.ts)
-- `approveDraftAsCanonicalAnswer()` — unchanged (mutationProposals.ts)
+- `runAnswerlatticeGovernanceAction({ action: 'approve_proposal' })` — browser handoff to the protected server transaction; canonical and proposal-decision writes are not client-authorized
 
 ### Cloud Function Operations (Server-Side)
 

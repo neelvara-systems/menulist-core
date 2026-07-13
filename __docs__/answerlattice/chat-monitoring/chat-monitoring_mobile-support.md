@@ -1,7 +1,7 @@
 # Chat Monitoring - Mobile Support
 
 > **Version:** 1.1.0
-> **Last Updated:** 2026-05-19
+> **Last Updated:** 2026-07-12
 > **Audience:** Mobile team, Product, Platform Ops
 
 ---
@@ -22,7 +22,7 @@ These routes are operational product screens, not overview cards. They render th
 
 MenuList is only the first independent client integration for Answerlattice. The chat monitoring screens remain Answerlattice/platform operator workflows and must not hard-code MenuList-only product assumptions beyond the host route that exposes them in the MenuList More tab.
 
-Runtime note: the current Cloud Function analytics jobs behind these screens are still MenuList-hosted. Feedback Intelligence, KB Quality, and Weekly Narrative run from `functions/src/` and write MenuList `insights/{tId}/stores/{sId}/ai/*` documents; they are not active `functions-answerlattice/` scheduler exports.
+Runtime note: these screens resolve the signed-in Answerlattice product account and use the dedicated Answerlattice Firebase clients. Daily summaries and source-backed feedback/weekly projections run in `functions-answerlattice/`; no MenuList scheduler worker supplies this data.
 
 ## Mobile Scope
 

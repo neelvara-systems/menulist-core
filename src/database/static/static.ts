@@ -1,23 +1,152 @@
-import { ERROR_RESPONSE, SUCCESS_RESPONSE } from "@constant/common";
+import { SUCCESS_RESPONSE } from "@constant/common";
 import { DB_COLLECTIONS } from "@constant/database";
 import { deleteFileByUrl } from "@database/storage/deleteFromStorage";
 import uploadBase64ToStorage from "@database/storage/uploadBase64ToStorage";
-import { addDoc, collection } from "@firebase/firestore";
+import { addDoc, collection, doc, getDocs, runTransaction, updateDoc } from "@firebase/firestore";
 import { requestBodyComposer } from "@lib/apiHelper";
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
+import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
+import { createRandomIdSegment } from "@lib/runtime/randomId";
 import { STORAGE_CACHE_CONTROL } from "@lib/storage/cacheControl";
 import { AssetsCategoryType, CraftBuilderAssetsTypesType } from "@type/assets";
-import { arrayRemove, arrayUnion, deleteDoc, doc, getDocs, updateDoc } from "firebase/firestore";
 import { getStaticAssetEntityLogContext, logStaticAssetDiagnostic, logStaticAssetFailure } from "./staticDiagnostics";
 
 const COLLECTION = `${DB_COLLECTIONS.COMMON}/${DB_COLLECTIONS.ASSETS}/`;
+const MAX_ASSET_CHILDREN = 1000;
 const FIREBASE_STORAGE_DOWNLOAD_HOSTS = new Set([
     "firebasestorage.googleapis.com",
     "storage.googleapis.com",
 ]);
+const ASSET_PREVIEW_TYPES = new Set<AssetsCategoryType['previewType']>([
+    'gif',
+    'image/gif',
+    'image/jpeg',
+    'image/png',
+    'image/svg+xml',
+    'image/webp',
+    'jpeg',
+    'png',
+    'svg',
+    'webp',
+]);
 
-const isFirebaseStorageReference = (value: unknown): boolean => {
+type AssetMutationInput = Partial<AssetsCategoryType> & {
+    newPreview?: string | null;
+};
+
+type PreparedAssetMutation = {
+    data: AssetMutationInput;
+    previousPreview: string | null;
+    uploadedPreview: string | null;
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> => (
+    Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+);
+
+const isAssetType = (value: unknown): value is CraftBuilderAssetsTypesType => (
+    value === 'illustrations' || value === 'images' || value === 'graphics'
+);
+
+const normalizeAssetEntityId = (value: unknown): string | number | undefined => {
+    if (typeof value === 'number' && Number.isSafeInteger(value) && value > 0) return value;
+    if (typeof value !== 'string') return undefined;
+    const normalized = value.trim();
+    return normalized && normalized.length <= 128 ? normalized : undefined;
+};
+
+const normalizeAssetList = (value: unknown, depth: number): AssetsCategoryType[] => {
+    if (!Array.isArray(value) || value.length > MAX_ASSET_CHILDREN || depth > 2) return [];
+    return value
+        .map((entry) => normalizeAssetCategory(entry, undefined, depth))
+        .filter((entry): entry is AssetsCategoryType => entry !== null);
+};
+
+const readPersistedAssetList = (value: unknown, depth: number): AssetsCategoryType[] => {
+    if (value === undefined || value === null) return [];
+    if (!Array.isArray(value) || value.length > MAX_ASSET_CHILDREN) {
+        throw new Error('static_asset_persisted_list_invalid');
+    }
+    const normalized = normalizeAssetList(value, depth);
+    if (normalized.length !== value.length || normalized.some((entry) => entry.id === undefined)) {
+        throw new Error('static_asset_persisted_child_invalid');
+    }
+    return normalized;
+};
+
+const normalizeAssetCategory = (
+    value: unknown,
+    documentId?: string,
+    depth = 0,
+): AssetsCategoryType | null => {
+    if (!isRecord(value)) return null;
+    const previewType = value.previewType;
+    if (
+        typeof value.active !== 'boolean'
+        || typeof value.name !== 'string'
+        || value.name.length > 160
+        || typeof value.preview !== 'string'
+        || value.preview.length > 4096
+        || typeof value.tags !== 'string'
+        || value.tags.length > 2000
+        || typeof previewType !== 'string'
+        || !ASSET_PREVIEW_TYPES.has(previewType as AssetsCategoryType['previewType'])
+    ) {
+        return null;
+    }
+
+    const id = normalizeAssetEntityId(documentId ?? value.id);
+    return {
+        ...(id !== undefined ? { id } : {}),
+        active: value.active,
+        name: value.name,
+        preview: value.preview,
+        previewType: previewType as AssetsCategoryType['previewType'],
+        tags: value.tags,
+        subCategories: normalizeAssetList(value.subCategories, depth + 1),
+        items: normalizeAssetList(value.items, depth + 1),
+    };
+};
+
+const requireAssetMutation = (
+    value: AssetMutationInput,
+    options: { requireId?: boolean } = {},
+): AssetsCategoryType => {
+    const normalized = normalizeAssetCategory(value);
+    if (!normalized || (options.requireId && normalized.id === undefined)) {
+        throw new Error('static_asset_payload_invalid');
+    }
+    return normalized;
+};
+
+const normalizeAssetCategoryPatch = (value: AssetMutationInput): AssetMutationInput => {
+    const patch: AssetMutationInput = {};
+    if (value.active !== undefined) {
+        if (typeof value.active !== 'boolean') throw new Error('static_asset_active_invalid');
+        patch.active = value.active;
+    }
+    if (value.name !== undefined) {
+        if (typeof value.name !== 'string' || value.name.length > 160) throw new Error('static_asset_name_invalid');
+        patch.name = value.name;
+    }
+    if (value.tags !== undefined) {
+        if (typeof value.tags !== 'string' || value.tags.length > 2000) throw new Error('static_asset_tags_invalid');
+        patch.tags = value.tags;
+    }
+    if (value.preview !== undefined) {
+        if (typeof value.preview !== 'string' || value.preview.length > 4096) throw new Error('static_asset_preview_invalid');
+        patch.preview = value.preview;
+    }
+    if (value.previewType !== undefined) {
+        if (!ASSET_PREVIEW_TYPES.has(value.previewType)) throw new Error('static_asset_preview_type_invalid');
+        patch.previewType = value.previewType;
+    }
+    if (!Object.keys(patch).length) throw new Error('static_asset_update_empty');
+    return patch;
+};
+
+const isFirebaseStorageReference = (value: unknown): value is string => {
     if (typeof value !== "string") return false;
 
     const trimmedValue = value.trim();
@@ -36,358 +165,434 @@ const isFirebaseStorageReference = (value: unknown): boolean => {
     }
 };
 
-const getCollectionRef = async (type) => {
-    return collection(firebaseClient, `${COLLECTION}${type}`)
-}
+const getCollectionRef = (type: CraftBuilderAssetsTypesType) => {
+    if (!isAssetType(type)) throw new Error('static_asset_type_invalid');
+    return collection(firebaseClient, `${COLLECTION}${type}`);
+};
 
-const getDocRef = async (type: any, docId: any) => {
-    return doc(firebaseClient, `${COLLECTION}${type}`, docId)
-}
+const getDocRef = (type: CraftBuilderAssetsTypesType, docId: string | number) => {
+    if (!isAssetType(type)) throw new Error('static_asset_type_invalid');
+    const normalizedDocId = String(docId ?? '').trim();
+    if (!isValidFirestoreDocumentId(normalizedDocId)) {
+        throw new Error('static_asset_document_id_invalid');
+    }
+    return doc(firebaseClient, `${COLLECTION}${type}`, normalizedDocId);
+};
 
-const getPreviewUrl = (type, data: any) => {
-    return new Promise(async (res, rej) => {
-        if (data.newPreview) {
-            const id = String(new Date().getTime())
-            if (isFirebaseStorageReference(data.preview)) await deleteFileByUrl(data.preview);
-            //upload new preview image 
-            let previewUrl = await uploadBase64ToStorage({
-                cacheControl: STORAGE_CACHE_CONTROL.immutablePublic,
-                fileId: id,
-                url: data.newPreview,
-                path: `${DB_COLLECTIONS.COMMON}/${DB_COLLECTIONS.ASSETS}/${type}/${id}`,
-                type: data.previewType
-            })
-            delete data.newPreview;
-            data.preview = previewUrl;
-            res(data)
-        } else {
-            res(data)
+const cleanupStorageReferences = async (
+    urls: unknown[],
+    failureCode: string,
+    context: Record<string, boolean | number | string | undefined>,
+): Promise<void> => {
+    const references = Array.from(new Set(urls.filter(isFirebaseStorageReference)));
+    if (!references.length) return;
+
+    const results = await Promise.all(references.map((url) => deleteFileByUrl(url)));
+    const failedCount = results.filter((result) => !result.success).length;
+    if (failedCount > 0) {
+        logStaticAssetFailure(failureCode, new Error(failureCode), {
+            ...context,
+            fileCount: references.length,
+            failedCleanupCount: failedCount,
+        });
+    }
+};
+
+const prepareAssetPreview = async (
+    type: CraftBuilderAssetsTypesType,
+    input: AssetMutationInput,
+): Promise<PreparedAssetMutation> => {
+    const data: AssetMutationInput = { ...input };
+    const previousPreview = isFirebaseStorageReference(data.preview) ? data.preview : null;
+    const newPreview = typeof data.newPreview === 'string' ? data.newPreview : '';
+    delete data.newPreview;
+
+    if (!newPreview) {
+        return { data, previousPreview, uploadedPreview: null };
+    }
+    if (!data.previewType || !ASSET_PREVIEW_TYPES.has(data.previewType)) {
+        throw new Error('static_asset_preview_type_invalid');
+    }
+
+    const id = `${Date.now()}-${createRandomIdSegment(9)}`;
+    const uploaded = await uploadBase64ToStorage({
+        cacheControl: STORAGE_CACHE_CONTROL.immutablePublic,
+        fileId: id,
+        url: newPreview,
+        path: `${DB_COLLECTIONS.COMMON}/${DB_COLLECTIONS.ASSETS}/${type}/${id}`,
+        type: data.previewType,
+    });
+    if (!isFirebaseStorageReference(uploaded)) {
+        throw new Error('static_asset_preview_upload_invalid');
+    }
+
+    data.preview = uploaded;
+    return { data, previousPreview, uploadedPreview: uploaded };
+};
+
+const persistPreparedAsset = async <T>(
+    prepared: PreparedAssetMutation,
+    persist: (data: AssetMutationInput) => Promise<T>,
+    context: Record<string, boolean | number | string | undefined>,
+): Promise<{ data: AssetMutationInput; result: T }> => {
+    try {
+        const result = await persist(prepared.data);
+        if (prepared.previousPreview && prepared.previousPreview !== prepared.uploadedPreview) {
+            await cleanupStorageReferences(
+                [prepared.previousPreview],
+                'static_asset_replaced_preview_cleanup_failed',
+                context,
+            );
         }
-    })
-}
+        return { data: prepared.data, result };
+    } catch (error) {
+        if (prepared.uploadedPreview) {
+            await cleanupStorageReferences(
+                [prepared.uploadedPreview],
+                'static_asset_failed_write_preview_cleanup_failed',
+                context,
+            );
+        }
+        throw error;
+    }
+};
 
-export const addAssetsCategory = async (type: CraftBuilderAssetsTypesType, data: any) => {
+const collectAssetPreviewReferences = (asset: AssetsCategoryType): string[] => {
+    const references = [asset.preview];
+    for (const subCategory of asset.subCategories || []) {
+        references.push(...collectAssetPreviewReferences(subCategory));
+    }
+    for (const item of asset.items || []) {
+        references.push(...collectAssetPreviewReferences(item));
+    }
+    return references;
+};
+
+export const addAssetsCategory = async (type: CraftBuilderAssetsTypesType, data: AssetMutationInput) => {
     return await apiCallComposer(
         async () => {
-            data = await getPreviewUrl(type, data);
-            const docRef = await addDoc(await getCollectionRef(type), await requestBodyComposer(data));
-            const newId = docRef.id
-            return { ...data, id: newId };
+            const prepared = await prepareAssetPreview(type, data);
+            const normalized = requireAssetMutation(prepared.data);
+            const persisted = await persistPreparedAsset(
+                { ...prepared, data: normalized },
+                async (nextData) => addDoc(getCollectionRef(type), await requestBodyComposer(nextData, { isNew: true })),
+                getStaticAssetEntityLogContext(type, normalized.id),
+            );
+            return { ...normalized, id: persisted.result.id };
         },
         type,
         data,
-        "addAssetsCategory"
+        "addAssetsCategory",
     );
-}
+};
 
-export const updateAssetsCategory = async (type: CraftBuilderAssetsTypesType, data: any, docId: string) => {
+export const updateAssetsCategory = async (
+    type: CraftBuilderAssetsTypesType,
+    data: AssetMutationInput,
+    docId: string,
+) => {
     return await apiCallComposer(
         async () => {
-            data = await getPreviewUrl(type, data);
-            const collectionDocRef = await getDocRef(type, docId);
-            await updateDoc(collectionDocRef, await requestBodyComposer(data));
-            return { ...data };
+            const prepared = await prepareAssetPreview(type, data);
+            const patch = normalizeAssetCategoryPatch(prepared.data);
+            await persistPreparedAsset(
+                { ...prepared, data: patch },
+                async (nextData) => updateDoc(getDocRef(type, docId), await requestBodyComposer(nextData, { isNew: false })),
+                getStaticAssetEntityLogContext(type, docId),
+            );
+            return { ...patch };
         },
         type,
         data,
         docId,
-        "updateAssetsCategory"
+        "updateAssetsCategory",
     );
-}
+};
 
-export const deleteAssetsCategory = async (type: CraftBuilderAssetsTypesType, categoryDetails: AssetsCategoryType) => {
+export const deleteAssetsCategory = async (
+    type: CraftBuilderAssetsTypesType,
+    categoryDetails: AssetsCategoryType,
+) => {
     return await apiCallComposer(
         async () => {
-            const filesTodelete = [];
-            if (categoryDetails.preview) filesTodelete.push(categoryDetails.preview)
-            if (categoryDetails?.subCategories?.length) {
-                categoryDetails?.subCategories.map((subCategory) => {
-                    Boolean(subCategory.preview) && filesTodelete.push(subCategory.preview)
-                    if (subCategory?.items?.length) {
-                        subCategory?.items.map((i) => Boolean(i.preview) && filesTodelete.push(i.preview))
+            if (categoryDetails.id === undefined) throw new Error('static_asset_category_id_missing');
+            const deletedCategory = await runTransaction(firebaseClient, async (transaction) => {
+                const categoryRef = getDocRef(type, categoryDetails.id as string | number);
+                const categorySnap = await transaction.get(categoryRef);
+                if (!categorySnap.exists()) throw new Error('static_asset_category_not_found');
+                const current = normalizeAssetCategory(categorySnap.data(), categorySnap.id);
+                if (!current) throw new Error('static_asset_persisted_category_invalid');
+                transaction.delete(categoryRef);
+                return current;
+            });
+            await cleanupStorageReferences(
+                collectAssetPreviewReferences(deletedCategory),
+                'static_asset_category_file_cleanup_failed',
+                getStaticAssetEntityLogContext(type, categoryDetails.id),
+            );
+            return SUCCESS_RESPONSE;
+        },
+        type,
+        categoryDetails,
+        "deleteAssetsCategory",
+    );
+};
+
+export const addAssetsSubCategory = async (
+    type: CraftBuilderAssetsTypesType,
+    data: AssetMutationInput,
+    docId: string,
+) => {
+    return await apiCallComposer(
+        async () => {
+            const prepared = await prepareAssetPreview(type, data);
+            const subCategory = requireAssetMutation(prepared.data, { requireId: true });
+            await persistPreparedAsset(
+                { ...prepared, data: subCategory },
+                async () => runTransaction(firebaseClient, async (transaction) => {
+                    const parentRef = getDocRef(type, docId);
+                    const parentSnap = await transaction.get(parentRef);
+                    if (!parentSnap.exists()) throw new Error('static_asset_parent_not_found');
+                    const current = readPersistedAssetList(parentSnap.data().subCategories, 1);
+                    if (current.some((entry) => String(entry.id) === String(subCategory.id))) {
+                        throw new Error('static_asset_subcategory_id_conflict');
                     }
-                })
-            } else if (categoryDetails?.items?.length) {
-                categoryDetails?.items.map((c) => Boolean(c.preview) && filesTodelete.push(c.preview))
-            }
-            if (filesTodelete.length != 0) {
-                try {
-                    const deletePromises = filesTodelete.map(async url => {
-                        return await deleteFileByUrl(url);
-                    });
-                    // Wait for all deletion promises to resolve
-                    await Promise.all(deletePromises);
-                } catch (e) {
-                    logStaticAssetFailure('static_asset_category_file_cleanup_failed', e, {
-                        ...getStaticAssetEntityLogContext(type, categoryDetails.id),
-                        fileCount: filesTodelete.length,
-                        hasCategoryPreview: Boolean(categoryDetails.preview),
-                        subCategoryCount: categoryDetails?.subCategories?.length || 0,
-                        itemCount: categoryDetails?.items?.length || 0,
-                    });
-                }
-            }
-            const collectionDocRef = await getDocRef(type, categoryDetails.id);
-            await deleteDoc(collectionDocRef);
-            return SUCCESS_RESPONSE
-        },
-        type,
-        categoryDetails,
-        "deletAssetsCategory"
-    );
-}
-
-export const addAssetsSubCategory = async (type: CraftBuilderAssetsTypesType, data: any, docId: string) => {
-    return await apiCallComposer(
-        async () => {
-            data = await getPreviewUrl(type, data);
-            const collectionDocRef = await getDocRef(type, docId);
-            // Update the parent category's subCategories array using arrayUnion
-            await updateDoc(collectionDocRef, { subCategories: arrayUnion(data) });
-            return { ...data };
+                    transaction.update(parentRef, { subCategories: [...current, subCategory] });
+                }),
+                getStaticAssetEntityLogContext(type, docId, subCategory.id),
+            );
+            return subCategory;
         },
         type,
         data,
         docId,
-        "updateAssetsCategory"
+        "addAssetsSubCategory",
     );
-}
+};
 
-export const updateAssetsSubCategory = async (type: CraftBuilderAssetsTypesType, data: any, parentCategory: AssetsCategoryType) => {
+export const updateAssetsSubCategory = async (
+    type: CraftBuilderAssetsTypesType,
+    data: AssetMutationInput,
+    parentCategory: AssetsCategoryType,
+) => {
     return await apiCallComposer(
         async () => {
-            const subcategoryIndex = parentCategory.subCategories.findIndex(subcategory => subcategory.id === data.id);
-            if (subcategoryIndex !== -1) {
-
-                data = await getPreviewUrl(type, data);
-                const collectionDocRef = await getDocRef(type, parentCategory.id);
-                // Update the parent category's subCategories array using arrayUnion
-                const newSubCats = [...parentCategory.subCategories];
-                newSubCats[subcategoryIndex] = data;
-                await updateDoc(collectionDocRef, { subCategories: newSubCats });
-                return { ...data };
-            } else {
-                logStaticAssetDiagnostic('static_asset_subcategory_missing', getStaticAssetEntityLogContext(
-                    type,
-                    parentCategory.id,
-                    data?.id,
-                ));
-                return ERROR_RESPONSE
-            }
+            if (parentCategory.id === undefined) throw new Error('static_asset_parent_id_missing');
+            const prepared = await prepareAssetPreview(type, data);
+            const subCategory = requireAssetMutation(prepared.data, { requireId: true });
+            await persistPreparedAsset(
+                { ...prepared, data: subCategory },
+                async () => runTransaction(firebaseClient, async (transaction) => {
+                    const parentRef = getDocRef(type, parentCategory.id as string | number);
+                    const parentSnap = await transaction.get(parentRef);
+                    if (!parentSnap.exists()) throw new Error('static_asset_parent_not_found');
+                    const current = readPersistedAssetList(parentSnap.data().subCategories, 1);
+                    const index = current.findIndex((entry) => String(entry.id) === String(subCategory.id));
+                    if (index < 0) throw new Error('static_asset_subcategory_not_found');
+                    current[index] = subCategory;
+                    transaction.update(parentRef, { subCategories: current });
+                }),
+                getStaticAssetEntityLogContext(type, parentCategory.id, subCategory.id),
+            );
+            return subCategory;
         },
         type,
         data,
         parentCategory,
-        "updateAssetsCategory"
+        "updateAssetsSubCategory",
     );
-}
+};
 
-export const deleteAssetsSubCategory = async (type: CraftBuilderAssetsTypesType, categoryDetails: AssetsCategoryType, parentCategory: AssetsCategoryType) => {
+export const deleteAssetsSubCategory = async (
+    type: CraftBuilderAssetsTypesType,
+    categoryDetails: AssetsCategoryType,
+    parentCategory: AssetsCategoryType,
+) => {
     return await apiCallComposer(
         async () => {
-            const filesTodelete = [];
-            if (categoryDetails.preview) filesTodelete.push(categoryDetails.preview)
-            if (categoryDetails?.items?.length) {
-                categoryDetails?.items.map((c) => Boolean(c.preview) && filesTodelete.push(c.preview))
+            if (parentCategory.id === undefined || categoryDetails.id === undefined) {
+                throw new Error('static_asset_subcategory_id_missing');
             }
-            if (filesTodelete.length != 0) {
-                try {
-                    const deletePromises = filesTodelete.map(async url => {
-                        return await deleteFileByUrl(url);
-                    });
-                    // Wait for all deletion promises to resolve
-                    await Promise.all(deletePromises);
-                } catch (e) {
-                    logStaticAssetFailure('static_asset_subcategory_file_cleanup_failed', e, {
-                        ...getStaticAssetEntityLogContext(type, parentCategory.id, categoryDetails.id),
-                        fileCount: filesTodelete.length,
-                        hasCategoryPreview: Boolean(categoryDetails.preview),
-                        itemCount: categoryDetails?.items?.length || 0,
-                    });
-                }
-            }
-            const collectionDocRef = await getDocRef(type, parentCategory.id);
-            // Update the parent category's subCategories array using arrayUnion
-            await updateDoc(collectionDocRef, { subCategories: arrayRemove(categoryDetails) });
-            return SUCCESS_RESPONSE
+            const deletedSubCategory = await runTransaction(firebaseClient, async (transaction) => {
+                const parentRef = getDocRef(type, parentCategory.id as string | number);
+                const parentSnap = await transaction.get(parentRef);
+                if (!parentSnap.exists()) throw new Error('static_asset_parent_not_found');
+                const current = readPersistedAssetList(parentSnap.data().subCategories, 1);
+                const index = current.findIndex((entry) => String(entry.id) === String(categoryDetails.id));
+                if (index < 0) throw new Error('static_asset_subcategory_not_found');
+                const [removed] = current.splice(index, 1);
+                const next = current;
+                transaction.update(parentRef, { subCategories: next });
+                return removed;
+            });
+            await cleanupStorageReferences(
+                collectAssetPreviewReferences(deletedSubCategory),
+                'static_asset_subcategory_file_cleanup_failed',
+                getStaticAssetEntityLogContext(type, parentCategory.id, categoryDetails.id),
+            );
+            return SUCCESS_RESPONSE;
         },
         type,
         categoryDetails,
-        "deletAssetsCategory"
+        "deleteAssetsSubCategory",
     );
-}
+};
 
-export const addAssetsItem = async (type: CraftBuilderAssetsTypesType, data: any, parentCategory: AssetsCategoryType, subCategory: AssetsCategoryType) => {
+const mutateAssetItem = async (
+    mode: 'add' | 'update',
+    type: CraftBuilderAssetsTypesType,
+    data: AssetMutationInput,
+    parentCategory: AssetsCategoryType,
+    subCategory: AssetsCategoryType,
+): Promise<AssetsCategoryType> => {
+    if (parentCategory.id === undefined) throw new Error('static_asset_parent_id_missing');
+    const prepared = await prepareAssetPreview(type, data);
+    const item = requireAssetMutation(prepared.data, { requireId: true });
+
+    await persistPreparedAsset(
+        { ...prepared, data: item },
+        async () => runTransaction(firebaseClient, async (transaction) => {
+            const parentRef = getDocRef(type, parentCategory.id as string | number);
+            const parentSnap = await transaction.get(parentRef);
+            if (!parentSnap.exists()) throw new Error('static_asset_parent_not_found');
+
+            if (subCategory?.id !== undefined) {
+                const subCategories = readPersistedAssetList(parentSnap.data().subCategories, 1);
+                const subIndex = subCategories.findIndex((entry) => String(entry.id) === String(subCategory.id));
+                if (subIndex < 0) throw new Error('static_asset_item_subcategory_not_found');
+                const items = [...(subCategories[subIndex].items || [])];
+                const itemIndex = items.findIndex((entry) => String(entry.id) === String(item.id));
+                if (mode === 'add' && itemIndex >= 0) throw new Error('static_asset_item_id_conflict');
+                if (mode === 'update' && itemIndex < 0) throw new Error('static_asset_item_update_item_missing');
+                if (mode === 'add') items.push(item);
+                else items[itemIndex] = item;
+                subCategories[subIndex] = { ...subCategories[subIndex], items };
+                transaction.update(parentRef, { subCategories });
+                return;
+            }
+
+            const items = readPersistedAssetList(parentSnap.data().items, 1);
+            const itemIndex = items.findIndex((entry) => String(entry.id) === String(item.id));
+            if (mode === 'add' && itemIndex >= 0) throw new Error('static_asset_item_id_conflict');
+            if (mode === 'update' && itemIndex < 0) throw new Error('static_asset_item_update_item_missing');
+            if (mode === 'add') items.push(item);
+            else items[itemIndex] = item;
+            transaction.update(parentRef, { items });
+        }),
+        getStaticAssetEntityLogContext(type, parentCategory.id, subCategory?.id, item.id),
+    );
+
+    return item;
+};
+
+export const addAssetsItem = async (
+    type: CraftBuilderAssetsTypesType,
+    data: AssetMutationInput,
+    parentCategory: AssetsCategoryType,
+    subCategory: AssetsCategoryType,
+) => apiCallComposer(
+    () => mutateAssetItem('add', type, data, parentCategory, subCategory),
+    type,
+    data,
+    parentCategory,
+    subCategory,
+    "addAssetsItem",
+);
+
+export const updateAssetsItem = async (
+    type: CraftBuilderAssetsTypesType,
+    data: AssetMutationInput,
+    parentCategory: AssetsCategoryType,
+    subCategory: AssetsCategoryType,
+) => apiCallComposer(
+    () => mutateAssetItem('update', type, data, parentCategory, subCategory),
+    type,
+    data,
+    parentCategory,
+    subCategory,
+    "updateAssetsItem",
+);
+
+export const deleteAssetsItem = async (
+    type: CraftBuilderAssetsTypesType,
+    data: AssetsCategoryType,
+    parentCategory: AssetsCategoryType,
+    subCategory: AssetsCategoryType,
+) => {
     return await apiCallComposer(
         async () => {
-            data = await getPreviewUrl(type, data);
-            const collectionDocRef = await getDocRef(type, parentCategory.id);
-            if (Boolean(subCategory?.id)) {
-                const subcategoryIndex = parentCategory.subCategories.findIndex(subcategory => subcategory.id === subCategory.id);
-                if (subcategoryIndex === -1) {
-                    logStaticAssetDiagnostic('static_asset_item_subcategory_missing', getStaticAssetEntityLogContext(
-                        type,
-                        parentCategory.id,
-                        subCategory.id,
-                        data?.id,
-                    ));
-                    return ERROR_RESPONSE
-                }
-                const newSubCats = [...parentCategory.subCategories];
-                newSubCats[subcategoryIndex].items.push(data);
-                await updateDoc(collectionDocRef, { subCategories: newSubCats });
-            } else {
-                await updateDoc(collectionDocRef, { items: arrayUnion(data) });
+            if (parentCategory.id === undefined || data.id === undefined) {
+                throw new Error('static_asset_item_id_missing');
             }
-            // Update the parent category's subCategories array using arrayUnion
-            return { ...data };
+            const deletedItem = await runTransaction(firebaseClient, async (transaction) => {
+                const parentRef = getDocRef(type, parentCategory.id as string | number);
+                const parentSnap = await transaction.get(parentRef);
+                if (!parentSnap.exists()) throw new Error('static_asset_parent_not_found');
+
+                if (subCategory?.id !== undefined) {
+                    const subCategories = readPersistedAssetList(parentSnap.data().subCategories, 1);
+                    const subIndex = subCategories.findIndex((entry) => String(entry.id) === String(subCategory.id));
+                    if (subIndex < 0) throw new Error('static_asset_item_subcategory_not_found');
+                    const items = subCategories[subIndex].items || [];
+                    const itemIndex = items.findIndex((entry) => String(entry.id) === String(data.id));
+                    if (itemIndex < 0) throw new Error('static_asset_item_delete_item_missing');
+                    const [removed] = items.splice(itemIndex, 1);
+                    const nextItems = items;
+                    subCategories[subIndex] = { ...subCategories[subIndex], items: nextItems };
+                    transaction.update(parentRef, { subCategories });
+                    return removed;
+                }
+
+                const items = readPersistedAssetList(parentSnap.data().items, 1);
+                const itemIndex = items.findIndex((entry) => String(entry.id) === String(data.id));
+                if (itemIndex < 0) throw new Error('static_asset_item_delete_item_missing');
+                const [removed] = items.splice(itemIndex, 1);
+                const nextItems = items;
+                transaction.update(parentRef, { items: nextItems });
+                return removed;
+            });
+            await cleanupStorageReferences(
+                collectAssetPreviewReferences(deletedItem),
+                'static_asset_item_file_cleanup_failed',
+                getStaticAssetEntityLogContext(type, parentCategory.id, subCategory?.id, data.id),
+            );
+            return SUCCESS_RESPONSE;
         },
         type,
         data,
         parentCategory,
         subCategory,
-        "updateAssetsCategory"
+        "deleteAssetsItem",
     );
-}
+};
 
-export const updateAssetsItem = async (type: CraftBuilderAssetsTypesType, data: any, parentCategory: AssetsCategoryType, subCategory: AssetsCategoryType) => {
+export async function getAllAssetsByType(type: CraftBuilderAssetsTypesType): Promise<AssetsCategoryType[]> {
     return await apiCallComposer(
         async () => {
-            data = await getPreviewUrl(type, data);
-            const collectionDocRef = await getDocRef(type, parentCategory.id);
-            if (Boolean(subCategory?.id)) {
-                const subcategoryIndex = parentCategory.subCategories.findIndex(subcategory => subcategory.id === subCategory.id);
-                if (subcategoryIndex === -1) {
-                    logStaticAssetDiagnostic('static_asset_item_update_subcategory_missing', getStaticAssetEntityLogContext(
-                        type,
-                        parentCategory.id,
-                        subCategory.id,
-                        data?.id,
-                    ));
-                    return ERROR_RESPONSE
-                }
-                const newSubCats = [...parentCategory.subCategories];
-                let iIndex = newSubCats[subcategoryIndex].items.findIndex(i => i.id == data.id)
-                if (iIndex === -1) {
-                    logStaticAssetDiagnostic('static_asset_item_update_item_missing', getStaticAssetEntityLogContext(
-                        type,
-                        parentCategory.id,
-                        subCategory.id,
-                        data?.id,
-                    ));
-                    return ERROR_RESPONSE
-                }
-                newSubCats[subcategoryIndex].items[iIndex] = data;
-                await updateDoc(collectionDocRef, { subCategories: newSubCats });
-            } else {
-                const newItems = [...parentCategory.items];
-                let iIndex = parentCategory.items.findIndex(i => i.id == data.id)
-                if (iIndex === -1) {
-                    logStaticAssetDiagnostic('static_asset_item_update_item_missing', getStaticAssetEntityLogContext(
-                        type,
-                        parentCategory.id,
-                        undefined,
-                        data?.id,
-                    ));
-                    return ERROR_RESPONSE
-                }
-                newItems[iIndex] = data;
-                await updateDoc(collectionDocRef, { items: newItems });
-            }
-            // Update the parent category's subCategories array using arrayUnion
-            return { ...data };
-        },
-        type,
-        parentCategory,
-        subCategory,
-        "updateAssetsCategory"
-    );
-}
-
-export const deleteAssetsItem = async (type: CraftBuilderAssetsTypesType, data: any, parentCategory: AssetsCategoryType, subCategory: AssetsCategoryType) => {
-    return await apiCallComposer(
-        async () => {
-
-            if (data.preview) await deleteFileByUrl(data.preview);
-            const collectionDocRef = await getDocRef(type, parentCategory.id);
-
-            if (Boolean(subCategory?.id)) {
-                const subcategoryIndex = parentCategory.subCategories.findIndex(subcategory => subcategory.id === subCategory.id);
-                if (subcategoryIndex === -1) {
-                    logStaticAssetDiagnostic('static_asset_item_delete_subcategory_missing', getStaticAssetEntityLogContext(
-                        type,
-                        parentCategory.id,
-                        subCategory.id,
-                        data?.id,
-                    ));
-                    return ERROR_RESPONSE
-                }
-                const newSubCats = [...parentCategory.subCategories];
-                let iIndex = newSubCats[subcategoryIndex].items.findIndex(i => i.id == data.id)
-                if (iIndex === -1) {
-                    logStaticAssetDiagnostic('static_asset_item_delete_item_missing', getStaticAssetEntityLogContext(
-                        type,
-                        parentCategory.id,
-                        subCategory.id,
-                        data?.id,
-                    ));
-                    return ERROR_RESPONSE
-                }
-                newSubCats[subcategoryIndex].items.splice(iIndex, 1);
-                await updateDoc(collectionDocRef, { subCategories: newSubCats });
-            } else {
-                const newItems = [...parentCategory.items];
-                let iIndex = parentCategory.items.findIndex(i => i.id == data.id)
-                if (iIndex === -1) {
-                    logStaticAssetDiagnostic('static_asset_item_delete_item_missing', getStaticAssetEntityLogContext(
-                        type,
-                        parentCategory.id,
-                        undefined,
-                        data?.id,
-                    ));
-                    return ERROR_RESPONSE
-                }
-                newItems.splice(iIndex, 1);
-                await updateDoc(collectionDocRef, { items: newItems });
-            }
-
-            return SUCCESS_RESPONSE
-        },
-        type,
-        data,
-        parentCategory,
-        subCategory,
-        "deletAssetsCategory"
-    );
-}
-
-export async function getAllAssetsByType(type: CraftBuilderAssetsTypesType,) {
-    return await apiCallComposer(
-        async () => {
-            const querySnapshot = await getDocs(await getCollectionRef(type));
-            const list = [];
-            querySnapshot.forEach((doc) => {
-                list.push({ ...doc.data(), id: doc.id });
+            const querySnapshot = await getDocs(getCollectionRef(type));
+            return querySnapshot.docs.flatMap((assetDoc) => {
+                const normalized = normalizeAssetCategory(assetDoc.data(), assetDoc.id);
+                if (normalized) return [normalized];
+                logStaticAssetDiagnostic(
+                    'static_asset_document_shape_invalid',
+                    getStaticAssetEntityLogContext(type, assetDoc.id),
+                );
+                return [];
             });
-            return (list);
         },
         type,
-        "getAllIllustrations"
+        "getAllAssetsByType",
     );
 }
 
-
-export async function getBusinessAssetsByType(type: CraftBuilderAssetsTypesType, businessType: string) {
-    return await apiCallComposer(
-        async () => {
-            const querySnapshot = await getDocs(await getCollectionRef(type));
-            const list = [];
-            querySnapshot.forEach((doc) => {
-                list.push({ ...doc.data(), id: doc.id });
-            });
-            return (list);
-        },
-        type,
-        "getAllIllustrations"
-    );
+export async function getBusinessAssetsByType(
+    type: CraftBuilderAssetsTypesType,
+    businessType: string,
+): Promise<AssetsCategoryType[]> {
+    const assets = await getAllAssetsByType(type);
+    const normalizedBusinessType = businessType.trim().toLowerCase();
+    if (!normalizedBusinessType) return assets;
+    return assets.filter((asset) => (
+        asset.tags.split(',').some((tag) => tag.trim().toLowerCase() === normalizedBusinessType)
+    ));
 }

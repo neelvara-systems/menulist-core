@@ -7,6 +7,11 @@ const repoRoot = path.resolve(__dirname, '../..');
 
 const read = (relativePath) => fs.readFileSync(path.join(repoRoot, relativePath), 'utf8');
 
+const collectFiles = (directory) => fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+  const absolutePath = path.join(directory, entry.name);
+  return entry.isDirectory() ? collectFiles(absolutePath) : [absolutePath];
+});
+
 let failures = 0;
 
 const assert = (condition, message) => {
@@ -109,12 +114,13 @@ for (const route of billableRoutes) {
   });
 
   const promptCache = read('src/lib/ai/imageGenerationPromptCache.ts');
+  const promptCacheBoundary = read('src/lib/ai/imagePromptCacheBoundary.ts');
   [
     'AI_IMAGE_PROMPT_CACHE',
-    'system/aiImagePromptCache',
     'isImagePromptCacheEligible',
     'copyCachedImagePromptToStore',
     'writeImagePromptCacheSource',
+    'getReusableImagePromptCacheSource',
     'IMAGE_PROMPT_CACHE_TTL_DAYS',
     'generationConfig?.referanceImage?.url',
     'params.prompts.length !== 1',
@@ -125,14 +131,22 @@ for (const route of billableRoutes) {
     'promptCacheHit: "true"',
     'source: "ai-image-prompt-cache-hit"',
     'expiresAt: admin.firestore.Timestamp.fromMillis',
-    'hitCount: admin.firestore.FieldValue.increment(1)',
     'promptLength: params.prompt.length',
   ].forEach((token) => {
     assert(promptCache.includes(token), `AI image prompt cache helper includes token ${token}`);
   });
   assert(!promptCache.includes('prompt,'), 'AI image prompt cache helper does not persist raw prompts');
+  [
+    'system/aiImagePromptCache',
+    'getReusableImagePromptCacheSource',
+    'cacheDoc.keyVersion !== IMAGE_PROMPT_CACHE_KEY_VERSION',
+    'outputSizeBytes !== sourceBytes.byteLength',
+    'validateMagicBytes(exactBuffer.buffer, mimeType)',
+  ].forEach((token) => {
+    assert(promptCacheBoundary.includes(token), `AI image prompt cache runtime boundary includes token ${token}`);
+  });
 
-  const maintenanceScheduler = read('functions/src/schedulers/menulistMaintenanceScheduler.ts');
+  const maintenanceSchedulerSource = read('functions/src/schedulers/menulistMaintenanceScheduler.ts');
   [
     "const IMAGE_PROMPT_CACHE_STORAGE_PREFIX = 'system/aiImagePromptCache/';",
     'const IMAGE_PROMPT_CACHE_CLEANUP_LIMIT = 25;',
@@ -145,31 +159,36 @@ for (const route of billableRoutes) {
     "'ai_image_prompt_cache_cleanup'",
     'run: runImagePromptCacheCleanup',
   ].forEach((token) => {
-    assert(maintenanceScheduler.includes(token), `AI image prompt cache cleanup is source-gated: ${token}`);
+    assert(maintenanceSchedulerSource.includes(token), `AI image prompt cache cleanup is source-gated: ${token}`);
   });
 
   const batchWorker = read('src/app/api/image-generation/batch-generation/route.ts');
-  const batchTransactionStart = batchWorker.indexOf('let transactionObject: any = {');
-  const batchTransactionEnd = batchWorker.indexOf('const randomStr', batchTransactionStart);
+  const batchTransactionStart = batchWorker.indexOf('const accountingInput: BatchImageAccountingInput = {');
+  const batchTransactionEnd = batchWorker.indexOf('const updatedItem = {', batchTransactionStart);
   const batchTransactionInput = batchWorker.slice(batchTransactionStart, batchTransactionEnd);
   [
     'aspectRatio: generationConfig?.aspectRatio',
-    'uploadBase64MediaImageAdmin({\n            aspectRatio,',
-    'createUppercaseRandomIdSegment(6)',
+    'uploadBase64MediaImageAdminWithMetadata({',
+    'mediaId: `${operationId}_${index}`',
+    'operationId: execution.operationId',
     'copyCachedImagePromptToStore',
     'writeImagePromptCacheSource',
     'promptCacheImage',
-    "source: 'ai_image_prompt_cache'",
-    'unitsConsumed: 0',
-    "logLabel: 'Batch image generation cache hit'",
+    "promptCacheImage\n                ? 'ai_image_prompt_cache' as const\n                : 'gemini_image_generation' as const",
+    'promptCacheImage\n                ? 0',
+    "promptCacheImage ? 'Batch image generation cache hit' : 'Batch image generation'",
+    'idempotencyKey: execution.operationId',
+    'stageImageBatchItemResultAdmin',
+    'appendImageBatchItemResultAdmin',
     'summarizeBatchGenerationConfig',
     'generationConfigSummary: summarizeBatchGenerationConfig',
+    'model: AI_MODEL_ID',
   ].forEach((token) => {
     assert(batchWorker.includes(token), `batch worker passes generated-image preparation token ${token}`);
   });
   assert(batchTransactionStart >= 0 && batchTransactionEnd > batchTransactionStart, 'batch worker transaction input block is detectable');
-  assert(batchTransactionInput.includes('itemSummary: summarizeBatchItem'), 'batch worker AI accounting input uses item summaries');
-  assert(batchTransactionInput.includes('generationConfigSummary: summarizeBatchGenerationConfig'), 'batch worker AI accounting input uses config summaries');
+  assert(batchWorker.includes('item: summarizeBatchItem'), 'batch worker local diagnostics use item summaries');
+  assert(batchWorker.includes('generationConfigSummary: summarizeBatchGenerationConfig'), 'batch worker local diagnostics use config summaries');
   assert(!batchTransactionInput.includes('\n                itemDetails,'), 'batch worker AI accounting input must not persist raw item details');
   assert(!batchTransactionInput.includes('generationConfig: sanitizeImageGenerationConfigForLogging'), 'batch worker AI accounting input must not persist raw generation config');
   assert(!batchWorker.includes('logType: \'BATCH_GENERATION_IMAGE_GEN_STARTED\',\n            data: {\n                generationConfig: sanitizeImageGenerationConfigForLogging'), 'batch worker start logs must not write raw generation config payloads');
@@ -233,7 +252,73 @@ for (const route of billableRoutes) {
   assert(!imageEditingRoute.includes("logger.debug('Completed image edit via flash'"), 'image editing must not debug-log provider-complete breadcrumbs');
   assert(!imageEditingRoute.includes("logger.debug('Prompt generated for image edit'"), 'image editing must not debug-log generated-prompt breadcrumbs');
 
+  const paidProviderReservationRoutes = [
+    ['src/app/api/reviews/suggest/route.ts', 'const result = await model.generateContent({'],
+    ['src/app/api/campaigns/caption/route.ts', 'response = await genAIClient.models.generateContent({'],
+    ['src/app/api/menu-card-export/design-advisor/route.ts', 'response = await genAIClient.models.generateContent({'],
+    ['src/app/api/descriptions/route.ts', 'response = await genAIClient.models.generateContent({'],
+    ['src/app/api/translations/route.ts', 'response = await genAIClient.models.generateContent({'],
+    ['src/app/api/image-editing/route.ts', 'let imageEditGemeiniResponse = await editImageViaFlash({'],
+    ['src/app/api/image-generation/route.ts', 'const promptRun = await runImageGenerationPrompts({'],
+  ];
+  for (const [route, providerToken] of paidProviderReservationRoutes) {
+    const source = read(route);
+    const capacityIndex = source.indexOf('checkAICapacity(');
+    const reservationIndex = source.indexOf('reserveAiCapacity({', capacityIndex);
+    const providerIndex = source.indexOf(providerToken, reservationIndex);
+    const finalizerIndex = source.indexOf('finalizeAiOperationAccounting({', providerIndex);
+    assert(capacityIndex >= 0, `${route} checks paid capacity`);
+    assert(reservationIndex > capacityIndex, `${route} reserves paid credits after capacity admission`);
+    assert(providerIndex > reservationIndex, `${route} reserves paid credits before provider work`);
+    assert(finalizerIndex > providerIndex, `${route} settles the reservation after provider work`);
+    assert(source.includes('capacityReservation'), `${route} passes the reservation into shared accounting`);
+    assert(source.includes('refundAiCapacityReservationSafely'), `${route} refunds unsettled provider work`);
+  }
+
+  const accountingCore = read('src/lib/ai/accounting.ts');
+  const capacityCore = read('src/lib/ai/capacityCheck.ts');
+  [
+    'reserveAiCapacity',
+    'finalizeAiCapacityReservation',
+    'refundAiCapacityReservation',
+    'accountingStatus: "reserved"',
+    'accountingStatus: "consumed"',
+    'accountingStatus: "refunded"',
+    'AI_CAPACITY_RESERVATION_TTL_MS',
+    'AI_CAPACITY_REFUND_RETENTION_MS',
+  ].forEach((token) => assert(capacityCore.includes(token), `AI capacity core includes reservation contract token ${token}`));
+  assert(accountingCore.includes('paid provider work requires a pre-provider credit reservation'), 'shared accounting rejects unreserved paid provider output');
+  assert(accountingCore.includes('finalizeAiCapacityReservation'), 'shared accounting settles reserved capacity atomically');
+
+  const batchReservationStart = batchWorker.indexOf("if (!promptCacheImage) {");
+  const batchReservationIndex = batchWorker.indexOf('capacityReservation = await reserveAiCapacity({', batchReservationStart);
+  const batchProviderIndex = batchWorker.indexOf(': await runImageGenerationPrompts({', batchReservationIndex);
+  const batchFinalizerIndex = batchWorker.indexOf('await finalizeAiOperationAccounting({', batchProviderIndex);
+  assert(batchReservationIndex > batchReservationStart, 'batch provider work reserves capacity with its stable operation ID');
+  assert(batchProviderIndex > batchReservationIndex, 'batch provider work starts only after its durable reservation');
+  assert(batchFinalizerIndex > batchProviderIndex, 'batch staged output settles the same durable reservation');
+  assert(batchWorker.includes("recoveryMode: 'durable_retry'"), 'batch reservations survive staged-result retries');
+  assert(batchWorker.includes('retainCapacityReservationForRetry = stagedResultPersisted'), 'batch retains a durable reservation only while staged work remains retryable');
+  assert(batchWorker.includes('refundDurableAiCapacityReservationByIdSafely'), 'terminal batch acknowledgements recover stranded durable reservations by operation ID');
+  assert(capacityCore.includes('Number.isSafeInteger(unitsToReserve)'), 'capacity reservations reject fractional and unsafe integer units');
+  const accountingSource = read('src/lib/ai/accounting.ts');
+  assert(accountingSource.includes('Number.isSafeInteger(unitsConsumed)'), 'shared accounting finalizer rejects fractional and unsafe integer units');
+  assert(capacityCore.includes('Number.isSafeInteger(unitsToConsume)'), 'legacy credit helpers reject fractional and unsafe integer units');
+  assert(capacityCore.includes('refundDurableAiCapacityReservationByIdSafely'), 'capacity core exposes bounded durable reservation recovery');
+  assert(batchWorker.includes('if (!retainCapacityReservationForRetry) {'), 'batch failures refund unless the same durable staged output remains retryable');
+
+  const reservationRecovery = read('functions/src/schedulers/aiCapacityReservationRecovery.ts');
+  assert(reservationRecovery.includes("operation.accountingStatus === 'refunded'"), 'maintenance deletes expired refunded reservation shells');
+  assert(reservationRecovery.includes("operation.accountingRecoveryMode !== 'automatic_refund'"), 'maintenance never auto-refunds durable batch reservations');
+  assert(reservationRecovery.includes("accountingStatus: 'refunded'"), 'maintenance refunds stale interactive reservations');
+  assert(reservationRecovery.includes('currentRecoveryAt > params.now.toMillis()'), 'maintenance rechecks the current recovery deadline inside the transaction');
+  assert(reservationRecovery.includes('errors++'), 'one malformed reservation cannot abort later rows in the same store');
+  assert(maintenanceSchedulerSource.includes('recoverAiCapacityReservationsInCollectionRef'), 'consolidated maintenance scheduler runs bounded reservation recovery');
+  assert(maintenanceSchedulerSource.includes('storeErrors += reservationResult.errors'), 'consolidated maintenance scheduler reports per-row reservation recovery failures');
+  assert(maintenanceSchedulerSource.includes('AI_OPERATION_STORE_CLEANUP_FAILED_CODE'), 'consolidated maintenance scheduler isolates and logs per-store cleanup failures');
+
   const packageJson = read('package.json');
+  assert(packageJson.includes('"test:ai-capacity-reservation:emulator"'), 'package exposes AI capacity reservation emulator regression suite');
   assert(packageJson.includes('"@napi-rs/canvas": "0.1.84"'), 'root package pins server-side canvas encoder dependency');
 }
 
@@ -315,9 +400,9 @@ for (const route of billableRoutes) {
     'const TRANSLATION_INPUT_KEY_MAX_LENGTH = 240;',
     'const TRANSLATION_INPUT_VALUE_MAX_LENGTH = 2000;',
     'const TRANSLATION_INPUT_MAX_ITEMS = 1000;',
-    'z.string().max(TRANSLATION_INPUT_KEY_MAX_LENGTH)',
-    'z.string().max(TRANSLATION_INPUT_VALUE_MAX_LENGTH)',
-    'Object.keys(obj).length <= TRANSLATION_INPUT_MAX_ITEMS',
+    '.max(TRANSLATION_INPUT_KEY_MAX_LENGTH)',
+    'z.string().trim().min(1).max(TRANSLATION_INPUT_VALUE_MAX_LENGTH)',
+    'Object.keys(obj).length > 0 && Object.keys(obj).length <= TRANSLATION_INPUT_MAX_ITEMS',
   ].forEach((token) => {
     assert(validationSchemas.includes(token), `translation request schema includes bounded input token ${token}`);
   });
@@ -406,6 +491,72 @@ for (const route of billableRoutes) {
   assert(!source.includes('JSON.stringify(error?.errorDetails'), `${label} must not stringify raw provider details`);
   assert(!source.includes('[AIGateway] All ${MAX_RETRY_ATTEMPTS} attempts exhausted'), `${label} must use bounded exhaustion diagnostics`);
 });
+
+{
+  const functionsGatewayRoute = 'functions/src/ai/aiGateway.ts';
+  const functionsGateway = read(functionsGatewayRoute);
+  [
+    "import { isSafeModeActive } from '../monitoring/safeMode';",
+    "AI_PROVIDER_SAFE_MODE_ACTIVE_CODE = 'AI_PROVIDER_SAFE_MODE_ACTIVE'",
+    'class AIProviderSafeModeActiveError extends Error',
+    'readonly code = AI_PROVIDER_SAFE_MODE_ACTIVE_CODE',
+    "this.executeWithRetry('fileDelete', config)",
+    "if (method !== 'fileDelete' && await isSafeModeActive())",
+    'const error = new AIProviderSafeModeActiveError()',
+    "'[AIGateway] Provider call blocked by SAFE_MODE'",
+    'failureCode: AI_PROVIDER_SAFE_MODE_ACTIVE_CODE',
+  ].forEach((token) => {
+    assert(functionsGateway.includes(token), `Functions AI Gateway includes SAFE_MODE provider guard token ${token}`);
+  });
+  assertOrder(
+    functionsGateway,
+    functionsGatewayRoute,
+    [
+      'private async executeWithRetry',
+      "if (method !== 'fileDelete' && await isSafeModeActive())",
+      'this.keyManager.hasConfiguredKeys()',
+      'for (let attempt = 0; attempt < MAX_RETRY_ATTEMPTS; attempt++)',
+      'const client = this.keyManager.getClient()',
+    ],
+    'checks SAFE_MODE before provider key selection and retry execution',
+  );
+
+  const directFunctionsClients = collectFiles(path.join(repoRoot, 'functions/src'))
+    .filter((filePath) => filePath.endsWith('.ts'))
+    .filter((filePath) => !filePath.endsWith(path.join('ai', 'keyManager.ts')))
+    .filter((filePath) => fs.readFileSync(filePath, 'utf8').includes('new GoogleGenAI'))
+    .map((filePath) => path.relative(repoRoot, filePath));
+  assert(
+    directFunctionsClients.length === 0,
+    `Functions provider clients stay behind the shared SAFE_MODE gateway${directFunctionsClients.length ? `: ${directFunctionsClients.join(', ')}` : ''}`,
+  );
+
+  const costProtectionReadme = read('__docs__/cost-self-protection/README.md');
+  const costProtectionSpec = read('__docs__/cost-self-protection/cost-self-protection_spec.md');
+  const costProtectionImpl = read('__docs__/cost-self-protection/cost-self-protection_impl.md');
+  const costProtectionFirebase = read('__docs__/cost-self-protection/cost-self-protection_firebase.md');
+  const incidentResponseRunbook = read('__docs__/production-readiness/incident-response-runbook.md');
+  const externalCertificationRunbook = read('__docs__/production-readiness/external-certification-runbook.md');
+  const productionReadinessAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
+  const changelog = read('__docs__/changelog.md');
+  [
+    [costProtectionReadme, 'shared MenuList Functions gateway'],
+    [costProtectionReadme, 'AI_PROVIDER_SAFE_MODE_ACTIVE'],
+    [costProtectionSpec, 'SAFE_MODE is not a global write lock'],
+    [costProtectionImpl, 'checks cached Functions SAFE_MODE before provider key selection'],
+    [costProtectionFirebase, 'always consults the cached Functions SAFE_MODE helper before provider access'],
+    [incidentResponseRunbook, 'all Gemini calls through the shared MenuList Functions AI gateway'],
+    [externalCertificationRunbook, 'shared Functions AI-gateway SAFE_MODE guard'],
+    [externalCertificationRunbook, 'functions:startGeneration,functions:processMenuImagesJob,functions:embedArticleWorker,functions:regenerateEmbedding,functions:mapsPlaceCheck,functions:menulistMaintenanceScheduler,functions:triggerSchedulerManually,functions:triggerWeeklyNarrativeManually,functions:triggerCustomerAnalyticsManually,functions:computeDecisionBlocksScores,functions:triggerDecisionBlocksScoring,functions:triggerStoreNightlyScheduler,functions:messagingOnboarding'],
+    [externalCertificationRunbook, 'Gateway-subset blocker recorded July 11, 2026'],
+    [productionReadinessAudit, 'Cloud Functions AI-gateway SAFE_MODE coverage checkpoint'],
+    [productionReadinessAudit, 'AI_PROVIDER_SAFE_MODE_ACTIVE'],
+    [productionReadinessAudit, 'the final `npm run verify:production-readiness-local` run passes 97/97 checks, including all 93 child root `verify:*` scripts'],
+    [changelog, 'MenuList Functions AI SAFE_MODE Gateway Boundary'],
+  ].forEach(([source, token]) => {
+    assert(source.includes(token), `SAFE_MODE docs include Functions provider boundary token ${token}`);
+  });
+}
 
 [
   ['frontend Gemini key manager', 'src/lib/google/genAi/keyManager.ts', true],
@@ -520,10 +671,18 @@ for (const route of billableRoutes) {
   const aiSystemSpec = read('__docs__/ai-system-layer/ai-system-layer_spec.md');
   const aiSystemImpl = read('__docs__/ai-system-layer/ai-system-layer_impl.md');
   const aiSystemMarketing = read('__docs__/ai-system-layer/ai-system-layer_marketing.md');
+  const aiSystemHelp = read('__docs__/ai-system-layer/ai-system-layer_helpdoc.md');
+  const aiSystemMobile = read('__docs__/ai-system-layer/ai-system-layer_mobile-support.md');
+  const aiSystemWebsite = read('__docs__/ai-system-layer/ai-system-layer_website.md');
   const extractionMonitoringReadme = read('__docs__/ai-extraction-monitoring/README.md');
   const extractionMonitoringFirebase = read('__docs__/ai-extraction-monitoring/ai-extraction-monitoring_firebase.md');
+  const extractionMonitoringHelp = read('__docs__/ai-extraction-monitoring/ai-extraction-monitoring_helpdoc.md');
   const extractionMonitoringImpl = read('__docs__/ai-extraction-monitoring/ai-extraction-monitoring_impl.md');
+  const extractionMonitoringMarketing = read('__docs__/ai-extraction-monitoring/ai-extraction-monitoring_marketing.md');
+  const extractionMonitoringMobile = read('__docs__/ai-extraction-monitoring/ai-extraction-monitoring_mobile-support.md');
+  const extractionMonitoringReleaseValidation = read('__docs__/ai-extraction-monitoring/ai-extraction-monitoring_release-validation.md');
   const extractionMonitoringSpec = read('__docs__/ai-extraction-monitoring/ai-extraction-monitoring_spec.md');
+  const extractionMonitoringWebsite = read('__docs__/ai-extraction-monitoring/ai-extraction-monitoring_website.md');
   const aiEnhancementPacksFirebase = read('__docs__/ai-enhancement-packs/ai-enhancement-packs_firebase.md');
   const aiDataExtractionFirebase = read('__docs__/projects/ai-data-extraction/ai-data-extraction_firebase.md');
   const extractionCostAudit = read('__docs__/projects/ai-data-extraction/firebase-cost-scalability-audit.md');
@@ -533,6 +692,210 @@ for (const route of billableRoutes) {
   const aiImageVerification = read('__docs__/projects/ai-image-generation/ai-image-generation_verification.md');
   const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
   const changelog = read('__docs__/changelog.md');
+
+  const aiSystemDocs = {
+    readme: aiSystemReadme,
+    spec: aiSystemSpec,
+    implementation: aiSystemImpl,
+    firebase: aiSystemFirebase,
+    help: aiSystemHelp,
+    marketing: aiSystemMarketing,
+    mobile: aiSystemMobile,
+    website: aiSystemWebsite,
+  };
+  Object.entries(aiSystemDocs).forEach(([label, content]) => {
+    const top = content.slice(0, 4000);
+    [
+      'Launch boundary:** Not current launch certification or deploy approval',
+      'source-gated AI System Layer evidence only',
+      'active production-readiness audit',
+      'External Certification Runbook evidence',
+      '`npm run verify:production-readiness-local`',
+      '`npm run verify:ai-accounting`',
+      '`npm run verify:functions-deploy-preflight`',
+      '`npm run verify:menu-extraction-pipeline`',
+      'scoped Firebase deploy evidence for affected MenuList Functions',
+      'target Vercel deploy evidence for affected app routes',
+      'provider smoke with target-specific key/model/quota configuration',
+      'SAFE_MODE/rate-limit/accounting/provider-health smoke',
+      'authenticated browser/device QA for affected owner/platform surfaces',
+      'production-host smoke',
+      'Answerlattice retains separate doctrine, credentials, Firebase target, billing/cost evidence, deploy approval, and release certification',
+      'this document cannot authorize an Answerlattice deploy or release',
+    ].forEach((token) => {
+      assert(top.includes(token), `AI System Layer ${label} doc includes top release/product boundary token ${token}`);
+    });
+  });
+
+  [aiSystemReadme, aiSystemSpec, aiSystemImpl].forEach((content) => {
+    assert(!content.includes('PRODUCTION HARDENING ACTIVE'), 'AI System core docs must not retain production-hardening status as release approval');
+  });
+  [
+    'Faster menu processing',
+    'More reliable extraction',
+    'Consistent quality',
+    'This system runs reliably in the background',
+    'Your menu will complete processing',
+    'Contact us via WhatsApp or email',
+  ].forEach((token) => {
+    assert(!aiSystemHelp.includes(token), `AI System help doc must not retain provider guarantee ${token}`);
+  });
+  [
+    'Provider capacity or configuration can delay or stop processing',
+    'Do not assume an unfinished job will always complete.',
+    'Email support@menulist.ai',
+  ].forEach((token) => {
+    assert(aiSystemHelp.includes(token), `AI System help doc includes bounded provider guidance ${token}`);
+  });
+  [
+    'Every AI feature now has the same protection',
+    'see exactly what AI costs per feature',
+    '10 lines of code instead of 100',
+    'Single SDK, single entry point',
+    'Zero overhead on extraction',
+    'Append-only usage log with 90-day TTL',
+  ].forEach((token) => {
+    assert(!aiSystemMarketing.includes(token), `AI System marketing doc must not retain universal runtime claim ${token}`);
+  });
+  [
+    'It does not create one universal queue, limiter, circuit breaker, or usage ledger for every AI call.',
+    'No universal `aiUsageLog` collection exists',
+    '`MENULIST_AI_OPERATIONS`',
+    '`menulistAiOperations/{tId}/{sId}`',
+  ].forEach((token) => {
+    assert(aiSystemMarketing.includes(token), `AI System marketing doc includes current runtime boundary ${token}`);
+  });
+  assert(!aiSystemWebsite.includes('reliable pipeline with automatic error recovery'), 'AI System website doc must not guarantee provider reliability');
+  assert(
+    aiSystemWebsite.includes('If processing cannot complete, MenuList keeps the current approved menu unchanged and shows the available retry path.'),
+    'AI System website doc includes bounded provider failure path',
+  );
+  assert(productionAudit.includes('AI System Layer active-doc release-boundary checkpoint'), 'Production audit records AI System active-doc release boundary');
+  assert(changelog.includes('AI System Layer Active Docs Release Boundary'), 'Changelog records AI System active-doc release boundary');
+
+  const extractionMonitoringDocs = {
+    readme: extractionMonitoringReadme,
+    firebase: extractionMonitoringFirebase,
+    help: extractionMonitoringHelp,
+    implementation: extractionMonitoringImpl,
+    marketing: extractionMonitoringMarketing,
+    mobile: extractionMonitoringMobile,
+    releaseValidation: extractionMonitoringReleaseValidation,
+    spec: extractionMonitoringSpec,
+    website: extractionMonitoringWebsite,
+  };
+  Object.entries(extractionMonitoringDocs).forEach(([label, content]) => {
+    const top = content.slice(0, 5000);
+    [
+      'Launch boundary:** Not current launch certification or deploy approval',
+      'source-gated AI Extraction Monitoring evidence only',
+      '`ENABLE_EXTRACTION_MONITORING_DASHBOARD=true`',
+      '`/ops/extraction`',
+      '`/platform/extraction-monitor`',
+      '`MobileExtractionMonitorScreen` inside `MobileShell`',
+      'Cross-tenant job reads and `MENULIST_AI_OPERATIONS` reads are Firestore-rule-gated to platform admins',
+      'ordinary authenticated users retain own-job reads only',
+      'active production-readiness audit',
+      'External Certification Runbook evidence',
+      '`npm run verify:ai-accounting`',
+      '`npm run verify:menu-extraction-pipeline`',
+      '`npm run verify:mobile-shell-route-map`',
+      'authenticated platform desktop/mobile browser QA',
+      'bounded read/cost and desktop retry smoke',
+      'production-host smoke',
+    ].forEach((token) => {
+      assert(top.includes(token), `AI extraction monitoring ${label} doc includes top source/release boundary token ${token}`);
+    });
+    assert(!content.includes('Feature flag OFF'), `AI extraction monitoring ${label} doc must not retain flag-off wording`);
+    assert(!content.includes('ENABLE_EXTRACTION_MONITORING_DASHBOARD: false'), `AI extraction monitoring ${label} doc must not claim a disabled source flag`);
+  });
+
+  const extractionFeatureFlags = read('src/config/features.ts');
+  const extractionDesktopMonitor = read('src/components/templates/main-app/platform/extractionMonitor/index.tsx');
+  const extractionMobileMonitor = read('src/components/mobile/screens/MobileExtractionMonitorScreen.tsx');
+  const extractionMobileShell = read('src/components/mobile/MobileShell.tsx');
+  const extractionMobileMore = read('src/components/mobile/screens/MobileMoreScreen.tsx');
+  const extractionFirestoreRules = read('firestore.rules');
+  assert(extractionFeatureFlags.includes('ENABLE_EXTRACTION_MONITORING_DASHBOARD: true,'), 'AI extraction monitoring source flag is enabled');
+  assert(!extractionFeatureFlags.includes('ENABLE_EXTRACTION_MONITORING_DASHBOARD: false,'), 'AI extraction monitoring source flag is not disabled');
+  [
+    'dashboardKey = isEnabled && isPlatform',
+    'getExtractionDashboardSnapshot({ status: statusFilter, pageSize: 30 })',
+    'dedupingInterval: EXTRACTION_MONITOR_DEDUPING_INTERVAL_MS',
+    'revalidateOnFocus: false',
+    '<JobInspector',
+  ].forEach((token) => {
+    assert(extractionDesktopMonitor.includes(token), `AI extraction desktop monitor includes current runtime token ${token}`);
+  });
+  [
+    "const isPlatform = platformRole === 'PLATFORM';",
+    'if (!isPlatform || !isEnabled) return;',
+    'getExtractionDashboardSnapshot({ status: filterToStatus(jobFilter), pageSize: 20 })',
+    'Extraction health, cost, quality, and recent job failures.',
+  ].forEach((token) => {
+    assert(extractionMobileMonitor.includes(token), `AI extraction mobile monitor includes bounded runtime token ${token}`);
+  });
+  assert(!extractionMobileMonitor.includes('retryExtractionJob'), 'AI extraction mobile summary does not expose retry mutation');
+  assert(extractionMobileShell.includes("'/platform/extraction-monitor': 'extractionMonitor'"), 'AI extraction platform route maps into MobileShell');
+  assert(extractionMobileShell.includes("'/ops/extraction': 'extractionMonitor'"), 'AI extraction ops route maps into MobileShell');
+  assert(extractionMobileMore.includes("subScreen === 'extractionMonitor'"), 'AI extraction mobile sub-screen mounts in MobileMoreScreen');
+  [
+    'match /MENULIST_AI_OPERATIONS/{docId}',
+    'allow read: if isAuthenticated() && isPlatformAdmin();',
+    'match /menuImageProcessingJobs/{jobId}',
+    'resource.data.uId == request.auth.uid',
+    'resource.data.uId == request.auth.token.uId',
+    '|| isPlatformAdmin()',
+  ].forEach((token) => {
+    assert(extractionFirestoreRules.includes(token), `AI extraction monitoring Firestore boundary includes token ${token}`);
+  });
+  [
+    'Mobile summary',
+    'Mobile does not expose the desktop Job Inspector or retry action.',
+    'No separate `aiUsageLog` collection is read by this dashboard',
+  ].forEach((token) => {
+    assert(extractionMonitoringReadme.includes(token), `AI extraction monitoring README includes current surface token ${token}`);
+  });
+  ['HCR trend', 'Ops Alerts'].forEach((token) => {
+    assert(!extractionMonitoringReadme.includes(token), `AI extraction monitoring README must not claim unmounted surface ${token}`);
+  });
+  [
+    'A platform admin can use the desktop retry action',
+    'ordinary authenticated users can read only their own jobs; platform admins can read all jobs for the monitor',
+    '`MENULIST_AI_OPERATIONS`: readable only by platform admins',
+    'Firestore rules independently enforce the cross-tenant job and cost-ledger boundary',
+  ].forEach((token) => {
+    assert(extractionMonitoringFirebase.includes(token), `AI extraction monitoring Firebase doc includes current source/rules token ${token}`);
+  });
+  [
+    'Mobile Relevance Decision: **BOUNDED PLATFORM SUPPORT**',
+    '`getExtractionDashboardSnapshot({ status, pageSize: 20 })`',
+    'Mobile has no Job Inspector, raw-data copy, or retry action.',
+    'no automatic interval',
+    'authenticated platform session and a non-platform denial state',
+  ].forEach((token) => {
+    assert(extractionMonitoringMobile.includes(token), `AI extraction monitoring mobile doc includes current bounded-mobile token ${token}`);
+  });
+  ['Mobile Relevance Decision: **NO**', 'No mobile UI needed', 'Telegram'].forEach((token) => {
+    assert(!extractionMonitoringMobile.includes(token), `AI extraction monitoring mobile doc must not retain stale mobile token ${token}`);
+  });
+  [
+    'Consolidates debugging evidence',
+    'Surfaces recorded failures',
+    'Enables controlled desktop recovery',
+  ].forEach((token) => {
+    assert(extractionMonitoringMarketing.includes(token), `AI extraction monitoring marketing doc includes bounded internal claim ${token}`);
+  });
+  [
+    'hours to minutes',
+    'prevents silent failures',
+    'without re-uploading',
+    'under 5 minutes',
+  ].forEach((token) => {
+    assert(!extractionMonitoringMarketing.toLowerCase().includes(token.toLowerCase()), `AI extraction monitoring marketing doc must not retain unsupported claim ${token}`);
+  });
+  assert(productionAudit.includes('AI extraction monitoring enabled-runtime and active-doc checkpoint'), 'Production audit records AI extraction monitoring enabled-runtime boundary');
+  assert(changelog.includes('AI Extraction Monitoring Enabled Runtime And Active Docs Boundary'), 'Changelog records AI extraction monitoring enabled-runtime boundary');
 
   [
     'App-route rows store count/shape summaries for `clientResponse` in `accounting_only` mode',
@@ -582,10 +945,18 @@ for (const route of billableRoutes) {
     ['AI system implementation doc', aiSystemImpl],
     ['AI system Firebase doc', aiSystemFirebase],
     ['AI system marketing doc', aiSystemMarketing],
+    ['AI system help doc', aiSystemHelp],
+    ['AI system mobile doc', aiSystemMobile],
+    ['AI system website doc', aiSystemWebsite],
     ['AI extraction monitoring README', extractionMonitoringReadme],
     ['AI extraction monitoring Firebase doc', extractionMonitoringFirebase],
+    ['AI extraction monitoring help doc', extractionMonitoringHelp],
     ['AI extraction monitoring implementation doc', extractionMonitoringImpl],
+    ['AI extraction monitoring marketing doc', extractionMonitoringMarketing],
+    ['AI extraction monitoring mobile doc', extractionMonitoringMobile],
+    ['AI extraction monitoring release validation', extractionMonitoringReleaseValidation],
     ['AI extraction monitoring spec', extractionMonitoringSpec],
+    ['AI extraction monitoring website doc', extractionMonitoringWebsite],
   ].forEach(([label, doc]) => {
     [
       'Phase 2',
@@ -888,6 +1259,8 @@ for (const route of billableRoutes) {
     assert(source.includes('itemSummary'), `${route} stores bounded item summaries in AI accounting input`);
     assert(source.includes('languageSummary'), `${route} stores bounded language summaries in AI accounting input`);
     assert(source.includes('getNewItemMetadataClientResponseSummary'), `${route} stores generated metadata response summaries in AI accounting input`);
+    assert(source.includes('normalizeNewItemMetadataOutput'), `${route} projects provider output onto the exact new-item metadata contract`);
+    assert(source.includes('getLinkedOutletPolicyBlockReason'), `${route} verifies project scope and linked-outlet ownership before provider work`);
     assert(source.includes("responseSummaryKind: 'new_item_metadata'"), `${route} labels generated metadata response summaries`);
     assert(!source.includes("logType: 'API_RESPONSE', data: response"), `${route} must not hand full provider response objects to local API_RESPONSE logs`);
     assert(!source.includes('clientResponse: generatedData'), `${route} must not persist generated metadata in transaction input`);
@@ -948,6 +1321,8 @@ for (const route of billableRoutes) {
     assert(source.includes('itemSummary'), `${route} stores bounded item summaries in AI accounting input`);
     assert(source.includes('languageSummary'), `${route} stores bounded language summaries in AI accounting input`);
     assert(source.includes('getDescriptionClientResponseSummary'), `${route} stores generated description response summaries in AI accounting input`);
+    assert(source.includes('normalizeDescriptionGenerationResult'), `${route} projects provider output to requested item and language IDs`);
+    assert(source.includes('resolveDescriptionBillingAction'), `${route} derives free add versus paid rewrite accounting from validated content`);
     assert(source.includes("responseSummaryKind: 'description_generation'"), `${route} labels generated description response summaries`);
     assert(source.includes('getTransactionLogSummary'), `${route} local transaction logs use bounded summaries`);
     assert(source.includes('requestSummary'), `${route} local success logs use request summaries`);
@@ -979,6 +1354,11 @@ for (const route of billableRoutes) {
     assert(source.includes('responseTextLength'), `${route} keeps bounded response text length metadata`);
     assert(source.includes('getBusinessCopyClientResponseSummary'), `${route} stores generated business-copy response summaries in AI accounting input`);
     assert(source.includes("responseSummaryKind: 'business_copy_generation'"), `${route} labels generated business-copy response summaries`);
+    assert(source.includes('specialNoteLength'), `${route} retains bounded special-note shape metadata while accounting omits generated copy`);
+    assert(source.includes('normalizeBusinessCopyGenerationResult'), `${route} validates the exact business-copy provider output contract`);
+    assert(source.includes('summarizeAiProviderUsage(providerResponses)'), `${route} accounts for every successful provider call, including JSON retry calls`);
+    assert(source.includes('providerCallCount: providerUsage.providerCallCount'), `${route} persists bounded provider call counts`);
+    assert(source.includes('getRealCostPaise(action) * providerUsage.providerCallCount'), `${route} includes retry calls in internal real-cost estimates`);
     assert(source.includes('getTransactionLogSummary'), `${route} local transaction error logs use bounded summaries`);
     assert(source.includes('responseSummary'), `${route} local transaction error logs include result shape summaries`);
     assert(!source.includes('responseTextSummary: getPreviewText'), `${route} must not log provider response preview summaries`);
@@ -1002,10 +1382,16 @@ for (const route of billableRoutes) {
     assert(source.includes("stage: 'empty_response'"), `${route} logs empty provider response parse stage`);
     assert(source.includes('responseTextLength'), `${route} keeps bounded response text length metadata`);
     assert(source.includes('inputSummary'), `${route} stores bounded input summaries in AI accounting input`);
+    assert(source.includes('summarizeAiProviderUsage(providerResponses)'), `${route} accounts for every successful provider call, including malformed-JSON retries`);
+    assert(source.includes('providerCallCount: providerUsage.providerCallCount'), `${route} persists bounded provider call counts`);
+    assert(source.includes('getRealCostPaise(action) * providerUsage.providerCallCount'), `${route} includes retry calls in internal real-cost estimates`);
+    assert(source.indexOf('const processingTime = Date.now() - startTime;') > source.indexOf('providerResponses.push(retryResponse);'), `${route} measures retry latency before accounting`);
     assert(source.includes('languageSummary'), `${route} stores bounded language summaries in AI accounting input`);
     assert(source.includes('targetLanguages: targetLanguageSummary'), `${route} stores bounded target language summaries in AI accounting input`);
     assert(source.includes('translationCoverageSummary'), `${route} stores bounded coverage summaries in AI accounting input`);
     assert(source.includes('getTranslationClientResponseSummary'), `${route} stores generated translation response summaries in AI accounting input`);
+    assert(source.includes('resolveTranslationBillingAction'), `${route} derives the minimum safe translation billing action from validated request scope`);
+    assert(source.includes('requestedAction'), `${route} preserves the requested action for bounded accounting diagnostics`);
     assert(source.includes("responseSummaryKind: 'translation_generation'"), `${route} labels generated translation response summaries`);
     assert(source.includes('getTransactionLogSummary'), `${route} local transaction logs use bounded summaries`);
     assert(source.includes('requestSummary'), `${route} local success logs use request summaries`);
@@ -1066,7 +1452,7 @@ for (const route of billableRoutes) {
 	        'business_copy_generation_model_call_failed',
 	        'business_copy_provider_response_parse_failed',
 	        'business_copy_generation_invalid_json_after_retry',
-	        'business_copy_generation_non_object_response',
+	        'business_copy_generation_invalid_shape_response',
 	        'business_copy_generation_accounting_failed',
 	        'business_copy_generation_api_failed',
 	      ],
@@ -1100,7 +1486,7 @@ for (const route of billableRoutes) {
 	        'description_generation_model_call_failed',
 	        'description_provider_response_parse_failed',
 	        'description_generation_invalid_json',
-	        'description_generation_non_object_response',
+	        'description_generation_invalid_shape_response',
 	        'description_generation_accounting_failed',
 	        'description_generation_api_failed',
 	      ],
@@ -1137,7 +1523,7 @@ for (const route of billableRoutes) {
 	        'new_item_metadata_model_call_failed',
 	        'new_item_metadata_provider_response_parse_failed',
 	        'new_item_metadata_invalid_json',
-	        'new_item_metadata_non_object_response',
+	        'new_item_metadata_invalid_shape_response',
 	        'new_item_metadata_accounting_failed',
 	        'new_item_metadata_api_failed',
 	      ],
@@ -2248,8 +2634,8 @@ for (const { route, cap, validation, gate, reader } of boundedBillableBodyRoutes
   assert(source.includes('readBoundedJsonBody'), `${route} uses bounded JSON body reader`);
   assert(source.includes('BATCH_IMAGE_WORKER_MAX_BODY_BYTES'), `${route} declares explicit worker request body cap`);
   assert(source.includes('getBatchWorkerLogContext'), `${route} uses bounded worker diagnostic context`);
-  assert(source.includes("logRuntimeFailure('image_batch_worker_safe_mode_check_failed'"), `${route} logs SAFE_MODE fail-open diagnostics with a stable code`);
-  assert(source.includes("failOpen: true"), `${route} marks SAFE_MODE check failures as fail-open diagnostics`);
+  assert(source.includes("logRuntimeFailure('image_batch_worker_safe_mode_check_failed'"), `${route} logs SAFE_MODE failures with a stable code`);
+  assert(source.includes("failOpen: false"), `${route} marks SAFE_MODE check failures as fail-closed diagnostics`);
   assert(source.includes("getBoundedRuntimeStringContext('itemId', item.id)"), `${route} bounds batch item IDs in summaries`);
   assert(source.includes("getBoundedRuntimeStringContext('itemName', item.name)"), `${route} bounds batch item names in summaries`);
   assert(!source.includes("} catch { /* fail-open */ }"), `${route} must not silently fail open on SAFE_MODE check errors`);
@@ -2274,11 +2660,10 @@ for (const { route, cap, validation, gate, reader } of boundedBillableBodyRoutes
   assert(!source.includes('key: `batch-image-worker:${tId'), `${route} must not store raw tenant IDs in worker limiter keys`);
   assert(!source.includes('key: `batch-image-worker:${sId'), `${route} must not store raw store IDs in worker limiter keys`);
   assert(!source.includes('const [tId, , sId] = projectId.split("-")'), `${route} must not split worker project IDs directly`);
-  assert(source.includes("const ownerSafeError = 'Image generation failed for this item.'"), `${route} uses generic persisted item error`);
   assert(source.includes("const ownerSafeReason = 'Image generation failed for this item.'"), `${route} uses generic owner-visible item reason`);
   assert(source.includes('image_batch_worker_generation_failed'), `${route} codes worker generation failures`);
   assert(source.includes('image_batch_worker_failure_status_update_failed'), `${route} codes worker failure-status update failures`);
-  assert(source.includes('error: ownerSafeError'), `${route} persists generic item error`);
+  assert(source.includes('reason: ownerSafeReason'), `${route} persists generic item error through the item-attempt boundary`);
   assert(source.includes('reason: ownerSafeReason'), `${route} persists generic item status reason`);
   assert(source.includes('return NextResponse.json({ error: ownerSafeReason }, { status: 200 });'), `${route} returns generic worker task error`);
   assert(source.includes("message: 'Image generation completed for this item.'"), `${route} returns generic worker success text`);
@@ -2400,7 +2785,10 @@ for (const { route, cap, validation, gate, reader } of boundedBillableBodyRoutes
     'itemsExpiresAt',
     'expiresAt',
     'IMAGE_BATCH_TERMINAL_JOB_STATUS_VALUES',
-    'value instanceof Timestamp',
+    "import { sanitizeForFirestore } from \"@lib/firestore/sanitizeForFirestore\";",
+    "return sanitizeForFirestore(value, { undefinedObjectValue: 'omit' });",
+    'Timestamp.fromMillis(now + IMAGE_BATCH_JOB_RETENTION_DAYS * DAY_MS)',
+    'Timestamp.fromMillis(now + IMAGE_BATCH_ITEMS_RETENTION_DAYS * DAY_MS)',
   ].forEach((token) => {
     assert(source.includes(token), `${route} includes server batch job retention token ${token}`);
   });
@@ -2437,17 +2825,34 @@ for (const { route, cap, validation, gate, reader } of boundedBillableBodyRoutes
 {
   const route = 'functions/src/schedulers/menulistMaintenanceScheduler.ts';
   const source = read(route);
+  const retentionBoundary = read('functions/src/schedulers/imageBatchRetentionBoundary.ts');
   [
     'runImageBatchJobRetentionCleanup',
     'image_batch_job_retention_cleanup',
     "where('itemsExpiresAt', '<=', params.now)",
     "where('expiresAt', '<=', params.now)",
-    'IMAGE_BATCH_STORAGE_DELETE_STATUSES',
+    'getImageBatchImageUrls',
+    'getImageBatchStorageCleanupUrls',
+    'shouldDeleteImageBatchStorage',
     'media/menuItem',
     'IMAGE_BATCH_STORAGE_DELETE_FAILED',
   ].forEach((token) => {
     assert(source.includes(token), `${route} includes image batch retention cleanup token ${token}`);
   });
+  assert(
+    /import\s*{[\s\S]*getImageBatchImageUrls[\s\S]*getImageBatchStorageCleanupUrls[\s\S]*}\s*from '\.\/imageBatchRetentionBoundary';/.test(source),
+    `${route} imports image batch URL helpers from the shared retention boundary`,
+  );
+  [
+    'export function getImageBatchImageUrls',
+    'IMAGE_BATCH_DELETE_ALL_STATUSES',
+    'status === "finished"',
+    'status === "cancelled" && data.selectedImagesPersisted === true',
+    'Selection lives only in the review UI.',
+  ].forEach((token) => {
+    assert(retentionBoundary.includes(token), `image batch retention boundary includes ${token}`);
+  });
+  assert(!retentionBoundary.includes('image.isSelected'), 'image batch retention cleanup must not infer durable selection from job image rows');
 }
 
 {
@@ -2456,8 +2861,9 @@ for (const { route, cap, validation, gate, reader } of boundedBillableBodyRoutes
   [
     'assertImageBatchJobCreateSucceeded',
     'image_upload_batch_job_create_rejected',
-    'assertImageBatchJobUpdateSucceeded',
-    'image_upload_batch_job_mark_failed_rejected',
+    'createAndTriggerBatchGeneration',
+    'triggerResult.partial',
+    'We could not confirm that image generation started. Check this job before trying again.',
   ].forEach((token) => {
     assert(source.includes(token), `${route} includes batch start acknowledgement token ${token}`);
   });
@@ -2475,7 +2881,7 @@ for (const { route, cap, validation, gate, reader } of boundedBillableBodyRoutes
     'image_batch_result_discard_failed',
     'image_batch_result_discard_update_rejected',
     'image_batch_result_retry_failed',
-    'image_batch_result_retry_update_rejected',
+    'await onRetry(activeJobData)',
     'IMAGE_BATCH_JOB_FAILED_OWNER_COPY',
     'Image generation could not finish. Try again with fewer items or start a new batch.',
     'getBatchResultLogContext',
@@ -2487,15 +2893,78 @@ for (const { route, cap, validation, gate, reader } of boundedBillableBodyRoutes
     'logRuntimeFailure(IMAGE_BATCH_RESULT_UPLOAD_FAILED',
     'logRuntimeFailure(IMAGE_BATCH_RESULT_DISCARD_FAILED',
     'logRuntimeFailure(IMAGE_BATCH_RESULT_RETRY_FAILED',
+    'Promise.allSettled(urls.map((url) => deleteFileByUrl(url)))',
+    'IMAGE_BATCH_RESULT_STORAGE_CLEANUP_FAILED',
+    'selectedImagesPersisted: action === "upload"',
+    'selectedImagesPersisted: true',
+    'normalizeImageBatchProjectSelections',
+    'await onBatchImagesPersist(selections)',
   ].forEach((token) => {
     assert(source.includes(token), `${route} includes bounded batch result diagnostic token ${token}`);
   });
+  assert(!source.includes('.forEach(async'), `${route} must not launch unobserved asynchronous cleanup`);
+  assert(!source.includes('new Promise<void>(async'), `${route} must not use an async Promise constructor`);
   assert(!source.includes("import { logger }"), `${route} must not import raw logger diagnostics`);
   assert(!source.includes("logger.error('Error cancelling batch job', error"), `${route} must not raw-log cancel failures`);
   assert(!source.includes("logger.error('Error updating batch job status', error"), `${route} must not raw-log batch status failures`);
   assert(!source.includes('activeJobData.error'), `${route} must not render stored batch job error text`);
   assert(!/jobId:\s*activeJobData/.test(source), `${route} must not log raw active job IDs`);
   assert(!/projectId:\s*activeJobData/.test(source), `${route} must not log raw active project IDs`);
+
+  const selectionBoundary = read('src/lib/ai/imageBatchProjectSelection.ts');
+  [
+    'normalizeImageBatchProjectSelections',
+    'isImageBatchGeneratedStorageAsset',
+    'IMAGE_BATCH_PROJECT_SELECTION_MAX_ITEMS',
+    'IMAGE_BATCH_PROJECT_MAX_IMAGES_PER_ITEM',
+    'appendImageBatchSelectionsToProject',
+    'appendImageBatchSelectionsToOutletProject',
+    'expectedBucket?: string',
+    'expectedBucket,',
+    'image_batch_project_item_missing',
+    'image_batch_project_item_image_limit_exceeded',
+  ].forEach((token) => {
+    assert(selectionBoundary.includes(token), `image batch project selection boundary includes ${token}`);
+  });
+
+  const projectsDal = read('src/database/projects/index.ts');
+  [
+    'appendImageBatchProjectSelections',
+    'normalizeMenuChangeLogScope(operationSession)',
+    "const expectedBucket = firebaseStorage?.app?.options?.storageBucket",
+    'normalizeImageBatchProjectSelections(rawSelections, projectId, expectedBucket)',
+    'runTransaction(firebaseClient',
+    'transaction.get(projectRef)',
+    'appendImageBatchSelectionsToProject(current, selections)',
+    "revalidatePublicClientCacheForProject(projectId, 'appendImageBatchProjectSelections')",
+    "operation: 'append_image_batch_selection'",
+  ].forEach((token) => {
+    assert(projectsDal.includes(token), `image batch project selection DAL includes ${token}`);
+  });
+
+  const outletSaveRoute = read('src/app/api/projects/outlet-save/route.ts');
+  [
+    'append_image_batch_selection',
+    'const expectedBucket = storageAdmin.bucket().name',
+    'normalizeImageBatchProjectSelections(',
+    'db.runTransaction',
+    'transaction.get(persistedOutletProjectRef)',
+    'transaction.get(masterProjectDocumentRef)',
+    'outletPolicy.imageOverride !== true',
+    'appendImageBatchSelectionsToOutletProject',
+    'transaction.set(persistedOutletProjectRef, safeProject, { merge: true })',
+    'linkedOutletImageBatchSelection',
+  ].forEach((token) => {
+    assert(outletSaveRoute.includes(token), `linked outlet image batch append includes ${token}`);
+  });
+
+  const desktopEditor = read('src/components/templates/main-app/projects/editorView/Editor.tsx');
+  assert(desktopEditor.includes('activeEditorSavePromiseRef'), 'desktop image batch append serializes against active editor saves');
+  assert(desktopEditor.includes('await persistEditorProject(projectData)'), 'desktop image batch append flushes pending editor changes first');
+
+  const mobileMenu = read('src/components/mobile/screens/MobileMenuScreen.tsx');
+  assert(mobileMenu.includes('waitForMenuPersistenceIdle'), 'mobile image batch append waits for active menu persistence');
+  assert(mobileMenu.includes('await persistMenuProjectImmediately(pendingProject)'), 'mobile image batch append drains pending menu changes first');
 
   const aiImageImpl = read('__docs__/projects/ai-image-generation/ai-image-generation_impl.md');
   const aiImageFirebase = read('__docs__/projects/ai-image-generation/ai-image-generation_firebase.md');
@@ -2548,7 +3017,7 @@ assert(!accounting.includes('creditConsumptionError, context'), 'shared accounti
 assert(accounting.includes('consumeAICapacity'), 'shared accounting finalizer consumes billable credits');
 assert(accounting.includes('throw creditConsumptionError'), 'shared accounting finalizer fails paid requests when credit consumption fails');
 assert(
-  accounting.indexOf('ai_accounting_operation_log_failed') < accounting.indexOf('if (capacitySubscription && unitsConsumed > 0)'),
+  accounting.indexOf('ai_accounting_operation_log_failed') < accounting.lastIndexOf('if (capacitySubscription && unitsConsumed > 0)'),
   'shared accounting finalizer does not let log failure skip credit consumption'
 );
 
@@ -2593,15 +3062,53 @@ assert(Boolean(aiOperationsRules && aiOperationsRules[0].includes('allow read: i
 assert(Boolean(aiOperationsRules && aiOperationsRules[0].includes('allow write: if false;')), 'menulistAiOperations writes are server/Admin-only');
 
 const aiOperationsApi = read('src/app/api/ai-operations/route.ts');
+const aiOperationHistoryQuery = read('src/lib/ai/operationHistoryQuery.ts');
+const aiOperationHistoryProjection = read('src/lib/ai/operationHistoryProjection.ts');
 assert(aiOperationsApi.includes('sanitizeOwnerOperation'), 'AI operations API sanitizes owner transaction responses');
 assert(aiOperationsApi.includes('PLATFORM_ONLY_FIELDS'), 'AI operations API has explicit platform-only field denylist');
 assert(aiOperationsApi.includes('OWNER_VISIBLE_FIELDS'), 'AI operations API uses an owner-visible allowlist');
 assert(aiOperationsApi.includes('PLATFORM_VISIBLE_FIELDS'), 'AI operations API uses a platform-visible allowlist');
 assert(aiOperationsApi.includes('sanitizePlatformOperation'), 'AI operations API sanitizes platform transaction responses');
+assert(aiOperationsApi.includes('projectAiOperationHistoryFields'), 'AI operations API delegates response rows to the canonical projection helper');
+assert(aiOperationsApi.includes('visibleFields: OWNER_RESPONSE_FIELDS'), 'AI operations API projects owner rows through the owner-only allowlist');
+assert(aiOperationsApi.includes('visibleFields: PLATFORM_VISIBLE_FIELDS'), 'AI operations API projects platform rows through the platform allowlist');
+[
+  'export function projectAiOperationHistoryFields',
+  "if (key === 'id' || !hasOwn(data, key)) return;",
+  'const serialized = serializeVisibleFirestoreValue(data[key]);',
+  'projected.id = documentId;',
+].forEach((token) => {
+  assert(aiOperationHistoryProjection.includes(token), `AI operation history projection includes canonical allowlist token ${token}`);
+});
+assert(!aiOperationsApi.includes('serializeFirestoreValue({ id, ...data })'), 'AI operations API must not serialize hidden fields before applying role allowlists');
 assert(aiOperationsApi.includes("'realCostPaise'"), 'AI operations API keeps actual provider cost platform-only');
 assert(aiOperationsApi.includes("'ourChargePaise'"), 'AI operations API keeps configured owner charge platform-only');
 assert(aiOperationsApi.includes("'marginPaise'"), 'AI operations API keeps margin platform-only');
 assert(aiOperationsApi.includes('getActionFilteredDocs'), 'AI operations API supports action filtering without relying on dynamic collection composite indexes');
+assert(aiOperationsApi.includes('resolveAiOperationActionScanBoundary'), 'AI operations API resolves capped filtered scans through the shared pagination boundary');
+assert(aiOperationsApi.includes('requiresManualContinuation: boundary.requiresManualContinuation'), 'AI operations API reports empty capped scans as explicit continuations');
+assert(aiOperationsApi.includes("boundary.cursorSource === 'scan_cursor'"), 'AI operations API advances capped scan cursors past fully inspected windows');
+assert(!aiOperationsApi.includes('const hasMore = docs.length > 0 &&'), 'AI operations API must not declare an empty capped filtered scan terminal');
+[
+  'export function resolveAiOperationActionScanBoundary',
+  'hasMore: hasBufferedMatch || scanLimitReached',
+  "requiresManualContinuation: input.matchedCount === 0 && scanLimitReached",
+  "? 'scan_cursor'",
+].forEach((token) => {
+  assert(aiOperationHistoryQuery.includes(token), `AI operation history query includes filtered-scan boundary token ${token}`);
+});
+[
+  'export function isAiOperationHistoryCursorAdmissible',
+  'if (!cursorRequested) return true;',
+  'if (!cursorExists) return false;',
+  'const cursorDate = normalizeAiOperationHistoryCursorDate(cursorCreatedOn);',
+  'if (dateRange.start && cursorTime < dateRange.start.getTime()) return false;',
+  'if (dateRange.end && cursorTime > dateRange.end.getTime()) return false;',
+].forEach((token) => {
+  assert(aiOperationHistoryQuery.includes(token), `AI operation history query includes persisted-cursor admission token ${token}`);
+});
+assert(aiOperationsApi.includes('isAiOperationHistoryCursorAdmissible({'), 'AI operations API validates the persisted cursor before query continuation');
+assert(aiOperationsApi.includes("return NextResponse.json({ error: 'Invalid cursor' }, { status: 400 });"), 'AI operations API rejects an invalid persisted cursor with a fixed client response');
 assert(aiOperationsApi.includes("import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';"), 'AI operations API uses the shared Firestore document ID guard for history scope');
 assert(aiOperationsApi.includes('function normalizeAiOperationHistoryScopeDocumentId(value: unknown): AiOperationHistoryScopeDocumentId | null'), 'AI operations API exposes a history scope document ID normalizer');
 assert(aiOperationsApi.includes('Number.isSafeInteger(numericId) && numericId > 0 && String(numericId) === documentId'), 'AI operations API requires exact positive numeric tenant/store scope');
@@ -2644,7 +3151,7 @@ const platformVisibleFields = platformVisibleFieldsMatch ? platformVisibleFields
 assert(!aiOperationsApi.includes('storeId,\n                tenantId,\n                userId,'), 'AI operations API rate-limit diagnostics do not log raw tenant/store/user IDs');
 
 const common = read('src/constants/common.ts');
-const actionBlock = common.match(/export const AI_ACTIONS_TYPES:[\s\S]*?\{([\s\S]*?)\n\}/);
+const actionBlock = common.match(/export const AI_ACTIONS_TYPES(?:\s*:[^=]+)?\s*=\s*\{([\s\S]*?)\n\}/);
 assert(Boolean(actionBlock), 'AI_ACTIONS_TYPES registry is present');
 const actionKeys = actionBlock
   ? Array.from(actionBlock[1].matchAll(/\b([A-Z0-9_]+):\s*"[^"]+"/g)).map((match) => match[1]).sort()
@@ -2700,9 +3207,12 @@ assert(
 [
   "import { normalizeBillingSubscriptionDocumentId } from \"@lib/billing/subscriptionDocumentIdBoundary\";",
   'const normalizedSubscriptionId = normalizeBillingSubscriptionDocumentId(subscription.id);',
-  'if (!normalizedSubscriptionId || subscription.monthlyCreditsAllowance <= 0) {',
+  'const initialAllowance = Number(subscription.monthlyCreditsAllowance);',
+  'if (!normalizedSubscriptionId || !Number.isFinite(initialAllowance) || initialAllowance <= 0) {',
   'const normalizedSubscriptionId = normalizeBillingSubscriptionDocumentId(subscription?.id);',
   'throw new Error("Billing subscription is not available.");',
+  'unitsToConsume > effectiveCapacity',
+  "throw new Error('Not enough billing credits for this operation.');",
 ].forEach((token) => {
   assert(capacityCheck.includes(token), `AI capacity check includes subscription document ID boundary token ${token}`);
 });
@@ -2737,7 +3247,7 @@ assert(!capacityCheck.includes('.doc(subscription.id)'), 'AI capacity check must
 {
   const apiSchemas = read('src/lib/validation/apiSchemas.ts');
   const newItemMetadataRoute = read('src/app/api/new-item-metadata/route.ts');
-  assert(apiSchemas.includes('price: z.union([z.string().max(120), z.number().finite()]).optional()'), 'new item metadata schema bounds attribute price strings before prompt construction');
+  assert(apiSchemas.includes('price: z.union([z.string().trim().max(120), z.number().finite()]).optional()'), 'new item metadata schema bounds attribute price strings before prompt construction');
 	  assert(newItemMetadataRoute.includes('const { item, targetLang, sourceLang, projectId, fileId, contentLength, businessType, tone } = validated;'), 'new item metadata route uses validated prompt payload fields');
 	  assert(newItemMetadataRoute.includes("businessType: businessType || 'unspecified'"), 'new item metadata route uses a neutral business type fallback');
 	  assert(!newItemMetadataRoute.includes("businessType || 'Restaurant'"), 'new item metadata route must not default unknown business types to Restaurant');
@@ -2749,9 +3259,9 @@ assert(!capacityCheck.includes('.doc(subscription.id)'), 'AI capacity check must
   'logRuntimeFailure',
   'ai_capacity_credits_exhausted_lifecycle_message_failed',
   'ai_capacity_credits_exhausted_lifecycle_message_import_failed',
-  "getBoundedRuntimeStringContext('subscriptionId', updatedBalance.subscription.id)",
-  "getBoundedRuntimeStringContext('tenantId', updatedBalance.subscription.tenantId)",
-  "getBoundedRuntimeStringContext('storeId', updatedBalance.subscription.storeId)",
+  "getBoundedRuntimeStringContext('subscriptionId', subscription.id)",
+  "getBoundedRuntimeStringContext('tenantId', subscription.tenantId)",
+  "getBoundedRuntimeStringContext('storeId', subscription.storeId)",
 ].forEach((token) => {
   assert(capacityCheck.includes(token), `AI capacity check includes bounded credits-exhausted lifecycle diagnostic token ${token}`);
 });
@@ -2797,6 +3307,7 @@ assert(!ownerTransactionsPage.includes("dataIndex: 'totalTokenCount'"), 'desktop
 assert(ownerTransactionsPage.includes('getAiOperationOwnerSummary'), 'desktop owner transaction table shows shared owner-facing result summaries');
 assert(ownerTransactionsPage.includes('pagination={false}'), 'desktop owner transaction table uses custom cursor pagination instead of fake total pagination');
 assert(ownerTransactionsPage.includes('pageCursorsRef'), 'desktop owner transaction pagination tracks page cursors');
+assert(ownerTransactionsPage.includes('&& (!response.hasMore || !response.lastVisibleDoc)'), 'desktop owner transaction pagination keeps empty capped scan pages continuable');
 assert(ownerTransactionsPage.includes("t('noCreditActions')"), 'desktop owner transaction page distinguishes free setup actions from charged actions');
 assert(ownerTransactionsPage.includes('getExistingProjectsListWithoutLoader'), 'desktop owner transaction page uses read-only project summary lookup');
 assert(!ownerTransactionsPage.includes('getMetadataProjectsList'), 'desktop owner transaction page does not use project lookup that can create defaults');
@@ -2841,6 +3352,9 @@ assert(!mobileTransactionsPage.includes('JSON.stringify(tx'), 'mobile platform t
 assert(mobileTransactionsPage.includes('getAiOperationOwnerSummary'), 'mobile owner transaction list shows shared owner-facing result summaries');
 assert(mobileTransactionsPage.includes('formatInrPaise'), 'mobile platform transaction debug formats paise-denominated cost values as INR');
 assert(mobileTransactionsPage.includes("t('noCreditActions')"), 'mobile owner transaction screen distinguishes free setup actions from charged actions');
+assert(mobileTransactionsPage.includes('response.requiresManualContinuation'), 'mobile owner transaction screen recognizes explicit capped-scan continuation');
+assert(mobileTransactionsPage.includes('setManualFilterContinuation(true)'), 'mobile owner transaction screen stops automatic scans and offers manual continuation');
+assert(mobileTransactionsPage.includes("{t('next')}"), 'mobile owner transaction screen exposes a translated manual continuation action');
 
 const operationPresentation = read('src/lib/ai/operationPresentation.ts');
 assert(operationPresentation.includes('formatAiOperationActionLabel'), 'AI operation presentation helper centralizes owner action labels');
@@ -2856,7 +3370,7 @@ const aiSystemFirebaseLaunchBoundaryDoc = read('__docs__/ai-system-layer/ai-syst
   '`npm run verify:production-readiness-local`',
   '`npm run verify:ai-accounting`',
   '`npm run verify:functions-deploy-preflight`',
-  'scoped Firebase deploy evidence for affected Functions',
+  'scoped Firebase deploy evidence for affected MenuList Functions',
   'provider smoke',
   'authenticated browser/device QA for affected owner/platform surfaces',
   'production-host smoke',

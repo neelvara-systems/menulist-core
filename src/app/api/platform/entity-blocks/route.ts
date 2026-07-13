@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { DB_COLLECTIONS } from "@constant/database";
 import { FEATURE_FLAGS } from "@config/features";
+import { parsePlatformStoreSummary } from "@data/shared/storeSummaryBoundary";
 import { admin, authAdmin } from "@lib/firebase/firebaseAdmin";
 import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
 import {
@@ -17,16 +18,44 @@ import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
 import { getSafeZodValidationDetails } from "@lib/security/inputValidation";
 import { getBoundedSecurityRouteContext } from "@lib/security/securityDiagnostics";
 import { touchDigitalScreenContentVersionForStoreServer } from "@lib/screen/serverScreenInvalidation";
+import {
+    prepareStaffAccessStateScope,
+    readStaffAccessStateInTransaction,
+    StaffConcurrencyError,
+    writeStaffBlockedAccessStateInTransaction,
+} from "@lib/staffManagement/concurrencyBoundary";
 import { revalidateTag } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
 import { hashPublicRateLimitValue } from "src/middleware/publicApi";
 import { z } from "zod";
 import { withPlatformAuth } from "../../../../middleware/auth";
+import type { PlatformBlockDetails } from "@type/platform/blocking";
+import { randomUUID } from "crypto";
 
 const PLATFORM_ENTITY_BLOCK_MAX_BODY_BYTES = 64 * 1024;
 const PLATFORM_ENTITY_BLOCK_RATE_LIMIT_KEY = 'platform-entity-block';
-const TENANT_STORE_BLOCK_BATCH_LIMIT = 450;
+const MAX_TENANT_BLOCK_STORES = 200;
+const TENANT_BLOCK_EFFECT_CHUNK_SIZE = 20;
+const USER_AUTH_RECONCILIATION_MAX_ATTEMPTS = 5;
+const USER_AUTH_SYNC_LEASE_MS = 2 * 60 * 1000;
+const PLATFORM_ENTITY_BLOCK_SCOPE_CONFLICT = 'platform_entity_block_scope_conflict';
 const TENANT_STORE_SCOPE_FIELDS = ['tenantId', 'tId'] as const;
+
+class PlatformEntityBlockScopeConflictError extends Error {
+    readonly code = PLATFORM_ENTITY_BLOCK_SCOPE_CONFLICT;
+
+    constructor() {
+        super('Entity block scope changed');
+        this.name = 'PlatformEntityBlockScopeConflictError';
+    }
+}
+
+class PlatformEntityBlockAuthReconciliationError extends Error {
+    constructor() {
+        super('Entity block auth reconciliation did not converge');
+        this.name = 'PlatformEntityBlockAuthReconciliationError';
+    }
+}
 
 type PlatformEntityBlockDocumentScope = {
     documentId: string;
@@ -71,13 +100,54 @@ function normalizePlatformEntityBlockTargetDocumentId(
     return normalizePlatformEntityBlockDocumentId(value);
 }
 
+function normalizePreviousPlatformBlockDetails(value: unknown): PlatformBlockDetails | undefined {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+    const details = value as Record<string, unknown>;
+    if (
+        typeof details.blocked !== 'boolean'
+        || typeof details.reason !== 'string'
+        || details.source !== 'platform_settings'
+        || typeof details.updatedAt !== 'string'
+    ) {
+        return undefined;
+    }
+    const optionalStringFields = [
+        'blockedReason',
+        'unblockedReason',
+        'blockedAt',
+        'blockedByUserId',
+        'blockedByEmail',
+        'unblockedAt',
+        'unblockedByUserId',
+        'unblockedByEmail',
+        'updatedByUserId',
+        'updatedByEmail',
+    ] as const;
+    if (optionalStringFields.some((field) => details[field] !== undefined && typeof details[field] !== 'string')) {
+        return undefined;
+    }
+    return {
+        blocked: details.blocked,
+        reason: details.reason,
+        source: details.source,
+        updatedAt: details.updatedAt,
+        ...Object.fromEntries(optionalStringFields
+            .filter((field) => typeof details[field] === 'string')
+            .map((field) => [field, details[field]])),
+    };
+}
+
+function isPlatformEntityBlockScopeConflict(error: unknown): boolean {
+    return error instanceof PlatformEntityBlockScopeConflictError;
+}
+
 function getPlatformEntityBlockOperatorId(session: any): string {
     return String(session?.uId || session?.user?.id || session?.user?.email || 'platform');
 }
 
 const EntityBlockRequestSchema = z.object({
     blocked: z.boolean(),
-    entity: z.record(z.any()).optional(),
+    entity: z.record(z.unknown()).optional(),
     entityId: z.union([
         z.string().min(1).max(160),
         z.number().finite(),
@@ -112,81 +182,128 @@ function getTenantStoreQueryValues(tenantScope: PlatformEntityBlockDocumentScope
     return [tenantScope.documentId];
 }
 
-async function getDirectTenantStoreIds(db: admin.firestore.Firestore, tenantScope: PlatformEntityBlockDocumentScope): Promise<string[]> {
-    const storeIds = new Set<string>();
-    const snapshots = await Promise.all(
-        getTenantStoreQueryValues(tenantScope).flatMap((tenantQueryValue) => TENANT_STORE_SCOPE_FIELDS.map((field) => db
+function hasExactStoredEntityIdentity(
+    entity: Record<string, unknown>,
+    field: 'storeId' | 'tenantId',
+    expectedScope: PlatformEntityBlockDocumentScope,
+): boolean {
+    const storedValue = entity[field];
+    if (storedValue === undefined || storedValue === null) return true;
+    const storedScope = normalizePlatformEntityBlockTargetDocumentId(
+        field === 'storeId' ? 'store' : 'tenant',
+        typeof storedValue === 'string' || typeof storedValue === 'number' ? storedValue : null,
+    );
+    return storedScope?.documentId === expectedScope.documentId;
+}
+
+function hasExactTenantOwnership(entity: Record<string, unknown>, tenantScope: PlatformEntityBlockDocumentScope): boolean {
+    const storedScopes = TENANT_STORE_SCOPE_FIELDS
+        .filter((field) => entity[field] !== undefined && entity[field] !== null)
+        .map((field) => {
+            const value = entity[field];
+            return normalizePlatformEntityBlockTargetDocumentId(
+                'tenant',
+                typeof value === 'string' || typeof value === 'number' ? value : null,
+            );
+        });
+    return storedScopes.length > 0
+        && storedScopes.every((scope) => scope?.documentId === tenantScope.documentId);
+}
+
+async function updateTenantBlockStateAtomically({
+    blocked,
+    db,
+    docRef,
+    reason,
+    session,
+    tenantScope,
+}: {
+    blocked: boolean;
+    db: admin.firestore.Firestore;
+    docRef: admin.firestore.DocumentReference;
+    reason: string;
+    session: any;
+    tenantScope: PlatformEntityBlockDocumentScope;
+}): Promise<{ affectedStoreIds: string[]; blockDetails: ReturnType<typeof buildPlatformBlockDetails>; entity: Record<string, unknown> }> {
+    const summaryRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc('storesSummary');
+    const storeQueries = getTenantStoreQueryValues(tenantScope).flatMap((tenantQueryValue) => (
+        TENANT_STORE_SCOPE_FIELDS.map((field) => db
             .collection(DB_COLLECTIONS.STORES)
             .where(field, '==', tenantQueryValue)
-            .get())),
-    );
+            .limit(MAX_TENANT_BLOCK_STORES + 1))
+    ));
 
-    snapshots.forEach((snapshot) => {
-        snapshot.docs.forEach((doc) => {
-            const storeScope = normalizePlatformEntityBlockTargetDocumentId('store', doc.id);
-            if (storeScope) storeIds.add(storeScope.documentId);
-        });
-    });
-
-    return Array.from(storeIds);
-}
-
-async function syncTenantBlockedToStoreDocs(
-    db: admin.firestore.Firestore,
-    directStoreIds: string[],
-    tenantBlocked: boolean,
-): Promise<void> {
-    if (!directStoreIds.length) return;
-
-    let batch = db.batch();
-    let operations = 0;
-
-    for (const storeId of directStoreIds) {
-        const storeScope = normalizePlatformEntityBlockTargetDocumentId('store', storeId);
-        if (!storeScope) continue;
-
-        batch.update(db.collection(DB_COLLECTIONS.STORES).doc(storeScope.documentId), {
-            tenantBlocked,
-            tenantBlockedSyncedAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
-        operations += 1;
-
-        if (operations >= TENANT_STORE_BLOCK_BATCH_LIMIT) {
-            await batch.commit();
-            batch = db.batch();
-            operations = 0;
+    return db.runTransaction(async (transaction) => {
+        const [tenantSnap, summarySnap, ...storeSnapshots] = await Promise.all([
+            transaction.get(docRef),
+            transaction.get(summaryRef),
+            ...storeQueries.map((query) => transaction.get(query)),
+        ]);
+        if (!tenantSnap.exists) throw new PlatformEntityBlockScopeConflictError();
+        const tenant = tenantSnap.data() || {};
+        if (!hasExactStoredEntityIdentity(tenant, 'tenantId', tenantScope)) {
+            throw new PlatformEntityBlockScopeConflictError();
         }
-    }
 
-    if (operations > 0) {
-        await batch.commit();
-    }
-}
+        const directStores = new Map<string, admin.firestore.QueryDocumentSnapshot>();
+        for (const snapshot of storeSnapshots) {
+            if (snapshot.size > MAX_TENANT_BLOCK_STORES) {
+                throw new PlatformEntityBlockScopeConflictError();
+            }
+            for (const store of snapshot.docs) {
+                const storeScope = normalizePlatformEntityBlockTargetDocumentId('store', store.id);
+                const storeData = store.data();
+                if (
+                    !storeScope
+                    || !hasExactStoredEntityIdentity(storeData, 'storeId', storeScope)
+                    || !hasExactTenantOwnership(storeData, tenantScope)
+                ) {
+                    throw new PlatformEntityBlockScopeConflictError();
+                }
+                directStores.set(storeScope.documentId, store);
+            }
+        }
 
-async function syncTenantStoreBlockState(db: admin.firestore.Firestore, tenantScope: PlatformEntityBlockDocumentScope, tenantBlocked: boolean): Promise<string[]> {
-    const summaryRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc('storesSummary');
-    const [summarySnap, directStoreIds] = await Promise.all([
-        summaryRef.get(),
-        getDirectTenantStoreIds(db, tenantScope),
-    ]);
-    const stores = summarySnap.exists ? (summarySnap.data()?.stores || {}) : {};
-    const summaryStoreIds = Object.entries(stores)
-        .filter(([, store]: [string, any]) => String(store?.tId ?? store?.tenantId ?? '') === tenantScope.documentId)
-        .map(([storeId]) => normalizePlatformEntityBlockTargetDocumentId('store', storeId)?.documentId)
-        .filter((storeId): storeId is string => Boolean(storeId));
-    const affectedStoreIds = Array.from(new Set([...summaryStoreIds, ...directStoreIds]));
+        const stores = parsePlatformStoreSummary(summarySnap.exists ? summarySnap.data() : undefined);
+        const summaryStoreIds = Object.entries(stores)
+            .filter(([, store]) => store.tId === tenantScope.documentId)
+            .map(([storeId]) => normalizePlatformEntityBlockTargetDocumentId('store', storeId)?.documentId)
+            .filter((storeId): storeId is string => Boolean(storeId));
+        const affectedStoreIds = Array.from(new Set([...summaryStoreIds, ...Array.from(directStores.keys())]));
+        if (directStores.size > MAX_TENANT_BLOCK_STORES || affectedStoreIds.length > MAX_TENANT_BLOCK_STORES) {
+            throw new PlatformEntityBlockScopeConflictError();
+        }
 
-    if (affectedStoreIds.length) {
-        await syncTenantBlockedToStoreDocs(db, directStoreIds, tenantBlocked);
-        await summaryRef.set({
-            lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
-            stores: Object.fromEntries(
-                affectedStoreIds.map((storeId) => [storeId, { tenantBlocked }]),
-            ),
-        }, { merge: true });
-    }
+        const blockDetails = buildPlatformBlockDetails({
+            actorEmail: session?.user?.email,
+            actorUserId: session?.uId || session?.user?.id,
+            blocked,
+            previousBlockDetails: normalizePreviousPlatformBlockDetails(tenant.blockDetails),
+            reason,
+        });
+        const now = admin.firestore.Timestamp.now();
+        transaction.update(docRef, { blocked, blockDetails });
+        directStores.forEach((store) => {
+            transaction.update(store.ref, {
+                tenantBlocked: blocked,
+                tenantBlockedSyncedAt: now,
+            });
+        });
+        if (affectedStoreIds.length) {
+            transaction.set(summaryRef, {
+                lastUpdated: now,
+                stores: Object.fromEntries(
+                    affectedStoreIds.map((storeId) => [storeId, { tenantBlocked: blocked }]),
+                ),
+            }, { merge: true });
+        }
 
-    return affectedStoreIds;
+        return {
+            affectedStoreIds,
+            blockDetails,
+            entity: { ...tenant, id: tenantSnap.id },
+        };
+    });
 }
 
 async function revalidateStorePublicCache(storeId: string | number, tenantId?: string | number) {
@@ -202,46 +319,149 @@ async function revalidateStorePublicCache(storeId: string | number, tenantId?: s
 }
 
 async function syncUserBlockAuthState({
-    blocked,
+    desiredDisabled,
     entity,
-    reason,
+    revokeTokens,
 }: {
-    blocked: boolean;
-    entity: Record<string, any>;
-    reason: string;
+    desiredDisabled: boolean;
+    entity: Record<string, unknown>;
+    revokeTokens: boolean;
 }) {
-    const firebaseUid = entity?.firebaseUid ? String(entity.firebaseUid) : "";
-    const email = String(entity?.email || "").toLowerCase().trim();
-    if (!firebaseUid && !email) return { authDisabled: blocked, authSynced: false };
+    const firebaseUid = typeof entity.firebaseUid === 'string' ? entity.firebaseUid.trim() : '';
+    const email = typeof entity.email === 'string' ? entity.email.toLowerCase().trim() : '';
+    if (!firebaseUid && !email) return { authDisabled: desiredDisabled, authSynced: false, status: 'auth_user_missing' as const };
 
     try {
         const firebaseUser = firebaseUid
             ? await authAdmin.getUser(firebaseUid)
             : await authAdmin.getUserByEmail(email);
-        const shouldDisable = blocked || entity.active === false || entity.deleted === true || entity.isVerified === false;
 
-        if (firebaseUser.disabled !== shouldDisable) {
-            await authAdmin.updateUser(firebaseUser.uid, { disabled: shouldDisable });
+        if (firebaseUser.disabled !== desiredDisabled) {
+            await authAdmin.updateUser(firebaseUser.uid, { disabled: desiredDisabled });
         }
-        if (blocked) {
+        if (revokeTokens) {
             await authAdmin.revokeRefreshTokens(firebaseUser.uid);
         }
 
-        return { authDisabled: shouldDisable, authSynced: true };
+        return { authDisabled: desiredDisabled, authSynced: true, status: 'synced' as const };
     } catch (error: any) {
         if (error?.code === "auth/user-not-found") {
             logFirebaseAdminDiagnostic("platform_entity_block_auth_user_missing", {
-                blocked,
+                desiredDisabled,
                 hasEmail: email.length > 0,
                 hasFirebaseUid: firebaseUid.length > 0,
-                ...getBoundedFirebaseAdminStringContext("reason", reason),
                 ...getBoundedFirebaseAdminStringContext("userId", entity?.id),
             });
-            return { authDisabled: blocked, authSynced: false };
+            return { authDisabled: desiredDisabled, authSynced: false, status: 'auth_user_missing' as const };
         }
 
         throw error;
     }
+}
+
+function getDesiredUserAuthDisabled(entity: Record<string, unknown>): boolean {
+    return entity.blocked === true
+        || entity.active === false
+        || entity.deleted === true
+        || entity.isVerified === false;
+}
+
+function hasExactStoredUserIdentity(entity: Record<string, unknown>, userScope: PlatformEntityBlockDocumentScope): boolean {
+    if (entity.id === undefined || entity.id === null) return true;
+    const storedScope = normalizePlatformEntityBlockTargetDocumentId(
+        'user',
+        typeof entity.id === 'string' || typeof entity.id === 'number' ? entity.id : null,
+    );
+    return storedScope?.documentId === userScope.documentId;
+}
+
+function getPlatformEntityBlockTimestampMillis(value: unknown): number {
+    if (value instanceof Date) return value.getTime();
+    if (value && typeof value === 'object' && 'toMillis' in value && typeof value.toMillis === 'function') {
+        const millis = value.toMillis();
+        return Number.isFinite(millis) ? millis : 0;
+    }
+    return 0;
+}
+
+function hasActiveUserAuthSyncLease(entity: Record<string, unknown>, nowMs: number): boolean {
+    if (entity.authSyncStatus !== 'pending') return false;
+    const pending = entity.authSyncPending;
+    if (!pending || typeof pending !== 'object' || Array.isArray(pending)) return false;
+    const leaseExpiresAt = (pending as Record<string, unknown>).leaseExpiresAt;
+    return getPlatformEntityBlockTimestampMillis(leaseExpiresAt) > nowMs;
+}
+
+async function markUserAuthSyncFailed(
+    db: admin.firestore.Firestore,
+    docRef: admin.firestore.DocumentReference,
+    operationId: string,
+): Promise<void> {
+    await db.runTransaction(async (transaction) => {
+        const userSnap = await transaction.get(docRef);
+        if (!userSnap.exists || userSnap.data()?.authSyncRevision !== operationId) return;
+        transaction.update(docRef, {
+            authSyncStatus: 'failed',
+            modifiedOn: admin.firestore.Timestamp.now(),
+        });
+    });
+}
+
+async function reconcileUserBlockAuthState({
+    db,
+    docRef,
+    requestedOperationId,
+}: {
+    db: admin.firestore.Firestore;
+    docRef: admin.firestore.DocumentReference;
+    requestedOperationId: string;
+}): Promise<{ authDisabled: boolean; authSynced: boolean; entity: Record<string, unknown>; superseded: boolean }> {
+    for (let attempt = 0; attempt < USER_AUTH_RECONCILIATION_MAX_ATTEMPTS; attempt += 1) {
+        const userSnap = await docRef.get();
+        if (!userSnap.exists) throw new PlatformEntityBlockScopeConflictError();
+        const user: Record<string, unknown> = { ...(userSnap.data() || {}), id: userSnap.id };
+        const revision = typeof user.authSyncRevision === 'string' ? user.authSyncRevision : '';
+        if (!revision) throw new PlatformEntityBlockAuthReconciliationError();
+        const desiredDisabled = getDesiredUserAuthDisabled(user);
+        const authSync = await syncUserBlockAuthState({
+            desiredDisabled,
+            entity: user,
+            revokeTokens: user.blocked === true,
+        });
+        const finalized = await db.runTransaction(async (transaction) => {
+            const freshSnap = await transaction.get(docRef);
+            if (!freshSnap.exists) throw new PlatformEntityBlockScopeConflictError();
+            const freshUser: Record<string, unknown> = { ...(freshSnap.data() || {}), id: freshSnap.id };
+            if (
+                freshUser.authSyncRevision !== revision
+                || getDesiredUserAuthDisabled(freshUser) !== desiredDisabled
+            ) {
+                return { stable: false as const };
+            }
+            const now = admin.firestore.Timestamp.now();
+            transaction.update(docRef, {
+                authDisabled: desiredDisabled,
+                authSyncPending: admin.firestore.FieldValue.delete(),
+                authSyncStatus: authSync.status,
+                authSyncedAt: now,
+                modifiedOn: now,
+            });
+            return {
+                entity: freshUser,
+                stable: true as const,
+            };
+        });
+        if (finalized.stable) {
+            return {
+                authDisabled: desiredDisabled,
+                authSynced: authSync.authSynced,
+                entity: finalized.entity,
+                superseded: revision !== requestedOperationId,
+            };
+        }
+    }
+
+    throw new PlatformEntityBlockAuthReconciliationError();
 }
 
 export const POST = withPlatformAuth(async (request: NextRequest, session) => {
@@ -298,7 +518,6 @@ export const POST = withPlatformAuth(async (request: NextRequest, session) => {
 
     const {
         blocked,
-        entity,
         entityId,
         entityType,
         reason,
@@ -316,118 +535,241 @@ export const POST = withPlatformAuth(async (request: NextRequest, session) => {
         return NextResponse.json({ error: "Entity not found" }, { status: 404 });
     }
 
-    const existingEntity: Record<string, any> = {
-        ...(entity || {}),
-        ...entitySnap.data(),
-        id: entitySnap.id,
-    };
-    const blockDetails = buildPlatformBlockDetails({
-        actorEmail: session?.user?.email,
-        actorUserId: session?.uId || session?.user?.id,
-        blocked,
-        previousBlockDetails: existingEntity?.blockDetails,
-        reason,
-    });
-
     if (entityType === 'tenant') {
-        const tenantScope = normalizePlatformEntityBlockTargetDocumentId('tenant', existingEntity.tenantId) || entityScope;
+        const tenantScope = entityScope;
         const tenantId = tenantScope.numericId ?? tenantScope.documentId;
-        let affectedStoreIds: string[] = [];
+        let committed = false;
+        try {
+            const result = await updateTenantBlockStateAtomically({
+                blocked,
+                db,
+                docRef,
+                reason,
+                session,
+                tenantScope,
+            });
+            committed = true;
+            for (let offset = 0; offset < result.affectedStoreIds.length; offset += TENANT_BLOCK_EFFECT_CHUNK_SIZE) {
+                await Promise.all(result.affectedStoreIds
+                    .slice(offset, offset + TENANT_BLOCK_EFFECT_CHUNK_SIZE)
+                    .map((storeId) => revalidateStorePublicCache(storeId, tenantScope.documentId)));
+            }
 
-        if (blocked) {
-            affectedStoreIds = await syncTenantStoreBlockState(db, tenantScope, true);
-            await docRef.update({
-                blocked,
-                blockDetails,
+            return NextResponse.json({
+                entity: {
+                    ...result.entity,
+                    tenantId,
+                    blocked,
+                    blockDetails: result.blockDetails,
+                },
+                success: true,
             });
-        } else {
-            await docRef.update({
+        } catch (error) {
+            const scopeConflict = isPlatformEntityBlockScopeConflict(error);
+            logFirebaseAdminDiagnostic('platform_entity_block_tenant_update_failed', {
                 blocked,
-                blockDetails,
+                committed,
+                scopeConflict,
             });
-            affectedStoreIds = await syncTenantStoreBlockState(db, tenantScope, false);
+            return NextResponse.json(
+                { error: committed ? 'Entity block state saved but refresh failed' : 'Entity block update failed' },
+                { status: committed ? 500 : scopeConflict ? 409 : 500 },
+            );
         }
-
-        await Promise.all(affectedStoreIds.map((storeId) => revalidateStorePublicCache(storeId, tenantScope.documentId)));
-
-        return NextResponse.json({
-            entity: {
-                ...existingEntity,
-                tenantId,
-                blocked,
-                blockDetails,
-            },
-            success: true,
-        });
     }
 
     if (entityType === 'store') {
-        const storeScope = normalizePlatformEntityBlockTargetDocumentId('store', existingEntity.storeId) || entityScope;
+        const storeScope = entityScope;
         const storeId = storeScope.numericId;
         if (typeof storeId !== 'number') {
             return NextResponse.json({ error: "Invalid input" }, { status: 400 });
         }
-        const tenantScope = normalizePlatformEntityBlockTargetDocumentId('tenant', existingEntity.tenantId);
-        const modifiedOn = blockDetails.updatedAt;
-
-        await docRef.update({
-            blocked,
-            blockDetails,
-            modifiedOn,
-        });
-        await db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc('storesSummary').set({
-            lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
-            stores: {
-                [storeId]: {
+        let committed = false;
+        try {
+            const summaryRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc('storesSummary');
+            const result = await db.runTransaction(async (transaction) => {
+                const freshStoreSnap = await transaction.get(docRef);
+                if (!freshStoreSnap.exists) throw new PlatformEntityBlockScopeConflictError();
+                const freshStore = freshStoreSnap.data() || {};
+                if (!hasExactStoredEntityIdentity(freshStore, 'storeId', storeScope)) {
+                    throw new PlatformEntityBlockScopeConflictError();
+                }
+                const tenantScope = normalizePlatformEntityBlockTargetDocumentId(
+                    'tenant',
+                    typeof freshStore.tenantId === 'string' || typeof freshStore.tenantId === 'number'
+                        ? freshStore.tenantId
+                        : typeof freshStore.tId === 'string' || typeof freshStore.tId === 'number'
+                            ? freshStore.tId
+                            : null,
+                );
+                if (tenantScope && !hasExactTenantOwnership(freshStore, tenantScope)) {
+                    throw new PlatformEntityBlockScopeConflictError();
+                }
+                const blockDetails = buildPlatformBlockDetails({
+                    actorEmail: session?.user?.email,
+                    actorUserId: session?.uId || session?.user?.id,
                     blocked,
+                    previousBlockDetails: normalizePreviousPlatformBlockDetails(freshStore.blockDetails),
+                    reason,
+                });
+                const modifiedOn = blockDetails.updatedAt;
+                const now = admin.firestore.Timestamp.now();
+                transaction.update(docRef, { blocked, blockDetails, modifiedOn });
+                transaction.set(summaryRef, {
+                    lastUpdated: now,
+                    stores: {
+                        [storeScope.documentId]: { blocked, modifiedOn },
+                    },
+                }, { merge: true });
+                return {
+                    blockDetails,
+                    entity: { ...freshStore, id: freshStoreSnap.id },
                     modifiedOn,
+                    tenantDocumentId: tenantScope?.documentId,
+                };
+            });
+            committed = true;
+            await revalidateStorePublicCache(storeScope.documentId, result.tenantDocumentId);
+
+            return NextResponse.json({
+                entity: {
+                    ...result.entity,
+                    storeId,
+                    blocked,
+                    blockDetails: result.blockDetails,
+                    modifiedOn: result.modifiedOn,
                 },
-            },
-        }, { merge: true });
-        await revalidateStorePublicCache(storeScope.documentId, tenantScope?.documentId);
+                success: true,
+            });
+        } catch (error) {
+            const scopeConflict = isPlatformEntityBlockScopeConflict(error);
+            logFirebaseAdminDiagnostic('platform_entity_block_store_update_failed', {
+                blocked,
+                committed,
+                scopeConflict,
+            });
+            return NextResponse.json(
+                { error: committed ? 'Entity block state saved but refresh failed' : 'Entity block update failed' },
+                { status: committed ? 500 : scopeConflict ? 409 : 500 },
+            );
+        }
+    }
+
+    let staffAccessScope;
+    try {
+        staffAccessScope = await prepareStaffAccessStateScope(db, entitySnap.data() || {});
+    } catch (error) {
+        logFirebaseAdminDiagnostic('platform_entity_block_staff_access_prepare_failed', {
+            hasStaffAccessScope: false,
+        });
+        return NextResponse.json({ error: 'Entity block update failed' }, { status: 500 });
+    }
+
+    const operationId = randomUUID();
+    let committed = false;
+    try {
+        const started = await db.runTransaction(async (transaction) => {
+            const staffAccessStates = staffAccessScope
+                ? await readStaffAccessStateInTransaction(transaction, db, staffAccessScope)
+                : [];
+            const freshUserSnap = await transaction.get(docRef);
+            if (!freshUserSnap.exists) throw new PlatformEntityBlockScopeConflictError();
+            const freshUser: Record<string, unknown> = { ...(freshUserSnap.data() || {}), id: freshUserSnap.id };
+            if (!hasExactStoredUserIdentity(freshUser, entityScope)) {
+                throw new PlatformEntityBlockScopeConflictError();
+            }
+            const now = admin.firestore.Timestamp.now();
+            if (hasActiveUserAuthSyncLease(freshUser, now.toMillis())) {
+                throw new PlatformEntityBlockScopeConflictError();
+            }
+            const blockDetails = buildPlatformBlockDetails({
+                actorEmail: session?.user?.email,
+                actorUserId: session?.uId || session?.user?.id,
+                blocked,
+                previousBlockDetails: normalizePreviousPlatformBlockDetails(freshUser.blockDetails),
+                reason,
+            });
+            const nextUser = { ...freshUser, blocked };
+            const desiredDisabled = getDesiredUserAuthDisabled(nextUser);
+            const updateData: Record<string, unknown> = {
+                authDisabled: desiredDisabled,
+                authSyncPending: {
+                    desiredDisabled,
+                    leaseExpiresAt: admin.firestore.Timestamp.fromMillis(now.toMillis() + USER_AUTH_SYNC_LEASE_MS),
+                    operationId,
+                    requestedAt: now,
+                },
+                authSyncRevision: operationId,
+                authSyncStatus: 'pending',
+                blocked,
+                blockDetails,
+                modifiedOn: now,
+            };
+            if (blocked) {
+                updateData.authTokensRevokedAt = now;
+                updateData.sessionRevokedAt = now;
+                if (session?.uId || session?.user?.id) updateData.sessionRevokedBy = session?.uId || session?.user?.id;
+                if (session?.user?.email) updateData.sessionRevokedByEmail = session.user.email;
+                updateData.sessionRevokedReason = 'platform_user_block';
+            }
+            if (staffAccessScope) {
+                writeStaffBlockedAccessStateInTransaction(
+                    transaction,
+                    staffAccessScope,
+                    staffAccessStates,
+                    freshUser,
+                    freshUserSnap.id,
+                    blocked,
+                );
+            }
+            transaction.update(docRef, updateData);
+            return { blockDetails, modifiedOn: now };
+        });
+        committed = true;
+        const reconciled = await reconcileUserBlockAuthState({
+            db,
+            docRef,
+            requestedOperationId: operationId,
+        });
+        if (reconciled.superseded) {
+            logFirebaseAdminDiagnostic('platform_entity_block_user_update_superseded', {
+                blocked,
+                committed,
+            });
+            return NextResponse.json({ error: 'Entity block state changed during update' }, { status: 409 });
+        }
 
         return NextResponse.json({
             entity: {
-                ...existingEntity,
-                storeId,
+                ...reconciled.entity,
+                authDisabled: reconciled.authDisabled,
+                authSynced: reconciled.authSynced,
                 blocked,
-                blockDetails,
-                modifiedOn,
+                blockDetails: started.blockDetails,
+                modifiedOn: started.modifiedOn,
             },
             success: true,
         });
-    }
-
-    const now = admin.firestore.Timestamp.now();
-    const authSync = await syncUserBlockAuthState({
-        blocked,
-        entity: existingEntity,
-        reason,
-    });
-    const updateData: Record<string, any> = {
-        authDisabled: authSync.authDisabled,
-        blocked,
-        blockDetails,
-        modifiedOn: now,
-    };
-    if (blocked) {
-        updateData.authTokensRevokedAt = now;
-        updateData.sessionRevokedAt = now;
-        if (session?.uId || session?.user?.id) updateData.sessionRevokedBy = session?.uId || session?.user?.id;
-        if (session?.user?.email) updateData.sessionRevokedByEmail = session.user.email;
-        updateData.sessionRevokedReason = "platform_user_block";
-    }
-
-    await docRef.update(updateData);
-
-    return NextResponse.json({
-        entity: {
-            ...existingEntity,
-            authDisabled: authSync.authDisabled,
+    } catch (error) {
+        const scopeConflict = isPlatformEntityBlockScopeConflict(error) || error instanceof StaffConcurrencyError;
+        if (committed) {
+            try {
+                await markUserAuthSyncFailed(db, docRef, operationId);
+            } catch {
+                logFirebaseAdminDiagnostic('platform_entity_block_user_failure_marker_failed', {
+                    blocked,
+                });
+            }
+        }
+        logFirebaseAdminDiagnostic('platform_entity_block_user_update_failed', {
             blocked,
-            blockDetails,
-            modifiedOn: now,
-        },
-        success: true,
-    });
+            committed,
+            reconciliationFailed: error instanceof PlatformEntityBlockAuthReconciliationError,
+            scopeConflict,
+        });
+        return NextResponse.json(
+            { error: committed ? 'Entity block state saved but authentication sync failed' : 'Entity block update failed' },
+            { status: committed ? 500 : scopeConflict ? 409 : 500 },
+        );
+    }
 });

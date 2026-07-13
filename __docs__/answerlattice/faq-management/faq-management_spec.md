@@ -52,3 +52,5 @@ Article mirror:
 - `kb_articles/{articleId}.faqIds[]`
 
 The FAQ document owns the relationship. `faqIds` is only a bounded mirror for cheap article-side lookup.
+
+Customer-facing FAQ output is a separate exact DTO containing only `id`, `question`, `answer`, `articleId`, `tags`, `likes`, and `dislikes`. Persisted tenant, actor, source-context, trace, request, lifecycle, job, governance, and writer metadata is not public output.

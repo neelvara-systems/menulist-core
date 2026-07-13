@@ -9,11 +9,16 @@
 
 import DateTimeDisplay from '@atoms/DateTimeDisplay';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
-import { firebaseClient } from '@lib/firebase/firebaseClient';
+import {
+  type AnswerlatticeWeeklySummary,
+  parseAnswerlatticeWeeklySummary,
+} from '@lib/answerlattice/analyticsIntelligenceContracts';
+import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
+import { answerlatticeFirebaseClient } from '@lib/firebase/answerlatticeFirebaseClient';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { Alert, Button, Card, Empty, message, Space, Spin, Statistic } from 'antd';
-import { doc, getDoc, Timestamp } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import { LuCalendar, LuDownload, LuRefreshCw, LuSparkles, LuTrendingDown, LuTrendingUp } from 'react-icons/lu';
@@ -21,23 +26,6 @@ import { LuCalendar, LuDownload, LuRefreshCw, LuSparkles, LuTrendingDown, LuTren
 // ================================================================
 // TYPES
 // ================================================================
-
-interface WeeklyNarrative {
-  tId: string;
-  sId: string;
-  weekStart: string;
-  weekEnd: string;
-  narrative: string;
-  highlights: string[];
-  recommendations: string[];
-  keyMetrics: {
-    volumeChange: number;
-    satisfactionChange: number;
-    topCategory: string;
-  };
-  generatedAt: Timestamp;
-  promptVersion: string;
-}
 
 type SentimentType = 'positive' | 'neutral' | 'concerning';
 const WEEKLY_DIGEST_RESPONSE_JSON_MAX_BYTES = 64 * 1024;
@@ -144,23 +132,28 @@ const readWeeklyDigestGenerateResponse = async (response: Response): Promise<Wee
 
 export default function WeeklyDigest() {
   const session = useClientAuthSession();
-  const [digest, setDigest] = useState<WeeklyNarrative | null>(null);
+  const [digest, setDigest] = useState<AnswerlatticeWeeklySummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [regenerating, setRegenerating] = useState(false);
 
   // Fetch digest from Firestore
   const fetchDigest = async () => {
-    if (!session?.tId || !session?.sId) return;
+    const scope = resolveAnswerlatticeSessionScope(session);
+    if (!scope) {
+      setDigest(null);
+      setLoading(false);
+      return;
+    }
 
     try {
       setLoading(true);
 
       const digestRef = doc(
-        firebaseClient,
+        answerlatticeFirebaseClient,
         'insights',
-        String(session.tId),
+        String(scope.tenantId),
         'stores',
-        String(session.sId),
+        String(scope.storeId),
         'ai',
         'weekly'
       );
@@ -168,7 +161,11 @@ export default function WeeklyDigest() {
       const digestDoc = await getDoc(digestRef);
 
       if (digestDoc.exists()) {
-        setDigest(digestDoc.data() as WeeklyNarrative);
+        const parsed = parseAnswerlatticeWeeklySummary(digestDoc.data(), scope);
+        if (!parsed) {
+          throw new Error('answerlattice_weekly_digest_contract_invalid');
+        }
+        setDigest(parsed);
       } else {
         setDigest(null);
       }
@@ -199,10 +196,8 @@ export default function WeeklyDigest() {
         return;
       }
 
-      message.success(digest ? 'Regenerating weekly digest...' : 'Generating weekly digest...');
-
-      // Wait a bit for Cloud Function to complete
-      setTimeout(fetchDigest, 5000);
+      message.success(digest ? 'Weekly digest refreshed.' : 'Weekly digest generated.');
+      await fetchDigest();
     } catch (error) {
       logRuntimeFailure('platform_weekly_digest_generate_failed', error);
       message.error(WEEKLY_DIGEST_GENERATE_FAILED_MESSAGE);
@@ -233,7 +228,7 @@ KEY METRICS
 - Satisfaction Change: ${digest.keyMetrics.satisfactionChange > 0 ? '+' : ''}${digest.keyMetrics.satisfactionChange.toFixed(1)}%
 - Top Category: ${digest.keyMetrics.topCategory}
 
-Generated: ${digest.generatedAt.toDate().toLocaleString()}
+Generated: ${new Date(digest.generatedAt).toLocaleString()}
     `.trim();
 
     const blob = new Blob([text], { type: 'text/plain' });
@@ -449,8 +444,7 @@ Generated: ${digest.generatedAt.toDate().toLocaleString()}
       <Card size="small">
         <div style={{ fontSize: 13, color: '#8c8c8c', textAlign: 'center' }}>
           <DateTimeDisplay value={digest.generatedAt} mode="datetime" label="Generated" /> •
-          AI Powered by Gemini 2.5 Flash •
-          Version {digest.promptVersion}
+          Verified analytics summary
         </div>
       </Card>
     </div>

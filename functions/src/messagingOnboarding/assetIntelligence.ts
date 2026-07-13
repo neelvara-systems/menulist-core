@@ -8,81 +8,57 @@
  */
 
 import * as functions from "firebase-functions";
+import { promises as fs } from "fs";
 import { AI_MODEL } from "../constants/ai";
+import { storageAdmin } from "../firebaseAdmin";
 import { genAIClient } from "../genAiClient";
 import {
   buildMenuIntakeIdentityPrompt,
-  normalizeMenuIntakeIdentityResult,
-  RawMenuIntakeIdentityResult,
 } from "../sharedData/menuIntakeIdentity";
-import {
-  FALLBACK_BUSINESS_CATEGORY,
-  FALLBACK_BUSINESS_TYPE,
-  resolveStoreBusinessCategory,
-} from "../sharedData/businessTypes";
 import { UPLOAD_LIMITS } from "./constants";
+import { buildSafeTempFilePath } from "../utils/safeTempFile";
 import { AssetValidationResult, SessionUpload } from "../types/messagingOnboarding.types";
+import { normalizeAssetValidationResult } from "./assetValidationResult";
 import {
-  isResponseBodyTooLargeError,
-  readResponseUint8ArrayWithLimit,
-} from "../utils/boundedResponseBody";
-import { validateNetworkTargetUrl } from "../utils/networkTarget";
+  validateMessagingStoredUploadBytes,
+  validateMessagingStoredUploadRecord,
+} from "./assetStorageBoundary";
+import { shouldInlineAssetValidationFiles } from "./assetModelInputBoundary";
 
 const logger = functions.logger;
 const ASSET_VALIDATION_UPLOAD_FETCH_FAILED = "ASSET_VALIDATION_UPLOAD_FETCH_FAILED";
-const ASSET_VALIDATION_UPLOAD_TOO_LARGE = "ASSET_VALIDATION_UPLOAD_TOO_LARGE";
-const ASSET_VALIDATION_UPLOAD_URL_REJECTED = "ASSET_VALIDATION_UPLOAD_URL_REJECTED";
+const ASSET_VALIDATION_UPLOAD_INTEGRITY_REJECTED = "ASSET_VALIDATION_UPLOAD_INTEGRITY_REJECTED";
+const ASSET_VALIDATION_UPLOAD_RECORD_REJECTED = "ASSET_VALIDATION_UPLOAD_RECORD_REJECTED";
+const ASSET_VALIDATION_PROVIDER_FILE_CLEANUP_FAILED = "ASSET_VALIDATION_PROVIDER_FILE_CLEANUP_FAILED";
+const ASSET_VALIDATION_PROVIDER_FILE_UPLOAD_FAILED = "ASSET_VALIDATION_PROVIDER_FILE_UPLOAD_FAILED";
+const ASSET_VALIDATION_TEMP_FILE_CLEANUP_FAILED = "ASSET_VALIDATION_TEMP_FILE_CLEANUP_FAILED";
 const ASSET_VALIDATION_RESPONSE_PARSE_FAILED = "ASSET_VALIDATION_RESPONSE_PARSE_FAILED";
+const ASSET_VALIDATION_UPLOAD_TIMEOUT_MS = 15_000;
+const ASSET_VALIDATION_MODEL_TIMEOUT_MS = 90_000;
+const ASSET_VALIDATION_DOWNLOAD_CONCURRENCY = 3;
+const ASSET_VALIDATION_PROVIDER_UPLOAD_CONCURRENCY = 3;
+const ASSET_VALIDATION_PROVIDER_UPLOAD_TIMEOUT_MS = 60_000;
+const ASSET_VALIDATION_PROVIDER_DELETE_TIMEOUT_MS = 15_000;
+const ASSET_VALIDATION_MODEL_RESPONSE_ATTEMPTS = 2;
+const ASSET_VALIDATION_OPERATION_DEADLINE_MS = 7 * 60_000;
 
-function getProjectStorageBucketFallback(): string {
-  const projectId = process.env.FIREBASE_PROJECT_ID
-    || process.env.GCLOUD_PROJECT
-    || process.env.GCP_PROJECT
-    || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-  return projectId ? `${projectId}.appspot.com` : "";
-}
+type AssetValidationModelPart =
+  | { fileData: { fileUri: string; mimeType: string } }
+  | { inlineData: { data: string; mimeType: string } }
+  | { text: string };
 
-function getAllowedStorageBucket(): string {
-  return process.env.FIREBASE_STORAGE_BUCKET
-    || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
-    || getProjectStorageBucketFallback();
-}
+type LoadedAssetValidationFile = {
+  bytes: Buffer;
+  index: number;
+  mimeType: string;
+};
 
-function getStoragePathFromDownloadUrl(value: string): string | null {
-  try {
-    const url = new URL(value);
-    if (url.protocol !== "https:") return null;
-
-    const allowedBucket = getAllowedStorageBucket();
-    if (url.hostname === "firebasestorage.googleapis.com") {
-      const match = url.pathname.match(/^\/v0\/b\/([^/]+)\/o\/([^?]+)$/);
-      if (decodeURIComponent(match?.[1] || "") !== allowedBucket) return null;
-      return match?.[2] ? decodeURIComponent(match[2]) : null;
-    }
-
-    if (url.hostname === "storage.googleapis.com") {
-      const parts = url.pathname.split("/").filter(Boolean);
-      const bucket = decodeURIComponent(parts[0] || "");
-      if (bucket !== allowedBucket) return null;
-      return parts.length >= 2 ? decodeURIComponent(parts.slice(1).join("/")) : null;
-    }
-
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-function isAllowedMessagingUploadUrl(upload: SessionUpload): boolean {
-  const storagePath = getStoragePathFromDownloadUrl(upload.storageUrl);
-  if (!storagePath || storagePath !== upload.storagePath) return false;
-
-  const parts = storagePath.split("/");
-  if (parts.length !== 3 || parts[0] !== "messagingOnboarding") return false;
-
-  const fileName = parts[2] || "";
-  return fileName.startsWith(`${upload.id}.`);
-}
+type UploadedAssetValidationFile = {
+  index: number;
+  mimeType: string;
+  providerName: string;
+  uri: string;
+};
 
 function getAssetIntelligenceErrorName(error: unknown): string {
   if (error instanceof Error) return (error.name || "Error").slice(0, 80);
@@ -130,16 +106,160 @@ function getUploadDiagnosticContext(upload: SessionUpload, uploadIndex: number, 
   };
 }
 
-function getTargetValidationDiagnosticContext(result: {
-  addressCount?: number;
-  error?: string;
-  errorName?: string;
-}) {
+function getProjectStorageBucketFallback(): string {
+  const projectId = process.env.FIREBASE_PROJECT_ID
+    || process.env.GCLOUD_PROJECT
+    || process.env.GCP_PROJECT
+    || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+  return projectId ? `${projectId}.appspot.com` : "";
+}
+
+function getAllowedStorageBucket(): string {
+  return process.env.FIREBASE_STORAGE_BUCKET
+    || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+    || getProjectStorageBucketFallback();
+}
+
+async function readMessagingStorageObject(storagePath: string): Promise<Buffer> {
+  const stream = storageAdmin.bucket(getAllowedStorageBucket() || undefined).file(storagePath).createReadStream({
+    validation: "crc32c",
+  });
+
+  return new Promise<Buffer>((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    let byteLength = 0;
+    let settled = false;
+    const finishWithError = (error: Error) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      stream.destroy();
+      reject(error);
+    };
+    const timeout = setTimeout(() => {
+      finishWithError(new Error("ASSET_VALIDATION_UPLOAD_TIMEOUT"));
+    }, ASSET_VALIDATION_UPLOAD_TIMEOUT_MS);
+    timeout.unref?.();
+
+    stream.on("data", (chunk: Buffer | Uint8Array | string) => {
+      const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+      byteLength += buffer.length;
+      if (byteLength > UPLOAD_LIMITS.MAX_FILE_SIZE_BYTES) {
+        finishWithError(new Error("ASSET_VALIDATION_UPLOAD_TOO_LARGE"));
+        return;
+      }
+      chunks.push(buffer);
+    });
+    stream.once("error", (error) => {
+      finishWithError(error instanceof Error ? error : new Error("ASSET_VALIDATION_UPLOAD_READ_FAILED"));
+    });
+    stream.once("end", () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      resolve(Buffer.concat(chunks, byteLength));
+    });
+  });
+}
+
+async function uploadAssetValidationFiles(
+  files: readonly LoadedAssetValidationFile[],
+  abortSignal: AbortSignal,
+): Promise<{
+  files: UploadedAssetValidationFile[];
+  firstError: unknown | null;
+  providerNames: string[];
+}> {
+  const uploaded: Array<UploadedAssetValidationFile | undefined> = new Array(files.length);
+  const providerNames: Array<string | undefined> = new Array(files.length);
+  let firstError: unknown;
+  let nextIndex = 0;
+  const workerCount = Math.min(ASSET_VALIDATION_PROVIDER_UPLOAD_CONCURRENCY, files.length);
+
+  await Promise.all(Array.from({ length: workerCount }, async () => {
+    while (true) {
+      if (firstError !== undefined) return;
+      const fileIndex = nextIndex++;
+      if (fileIndex >= files.length) return;
+      const file = files[fileIndex];
+      const tempPath = buildSafeTempFilePath(`messaging-asset-${file.index}`, "messaging-asset");
+      try {
+        await fs.writeFile(tempPath, file.bytes);
+        const providerFile = await genAIClient.files.upload({
+          config: {
+            abortSignal,
+            httpOptions: { timeout: ASSET_VALIDATION_PROVIDER_UPLOAD_TIMEOUT_MS },
+            mimeType: file.mimeType,
+          },
+          file: tempPath,
+        });
+        const providerName = typeof providerFile?.name === "string" ? providerFile.name : "";
+        if (providerName) providerNames[fileIndex] = providerName;
+        const uri = typeof providerFile?.uri === "string" ? providerFile.uri : "";
+        const mimeType = typeof providerFile?.mimeType === "string"
+          ? providerFile.mimeType
+          : file.mimeType;
+        if (!providerName || !uri || mimeType !== file.mimeType) {
+          throw new Error(ASSET_VALIDATION_PROVIDER_FILE_UPLOAD_FAILED);
+        }
+        uploaded[fileIndex] = {
+          index: file.index,
+          mimeType,
+          providerName,
+          uri,
+        };
+      } catch (error) {
+        firstError ??= error;
+      } finally {
+        try {
+          await fs.unlink(tempPath);
+        } catch (cleanupError) {
+          const cleanupCode = cleanupError instanceof Error
+            ? Reflect.get(cleanupError, "code")
+            : undefined;
+          if (cleanupCode !== "ENOENT") {
+            logger.warn("[AssetIntelligence] Temporary provider file cleanup failed", {
+              failureCode: ASSET_VALIDATION_TEMP_FILE_CLEANUP_FAILED,
+              tempPathLength: tempPath.length,
+              ...getAssetIntelligenceErrorContext(cleanupError),
+            });
+          }
+        }
+      }
+    }
+  }));
+
+  const completedFiles = uploaded.filter(
+    (file): file is UploadedAssetValidationFile => file !== undefined,
+  );
   return {
-    addressCount: result.addressCount || 0,
-    targetError: typeof result.error === "string" ? result.error.slice(0, 80) : undefined,
-    targetErrorName: typeof result.errorName === "string" ? result.errorName.slice(0, 80) : undefined,
+    files: completedFiles,
+    providerNames: providerNames.filter((name): name is string => Boolean(name)),
+    firstError: firstError
+      ?? (completedFiles.length === files.length
+        ? null
+        : new Error(ASSET_VALIDATION_PROVIDER_FILE_UPLOAD_FAILED)),
   };
+}
+
+async function cleanupAssetValidationProviderFiles(
+  providerNames: readonly string[],
+): Promise<void> {
+  const names = Array.from(new Set(providerNames));
+  const results = await Promise.allSettled(
+    names.map((name) => genAIClient.files.delete({
+      config: { httpOptions: { timeout: ASSET_VALIDATION_PROVIDER_DELETE_TIMEOUT_MS } },
+      name,
+    })),
+  );
+  const failedCount = results.filter((result) => result.status === "rejected").length;
+  if (failedCount > 0) {
+    logger.warn("[AssetIntelligence] Provider file cleanup partially failed", {
+      attemptedCount: names.length,
+      failedCount,
+      failureCode: ASSET_VALIDATION_PROVIDER_FILE_CLEANUP_FAILED,
+    });
+  }
 }
 
 /**
@@ -149,117 +269,142 @@ function getTargetValidationDiagnosticContext(result: {
  * @returns Validation result with valid/invalid files, business info, and business type
  */
 export async function validateAssets(
+  sessionId: string,
   uploads: SessionUpload[],
 ): Promise<AssetValidationResult> {
-  // Build image parts for Gemini
-  const imageParts: Array<{ inlineData: { mimeType: string; data: string } } | { text: string }> = [];
+  const prompt = buildMenuIntakeIdentityPrompt(uploads.length);
+  const operationAbortSignal = AbortSignal.timeout(ASSET_VALIDATION_OPERATION_DEADLINE_MS);
 
-  // Add instruction text
-  imageParts.push({ text: buildMenuIntakeIdentityPrompt(uploads.length) });
-
-  // Download and encode each upload as base64 for Gemini
-  let readableUploadCount = 0;
-  for (let i = 0; i < uploads.length; i++) {
-    const upload = uploads[i];
-    try {
-      if (!isAllowedMessagingUploadUrl(upload)) {
-        logger.warn("[AssetIntelligence] Rejected unsafe upload URL", {
-          failureCode: ASSET_VALIDATION_UPLOAD_URL_REJECTED,
-          ...getUploadDiagnosticContext(upload, i + 1, uploads.length),
-        });
-        continue;
-      }
-
-      const targetValidation = await validateNetworkTargetUrl(upload.storageUrl);
-      if (!targetValidation.valid || !targetValidation.normalizedUrl) {
-        logger.warn("[AssetIntelligence] Rejected unsafe upload target", {
-          failureCode: ASSET_VALIDATION_UPLOAD_URL_REJECTED,
-          ...getUploadDiagnosticContext(upload, i + 1, uploads.length),
-          ...getTargetValidationDiagnosticContext(targetValidation),
-        });
-        continue;
-      }
-
-      const response = await fetch(targetValidation.normalizedUrl);
-      if (!response.ok) {
-        logger.warn("[AssetIntelligence] Failed to fetch upload for validation", {
-          failureCode: ASSET_VALIDATION_UPLOAD_FETCH_FAILED,
-          ...getUploadDiagnosticContext(upload, i + 1, uploads.length),
-          status: response.status,
-        });
-        continue;
-      }
-      let responseBytes: Uint8Array;
+  // Download with bounded concurrency, then restore source order before the
+  // model call so file indexes remain deterministic.
+  const loadedFiles: Array<LoadedAssetValidationFile | null> =
+    Array.from({ length: uploads.length }, () => null);
+  let nextUploadIndex = 0;
+  const workerCount = Math.min(ASSET_VALIDATION_DOWNLOAD_CONCURRENCY, uploads.length);
+  await Promise.all(Array.from({ length: workerCount }, async () => {
+    while (true) {
+      const i = nextUploadIndex++;
+      if (i >= uploads.length) return;
+      const upload = uploads[i];
       try {
-        responseBytes = await readResponseUint8ArrayWithLimit(response, UPLOAD_LIMITS.MAX_FILE_SIZE_BYTES);
-      } catch (error) {
-        if (isResponseBodyTooLargeError(error)) {
-          logger.warn("[AssetIntelligence] Rejected oversized upload response", {
-            failureCode: ASSET_VALIDATION_UPLOAD_TOO_LARGE,
+        const recordValidation = validateMessagingStoredUploadRecord(upload, sessionId);
+        if (recordValidation.valid === false) {
+          logger.warn("[AssetIntelligence] Rejected invalid stored upload record", {
+            failureCode: ASSET_VALIDATION_UPLOAD_RECORD_REJECTED,
             ...getUploadDiagnosticContext(upload, i + 1, uploads.length),
-            responseByteLength: error.receivedBytes,
-            maxSize: error.maxBytes,
+            reason: recordValidation.reason,
           });
           continue;
         }
-        throw error;
-      }
 
-      const buffer = Buffer.from(responseBytes);
-      const base64 = buffer.toString("base64");
+        const responseBytes = await readMessagingStorageObject(recordValidation.storagePath);
+        const bytesValidation = validateMessagingStoredUploadBytes(upload, responseBytes);
+        if (bytesValidation.valid === false) {
+          logger.warn("[AssetIntelligence] Rejected stored upload integrity mismatch", {
+            failureCode: ASSET_VALIDATION_UPLOAD_INTEGRITY_REJECTED,
+            ...getUploadDiagnosticContext(upload, i + 1, uploads.length),
+            reason: bytesValidation.reason,
+          });
+          continue;
+        }
 
-      readableUploadCount += 1;
-      imageParts.push({ text: `File ${i + 1}` });
-      imageParts.push({
-        inlineData: {
+        loadedFiles[i] = {
+          bytes: responseBytes,
+          index: i + 1,
           mimeType: upload.mimeType,
-          data: base64,
+        };
+      } catch (err) {
+        logger.warn("[AssetIntelligence] Error fetching upload", {
+          failureCode: ASSET_VALIDATION_UPLOAD_FETCH_FAILED,
+          ...getUploadDiagnosticContext(upload, i + 1, uploads.length),
+          ...getAssetIntelligenceErrorContext(err),
+        });
+      }
+    }
+  }));
+
+  const readableFiles = loadedFiles.filter(
+    (loaded): loaded is LoadedAssetValidationFile => loaded !== null,
+  );
+  const readableFileIndexes = readableFiles.map((loaded) => loaded.index);
+
+  if (readableFileIndexes.length === 0) {
+    throw new Error("ASSET_VALIDATION_NO_READABLE_UPLOADS");
+  }
+
+  let uploadedProviderFiles: UploadedAssetValidationFile[] = [];
+  let uploadedProviderFileNames: string[] = [];
+  try {
+    const imageParts: AssetValidationModelPart[] = [{ text: prompt }];
+    if (shouldInlineAssetValidationFiles(prompt, readableFiles.map((file) => file.bytes.length))) {
+      for (const file of readableFiles) {
+        imageParts.push({ text: `File ${file.index}` });
+        imageParts.push({
+          inlineData: {
+            data: file.bytes.toString("base64"),
+            mimeType: file.mimeType,
+          },
+        });
+      }
+    } else {
+      const providerUpload = await uploadAssetValidationFiles(readableFiles, operationAbortSignal);
+      uploadedProviderFiles = providerUpload.files;
+      uploadedProviderFileNames = providerUpload.providerNames;
+      if (providerUpload.firstError) throw providerUpload.firstError;
+      for (const file of uploadedProviderFiles) {
+        imageParts.push({ text: `File ${file.index}` });
+        imageParts.push({
+          fileData: {
+            fileUri: file.uri,
+            mimeType: file.mimeType,
+          },
+        });
+      }
+    }
+
+    // The gateway owns transport retries. Only a semantically malformed model
+    // response is retried here, reusing the same already-prepared inputs.
+    for (let attempt = 1; attempt <= ASSET_VALIDATION_MODEL_RESPONSE_ATTEMPTS; attempt++) {
+      const geminiResult = await genAIClient.models.generateContent({
+        model: AI_MODEL,
+        contents: [{ role: "user", parts: imageParts }],
+        config: {
+          abortSignal: operationAbortSignal,
+          httpOptions: { timeout: ASSET_VALIDATION_MODEL_TIMEOUT_MS },
+          temperature: 0.1,
+          maxOutputTokens: 2048,
+          responseMimeType: "application/json",
         },
       });
-    } catch (err) {
-      logger.warn("[AssetIntelligence] Error fetching upload", {
-        failureCode: ASSET_VALIDATION_UPLOAD_FETCH_FAILED,
-        ...getUploadDiagnosticContext(upload, i + 1, uploads.length),
-        ...getAssetIntelligenceErrorContext(err),
-      });
+      const responseText = geminiResult?.text || "";
+
+      try {
+        return parseAssetValidationModelResponse(
+          responseText,
+          uploads.length,
+          readableFileIndexes,
+        );
+      } catch (parseErr) {
+        logger.error("[AssetIntelligence] Failed to parse Gemini response", {
+          attempt,
+          failureCode: ASSET_VALIDATION_RESPONSE_PARSE_FAILED,
+          responseTextLength: responseText.length,
+          uploadCount: uploads.length,
+          readableUploadCount: readableFileIndexes.length,
+          ...getAssetIntelligenceErrorContext(parseErr),
+        });
+        if (attempt === ASSET_VALIDATION_MODEL_RESPONSE_ATTEMPTS) {
+          throw new Error("ASSET_VALIDATION_RESPONSE_INVALID");
+        }
+      }
     }
-  }
-
-  if (readableUploadCount === 0) {
-    return fallbackValidationResult(uploads);
-  }
-
-  // Call Gemini API via gateway (key rotation + retry protection)
-  const geminiResult = await genAIClient.models.generateContent({
-    model: AI_MODEL,
-    contents: [{ role: 'user', parts: imageParts }],
-    config: {
-      temperature: 0.1,
-      maxOutputTokens: 2048,
-      responseMimeType: 'application/json',
-    },
-  });
-
-  const responseText = geminiResult?.text || "";
-
-  try {
-    const parsed = parseGeminiJson(responseText) as RawMenuIntakeIdentityResult;
-    return toAssetValidationResult(parsed, uploads.length);
-  } catch (parseErr) {
-    logger.error("[AssetIntelligence] Failed to parse Gemini response", {
-      failureCode: ASSET_VALIDATION_RESPONSE_PARSE_FAILED,
-      responseTextLength: responseText.length,
-      uploadCount: uploads.length,
-      readableUploadCount,
-      ...getAssetIntelligenceErrorContext(parseErr),
-    });
-
-    // Fallback: treat all files as valid menu files with low confidence
-    return fallbackValidationResult(uploads);
+    throw new Error("ASSET_VALIDATION_RESPONSE_INVALID");
+  } finally {
+    await cleanupAssetValidationProviderFiles(uploadedProviderFileNames);
   }
 }
 
-function parseGeminiJson(text: string): RawMenuIntakeIdentityResult {
+function parseGeminiJson(text: string): unknown {
   const trimmed = text.trim();
   const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/);
   const candidate = fenced ? fenced[1].trim() : trimmed;
@@ -272,53 +417,14 @@ function parseGeminiJson(text: string): RawMenuIntakeIdentityResult {
   }
 }
 
-function fallbackValidationResult(uploads: SessionUpload[]): AssetValidationResult {
-  return {
-    valid_menu_files: uploads.map((_, i) => i + 1),
-    invalid_files: [],
-    menu_completeness: "likely_complete",
-    confidence: "low",
-    extracted_business_info: {
-      business_name: null,
-      phone_number: null,
-      address: null,
-      logo_present: false,
-      cuisine_hint: null,
-      confidence: "low",
-    },
-    detected_business_type: {
-      business_type: FALLBACK_BUSINESS_TYPE,
-      business_category: FALLBACK_BUSINESS_CATEGORY,
-      type_confidence: "low",
-    },
-  };
-}
-
-function toAssetValidationResult(raw: RawMenuIntakeIdentityResult, totalFiles: number): AssetValidationResult {
-  const normalized = normalizeMenuIntakeIdentityResult(raw, totalFiles);
-  const resolvedBusinessType = normalized.identity.businessType || FALLBACK_BUSINESS_TYPE;
-  const resolvedBusinessCategory = resolveStoreBusinessCategory(
-    resolvedBusinessType,
-    normalized.identity.businessCategory || undefined,
+export function parseAssetValidationModelResponse(
+  text: string,
+  totalFiles: number,
+  readableFileIndexes: readonly number[],
+): AssetValidationResult {
+  return normalizeAssetValidationResult(
+    parseGeminiJson(text),
+    totalFiles,
+    readableFileIndexes,
   );
-
-  return {
-    valid_menu_files: normalized.validation.validMenuFileIndexes,
-    invalid_files: normalized.validation.invalidFileIndexes,
-    menu_completeness: normalized.validation.menuCompleteness,
-    confidence: normalized.validation.confidence,
-    extracted_business_info: {
-      business_name: normalized.identity.businessName,
-      phone_number: normalized.identity.phoneNumber,
-      address: normalized.identity.address,
-      logo_present: false,
-      cuisine_hint: null,
-      confidence: normalized.identity.confidence,
-    },
-    detected_business_type: {
-      business_type: resolvedBusinessType,
-      business_category: resolvedBusinessCategory,
-      type_confidence: normalized.identity.businessType ? normalized.identity.confidence : "low",
-    },
-  };
 }

@@ -1,11 +1,25 @@
 # Razorpay Payment System — Complete Technical Reference
 
 **For:** Developers, Founder, CEO, Co-Founder
-**Last Updated:** July 6, 2026
+**Last Updated:** July 10, 2026
 **Status:** Implemented and billing-slice audited — full MenuList production certification still pending
 **Codebase:** Single source of truth. Every claim links to exact file:line.
 
 This document covers the **entire** Razorpay payment flow end-to-end: from user onboarding → subscription creation → payment processing → webhook handling → credit management → owner-side billing UI → cancellation/upgrade flows. Runtime code remains the source of truth.
+
+July 10, 2026 transactional lifecycle corrections:
+
+- Grace-period expiry now re-reads the subscription in a Firestore transaction and expires only a current `past_due` record whose valid recovery timestamp has actually elapsed. A concurrent payment/resume cannot be overwritten by a stale read, malformed legacy timestamps stay on recovery handling instead of throwing, and successful expiry synchronizes the current entitlement state.
+- Cancel, pause, and resume routes apply their local state/history through `applyProductSubscriptionStatusTransition()`. The transaction revalidates the current state, treats same-target retries as idempotent, appends history from the current document, and prevents a provider-confirmed owner action from overwriting a concurrent payment/webhook snapshot.
+- Upgrade carry-forward uses `applyProductSubscriptionUpgradeCarryForward()` to read and write the old and replacement subscriptions atomically. Credits are calculated from the current old document, added to—not substituted for—the replacement top-up balance, and guarded by `carryForwardFromSubscriptionId` on retry.
+- Entitlement sync now reads the authoritative active subscription for the tenant/store in the same transaction that updates the store/platform summary and subscription audit mirror. Expiring the old subscription during upgrade cannot clear the replacement plan, and stale sync completion cannot overwrite a newer active subscription.
+- `src/lib/billing/subscriptionUpgradeSettlement.ts` is the pure arithmetic boundary for additive and idempotent credit transfer. `npm run test:billing-settlement-boundaries` covers additive balance preservation, replay behavior, malformed balances, and malformed grace timestamps.
+- The Functions reconciliation safety net now runs as the leased 2:20 AM UTC `subscription_reconciliation` task in `menulistMaintenanceScheduler`, not inside Decision Blocks. It paginates by Firestore document ID, rejects embedded/whitespace-mutated provider identity, re-reads each subscription in a transaction, appends reconciled status history, clears/starts recovery state correctly, and resets recurring credits only once when provider cycle evidence moves to a new billing period.
+- Manual reseller expiry rechecks subscription/profile state in one transaction, never decrements the active-offline counter below zero, selects any replacement active subscription before changing entitlement, and persists `billingEntitlementSyncPending` until post-commit mirror/cache synchronization succeeds. Later leased runs retry bounded pending rows.
+
+July 13, 2026 Answerlattice billing authorization correction:
+
+- Shared Razorpay create, verification, top-up, cancellation, pause, resume, and upgrade routes now require the current persisted Answerlattice role to grant `canManageBilling`. The broad owner/admin/manager management gate remains useful for non-billing surfaces but can no longer let the default non-billing Manager role call payment mutations directly.
 
 June 11, 2026 audit corrections:
 
@@ -35,7 +49,8 @@ June 11, 2026 audit corrections:
 - Payment verification rate-limit boundary: `/api/razorpay/verify-subscription` and `/api/razorpay/verify-topup` now run the shared `PAYMENT_VERIFICATION` limiter with HMAC-hashed authenticated user key material before bounded body parsing, checkout signature checks, Razorpay provider fetch/capture calls, subscription/top-up reads, or billing writes. The 20-per-hour user ceiling keeps normal checkout completion, browser retry, and webhook race recovery available while bounding repeated verification attempts.
 - July 5 past-due grace-period display fallback: `src/utils/razorpay.ts` now exposes `getGracePeriodDisplayInfo()`. Desktop Billing, Mobile Billing, and authenticated pricing subscription-management use it so valid `pastDueSinceAt` values keep the normal countdown, while missing or malformed legacy `past_due` docs show fixed "Grace period details unavailable." recovery copy instead of a misleading zero-day countdown. This is UI/source-gate hardening only; it does not change webhook status writes, DAL access logic, reconciliation, provider calls, or billing mutations.
 - MenuList Billing Subscription Document ID Boundary: `src/lib/billing/subscriptionDocumentIdBoundary.ts` validates raw subscription document IDs before server/client subscription DAL refs, AI capacity reset/consume refs, entitlement sync mirror writes, and top-up verification refs. Valid Razorpay `sub_...` IDs keep the same path and Firestore read/write shape; malformed, reserved, empty, whitespace-mutated, or path-shaped IDs fail or return null before Firestore document refs.
-- MenuList Billing Subscription Scope Document ID Boundary: `src/database/subscriptions/server.ts` validates tenant/store subscription scope with the shared Firestore document ID guard and exact positive numeric admission before subscription queries or the outlet-to-master fallback `tenants/{tenantId}` read. Valid numeric tenant/store scope keeps the same direct subscription lookup and master-store fallback behavior; malformed, reserved, empty, whitespace-mutated, decimal, zero, negative, unsafe, nonnumeric, or path-shaped scope IDs return no active subscription before Firestore refs.
+- MenuList Billing Subscription Scope Document ID Boundary: `src/lib/billing/subscriptionDocumentIdBoundary.ts` validates tenant/store subscription scope with the shared Firestore document ID guard and exact positive numeric admission for both browser and server DALs before subscription queries, request-dedupe keys, or the outlet-to-master fallback `tenants/{tenantId}` read. Firestore document IDs override embedded fields. Malformed, reserved, empty, whitespace-mutated, decimal, zero, negative, unsafe, nonnumeric, or path-shaped scope IDs return no active subscription before Firestore refs.
+- MenuList session billing admission uses that same exact scope projector before any payment rate-limit, current-permission, provider, subscription, top-up, or entitlement work. Explicit pre-onboarding `null`, zero, exponent, whitespace, decimal, unsafe, and noncanonical aliases resolve to no billing scope; they are never coerced into tenant/store `0` or another document identity.
 - MenuList Top-Up Order Document ID Boundary: `src/lib/billing/topupDocumentIdBoundary.ts` validates raw Razorpay `order_...` document IDs before `topups/{orderId}` pending writes, idempotency reads, and paid audit writes. Valid order IDs keep the same pending/paid audit path and duplicate-verification behavior; malformed, reserved, empty, whitespace-mutated, or path-shaped IDs fail before top-up document refs.
 - MenuList Top-Up Scope Document ID Boundary: `normalizeBillingTopupScopeDocumentId()` validates the resolved billing tenant/store scope before top-up rate limits, Razorpay order creation, provider-note comparisons, active-subscription lookup, Answerlattice store-summary mirror refs, and paid top-up writes. Valid numeric tenant/store scopes keep the same billing behavior; malformed, reserved, empty, whitespace-mutated, decimal, zero, negative, unsafe, or path-shaped scope IDs fail before provider or Firestore work.
 
@@ -175,7 +190,7 @@ Frontend diagnostics must not log raw `razorpay_payment_id`, `razorpay_subscript
 | File                                                | Purpose                                         | Lines |
 | --------------------------------------------------- | ----------------------------------------------- | ----- |
 | `src/database/subscriptions/index.ts`               | Subscription CRUD + grace period enforcement    | 143   |
-| `src/database/subscriptions/paymentTransactions.ts` | Webhook event logging + billing history queries | 55    |
+| `src/database/subscriptions/paymentTransactions.ts` | Read-only bounded owner billing-history query | 40    |
 
 ### Backend — Type Definitions
 
@@ -450,9 +465,9 @@ When a subscription becomes `active`, payment verification and Razorpay webhooks
 - `platformSummary/storesSummary.stores.{storeId}.activePlanType`
 - `subscriptions/{subscriptionId}.analyticsEntitlement`
 
-Only `active` subscriptions carry an active plan type. `past_due`, `paused`, `cancelled`, `expired`, and `completed` remove the store-level plan mirror so paid analytics AI summaries and action-list wording fail closed. The nightly reconciliation job repairs stale or missing entitlement mirrors without scanning stores.
+Only current `active` subscriptions carry an active plan type. `past_due`, `paused`, `cancelled`, `expired`, and `completed` remove the store-level plan mirror only when no newer active subscription exists for the tenant/store. The leased reconciliation job repairs stale or missing entitlement mirrors without scanning stores.
 
-The active Firebase Functions reconciler at `functions/src/billing/reconcileSubscriptions.ts` is the only supported subscription reconciliation path. The deprecated Vercel fallback route at `src/app/api/internal/reconcile-subscriptions/route.ts` was removed on July 1, 2026, after the Firebase scheduler migration. Functions per-subscription failures use `BILLING_SUBSCRIPTION_RECONCILIATION_SUBSCRIPTION_FAILED`. Subscription/provider IDs are logged as presence-length metadata only, update logs use counts/booleans instead of raw field arrays, and source error names/codes/status values are capped before Functions logging.
+The active Firebase Functions reconciler at `functions/src/billing/reconcileSubscriptions.ts` is the only supported subscription reconciliation path and is called by the leased `subscription_reconciliation` task in `functions/src/schedulers/menulistMaintenanceScheduler.ts`. The deprecated Vercel fallback route at `src/app/api/internal/reconcile-subscriptions/route.ts` was removed on July 1, 2026. Functions per-subscription failures use `BILLING_SUBSCRIPTION_RECONCILIATION_SUBSCRIPTION_FAILED`. Subscription/provider IDs are logged as presence-length metadata only, update logs use counts/booleans instead of raw field arrays, and source error names/codes/status values are capped before Functions logging.
 
 ### Key Security
 
@@ -1097,7 +1112,7 @@ Note: `cancelled` subscriptions are included because the user still has access u
 ### Patterns
 
 - All functions wrapped in `apiCallComposer()` (error handling)
-- All writes use `requestBodyComposer()` (adds tId, sId, uId, timestamps)
+- Client DAL writes use `requestBodyComposer(..., { isNew: true | false })` with explicit lifecycle intent (adds tId, sId, uId, and write timestamps without resetting creation metadata on updates)
 - Collection name from `DB_COLLECTIONS.SUBSCRIPTIONS`
 - `setDoc(docRef, data, { merge: true })` for updates
 
@@ -1105,18 +1120,24 @@ Note: `cancelled` subscriptions are included because the user still has access u
 
 ## 18. Billing History & Transaction Logging
 
-### Payment Transactions (Webhook Log)
+### Payment Transactions (Server-Owned Webhook Log)
 
-**File:** `src/database/subscriptions/paymentTransactions.ts`
+**Writer:** `src/lib/billing/productBillingServer.ts::writeProductPaymentTransactionAudit()`
 
-**Collection:** `paymentTransactions` (via `DB_COLLECTIONS.PAYMENT_TRANSACTIONS`)
+**Reader:** `src/database/subscriptions/paymentTransactions.ts::getBillingHistoryForStore()`
 
-Every webhook event is stored as a document. Used for:
+**Collection:** `payment_transactions` (via `DB_COLLECTIONS.PAYMENT_TRANSACTIONS`)
+
+Verified webhook events use deterministic server-owned document IDs. Firestore rules deny all client writes, and the browser DAL exports no ledger writer. The collection is used for:
 
 - Audit trail of all Razorpay events
 - Billing history display in the frontend
 
 **May 20, 2026 hardening:** New webhook rows use `auditVersion: 2` and store only the fields needed for audit and billing history (`event`, tenant/store ids, payment/subscription/order ids, amount, currency, status, invoice id/url, subscription cycle, quantity, and top-up pack metadata). Raw provider payloads are not stored for new rows. Desktop and mobile billing history still fall back to legacy raw rows.
+
+**July 11, 2026 history admission:** The shared formatter accepts finite positive seconds/milliseconds plus valid JavaScript Date and Firestore Timestamp shapes. Missing, malformed, throwing, or invalid dates are omitted; they are never replaced with the current time. The dead client `createPaymentTransaction()` export was removed because rules already require server-only writes.
+
+**July 13, 2026 scope admission:** Desktop and mobile pass the signed tenant/store values to `getBillingHistoryForStore()` without numeric coercion. The DAL applies the same exact positive subscription-scope document-ID boundary used by active-subscription readers before query construction. Null, zero, exponent-like, whitespace, decimal, leading-zero, unsafe, or otherwise malformed identities return an empty history with zero Firestore reads; valid tenant/store scope keeps the existing newest-50 query.
 
 Pending subscriptions can be cancelled before authentication/activation. This is expected for abandoned hosted checkout or cleanup flows, so the shared state machine allows `pending -> cancelled`.
 
@@ -1127,10 +1148,11 @@ Pending subscriptions can be cancelled before authentication/activation. This is
 ```typescript
 const q = query(
   getCollectionRef(),
-  where("tenantId", "==", tenantId),
-  where("storeId", "==", storeId),
-  where("event", "in", ["subscription.charged", "order.paid"]),
+  where("tenantId", "==", tenantScope.numericId),
+  where("storeId", "==", storeScope.numericId),
+  where("event", "in", ["subscription.charged", "order.paid", "owner_referral.reward_issued"]),
   orderBy("created_at", "desc"),
+  limit(50),
 );
 ```
 
@@ -1210,7 +1232,7 @@ Calculates billing-cycle-aware YYYYMM key from subscription's `cycleStartDate`. 
 2. **Per-store subscriptions:** Each store has its own subscription, credit balance, and billing cycle. Not per-tenant.
 3. **Razorpay sub ID = Firestore doc ID:** The `providerSubscriptionId` is used as the Firestore document ID. This creates a 1:1 mapping and simplifies lookups.
 4. **Credits carry forward on upgrade:** Remaining credits (monthly + topUp + future months for yearly) are calculated and added as `topUpCredits` on the new subscription.
-5. **Two-layer credit reset:** Webhook (monthly plans) + lazy reset in `checkAICapacity()` (yearly plans + safety net). Both are idempotent.
+5. **Two-layer credit reset:** provider-payment transaction (monthly charges) + lazy reset/debit transaction in `checkAICapacity()` and `consumeAICapacity()` (yearly plans + safety net). Both use the shared UTC anchor-period contract and serialize against current balances.
 6. **Billing-period-aware reset:** Uses subscription anchor day, not calendar month. Prevents premature resets for mid-month subscriptions.
 7. **7-day grace period:** Enforced in DAL (`getActiveSubscriptionForStore`), not in a Cloud Function. Auto-expires on next query after grace period.
 8. **Optimistic verification:** `verify-subscription` activates the subscription immediately after payment, without waiting for the webhook. Both webhook and verify converge to the same state.
@@ -1519,28 +1541,30 @@ Status: ✅ DONE (Feb 11, 2026) — Added to webhook switch with dual-path handl
 | **Plan downgrade**          | ✅ Update Subscription API           | ✅ Implemented (Feb 11, 2026) — same cancel+new flow     | Done             |
 | **Invoice download**        | ✅ Razorpay generates invoices       | ✅ Fixed (Feb 11, 2026) — button condition corrected     | Done             |
 | **Card change flow**        | ✅ Customer email link               | ✅ Razorpay emails contain link                          | N/A              |
-| **Webhook idempotency**     | Recommended                          | ✅ billingHistory dedup added (Feb 11, 2026)             | Done             |
+| **Webhook idempotency**     | Recommended                          | ✅ payment/event transactions + deterministic event audit IDs | Done             |
 | **Trial period**            | ✅ Supported                         | ❌ Not used                                              | N/A (not needed) |
 | **Addons (extra charges)**  | ✅ Supported                         | ❌ Not used                                              | N/A              |
 | **Scheduled plan changes**  | ✅ `schedule_change_at: "cycle_end"` | ❌ Not used                                              | P3               |
 
-#### Finding #8: Webhook Idempotency — billingHistory Guard Added ✅
+#### Finding #8: Webhook and Verification Idempotency — Transaction Boundary Added ✅
 
 **Razorpay docs:** Webhooks can be retried if your endpoint returns non-2xx. The same event may arrive multiple times.
 
-**Fixed (Feb 11, 2026):** Added idempotency guard for `billingHistory` array in the `subscription.activated`/`subscription.charged` handler:
+**Repaired (July 10, 2026):** Successful subscription payments now converge on `applyProductSubscriptionPayment()`. One Firestore transaction reads the authoritative subscription, checks the provider payment ID in `billingHistory`, validates the current transition, conditionally resets recurring credits once per provider billing cycle, appends the payment/status evidence once, and writes the result. The transaction ignores caller-supplied recurring and top-up balances.
 
 ```typescript
-const updatedBillingHistory = internalSub.billingHistory.includes(
-  paymentEntity.id,
-)
-  ? internalSub.billingHistory
-  : [...internalSub.billingHistory, paymentEntity.id];
+const paymentApplication = await applyProductSubscriptionPayment(productId, {
+  billingPeriod,
+  paymentHistoryId: providerPaymentId,
+  statusEntry,
+  subscriptionId,
+  update: providerDatesAndPlanFields,
+});
 ```
 
-The `statuses` array still appends on each webhook (acceptable — it's an audit log, duplicate entries are informational). The core operations (credit reset, date updates) remain naturally idempotent.
+Non-payment subscription events use `applyProductSubscriptionWebhookEvent()`. The event key is recorded in a bounded recent history inside the same subscription transaction, so a retry after partial failure cannot append a status twice and concurrent provider events cannot overwrite one another's status history. Payment transaction audit documents use the deterministic webhook event key instead of random document IDs.
 
-**Status:** ✅ DONE (billingHistory dedup). Statuses array left as append-only audit log.
+**Status:** ✅ DONE (payment, status-event, and audit-ledger idempotency transaction boundaries).
 
 ### 23.7 Razorpay Subscription Entity Fields We Don't Use
 
@@ -1581,7 +1605,7 @@ These fields exist in Razorpay webhook payloads but we don't store/use them:
 | Currency handling (INR/USD)       | Razorpay international payments docs         | ✅ Separate plans per currency, smallest unit           |
 | Top-up via Orders API             | Razorpay orders vs subscriptions distinction | ✅ Correct — one-time orders with programmatic capture  |
 | Plan deduplication                | Not in Razorpay docs (our pattern)           | ✅ Lookup key prevents duplicates                       |
-| Credit reset on charge            | Our billing architecture                     | ✅ Two-layer reset (webhook + lazy)                     |
+| Credit reset on charge            | Our billing architecture                     | ✅ Provider-payment transaction + lazy monthly reset   |
 | Grace period                      | Our architecture (not Razorpay-native)       | ✅ 7-day in DAL query                                   |
 | Security (auth, tenant isolation) | Our security rules + OWASP                   | ✅ All routes protected                                 |
 
@@ -1616,7 +1640,7 @@ These fields exist in Razorpay webhook payloads but we don't store/use them:
 | 4   | ~~Invoice download in billing history~~       | ~~P2~~   | ✅ DONE (Feb 11, 2026) — Fixed condition, button shows when invoiceUrl exists                 |
 | 5   | Failed payment retry UI                       | P2       | Show "Update payment method" when `past_due`. Currently links to Razorpay short_url.          |
 | 6   | Subscription analytics                        | P2       | MRR, churn rate, LTV tracking for founder dashboard.                                          |
-| 7   | ~~Webhook idempotency guard~~                 | ~~P2~~   | ✅ DONE (Feb 11, 2026) — billingHistory dedup check before append                             |
+| 7   | ~~Webhook idempotency guard~~                 | ~~P2~~   | ✅ DONE; strengthened July 10, 2026 with payment/status transactions and deterministic audit IDs |
 | 8   | ~~Update `lastWebhook` field~~                | ~~P2~~   | ✅ DONE (Feb 11, 2026) — Added to all webhook update payloads                                 |
 | 9   | Multi-store billing                           | P3       | If tenant has multiple stores, aggregate billing view.                                        |
 | 10  | ~~Yearly auto-renewal (`total_count > 1`)~~   | ~~P2~~   | ✅ DONE (Feb 11, 2026) — Changed to 3 (yearly) / 36 (monthly) in both create routes           |

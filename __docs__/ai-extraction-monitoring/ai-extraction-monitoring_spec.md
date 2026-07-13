@@ -1,11 +1,13 @@
 # AI Extraction Internal Monitoring Dashboard — Product Specification
 
 **Feature:** Internal monitoring dashboard for the menu extraction pipeline
-**Status:** ✅ IMPLEMENTED — Feature flag OFF (`ENABLE_EXTRACTION_MONITORING_DASHBOARD`); controlled internal testing ready, not launch certification
+**Status:** Enabled internal platform surface — not current launch or deploy certification
 **Feature Flag:** `ENABLE_EXTRACTION_MONITORING_DASHBOARD`
-**Last Updated:** July 2, 2026
+**Last Updated:** July 10, 2026
 
-**Launch boundary:** This spec describes the implemented internal debug console. Enabling it for a release still requires target feature-flag review, platform-role access verification, current extraction data, and the External Certification Runbook evidence that applies to the release. It is not a standalone production-launch approval.
+> **Launch boundary:** Not current launch certification or deploy approval. This document records source-gated AI Extraction Monitoring evidence only. Current source sets `ENABLE_EXTRACTION_MONITORING_DASHBOARD=true` and exposes platform-only desktop routes at `/ops/extraction` and `/platform/extraction-monitor` plus `MobileExtractionMonitorScreen` inside `MobileShell`. Cross-tenant job reads and `MENULIST_AI_OPERATIONS` reads are Firestore-rule-gated to platform admins; ordinary authenticated users retain own-job reads only. Current release approval still requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:ai-accounting`, `npm run verify:menu-extraction-pipeline`, `npm run verify:agent-readiness`, `npm run verify:mobile-shell-route-map`, `npm run verify:auth-security-failure-matrix`, authenticated platform desktop/mobile browser QA, bounded read/cost and desktop retry smoke, current extraction/provider smoke, applicable target Firebase rules/index/Functions and Vercel deploy evidence, and production-host smoke.
+
+**Current surface boundary:** Desktop exposes health, quality, cost, recent jobs, Job Inspector, raw-data copy, and eligible failed-job retry. Mobile exposes manual-refresh health, cost, quality, and recent-job summaries only. The current snapshot does not read `platformSummary/extractionLearning` and no Ops Alerts panel is mounted.
 
 ---
 
@@ -16,11 +18,11 @@ The AI Extraction Monitoring Dashboard is an internal-only tool for the solo fou
 ### What It Does
 
 - **System Health** → Shows active/pending/failed jobs, processing time, failure rate
-- **Quality Tracking** → Average quality score, confidence distribution, anomaly flags
+- **Quality Tracking** → Average quality score, confidence distribution, low-quality rate
 - **Job Inspector** → Drill into any job: AI output, combined data, file-level results, errors
 - **Retry Control** → Re-trigger failed extractions without user re-upload
 - **Cost Monitor** → Gemini calls per day, cost per extraction, daily spend
-- **Alerts** → Telegram notification when failure rate spikes or quality drops
+- **Shared Alerts** → Existing scheduler logic creates extraction alerts through the platform alert pipeline
 
 ### What It Does NOT Do
 
@@ -29,20 +31,21 @@ The AI Extraction Monitoring Dashboard is an internal-only tool for the solo fou
 - ❌ No real-time streaming dashboard
 - ❌ No per-tenant extraction analytics (too granular for now)
 - ❌ No automated remediation (manual investigation always required)
+- ❌ No HCR, MISR, TTFP, or Ops Alerts panel in the current monitor
 
 ---
 
 ## Problem Statement
 
-Currently the extraction pipeline operates as a black box. When something goes wrong:
+Without the monitor, extraction diagnosis depends on reading raw Firebase records. The current platform surface consolidates bounded evidence for:
 
-1. **No visibility** — Must manually check Firebase Console for job documents
-2. **No aggregation** — Can't see failure rate trends or quality degradation
-3. **No fast diagnosis** — Opening individual job docs in Firestore console is slow
-4. **No retry mechanism** — Failed jobs require the restaurant owner to re-upload
-5. **No cost visibility** — Don't know daily Gemini API spend from extraction
+1. **Health visibility** — Recent active, failed, and completed jobs
+2. **Quality visibility** — Scores and confidence distribution from recent completed jobs
+3. **Diagnosis** — Desktop job details and retained extraction evidence
+4. **Controlled recovery** — Desktop retry for an eligible failed job
+5. **Cost visibility** — Today’s extraction operation rows from `MENULIST_AI_OPERATIONS`
 
-As a solo founder, debugging time must be under 5 minutes from alert to diagnosis.
+The monitor reduces console hopping, but no diagnosis-time or provider-recovery guarantee is certified by source alone.
 
 ---
 
@@ -71,7 +74,7 @@ As a solo founder, debugging time must be under 5 minutes from alert to diagnosi
 │  • menuImageProcessingJobs (job status + results) │
 │  • MENULIST_AI_OPERATIONS (cost/token data)       │
 │  • No separate aiUsageLog collection is read      │
-│  • platformSummary/extractionLearning (HCR data)  │
+│  • No extractionLearning summary read             │
 └──────────────────────────────────────────────────┘
 ```
 
@@ -81,11 +84,11 @@ As a solo founder, debugging time must be under 5 minutes from alert to diagnosi
 
 | Goal                    | Success Metric                                      |
 | ----------------------- | --------------------------------------------------- |
-| **Fast diagnosis**      | Identify extraction issue cause in < 5 minutes      |
-| **Failure visibility**  | Failed jobs visible within 30 seconds of occurrence |
-| **Quality monitoring**  | Quality degradation detected within 1 hour          |
-| **Cost awareness**      | Daily AI spend visible at a glance                  |
-| **Recovery capability** | Failed jobs can be retried without user re-upload   |
+| **Bounded diagnosis**   | Recent job evidence is available in one platform surface |
+| **Failure visibility**  | Failed jobs appear on the next load or manual refresh |
+| **Quality monitoring**  | Recent completed-job quality is summarized from the bounded snapshot |
+| **Cost awareness**      | Today’s extraction operation cost is visible from the bounded ledger query |
+| **Recovery capability** | Eligible failed jobs can be retried from desktop only |
 
 ---
 
@@ -98,12 +101,12 @@ As a solo founder, debugging time must be under 5 minutes from alert to diagnosi
 **Acceptance Criteria:**
 
 - Single page shows: active jobs, failure rate, avg quality, daily cost
-- Alert triggers when failure rate > 5% or quality drops > 20%
+- Shared scheduler alerts remain separate from the monitor UI
 - Can drill into any failed job to see raw AI response
 
 ### Solo Founder (Debugging)
 
-> "As the solo founder, when I get an alert about a failed extraction, I want to diagnose the root cause in under 5 minutes."
+> "As the solo founder, when an extraction fails, I want the available job evidence in one controlled platform surface."
 
 **Acceptance Criteria:**
 
@@ -120,27 +123,23 @@ As a solo founder, debugging time must be under 5 minutes from alert to diagnosi
 
 | ID    | Requirement                                                | Priority | Status |
 | ----- | ---------------------------------------------------------- | -------- | ------ |
-| FR-01 | Health overview panel (job counts, failure rate, avg time) | P0       | 📝     |
-| FR-02 | Recent jobs feed (last 50 jobs, sortable/filterable)       | P0       | 📝     |
-| FR-03 | Job inspector (drill into any job's full data)             | P0       | 📝     |
-| FR-04 | Failed job retry button                                    | P0       | 📝     |
-| FR-05 | Quality metrics panel (avg score, confidence distribution) | P1       | 📝     |
-| FR-06 | Cost monitor (calls/day, cost/extraction, daily spend)     | P1       | 📝     |
-| FR-07 | Anomaly flags (items > 300, categories > 50, quality < 30) | P1       | 📝     |
-| FR-08 | Telegram alert on failure rate spike                       | P1       | 📝     |
-| FR-09 | Raw AI response viewer (JSON tree)                         | P1       | 📝     |
-| FR-10 | File-level results breakdown                               | P2       | 📝     |
-| FR-11 | Quality score trend (last 7 days)                          | P2       | 📝     |
-| FR-12 | HCR (Human Correction Rate) from learning loop data        | P3       | 📝     |
-| FR-13 | MISR (Menu Ingestion Success Rate) funnel                  | P3       | 📝     |
-| FR-14 | TTFP (Time to First Publish) metric                        | P3       | 📝     |
+| FR-01 | Health overview panel (job counts, failure rate, avg time) | P0       | Mounted |
+| FR-02 | Recent jobs feed from a bounded snapshot                    | P0       | Mounted |
+| FR-03 | Desktop job inspector                                      | P0       | Mounted |
+| FR-04 | Desktop eligible-failed-job retry                          | P0       | Mounted |
+| FR-05 | Quality metrics panel (avg score, confidence distribution) | P1       | Mounted |
+| FR-06 | Cost monitor (calls today, avg cost, daily spend)          | P1       | Mounted |
+| FR-07 | Shared scheduler extraction alerts                         | P1       | Outside monitor UI |
+| FR-08 | Raw and normalized extraction evidence when retained       | P1       | Desktop only |
+| FR-09 | File-level results breakdown                               | P1       | Desktop only |
+| FR-10 | HCR, MISR, and TTFP panels                                 | N/A      | Not mounted |
 
 ### Non-Functional Requirements
 
 | ID     | Requirement    | Target                                        |
 | ------ | -------------- | --------------------------------------------- |
-| NFR-01 | Page load time | < 3 seconds                                   |
-| NFR-02 | Data freshness | Real-time for job feed, 15-min for aggregates |
+| NFR-01 | Read boundary  | Desktop up to 150 jobs + 100 cost rows; mobile uses the same snapshot with 20 displayed jobs |
+| NFR-02 | Data freshness | Initial load, filter change, or explicit refresh; no automatic refresh interval |
 | NFR-03 | Access control | platformRole === 'PLATFORM' only              |
 | NFR-04 | Feature flag   | `ENABLE_EXTRACTION_MONITORING_DASHBOARD`      |
 
@@ -182,8 +181,7 @@ Columns:
 Filters:
 
 - Status filter (All / Completed / Failed / Processing)
-- Date range (Today / Last 7 days / Last 30 days)
-- Quality filter (All / Low < 40 / Medium 40-70 / High > 70)
+- Desktop table sorting remains client-side within the bounded snapshot.
 
 ### Panel 3: Job Inspector (Expandable)
 
@@ -219,7 +217,7 @@ Clicking a job opens full inspection:
 | ------------------------- | ------------------------------------------------------ |
 | Gemini Calls Today        | `MENULIST_AI_OPERATIONS` count where createdAt = today |
 | Avg Cost/Extraction       | Total charge / extraction count                        |
-| Daily Spend (7-day chart) | Simple bar chart of daily costs                        |
+| Daily Spend Today         | Sum of today’s extraction operation charges            |
 | Most Expensive Job        | Max totalCharge in last 24h                            |
 
 ### Panel 5: Retry Control
@@ -233,11 +231,11 @@ For failed jobs:
 
 ---
 
-## Alert System
+## Shared Alert System
 
-### Telegram Alerts (Reuse Existing Infrastructure)
+### Existing Scheduler Alerts
 
-Uses existing `sendTelegramAlert()` from `functions/src/monitoring/telegramAlert.ts`.
+`functions/src/schedulers/menuJobCleanup.ts` creates extraction alerts through the shared platform alert pipeline. Delivery configuration is operational infrastructure outside the monitor UI.
 
 | Alert            | Trigger                                | Message                                                                             |
 | ---------------- | -------------------------------------- | ----------------------------------------------------------------------------------- |
@@ -245,7 +243,7 @@ Uses existing `sendTelegramAlert()` from `functions/src/monitoring/telegramAlert
 | Quality Drop     | avg quality score < 55 in last 50 jobs | "🟡 Extraction quality degraded: avg {score}/100 (last 50 jobs)"                    |
 | Processing Stuck | jobs in 'processing' for > 10 minutes  | "🟡 Extraction job stuck: {jobId} processing for {minutes}min"                      |
 
-**Where to trigger:** Piggybacked on the existing 15-minute cleanup scheduler in Firebase Functions.
+These alerts are not an Ops Alerts panel and are not read by the monitor snapshot.
 
 ---
 
@@ -266,7 +264,7 @@ Uses existing `sendTelegramAlert()` from `functions/src/monitoring/telegramAlert
 
 **Healthy value:** HCR < 10%
 
-**Note:** This data is already being collected (10.2 is implemented). Only the dashboard display is new.
+**Current source note:** `platformSummary/extractionLearning` is not read or rendered by the current monitor snapshot. Any HCR display in this specification is design context, not mounted runtime.
 
 ### MISR (Menu Ingestion Success Rate) — P3
 
@@ -314,9 +312,9 @@ Events needed:
 | ------------------------------------ | --------------------------------------------------- |
 | Per-tenant extraction analytics      | Too granular; adds Firestore cost for minimal value |
 | Automated remediation                | Manual investigation always required for AI issues  |
-| Real-time WebSocket dashboard        | onSnapshot is sufficient for job feed               |
-| Historical export (CSV)              | Can query Firestore directly for ad-hoc analysis    |
-| Comparison with previous extractions | Would need extraction artifact storage first        |
+| Real-time WebSocket dashboard        | Current bounded load/filter/manual-refresh model avoids continuous reads |
+| Historical export (CSV)              | Not mounted in the internal monitor                 |
+| Comparison with previous extractions | Retained artifacts exist, but no comparison workflow is mounted |
 
 ---
 
@@ -339,4 +337,4 @@ Events needed:
 
 ---
 
-_Document Status: ✅ IMPLEMENTED — Feature flag OFF; source-verified for controlled internal testing, with launch certification gated by the External Certification Runbook and current production-readiness audit._
+_Document Status: Enabled internal platform surface; not current launch or deploy certification._

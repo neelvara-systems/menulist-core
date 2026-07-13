@@ -34,7 +34,7 @@ import {
     getStoreByOutletSlug,
     getStoreBySubdomain,
 } from "@lib/firestore/clientStoreLookup";
-import { parseSummaryProjects } from "@lib/firestore/parseSummaryProjects";
+import { isActiveRegularSummaryProject, parseSummaryProjects, withAuthoritativeSummaryProjectId } from "@lib/firestore/parseSummaryProjects";
 import {
     appendPublicLanguageParam,
     buildPublicLanguageAlternates,
@@ -50,6 +50,7 @@ import { buildCanonicalItemUrl } from "@lib/menu/itemTruthUrls";
 import { getPrimaryPublicMenuImage } from "@lib/menu/publicMenuImages";
 import { attachPublicMenuSearchIndex } from "@lib/menu/publicMenuSearch";
 import { getPublicMenuFreshness } from "@lib/menu/publicMenuStructuredData";
+import { mergeSpecialMenuOverlayProjects } from "@lib/menu/specialMenuOverlay";
 import { getPublicBusinessDescription } from "@lib/obp/getPublicBusinessDescription";
 import { isStarterPublicSurfaceExpired } from "@lib/onboarding/starterActivation";
 import { sanitizeForClient } from "@lib/mce/utils";
@@ -348,15 +349,10 @@ async function getProjectBySlugOrDefault(
     // Use projectsSummary — has slug data + is 1 read instead of N
     // Filter out special menu projects — they are resolved separately via resolveSpecialMenuOverride
     projects = Object.entries(summaryProjects)
-        .filter(([, data]: [string, any]) => data.active !== false && data.deleted !== true && !data.isSpecialMenu)
-        .map(([projectId, data]: [string, any]) => ({
+        .filter(([, data]) => isActiveRegularSummaryProject(data))
+        .map(([projectId, data]) => ({
+            ...withAuthoritativeSummaryProjectId(projectId, data),
             id: projectId,
-            projectId,
-            name: data.name,
-            isDefault: data.isDefault,
-            slug: data.slug,
-            previousSlugs: data.previousSlugs,
-            ...data,
         }));
 
     if (projects.length === 0) return null;
@@ -422,6 +418,7 @@ async function getProjectBySlugOrDefault(
         targetProject.projectId || targetProject.id,
     );
     if (!projectData) return null;
+    if (projectData.active === false || projectData.deleted === true) return null;
 
     // Multi-outlet: Resolve linked store data by merging with master
     // This ensures customers see the complete menu with inherited items + local overrides
@@ -526,7 +523,7 @@ async function resolveSpecialMenuOverride(
 
         if (mode === "overlay") {
             // Overlay — merge special menu categories/items onto base
-            const merged = mergeOverlayMenu(baseResult.projectData, specialProjectData);
+            const merged = mergeSpecialMenuOverlayProjects(baseResult.projectData, specialProjectData);
             return {
                 projectData: merged,
                 projectMetadata: {
@@ -547,54 +544,6 @@ async function resolveSpecialMenuOverride(
         });
         return baseResult;
     }
-}
-
-/**
- * Merge overlay: Append special menu categories and items onto base project.
- * Special sections are marked with _isSpecialSection for potential UI styling.
- */
-function mergeOverlayMenu(baseProject: any, specialProject: any): any {
-    if (!specialProject?.files?.length) return baseProject;
-    if (!baseProject?.files?.length) return specialProject;
-
-    // Deep clone base to avoid mutation
-    const merged = JSON.parse(JSON.stringify(baseProject));
-
-    // Extract special menu data from first file
-    const specialData = specialProject.files[0]?.extractedData?.data;
-    if (!specialData) return merged;
-
-    const specialCategories = specialData.categories || [];
-    const specialItems = specialData.items || [];
-
-    // Append to base menu's first file
-    if (merged.files[0]?.extractedData?.data) {
-        const baseData = merged.files[0].extractedData.data;
-
-        // Append special categories with marker
-        if (specialCategories.length > 0) {
-            baseData.categories = [
-                ...(baseData.categories || []),
-                ...specialCategories.map((cat: any) => ({
-                    ...cat,
-                    _isSpecialSection: true,
-                })),
-            ];
-        }
-
-        // Append special items with marker
-        if (specialItems.length > 0) {
-            baseData.items = [
-                ...(baseData.items || []),
-                ...specialItems.map((item: any) => ({
-                    ...item,
-                    _isSpecialSection: true,
-                })),
-            ];
-        }
-    }
-
-    return merged;
 }
 
 function buildProjectCanonicalUrl({
@@ -667,20 +616,38 @@ function resolveSafeStoreCanonicalUrl(
     const trimmed = storedCanonicalUrl.trim();
     if (!trimmed) return fallbackUrl;
 
-    const storedHost = getUrlHostname(trimmed, diagnosticContext
-        ? {
-            ...diagnosticContext,
-            failureType: 'canonical_url_parse_failed',
+    let parsedStoredUrl: URL;
+    try {
+        parsedStoredUrl = new URL(trimmed);
+    } catch (error) {
+        if (diagnosticContext) {
+            logPublicMenuResolutionFailure('canonical_url_parse_failed', {
+                tenantId: diagnosticContext.tenantId,
+                storeId: diagnosticContext.storeId,
+                slug: diagnosticContext.slug,
+                canonicalUrl: trimmed,
+                error,
+            });
         }
-        : undefined);
-    if (!storedHost) return fallbackUrl;
+        return fallbackUrl;
+    }
+
+    if (
+        parsedStoredUrl.protocol !== 'https:'
+        || parsedStoredUrl.username
+        || parsedStoredUrl.password
+    ) {
+        return fallbackUrl;
+    }
+
+    const storedHost = parsedStoredUrl.hostname.toLowerCase();
 
     const allowedHosts = new Set([
         getUrlHostname(fallbackUrl),
         getUrlHostname(canonicalBase),
     ].filter(Boolean));
 
-    return allowedHosts.has(storedHost) ? trimmed : fallbackUrl;
+    return allowedHosts.has(storedHost) ? parsedStoredUrl.toString() : fallbackUrl;
 }
 
 const COMPLIANCE_METADATA_BY_SLUG: Record<string, { label: string; description: (storeName: string) => string }> = {

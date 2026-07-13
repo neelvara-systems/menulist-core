@@ -1,10 +1,16 @@
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { Firestore } from 'firebase-admin/firestore';
+import { writeOwnerBusinessHealthDocs } from '../../functions/src/ownerBusinessAssistant/ownerBusinessHealthWriters';
 import {
   OWNER_BUSINESS_ASSISTANT_CACHE,
   OWNER_BUSINESS_ASSISTANT_ENDPOINTS,
 } from '@lib/ownerBusinessAssistant/constants';
+import {
+  parseOwnerBusinessAnalyticsIndexDoc,
+  parseOwnerBusinessHealthCurrentDoc,
+} from '@lib/ownerBusinessAssistant/readModelBoundary';
 import {
   OWNER_BUSINESS_ASSISTANT_THREAD_ID_PATTERN,
   normalizeOwnerBusinessAssistantThreadId,
@@ -12,7 +18,10 @@ import {
 import {
   normalizeOwnerBusinessAssistantProjectId,
 } from '@lib/ownerBusinessAssistant/projectIdBoundary';
-import { buildOwnerBusinessAssistantPacketCacheKey } from '@lib/ownerBusinessAssistant/server/contextPacketCache';
+import {
+  buildOwnerBusinessAssistantPacketCacheKey,
+  parseCachedOwnerBusinessAssistantPacket,
+} from '@lib/ownerBusinessAssistant/server/contextPacketCache';
 import { buildOwnerBusinessDomainCapabilities } from '@lib/ownerBusinessAssistant/server/domainCapabilityMatrix';
 import { buildOwnerBusinessAssistantRefusal } from '@lib/ownerBusinessAssistant/server/refusals';
 import { resolveOwnerBusinessAnalyticsPeriod } from '@lib/ownerBusinessAssistant/server/analyticsPeriodResolver';
@@ -132,6 +141,72 @@ assert.match(answerKey, new RegExp(`${OWNER_BUSINESS_ASSISTANT_CACHE.serverPacke
 assert.match(healthKey, new RegExp(`${OWNER_BUSINESS_ASSISTANT_CACHE.serverPacketPrefix}:1:2:p:_:profile:health_card`));
 assert.notEqual(answerKey, healthKey, 'packet profiles must create separate cache keys');
 
+const projectedHealth = parseOwnerBusinessHealthCurrentDoc({
+  ...health,
+  kind: 'ownerBusinessHealthCurrent',
+  expiresAt: { seconds: 1 },
+  internalOnly: 'drop-me',
+  summary: {
+    ...health.summary,
+    internalSummaryField: 'drop-me',
+  },
+}, { tId: '1', sId: '2' });
+assert.ok(projectedHealth);
+assert.equal('kind' in projectedHealth, false);
+assert.equal('expiresAt' in projectedHealth, false);
+assert.equal('internalOnly' in projectedHealth, false);
+assert.equal('internalSummaryField' in projectedHealth.summary, false);
+assert.equal(parseOwnerBusinessHealthCurrentDoc(health, { tId: 'other', sId: '2' }), null);
+assert.equal(parseOwnerBusinessHealthCurrentDoc({ ...health, sourceRefs: 'invalid' }, { tId: '1', sId: '2' }), null);
+
+const projectedAnalytics = parseOwnerBusinessAnalyticsIndexDoc({
+  version: 1,
+  tId: '1',
+  sId: '2',
+  localDate: health.localDate,
+  generatedAt: health.generatedAt,
+  periods: {},
+  unsupportedPeriods: {},
+  sourceRefs: [],
+  cost: { builderReadCount: 0, hotPathReadCount: 1 },
+  kind: 'ownerBusinessAnalyticsIndex',
+  expiresAt: { seconds: 1 },
+}, { tId: '1', sId: '2' });
+assert.ok(projectedAnalytics);
+assert.equal('kind' in projectedAnalytics, false);
+assert.equal('expiresAt' in projectedAnalytics, false);
+
+const projectedCachePacket = parseCachedOwnerBusinessAssistantPacket({
+  version: 1,
+  packetId: 'packet-test',
+  cacheKey: answerKey,
+  tId: '1',
+  sId: '2',
+  projectId: 'project-a',
+  localBusinessDate: health.localDate,
+  validUntil: '2026-06-09T00:00:00.000Z',
+  generatedAt: health.generatedAt,
+  sourceSignatures: {},
+  health: {
+    ...health,
+    kind: 'ownerBusinessHealthCurrent',
+    expiresAt: { seconds: 1 },
+  },
+  answerRules: {
+    refuseUnsupported: true,
+    sourceFactIdsRequired: true,
+    noRevenueProfitWithoutSource: true,
+  },
+  internalPacketField: 'drop-me',
+}, answerKey);
+assert.ok(projectedCachePacket);
+assert.equal('internalPacketField' in projectedCachePacket, false);
+assert.equal('kind' in projectedCachePacket.health, false);
+assert.equal(parseCachedOwnerBusinessAssistantPacket({
+  ...projectedCachePacket,
+  tId: 'other',
+}, answerKey), null);
+
 const refusal = buildOwnerBusinessAssistantRefusal({
   answerId: 'answer-test',
   reason: 'MenuList does not have verified revenue data for that yet.',
@@ -232,6 +307,10 @@ const contextPacketBuilder = readFileSync(join(repoRoot, 'src/lib/ownerBusinessA
 assert.match(contextPacketBuilder, /packetProfile !== 'health_card'/);
 assert.match(contextPacketBuilder, /packetProfile !== 'analytics_periods'/);
 assert.match(contextPacketBuilder, /numberFormatter/);
+assert.match(contextPacketBuilder, /parseOwnerBusinessHealthCurrentDoc\(currentSnap\.data\(\), \{ tId, sId \}\)/);
+assert.match(contextPacketBuilder, /parseOwnerBusinessAnalyticsIndexDoc\(analyticsSnap\.data\(\), \{ tId, sId \}\)/);
+assert.doesNotMatch(contextPacketBuilder, /as OwnerBusinessHealthCurrentDoc \| null/);
+assert.doesNotMatch(contextPacketBuilder, /as OwnerBusinessAnalyticsIndexDoc \| null/);
 assert.doesNotMatch(contextPacketBuilder, /getOwnerBusinessAssistantAllowedActions/);
 assert.doesNotMatch(contextPacketBuilder, /allowedActions/);
 assert.doesNotMatch(contextPacketBuilder, /actionCatalog/);
@@ -257,6 +336,8 @@ assert.match(contextPacketCache, /redis\.sadd/);
 assert.match(contextPacketCache, /redis\.smembers/);
 assert.match(contextPacketCache, /isNotReadyFallbackPacket/);
 assert.match(contextPacketCache, /getOwnerBusinessAssistantPacketCacheContext/);
+assert.match(contextPacketCache, /parseCachedOwnerBusinessAssistantPacket\(result, cacheKey\)/);
+assert.match(contextPacketCache, /owner_business_assistant_packet_cache_invalid/);
 assert.match(contextPacketCache, /logRuntimeFailure\('owner_business_assistant_packet_cache_index_read_failed'/);
 assert.match(contextPacketCache, /logRuntimeFailure\('owner_business_assistant_packet_cache_read_failed'/);
 assert.match(contextPacketCache, /logRuntimeFailure\('owner_business_assistant_packet_cache_write_failed'/);
@@ -311,6 +392,8 @@ assert.match(clientResponses, /credentials: 'same-origin'/);
 assert.match(clientResponses, /redirect: 'manual'/);
 assert.match(clientResponses, /readJsonResponseWithLimit<unknown>/);
 assert.match(clientResponses, /isOwnerBusinessHealthCurrentDoc/);
+assert.match(clientResponses, /ownerBusinessHealthCurrentDocSchema\.safeParse\(value\)\.success/);
+assert.match(clientResponses, /ownerBusinessAnalyticsResponseDataSchema\.safeParse\(value\)\.success/);
 assert.match(clientResponses, /isOwnerBusinessAssistantAnalyticsResponse/);
 assert.match(clientResponses, /isOwnerBusinessAssistantLocationsResponse/);
 assert.match(clientResponses, /isOwnerBusinessAssistantThreadResponse/);
@@ -582,4 +665,84 @@ assert.match(feedbackHook, /readOwnerBusinessAssistantFeedbackResponse/);
 assert.match(feedbackHook, /return result\?\.data\.success === true/);
 assert.doesNotMatch(feedbackHook, /if \(!response\.ok\) return false;\s*return true;/);
 
-console.log('Owner Business Assistant hardening verification passed.');
+const verifyOwnerBusinessHealthWriteReplacementSemantics = async () => {
+  const capturedSets: Array<{
+    path: string;
+    data: FirebaseFirestore.DocumentData;
+    options?: FirebaseFirestore.SetOptions;
+  }> = [];
+  const fakeBatch = {
+    set(
+      ref: FirebaseFirestore.DocumentReference,
+      data: FirebaseFirestore.DocumentData,
+      options?: FirebaseFirestore.SetOptions,
+    ) {
+      capturedSets.push({ path: ref.path, data, options });
+      return this;
+    },
+    async commit() {
+      return undefined;
+    },
+  };
+  const db = new Firestore({ projectId: 'demo-menulist-owner-business-health' });
+  Object.defineProperty(db, 'batch', { value: () => fakeBatch });
+
+  const originalRedisUrl = process.env.UPSTASH_REDIS_REST_URL;
+  const originalRedisToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+  delete process.env.UPSTASH_REDIS_REST_URL;
+  delete process.env.UPSTASH_REDIS_REST_TOKEN;
+
+  try {
+    await writeOwnerBusinessHealthDocs({
+      db,
+      tId: '1',
+      sId: '2',
+      localDate: health.localDate,
+      current: health,
+      analytics: {
+        version: 1,
+        tId: '1',
+        sId: '2',
+        localDate: health.localDate,
+        generatedAt: health.generatedAt,
+        periods: {},
+        unsupportedPeriods: {},
+        sourceRefs: [],
+        cost: { builderReadCount: 0, hotPathReadCount: 1 },
+      },
+      locationSummary: {
+        sId: '2',
+        storeName: 'Test Store',
+        status: 'stable',
+        actionCount: 0,
+        lastCheckedAt: health.generatedAt,
+        localDate: health.localDate,
+        sourceFactIds: [],
+      },
+    });
+  } finally {
+    if (originalRedisUrl === undefined) delete process.env.UPSTASH_REDIS_REST_URL;
+    else process.env.UPSTASH_REDIS_REST_URL = originalRedisUrl;
+    if (originalRedisToken === undefined) delete process.env.UPSTASH_REDIS_REST_TOKEN;
+    else process.env.UPSTASH_REDIS_REST_TOKEN = originalRedisToken;
+  }
+
+  assert.equal(capturedSets.length, 4);
+  const currentWrite = capturedSets.find(({ path }) => path.endsWith('/ownerBusinessHealthCurrent_1_2'));
+  const snapshotWrite = capturedSets.find(({ path }) => path.endsWith('/ownerBusinessHealthSnapshot_1_2_2026-06-08'));
+  const analyticsWrite = capturedSets.find(({ path }) => path.endsWith('/ownerBusinessAnalyticsIndex_1_2'));
+  const multiLocationWrite = capturedSets.find(({ path }) => path.endsWith('/ownerBusinessHealthMultiLocation_1'));
+
+  assert.equal(currentWrite?.options, undefined, 'authoritative current health writes must replace stale optional fields');
+  assert.equal(snapshotWrite?.options, undefined, 'same-day snapshots must replace stale optional fields');
+  assert.equal(analyticsWrite?.options, undefined, 'analytics index writes must replace stale periods and project summaries');
+  assert.deepEqual(multiLocationWrite?.options, { merge: true }, 'per-store multi-location updates must preserve sibling stores');
+  assert.equal('analyticsTeaser' in (currentWrite?.data || {}), false);
+};
+
+void verifyOwnerBusinessHealthWriteReplacementSemantics()
+  .then(() => console.log('Owner Business Assistant hardening verification passed.'))
+  .catch((error: unknown) => {
+    console.error(error);
+    process.exitCode = 1;
+  });

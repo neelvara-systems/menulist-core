@@ -37,7 +37,13 @@ HelpChat answer-feedback acknowledgement hardening is also cost-neutral. Feedbac
 
 Chat session scope hardening is cost-neutral. Chat image uploads still perform the same single Storage upload for valid base64 chat images, and chat history/admin/stat reads keep the same `chatSessions` query shapes and read caps, but `src/database/chatSessions/index.ts` now normalizes session `tId/sId` as exact positive numeric Firestore document IDs before composing Storage paths or Firestore filters. Malformed session scope fails before Storage path composition or chat-session reads/scans instead of being trimmed, loosely numeric-coerced, or passed raw to query filters. This adds no Firestore reads/writes/deletes, Storage operations for valid uploads, indexes, rules, Cloud Functions, provider calls, schema fields, Firebase deploy requirement, or Vercel deploy action.
 
-Chat analytics scope hardening is cost-neutral. Optimized dashboard stats, top questions, knowledge gaps, volume charts, paginated conversations, daily aggregation, and last-update reads keep the same `chatAnalytics` / `chatSessions` query shapes, read caps, and one daily aggregate write for valid sessions, but `src/database/chatAnalytics/index.ts` now normalizes session `tId/sId` through the shared Answerlattice exact positive numeric Firestore document-ID helper before query filters or `{tId}_{sId}_{YYYY-MM-DD}` aggregate document IDs are composed. Malformed scope returns empty read models or rejects daily aggregation before Firestore work. This adds no Firestore reads/writes/deletes for valid requests, Storage operations, indexes, rules, Cloud Functions, provider calls, schema fields, Firebase deploy requirement, or Vercel deploy action.
+The July 11 single-record hardening makes mutation cost explicit: update, internal-note and delete operations read the target inside a transaction before one optional update or delete; batch metadata reads each capped target before its one batch write; feedback reads the chat session and linked `aiSearchHistory` row and writes both atomically. Delete commits the Firestore delete before best-effort image cleanup so a failed database mutation cannot first remove referenced assets. These reads replace unsafe caller assumptions with transaction-local ownership/schema proof; they add no collection, index, rule, Function, provider call, scheduled work, Firebase deploy target or Vercel action.
+
+Both `firestore-answerlattice.rules` and the shared `firestore.rules` now enforce the same chat-session product, actor, required/allowed top-level keys, title/mode/message-count, timestamp, metadata-list and immutable creator/scope update contract. Scoped collection queries include `pId == 'AL'` so the rules engine can prove product isolation; both index files contain the six product+tenant+store chat query shapes for user history, modified sorting/filtering and ascending/descending creation time. Dedicated and shared emulator suites prove valid create/read/query/update/delete behavior plus public/cross-workspace, forged actor/product/scope, unknown field, invalid timestamp/mode/title and message-bound denial. These source changes require the matching rules/index deployments; they add no runtime document operation for already valid queries.
+
+Chat analytics browser reads are read-only and product/tenant/store scoped. `src/database/chatAnalytics/index.ts` derives the active workspace through the shared Answerlattice resolver; summary rows must pass exact document/date/counter/completeness/list invariants before UI use. Malformed scope or summaries return no trusted read model. The server-owned writer lives in the existing Answerlattice Functions scheduler, not the browser DAL.
+
+Answerlattice Functions workspace scope hardening adds no Firestore operation for valid work. The manual scheduler rejects malformed supplied scope before scheduler work; integration events reject nonnumeric or unsafe persisted scope before reading `platformSummary/integrationConfig_*` or dispatching an adapter; entity fallback discovery skips invalid scope before tenant-summary backfill; graph summaries with coercive metadata use the existing one-merge metadata repair. The shared pure boundary adds no collection, index, rule, schedule, provider call, or valid-path read/write. Because the maintained Functions sources changed, QA requires the scoped Answerlattice Functions deployment before this contract is live.
 
 KB owner content scope hardening is cost-neutral. KB category document IDs, article read/write scope, FAQ article-maintenance scope, product-surface explicit/session scope, and protected article embedding tenant/store checks now normalize through the shared Answerlattice exact positive numeric Firestore document-ID helper before Firestore refs, filters, cache-version writes, public-cache revalidation, or embedding authorization. Valid KB, FAQ, and product-surface reads/writes keep the same query shapes and write counts; malformed scope now fails before Firestore work or returns the existing empty/not-found model. This adds no Firestore reads/writes/deletes for valid requests, Storage operations, indexes, rules, Cloud Functions, provider calls, schema fields, Firebase deploy requirement, or Vercel deploy action.
 
@@ -161,6 +167,8 @@ Translation route guard changes on 2026-06-28 added no Firestore reads/writes. U
 
 ### 2.4 Changelog Operations
 
+Changelog pages and the server-only entry index use exact product/tenant/store/page/entry runtime contracts. Server mutations read the page and index in one transaction, reject malformed or cross-workspace persisted rows before mutation, update the compact page/index and compiled-context invalidation together, then perform cache revalidation. Browser uploads are compensated if the server action fails; removed files are cleaned only after authoritative mutation acknowledgement. The browser action response cap is 64 KB and adds no Firestore operation.
+
 **Add entry:**
 
 | Operation | Reads | Writes | Storage |
@@ -216,9 +224,15 @@ Translation route guard changes on 2026-06-28 added no Firestore reads/writes. U
 
 | Operation | Reads | Writes |
 |-----------|-------|--------|
-| Query day's chat sessions | N (day's sessions) | 0 |
-| Write aggregated doc | 0 | 1 |
-| **Total** | **N** | **1** |
+| Read compact continuation state | 1 | 0 |
+| Scan changed sessions | up to 501 | 0 |
+| Recompute yesterday + affected days | up to 7 × 2,001 | 0 |
+| Read existing daily summaries | up to 7 | 0 |
+| Write changed daily summaries | 0 | up to 7 |
+| Advance changed continuation state | 0 | 0-1 |
+| **Hard ceiling per workspace run** | **14,516** | **8** |
+
+Normal runs are far below the ceiling because unchanged summaries skip writes and only affected dates are recomputed. `sourceComplete: false` makes a capped date visible rather than presenting a partial day as complete. The existing master scheduler's workspace settlement lease serializes the task; no standalone schedule or per-session analytics document is added.
 
 ### 2.8 Chat Monitoring (Admin Dashboard Load)
 
@@ -226,13 +240,10 @@ Translation route guard changes on 2026-06-28 added no Firestore reads/writes. U
 
 | Operation | Reads | Writes |
 |-----------|-------|--------|
-| Historical stats (~30 days) | ~30 | 0 |
-| Today's live stats | up to 500 (today only) | 0 |
-| Top questions | ~30 | 0 |
-| Knowledge gaps | ~30 | 0 |
-| Volume chart | ~7 | 0 |
+| Combined historical stats/questions/gaps (~30 days) | ~30 | 0 |
+| Today's live stats | up to 501 read to expose a 500-row partial boundary | 0 |
 | Conversations list (page 1) | 21 | 0 |
-| **Total per load** | **~120-150** | **0** |
+| **Hard ceiling per load** | **553** | **0** |
 
 **Legacy unoptimized (for comparison):**
 - Full session scan: ~4,000+ reads for 1,000 sessions
@@ -287,7 +298,7 @@ Translation route guard changes on 2026-06-28 added no Firestore reads/writes. U
 
 | Model | Calls/Day | Cost/1K calls | Monthly |
 |-------|-----------|--------------|---------|
-| text-embedding-004 | ~20 (cache misses) | ~$0.01 | ~$0.006 |
+| gemini-embedding-2 | ~20 (cache misses) | Provider list price at execution time | Operation accounting records the concrete model and token count |
 | gemini-2.5-flash (chat) | ~20 | ~$0.15 | ~$0.09 |
 | gemini-2.5-pro (images) | ~2 | ~$0.50 | ~$0.03 |
 | **Total Gemini** | | | **~$0.13/month** |
@@ -310,24 +321,26 @@ Translation route guard changes on 2026-06-28 added no Firestore reads/writes. U
 
 | Collection | Fields | Purpose |
 |-----------|--------|---------|
-| `chatSessions` | `tId ASC, uId ASC, modifiedOn DESC` | User chat history |
-| `chatSessions` | `tId ASC, sId ASC, createdOn ASC` | Today's live stats |
-| `chatSessions` | `tId ASC, modifiedOn DESC` | Admin conversations |
-| `chatSessions` | `tId ASC, sId ASC, modifiedOn DESC` | Paginated conversations |
-| `chatAnalytics` | `tId ASC, sId ASC, date ASC` | Aggregated stats queries |
-| `chatAnalytics` | `tId ASC, sId ASC, modifiedOn DESC` | Last analytics update |
+| `chatSessions` | `pId ASC, tId ASC, sId ASC, uId ASC, modifiedOn DESC` | User chat history |
+| `chatSessions` | `pId ASC, tId ASC, sId ASC, createdOn ASC/DESC` | Today/day scans and historical owner analytics |
+| `chatSessions` | `pId ASC, tId ASC, sId ASC, modifiedOn DESC` | Paginated conversations/change scans |
+| `chatSessions` | `pId ASC, tId ASC, sId ASC, mode/userName ASC, modifiedOn DESC` | Optional owner filters |
+| `chatAnalytics` | `pId ASC, tId ASC, sId ASC, date DESC` | Aggregated stats queries |
+| `chatAnalytics` | `pId ASC, tId ASC, sId ASC, modifiedOn DESC` | Last analytics update |
 | `supportTickets` | `tId ASC, sId ASC, deleted ASC, createdOn DESC` | Store tickets |
 | `supportTickets` | `deleted ASC, createdOn DESC` | Platform tickets |
 | `feedback` | `uId ASC, tId ASC, sId ASC, createdOn DESC` | User feedback history |
 | `aiSearchHistory` | `cacheKey ASC, tId ASC` | Cache lookup |
 | `kb_generation_jobs` | `tId ASC, sId ASC, status ASC` | Active jobs query |
-| `kb_articles` | `status ASC` + Vector index on `embedding` | Vector search |
+| `kb_articles` | `pId+tId+sId+status+active` + Vector index on `embeddingV2` | Active v2 vector search |
+| `kb_articles` | Same scope fields + Vector index on legacy `embedding` | Rollback only during migration |
 
 ### 4.2 Vector Index
 
 | Collection | Vector Field | Dimensions | Distance |
 |-----------|-------------|-----------|----------|
-| `kb_articles` | `embedding` | 768 | COSINE |
+| `kb_articles` | `embeddingV2` | 768 | COSINE |
+| `kb_articles` | `embedding` | 768 | COSINE rollback index |
 
 ---
 

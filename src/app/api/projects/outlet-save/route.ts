@@ -3,9 +3,15 @@ export const dynamic = 'force-dynamic';
 import { FEATURE_FLAGS } from "@config/features";
 import { DB_COLLECTIONS } from "@constant/database";
 import { PERMISSIONS } from "@constant/permissions";
-import { admin } from "@lib/firebase/firebaseAdmin";
+import { admin, storageAdmin } from "@lib/firebase/firebaseAdmin";
+import {
+    appendImageBatchSelectionsToOutletProject,
+    normalizeImageBatchProjectSelections,
+} from "@lib/ai/imageBatchProjectSelection";
 import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
 import { isValidPrice } from "@lib/extraction/validation";
+import { buildSummaryProjectFieldPayload } from "@lib/firestore/summaryProjectsWriter";
+import { sanitizeForFirestore } from "@lib/firestore/sanitizeForFirestore";
 import { invalidateOwnerBusinessAssistantPacketCache } from "@lib/ownerBusinessAssistant/server/contextPacketCache";
 import { requireAnyStorePermissionForStoreData } from "@lib/permissions/server";
 import { checkRateLimit } from "@lib/rateLimit";
@@ -67,18 +73,40 @@ const overridesSchema = z.object({
     categories: z.record(overrideIdSchema, categoryOverrideSchema).optional(),
     attributes: z.record(overrideIdSchema, attributeOverrideSchema).optional(),
 }).strict();
-const schema = z.object({
+const standardSaveSchema = z.object({
+    operation: z.literal("save").optional(),
     publish: z.boolean().optional(),
     project: z.object({
         projectId: projectIdSchema,
         masterProjectId: projectIdSchema,
+        active: z.boolean().optional(),
+        outletStatus: z.enum(["active", "inactive"]).optional(),
         files: z.array(z.any()).max(25).optional(),
         overrides: overridesSchema.optional(),
     }).passthrough(),
 });
+const imageBatchSelectionSchema = z.object({
+    operation: z.literal("append_image_batch_selection"),
+    project: z.object({
+        projectId: projectIdSchema,
+        masterProjectId: projectIdSchema,
+    }).strict(),
+    selections: z.array(z.object({
+        itemId: overrideIdSchema,
+        images: z.array(z.object({
+            name: z.string().min(1).max(500),
+            size: z.number().int().min(1).max(15 * 1024 * 1024),
+            type: z.string().min(1).max(100),
+            uid: z.string().min(1).max(180),
+            url: z.string().url().max(5_000),
+        }).strict()).min(1).max(4),
+    }).strict()).min(1).max(50),
+}).strict();
+const schema = z.union([imageBatchSelectionSchema, standardSaveSchema]);
 const OUTLET_SAVE_MAX_BODY_BYTES = 2 * 1024 * 1024;
 
 const DANGEROUS_KEYS = new Set(["__proto__", "constructor", "prototype"]);
+
 const OUTLET_PROJECT_WRITE_FIELDS = [
     "files",
     "overrides",
@@ -89,27 +117,6 @@ const OUTLET_PROJECT_WRITE_FIELDS = [
     "defaultLanguage",
     "menuSettings",
 ] as const;
-
-const sanitizeForFirestore = (value: any): any => {
-    if (value === undefined) return null;
-    if (value === null) return null;
-    if (
-        typeof value === "object"
-        && typeof value.toDate === "function"
-        && typeof value.toMillis === "function"
-    ) {
-        return value;
-    }
-    if (Array.isArray(value)) return value.map(sanitizeForFirestore);
-    if (typeof value !== "object") return value;
-
-    const result: Record<string, any> = {};
-    Object.entries(value).forEach(([key, nestedValue]) => {
-        if (DANGEROUS_KEYS.has(key)) return;
-        result[key] = sanitizeForFirestore(nestedValue);
-    });
-    return result;
-};
 
 const pickOutletProjectWriteFields = (project: Record<string, any>) => (
     OUTLET_PROJECT_WRITE_FIELDS.reduce<Record<string, any>>((result, field) => {
@@ -196,6 +203,14 @@ const hasChangedDefinedField = (
 
 const getNestedValue = (record: Record<string, any>, path: string[]) => (
     path.reduce<any>((current, key) => (isPlainRecord(current) ? current[key] : undefined), record)
+);
+
+const hasOwnDefinedProjectField = (
+    project: Record<string, any>,
+    field: string,
+) => (
+    Object.prototype.hasOwnProperty.call(project, field)
+    && project[field] !== undefined
 );
 
 const hasChangedNestedField = (
@@ -361,7 +376,12 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             return NextResponse.json({ error: "Invalid input" }, { status: 400 });
         }
 
-        const project = validation.data.project;
+        const validatedData = validation.data;
+        const project = validatedData.project;
+        if (!project.projectId || !project.masterProjectId) {
+            return NextResponse.json({ error: "Invalid project reference" }, { status: 400 });
+        }
+        const isImageBatchSelection = validatedData.operation === "append_image_batch_selection";
         const outletProjectRef = normalizeMultiOutletProjectId(project.projectId);
         const masterProjectRef = normalizeMultiOutletProjectId(project.masterProjectId);
         if (!outletProjectRef || !masterProjectRef || outletProjectRef.tId !== masterProjectRef.tId) {
@@ -401,13 +421,19 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         }
 
         const db = admin.firestore();
-        const [callerStoreSnap, outletStoreSnap, masterStoreSnap, tenantSnap, existingProjectSnap] = await Promise.all([
-            db.doc(`${DB_COLLECTIONS.STORES}/${currentStoreId}`).get(),
-            db.doc(`${DB_COLLECTIONS.STORES}/${outletStoreId}`).get(),
-            db.doc(`${DB_COLLECTIONS.STORES}/${masterStoreId}`).get(),
-            db.doc(`${DB_COLLECTIONS.TENANTS}/${tenantId}`).get(),
-            db.doc(`${DB_COLLECTIONS.PROJECTS}/${tenantId}/${outletStoreId}/${project.projectId}`).get(),
+        const persistedOutletProjectRef = db.doc(
+            `${DB_COLLECTIONS.PROJECTS}/${tenantId}/${outletStoreId}/${project.projectId}`,
+        );
+        const [commonSnapshots, existingProjectSnap] = await Promise.all([
+            Promise.all([
+                db.doc(`${DB_COLLECTIONS.STORES}/${currentStoreId}`).get(),
+                db.doc(`${DB_COLLECTIONS.STORES}/${outletStoreId}`).get(),
+                db.doc(`${DB_COLLECTIONS.STORES}/${masterStoreId}`).get(),
+                db.doc(`${DB_COLLECTIONS.TENANTS}/${tenantId}`).get(),
+            ]),
+            isImageBatchSelection ? Promise.resolve(null) : persistedOutletProjectRef.get(),
         ]);
+        const [callerStoreSnap, outletStoreSnap, masterStoreSnap, tenantSnap] = commonSnapshots;
 
         if (!callerStoreSnap.exists || Number(callerStoreSnap.data()?.tenantId) !== tenantId) {
             return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -449,22 +475,123 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             return NextResponse.json({ error: "Only the outlet or master store can save this menu" }, { status: 403 });
         }
 
-        const existingProject = existingProjectSnap.data();
-        if (!existingProjectSnap.exists || existingProject?.masterProjectId !== project.masterProjectId) {
+        const outletPolicy = {
+            ...DEFAULT_OUTLET_POLICY,
+            ...(masterStore?.outletPolicy || {}),
+        };
+
+        if (isImageBatchSelection) {
+            const appendData = validatedData as z.infer<typeof imageBatchSelectionSchema>;
+            const expectedBucket = storageAdmin.bucket().name;
+            const selections = normalizeImageBatchProjectSelections(
+                appendData.selections,
+                project.projectId,
+                expectedBucket,
+            );
+            if (!selections) return NextResponse.json({ error: "Invalid image selection" }, { status: 400 });
+            const masterProjectDocumentRef = db.doc(
+                `${DB_COLLECTIONS.PROJECTS}/${tenantId}/${masterStoreId}/${project.masterProjectId}`,
+            );
+            const localMutationAt = admin.firestore.Timestamp.now();
+            let savedProject: Record<string, unknown>;
+            try {
+                savedProject = await db.runTransaction(async (transaction) => {
+                    const [latestOutletSnap, latestMasterSnap] = await Promise.all([
+                        transaction.get(persistedOutletProjectRef),
+                        transaction.get(masterProjectDocumentRef),
+                    ]);
+                    const latestOutlet = latestOutletSnap.data();
+                    const latestMaster = latestMasterSnap.data();
+                    if (
+                        !latestOutletSnap.exists
+                        || latestOutlet?.masterProjectId !== project.masterProjectId
+                        || !latestMasterSnap.exists
+                        || (latestMaster?.projectId !== undefined && latestMaster.projectId !== project.masterProjectId)
+                    ) {
+                        throw new Error("linked_outlet_image_batch_project_missing");
+                    }
+
+                    const localItemIds = collectLocalIds(latestOutlet.files).itemIds;
+                    const changesInheritedImages = selections.some((selection) => !localItemIds.has(selection.itemId));
+                    if (changesInheritedImages && outletPolicy.imageOverride !== true) {
+                        throw new Error("linked_outlet_image_override_disabled");
+                    }
+
+                    const nextProject = appendImageBatchSelectionsToOutletProject(
+                        latestOutlet as any,
+                        latestMaster as any,
+                        selections,
+                    );
+                    const previousOutletLocalState = asSafeRecord(latestOutlet.outletLocalState);
+                    const safeProject = sanitizeForFirestore({
+                        files: nextProject.files,
+                        overrides: nextProject.overrides,
+                        projectId: latestOutlet.projectId || project.projectId,
+                        masterProjectId: latestOutlet.masterProjectId,
+                        projectType: latestOutlet.projectType || "inherited",
+                        deleted: latestOutlet.deleted === true,
+                        pId: latestOutlet.pId || session.pId || session.user?.pId,
+                        tId: tenantId,
+                        sId: outletStoreId,
+                        role: session.role || session.user?.role,
+                        uId: session.uId || session.user?.id,
+                        modifiedBy: session.user?.name || session.user?.email || "system",
+                        modifiedOn: localMutationAt,
+                        outletLocalState: {
+                            ...previousOutletLocalState,
+                            localVersion: Number(previousOutletLocalState.localVersion || 0) + 1,
+                            lastLocalChangeAt: localMutationAt,
+                            lastLocalChangeBy: session.uId || session.user?.id || "unknown",
+                            lastLocalChangeReason: "outlet_save",
+                        },
+                    }, { unsafeObjectKey: "omit" });
+                    transaction.set(persistedOutletProjectRef, safeProject, { merge: true });
+                    return { ...latestOutlet, ...safeProject };
+                });
+            } catch (error) {
+                const message = error instanceof Error ? error.message : "";
+                if (message === "linked_outlet_image_override_disabled") {
+                    return NextResponse.json({ error: "Image overrides are disabled for this outlet" }, { status: 403 });
+                }
+                if (message === "image_batch_project_item_image_limit_exceeded") {
+                    return NextResponse.json({ error: "Too many images for this item" }, { status: 409 });
+                }
+                if (message === "linked_outlet_image_batch_project_missing" || message === "image_batch_project_item_missing") {
+                    return NextResponse.json({ error: "Linked outlet project item not found" }, { status: 409 });
+                }
+                throw error;
+            }
+
+            revalidateTag(`menu-store-${outletStoreId}`);
+            revalidateTag(`store-${outletStoreId}`);
+            revalidateTag("client-stores");
+            revalidateTag("screen-data");
+            await touchDigitalScreenContentVersionForStoreServer(outletStoreId, "linkedOutletImageBatchSelection");
+            await invalidateOwnerBusinessAssistantPacketCache({
+                tId: tenantId,
+                sId: outletStoreId,
+                projectId: project.projectId,
+            });
+            return NextResponse.json({ success: true, project: savedProject });
+        }
+
+        const standardData = validatedData as z.infer<typeof standardSaveSchema>;
+        const standardProject = standardData.project;
+        if (!standardProject.projectId || !standardProject.masterProjectId) {
+            return NextResponse.json({ error: "Invalid project reference" }, { status: 400 });
+        }
+        const existingProject = existingProjectSnap?.data();
+        if (!existingProjectSnap?.exists || existingProject?.masterProjectId !== standardProject.masterProjectId) {
             return NextResponse.json({ error: "Linked outlet project not found" }, { status: 404 });
         }
 
-        const nextLocalIds = collectLocalIds(project.files);
+        const nextLocalIds = collectLocalIds(standardProject.files);
         if (nextLocalIds.invalidCategoryIds.length || nextLocalIds.invalidItemIds.length) {
             return NextResponse.json({ error: "Outlet local menu data must use local IDs" }, { status: 400 });
         }
 
         const previousLocalIds = collectLocalIds(existingProject.files);
-        const outletPolicy = {
-            ...DEFAULT_OUTLET_POLICY,
-            ...(masterStore?.outletPolicy || {}),
-        };
-        const policyViolation = getOutletPolicyViolation(project, existingProject, outletPolicy);
+        const policyViolation = getOutletPolicyViolation(standardProject, existingProject, outletPolicy);
         if (policyViolation) {
             return NextResponse.json({ error: policyViolation }, { status: 403 });
         }
@@ -474,19 +601,19 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         if (hasAddedIds(nextLocalIds.itemIds, previousLocalIds.itemIds) && outletPolicy.allowLocalItems === false) {
             return NextResponse.json({ error: "Local items are disabled for this outlet" }, { status: 403 });
         }
-        if (project.active === false && outletPolicy.allowProjectDeactivate === false) {
+        if (standardProject.active === false && outletPolicy.allowProjectDeactivate === false) {
             return NextResponse.json({ error: "Project deactivation is disabled for this outlet" }, { status: 403 });
         }
 
         const localMutationAt = admin.firestore.Timestamp.now();
-        const localMutationDetected = hasOutletLocalMutation(project, existingProject);
+        const localMutationDetected = hasOutletLocalMutation(standardProject, existingProject);
         const previousOutletLocalState = asSafeRecord(existingProject?.outletLocalState);
-        const shouldPublish = validation.data.publish === true;
+        const shouldPublish = standardData.publish === true;
         const nextMenuVersion = Number(existingProject?.menuVersion || 0) + 1;
 
         const safeProject = sanitizeForFirestore({
-            ...pickOutletProjectWriteFields(project),
-            projectId: existingProject.projectId || project.projectId,
+            ...pickOutletProjectWriteFields(standardProject),
+            projectId: existingProject.projectId || standardProject.projectId,
             masterProjectId: existingProject.masterProjectId,
             projectType: existingProject.projectType || "inherited",
             deleted: existingProject.deleted === true,
@@ -510,9 +637,21 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                     lastLocalChangeReason: "outlet_save",
                 },
             } : {}),
-        });
+        }, { unsafeObjectKey: "omit" });
 
-        await existingProjectSnap.ref.set(safeProject, { merge: true });
+        const writeBatch = db.batch();
+        writeBatch.set(existingProjectSnap.ref, safeProject, { merge: true });
+        if (hasOwnDefinedProjectField(standardProject, "active")) {
+            writeBatch.set(
+                db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(`projects_${outletStoreId}`),
+                {
+                    lastUpdated: localMutationAt,
+                    ...buildSummaryProjectFieldPayload(standardProject.projectId, "active", standardProject.active),
+                },
+                { merge: true },
+            );
+        }
+        await writeBatch.commit();
 
         revalidateTag(`menu-store-${outletStoreId}`);
         revalidateTag(`store-${outletStoreId}`);
@@ -522,7 +661,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         await invalidateOwnerBusinessAssistantPacketCache({
             tId: tenantId,
             sId: outletStoreId,
-            projectId: project.projectId,
+            projectId: standardProject.projectId,
         });
 
         return NextResponse.json({ success: true, project: safeProject });

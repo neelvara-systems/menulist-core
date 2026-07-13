@@ -1,9 +1,11 @@
 # Public Menu Entry — Technical Implementation Plan
 
 **Version:** 1.0
-**Status:** ✅ IMPLEMENTED — Production-audited
+**Status:** Source-implemented — not current target, launch, or deploy certification
 **Feature Flag:** `ENABLE_PUBLIC_MENU_ENTRY`
 **Last Updated:** July 10, 2026
+
+> **Launch boundary:** Not current launch certification or deploy approval. This document is source-gated Public Menu Entry evidence only. The `/create-menu` page is public, but source submission, acquisition, extraction, preview polling, claim, and publish require a signed-in owner. Current release approval still requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:menu-extraction-pipeline`, `npm run verify:public-business-truth`, `npm run verify:auth-security-failure-matrix`, signed-in desktop/mobile browser QA, physical-device camera/link/preview/claim QA, Gemini extraction provider smoke, Razorpay sandbox evidence where conversion is in scope, applicable target Firebase/Vercel deploy evidence, and production-host smoke.
 
 ## Growth Attribution Boundary
 
@@ -43,8 +45,8 @@ This feature is **80% existing code, 20% new glue.** The table below maps what e
 ```typescript
 interface PublicMenuDraft {
   // Identity
-  id: string; // Auto-generated Firestore doc ID
-  token: string; // Crypto-random URL token (not doc ID — prevents enumeration)
+  id: string; // Same deterministic UUID as token
+  token: string; // SHA-256-derived UUID from owner + source fingerprint
 
   // Upload / source
   imageUrl: string; // Firebase Storage URL
@@ -66,7 +68,7 @@ interface PublicMenuDraft {
   extractedData: {
     categories: ExtractedDataCategory[];
     items: ExtractedDataItem[];
-    languages: string[];
+    languages: Array<{ code: string; name: string; isPrimary: boolean }>;
   } | null;
   extractionStatus: "pending" | "processing" | "completed" | "failed";
   extractionError?: string; // Fixed owner-safe failure text only; no provider/parser/runtime detail
@@ -88,21 +90,26 @@ interface PublicMenuDraft {
   claimedByUId?: string;
   claimedAt?: Timestamp;
   convertedProjectId?: string;
-  convertedStoreId?: string;
+  convertedProjectSlug?: string;
+  convertedStoreId?: number;
+  convertedSubdomain?: string;
+  convertedTenantId?: number;
+  convertedWasNewAccount?: boolean;
 }
 ```
 
-**Document ID:** Auto-generated
-**URL token:** `crypto.randomUUID()` — used in preview URL, NOT the doc ID
+**Document ID / URL token:** one UUID-shaped SHA-256 derivation of `ownerId + source fingerprint`. Image fingerprints use content hash; imported links use the acquired artifact content hash. The owner binding and source hash keep identity collision-safe without exposing sequential IDs.
+**Extraction job ID:** `public_{draftToken}`
 **TTL:** 24 hours from creation
-**Index needed:** `token` (equality) — for preview lookup
 **Index needed:** `expiresAt` (range) + `claimed` (equality) — for nightly cleanup
 
 ## Durable Extraction
 
-Public create-menu no longer runs extraction inside `src/app/api/public/create-menu/route.ts` after returning the draft response. The route creates a draft, then queues `menuImageProcessingJobs/{jobId}` with `destination.type = "public_menu_draft"` and `skipProjectSave: true`.
+Public create-menu no longer runs extraction inside `src/app/api/public/create-menu/route.ts` after returning the draft response. After the source is safely stored, the route creates `publicMenuDrafts/{draftId}` and `menuImageProcessingJobs/public_{draftId}` in one Firestore create-only batch with `destination.type = "public_menu_draft"` and `skipProjectSave: true`. The draft never exists in a transient `extractionJobId: null` state. Concurrent identical requests resolve to the same owner/content UUID; exactly one batch wins and the loser returns the committed draft. The Storage download token is the same deterministic UUID so the losing request cannot invalidate the winner's object URL metadata.
 
-`functions/src/logic/processMenuImagesJob.ts` marks the draft `processing`, then updates `publicMenuDrafts/{draftId}` to `completed` with extracted categories/items/languages or `failed` with an owner-safe error.
+`functions/src/logic/processMenuImagesJob.ts` first verifies the job ID, destination, owner metadata, project identity, source URL/path/type/size, draft token, draft owner, expiry, status, and `extractionJobId` against the authoritative draft. Only a verified binding may update that draft. The worker then marks it `processing` and updates it to `completed` with allowlisted categories/items/languages or `failed` with an owner-safe error.
+
+`src/data/shared/publicMenuDraftData.ts` and `functions/src/sharedData/publicMenuDraftData.ts` are byte-for-byte mirrors. Their runtime normalizer caps categories/items/languages and string/list sizes, deduplicates IDs, rejects orphan item/category relationships, and omits arbitrary provider, file, confidence, owner-boost, and review fields. Preview and claim normalize the persisted shape again so malformed legacy/Admin-written drafts fail closed instead of becoming project/public truth. Claim separately verifies the source envelope against the configured Firebase Storage bucket, exact `publicMenuDrafts/{draftId}/` prefix, download token, MIME allowlist, and shared file-size cap.
 
 Failure text is intentionally fixed. Worker failures persist `Menu extraction failed` in the job record and an owner-safe draft failure message, while `GET /api/public/create-menu` normalizes failed polling responses to `We could not prepare this menu. Upload a clearer photo or try another public menu link.` The route and worker do not serialize raw provider, parser, Storage, or runtime exception text to the browser or stored job error message; source diagnostics stay bounded in server logs.
 
@@ -118,7 +125,7 @@ This keeps the owner preview polling contract simple while reusing the same extr
 
 For sources supported by the shared menu-intake identity helper, the public route adds `sourceMetadata.identityCheck` to the queued job. The shared worker uses that metadata to keep `detectedBusinessName`, `detectedBusinessType`, and `detectedBusinessCategory` populated for the claim form without restoring the old inline public extraction model. Low-confidence specific types claim as canonical `Other`, preserving the broad category when visible.
 
-If draft/job creation fails after a source artifact or draft document exists, cleanup stays best-effort but observable. Failed Storage cleanup logs `public_menu_entry_storage_cleanup_failed` and failed draft-document cleanup logs `public_menu_entry_draft_cleanup_failed` with only bounded draft/user/storage-path presence and length metadata plus a fixed cleanup reason. The cleanup helpers do not log raw draft tokens, raw owner IDs, raw Storage paths, or raw route exceptions.
+If atomic draft/job creation fails after a source artifact exists, the route first checks the deterministic draft ID for a concurrently committed, owner/content-matching winner. A winner is returned and its shared Storage object is preserved. When Firestore proves there is no winner, the source artifact is deleted; when that proof read itself fails, cleanup is deliberately deferred and logged as `public_menu_entry_collision_lookup_failed` so a possible winner is never corrupted. Failed Storage cleanup logs `public_menu_entry_storage_cleanup_failed` with bounded context only.
 
 ### 2.1A Claimed Starter Activation
 
@@ -297,8 +304,8 @@ const linkSchema = z.object({
 7. For links, acquire the source through the same SSRF-safe helper used by authenticated Menu Link Import
 8. Upload client-optimized image or acquired link artifact to Storage: `publicMenuDrafts/{draftId}/{filename}`
 9. Store a stable Firebase download-token URL for preview and source-file continuity after claim
-10. Create Firestore draft doc with `createdByUId`, `contentHash`, `extractionStatus: 'pending'`, and 24h TTL
-11. Queue `menuImageProcessingJobs/{jobId}` with `destination.type = "public_menu_draft"`
+10. Derive the owner/content draft UUID and deterministic download token
+11. Atomically create the draft and `menuImageProcessingJobs/public_{draftId}` with create-only Firestore batch operations
 12. Return draftId immediately
 
 ### 4.2 GET `/api/public/create-menu?draftId={token}`
@@ -333,6 +340,8 @@ const linkSchema = z.object({
 **Body Limit:** claim requests above 8KB are rejected before JSON parsing or draft reads.
 **Existing-account guard:** when a signed-in owner already has tenant/store context, the transaction reads both `stores/{storeId}` and `tenants/{tenantId}` before any project or summary writes. The claim fails closed if the IDs are malformed, the store is missing, the tenant is missing, the store belongs to another tenant, the store is inactive/deleted/platform-blocked, or the tenant is platform-blocked.
 **Target document-ID guard:** existing-account and newly-created tenant/store IDs pass through the shared Firestore document-ID guard and exact positive numeric MenuList ID guard before the route builds `stores/{storeId}`, `tenants/{tenantId}`, `platformSummary/projects_{storeId}`, or `projects/{tId}/{sId}/{projectId}` refs.
+**Draft contract guard:** claim re-normalizes the extracted DTO, requires a parseable unexpired TTL for an unclaimed draft, and validates its source URL/path/type/size against the configured Storage bucket before project writes.
+**Retry receipt:** the first successful transaction stores tenant, store, project, slug, subdomain, and new-account state on the claimed draft. An exact-owner retry returns that receipt idempotently instead of creating another project or returning a permanent 409. Claimed drafts without a complete valid receipt retain the safe 409 legacy behavior.
 **Default-project guard:** for existing owners, the transaction reads the existing project summary before any store/project writes, then demotes existing non-deleted default project summaries before writing the claimed project as default, preserving one `/menu` authority without violating Firestore transaction read/write ordering.
 **Diagnostics:** success, cache-revalidation failure, and unexpected claim failure paths use bounded security diagnostics (`public_menu_claim_succeeded`, `public_menu_claim_cache_revalidation_failed`, `public_menu_claim_failed`) with draft/user/tenant/store/project presence and length metadata only.
 
@@ -381,13 +390,13 @@ const schema = z.object({
 2. Apply the payment-onboarding publish rate limit with the hashed owner key segment.
 3. Reject bodies above 8KB and validate claim JSON.
 4. Look up draft by token.
-5. Verify draft exists, not expired, not already claimed.
+5. Verify draft exists, belongs to the owner, has a valid unexpired TTL, coherent allowlisted extracted data, and a valid Storage source envelope. If the same owner retries a completed claim with a complete receipt, return it idempotently.
 6. Create tenant/store with provided business info and starter activation fields for new users, or verify the existing tenant/store is still eligible before writing.
 7. For existing owners, fill only missing public presence and business-attribute defaults.
 8. Create project with extracted data.
 9. Publish project (set `isDefault: true`).
-10. Mark draft as claimed.
-11. Revalidate public cache tags: `menu-store-{storeId}`, `store-{storeId}`, `client-stores`, and `screen-data`, then wake initialized digital screens through the server-side screen content-version touch.
+10. Mark draft as claimed and persist the complete conversion receipt.
+11. Run each public cache tag, screen version, and owner-assistant packet invalidation independently with `Promise.allSettled`; one failure cannot suppress the remaining effects.
 12. Return store/project details and canonical menu URL.
 13. Client success handler calls `useSession().update()` so the newly claimed tenant/store is available before opening the workspace.
 
@@ -414,10 +423,10 @@ const schema = z.object({
 
 **Flow:**
 
-1. Mark draft as `processing`
+1. Verify the public job/draft/owner/source binding, then mark the bound draft as `processing`
 2. Download source artifact from Storage
 3. Call configured Gemini model with menu extraction prompt; image/PDF sources are sent as inline data, text/HTML-derived artifacts are sent as bounded source text
-4. Parse and validate JSON response shape
+4. Parse, harden, and allowlist the extracted DTO; reject incoherent/orphan data
 5. Attempt business name/type detection from content
 6. Update draft doc: `extractionStatus: 'completed'`, `extractedData: {...}`
 
@@ -526,10 +535,10 @@ const schema = z.object({
 
 | Concern               | Mitigation                                                                             |
 | --------------------- | -------------------------------------------------------------------------------------- |
-| Bot abuse             | IP-based rate limiting (3/day), file type validation, max file size, SAFE_MODE kill switch |
+| Bot abuse             | Authenticated owner rate limiting, file signature/type/size validation, SAFE_MODE kill switch |
 | Storage abuse         | 24h TTL auto-cleanup, pre-parse request body cap, max 10MB per image upload            |
 | Claim abuse           | Authenticated publish rate limit and 8KB claim body cap before draft reads             |
-| Draft enumeration     | URL uses crypto-random token, NOT sequential IDs                                       |
+| Draft enumeration     | UUID-shaped owner/content hash identity; owner check is required for every route read/write |
 | Cost spikes           | Rate limit caps max daily Gemini calls. Feature flag kill switch.                      |
 | XSS in extracted data | All extracted text rendered through React (auto-escaped)                               |
 | Unclaimed data (GDPR) | 24h auto-delete. No PII stored (IP is hashed).                                         |
@@ -543,10 +552,12 @@ const schema = z.object({
 ```typescript
 // Task: public_menu_draft_cleanup
 // Daily at 03:30 UTC, max 100 expired unclaimed drafts per run.
-// Deletes the temporary Storage image and the publicMenuDrafts document.
+// Deletes the temporary Storage source first, then deletes the draft only after acknowledgement.
 ```
 
-**Cost:** Negligible — one query per daily due run, one Storage delete per expired draft, and batch document deletes.
+Invalid cross-draft Storage paths are rejected. If Storage deletion fails, the Firestore draft remains as the durable retry record for the next scheduler run; it is not batch-deleted into an unrecoverable orphan state.
+
+**Cost:** Negligible — one query per daily due run, one Storage delete attempt per expired draft, and batch document deletes only for acknowledged/no-path cleanup rows.
 
 ---
 

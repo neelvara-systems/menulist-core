@@ -116,8 +116,8 @@ export const ThemeColorsList = [
     { background: "#F5F5F5", text: "#191919", primary: "#9ADE7B" },
 ]
 // ["Desktop", "Mobile"]
-export const DEVICE_TYPES_LIST: any = {
+export const DEVICE_TYPES_LIST = {
     DESKTOP: "desktop",
     TABLET: "tablet",
     MOBILE: "mobile",
-}
+} as const;

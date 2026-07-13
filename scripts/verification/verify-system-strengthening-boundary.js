@@ -75,8 +75,14 @@ function verifyAnalyticsAdmission() {
 
   analyticsRoutes.forEach((route) => {
     const source = read(route);
+    const hasProtectedWeeklyNarrativeDelegation = route === 'src/app/api/analytics/weekly-narrative/regenerate/route.ts'
+      && source.includes("import { POST as generateWeeklyNarrativePost } from '../generate-local/route';")
+      && source.includes('return await generateWeeklyNarrativePost(request);')
+      && read('src/app/api/analytics/weekly-narrative/generate-local/route.ts')
+        .includes('export const POST = withAuth(generateWeeklyNarrativeLocally);');
     assert(
-      /\bexport\s+const\s+(GET|POST|PUT|PATCH|DELETE)\s*=\s*withAuth\b/.test(source),
+      /\bexport\s+const\s+(GET|POST|PUT|PATCH|DELETE)\s*=\s*withAuth\b/.test(source)
+      || hasProtectedWeeklyNarrativeDelegation,
       `${route} active HTTP handler must be wrapped by withAuth`,
     );
   });
@@ -249,13 +255,18 @@ function verifyAiRouteControls() {
     'src/app/api/analytics/weekly-narrative/generate-local/route.ts': [
       'checkSafeMode',
       'checkRateLimit',
-      'requireAnyStorePermission',
-      'recordAiOperationForSession',
+      'resolveAnswerlatticeSessionScope',
+      'buildAnswerlatticeRateLimitKey',
+      'requireAnswerlatticePermission',
+      'answerlatticeFirestoreAdmin',
+      'answerlatticeGenAIClient',
+      'recordAnswerlatticeAiOperation',
+      'PRODUCT_IDS.ANSWERLATTICE',
       'logRuntimeFailure',
     ],
     'src/app/api/analytics/weekly-narrative/regenerate/route.ts': [
-      'withAuth',
-      'generateWeeklyNarrativeLocally(request, session)',
+      "import { POST as generateWeeklyNarrativePost } from '../generate-local/route';",
+      'generateWeeklyNarrativePost(request)',
       'logRuntimeFailure',
     ],
   };
@@ -266,6 +277,18 @@ function verifyAiRouteControls() {
       assertIncludes(source, token, `${route} must retain AI route control ${token}`);
     });
   });
+
+  const weeklyNarrativeRoute = read('src/app/api/analytics/weekly-narrative/generate-local/route.ts');
+  assertNotIncludes(
+    weeklyNarrativeRoute,
+    'requireAnyStorePermission',
+    'Answerlattice weekly narrative must not use MenuList store permission authority',
+  );
+  assertNotIncludes(
+    weeklyNarrativeRoute,
+    'recordAiOperationForSession',
+    'Answerlattice weekly narrative must not use MenuList AI accounting authority',
+  );
 }
 
 function verifyChatFeedbackAcceptedShape() {
@@ -273,10 +296,11 @@ function verifyChatFeedbackAcceptedShape() {
   const source = read(route);
   const updateFeedback = sliceBetween(source, 'export const updateMessageFeedback', '/**\n * Add or update an internal note', route);
   [
-    'Feedback is stored on the bounded session message array',
-    'sessionData.messages.map',
-    'answerlatticeRequestBodyComposer({ messages: updatedMessages })',
-    'setDoc(sessionRef, composedData, { merge: true })',
+    'await runTransaction(answerlatticeFirebaseClient',
+    'requirePersistedChatSession(normalizedSessionId, sessionDoc.data(), context.scope)',
+    'message.searchHistoryId === normalizedSearchHistoryId',
+    'transaction.update(sessionRef, {',
+    'transaction.update(searchHistoryRef, {',
   ].forEach((token) => {
     assertIncludes(updateFeedback, token, `${route} must retain accepted chat feedback update shape ${token}`);
   });
@@ -300,7 +324,10 @@ function verifyBillingReadWriteBoundary() {
   const serverSource = read(serverRoute);
   const serverExpiry = sliceBetween(serverSource, 'const expireIfGracePeriodEndedServer = async', 'export const getDirectActiveSubscriptionForStoreServer', serverRoute);
   [
-    'updateSubscriptionServer(sub.id',
+    'firestoreAdmin.runTransaction(async (transaction) => {',
+    'const snapshot = await transaction.get(subscriptionRef);',
+    'if (current.status !== "past_due")',
+    'transaction.set(subscriptionRef, composeServerSubscriptionPayload(update), { merge: true });',
     'safeSyncStorePlanEntitlementFromSubscription',
     '"server:grace-period-auto-expire"',
   ].forEach((token) => {

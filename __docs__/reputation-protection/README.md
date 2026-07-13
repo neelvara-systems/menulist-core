@@ -4,7 +4,7 @@
 
 **Created:** February 19, 2026  
 **Pillar:** 3 of 6 — Customer-Facing Infrastructure  
-**Status:** ✅ INFRASTRUCTURE BUILT (flags OFF — blocked on GBP API access)  
+**Status:** SCAFFOLDING ONLY — product not implemented or active; blocked on GBP API access and runtime completion
 **Parent:** [`__docs__/customer-facing-infrastructure/`](../customer-facing-infrastructure/README.md)  
 **Related:** [`__docs__/reviews-reputation/`](../reviews-reputation/README.md) (detailed spec/impl)
 
@@ -34,9 +34,11 @@
 
 ## One-Liner
 
-MenuList quietly protects business reputation — surfacing reviews that need attention and helping owners reply calmly.
+Future design: a tenant-scoped review warning and owner-reviewed reply-assistance workflow. MenuList does not currently ingest, list, monitor, or post Google reviews.
 
 ## Problem Solved
+
+The statistics below are historical concept inputs, not current launch evidence or approved public claims. Re-verify primary sources before any future use.
 
 - 88% of consumers read Google reviews before selecting a business (BrightLocal 2025)
 - 4+ negative reviews deter ~70% of potential customers (LocaliQ 2025)
@@ -44,7 +46,7 @@ MenuList quietly protects business reputation — surfacing reviews that need at
 - Owners either ignore reviews, reply emotionally, or reply too late
 - No calm system exists to handle reputation stability
 
-## Architecture Overview
+## Planned Architecture (Not Current Runtime)
 
 ```
 Google Reviews API
@@ -56,11 +58,12 @@ Classification Engine (rule-based)
   ├── negative_high_risk → "May need careful handling"
   └── volatile → "Recent review needs attention"
   ↓
-Owner Dashboard
-  ├── Reputation Status: Stable / Needs Attention
-  ├── Review Inbox (actionable reviews only)
-  └── AI Reply Assist (suggest → owner approves → post)
+Future owner surfaces
+  ├── Reputation Status / Review Inbox (not implemented)
+  └── Reply posting to Google (not implemented)
 ```
+
+Current source contains dormant types, classification rules, two disabled API routes, one unmounted passive notice, and one unmounted pasted-review suggestion component. It contains no GBP review ingestion/classifier writer, review inbox, Google reply route, reputation status card, or mobile review workflow.
 
 ## Key Decision: AI Reply Assist (UPGRADED)
 
@@ -82,9 +85,8 @@ Owner Dashboard
 ## Feature Flags
 
 ```typescript
-ENABLE_REVIEWS_REPUTATION: false; // Master toggle (to be added)
-REVIEWS_REPLY_ASSIST: true; // AI suggestion engine
-REVIEWS_CLASSIFICATION: true; // Rule-based classification
+ENABLE_REVIEWS_REPUTATION: false; // Existing master kill switch
+ENABLE_AI_REPLY_ASSIST: false; // Requires the parent flag
 ```
 
 ## Dependencies
@@ -96,11 +98,11 @@ REVIEWS_CLASSIFICATION: true; // Rule-based classification
 | Guest Feedback   | ✅ Active (private reputation firewall) |
 | Gemini AI        | ✅ Available (for reply suggestions)    |
 
-## Success Test
+## Future Success Test
 
 > **Owner instinctively opens MenuList to check & reply to reviews.**
 > Not Google. MenuList becomes the reputation control center.
 
 ---
 
-**Last Updated:** February 19, 2026
+**Last Updated:** July 11, 2026

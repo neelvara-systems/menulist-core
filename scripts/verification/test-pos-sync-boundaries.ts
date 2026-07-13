@@ -1,0 +1,224 @@
+import assert from 'node:assert/strict';
+import type { LookupFunction } from 'node:net';
+import {
+    getNextPosSyncMenuVersion,
+    normalizePosSyncMenuVersion,
+    resolvePosSyncDeliveryOutcome,
+} from '../../src/lib/posSync/deliveryState';
+import { buildMenuSnapshot } from '../../src/lib/posSync/payloadFormatter';
+import { createPosSyncPinnedLookup } from '../../src/lib/posSync/pinnedWebhookRequest';
+import {
+    isBlockedPosSyncNetworkTarget,
+    validatePosSyncWebhookUrl,
+} from '../../src/lib/posSync/webhookUrl';
+
+function runLookup(
+    lookup: LookupFunction,
+    hostname: string,
+    options: { all?: boolean; family?: number },
+): { address: string | Array<{ address: string; family: number }>; family?: number } {
+    let result: { address: string | Array<{ address: string; family: number }>; family?: number } | undefined;
+    let lookupError: Error | undefined;
+    lookup(hostname, options, (error, address, family) => {
+        if (error) lookupError = error;
+        else result = { address, family };
+    });
+    if (lookupError) throw lookupError;
+    if (!result) throw new Error('Pinned lookup did not complete synchronously');
+    return result;
+}
+
+assert.equal(validatePosSyncWebhookUrl('https://hooks.vendor.example.com/menu').valid, true);
+assert.equal(validatePosSyncWebhookUrl('http://hooks.vendor.example.com/menu').valid, false);
+assert.equal(validatePosSyncWebhookUrl('https://127.0.0.1/menu').valid, false);
+assert.equal(isBlockedPosSyncNetworkTarget('192.0.2.10'), true);
+assert.equal(isBlockedPosSyncNetworkTarget('198.51.100.10'), true);
+assert.equal(isBlockedPosSyncNetworkTarget('203.0.113.10'), true);
+assert.equal(isBlockedPosSyncNetworkTarget('::ffff:7f00:1'), true);
+assert.equal(isBlockedPosSyncNetworkTarget('fe90::1'), true);
+assert.equal(isBlockedPosSyncNetworkTarget('ff02::1'), true);
+assert.equal(isBlockedPosSyncNetworkTarget('2001:db8::1'), true);
+assert.equal(isBlockedPosSyncNetworkTarget('2001::1'), true);
+assert.equal(isBlockedPosSyncNetworkTarget('2002::1'), true);
+assert.equal(isBlockedPosSyncNetworkTarget('3fff::1'), true);
+assert.equal(isBlockedPosSyncNetworkTarget('8.8.8.8'), false);
+assert.equal(isBlockedPosSyncNetworkTarget('2606:4700:4700::1111'), false);
+
+const pinnedLookup = createPosSyncPinnedLookup('hooks.vendor.com', [
+    { address: '8.8.8.8', family: 4 },
+    { address: '2606:4700:4700::1111', family: 6 },
+]);
+assert.deepEqual(runLookup(pinnedLookup, 'hooks.vendor.com', { family: 4 }), {
+    address: '8.8.8.8',
+    family: 4,
+});
+assert.deepEqual(runLookup(pinnedLookup, 'hooks.vendor.com', { all: true }), {
+    address: [
+        { address: '8.8.8.8', family: 4 },
+        { address: '2606:4700:4700::1111', family: 6 },
+    ],
+    family: undefined,
+});
+assert.throws(() => runLookup(pinnedLookup, 'other.vendor.com', {}));
+assert.throws(() => runLookup(createPosSyncPinnedLookup('hooks.vendor.com', [
+    { address: '127.0.0.1', family: 4 },
+]), 'hooks.vendor.com', {}));
+assert.throws(() => runLookup(createPosSyncPinnedLookup('hooks.vendor.com', [
+    { address: 'not-an-ip', family: 4 },
+]), 'hooks.vendor.com', {}));
+
+assert.equal(getNextPosSyncMenuVersion(undefined), 1);
+assert.equal(getNextPosSyncMenuVersion(9), 10);
+assert.equal(getNextPosSyncMenuVersion(Number.MAX_SAFE_INTEGER), null);
+assert.equal(getNextPosSyncMenuVersion('9'), null);
+assert.equal(normalizePosSyncMenuVersion(0), 0);
+assert.equal(normalizePosSyncMenuVersion(9), 9);
+assert.equal(normalizePosSyncMenuVersion('9'), null);
+assert.equal(normalizePosSyncMenuVersion(Number.NaN), null);
+
+const connectionIssueMessage = 'Could not reach connected system';
+assert.deepEqual(resolvePosSyncDeliveryOutcome({
+    connectionIssueMessage,
+    currentConsecutiveFailures: 1,
+    currentLastCompletedMenuVersion: 8,
+    currentStatus: 'healthy',
+    menuVersion: 9,
+    success: false,
+}), {
+    consecutiveFailures: 2,
+    lastCompletedMenuVersion: 9,
+    lastError: '',
+    lastStatus: 'failed',
+    status: 'healthy',
+});
+assert.equal(resolvePosSyncDeliveryOutcome({
+    connectionIssueMessage,
+    currentConsecutiveFailures: 2,
+    currentLastCompletedMenuVersion: 10,
+    currentStatus: 'healthy',
+    menuVersion: 9,
+    success: false,
+}), null);
+assert.deepEqual(resolvePosSyncDeliveryOutcome({
+    connectionIssueMessage,
+    currentConsecutiveFailures: 2,
+    currentLastCompletedMenuVersion: 9,
+    currentStatus: 'healthy',
+    menuVersion: 10,
+    success: false,
+}), {
+    consecutiveFailures: 3,
+    lastCompletedMenuVersion: 10,
+    lastError: connectionIssueMessage,
+    lastStatus: 'failed',
+    status: 'connection_issue',
+});
+assert.deepEqual(resolvePosSyncDeliveryOutcome({
+    connectionIssueMessage,
+    currentConsecutiveFailures: 3,
+    currentLastCompletedMenuVersion: 10,
+    currentStatus: 'connection_issue',
+    menuVersion: 11,
+    success: true,
+}), {
+    consecutiveFailures: 0,
+    lastCompletedMenuVersion: 11,
+    lastError: '',
+    lastStatus: 'success',
+    status: 'healthy',
+});
+
+const project = {
+    projectId: 'authoritative_project',
+    languages: ['English (en)'],
+    files: [{
+        extractedData: {
+            data: {
+            categories: [{
+                id: 'cat_1',
+                active: true,
+                name: { en: 'Mains' },
+                icon: 'lu:LuUtensils',
+                extractionIdAliases: ['internal_alias'],
+            }],
+            items: [{
+                id: 'item_1',
+                category: 'cat_1',
+                active: true,
+                name: { en: 'Curry' },
+                decisionFacts: {
+                    spiceLevel: {
+                        value: 'hot',
+                        source: 'ai',
+                        confirmed: true,
+                    },
+                },
+                allergens: ['dairy'],
+                dietaryTags: ['vegetarian'],
+                spiceLevel: 'hot',
+                nutritionInfo: { calories: 420, servingSize: '1 bowl' },
+                materials: 'ceramic bowl',
+                warranty: 'not applicable',
+                descriptionSource: 'ai',
+                ownerBoost: 20,
+                qualityReview: { priceOutlierReviewedAt: '2026-07-10' },
+            }],
+                languages: [],
+            },
+        },
+    }],
+};
+const snapshot = buildMenuSnapshot(project, 202, 101, 7, 'INR');
+assert.equal(snapshot.menu.categories[0].icon, 'lu:LuUtensils');
+assert.deepEqual(snapshot.menu.items[0].decisionFacts, { spiceLevel: { value: 'hot' } });
+assert.deepEqual(snapshot.menu.items[0].allergens, ['dairy']);
+assert.equal(snapshot.menu.items[0].nutritionInfo?.calories, 420);
+const serializedSnapshot = JSON.stringify(snapshot);
+assert.equal(serializedSnapshot.includes('descriptionSource'), false);
+assert.equal(serializedSnapshot.includes('ownerBoost'), false);
+assert.equal(serializedSnapshot.includes('qualityReview'), false);
+assert.equal(serializedSnapshot.includes('extractionIdAliases'), false);
+assert.equal(serializedSnapshot.includes('"source":"ai"'), false);
+
+const malformedSnapshot = buildMenuSnapshot({
+    projectId: 42,
+    languages: ['English (en)', null, ''],
+    files: [{
+        extractedData: {
+            data: {
+                categories: [{
+                    id: 'cat_safe',
+                    active: 'yes',
+                    name: JSON.parse('{"en":"Safe","__proto__":"blocked"}'),
+                    images: [{}],
+                    timeSlots: [{}],
+                }],
+                items: [{
+                    id: 'item_safe',
+                    category: 'cat_safe',
+                    active: 1,
+                    name: { en: 'Safe item' },
+                    images: [{}],
+                    attributes: [{ id: '', price: '5' }, { id: 'size', price: '5', active: true }],
+                    decisionFacts: JSON.parse('{"__proto__":{"value":"blocked"},"safe":{"value":5}}'),
+                }],
+            },
+        },
+    }],
+}, 202, 101, 8, 'INR');
+assert.equal(malformedSnapshot.projectId, '');
+assert.deepEqual(malformedSnapshot.languages, [{ code: 'en', name: 'English', isPrimary: true }]);
+assert.equal(malformedSnapshot.menu.categories[0].active, false);
+assert.deepEqual(malformedSnapshot.menu.categories[0].name, { en: 'Safe' });
+assert.equal(malformedSnapshot.menu.categories[0].images, undefined);
+assert.equal(malformedSnapshot.menu.categories[0].timeSlots, undefined);
+assert.equal(malformedSnapshot.menu.items[0].images, undefined);
+assert.deepEqual(malformedSnapshot.menu.items[0].attributes, [{
+    active: true,
+    id: 'size',
+    name: {},
+    price: '5',
+}]);
+assert.deepEqual(malformedSnapshot.menu.items[0].decisionFacts, { safe: { value: 5 } });
+
+console.log('POS sync behavioral boundaries passed.');

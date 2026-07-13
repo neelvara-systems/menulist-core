@@ -19,17 +19,20 @@ import { secureLog } from '@lib/security/secureLogger';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { withAuth } from '@/middleware/auth';
+import { applyAnswerlatticeDashboardReadRateLimit } from '../../readRateLimit';
 
 const CreateJobSchema = z.object({
     title: z.string().trim().max(120).optional(),
     description: z.string().trim().max(500).optional(),
-    productWebsiteUrl: z.string().trim().max(300).optional(),
-    appUrl: z.string().trim().max(300).optional(),
+    productWebsiteUrl: z.string().trim().max(300).url().refine(value => ['http:', 'https:'].includes(new URL(value).protocol)).optional(),
+    appUrl: z.string().trim().max(300).url().refine(value => ['http:', 'https:'].includes(new URL(value).protocol)).optional(),
     targetAudience: z.string().trim().max(160).optional(),
-}).optional();
+}).strict().optional();
 const KNOWLEDGE_INTAKE_CREATE_JOB_MAX_BODY_BYTES = 8 * 1024;
 
 export const GET = withAuth(async (request: NextRequest, session) => {
+    const rateLimitResponse = await applyAnswerlatticeDashboardReadRateLimit(request, session, 'knowledge-intake-jobs');
+    if (rateLimitResponse) return rateLimitResponse;
     const access = await requireAnswerlatticeKnowledgeIntakeContext(request, session);
     if (access.response) return access.response;
 
@@ -71,7 +74,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             jobId: job.id,
             scope: access.context.scope,
         }));
-        return NextResponse.json({ job: serializeIntakeValue(job) });
+        return NextResponse.json({ job: serializeIntakeValue(job) }, { headers: { 'Cache-Control': 'private, no-store' } });
     } catch (error) {
         if (error instanceof z.ZodError) {
             return NextResponse.json({ error: 'Invalid intake job details.' }, { status: 400 });

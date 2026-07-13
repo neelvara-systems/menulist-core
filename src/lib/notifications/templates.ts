@@ -47,18 +47,18 @@ const NOTIFICATION_TEMPLATES: Record<string, TemplateFn> = {
      * Recipient: ticket creator (the user who submitted the ticket)
      */
     TICKET_REPLY: (m) => ({
-        subject: `Reply on your ticket: ${m.ticketSubject || 'Support Request'}`,
+        subject: `Reply on your ticket: ${safeSubjectText(m.ticketSubject, 'Support Request', 300)}`,
         html: wrap(
             `<h2 style="${S.h2}">New reply on your support ticket</h2>` +
-            `<p style="${S.p}">Hi ${m.recipientName || 'there'},</p>` +
-            `<p style="${S.p}">There is a new reply on your ticket <strong>"${m.ticketSubject || 'Support Request'}"</strong>.</p>` +
+            `<p style="${S.p}">Hi ${safeHtmlText(m.recipientName, 'there', 120)},</p>` +
+            `<p style="${S.p}">There is a new reply on your ticket <strong>"${safeHtmlText(m.ticketSubject, 'Support Request', 300)}"</strong>.</p>` +
             (m.replyPreview
-                ? `<div style="${S.preview}">${truncate(m.replyPreview, 300)}</div>`
+                ? `<div style="${S.preview}">${safeHtmlText(m.replyPreview, '', 300)}</div>`
                 : '') +
-            (m.ticketUrl
-                ? `<p style="margin-top: 20px;"><a href="${m.ticketUrl}" style="${S.btn}">View Ticket</a></p>`
+            (safeNotificationUrl(m.ticketUrl)
+                ? `<p style="margin-top: 20px;"><a href="${safeNotificationUrl(m.ticketUrl)}" style="${S.btn}">View Ticket</a></p>`
                 : '') +
-            `<p style="${S.muted}">Ticket ID: ${m.ticketDisplayId || m.ticketId || 'N/A'}</p>`
+            `<p style="${S.muted}">Ticket ID: ${safeHtmlText(m.ticketDisplayId || m.ticketId, 'N/A', 180)}</p>`
         ),
     }),
 
@@ -67,19 +67,19 @@ const NOTIFICATION_TEMPLATES: Record<string, TemplateFn> = {
      * Recipient: ticket creator
      */
     TICKET_STATUS_CHANGED: (m) => ({
-        subject: `Ticket updated: ${m.ticketSubject || 'Support Request'} — ${formatStatus(m.newStatus)}`,
+        subject: `Ticket updated: ${safeSubjectText(m.ticketSubject, 'Support Request', 300)} — ${safeSubjectText(formatStatus(m.newStatus), 'Updated', 80)}`,
         html: wrap(
             `<h2 style="${S.h2}">Your ticket status has been updated</h2>` +
-            `<p style="${S.p}">Hi ${m.recipientName || 'there'},</p>` +
-            `<p style="${S.p}">Your ticket <strong>"${m.ticketSubject || 'Support Request'}"</strong> has been updated.</p>` +
+            `<p style="${S.p}">Hi ${safeHtmlText(m.recipientName, 'there', 120)},</p>` +
+            `<p style="${S.p}">Your ticket <strong>"${safeHtmlText(m.ticketSubject, 'Support Request', 300)}"</strong> has been updated.</p>` +
             `<div style="${S.info}">` +
-            `<strong>New status:</strong> ${formatStatus(m.newStatus)}` +
-            (m.remark ? `<br><strong>Note:</strong> ${m.remark}` : '') +
+            `<strong>New status:</strong> ${safeHtmlText(formatStatus(m.newStatus), 'Updated', 80)}` +
+            (m.remark ? `<br><strong>Note:</strong> ${safeHtmlText(m.remark, '', 2_000)}` : '') +
             `</div>` +
-            (m.ticketUrl
-                ? `<p style="margin-top: 20px;"><a href="${m.ticketUrl}" style="${S.btn}">View Ticket</a></p>`
+            (safeNotificationUrl(m.ticketUrl)
+                ? `<p style="margin-top: 20px;"><a href="${safeNotificationUrl(m.ticketUrl)}" style="${S.btn}">View Ticket</a></p>`
                 : '') +
-            `<p style="${S.muted}">Ticket ID: ${m.ticketDisplayId || m.ticketId || 'N/A'}</p>`
+            `<p style="${S.muted}">Ticket ID: ${safeHtmlText(m.ticketDisplayId || m.ticketId, 'N/A', 180)}</p>`
         ),
     }),
 
@@ -88,18 +88,18 @@ const NOTIFICATION_TEMPLATES: Record<string, TemplateFn> = {
      * Recipient: ticket creator
      */
     TICKET_CREATED: (m) => ({
-        subject: `Ticket received: ${m.ticketSubject || 'Support Request'}`,
+        subject: `Ticket received: ${safeSubjectText(m.ticketSubject, 'Support Request', 300)}`,
         html: wrap(
             `<h2 style="${S.h2}">We received your support request</h2>` +
-            `<p style="${S.p}">Hi ${m.recipientName || 'there'},</p>` +
-            `<p style="${S.p}">Your ticket <strong>"${m.ticketSubject || 'Support Request'}"</strong> has been submitted. Our team will review it and respond as soon as possible.</p>` +
+            `<p style="${S.p}">Hi ${safeHtmlText(m.recipientName, 'there', 120)},</p>` +
+            `<p style="${S.p}">Your ticket <strong>"${safeHtmlText(m.ticketSubject, 'Support Request', 300)}"</strong> has been submitted. Our team will review it and respond as soon as possible.</p>` +
             `<div style="${S.info}">` +
-            `<strong>Ticket ID:</strong> ${m.ticketDisplayId || 'N/A'}<br>` +
-            `<strong>Category:</strong> ${m.category || 'General'}<br>` +
-            `<strong>Priority:</strong> ${m.priority || 'Normal'}` +
+            `<strong>Ticket ID:</strong> ${safeHtmlText(m.ticketDisplayId, 'N/A', 180)}<br>` +
+            `<strong>Category:</strong> ${safeHtmlText(m.category, 'General', 120)}<br>` +
+            `<strong>Priority:</strong> ${safeHtmlText(m.priority, 'Normal', 80)}` +
             `</div>` +
-            (m.ticketUrl
-                ? `<p style="margin-top: 20px;"><a href="${m.ticketUrl}" style="${S.btn}">View Ticket</a></p>`
+            (safeNotificationUrl(m.ticketUrl)
+                ? `<p style="margin-top: 20px;"><a href="${safeNotificationUrl(m.ticketUrl)}" style="${S.btn}">View Ticket</a></p>`
                 : '')
         ),
     }),
@@ -109,17 +109,17 @@ const NOTIFICATION_TEMPLATES: Record<string, TemplateFn> = {
      * Recipient: workspace support email.
      */
     ANSWERLATTICE_NOTIFICATION_TEST: (m) => ({
-        subject: `Answerlattice notification test for ${m.productName || 'your product'}`,
+        subject: `Answerlattice notification test for ${safeSubjectText(m.productName, 'your product', 200)}`,
         html: wrap(
             `<h2 style="${S.h2}">Notification delivery is connected</h2>` +
-            `<p style="${S.p}">Hi ${m.recipientName || 'there'},</p>` +
-            `<p style="${S.p}">This test confirms Answerlattice can send ticket and support notifications for <strong>${m.productName || 'your product'}</strong>.</p>` +
+            `<p style="${S.p}">Hi ${safeHtmlText(m.recipientName, 'there', 120)},</p>` +
+            `<p style="${S.p}">This test confirms Answerlattice can send ticket and support notifications for <strong>${safeHtmlText(m.productName, 'your product', 200)}</strong>.</p>` +
             `<div style="${S.info}">` +
-            `<strong>Workspace:</strong> ${m.workspaceName || 'Answerlattice workspace'}<br>` +
-            `<strong>Sent at:</strong> ${m.sentAt || 'Now'}` +
+            `<strong>Workspace:</strong> ${safeHtmlText(m.workspaceName, 'Answerlattice workspace', 200)}<br>` +
+            `<strong>Sent at:</strong> ${safeHtmlText(m.sentAt, 'Now', 80)}` +
             `</div>` +
             `<p style="${S.p}">No action is needed if this arrived in the expected inbox.</p>`,
-            m.productName || 'Answerlattice'
+            safeHtmlText(m.productName, 'Answerlattice', 200)
         ),
     }),
 };
@@ -128,10 +128,33 @@ const NOTIFICATION_TEMPLATES: Record<string, TemplateFn> = {
 // HELPERS
 // ================================================================
 
-function truncate(text: string, maxLen: number): string {
-    if (!text) return '';
-    const clean = text.replace(/<[^>]*>/g, ''); // Strip HTML
-    return clean.length > maxLen ? clean.slice(0, maxLen) + '...' : clean;
+function normalizeTemplateText(value: unknown, fallback: string, maxLen: number): string {
+    const text = typeof value === 'string' ? value.trim() : '';
+    const selected = text || fallback;
+    return selected.length > maxLen ? `${selected.slice(0, maxLen)}...` : selected;
+}
+
+function safeSubjectText(value: unknown, fallback: string, maxLen: number): string {
+    return normalizeTemplateText(value, fallback, maxLen).replace(/[\r\n]+/g, ' ');
+}
+
+function safeHtmlText(value: unknown, fallback: string, maxLen: number): string {
+    return normalizeTemplateText(value, fallback, maxLen)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function safeNotificationUrl(value: unknown): string | null {
+    if (typeof value !== 'string' || value.length > 2_000) return null;
+    try {
+        const url = new URL(value);
+        return url.protocol === 'https:' ? safeHtmlText(url.toString(), '', 2_000) : null;
+    } catch {
+        return null;
+    }
 }
 
 function formatStatus(status: string): string {

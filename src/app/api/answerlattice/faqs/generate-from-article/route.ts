@@ -14,12 +14,12 @@ import {
     ANSWERLATTICE_FAQ_GENERATED_PER_ARTICLE_LIMIT,
     normalizeGeneratedFaqs,
 } from '@lib/answerlattice/faqContent';
+import { answerlatticeGenAIClient } from '@lib/answerlattice/genAiClient';
 import { normalizeAnswerlatticeResolvedEntityIds } from '@lib/answerlattice/governanceIdBoundary';
 import { normalizeAnswerlatticeKbArticleId } from '@lib/answerlattice/kbArticleIdBoundary';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
 import { normalizeAnswerlatticeScopeDocumentId, resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
-import { genAIClient } from '@lib/google/genAi';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getBoundedRuntimeStringContext, logRuntimeDiagnostic, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
@@ -33,7 +33,7 @@ import { withAuth } from '../../../../../middleware/auth';
 
 const GenerateFaqRequestSchema = z.object({
     articleId: z.string().trim().refine((value) => normalizeAnswerlatticeKbArticleId(value) === value),
-});
+}).strict();
 
 const GENERATE_FAQ_FROM_ARTICLE_MAX_BODY_BYTES = 4 * 1024;
 const MAX_ARTICLE_TEXT_FOR_PROMPT = 6000;
@@ -236,7 +236,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         );
 
         const operationStart = Date.now();
-        const response = await genAIClient.models.generateContent({
+        const response = await answerlatticeGenAIClient.models.generateContent({
             model: ANSWERLATTICE_TEXT_MODEL,
             contents: buildFaqPrompt(article, articleText),
             config: {

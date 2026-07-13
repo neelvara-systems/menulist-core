@@ -170,6 +170,13 @@ function verifyCreateRoute(createRoute) {
     'outletCreationLock',
     'buildUserStoreAccessUpdate(',
     'buildSummaryProjectPayload(',
+    'LEGACY_PLATFORM_COUNTER_DOCUMENT_ID',
+    'findNextAvailablePlatformEntityId(',
+    'resolvePlatformCounterFloor(',
+    'tx.get(legacySummaryRef)',
+    'tx.get(storesSummaryRef)',
+    'await tx.get(db.doc(`${DB_COLLECTIONS.STORES}/${candidateId}`))',
+    'tx.set(summaryRef, {',
     'activeStoreCount = initialStoresList.filter((s: any) => s?.active !== false).length || 1',
     [
       'const currentOutlets = initialStoresList.filter((s: any) => (',
@@ -184,7 +191,20 @@ function verifyCreateRoute(createRoute) {
     'multi_outlet_subscription_quantity_revert_failed',
     'multi_outlet_create_lock_release_failed',
     'OUTLET_LOCATION_PAYMENT_REQUIRED',
+    'readOutletSlugReservationInTransaction({',
+    'writeCurrentOutletSlugClaim(tx, outletSlugReservation, now);',
+    'const [summary, legacySummary, storesSummary, userSnap, freshTenantSnap] = await Promise.all([',
+    'tx.get(tenantRef)',
+    'normalizeUserStoreAccessDocumentId(session.uId || session.user?.id)',
+    'db.collection(DB_COLLECTIONS.USERS).doc(sessionUserDocumentId)',
+    "if (!freshTenantSnap.exists) throw new Error('outlet_create_tenant_missing');",
   ].forEach((token) => assertIncludes(createRoute, token, 'Outlet create route boundary'));
+
+  [
+    'const outletSlugExists = async',
+    'const buildUniqueOutletSlug = async',
+    'const tenantData = (await tenantRef.get()).data();',
+  ].forEach((token) => assertNotIncludes(createRoute, token, 'Outlet create must not use non-transactional slug or tenant authority'));
 
   assertOrder(
     createRoute,
@@ -202,14 +222,42 @@ function verifyCreateRoute(createRoute) {
     [
       'const masterProjectsSnap = await db',
       '.where(\'deleted\', \'!=\', true)',
-      'const outletSlug = await buildUniqueOutletSlug(db, tenantId as number, outletName);',
       'const result = await db.runTransaction(async (tx) => {',
-      'tx.set(db.doc(`${DB_COLLECTIONS.STORES}/${newStoreId}`),',
-      'tx.set(db.doc(`${DB_COLLECTIONS.PLATFORM_SUMMARY}/storesSummary`), storesSummaryPayload, { merge: true });',
+      'readOutletSlugReservationInTransaction({',
+      'tx.set(newStoreRef,',
+      'writeCurrentOutletSlugClaim(tx, outletSlugReservation, now);',
+      'tx.set(storesSummaryRef, storesSummaryPayload, { merge: true });',
       'tx.update(tenantRef, {',
     ],
     'Outlet create transaction payload order',
   );
+}
+
+function verifyUserStoreAccessBoundary(content) {
+  [
+    'export const normalizeUserStoreAccessDocumentId = (value: unknown): string | null =>',
+    'documentId === raw && documentId.length <= 160 && isValidFirestoreDocumentId(documentId)',
+    "if (!/^[1-9]\\d*$/.test(raw)) return null;",
+    'Number.isSafeInteger(parsed) && String(parsed) === raw',
+    'return db.runTransaction(async (transaction) => {',
+    'const userSnap = await transaction.get(userRef);',
+    'transaction.set(userRef, update, { merge: true });',
+  ].forEach((token) => assertIncludes(content, token, 'Multi-outlet user store-access boundary'));
+  assertNotIncludes(content, 'const parsed = Number(value);', 'Multi-outlet user store-access coercion');
+  assertNotIncludes(content, 'db.doc(`${DB_COLLECTIONS.USERS}/${userId}`)', 'Multi-outlet raw user document path');
+}
+
+function verifyOnboardingCompensationScopeBoundary(content) {
+  [
+    'const normalizePersistedOnboardingScopeId = (value: unknown): number | null =>',
+    'Number.isSafeInteger(numericId) && String(numericId) === raw',
+    'removeCompensatedStoreFromMappings',
+    'removeCompensatedStoreId',
+    'normalizePersistedOnboardingScopeId(userData.storeId) === storeId',
+    'normalizePersistedOnboardingScopeId(userData.tenantId) === tenantId',
+  ].forEach((token) => assertIncludes(content, token, 'Onboarding compensation scope boundary'));
+  ['Number((store as any)?.storeId)', 'Number(userData.storeId)', 'Number(userData.tenantId)']
+    .forEach((token) => assertNotIncludes(content, token, 'Onboarding compensation coercive scope'));
 }
 
 function verifyDeactivateRoute(deactivateRoute) {
@@ -241,17 +289,63 @@ function verifyRenameRoute(renameRoute) {
     'FEATURE_FLAGS.ENABLE_MULTI_OUTLET',
     'MAX_PREVIOUS_OUTLET_SLUGS = 5',
     'const outletStoreIdStr = normalizeOutletDocumentId(outletStoreId);',
+    'if (!proposed || !isValidOutletSlugClaimCandidate(proposed))',
     'isReservedOutletSlug(proposed)',
     'outlet.active === false',
-    ".where('outletSlug', '==', proposed)",
-    ".where('active', '==', true)",
-    ".where('previousOutletSlugs', 'array-contains', proposed)",
-    'const foreignChain = chainCollisionSnap.docs.find((d) => d.id !== outletStoreIdStr);',
-    'const cappedChain = nextChain.slice(-MAX_PREVIOUS_OUTLET_SLUGS);',
+    'const [tenantDoc, freshOutletSnap] = await Promise.all([',
+    'readOutletSlugReservationInTransaction({',
+    'writeCurrentOutletSlugClaim(tx, newReservation, now);',
+    'writeRedirectOutletSlugClaim(tx, oldReservation, now)',
+    'const cappedChain = Array.from(new Set(nextChain)).slice(-MAX_PREVIOUS_OUTLET_SLUGS);',
     'tx.update(outletRef, updatePayload);',
     'tx.set(summaryRef, summaryPayload, { merge: true });',
     'tx.update(tenantRef, { storesList: updatedStoresList });',
   ].forEach((token) => assertIncludes(renameRoute, token, 'Outlet rename route boundary'));
+
+  [
+    'const directCollisionSnap = await db',
+    'const chainCollisionSnap = await db',
+    'const foreignChain = chainCollisionSnap.docs.find',
+  ].forEach((token) => assertNotIncludes(renameRoute, token, 'Outlet rename must not use non-transactional collision authority'));
+}
+
+function verifyOutletSlugClaimBoundary(helper, createRoute, renameRoute, deactivateRoute, emulatorTest) {
+  [
+    "const OUTLET_SLUG_CLAIM_DOCUMENT_PREFIX = 'outletSlugClaim_'",
+    'export class OutletSlugUnavailableError extends Error',
+    'export function isOutletSlugUnavailableError(error: unknown)',
+    'export function isValidOutletSlugClaimCandidate(value: string): boolean',
+    'export function getOutletSlugClaimDocumentId(tenantId: string, outletSlug: string): string',
+    'export async function readOutletSlugReservationInTransaction(params:',
+    ".where('tenantId', '==', Number(tenantId))",
+    ".where('outletSlug', '==', outletSlug)",
+    ".where('previousOutletSlugs', 'array-contains', outletSlug)",
+    'transaction.get(claimRef)',
+    'historySnap.size >= OUTLET_HISTORY_QUERY_LIMIT',
+    'export function writeCurrentOutletSlugClaim(',
+    'export function writeRedirectOutletSlugClaim(',
+    'export function writeReleasedOutletSlugClaim(',
+  ].forEach((token) => assertIncludes(helper, token, 'Tenant-scoped outlet slug claim boundary'));
+
+  [
+    'readOutletSlugReservationInTransaction({',
+    'writeCurrentOutletSlugClaim(tx, outletSlugReservation, now);',
+  ].forEach((token) => assertIncludes(createRoute, token, 'Outlet create claim integration'));
+  [
+    'readOutletSlugReservationInTransaction({',
+    'writeCurrentOutletSlugClaim(tx, newReservation, now);',
+    'writeRedirectOutletSlugClaim(tx, oldReservation, now)',
+    'isOutletSlugUnavailableError(error)',
+  ].forEach((token) => assertIncludes(renameRoute, token, 'Outlet rename claim integration'));
+  [
+    'getOutletSlugClaimDocumentId(tenantDocumentId, freshOutletSlug)',
+    'writeReleasedOutletSlugClaim(tx, {',
+  ].forEach((token) => assertIncludes(deactivateRoute, token, 'Outlet deactivate claim release'));
+  [
+    'Concurrent outlets in one tenant must have exactly one successful path-segment claim',
+    'Different tenants may safely reuse the same outlet slug',
+    'Deactivation release must permit a different active outlet to claim the path',
+  ].forEach((token) => assertIncludes(emulatorTest, token, 'Outlet slug concurrency regression'));
 }
 
 function verifyPolicyRoute(policyRoute) {
@@ -269,9 +363,13 @@ function verifyPolicyRoute(policyRoute) {
     '.strict().refine((value) => Object.keys(value).length > 0',
     'requireAnyStorePermissionForStoreData(',
     'PERMISSIONS.MANAGE_OUTLETS',
-    'storeData.isMaster !== true && !masterPromoted',
+    'const [freshStoreSnap, freshTenantSnap] = await Promise.all([',
+    'normalizeStoreSummaryNumericDocumentId(freshStore.tenantId ?? freshStore.tId) !== tenantDocumentId',
+    'freshStore.active === false',
+    'isPlatformEntityBlocked(freshStore)',
+    'freshStore.isMaster !== true && !masterPromoted',
     'const mergedPolicy = {',
-    '...(storeData.outletPolicy || DEFAULT_OUTLET_POLICY)',
+    '...(freshStore.outletPolicy || DEFAULT_OUTLET_POLICY)',
     '...v.data.policy',
     'tx.set(storeRef,',
     'tx.update(tenantRef,',
@@ -279,7 +377,9 @@ function verifyPolicyRoute(policyRoute) {
     'touchDigitalScreenContentVersionForStoreServer(storeDocumentId, "outletPolicy")',
     'invalidateOwnerBusinessAssistantPacketCache({',
     'outlet_policy_update_route_failed',
+    'isOutletPolicyScopeChangedError(error)',
   ].forEach((token) => assertIncludes(policyRoute, token, 'Outlet policy route boundary'));
+  assertNotIncludes(policyRoute, 'tenantRef.get()', 'Outlet policy must not derive tenant storesList outside its transaction');
   assertIncludesOneOf(
     policyRoute,
     ['revalidateTag("client-stores")', "revalidateTag('client-stores')"],
@@ -312,6 +412,7 @@ function verifyLinkedOutletSaveRoute(route) {
     'FEATURE_FLAGS.ENABLE_MULTI_OUTLET',
     'OUTLET_SAVE_MAX_BODY_BYTES = 2 * 1024 * 1024',
     'import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";',
+    'import { buildSummaryProjectFieldPayload } from "@lib/firestore/summaryProjectsWriter";',
     '.refine(isValidFirestoreDocumentId, "Invalid project ID")',
     '.refine(isValidFirestoreDocumentId, "Invalid override ID")',
     'readBoundedJsonBody(request, OUTLET_SAVE_MAX_BODY_BYTES',
@@ -331,18 +432,28 @@ function verifyLinkedOutletSaveRoute(route) {
     'Number(masterStore?.tenantId) !== tenantId || masterStore?.active === false',
     'store?.active !== false',
     'currentStoreId !== outletStoreId && callerStore?.isMaster !== true',
-    'existingProject?.masterProjectId !== project.masterProjectId',
+    'existingProject?.masterProjectId !== standardProject.masterProjectId',
     'OUTLET_PROJECT_WRITE_FIELDS',
     'DANGEROUS_KEYS',
     'LOCAL_CATEGORY_PREFIX',
     'LOCAL_ITEM_PREFIX',
-    'getOutletPolicyViolation(project, existingProject, outletPolicy)',
+    'getOutletPolicyViolation(standardProject, existingProject, outletPolicy)',
     'hasAddedIds(nextLocalIds.categoryIds, previousLocalIds.categoryIds)',
     'hasAddedIds(nextLocalIds.itemIds, previousLocalIds.itemIds)',
-    'project.active === false && outletPolicy.allowProjectDeactivate === false',
+    'standardProject.active === false && outletPolicy.allowProjectDeactivate === false',
+    'active: z.boolean().optional()',
+    'outletStatus: z.enum(["active", "inactive"]).optional()',
     'sanitizeForFirestore({',
-    'pickOutletProjectWriteFields(project)',
-    'await existingProjectSnap.ref.set(safeProject, { merge: true });',
+    'pickOutletProjectWriteFields(standardProject)',
+    'const writeBatch = db.batch();',
+    'writeBatch.set(existingProjectSnap.ref, safeProject, { merge: true });',
+    'hasOwnDefinedProjectField(standardProject, "active")',
+    'buildSummaryProjectFieldPayload(standardProject.projectId, "active", standardProject.active)',
+    'const expectedBucket = storageAdmin.bucket().name',
+    'normalizeImageBatchProjectSelections(',
+    'appendImageBatchSelectionsToOutletProject',
+    'outletPolicy.imageOverride !== true',
+    'await writeBatch.commit();',
     'revalidateTag(`menu-store-${outletStoreId}`)',
     'revalidateTag(`store-${outletStoreId}`)',
     'revalidateTag("client-stores")',
@@ -363,9 +474,10 @@ function verifyLinkedOutletSaveRoute(route) {
       'checkRateLimit({',
       'Promise.all([',
       'requireAnyStorePermissionForStoreData(',
-      'getOutletPolicyViolation(project, existingProject, outletPolicy)',
-      'await existingProjectSnap.ref.set(safeProject, { merge: true });',
-      'revalidateTag(`menu-store-${outletStoreId}`)',
+      'getOutletPolicyViolation(standardProject, existingProject, outletPolicy)',
+      'writeBatch.set(existingProjectSnap.ref, safeProject, { merge: true });',
+      'await writeBatch.commit();',
+      'touchDigitalScreenContentVersionForStoreServer(outletStoreId, "linkedOutletSave")',
     ],
     'Linked outlet save route validation/write order',
   );
@@ -532,6 +644,59 @@ function verifyClientBoundaries(files) {
   });
 }
 
+function verifyBrandSubdomainMasterBoundary(files) {
+  const {
+    auditDoc,
+    desktopDomainSettings,
+    emulatorTest,
+    enUsLocale,
+    firebaseDoc,
+    mobileDoc,
+    mobileDomainSettings,
+    ownerScopeBoundary,
+    readmeDoc,
+    subdomainRoute,
+  } = files;
+
+  [
+    "const BRAND_SUBDOMAIN_TENANT_FIELDS = ['tenantId', 'tId'] as const;",
+    'export async function readSubdomainOwnerStoreInTransaction(',
+    'if (storeData.isMaster === true) return { storeData, storeRef };',
+    "if (storeData.isMaster === false) throw new SubdomainOwnerScopeError('MASTER_REQUIRED');",
+    ".where(field, '==', value).limit(2)",
+    'canonicalStoreIds.size !== 1 || !canonicalStoreIds.has(storeId)',
+  ].forEach((token) => assertIncludes(ownerScopeBoundary, token, 'Brand subdomain server authority'));
+
+  assert(
+    subdomainRoute.split('readSubdomainOwnerStoreInTransaction({').length - 1 === 2,
+    'Brand subdomain GET and POST routes must both enforce owner-store admission',
+  );
+  assertIncludes(subdomainRoute, 'Public link is managed from the main location', 'Brand subdomain outlet-safe API response');
+
+  for (const [label, screen] of [
+    ['Desktop Domain Settings', desktopDomainSettings],
+    ['Mobile Domain Settings', mobileDomainSettings],
+  ]) {
+    assertIncludes(screen, 'storeDetails?.isMaster === false', `${label} outlet admission`);
+    assertIncludes(screen, "t('outletSubdomainInfo')", `${label} outlet title copy`);
+    assertIncludes(screen, "t('outletSubdomainDesc')", `${label} outlet description copy`);
+  }
+  assertIncludes(enUsLocale, '"outletSubdomainInfo"', 'Primary locale outlet subdomain title');
+  assertIncludes(enUsLocale, '"outletSubdomainDesc"', 'Primary locale outlet subdomain description');
+
+  [
+    'Explicit master store must retain brand subdomain authority',
+    'Explicit outlet must not claim a brand subdomain',
+    'Legacy single store must retain subdomain assignment compatibility',
+    'Legacy multi-store topology without a master marker must fail closed',
+  ].forEach((token) => assertIncludes(emulatorTest, token, 'Brand subdomain owner-scope emulator regression'));
+
+  assertIncludes(readmeDoc, 'Brand subdomain master-store admission', 'URL routing README master-store authority');
+  assertIncludes(firebaseDoc, 'legacy master-store compatibility reads', 'URL routing Firebase legacy compatibility cost');
+  assertIncludes(mobileDoc, 'existing desktop and mobile Domain Settings screens', 'URL routing mobile owner parity');
+  assertIncludes(auditDoc, 'Brand subdomain master-store admission checkpoint', 'Production audit master-store authority');
+}
+
 function verifyDocs(packageJson, docs) {
   const {
     implDoc,
@@ -553,6 +718,9 @@ function verifyDocs(packageJson, docs) {
     multiChainMarketingDoc,
     rolesPermissionsFirebaseDoc,
     changelogDoc,
+    summaryPatternDoc,
+    storesFirebaseDoc,
+    storesImplDoc,
   } = docs;
 
   assert(
@@ -792,21 +960,162 @@ function verifyDocs(packageJson, docs) {
     'Old bottom labels are source-bounded',
     'npm run verify:multi-location-boundary',
   ].forEach((token) => assertIncludes(changelogDoc, token, 'Changelog multi-location companion footer-boundary evidence'));
+
+  [
+    'tenant-scoped outlet slug claim boundary',
+    'platformSummary/outletSlugClaim_{tenantId}_{slug}',
+    're-reads the tenant inside its creation transaction',
+  ].forEach((token) => assertIncludes(implDoc, token, 'Multi-outlet implementation outlet slug claim evidence'));
+  [
+    'tenant-scoped outlet slug claim cost',
+    'saturated 20-row history results fail closed',
+    'No new collection, composite index, Firestore rule, Storage rule, Cloud Function, or Firebase deploy target',
+  ].forEach((token) => assertIncludes(firebaseDoc, token, 'Multi-outlet Firebase outlet slug claim evidence'));
+  [
+    'Tenant-scoped outlet slug claim checkpoint',
+    'stale pre-transaction `storesList` snapshot',
+    'live-project concurrency',
+  ].forEach((token) => assertIncludes(auditDoc, token, 'Production audit outlet slug claim evidence'));
+  [
+    'Tenant-Scoped Outlet Slug Claim Boundary',
+    'One tenant cannot assign the same outlet path twice',
+    'Deactivated outlet paths can be reused safely',
+  ].forEach((token) => assertIncludes(changelogDoc, token, 'Changelog outlet slug claim evidence'));
+
+  [
+    'A summary is a denormalized optimization, not trusted identity',
+    'shared `storeSummaryBoundary` parser',
+    'There is no standalone browser summary writer',
+    'every active mutation owns its canonical and summary writes in the same Firestore transaction',
+  ].forEach((token) => assertIncludes(summaryPatternDoc, token, 'Summary pattern browser runtime boundary evidence'));
+  [
+    'browser summary runtime and writer boundary',
+    '`getStoresSummary()` costs one direct-document read',
+    'old standalone browser `syncStoreToSummary()` and `mergeStoreSummaryFields()` exports are removed',
+  ].forEach((token) => assertIncludes(storesFirebaseDoc, token, 'Stores Firebase browser summary boundary evidence'));
+  [
+    'Store Summary Split-Writer Removal',
+    'Standalone browser summary writers are removed',
+    'canonical state and its summary projection in the same transaction',
+  ].forEach((token) => assertIncludes(changelogDoc, token, 'Changelog browser summary boundary evidence'));
+  [
+    'outlet policy fresh-scope transaction',
+    're-reads the current store and tenant inside its mutation transaction',
+    'Stale pre-transaction data can no longer promote an outlet',
+  ].forEach((token) => assertIncludes(implDoc, token, 'Multi-outlet implementation policy fresh-scope evidence'));
+  [
+    'Outlet policy fresh-scope hardening adds one canonical store re-read',
+    'concurrent role/status/list changes conflict and retry',
+  ].forEach((token) => assertIncludes(firebaseDoc, token, 'Multi-outlet Firebase policy fresh-scope evidence'));
+  [
+    'Outlet policy fresh-scope transaction checkpoint',
+    'typed 409 if scope changed',
+  ].forEach((token) => assertIncludes(auditDoc, token, 'Production audit policy fresh-scope evidence'));
+  [
+    'Outlet Policy Fresh-Scope Transaction',
+    'Policy saves cannot overwrite a newer location list',
+    'Stale locations cannot be promoted',
+  ].forEach((token) => assertIncludes(changelogDoc, token, 'Changelog policy fresh-scope evidence'));
+  [
+    'brand propagation read/write transaction',
+    'same Firestore transaction that writes master, eligible outlets, and summary rows',
+    'committed target outlet IDs',
+  ].forEach((token) => assertIncludes(implDoc, token, 'Multi-outlet implementation brand transaction evidence'));
+  [
+    'Brand propagation keeps its bounded tenant query',
+    'Transaction retries add reads only under contention',
+  ].forEach((token) => assertIncludes(firebaseDoc, token, 'Multi-outlet Firebase brand transaction evidence'));
+  [
+    'Brand propagation read/write transaction checkpoint',
+    'typed 409 handles changed scope',
+  ].forEach((token) => assertIncludes(auditDoc, token, 'Production audit brand transaction evidence'));
+  [
+    'Brand Propagation Read/Write Transaction',
+    'Concurrent outlet choices are preserved',
+    'Derived refreshes follow committed targets',
+  ].forEach((token) => assertIncludes(changelogDoc, token, 'Changelog brand transaction evidence'));
+  [
+    'tenant-name propagation boundary',
+    'POST /api/tenants/name',
+    'Public menu/store/client-store/screen and Owner Business Assistant effects run in bounded chunks after commit',
+  ].forEach((token) => assertIncludes(storesImplDoc, token, 'Stores implementation tenant-name transaction evidence'));
+  [
+    'Tenant-name propagation now uses `POST /api/tenants/name`',
+    'up to 200 stores',
+    'eliminates partial canonical/summary commits',
+  ].forEach((token) => assertIncludes(storesFirebaseDoc, token, 'Stores Firebase tenant-name transaction evidence'));
+  [
+    'Tenant-name atomic propagation checkpoint',
+    'committed-only cache/screen/Owner Business Assistant effects in chunks of 20',
+  ].forEach((token) => assertIncludes(auditDoc, token, 'Production audit tenant-name transaction evidence'));
+  [
+    'Atomic Tenant Name Propagation',
+    'Tenant and store names cannot partially propagate',
+    'Public identity refresh follows the commit',
+  ].forEach((token) => assertIncludes(changelogDoc, token, 'Changelog tenant-name transaction evidence'));
 }
 
 function verifyMultiLocationBoundary() {
   const packageJson = JSON.parse(read('package.json'));
+  const firestoreRules = read('firestore.rules');
+  const storesSummaryRulesTest = read('scripts/verification/test-stores-summary-rules.ts');
+  const outletSlugClaimBoundary = read('src/lib/routing/outletSlugClaim.ts');
+  const platformCounterAllocator = read('src/lib/platform/platformCounterAllocator.ts');
+  const platformCounterBoundary = read('src/data/shared/platformCounterBoundary.ts');
+  const functionsPlatformCounterBoundary = read('functions/src/sharedData/platformCounterBoundary.ts');
+  const storeSummaryBoundary = read('src/data/shared/storeSummaryBoundary.ts');
+  const functionsStoreSummaryBoundary = read('functions/src/sharedData/storeSummaryBoundary.ts');
+  const platformSummaryDal = read('src/database/platformSummary/index.ts');
+  const tenantsDal = read('src/database/tenants/index.tsx');
+  const tenantNameRoute = read('src/app/api/tenants/name/route.ts');
+  const storesDal = read('src/database/stores/index.tsx');
+  const tenantStoreTransaction = read('src/lib/onboarding/createTenantStore.ts');
+  const legacyMessagingPublish = read('functions/src/messagingOnboarding/publishPipeline.ts');
+  const activeMessagingPublish = read('src/lib/messaging-onboarding/publish.ts');
+  const tenantModal = read('src/components/templates/platform/tenants/tenantDetailsModal.tsx');
+  const businessSettings = read('src/components/templates/main-app/businessSettings/index.tsx');
+  const platformEntityBlocks = read('src/app/api/platform/entity-blocks/route.ts');
+  const operationsFunctions = read('functions/src/triggers/operations.ts');
+  const publicRoutingSummaryVerifier = read('scripts/verification/verify-public-routing-summary-backfill.mjs');
+  const functionStoreSummaryConsumers = [
+    'functions/src/aggregateCustomerAnalytics.ts',
+    'functions/src/aggregateDailyChatStats.ts',
+    'functions/src/analytics/extractionLearning.ts',
+    'functions/src/analytics/menuDriftMetrics.ts',
+    'functions/src/analytics/obpAnalyticsAggregation.ts',
+    'functions/src/analytics/storeTruthConfidence.ts',
+    'functions/src/decisionBlocksScoring.ts',
+    'functions/src/schedulers/founderMonitorSnapshot.ts',
+    'functions/src/schedulers/menulistMaintenanceScheduler.ts',
+  ].map(read);
   const createRoute = read('src/app/api/outlets/create/route.ts');
   const deactivateRoute = read('src/app/api/outlets/deactivate/route.ts');
   const renameRoute = read('src/app/api/outlets/rename/route.ts');
   const policyRoute = read('src/app/api/outlets/policy/route.ts');
   const linkedOutletSaveRoute = read('src/app/api/projects/outlet-save/route.ts');
+  const brandPropagationRoute = read('src/app/api/outlets/brand-propagation/route.ts');
+  const brandPropagationDal = read('src/database/multiOutlet/brandPropagation.ts');
+  const brandPropagationBoundary = read('src/lib/multiOutlet/brandPropagationBoundary.ts');
+  const brandSubdomainBoundary = {
+    auditDoc: read('__docs__/audits/menulist-production-readiness-audit.md'),
+    desktopDomainSettings: read('src/components/templates/main-app/businessSettings/tabs/DomainSettingsTab.tsx'),
+    emulatorTest: storesSummaryRulesTest,
+    enUsLocale: read('public/locales/menulist.ai/en-US.json'),
+    firebaseDoc: read('__docs__/url-routing-architecture/url-routing-architecture_firebase.md'),
+    mobileDoc: read('__docs__/url-routing-architecture/url-routing-architecture_mobile-support.md'),
+    mobileDomainSettings: read('src/components/mobile/screens/MobileDomainSettingsScreen.tsx'),
+    ownerScopeBoundary: read('src/lib/routing/subdomainOwnerScope.ts'),
+    readmeDoc: read('__docs__/url-routing-architecture/README.md'),
+    subdomainRoute: read('src/app/api/subdomain/check/route.ts'),
+  };
   const files = {
     outletSessionScope: read('src/lib/multiOutlet/outletSessionScope.ts'),
     projectIdBoundary: read('src/lib/multiOutlet/projectIdBoundary.ts'),
     resolver: read('src/lib/multiOutlet/resolveProject.ts'),
     actionGuards: read('src/lib/multiOutlet/outletActionResponseGuards.ts'),
     linkedOutletSaveResponse: read('src/lib/multiOutlet/linkedOutletSaveResponse.ts'),
+    serverStoreAccess: read('src/lib/multiOutlet/serverStoreAccess.ts'),
+    onboardingCompensation: read('src/lib/onboarding/compensateFailedOnboarding.ts'),
     multiOutletDal: read('src/database/multiOutlet/index.ts'),
     masterUpdateDiff: read('src/lib/multiOutlet/masterUpdateDiff.ts'),
     awarenessHook: read('src/hooks/useMasterUpdateAwareness.ts'),
@@ -818,6 +1127,350 @@ function verifyMultiLocationBoundary() {
     mobileShell: read('src/components/mobile/MobileShell.tsx'),
     mobileMore: read('src/components/mobile/screens/MobileMoreScreen.tsx'),
   };
+
+  [
+    'export const POST = withAuth(async (request, session) => {',
+    'FEATURE_FLAGS.ENABLE_MULTI_OUTLET',
+    'isPlatformSession(session)',
+    'getOutletSessionScope(session)',
+    'outlet-brand-propagation:${limiterHash}',
+    'readBoundedJsonBody(request, BRAND_PROPAGATION_MAX_BODY_BYTES',
+    'validateAPIInput(schema, bodyResult.data)',
+    'normalizeMultiOutletNumericDocumentId(validation.data.tenantId)',
+    'normalizeMultiOutletNumericDocumentId(validation.data.masterStoreId)',
+    '!platformSession',
+    'verifyTenantAccess(',
+    '[PERMISSIONS.MANAGE_STORE, PERMISSIONS.MANAGE_OUTLETS]',
+    ".where('tenantId', '==', tenantScope.numericId)",
+    '.limit(MAX_BRAND_PROPAGATION_OUTLETS + 2)',
+    'outletSnapshot.size > MAX_BRAND_PROPAGATION_OUTLETS + 1',
+    'storeDoc.data()?.active !== false',
+    'storeDoc.data()?.deleted !== true',
+    'normalizeMasterStorePropagationFields(Object.keys(validation.data.values))',
+    'buildBrandPropagationValues(validation.data.values, fields)',
+    'buildStoreSummaryBrandPropagationValues(propagatedValues)',
+    'const propagationResult = await db.runTransaction(async (transaction) => {',
+    'transaction.get(masterStoreRef)',
+    'transaction.get(outletQuery)',
+    'const freshPermissionError = requireAnyStorePermissionForStoreData(',
+    'transaction.set(masterStoreRef, { ...propagatedValues, modifiedOn: now }, { merge: true });',
+    'transaction.set(outlet.ref, { ...propagatedValues, modifiedOn: now }, { merge: true });',
+    ".doc('storesSummary')",
+    'targetOutletIds: targetOutlets.map((outlet) => outlet.id)',
+    'revalidateTag(`menu-store-${outletId}`)',
+    'revalidateTag(`store-${outletId}`)',
+    "touchDigitalScreenContentVersionForStoreServer(outletId, 'brandPropagation')",
+    'invalidateOwnerBusinessAssistantPacketCache({',
+    "logMultiOutletFailure('multi_outlet_brand_propagation_failed'",
+  ].forEach((token) => assertIncludes(brandPropagationRoute, token, 'Server-owned brand propagation boundary'));
+  assertOrder(
+    brandPropagationRoute,
+    [
+      'checkRateLimit({',
+      'readBoundedJsonBody(request, BRAND_PROPAGATION_MAX_BODY_BYTES',
+      'validateAPIInput(schema, bodyResult.data)',
+      'requireAnyStorePermissionForStoreData(',
+      'const propagationResult = await db.runTransaction(async (transaction) => {',
+    ],
+    'Brand propagation admission and commit order',
+  );
+  [
+    'request.json()',
+    'request.resource',
+    'const batch = db.batch();',
+  ].forEach((token) => assertNotIncludes(brandPropagationRoute, token, 'Brand propagation untrusted/raw write boundary'));
+
+  [
+    "fetch('/api/outlets/brand-propagation'",
+    'MULTI_OUTLET_ACTION_REQUEST_POLICY',
+    'readJsonResponseWithLimit<unknown>(',
+    'MULTI_OUTLET_ACTION_RESPONSE_JSON_MAX_BYTES',
+    'isBrandPropagationResult(data)',
+    "throw new Error('multi_outlet_brand_propagation_response_invalid')",
+    'throw e;',
+  ].forEach((token) => assertIncludes(brandPropagationDal, token, 'Brand propagation client acknowledgement boundary'));
+  [
+    'firebaseClient',
+    'updateDoc(',
+    'mergeStoreSummaryFields(',
+    'touchDigitalScreenContentVersion(',
+  ].forEach((token) => assertNotIncludes(brandPropagationDal, token, 'Brand propagation client cross-store mutation boundary'));
+
+  [
+    "logStoreDataFailure('store_brand_propagation_scope_missing'",
+    'await propagateMasterStoreChangesToOutlets(',
+    'const directStoreUpdate = { ...data };',
+    'for (const field of Object.keys(propagationChanges)) delete directStoreUpdate[field];',
+    'delete directStoreUpdate.modifiedOn;',
+    'const hasClientSummaryFieldChanges = summaryFields.some((field) => (',
+  ].forEach((token) => assertIncludes(storesDal, token, 'Store DAL atomic brand propagation handoff'));
+  assertOrder(
+    storesDal,
+    [
+      'await propagateMasterStoreChangesToOutlets(',
+      'const directStoreUpdate = { ...data };',
+      'const composedDirectStoreUpdate = await requestBodyComposer(directStoreUpdate, { isNew: false });',
+      'if (hasClientSummaryFieldChanges) {',
+    ],
+    'Store DAL must commit server-owned master/outlet fields before direct non-propagated fields',
+  );
+
+  [
+    'export const MASTER_STORE_PROPAGATED_FIELDS = [',
+    'normalizeMasterStorePropagationFields',
+    'buildBrandPropagationValues',
+    'buildStoreSummaryBrandPropagationValues',
+    'hasDigitalScreenBrandPropagationFields',
+    'isBrandPropagationResult',
+    'value.failed === 0',
+  ].forEach((token) => assertIncludes(brandPropagationBoundary, token, 'Brand propagation shared contract'));
+
+  [
+    "request.resource.data.stores.diff(resource.data.stores).affectedKeys().hasOnly([string(request.auth.token.storeId)])",
+    '&& isCurrentStoreSummaryEntryIdentityBounded();',
+    'function isCurrentStoreSummaryEntryIdentityBounded() {',
+    "&& entry.keys().hasAll(['tId'])",
+    '&& string(entry.tId) == tenantId',
+    "!entry.keys().hasAny(['storeId'])",
+    '|| string(entry.storeId) == storeId',
+  ].forEach((token) => assertIncludes(firestoreRules, token, 'storesSummary identity rule boundary'));
+
+  [
+    "'stores.201.tId': 102",
+    "'stores.201.storeId': '202'",
+    "'stores.201.tId': deleteField()",
+    "'stores.202.name': 'Cross-tenant overwrite'",
+    "'stores.201.storeId': '201'",
+    "'stores.201.active': false",
+    'Soft deactivation must preserve summary tenant identity',
+  ].forEach((token) => assertIncludes(storesSummaryRulesTest, token, 'storesSummary identity rules regression'));
+
+  [
+    'removeStoreFromSummary',
+    'updateStoreActiveStatusInSummary',
+    'deleteField(',
+  ].forEach((token) => assertNotIncludes(platformSummaryDal, token, 'Store summary rows must preserve soft-deactivated identity'));
+
+  [
+    'parsePlatformStoreSummary(data)',
+    'export const buildStoreSummaryEntry = (data: StoreSummaryData)',
+    'tId: data.tId,',
+    'summaryEntry.menuPresence = buildStoreDistributionPresenceSummary(data.menuPresence) || {};',
+  ].forEach((token) => assertIncludes(platformSummaryDal, token, 'Browser store-summary runtime and pure projection boundary'));
+  [
+    'return docSnap.data() as StoresSummary;',
+    '[storeId]: summaryEntry',
+    'export const syncStoreToSummary',
+    'export const mergeStoreSummaryFields',
+  ].forEach((token) => assertNotIncludes(platformSummaryDal, token, 'Browser store-summary unchecked cast/dynamic key boundary'));
+
+  assert(
+    packageJson.scripts?.['test:stores-summary:rules']?.includes('test-stores-summary-rules.ts'),
+    'package.json must expose the storesSummary rules emulator regression',
+  );
+
+  [
+    "export const PLATFORM_COUNTER_DOCUMENT_ID = 'summary';",
+    "export const LEGACY_PLATFORM_COUNTER_DOCUMENT_ID = 'default';",
+    'export const MAX_PLATFORM_COUNTER_COLLISION_PROBES = 25;',
+    'export function resolvePlatformCounterFloor(',
+    'export async function findNextAvailablePlatformEntityId(',
+    'readDocumentCounter(canonicalData, counter)',
+    'readDocumentCounter(legacyData, counter)',
+    'readStoreSummaryCounter(storesSummaryData, counter)',
+    "throw new Error('platform_counter_allocation_exhausted');",
+  ].forEach((token) => assertIncludes(platformCounterBoundary, token, 'Shared platform counter boundary'));
+  assert(
+    platformCounterBoundary === functionsPlatformCounterBoundary,
+    'App and Functions platform counter boundary mirrors must remain byte-for-byte identical',
+  );
+
+  [
+    'export function normalizeStoreSummaryNumericDocumentId(',
+    'export function normalizeStoreSummaryDate(',
+    'export function normalizePlatformStoreSummaryIdentity(',
+    'function parseRawStoreSummaryMap(',
+    'export function parsePlatformStoreSummary(',
+    "const embeddedStoreId = rawEntry.storeId === undefined",
+    'const identity = normalizePlatformStoreSummaryIdentity(rawStoreId, rawEntry);',
+  ].forEach((token) => assertIncludes(storeSummaryBoundary, token, 'Shared store-summary runtime boundary'));
+  assert(
+    storeSummaryBoundary === functionsStoreSummaryBoundary,
+    'App and Functions store-summary boundaries must remain byte-for-byte identical',
+  );
+  functionStoreSummaryConsumers.forEach((content) => {
+    assertIncludes(content, 'parsePlatformStoreSummary(', 'Functions store-summary consumer normalization');
+    [
+      "storesSummaryDoc.data()?.stores || {}",
+      "storesSummarySnap.data()?.stores || {}",
+      "summaryDoc.data()?.stores || {}",
+    ].forEach((token) => assertNotIncludes(content, token, 'Functions raw store-summary admission'));
+  });
+  [
+    'parsePlatformStoreSummary(summarySnap.exists ? summarySnap.data() : undefined)',
+    'store.tId === tenantScope.documentId',
+  ].forEach((token) => assertIncludes(platformEntityBlocks, token, 'Platform tenant-block store-summary scope'));
+  [
+    "Object.keys(admittedStoreSummary).join(',') === '201,202'",
+    'Malformed persisted summary timestamps must fail closed',
+    'Legacy seconds timestamps must normalize without becoming 1970 dates',
+    'Canonical store backfill identity must reject a conflicting embedded store ID',
+  ].forEach((token) => assertIncludes(storesSummaryRulesTest, token, 'Store-summary runtime normalization regression'));
+
+  [
+    'const STORES_SUMMARY_BACKFILL_MAX_STORES = 1_500;',
+    'const STORES_SUMMARY_BACKFILL_MAX_PAYLOAD_BYTES = 850_000;',
+    '.orderBy(FieldPath.documentId())',
+    '.limit(STORES_SUMMARY_BACKFILL_MAX_STORES + 1)',
+    'normalizePlatformStoreSummaryIdentity(doc.id, data)',
+    'if (invalidIdentityCount > 0)',
+    "Buffer.byteLength(JSON.stringify({ stores: summary }), 'utf8')",
+    "throw new HttpsError('resource-exhausted'",
+    '}, { merge: true });',
+    'if (error instanceof HttpsError) throw error;',
+  ].forEach((token) => assertIncludes(operationsFunctions, token, 'Stores summary backfill bounded merge contract'));
+  assertNotIncludes(
+    operationsFunctions,
+    "const storesSnapshot = await db.collection(DB_COLLECTIONS.STORES).get();",
+    'Stores summary backfill unbounded canonical scan',
+  );
+
+  [
+    'const DEFAULT_STORE_READ_LIMIT = 1_500;',
+    'const MAX_PROJECTS_PER_STORE = 500;',
+    "const UNSAFE_SUMMARY_PATH_SEGMENTS = new Set(['__proto__', 'constructor', 'prototype']);",
+    'function normalizePositiveNumericDocumentId(value)',
+    'const result = Object.create(null);',
+    "parseSummaryMap(data, 'stores')",
+    "parseSummaryMap(data, 'projects')",
+    'embeddedStore?.documentId !== normalizedStore.documentId',
+    '.limit(MAX_PROJECTS_PER_STORE + 1)',
+    "throw new Error('canonical_store_inventory_exceeds_verifier_limit')",
+    'Public store identity/routing remains',
+  ].forEach((token) => assertIncludes(publicRoutingSummaryVerifier, token, 'Summary parity verifier bounded runtime contract'));
+  [
+    'const result = {};',
+    'const tenantId = tenantIdArg == null ? null : Number(tenantIdArg);',
+    "query = query.where('tenantId', '==', tenantId);",
+  ].forEach((token) => assertNotIncludes(publicRoutingSummaryVerifier, token, 'Summary parity verifier unsafe legacy contract'));
+
+  [
+    'return runTransaction(db, async (transaction) => {',
+    'resolvePlatformCounterFloor(',
+    'transaction.get(refs.canonical)',
+    'transaction.get(refs.legacy)',
+    'transaction.get(refs.storesSummary)',
+    'const nextId = await findNextAvailablePlatformEntityId(',
+    'await transaction.get(doc(db, collectionName, String(candidateId)))',
+    'transaction.set(refs.canonical, {',
+    '[fieldName]: { count: nextId },',
+  ].forEach((token) => assertIncludes(platformCounterAllocator, token, 'Platform entity counter allocation boundary'));
+
+  [
+    '() => readPlatformCounterSnapshot(firebaseClient)',
+    '() => allocateNextPlatformEntityId(firebaseClient, counter)',
+    'if (data.tenantBlocked !== undefined) summaryEntry.tenantBlocked = data.tenantBlocked;',
+  ].forEach((token) => assertIncludes(platformSummaryDal, token, 'Platform summary canonical counter DAL'));
+  [
+    'getDocs(await getCollectionRef())',
+    "doc(firebaseClient, `${COLLECTION}`, 'default')",
+    'updateTenantsCountInPlatformSummary',
+    'updateStoresCountInPlatformSummary',
+    'export const syncStoreToSummary',
+    'export const mergeStoreSummaryFields',
+  ].forEach((token) => assertNotIncludes(platformSummaryDal, token, 'Platform summary legacy counter path'));
+
+  assertIncludes(tenantsDal, "data.tenantId = await reserveNextPlatformEntityId('tenant');", 'Manual tenant atomic ID reservation');
+  assertIncludes(storesDal, "data.storeId = await reserveNextPlatformEntityId('store');", 'Manual store atomic ID reservation');
+  [
+    'const [storeSnapshot, tenantSnapshot] = await Promise.all([',
+    'transaction.set(storeRef, composedStore);',
+    'stores: { [String(storeId)]: buildStoreSummaryEntry(buildSummaryDataFromStore(data)) }',
+    'tenantBlocked: store.tenantBlocked,',
+    'storesList: upsertTenantStoreListEntry(tenantSnapshot.data()?.storesList, data)',
+    'const freshStoreSnapshot = await transaction.get(storeRef);',
+    "throw new Error('store_update_scope_changed')",
+    'stores: { [String(storeId)]: buildStoreSummaryEntry(buildSummaryDataFromStore(nextStore)) }',
+    'storesList: upsertTenantStoreListEntry(tenantSnapshot.data()?.storesList, nextStore)',
+  ].forEach((token) => assertIncludes(storesDal, token, 'Manual store canonical/summary/tenant-list transaction boundary'));
+  [
+    'await syncStoreToSummary(data.storeId, {',
+    'updateTenantsStoreslist(',
+  ].forEach((token) => assertNotIncludes(`${storesDal}\n${tenantsDal}\n${businessSettings}`, token, 'Manual store split-write boundary'));
+  assertNotIncludes(tenantModal, 'platformSummary.tenants.count + 1', 'Tenant modal stale client-side allocation');
+  assertNotIncludes(businessSettings, 'summary.stores?.count + 1', 'Business Settings stale client-side allocation');
+  [
+    'export const POST = withAuth(async (request, session) => {',
+    'key: `tenant-name:${limiterHash}`',
+    'readBoundedJsonBody(request, TENANT_NAME_MAX_BODY_BYTES',
+    'validateAPIInput(schema, bodyResult.data)',
+    'requireAnyStorePermissionForStoreData(',
+    '.limit(MAX_TENANT_NAME_STORES + 1)',
+    'const result = await db.runTransaction(async (transaction) => {',
+    'transaction.get(tenantRef)',
+    'transaction.get(storeQuery)',
+    'transaction.update(tenantRef, {',
+    'transaction.set(store.ref, { tenantName: validation.data.name, modifiedOn: now }, { merge: true });',
+    ".doc('storesSummary')",
+    'revalidateTag(`menu-store-${storeId}`)',
+    "touchDigitalScreenContentVersionForStoreServer(storeId, 'tenantName')",
+    'invalidateOwnerBusinessAssistantPacketCache({ tId: tenantDocumentId, sId: storeId })',
+    'offset += TENANT_NAME_EFFECT_CHUNK_SIZE',
+    'committed = true;',
+    'status: committed ? 500 : 409',
+  ].forEach((token) => assertIncludes(tenantNameRoute, token, 'Tenant name atomic propagation route'));
+  assertOrder(tenantNameRoute, [
+    'checkRateLimit({',
+    'readBoundedJsonBody(request, TENANT_NAME_MAX_BODY_BYTES',
+    'validateAPIInput(schema, bodyResult.data)',
+    'const result = await db.runTransaction(async (transaction) => {',
+  ], 'Tenant name limiter, body, validation and transaction order');
+  [
+    "fetch('/api/tenants/name'",
+    'AUTH_BROWSER_REQUEST_POLICY',
+    'readJsonResponseWithLimit<unknown>(response, TENANT_NAME_RESPONSE_MAX_BYTES)',
+    "throw new Error('tenant_name_update_rejected')",
+    'delete directTenantUpdate.name;',
+    'delete directTenantUpdate.storesList;',
+  ].forEach((token) => assertIncludes(tenantsDal, token, 'Tenant DAL atomic name handoff'));
+  [
+    'mergeStoreSummaryFields(storeId, { tenantName: nextTenantName })',
+    'await batch.commit();',
+    'revalidatePublicClientCache(storeId, "updateTenantName")',
+  ].forEach((token) => assertNotIncludes(tenantsDal, token, 'Tenant DAL partial name propagation boundary'));
+  [
+    'const concurrentTenantIds = await Promise.all([',
+    "'Concurrent allocations must serialize to distinct IDs'",
+    "'Allocator must skip an occupied entity document ID'",
+    "'Canonical tenant counter must record the latest reservation'",
+    "'Rejected summary scope must roll back canonical store rename'",
+    "'Rejected summary scope must roll back tenant list rename'",
+    "'Rejected summary scope must preserve the admitted summary rename'",
+  ].forEach((token) => assertIncludes(storesSummaryRulesTest, token, 'Platform counter emulator regression'));
+
+  [
+    'LEGACY_PLATFORM_COUNTER_DOCUMENT_ID',
+    'PLATFORM_COUNTER_DOCUMENT_ID',
+    'resolvePlatformCounterFloor(',
+    'findNextAvailablePlatformEntityId(',
+    'transaction.get(legacyPlatformSummaryRef)',
+    'transaction.get(storesSummaryRef)',
+    'await transaction.get(db.collection(',
+  ].forEach((token) => assertIncludes(tenantStoreTransaction, token, 'Central onboarding counter allocation'));
+  [
+    'import { createTenantStoreInTransaction, preCheckSubdomain }',
+    'const core = await createTenantStoreInTransaction(transaction, db, {',
+  ].forEach((token) => assertIncludes(activeMessagingPublish, token, 'Active messaging publish counter allocation'));
+  [
+    'Messaging onboarding Cloud Functions publisher guard',
+    'Active publishing is owned exclusively by:',
+    'src/lib/messaging-onboarding/publish.ts',
+    'MESSAGING_FUNCTIONS_PUBLISH_PIPELINE_DISABLED',
+  ].forEach((token) => assertIncludes(legacyMessagingPublish, token, 'Legacy Functions publish disabled guard'));
+  assertNotIncludes(tenantStoreTransaction, "Number(storeData?.storeId || storeId)", 'Central onboarding loose summary store counter');
+  assertNotIncludes(tenantStoreTransaction, "Number(storeData?.tId || storeData?.tenantId || 0)", 'Central onboarding loose summary tenant counter');
+  assertNotIncludes(legacyMessagingPublish, '(summaryData?.tenants?.count || 0) + 1', 'Legacy Functions stale tenant allocation');
+  assertNotIncludes(legacyMessagingPublish, '(summaryData?.stores?.count || 0) + 1', 'Legacy Functions stale store allocation');
   const docs = {
     implDoc: read('__docs__/multi-outlet-consistency/multi-outlet-consistency_impl.md'),
     mobileDoc: read('__docs__/multi-outlet-consistency/multi-outlet-consistency_mobile-support.md'),
@@ -838,16 +1491,23 @@ function verifyMultiLocationBoundary() {
     multiChainMarketingDoc: read('__docs__/multi-chain-permissions/multi-chain-permissions_marketing.md'),
     rolesPermissionsFirebaseDoc: read('__docs__/roles-permissions/roles-permissions_firebase.md'),
     changelogDoc: read('__docs__/changelog.md'),
+    summaryPatternDoc: read('__docs__/patterns/summary-document-pattern.md'),
+    storesFirebaseDoc: read('__docs__/stores-management/stores-management_firebase.md'),
+    storesImplDoc: read('__docs__/stores-management/stores-management_impl.md'),
   };
 
   verifyOutletSessionScopeHelper(files.outletSessionScope);
   verifyProjectIdBoundary(files.projectIdBoundary, files.resolver, linkedOutletSaveRoute);
   verifyCreateRoute(createRoute);
+  verifyUserStoreAccessBoundary(files.serverStoreAccess);
+  verifyOnboardingCompensationScopeBoundary(files.onboardingCompensation);
   verifyDeactivateRoute(deactivateRoute);
   verifyRenameRoute(renameRoute);
+  verifyOutletSlugClaimBoundary(outletSlugClaimBoundary, createRoute, renameRoute, deactivateRoute, storesSummaryRulesTest);
   verifyPolicyRoute(policyRoute);
   verifyLinkedOutletSaveRoute(linkedOutletSaveRoute);
   verifyClientBoundaries(files);
+  verifyBrandSubdomainMasterBoundary(brandSubdomainBoundary);
   verifyDocs(packageJson, docs);
 }
 

@@ -3,11 +3,15 @@
 import Script from 'next/script';
 import { usePathname } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
-import type { AnswerlatticePageContext } from '../../../packages/answerlattice-web/src';
+import type { AnswerlatticePageContext, AnswerlatticeWidgetRuntime } from '../../../packages/answerlattice-web/src';
 
 const MENULIST_ANSWERLATTICE_WIDGET_KEY = process.env.NEXT_PUBLIC_MENULIST_ANSWERLATTICE_WIDGET_KEY?.trim() || '';
 const CONFIGURED_SCRIPT_SRC = process.env.NEXT_PUBLIC_MENULIST_ANSWERLATTICE_WIDGET_SCRIPT_SRC?.trim() || '';
 const MOBILE_WIDGET_MEDIA_QUERY = '(max-width: 767px), (pointer: coarse)';
+
+type AnswerlatticeWidgetWindow = Window & {
+    AnswerlatticeWidget?: AnswerlatticeWidgetRuntime;
+};
 
 const BLOCKED_ROUTES = [
     '/help-center',
@@ -111,16 +115,17 @@ export default function MenuListAnswerlatticeWidgetEmbed() {
 
     useEffect(() => {
         if (!MENULIST_ANSWERLATTICE_WIDGET_KEY || !runtimeState.ready) return;
+        const widget = (window as AnswerlatticeWidgetWindow).AnswerlatticeWidget;
 
         if (shouldSuppressWidget) {
-            window.AnswerlatticeWidget?.hide?.();
-            window.AnswerlatticeWidget?.close?.();
-            window.AnswerlatticeWidget?.setContext?.(null);
+            widget?.hide?.();
+            widget?.close?.();
+            widget?.setContext?.(null);
             return;
         }
 
-        window.AnswerlatticeWidget?.show?.();
-        window.AnswerlatticeWidget?.page?.(pageContext);
+        widget?.show?.();
+        widget?.page?.(pageContext);
     }, [pageContext, runtimeState.ready, shouldSuppressWidget]);
 
     if (!MENULIST_ANSWERLATTICE_WIDGET_KEY || !runtimeState.ready || shouldSuppressWidget) return null;

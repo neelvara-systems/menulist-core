@@ -5,6 +5,8 @@
 **Source:** [Master production blueprint](./videos_launch-product-marketing-production-blueprint.md)
 **Scope:** Standalone production handoff for Video 2.
 
+**Mandatory production standard:** [MenuList Founder-Approved Video Production Standard](./videos_founder-approved-production-standard.md). Apply it to this video's messaging, Inter typography, website gradient emphasis, UI styling, motion, transitions, logo slate, Indian-English voice, brand music, aspect-ratio adaptation, and encoded-MP4 QA.
+
 ## Shared Positioning
 
 MenuList must be shown as public-business truth infrastructure for SMBs, not as a standalone QR menu app, generic AI restaurant software, or flashy SaaS dashboard.
@@ -171,3 +173,16 @@ Music should stay underneath the voiceover. Use light UI click sounds for approv
 ### P. CTA
 
 Start menu preview.
+
+### Q. Conversion Contract
+
+- Funnel stage: evaluation.
+- Belief change: `I can follow this workflow with my current menu and review the result before publishing.`
+- Proof moment: complete upload/import -> structured preview -> approval -> public link -> controlled update path.
+- Linked action: `Start menu preview` -> `/create-menu`.
+- Primary metric: private preview reached and first approved publish per referred demo session.
+- Guard metric: completion of source intake without increased abandonment or approval confusion.
+- Asset/UTM pattern: `demo_v1_upload_to_publish_180s_16x9`.
+- Paid eligibility: demo is primarily website/sales/onboarding; any paid cutdown requires its own brief and ledger row.
+
+Use the [conversion brief template](./videos_conversion-brief-template.md) and [campaign ledger](./videos_campaign-measurement-ledger.md).

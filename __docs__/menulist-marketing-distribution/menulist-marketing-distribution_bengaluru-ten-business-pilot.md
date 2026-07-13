@@ -46,6 +46,8 @@ Founder-led handoffs use `/create-menu?utm_source=founder_pilot&utm_medium=manua
 
 Complete this review separately from the acquisition board. A business enters this table only after it activates on two customer surfaces. Use source classes and slot numbers; do not add owner contact details, customer identifiers, payment identifiers, or private notes.
 
+Use [Pilot Proof And Owner Learning Pack](./menulist-marketing-distribution_pilot-proof-and-owner-learning-pack.md) for the packet worksheet, permission request, activation/day-30 interviews, owner clinic, independent-review request, AssetOS handoff, and revocation flow.
+
 | Slot | Acquisition source | Activated date | First paid date | Day-30 state | Interview | Approved quote | Approved screenshots | Proof packet | Independent review ask |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 01 | Pending | Pending | Pending | Not reached | Pending | Pending | Pending | Pending | Not eligible |

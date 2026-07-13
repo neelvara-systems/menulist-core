@@ -58,6 +58,10 @@ The shared Vercel helper URL-encodes dynamic project/domain path segments before
 
 Provider failure details are logged through fixed runtime diagnostic codes with bounded context only: tenant/store presence-length metadata, domain presence/length metadata, provider code/status, and provider-message presence and length. Browser responses and `domainProvisioningError` status fields use generic hosted-help messages, so failed Vercel add/config checks do not store, log, or return raw provider exception text.
 
+The July 10 request-identity hardening adds no Firestore reads, writes, deletes, collections, indexes, Functions, provider calls, or cache entries. Middleware now removes caller-supplied hosted-help routing headers before its internal rewrite, and the anonymous renderer resolves the registry key from the validated original Host. The local `?domain=` override remains available only through the middleware-marked localhost development route. Malformed Host or article-percent input fails closed before any registry/content read.
+
+The same pass replaces the hosted-help changelog's broad recursive hydration serializer with a public DTO: at most 2,000 characters from at most 500 TipTap-like nodes, plus a validated ISO release date. This changes no Firestore query or cache key and prevents unknown persisted fields or Firestore timestamp objects from crossing the server/client boundary.
+
 The Widget Management browser caller also validates hosted-help settings load, save, and manual DNS-refresh responses through a 256 KB bounded JSON reader and route-shape guards before updating local hosted-help state. This is a browser-only acknowledgement layer; it adds no Firestore reads, writes, collections, listeners, background jobs, or Vercel provider calls.
 
 Registry docs store only compact status fields:

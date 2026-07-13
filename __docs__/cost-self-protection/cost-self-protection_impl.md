@@ -2,7 +2,7 @@
 
 **Status:** ✅ CORE BUILT — Pre-production verification required
 **Created:** February 20, 2026
-**Last Updated:** February 20, 2026
+**Last Updated:** July 13, 2026
 **Audience:** Developers
 
 ---
@@ -13,7 +13,8 @@
 ops_config/system (Firestore document)
   ├── SAFE_MODE: boolean
   ├── activatedAt: Timestamp | null
-  ├── activatedBy: string ("manual" | "budget_alert")
+  ├── activatedBy: string (current platform user document ID or trusted automatic actor)
+  ├── deactivatedBy: string | null
   ├── reason: string | null
   └── alertsMutedUntil: Timestamp | null (shared with ops-alerting-delivery)
 
@@ -40,6 +41,8 @@ interface OpsConfig {
 
 **Location:** Single document at `ops_config/system`  
 **Cost:** Next.js API route checks perform 1 read per checked call. Cloud Functions cache warm instances, so function-side effective cost is lower.
+
+The manual toggle route is a separate mutation boundary: after the fail-closed per-operator limiter it reads the exact current platform user once, then transactionally reads `ops_config/system` and writes only when the desired boolean differs. A no-op repeats zero writes. After a committed change, alert creation is best-effort and observable; an alert failure does not return a false toggle failure.
 
 ## File Structure
 
@@ -157,7 +160,7 @@ export async function deactivateSafeMode(): Promise<void> {
 }
 ```
 
-## New File: `src/lib/safeMode.ts` (Frontend/API routes)
+## Current File: `src/lib/ops/safeMode.ts` (Frontend/API routes)
 
 ```typescript
 /**
@@ -244,7 +247,7 @@ export async function POST(request: Request) {
 | ------------------------------ | -------------------------------------- | --------------------------------------- |
 | Create ops_config/system doc   | Firestore                              | Initial document with SAFE_MODE: false  |
 | Create safeMode.ts (functions) | `functions/src/monitoring/safeMode.ts` | Server-side check + activate/deactivate |
-| Create safeMode.ts (frontend)  | `src/lib/safeMode.ts`                  | API route check utility                 |
+| Create SAFE_MODE helper (frontend)  | `src/lib/ops/safeMode.ts`             | API route check utility                 |
 | Add feature flag               | `src/config/features.ts`               | `ENABLE_COST_PROTECTION: false`         |
 
 ### Phase 2: Wire into Routes (est. 1 hour)
@@ -265,11 +268,14 @@ export async function POST(request: Request) {
 ## Security Checklist
 
 - [x] SAFE_MODE toggle restricted to superadmin only
-- [x] SAFE_MODE toggle is operator-rate-limited and rejects bodies above 2KB before Firestore writes or alert creation
+- [x] SAFE_MODE toggle is fail-closed operator-rate-limited, re-proves the exact current persisted platform user, and rejects bodies above 2KB before toggle writes or alert creation
+- [x] Toggle transition is transactional/idempotent; repeated current state emits zero writes
+- [x] Secondary alert-write failure is logged and reported without misreporting the committed SAFE_MODE state
 - [x] Fail-open design — SAFE_MODE check failure doesn't block operations
 - [x] Cloud Functions in-memory cache reduces function-side SAFE_MODE reads; Next.js API route checks remain 1 feature-flag-gated read per checked call
 - [x] Next.js API route helper fail-open errors use secure logging instead of direct console logging
 - [x] Route-local fail-open wrappers must log fixed diagnostics before proceeding; the batch image worker uses `image_batch_worker_safe_mode_check_failed` with `failOpen: true` when its SAFE_MODE check throws
+- [x] The shared MenuList Functions AI gateway checks cached Functions SAFE_MODE before provider key selection and throws `AI_PROVIDER_SAFE_MODE_ACTIVE` before Gemini generation, embedding, image, and upload I/O; `files.delete` remains available for cleanup while SAFE_MODE is active
 - [x] Core product (menu viewing, publishing) never affected by SAFE_MODE
 - [x] Manual deactivation only — no auto-recovery (human must verify)
 
@@ -306,4 +312,5 @@ export async function POST(request: Request) {
 - `src/database/ops/index.ts` — OPS DAL for `ops_config/system`
 - `src/lib/ops/types.ts` — Type definitions
 - `src/components/templates/main-app/platform/opsControlRoom/index.tsx` — Ops Control Room UI
-- Integrated in 13 AI routes (descriptions, translations, image-generation, etc.) — all check SAFE_MODE before processing
+- Explicit app-route checks cover current AI request workflows (descriptions, translations, image generation, and related routes)
+- `functions/src/ai/aiGateway.ts` — shared fail-fast guard for every MenuList Functions Gemini generate, embedding, image, and file-upload provider call

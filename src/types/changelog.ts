@@ -18,6 +18,8 @@ export interface ChangelogEntry {
     files?: UserUploadedFileType[],
     kbSources: { categoryId: string, sectionId?: string, articleId?: string }[],
     contextKeys?: string[],
+    entityChanges?: string[];
+    releaseId?: string;
     youtubeLinks?: string[];
 }
 

@@ -3,7 +3,7 @@
 **Document Type:** Sales & Marketing Reference  
 **Audience:** Sales Team, Marketing, Landing Page Writers  
 **Version:** 1.0  
-**Status:** 🔒 APPROVED LANGUAGE ONLY  
+**Status:** HISTORICAL HOLD — not approved for current sales or public use
 **Date:** February 2, 2026
 
 ---
@@ -19,6 +19,8 @@
 > - Include in marketing materials or feature lists
 >
 > **WHY:** This is silent infrastructure. Silence is the feature. Pitching silent features contradicts the product philosophy. If customers ask, use the talking points below. Never proactively sell this surface.
+
+> **CURRENT RUNTIME OVERRIDE (July 11, 2026):** Do not use even the reactive talking points below as capability claims. The parent product is disabled and incomplete: there is no GBP review ingestion, review inbox, mounted warning/reply surface, or Google reply route. If asked, say active Google review management is not currently available.
 
 ---
 
@@ -441,9 +443,9 @@ See `__docs__/constitution/02-language-governance.md` for complete language rule
 
 ---
 
-**DOCUMENT STATUS:** 🔒 APPROVED LANGUAGE ONLY  
-**LAST UPDATED:** February 2, 2026
+**DOCUMENT STATUS:** HISTORICAL HOLD — not current capability or approved sales language
+**LAST UPDATED:** July 11, 2026
 
 ---
 
-_All marketing and sales materials must use approved language from this document. Deviations require founder approval._
+_Do not use this historical concept copy until the runtime is implemented and a new source-verified marketing review explicitly approves replacement language._

@@ -13,7 +13,7 @@ import { ANSWERLATTICE_SITE_URL } from '../siteConfig';
 
 export const metadata: Metadata = {
     title: 'Security',
-    description: 'Security for the AnswerLattice support layer: safe page hints, explicit screenshots, bounded source intake, allowed origins, blocked routes, compiled context, scoped workspaces, role permissions, and owner-approved answers.',
+    description: 'Security for the AnswerLattice support layer: safe page hints, optional signed visitor context, bounded evidence links and source intake, scoped workspaces, role permissions, approved answers, and bounded data export.',
     alternates: { canonical: '/security' },
     openGraph: {
         title: 'Security | AnswerLattice',
@@ -48,7 +48,15 @@ const CONTROLS = [
     },
     {
         title: 'Safe widget context',
-        body: 'Widget context is designed for page, route, feature, workflow, role, and plan hints. It is bounded and should not include secrets, tokens, passwords, payment card data, or unrelated personal information.',
+        body: 'Widget context is designed for page, route, feature, workflow, role, and plan hints. Unsigned values are relevance hints only and should not include secrets, tokens, passwords, payment card data, or unrelated personal information.',
+    },
+    {
+        title: 'Optional verified visitor context',
+        body: 'A host product can sign short-lived plan, role, locale, and requester claims on its server. AnswerLattice stores only the public verification key, derives workspace scope from the widget key, and keeps generic support available when a token is invalid.',
+    },
+    {
+        title: 'Allowlisted evidence links',
+        body: 'A product may attach up to three exact-host HTTPS links from its own support-safe diagnostics. AnswerLattice does not fetch, embed, crawl, or treat those links as answer truth.',
     },
     {
         title: 'Explicit screenshot attachments',
@@ -83,6 +91,10 @@ const CONTROLS = [
         body: 'Operational logs are meant for reliability, failure analysis, and abuse protection. Production flows should avoid storing raw sensitive payloads.',
     },
     {
+        title: 'Bounded Support Truth Export',
+        body: 'Authorized owners can export approved product structure and support knowledge through a rate-limited, size-capped JSON response. Tickets, conversations, visitor identity, secrets, raw keys, and audit logs are excluded.',
+    },
+    {
         title: 'Separate product infrastructure',
         body: 'AnswerLattice uses AnswerLattice-owned dashboard routes, constants, schedulers, widget configuration, and workspace data boundaries.',
     },
@@ -95,6 +107,8 @@ const SECURITY_FACTS = [
     { label: 'Runtime database', value: 'AnswerLattice Firebase project' },
     { label: 'Widget key storage', value: 'Hashed; encrypted recovery when configured' },
     { label: 'Widget placement', value: 'Allowed origins + blocked routes' },
+    { label: 'Verified identity', value: 'Short-lived Ed25519 token' },
+    { label: 'Debug evidence', value: 'Exact HTTPS hosts; no fetch' },
     { label: 'Screenshot input', value: 'Manual attachment only' },
     { label: 'Source intake', value: 'Owner-selected and capped' },
     { label: 'Hosted help', value: 'Registry-scoped domains' },
@@ -103,6 +117,7 @@ const SECURITY_FACTS = [
     { label: 'Runtime context', value: 'Versioned approved bundles' },
     { label: 'Expensive requests', value: 'Rate-limited endpoints' },
     { label: 'Scheduler output', value: 'Local EOD + compact summaries' },
+    { label: 'Support Truth Export', value: 'Owner-only, bounded, no conversations' },
     { label: 'Product boundary', value: 'AnswerLattice workspace scope' },
 ];
 
@@ -163,6 +178,16 @@ const TRUST_AREAS = [
         ],
     },
     {
+        title: 'Verified context and evidence',
+        body: 'Products that need plan- or role-sensitive support can verify those claims without trusting browser identity or importing a session-replay system.',
+        points: [
+            'The host server signs a short-lived token; the private key never belongs in browser code.',
+            'Workspace scope still comes from the authenticated widget key, not token claims.',
+            'Invalid tokens discard signed-only identity claims while generic page-aware support continues.',
+            'External evidence links must use configured exact HTTPS hosts and are never fetched by AnswerLattice.',
+        ],
+    },
+    {
         title: 'Explicit visual context',
         body: 'Screenshots can help explain a broken screen, but they should remain a deliberate user action instead of background collection.',
         points: [
@@ -212,6 +237,16 @@ const TRUST_AREAS = [
         ],
     },
     {
+        title: 'Support-truth portability',
+        body: 'Export is intentionally narrower than a full workspace backup so approved knowledge can move without exposing private support operations.',
+        points: [
+            'Only members with export permission can request the package.',
+            'Queries are workspace-scoped, projected, capped, and rate limited.',
+            'The export either returns a complete package or fails; it never silently truncates authoritative content.',
+            'Tickets, chats, signals, raw audits, keys, credentials, and private visitor data stay out.',
+        ],
+    },
+    {
         title: 'Scheduler cost boundary',
         body: 'Daily support review work is centralized and workspace-aware rather than split into many scheduled functions.',
         points: [
@@ -256,10 +291,10 @@ export default function AnswerlatticeSecurityPage() {
                             </AnswerlatticeLink>
                             <AnswerlatticeLink
                                 basePath={basePath}
-                                href="/quickstarts"
+                                href="/trust"
                                 className="rounded-xl border border-white/[0.1] bg-white/[0.03] px-6 py-3 text-sm font-semibold text-[#d6d6ef] transition hover:border-white/[0.2] hover:text-white"
                             >
-                                View install safety
+                                Review trust facts
                             </AnswerlatticeLink>
                         </div>
                         <PageProofStrip

@@ -47,6 +47,7 @@ export const UPLOAD_ACCEPTING_STATES: MessagingOnboardingState[] = [
   "PROCESSING_MENU",
   "PREVIEW_READY",
   "AWAITING_APPROVAL",
+  "FAILED",
 ];
 
 // ═══════════════════════════════════════════════════════════════
@@ -114,6 +115,7 @@ export interface MessagingOnboardingSession {
   provider: MessagingProvider;
   providerUserId: string;
   providerDisplayId: string;
+  /** First-session, full-resend, and invalid-upload reply markers. Queue docs own general deduplication. */
   providerMessageIds: string[];
 
   // State
@@ -122,6 +124,11 @@ export interface MessagingOnboardingSession {
 
   // Uploads
   uploads: SessionUpload[];
+  /** Post-preview files staged separately until the full-resend threshold is met. */
+  replacementUploads?: SessionUpload[];
+  /** Server-owned Storage paths awaiting idempotent deletion. */
+  pendingUploadCleanupPaths?: string[];
+  uploadCleanupPending?: boolean;
 
   // Asset Intelligence Results
   validMenuFiles: string[];
@@ -145,9 +152,11 @@ export interface MessagingOnboardingSession {
 
   // Extraction
   extractionJobId: string | null;
-  extractedMenuData: any | null;
+  /** Exact job whose terminal result advanced this session. */
+  extractionCompletedJobId?: string | null;
+  extractedMenuData: unknown | null;
   extractedBusinessProfile?: ExtractedBusinessProfile | null;
-  extractedProjectFiles?: any[] | null;
+  extractedProjectFiles?: unknown[] | null;
   qualityScore: number | null;
 
   // Preview
@@ -168,10 +177,21 @@ export interface MessagingOnboardingSession {
   processingRuns: number;
   correctionCount: number;
   reminderSentAt: Timestamp | null;
+  reminderMessageLeaseToken?: string | null;
+  reminderMessageLeaseUntil?: Timestamp | null;
   pendingUploadsWhileProcessing: boolean;
   previewMessagePending?: boolean;
+  previewMessageDeliveryAttempts?: number;
+  previewMessageLeaseToken?: string | null;
+  previewMessageLeaseUntil?: Timestamp | null;
   confirmationPending?: boolean;
+  confirmationMessageDeliveryAttempts?: number;
+  confirmationMessageLeaseToken?: string | null;
+  confirmationMessageLeaseUntil?: Timestamp | null;
   fixMessagePending?: boolean;
+  fixMessageDeliveryAttempts?: number;
+  fixMessageLeaseToken?: string | null;
+  fixMessageLeaseUntil?: Timestamp | null;
 
   // Timing
   lastUploadAt: Timestamp | null;
@@ -193,6 +213,7 @@ export interface MessagingOnboardingSession {
  */
 export interface MessagingOnboardingRateLimit {
   userHash: string;
+  activeSessionId?: string | null;
   sessionsToday: number;
   sessionsThisWeek: number;
   processingRunsThisWeek: number;
@@ -252,6 +273,9 @@ export interface MessagingOnboardingInboundMessage {
   maxAttempts: number;
   nextAttemptAt: Timestamp;
   processingStartedAt?: Timestamp | null;
+  processingToken?: string | null;
+  handlerCompletedAt?: Timestamp | null;
+  replyText?: string | null;
   processedAt?: Timestamp | null;
   lastError?: string | null;
   createdAt: Timestamp;
@@ -289,55 +313,48 @@ export interface AssetValidationResult {
 // ═══════════════════════════════════════════════════════════════
 
 /** Onboarding lifecycle event types */
-export type MsgOnboardingEventType =
-  // Session Lifecycle
-  | "INBOUND_MESSAGE_QUEUED"
-  | "INBOUND_MESSAGE_PROCESSED"
-  | "INBOUND_MESSAGE_FAILED"
-  | "SESSION_CREATED"
-  | "SESSION_STATE_CHANGED"
-  | "SESSION_EXPIRED"
-  | "SESSION_RESTARTED"
-  // Upload & Media
-  | "UPLOAD_RECEIVED"
-  | "UPLOAD_DEDUPLICATED"
-  | "UPLOAD_REJECTED"
-  | "UPLOAD_LIMIT_REACHED"
-  // Asset Intelligence
-  | "ASSET_VALIDATION_STARTED"
-  | "ASSET_VALIDATION_COMPLETED"
-  | "ASSET_VALIDATION_FAILED"
-  // Extraction
-  | "EXTRACTION_STARTED"
-  | "EXTRACTION_COMPLETED"
-  | "EXTRACTION_FAILED"
-  | "BLANK_PREVENTION_TRIGGERED"
-  // Preview
-  | "PREVIEW_GENERATED"
-  | "PREVIEW_VIEWED"
-  | "PREVIEW_APPROVED"
-  | "PREVIEW_FIX_REQUESTED"
-  // Publish
-  | "PUBLISH_STARTED"
-  | "PUBLISH_COMPLETED"
-  | "PUBLISH_FAILED"
-  | "PUBLISH_ROLLBACK"
-  // Messaging
-  | "MESSAGE_SENT"
-  | "MESSAGE_SEND_FAILED"
-  | "REMINDER_SENT"
-  // Rate Limiting & Abuse
-  | "RATE_LIMIT_HIT"
-  | "COOLDOWN_APPLIED"
-  | "INVALID_ATTEMPT_RECORDED"
-  // Detection
-  | "EXISTING_STORE_DETECTED"
-  | "POST_PUBLISH_MESSAGE"
-  | "FULL_RESEND_DETECTED"
-  | "WEBHOOK_SIGNATURE_INVALID"
-  // Provider
-  | "PROVIDER_MEDIA_DOWNLOAD_FAILED"
-  | "INTAKE_WINDOW_CLOSED";
+export const MSG_ONBOARDING_EVENT_TYPES = [
+  "INBOUND_MESSAGE_QUEUED",
+  "INBOUND_MESSAGE_PROCESSED",
+  "INBOUND_MESSAGE_FAILED",
+  "SESSION_CREATED",
+  "SESSION_STATE_CHANGED",
+  "SESSION_EXPIRED",
+  "SESSION_RESTARTED",
+  "UPLOAD_RECEIVED",
+  "UPLOAD_DEDUPLICATED",
+  "UPLOAD_REJECTED",
+  "UPLOAD_LIMIT_REACHED",
+  "ASSET_VALIDATION_STARTED",
+  "ASSET_VALIDATION_COMPLETED",
+  "ASSET_VALIDATION_FAILED",
+  "EXTRACTION_STARTED",
+  "EXTRACTION_COMPLETED",
+  "EXTRACTION_FAILED",
+  "BLANK_PREVENTION_TRIGGERED",
+  "PREVIEW_GENERATED",
+  "PREVIEW_VIEWED",
+  "PREVIEW_APPROVED",
+  "PREVIEW_FIX_REQUESTED",
+  "PUBLISH_STARTED",
+  "PUBLISH_COMPLETED",
+  "PUBLISH_FAILED",
+  "PUBLISH_ROLLBACK",
+  "MESSAGE_SENT",
+  "MESSAGE_SEND_FAILED",
+  "REMINDER_SENT",
+  "RATE_LIMIT_HIT",
+  "COOLDOWN_APPLIED",
+  "INVALID_ATTEMPT_RECORDED",
+  "EXISTING_STORE_DETECTED",
+  "POST_PUBLISH_MESSAGE",
+  "FULL_RESEND_DETECTED",
+  "WEBHOOK_SIGNATURE_INVALID",
+  "PROVIDER_MEDIA_DOWNLOAD_FAILED",
+  "INTAKE_WINDOW_CLOSED",
+] as const;
+
+export type MsgOnboardingEventType = (typeof MSG_ONBOARDING_EVENT_TYPES)[number];
 
 /** Onboarding event document */
 export interface MsgOnboardingEvent {
@@ -347,7 +364,7 @@ export interface MsgOnboardingEvent {
   eventType: MsgOnboardingEventType;
   sessionState: MessagingOnboardingState;
   userIdMasked: string;
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
   timestamp: Timestamp;
   expiresAt?: Timestamp;
   sessionAgeMs: number;

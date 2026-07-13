@@ -1,8 +1,10 @@
 # Messaging Onboarding — Operational Runbook
 
 **Feature:** Messaging Onboarding  
-**Status:** ACTIVE RUNBOOK  
-**Last Updated:** May 17, 2026
+**Status:** ACTIVE SOURCE RUNBOOK — provider processing remains disabled in checked-in targets
+**Last Updated:** July 10, 2026
+
+> **Launch boundary:** Not current launch certification or deploy approval. Current source registers WhatsApp only, while checked-in Functions environments keep provider processing disabled. `/whatsapp` is informational and routes its actions to the signed-in `/create-menu` photo or public-link intake. Execute provider operations only after the final owned account, real Meta secrets, webhook registration, explicit target enablement and scoped deploy approval are documented.
 
 ---
 

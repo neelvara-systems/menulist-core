@@ -217,6 +217,7 @@ function verifyRevenueReadModel(source, appConstants, functionsConstants) {
 }
 
 function verifyRazorpayRuntime(webhook, verifySubscription, verifyTopup, cancelSubscription, upgradeSubscription) {
+  const productBillingServer = read('src/lib/billing/productBillingServer.ts');
   [
     'recordFounderRevenueMovement',
     'recordFounderSubscriptionChurn',
@@ -257,13 +258,14 @@ function verifyRazorpayRuntime(webhook, verifySubscription, verifyTopup, cancelS
     "source: 'api:cancel-subscription'",
   ].forEach((token) => assertIncludes(cancelSubscription, token, 'Cancel subscription Founder Monitor runtime writes'));
 
+  assertIncludes(upgradeSubscription, 'applyProductSubscriptionUpgradeCarryForward(productId, {', 'Upgrade subscription Founder Monitor transactional handoff');
   [
     'getFounderSubscriptionMrrPaise',
     'founderMonitorReplacementForSubscriptionId',
     'founderMonitorReplacementMrrPaise',
     'founderMonitorReplacementPlanId',
     'founderMonitorReplacementPlanName',
-  ].forEach((token) => assertIncludes(upgradeSubscription, token, 'Upgrade subscription Founder Monitor replacement metadata'));
+  ].forEach((token) => assertIncludes(productBillingServer, token, 'Upgrade subscription Founder Monitor transactional replacement metadata'));
 }
 
 function verifyScheduler(functionConstants, scheduler, snapshotScheduler) {
@@ -333,14 +335,22 @@ function verifyStoresSummaryContract(platformSummaryDal, storesDal) {
   ].forEach((token) => assertIncludes(platformSummaryDal, token, 'storesSummary distribution summary contract'));
 
   [
-    'mergeStoreSummaryFields',
-    'type StoreDistributionPresenceSummary',
-    "'menuPresence'",
-    "'presence'",
-    'const menuPresenceSummary: StoreDistributionPresenceSummary = { [surface]: now };',
-    'const menuPresenceSummary: StoreDistributionPresenceSummary = { [surface]: null };',
-    'menuPresence: menuPresenceSummary',
+    'await runTransaction(firebaseClient, async (transaction) => {',
+    'const storeSnapshot = await transaction.get(storeRef);',
+    "if (!storeSnapshot.exists()) throw new Error('menu_presence_store_missing');",
+    "throw new Error('menu_presence_store_scope_changed');",
+    'transaction.update(storeRef, storeUpdate);',
+    'transaction.set(summaryRef, {',
+    'menuPresence: { [surface]: confirmed ? now : null },',
+    'modifiedOn: now,',
+    'tId: tenantId,',
+    '}, { merge: true });',
   ].forEach((token) => assertIncludes(storesDal, token, 'store DAL distribution summary sync'));
+
+  [
+    'await updateDoc(docRef, updatePayload);',
+    'await mergeStoreSummaryFields(storeId, {',
+  ].forEach((token) => assertNotIncludes(storesDal, token, 'store DAL non-atomic distribution summary sync'));
 }
 
 function verifyBackfillScript(backfillScript) {

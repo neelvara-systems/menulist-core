@@ -126,8 +126,10 @@ Report Leads is the internal platform-admin surface at `/ops/report-leads`.
 Runtime rules:
 
 - route is guarded by the existing `/ops` layout and `/api/ops/report-leads` uses `withAuth(..., { requiredPlatformRole: 'PLATFORM' })`
+- after the request rate limit and before the lead query, the API re-reads the exact current `users/{userId}` document and proves document/session identity, normalized email, `platformRole: PLATFORM`, active and verified lifecycle state, non-blocked status, and a valid session issuance/revocation ordering
 - API is manual-refresh only
 - API reads recent `landingPageEnquiries`, filters `shareable_tool_report` leads in memory, and avoids new Firestore indexes
+- legacy `sourcePath` values are projected through the public-contact pathname normalizer so query strings and fragments do not enter the response DTO
 - response is capped and parsed through `readReportLeadOpsSnapshotResponse`
 - UI shows the setup job list and can copy the first-reply template from the playbook
 - no lead mutation

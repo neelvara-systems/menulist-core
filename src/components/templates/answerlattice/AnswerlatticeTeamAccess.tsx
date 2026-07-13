@@ -8,6 +8,7 @@ import {
     AnswerlatticePermissionKey,
     AnswerlatticeRoleDefinition,
     DEFAULT_ANSWERLATTICE_ROLE_IDS,
+    isDefaultAnswerlatticeRoleId,
     normalizeAnswerlatticeRolePermissions,
 } from '@constant/answerlattice/permissions';
 import {
@@ -20,6 +21,7 @@ import {
     normalizeAnswerlatticeRoutePathname,
     toAnswerlatticeDashboardRoute,
 } from '@constant/answerlattice/navigations';
+import { PRODUCT_IDS } from '@constant/product';
 import { useAnswerlatticeAccess } from '@providers/answerlatticeAccessProvider';
 import {
     AnswerlatticeStaffUserSummary,
@@ -53,13 +55,14 @@ import {
     Table,
     Tabs,
     Tag,
+    Tooltip,
     Typography,
     message,
     theme,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     LuKeyRound,
     LuLogOut,
@@ -150,10 +153,15 @@ export default function AnswerlatticeTeamAccess({ initialTab }: AnswerlatticeTea
         message?: string;
     } | null>(null);
     const [activeTab, setActiveTab] = useState<string>(requestedTab);
+    const createStaffRequestIdRef = useRef('');
+    const createRoleRequestIdRef = useRef('');
 
     const canManageTeam = access?.isPlatformAdmin || access?.permissions?.[ANSWERLATTICE_PERMISSION_KEYS.MANAGE_TEAM] === true;
     const canAssignRoles = access?.isPlatformAdmin || access?.permissions?.[ANSWERLATTICE_PERMISSION_KEYS.ASSIGN_ROLES] === true;
+    const canManageOwners = access?.isPlatformAdmin || access?.currentRoleId === DEFAULT_ANSWERLATTICE_ROLE_IDS.OWNER;
     const roleOptions = useMemo(() => getRoleOptions(roles, Boolean(canAssignRoles)), [canAssignRoles, roles]);
+    const mobileActionStyle = isMobile ? { minHeight: 44 } : undefined;
+    const memberActionSize = isMobile ? 'middle' as const : 'small' as const;
     const staffCountryCode = Form.useWatch('countryCode', staffForm) || '';
     const staffDialCode = Form.useWatch('dialCode', staffForm) || '';
     const staffPhoneNumber = Form.useWatch('phoneNumber', staffForm) || '';
@@ -205,6 +213,7 @@ export default function AnswerlatticeTeamAccess({ initialTab }: AnswerlatticeTea
 
     const openCreateStaff = () => {
         setEditingStaff(null);
+        createStaffRequestIdRef.current = globalThis.crypto.randomUUID();
         staffForm.resetFields();
         staffForm.setFieldsValue({
             countryCode: '',
@@ -241,7 +250,10 @@ export default function AnswerlatticeTeamAccess({ initialTab }: AnswerlatticeTea
                     phoneNumber: values.phoneNumber,
                     roleId: values.roleId,
                 })
-                : await createAnswerlatticeStaffUser(values);
+                : await createAnswerlatticeStaffUser({
+                    ...values,
+                    requestId: createStaffRequestIdRef.current || globalThis.crypto.randomUUID(),
+                });
             if (result.user) {
                 setUsers((current) => {
                     const exists = current.some((user) => user.id === result.user?.id);
@@ -250,7 +262,10 @@ export default function AnswerlatticeTeamAccess({ initialTab }: AnswerlatticeTea
                         : [...current, result.user!].sort((a, b) => (a.name || a.email).localeCompare(b.name || b.email));
                 });
             }
-            if (result.temporaryPasscode || result.staffLoginId) {
+            if (
+                result.staffAuthMode === 'owner_passcode'
+                && (result.temporaryPasscode || result.staffLoginId)
+            ) {
                 setLoginDetails({
                     countryCode: result.user?.countryCode || values.countryCode,
                     dialCode: result.user?.dialCode || values.dialCode,
@@ -259,13 +274,16 @@ export default function AnswerlatticeTeamAccess({ initialTab }: AnswerlatticeTea
                     temporaryPasscode: result.temporaryPasscode,
                     message: result.message,
                 });
+            } else if (result.passwordResetEmailError) {
+                message.warning('Team member added, but the setup email was not sent. Use Login to create new login details.');
             } else if (result.passwordResetEmailSent) {
                 message.success('Password setup email sent');
             } else {
-                message.success(editingStaff ? 'Team member updated' : 'Team member added');
+                message.success(result.message || (editingStaff ? 'Team member updated' : 'Team member added'));
             }
             setStaffModalOpen(false);
             setEditingStaff(null);
+            createStaffRequestIdRef.current = '';
             staffForm.resetFields();
             await refreshAccess();
         } catch {
@@ -328,7 +346,7 @@ export default function AnswerlatticeTeamAccess({ initialTab }: AnswerlatticeTea
             onOk: async () => {
                 try {
                     const result = await removeAnswerlatticeStaffUser(user.id);
-                    if (result.user?.deleted || result.user?.active === false) {
+                    if (result.removed || result.user?.deleted || result.user?.active === false) {
                         setUsers((current) => current.filter((item) => item.id !== user.id));
                     } else if (result.user) {
                         setUsers((current) => current.map((item) => item.id === user.id ? result.user! : item));
@@ -342,13 +360,14 @@ export default function AnswerlatticeTeamAccess({ initialTab }: AnswerlatticeTea
     };
 
     const openCreateRole = () => {
+        createRoleRequestIdRef.current = globalThis.crypto.randomUUID();
         setEditingRole({
             id: '',
             name: '',
             description: '',
             active: true,
             permissions: {},
-            pId: 'AL',
+            pId: PRODUCT_IDS.ANSWERLATTICE,
             tId: access?.scope.tenantId || 0,
             sId: access?.scope.storeId || 0,
             createdBy: access?.user.email || 'system',
@@ -370,7 +389,7 @@ export default function AnswerlatticeTeamAccess({ initialTab }: AnswerlatticeTea
     };
 
     const togglePermission = (permission: AnswerlatticePermissionKey, value: boolean) => {
-        if (!editingRole || editingRole.id === DEFAULT_ANSWERLATTICE_ROLE_IDS.OWNER) return;
+        if (!editingRole || isDefaultAnswerlatticeRoleId(editingRole.id)) return;
         setEditingRole({
             ...editingRole,
             permissions: {
@@ -381,7 +400,7 @@ export default function AnswerlatticeTeamAccess({ initialTab }: AnswerlatticeTea
     };
 
     const toggleCategory = (permissions: AnswerlatticePermissionKey[], value: boolean) => {
-        if (!editingRole || editingRole.id === DEFAULT_ANSWERLATTICE_ROLE_IDS.OWNER) return;
+        if (!editingRole || isDefaultAnswerlatticeRoleId(editingRole.id)) return;
         const nextPermissions = { ...editingRole.permissions };
         permissions.forEach((permission) => {
             nextPermissions[permission] = value;
@@ -395,6 +414,7 @@ export default function AnswerlatticeTeamAccess({ initialTab }: AnswerlatticeTea
         try {
             const values = await roleForm.validateFields();
             const result = await saveAnswerlatticeRoleDefinition({
+                requestId: editingRole.id ? undefined : createRoleRequestIdRef.current || globalThis.crypto.randomUUID(),
                 role: {
                     id: editingRole.id || undefined,
                     active: values.active !== false,
@@ -406,6 +426,7 @@ export default function AnswerlatticeTeamAccess({ initialTab }: AnswerlatticeTea
             setRoles(result.roles || roles);
             setRoleModalOpen(false);
             setEditingRole(null);
+            createRoleRequestIdRef.current = '';
             roleForm.resetFields();
             message.success('Role saved');
             await refreshAccess();
@@ -419,7 +440,7 @@ export default function AnswerlatticeTeamAccess({ initialTab }: AnswerlatticeTea
     const handleDeleteRole = async (role: AnswerlatticeRoleDefinition) => {
         Modal.confirm({
             title: 'Turn off role?',
-            content: `${role.name} will be hidden after you reassign any active team members using it.`,
+            content: `${role.name} can be turned off after you reassign every team member using it, including inactive members.`,
             okText: 'Turn off',
             okButtonProps: { danger: true },
             onOk: async () => {
@@ -435,31 +456,67 @@ export default function AnswerlatticeTeamAccess({ initialTab }: AnswerlatticeTea
         });
     };
 
-    const renderUserActions = (user: AnswerlatticeStaffUserSummary) => (
+    const renderUserActions = (user: AnswerlatticeStaffUserSummary) => {
+        const ownerActionBlocked = user.roleId === DEFAULT_ANSWERLATTICE_ROLE_IDS.OWNER && !canManageOwners;
+        const authActionBlocked = ownerActionBlocked || (user.storeIds.length > 1 && !access?.isPlatformAdmin);
+        const authActionTooltip = authActionBlocked
+            ? ownerActionBlocked
+                ? 'Only an Owner can manage another Owner account.'
+                : 'Login details and sign-out affect every workspace. Ask a platform administrator.'
+            : undefined;
+        return (
         <Space wrap>
-            <Button icon={<LuPencil />} onClick={() => openEditStaff(user)} size="small">
-                Edit
-            </Button>
-            <Button icon={<LuKeyRound />} onClick={() => handleResetLogin(user)} size="small">
-                Login
-            </Button>
-            <Button disabled={user.active === false} icon={<LuLogOut />} onClick={() => handleForceSignOut(user)} size="small">
-                Sign out
-            </Button>
-            <Button
-                icon={user.active === false ? <LuUserCheck /> : <LuUserX />}
-                onClick={() => handleToggleActive(user, user.active === false)}
-                size="small"
+            <Tooltip title={ownerActionBlocked ? 'Only an Owner can change Owner access.' : undefined}>
+                <span>
+                    <Button disabled={ownerActionBlocked} icon={<LuPencil />} onClick={() => openEditStaff(user)} size={memberActionSize} style={mobileActionStyle}>
+                        Edit
+                    </Button>
+                </span>
+            </Tooltip>
+            <Tooltip title={authActionTooltip}>
+                <span>
+                    <Button disabled={authActionBlocked} icon={<LuKeyRound />} onClick={() => handleResetLogin(user)} size={memberActionSize} style={mobileActionStyle}>
+                        Login
+                    </Button>
+                </span>
+            </Tooltip>
+            <Tooltip title={authActionTooltip}>
+                <span>
+                    <Button disabled={authActionBlocked || user.active === false} icon={<LuLogOut />} onClick={() => handleForceSignOut(user)} size={memberActionSize} style={mobileActionStyle}>
+                        Sign out
+                    </Button>
+                </span>
+            </Tooltip>
+            <Tooltip title={ownerActionBlocked
+                ? 'Only an Owner can change Owner access.'
+                : user.storeIds.length > 1 && !access?.isPlatformAdmin
+                    ? 'Remove access from this workspace instead.'
+                    : undefined}
             >
-                {user.active === false ? 'Activate' : 'Deactivate'}
-            </Button>
-            <Button danger icon={<LuTrash2 />} onClick={() => handleRemoveStaff(user)} size="small">
-                Remove
-            </Button>
+                <span>
+                    <Button
+                        disabled={ownerActionBlocked || (user.storeIds.length > 1 && !access?.isPlatformAdmin)}
+                        icon={user.active === false ? <LuUserCheck /> : <LuUserX />}
+                        onClick={() => handleToggleActive(user, user.active === false)}
+                        size={memberActionSize}
+                        style={mobileActionStyle}
+                    >
+                        {user.active === false ? 'Activate' : 'Deactivate'}
+                    </Button>
+                </span>
+            </Tooltip>
+            <Tooltip title={ownerActionBlocked ? 'Only an Owner can remove Owner access.' : undefined}>
+                <span>
+                    <Button danger disabled={ownerActionBlocked} icon={<LuTrash2 />} onClick={() => handleRemoveStaff(user)} size={memberActionSize} style={mobileActionStyle}>
+                        Remove
+                    </Button>
+                </span>
+            </Tooltip>
         </Space>
-    );
+        );
+    };
 
-    const columns = useMemo<ColumnsType<AnswerlatticeStaffUserSummary>>(() => [
+    const columns: ColumnsType<AnswerlatticeStaffUserSummary> = [
         {
             title: 'Member',
             dataIndex: 'name',
@@ -492,7 +549,7 @@ export default function AnswerlatticeTeamAccess({ initialTab }: AnswerlatticeTea
             key: 'actions',
             render: (_, user) => renderUserActions(user),
         },
-    ], []);
+    ];
 
     const staffList = isMobile ? (
         <List
@@ -532,7 +589,7 @@ export default function AnswerlatticeTeamAccess({ initialTab }: AnswerlatticeTea
         <Flex vertical gap={12}>
             {roles.length ? roles.map((role) => {
                 const enabledCount = Object.values(normalizeAnswerlatticeRolePermissions(role.permissions)).filter(Boolean).length;
-                const isLocked = role.id === DEFAULT_ANSWERLATTICE_ROLE_IDS.OWNER;
+                const isLocked = isDefaultAnswerlatticeRoleId(role.id);
                 return (
                     <Card key={role.id}>
                         <Flex align={isMobile ? 'stretch' : 'center'} justify="space-between" gap={12} vertical={isMobile}>
@@ -548,10 +605,10 @@ export default function AnswerlatticeTeamAccess({ initialTab }: AnswerlatticeTea
                                 <Text type="secondary">{enabledCount} permissions enabled</Text>
                             </Flex>
                             <Space wrap>
-                                <Button disabled={!canAssignRoles || isLocked} icon={<LuPencil />} onClick={() => openEditRole(role)}>
+                                <Button disabled={!canAssignRoles || isLocked} icon={<LuPencil />} onClick={() => openEditRole(role)} style={mobileActionStyle}>
                                     Edit
                                 </Button>
-                                <Button danger disabled={!canAssignRoles || isLocked} icon={<LuTrash2 />} onClick={() => handleDeleteRole(role)}>
+                                <Button danger disabled={!canAssignRoles || isLocked || role.active === false} icon={<LuTrash2 />} onClick={() => handleDeleteRole(role)} style={mobileActionStyle}>
                                     Turn off
                                 </Button>
                             </Space>
@@ -586,13 +643,13 @@ export default function AnswerlatticeTeamAccess({ initialTab }: AnswerlatticeTea
                     </Text>
                 </div>
                 <Space wrap>
-                    <Button icon={<LuRefreshCw />} onClick={loadTeam}>
+                    <Button icon={<LuRefreshCw />} onClick={loadTeam} style={mobileActionStyle}>
                         Refresh
                     </Button>
-                    <Button disabled={!canAssignRoles} icon={<LuShield />} onClick={openCreateRole}>
+                    <Button disabled={!canAssignRoles} icon={<LuShield />} onClick={openCreateRole} style={mobileActionStyle}>
                         New Role
                     </Button>
-                    <Button type="primary" icon={<LuPlus />} onClick={openCreateStaff}>
+                    <Button type="primary" icon={<LuPlus />} onClick={openCreateStaff} style={mobileActionStyle}>
                         Add Member
                     </Button>
                 </Space>
@@ -634,7 +691,10 @@ export default function AnswerlatticeTeamAccess({ initialTab }: AnswerlatticeTea
                 destroyOnClose
                 okButtonProps={{ loading: savingStaff }}
                 okText={editingStaff ? 'Save Member' : 'Add Member'}
-                onCancel={() => setStaffModalOpen(false)}
+                onCancel={() => {
+                    createStaffRequestIdRef.current = '';
+                    setStaffModalOpen(false);
+                }}
                 onOk={handleSaveStaff}
                 open={staffModalOpen}
                 title={editingStaff ? 'Edit Team Member' : 'Add Team Member'}
@@ -679,9 +739,12 @@ export default function AnswerlatticeTeamAccess({ initialTab }: AnswerlatticeTea
 
             <Modal
                 destroyOnClose
-                okButtonProps={{ loading: savingRole, disabled: editingRole?.id === DEFAULT_ANSWERLATTICE_ROLE_IDS.OWNER }}
+                okButtonProps={{ loading: savingRole, disabled: isDefaultAnswerlatticeRoleId(editingRole?.id) }}
                 okText="Save Role"
-                onCancel={() => setRoleModalOpen(false)}
+                onCancel={() => {
+                    createRoleRequestIdRef.current = '';
+                    setRoleModalOpen(false);
+                }}
                 onOk={handleSaveRole}
                 open={roleModalOpen}
                 title={editingRole?.id ? 'Edit Role' : 'New Role'}
@@ -691,13 +754,13 @@ export default function AnswerlatticeTeamAccess({ initialTab }: AnswerlatticeTea
                     <Flex vertical gap={16}>
                         <Form form={roleForm} layout="vertical">
                             <Form.Item name="name" label="Role name" rules={[{ required: true, message: 'Role name is required' }]}>
-                                <Input disabled={editingRole.id === DEFAULT_ANSWERLATTICE_ROLE_IDS.OWNER} placeholder="Support lead" />
+                                <Input disabled={isDefaultAnswerlatticeRoleId(editingRole.id)} placeholder="Support lead" />
                             </Form.Item>
                             <Form.Item name="description" label="Description">
-                                <Input.TextArea disabled={editingRole.id === DEFAULT_ANSWERLATTICE_ROLE_IDS.OWNER} rows={2} />
+                                <Input.TextArea disabled={isDefaultAnswerlatticeRoleId(editingRole.id)} rows={2} />
                             </Form.Item>
                             <Form.Item name="active" label="Active" valuePropName="checked">
-                                <Switch disabled={editingRole.id === DEFAULT_ANSWERLATTICE_ROLE_IDS.OWNER} />
+                                <Switch disabled={isDefaultAnswerlatticeRoleId(editingRole.id)} />
                             </Form.Item>
                         </Form>
 
@@ -714,7 +777,7 @@ export default function AnswerlatticeTeamAccess({ initialTab }: AnswerlatticeTea
                                                 <Text strong>{category.label}</Text>
                                                 <Checkbox
                                                     checked={allEnabled}
-                                                    disabled={editingRole.id === DEFAULT_ANSWERLATTICE_ROLE_IDS.OWNER}
+                                                    disabled={isDefaultAnswerlatticeRoleId(editingRole.id)}
                                                     onChange={(event) => toggleCategory(category.permissions, event.target.checked)}
                                                 >
                                                     All
@@ -740,7 +803,7 @@ export default function AnswerlatticeTeamAccess({ initialTab }: AnswerlatticeTea
                                                     </Flex>
                                                     <Switch
                                                         checked={normalized[permission]}
-                                                        disabled={editingRole.id === DEFAULT_ANSWERLATTICE_ROLE_IDS.OWNER}
+                                                        disabled={isDefaultAnswerlatticeRoleId(editingRole.id)}
                                                         onChange={(checked) => togglePermission(permission, checked)}
                                                     />
                                                 </Flex>

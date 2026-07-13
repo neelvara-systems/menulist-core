@@ -1,12 +1,18 @@
 # Risk / Decline Detection — Implementation Plan
 
-**Status:** ✅ IMPLEMENTED (flags OFF — requires Pillars 4+5 active with traffic)  
+**Status:** Dormant shared computation/UI skeleton; prerequisites are not active
 **Author:** Cascade (Lead Architect)  
 **Date:** February 19, 2026  
 **Audience:** Developers  
 **Pillar:** 6 of 6
 
 ---
+
+## Current Runtime Boundary — July 13, 2026
+
+The implementation below is the target activation design. No exported Function or scheduler calls the retained computation, no owner desktop/mobile surface consumes the state, and all three prerequisite/root flags are `false`. Same-week retries must not advance `consecutiveWeakWeeks`; activation additionally requires real weekly source data, freshness handling, a bounded leased scheduler task, persistence/emulator proof, and desktop/mobile parity.
+
+## Target Activation Architecture
 
 ## Architecture Overview
 
@@ -133,4 +139,4 @@ Uses trust + loyalty states already computed. Only adds risk state derivation (p
 
 ---
 
-**Last Updated:** February 19, 2026
+**Last Updated:** July 13, 2026

@@ -1,9 +1,9 @@
 # Context-Aware Support — Implementation Blueprint
 
-> **Status:** READY FOR IMPLEMENTATION
-> **Version:** 1.1.0
+> **Status:** IMPLEMENTED — context-assisted matching with fail-closed canonical scope
+> **Version:** 1.2.0
 > **Created:** 2026-03-08
-> **Last Updated:** 2026-03-08
+> **Last Updated:** 2026-07-11
 > **Feature Flag:** `ENABLE_ANSWERLATTICE_CONTEXT_AWARE`
 > **Audience:** Developers
 > **ChatGPT Review:** 3 guardrails accepted (§4.8), 1 rejected (intersection requirement)
@@ -22,7 +22,7 @@ The codebase already has:
 
 - `RetrievalContext` interface (tId, sId, currentVersion, planId, roleId)
 - `matchEntitiesFromIndex()` — token-based entity scoring
-- `scoreBySpecificity()` — version/plan/role matching
+- `evaluateCanonicalAnswerScope()` plus `scoreBySpecificity()` — strict plan/role/state eligibility, then deterministic ranking
 - Entity search index with synonyms and normalized tokens
 - Intent classification (rule-based)
 - Zod validation patterns
@@ -44,7 +44,8 @@ attemptCanonicalRetrieval(query, context)
     ↓
 matchEntitiesFromIndex(queryTokens, searchIndex, contextBoosts)  ← NEW: context boosts
     ↓
-scoreBySpecificity(answers, context)  ← EXISTING: already uses planId/roleId
+evaluateCanonicalAnswerScope(answer, context) ← strict plan/role/state admission
+scoreBySpecificity(eligibleAnswers, context)   ← deterministic ranking after admission
     ↓
 Canonical answer (or RAG fallback)
 ```
@@ -89,6 +90,7 @@ export interface RetrievalContext {
   currentVersion?: number;
   planId?: string;
   roleId?: string;
+  stateId?: string;
   // NEW: Context-aware support fields
   context?: AnswerlatticeContextPayload;
 }
@@ -103,7 +105,7 @@ export interface RetrievalContext {
 | #   | File                                        | Changes                                                                                                              |
 | --- | ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
 | 1   | `src/types/answerlattice/index.ts`               | Add `AnswerlatticeContextPayload` interface                                                                               |
-| 2   | `src/lib/answerlattice/canonicalRetrieval.ts`    | Extend `RetrievalContext`, add `applyContextBoosts()`, enhance `matchEntitiesFromIndex()` and `scoreBySpecificity()` |
+| 2   | `src/lib/answerlattice/canonicalRetrieval.ts`    | Extend `RetrievalContext`, add `applyContextBoosts()`, enhance entity matching, enforce strict scope, then rank eligible answers |
 | 3   | `src/app/api/widget/search/route.ts`        | Accept `context` field in request body, validate, pass to retrieval                                                  |
 | 4   | `src/app/api/helpCenter/search-kb/route.ts` | Accept optional `context` field, pass to canonical retrieval                                                         |
 | 5   | `src/config/features.ts`                    | Add `ENABLE_ANSWERLATTICE_CONTEXT_AWARE: false`                                                                           |
@@ -314,71 +316,22 @@ function matchEntitiesFromIndex(
 }
 ```
 
-### 4.3 — Enhanced Specificity Scoring
+### 4.3 — Strict Scope Eligibility Before Specificity Scoring
 
-Extend `scoreBySpecificity()` to use context's `plan` and `userRole`:
+Plan, role, and product-state scope are eligibility constraints, not ranking bonuses. `evaluateCanonicalAnswerScope()` normalizes the answer restrictions and the effective request values from `planId` / `roleId` / `stateId` or `context.plan` / `context.userRole` / `context.state`. If an answer restricts a dimension, missing or mismatched context fails closed before ranking.
 
 ```typescript
-function scoreBySpecificity(
-  answers: AnswerlatticeCanonicalAnswer[],
-  context: RetrievalContext,
-): AnswerlatticeCanonicalAnswer[] {
-  return answers
-    .map((answer) => {
-      let score = 0;
-
-      // Version window match (unchanged)
-      if (context.currentVersion) {
-        const { from, to } = answer.productBinding.applicableVersions;
-        if (
-          context.currentVersion >= from &&
-          (!to || context.currentVersion <= to)
-        ) {
-          score += 100;
-        }
-      }
-
-      // Scope depth (unchanged)
-      const scopeDepth =
-        (answer.scope.planIds?.length ? 10 : 0) +
-        (answer.scope.roleIds?.length ? 10 : 0) +
-        (answer.scope.stateIds?.length ? 10 : 0);
-      score += scopeDepth;
-
-      // Plan match — use context.planId OR context.context.plan (NEW)
-      const effectivePlan = context.planId || context.context?.plan;
-      if (effectivePlan && answer.scope.planIds?.includes(effectivePlan)) {
-        score += 20;
-      }
-
-      // Role match — use context.roleId OR context.context.userRole (NEW)
-      const effectiveRole = context.roleId || context.context?.userRole;
-      if (effectiveRole && answer.scope.roleIds?.includes(effectiveRole)) {
-        score += 20;
-      }
-
-      // Validation recency (unchanged)
-      if (answer.validation.lastValidatedOn) {
-        const daysSinceValidation =
-          (Date.now() - answer.validation.lastValidatedOn.toMillis()) /
-          (1000 * 60 * 60 * 24);
-        score += Math.max(0, 10 - daysSinceValidation / 30);
-      }
-
-      // Confidence score (unchanged)
-      score += answer.validation.confidenceScore * 5;
-
-      // Drift penalty (unchanged)
-      if (answer.governance.driftFlag) {
-        score -= 50;
-      }
-
-      return { answer, score };
-    })
-    .sort((a, b) => b.score - a.score)
-    .map((item) => item.answer);
+const scopeMatch = evaluateCanonicalAnswerScope(answer, context);
+if (!scopeMatch.applicable) {
+  // Missing restricted context and explicit mismatches are distinct governed misses.
+  return null;
 }
+
+// Only eligible answers proceed to deterministic version, confidence,
+// specificity, and validation-recency ranking.
 ```
+
+If matched canonical truth exists but every otherwise valid answer is blocked by missing scope context, retrieval returns `canonical_scope_context_required`. If supplied context is outside the allowed scope, it returns `canonical_scope_not_covered`. `searchCore.ts` converts both into fixed, non-cacheable safe responses and stops before FAQ, embeddings, or RAG. Drifted or review-required truth similarly returns `canonical_answer_review_required`.
 
 ### 4.4 — Main Retrieval Function Changes
 
@@ -576,7 +529,7 @@ Total context boost per entity is capped at `MAX_CONTEXT_BOOST = 80`. Prevents r
 
 ### ADR-1: Extend Existing Pipeline vs New Components
 
-**Decision:** Extend existing `matchEntitiesFromIndex()` and `scoreBySpecificity()`.
+**Decision:** Extend existing entity matching and specificity ranking, with strict scope eligibility applied between them.
 
 **Rejected:** ChatGPT's proposal of 8 separate components (Entity Hint Resolver, Entity Scoring Engine, Context Prioritization Logic, Page/Feature Mapping, Workflow Detection, etc.).
 
@@ -738,7 +691,7 @@ These are derived from existing performance logs — no new collection needed.
    a. Extend `RetrievalContext` interface
    b. Add `applyContextBoosts()` function
    c. Modify `matchEntitiesFromIndex()` to accept boosts
-   d. Modify `scoreBySpecificity()` to use context plan/role
+   d. Filter strict plan/role/state scope before specificity ranking
    e. Modify `attemptCanonicalRetrieval()` to generate and apply boosts
 5. Modify widget search route to accept + validate context
 6. Modify search-kb route to accept + pass context
@@ -751,4 +704,5 @@ These are derived from existing performance logs — no new collection needed.
 
 | Date       | Version | Change                           |
 | ---------- | ------- | -------------------------------- |
+| 2026-07-11 | 1.2.0   | Aligned the guide to the implemented runtime: added product-state context and made plan, role, and state strict canonical eligibility constraints with governed fallback responses. |
 | 2026-03-08 | 1.0.0   | Initial implementation blueprint |

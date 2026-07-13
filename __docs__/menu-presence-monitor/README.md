@@ -28,7 +28,9 @@ Menu Presence Monitor gently surfaces these gaps without overwhelming the owner.
 
 **Mostly manual confirmation + partial automatic detection.** Zero new collections for v1. Store-level field (`menuPresence`) on existing store document tracks confirmed surfaces. Starter activation actions use `starterActivationSignals` on the same store document.
 
-Presence confirmations and starter activation signals are owner-local writes. `updateMenuPresence()` and `recordStarterActivationSignal()` must verify the passed store matches the active session store before writing either field.
+Presence confirmations and starter activation signals are owner-local writes. `updateMenuPresence()` and `recordStarterActivationSignal()` must verify the passed store matches the active session store before writing either field. A presence confirmation transactionally updates the canonical `stores` row and its `storesSummary` projection in one transaction, then invalidates the public client cache after commit so owner/public consumers cannot retain an older projection.
+
+`recordStarterActivationSignal()` rejects values outside the shared signal allowlist before constructing its Firestore dotted field path. Compile-time `StarterActivationSignal` typing is not treated as runtime validation.
 
 The monitor now shows an activation-proof summary through the shared `buildStarterActivationSummary()` helper. It separates:
 
@@ -58,7 +60,7 @@ The monitor now shows an activation-proof summary through the shared `buildStart
 
 ## Source Gate
 
-Run `npm run verify:menu-presence-monitor-boundary` after changes to Presence Monitor, Use MenuList output wiring, Business Settings Search & Discovery, Mobile More Search & Discovery, `updateMenuPresence()`, `recordStarterActivationSignal()`, or starter activation proof. This gate checks source/docs parity for active-session store guards, typed write acknowledgement, bounded diagnostics, desktop/mobile route wiring, and mobile bottom-sheet behavior. Browser/device QA and live confirm/remove mutation testing remain separate release gates.
+Run `npm run verify:menu-presence-monitor-boundary` after changes to Presence Monitor, Use MenuList output wiring, Business Settings Search & Discovery, Mobile More Search & Discovery, `updateMenuPresence()`, `recordStarterActivationSignal()`, or starter activation proof. This gate checks source/docs parity for runtime input validation, active-session and transaction-time store/tenant guards, atomic store/summary projection, post-commit cache invalidation, typed write acknowledgement, bounded diagnostics, desktop/mobile route wiring, and mobile bottom-sheet behavior. The store-summary emulator test covers admitted and rejected atomic presence writes. Browser/device QA and live production confirm/remove mutation testing remain separate release gates.
 
 ## Key Files
 

@@ -22,7 +22,6 @@ export const OWNER_REFERRAL_REWARD_TYPE = 'owner_referral' as const;
 
 export const OWNER_REFERRAL_OWNER_STATUS = {
     WAITING_FOR_PAYMENT: 'waiting_for_payment',
-    WAITING_FOR_BOTH_PAYMENTS: 'waiting_for_both_payments',
     ISSUED: 'issued',
 } as const;
 

@@ -23,11 +23,25 @@ functions-signaldesk/lib
 # misc
 .DS_Store
 /.idea
+/.codex-artifacts/
+
+# HyperFrames reproducible working output
+__docs__/videos/hyperframes/**/renders/
+__docs__/videos/hyperframes/**/snapshots*/
+__docs__/videos/hyperframes/**/encoded-*/
+__docs__/videos/hyperframes/**/.media/
+__docs__/videos/hyperframes/**/assets/audio-tests/
+__docs__/videos/hyperframes/**/assets/mix/*-pre-master.wav
+__docs__/videos/hyperframes/**/assets/mix/*-loudnorm-pass1.json
+__docs__/videos/hyperframes/**/assets/mix/*-loudnorm-pass1.log
+__docs__/videos/hyperframes/**/assets/mix/*-bgm-*.wav
 
 # debug
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+firebase-debug.log*
+firestore-debug.log*
 /logs/*.log
 /routes-manifest.json
 /tmp/
@@ -61,3 +75,5 @@ yarn-error.log*
 # Sentry Config File
 .env.sentry-build-plugin
 .vercel
+
+certificates

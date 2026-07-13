@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
 import { normalizeOwnerBusinessAssistantProjectId } from './projectIdBoundary';
 import { normalizeOwnerBusinessAssistantThreadId } from './threadIdBoundary';
+import { normalizeStoreSwitchStoreId } from '@lib/multiOutlet/storeSwitchAccess';
 
 const OwnerBusinessAssistantProjectIdSchema = z.preprocess((value) => {
   if (value === null || value === undefined || value === '') return undefined;
@@ -14,7 +15,9 @@ const OwnerBusinessAssistantProjectIdSchema = z.preprocess((value) => {
 const OwnerBusinessAssistantStoreIdSchema = z.preprocess((value) => {
   if (value === null || value === undefined || value === '') return undefined;
   return String(value);
-}, z.string().min(1).max(80).regex(/^\d+$/).optional());
+}, z.string()
+  .refine((value) => normalizeStoreSwitchStoreId(value) !== null, 'Invalid store ID')
+  .optional());
 
 export const OwnerBusinessAssistantScopeSchema = z.object({
   projectId: OwnerBusinessAssistantProjectIdSchema,

@@ -7,6 +7,7 @@ import {
 } from "@lib/answerlattice/sessionScope";
 import { syncAnswerlatticeAuthWithCustomToken } from "@lib/firebase/syncAnswerlatticeAuth";
 import { createFirebaseBootstrapError, logFirebaseBootstrapFailure } from "@lib/firebase/firebaseDiagnostics";
+import { firebaseClaimsMatchTargetStore } from "@lib/auth/setClaimsWorkspace";
 import { applyActiveStoreContextToSession } from "@lib/multiOutlet/activeStoreContext";
 import { readJsonResponseWithLimit } from "@lib/security/boundedResponseBody";
 import { signInWithCustomToken, type IdTokenResult } from "firebase/auth";
@@ -278,6 +279,13 @@ export async function refreshFirebaseAuthClaims(targetStoreId?: number | null): 
         'current-user token result refresh',
         () => firebaseAuth.currentUser?.getIdTokenResult(true) || Promise.resolve(undefined),
     );
+
+    if (targetStoreId && !firebaseClaimsMatchTargetStore(refreshedToken?.claims, targetStoreId)) {
+        throw createFirebaseBootstrapError(
+            'Firebase Auth claims refresh failed',
+            'firebase_auth_claims_refresh_mismatch',
+        );
+    }
 
     return { ready: true, claims: refreshedToken?.claims };
 }

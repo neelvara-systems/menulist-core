@@ -8,7 +8,7 @@ import { useAppDispatch } from "@hook/useAppDispatch";
 import { getBoundedAnswerlatticeStringContext } from '@lib/answerlattice/diagnostics';
 import { publishApprovedJob, PublishApprovedJobPayload, regenerateEmbedding } from '@lib/firebase/functions';
 import { startLoader, stopLoader } from "@reduxSlices/loader";
-import { IngestionJob, IngestionJobArticle, IngestionJobSection, KnowledgeBaseArticleMeta, KnowledgeBaseArticleType, KnowledgeBaseCategoriesType, KnowledgeBaseCategory, KnowledgeBaseSection } from "@type/knowledgeBase";
+import { IngestionJob, IngestionJobArticle, IngestionJobCategoriesMap, IngestionJobSection, KnowledgeBaseArticleMeta, KnowledgeBaseArticleType, KnowledgeBaseCategoriesType, KnowledgeBaseCategory, KnowledgeBaseSection } from "@type/knowledgeBase";
 import { Button, Form, Layout, message, Modal, Splitter } from "antd";
 import { useEffect, useState } from "react";
 import ArticleModal from "../knowledgeBase/ArticleModal";
@@ -204,7 +204,11 @@ function ReviewModal({ open, onClose, job, articlesToReview, onReconciliationReq
                 if (!job) return;
                 dispatch(startLoader('Publishing job...'));
                 try {
-                    const payload: PublishApprovedJobPayload = { jobId: job.id, finalCategories: (categoriesData?.categories || job.categories) as any }
+                    const finalCategories: IngestionJobCategoriesMap | undefined = categoriesData?.categories || job.categories;
+                    if (!finalCategories || Object.keys(finalCategories).length === 0) {
+                        throw new Error('Knowledge-base review navigation is unavailable.');
+                    }
+                    const payload: PublishApprovedJobPayload = { jobId: job.id, finalCategories };
                     await publishApprovedJob(payload);
                     let summaryRefreshSucceeded = true;
                     if (FEATURE_FLAGS.ENABLE_ANSWERLATTICE_PRODUCT_SURFACES) {

@@ -16,6 +16,7 @@ import { Alert, Button, Card, Checkbox, Descriptions, Divider, Flex, Form, Grid,
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { LuBell, LuCode, LuSave, LuSend, LuSettings } from 'react-icons/lu';
+import AnswerlatticeSupportTruthExport from './settings/AnswerlatticeSupportTruthExport';
 
 const { Title, Text } = Typography;
 const ANSWERLATTICE_PROFILE_LOAD_FAILED = 'Could not load product details';
@@ -475,6 +476,8 @@ export default function AnswerlatticeSettings() {
                     </Space>
                 </Flex>
             </Card>
+
+            <AnswerlatticeSupportTruthExport />
 
             <Card
                 title={<Flex align="center" gap={8}><LuBell size={16} /> Workflow Notifications</Flex>}

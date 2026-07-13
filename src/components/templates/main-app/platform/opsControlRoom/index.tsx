@@ -140,7 +140,7 @@ function OpsControlRoom() {
         }
         Modal.confirm({
             title: 'Force Republish',
-            content: `This will force republish the active project for ${selectedStore.name || `store ${selectedStore.sId}`}. Continue?`,
+            content: `This will force republish all active menu projects for ${selectedStore.name || `store ${selectedStore.sId}`}. Continue?`,
             onOk: async () => {
                 setRepublishLoading(true);
                 try {
@@ -156,10 +156,11 @@ function OpsControlRoom() {
                         throw new Error('ops_control_room_force_republish_response_invalid');
                     }
                     const verification = result.data.verification;
+                    const projectCount = result.data.projectCount;
                     if (result.data.success === false) {
-                        message.warning(`Republish triggered, verification: ${verification}`);
+                        message.warning(`Republish triggered for ${projectCount} menu project${projectCount === 1 ? '' : 's'}, verification: ${verification}`);
                     } else {
-                        message.success(`Republish triggered, verification: ${verification}`);
+                        message.success(`Republish triggered for ${projectCount} menu project${projectCount === 1 ? '' : 's'}, verification: ${verification}`);
                     }
                     await loadData();
                 } catch (error) {

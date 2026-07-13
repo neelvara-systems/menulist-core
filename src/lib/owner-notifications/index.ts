@@ -6,9 +6,11 @@ import {
     type OwnerNotificationChannel,
     type OwnerNotificationProductId,
 } from '@data/shared/ownerNotificationRegistry';
+import { getNextOwnerNotificationProcessingAttempt } from '@data/shared/ownerNotificationDeliveryBoundary';
 import { getAnswerlatticeRetentionFields, type AnswerlatticeRetentionKey } from '@lib/answerlattice/dataRetention';
 import { admin } from '@lib/firebase/firebaseAdmin';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
+import { sanitizeForFirestore as sanitizeFirestoreValue } from '@lib/firestore/sanitizeForFirestore';
 import { getBoundedNotificationStringContext, logNotificationFailure } from '@lib/notifications/notificationDiagnostics';
 import { secureLog } from '@lib/security/secureLogger';
 import { createHash } from 'crypto';
@@ -29,12 +31,21 @@ import type {
     EnqueueOwnerNotificationInput,
     OwnerNotificationChannelResult,
     OwnerNotificationEventDoc,
+    OwnerNotificationEventStatus,
     OwnerNotificationProcessResult,
     OwnerNotificationRecipient,
 } from './types';
 
 const MAX_PER_RECIPIENT_PER_DAY = 20;
 const MAX_PER_STORE_PER_DAY = 10;
+const OWNER_NOTIFICATION_EVENT_STATUSES: OwnerNotificationEventStatus[] = [
+    'pending',
+    'processing',
+    'delivered',
+    'partial',
+    'failed',
+    'skipped',
+];
 
 function getDbForProduct(productId: OwnerNotificationProductId): Firestore | null {
     if (productId === PRODUCT_IDS.ANSWERLATTICE) {
@@ -79,18 +90,10 @@ function getRetentionFieldsForProduct(
 }
 
 function sanitizeForFirestore(value: any): any {
-    if (value === undefined) return null;
-    if (value === null) return null;
-    if (value instanceof Date) return value.toISOString();
-    if (Array.isArray(value)) return value.map(sanitizeForFirestore);
-    if (typeof value === 'object' && typeof value.toDate !== 'function') {
-        return Object.fromEntries(
-            Object.entries(value)
-                .filter(([, nested]) => nested !== undefined)
-                .map(([key, nested]) => [key, sanitizeForFirestore(nested)]),
-        );
-    }
-    return value;
+    return sanitizeFirestoreValue(value, {
+        dateTransform: (date) => date.toISOString(),
+        undefinedObjectValue: 'omit',
+    });
 }
 
 function getOwnerNotificationDeliveryError(result?: OwnerNotificationChannelResult): string | null {
@@ -138,6 +141,7 @@ async function incrementRateLimit(
         channel: OwnerNotificationChannel;
         recipientHash: string;
         storeId?: string;
+        tenantId: string;
     },
 ): Promise<boolean> {
     const recipientLimitId = safeId([
@@ -149,7 +153,7 @@ async function incrementRateLimit(
     const recipientRef = db.collection(OWNER_NOTIFICATION_COLLECTIONS.RATE_LIMITS).doc(recipientLimitId);
 
     const storeLimitId = params.storeId
-        ? safeId([params.productId, 'store', params.storeId, todayKey()].join('|'))
+        ? safeId([params.productId, 'store', params.tenantId, params.storeId, todayKey()].join('|'))
         : null;
     const storeRef = storeLimitId
         ? db.collection(OWNER_NOTIFICATION_COLLECTIONS.RATE_LIMITS).doc(storeLimitId)
@@ -168,6 +172,7 @@ async function incrementRateLimit(
             tx.set(storeRef, {
                 productId: params.productId,
                 scope: 'store',
+                tenantId: params.tenantId,
                 storeId: params.storeId,
                 dateKey: todayKey(),
                 count: FieldValue.increment(1),
@@ -208,27 +213,33 @@ async function writeDelivery(params: {
     const recipientMasked = params.channel === 'email'
         ? maskEmail(params.recipientValue)
         : maskPhone(params.recipientValue);
-    const createdAt = Timestamp.now();
+    const attemptedAt = Timestamp.now();
+    const deliveryRef = params.db.collection(OWNER_NOTIFICATION_COLLECTIONS.DELIVERIES).doc(deliveryId);
 
-    await params.db.collection(OWNER_NOTIFICATION_COLLECTIONS.DELIVERIES).doc(deliveryId).set(sanitizeForFirestore({
-        eventId: params.eventId,
-        productId: params.event.productId,
-        triggerType: params.event.triggerType,
-        channel: params.channel,
-        recipientRole: params.recipient.role,
-        recipientHash,
-        recipientMasked,
-        status: params.status,
-        subject: params.subject || null,
-        templateKey: params.templateKey,
-        templateVersion: params.templateVersion,
-        providerMessageId: params.result?.providerMessageId || null,
-        error: getOwnerNotificationDeliveryError(params.result),
-        attempt: 1,
-        createdAt,
-        sentAt: params.status === 'sent' ? createdAt : null,
-        ...getRetentionFieldsForProduct(params.event.productId, 'ownerNotificationDeliveries', createdAt),
-    }), { merge: true });
+    await params.db.runTransaction(async (transaction) => {
+        const existing = await transaction.get(deliveryRef);
+        const createdAt = existing.data()?.createdAt || attemptedAt;
+        transaction.set(deliveryRef, sanitizeForFirestore({
+            eventId: params.eventId,
+            productId: params.event.productId,
+            triggerType: params.event.triggerType,
+            channel: params.channel,
+            recipientRole: params.recipient.role,
+            recipientHash,
+            recipientMasked,
+            status: params.status,
+            subject: params.subject || null,
+            templateKey: params.templateKey,
+            templateVersion: params.templateVersion,
+            providerMessageId: params.result?.providerMessageId || null,
+            error: getOwnerNotificationDeliveryError(params.result),
+            attempt: params.event.processingAttempt || 1,
+            createdAt,
+            lastAttemptAt: attemptedAt,
+            sentAt: params.status === 'sent' ? attemptedAt : null,
+            ...getRetentionFieldsForProduct(params.event.productId, 'ownerNotificationDeliveries', createdAt),
+        }), { merge: true });
+    });
 }
 
 export function getOwnerNotificationReadiness(productId: OwnerNotificationProductId = PRODUCT_IDS.MENULIST) {
@@ -244,8 +255,12 @@ export function getOwnerNotificationReadiness(productId: OwnerNotificationProduc
 
 export async function enqueueOwnerNotification(
     input: EnqueueOwnerNotificationInput,
-    options: { processImmediately?: boolean } = { processImmediately: true },
-): Promise<OwnerNotificationProcessResult | { eventId: string; status: 'pending' | 'skipped' }> {
+    options: { processImmediately?: boolean; processExisting?: boolean } = { processImmediately: true },
+): Promise<OwnerNotificationProcessResult | {
+    eventId: string;
+    status: OwnerNotificationEventStatus;
+    created?: boolean;
+}> {
     if (!FEATURE_FLAGS.ENABLE_OWNER_NOTIFICATIONS) {
         return { eventId: '', status: 'skipped' };
     }
@@ -299,16 +314,37 @@ export async function enqueueOwnerNotification(
         ...getRetentionFieldsForProduct(input.productId, 'ownerNotificationEvents', now),
     };
 
-    const existing = await ref.get();
-    if (!existing.exists) {
-        await ref.set(doc);
-    }
+    const enqueueResult = await db.runTransaction(async (transaction): Promise<{
+        created: boolean;
+        status: OwnerNotificationEventStatus;
+    }> => {
+        const existing = await transaction.get(ref);
+        if (existing.exists) {
+            const existingStatus = existing.data()?.status;
+            return {
+                created: false,
+                status: OWNER_NOTIFICATION_EVENT_STATUSES.includes(existingStatus)
+                    ? existingStatus
+                    : 'skipped',
+            };
+        }
+        transaction.create(ref, doc);
+        return { created: true, status: 'pending' };
+    });
 
     if (!options.processImmediately) {
-        return { eventId, status: 'pending' };
+        return { eventId, status: enqueueResult.status, created: enqueueResult.created };
+    }
+    if (
+        !enqueueResult.created
+        && options.processExisting === false
+        && enqueueResult.status !== 'pending'
+    ) {
+        return { eventId, status: enqueueResult.status, created: false };
     }
 
-    return processOwnerNotificationEvent(input.productId, eventId);
+    const processed = await processOwnerNotificationEvent(input.productId, eventId);
+    return { ...processed, created: enqueueResult.created };
 }
 
 export async function processOwnerNotificationEvent(
@@ -321,15 +357,56 @@ export async function processOwnerNotificationEvent(
     }
 
     const eventRef = db.collection(OWNER_NOTIFICATION_COLLECTIONS.EVENTS).doc(eventId);
-    const snap = await eventRef.get();
-    if (!snap.exists) {
-        return { eventId, status: 'failed', sent: 0, failed: 1, skipped: 0 };
-    }
+    const claim = await db.runTransaction(async (transaction): Promise<{
+        event: OwnerNotificationEventDoc | null;
+        status: OwnerNotificationProcessResult['status'];
+        claimReason?: OwnerNotificationProcessResult['claimReason'];
+    }> => {
+        const snap = await transaction.get(eventRef);
+        if (!snap.exists) {
+            return { event: null, status: 'failed', claimReason: 'not_found_or_product_mismatch' };
+        }
 
-    const event = snap.data() as OwnerNotificationEventDoc;
-    if (event.status === 'delivered') {
-        return { eventId, status: 'delivered', sent: 0, failed: 0, skipped: 0 };
+        const current = snap.data() as OwnerNotificationEventDoc;
+        if (current.productId !== productId) {
+            return { event: null, status: 'failed', claimReason: 'not_found_or_product_mismatch' };
+        }
+        const processingAttempt = getNextOwnerNotificationProcessingAttempt(
+            current.status,
+            current.processingAttempt,
+        );
+        if (processingAttempt === null) {
+            return { event: null, status: current.status, claimReason: 'not_claimable' };
+        }
+        const now = Timestamp.now();
+        transaction.set(eventRef, {
+            status: 'processing',
+            processingAttempt,
+            processingStartedAt: now,
+            updatedAt: now,
+        }, { merge: true });
+        return {
+            event: {
+                ...current,
+                status: 'processing' as const,
+                processingAttempt,
+                updatedAt: now,
+            },
+            status: 'processing',
+        };
+    });
+    if (!claim.event) {
+        return {
+            eventId,
+            status: claim.status,
+            sent: 0,
+            failed: claim.status === 'failed' ? 1 : 0,
+            skipped: claim.status === 'skipped' ? 1 : 0,
+            claimed: false,
+            claimReason: claim.claimReason,
+        };
     }
+    const event = claim.event;
 
     const registryEntry = getOwnerNotificationRegistryEntry(event.productId, event.triggerType);
     if (!registryEntry) {
@@ -337,14 +414,20 @@ export async function processOwnerNotificationEvent(
         return { eventId, status: 'skipped', sent: 0, failed: 0, skipped: 1 };
     }
 
-    await eventRef.set({
-        status: 'processing',
-        processingStartedAt: Timestamp.now(),
-        updatedAt: Timestamp.now(),
-    }, { merge: true });
-
     try {
         const scope = await resolveOwnerNotificationScope(event);
+        if (
+            (event.productId === PRODUCT_IDS.MENULIST && !scope.storeData)
+            || (event.productId === PRODUCT_IDS.ANSWERLATTICE && !scope.workspaceData)
+        ) {
+            await eventRef.set({
+                status: 'failed',
+                error: 'scope_not_found_or_mismatch',
+                processedAt: Timestamp.now(),
+                updatedAt: Timestamp.now(),
+            }, { merge: true });
+            return { eventId, status: 'failed', sent: 0, failed: 1, skipped: 0 };
+        }
         const recipient = resolveOwnerNotificationRecipient(event, scope);
         const dataForContext = event.productId === PRODUCT_IDS.ANSWERLATTICE
             ? scope.workspaceData
@@ -423,6 +506,7 @@ export async function processOwnerNotificationEvent(
                     productId: event.productId,
                     channel,
                     recipientHash,
+                    tenantId: event.tenantId,
                     storeId: event.storeId,
                 });
 

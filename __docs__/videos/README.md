@@ -25,12 +25,17 @@ MenuList launch videos must not sell the product as only a QR menu app or as gen
 
 | Document | Purpose |
 | --- | --- |
+| [videos_founder-approved-production-standard.md](./videos_founder-approved-production-standard.md) | Locked founder-approved defaults for MenuList positioning, non-technical owner story, Inter/gradient typography, UI styling, motion, transitions, logo slate, Indian-English audio, brand music, aspect ratios, iteration, and encoded-MP4 QA |
 | [videos_launch-product-marketing-production-blueprint.md](./videos_launch-product-marketing-production-blueprint.md) | Master design-team handoff for all 12 launch/product marketing videos with timestamps, frame plans, voiceover, motion, sound, assets, thumbnails, sequencing, and review checklist |
 | [videos_founder-review.md](./videos_founder-review.md) | Founder-level review verdict, approved positioning, blocked claims, production gates, and publishing conditions |
 | [videos_hyperframes-production.md](./videos_hyperframes-production.md) | HyperFrames production notes, rendered draft outputs, commands, verification, and next video build order |
 | [videos_hyperframes-operating-guide.md](./videos_hyperframes-operating-guide.md) | MenuList-specific HyperFrames production operating guide based on current HyperFrames docs, local skill status, QA gates, prompt patterns, and render rules |
 | [videos_audio-production-research-and-plan.md](./videos_audio-production-research-and-plan.md) | HyperFrames-only audio production standard, research findings, local voice/BGM/SFX plan, mix/master rules, and audio rescue plan for draft videos |
+| [brand-audio/](./brand-audio/) | Reusable MenuList brand-audio bed, approval sting, source ledger, hashes, and usage rules |
 | [videos_ai-era-market-strategy.md](./videos_ai-era-market-strategy.md) | 2026 AI/search-era strategy layer: source-quality positioning, trust-over-automation rules, serialized short-form content, safe discoverability language, and future video angle |
+| [videos_launch-video-conversion-research.md](./videos_launch-video-conversion-research.md) | Evidence-led launch-video conversion model, source-method caveats, MenuList funnel roles, UTM standard, A/B tests, measurement ladder, and paid-launch instrumentation gate |
+| [videos_conversion-brief-template.md](./videos_conversion-brief-template.md) | Required pre-build conversion brief for every public, social, sales, website, aspect-ratio, hook, and paid video version |
+| [videos_campaign-measurement-ledger.md](./videos_campaign-measurement-ledger.md) | Active asset/version register, UTM identity, conversion job, measurement readiness, paid eligibility, and campaign results ledger |
 | [videos_future-ai-search-ready-video.md](./videos_future-ai-search-ready-video.md) | Future 13th awareness video concept for AI search readiness, explicitly bounded away from ranking or AI recommendation guarantees |
 | [videos_launch-hero-video.md](./videos_launch-hero-video.md) | 60-75 second hero launch film, 30-second launch announcement, founder POV video, core story beats, and launch-format notes |
 | [videos_product-demo-video.md](./videos_product-demo-video.md) | 2-3 minute product demo walkthrough, screen sequence, narration, capture checklist, and demo account requirements |
@@ -168,17 +173,16 @@ Rendered drafts now exist for production review:
 
 - [HyperFrames production note](./videos_hyperframes-production.md)
 - [Audio production plan](./videos_audio-production-research-and-plan.md)
+- [Owner Ease 30s current native 1920 x 1080 founder-review MP4](./hyperframes/menulist-owner-ease-30s-v4-landscape-brand-type/deliverables/menulist-owner-ease-30s-lyria-midnight-lofi-v1.mp4)
 - [30-sec Launch Announcement draft MP4](./hyperframes/menulist-launch-announcement-30s/renders/menulist-launch-announcement-30s-draft.mp4)
 - [30-sec Launch Announcement audio-v2 MP4](./hyperframes/menulist-launch-announcement-30s/renders/menulist-launch-announcement-30s-audio-v2.mp4)
 - [30-sec Launch Announcement vertical audio-v2 MP4](./hyperframes/menulist-launch-announcement-30s-vertical/renders/menulist-launch-announcement-30s-vertical-audio-v2.mp4)
-- [Owner Ease 30s v1 MP4](./hyperframes/menulist-owner-ease-30s/renders/menulist-owner-ease-30s-v1.mp4)
-- [Owner Ease 30s v2 Chain Reaction MP4](./hyperframes/menulist-owner-ease-30s-v2/renders/menulist-owner-ease-30s-v2-chain-reaction.mp4)
 - [Founder / Brand POV draft MP4](./hyperframes/menulist-founder-brand-pov/renders/menulist-founder-brand-pov-draft.mp4)
 - [Founder / Brand POV audio-v2 MP4](./hyperframes/menulist-founder-brand-pov/renders/menulist-founder-brand-pov-audio-v2.mp4)
 
 Public-use warning:
 
-The original draft MP4s still contain scratch narration and are retained only for comparison. Use the `audio-v2` MP4s for internal founder review. Public publishing remains blocked until founder listening approval, final UI/product capture approval where needed, and final claim-boundary review.
+Use the native V4 1920 x 1080 Lyria MP4 as the current Owner Ease founder-review reference. Superseded Owner Ease projects and rejected audio binaries were removed after the final source, deliverable, hashes, and decision record were retained. Public publishing remains blocked until founder listening approval, final UI/product capture approval where needed, current service-terms review, and final claim-boundary review.
 
 ## Related Docs
 

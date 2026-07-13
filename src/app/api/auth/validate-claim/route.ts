@@ -9,8 +9,13 @@ export const dynamic = 'force-dynamic';
  * @see __docs__/auth/README.md — Messaging Onboarding Login Flow
  */
 
-import { DB_COLLECTIONS } from "@constant/database";
 import { normalizeAuthClaimToken } from "@lib/auth/claimTokenBoundary";
+import {
+  assertMessagingUserClaimIsAvailable,
+  claimTokenTimestampLikeToMillis,
+  ClaimTokenUnavailableError,
+  getUniqueMessagingUserByClaimToken,
+} from "@lib/auth/claimAccountConcurrency";
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { getBoundedAuthStringContext, logAuthFailure } from "@lib/auth/authDiagnostics";
 import { hashPublicRateLimitValue } from "src/middleware/publicApi";
@@ -31,16 +36,34 @@ const buildValidateClaimFailureLogContext = (request: NextRequest, token: string
   ...getBoundedAuthStringContext("userAgent", request.headers.get("user-agent")),
 });
 
-const timestampLikeToMillis = (value: unknown): number | null => {
-  if (!value) return null;
-  if (typeof (value as any).toMillis === "function") return (value as any).toMillis();
-  if (typeof (value as any).toDate === "function") return (value as any).toDate().getTime();
-  if (value instanceof Date) return value.getTime();
-  if (typeof value === "string" || typeof value === "number") {
-    const parsed = new Date(value).getTime();
-    return Number.isFinite(parsed) ? parsed : null;
-  }
-  return null;
+const getClaimPreviewText = (value: unknown, fallback: string, maxLength: number): string => {
+  if (typeof value !== "string") return fallback;
+  const normalized = value
+    .replace(/[\u0000-\u001f\u007f]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, maxLength);
+  return normalized || fallback;
+};
+
+const clearExpiredClaimTokenIfUnchanged = async (
+  userRef: FirebaseFirestore.DocumentReference,
+  token: string,
+): Promise<void> => {
+  await db.runTransaction(async (transaction) => {
+    const currentSnapshot = await transaction.get(userRef);
+    if (!currentSnapshot.exists) return;
+    const current = currentSnapshot.data() || {};
+    const expiresAt = claimTokenTimestampLikeToMillis(current.claimTokenExpiresAt);
+    if (current.claimToken !== token || expiresAt === null || expiresAt > Date.now()) return;
+    const now = admin.firestore.Timestamp.now();
+    transaction.update(userRef, {
+      claimToken: null,
+      claimTokenExpiresAt: null,
+      claimTokenExpiredAt: now,
+      modifiedOn: now,
+    });
+  });
 };
 
 export async function GET(request: NextRequest) {
@@ -63,40 +86,47 @@ export async function GET(request: NextRequest) {
     }
 
     // Find user by claimToken
-    const userQuery = await db
-      .collection(DB_COLLECTIONS.USERS)
-      .where("claimToken", "==", token)
-      .limit(1)
-      .get();
+    const userDoc = await getUniqueMessagingUserByClaimToken(db, token);
 
-    if (userQuery.empty) {
+    if (!userDoc) {
       return NextResponse.json({ valid: false, error: "Invalid or expired claim link." }, { status: 404 });
     }
 
-    const userDoc = userQuery.docs[0];
     const userData = userDoc.data();
-
-    const claimTokenExpiresAtMs = timestampLikeToMillis(userData.claimTokenExpiresAt);
-    if (claimTokenExpiresAtMs && claimTokenExpiresAtMs <= Date.now()) {
-      const now = admin.firestore.Timestamp.now();
-      await userDoc.ref.update({
-        claimToken: null,
-        claimTokenExpiresAt: null,
-        claimTokenExpiredAt: now,
-        modifiedOn: now,
-      });
-      return NextResponse.json({ valid: false, error: "This claim link has expired." }, { status: 410 });
+    try {
+      assertMessagingUserClaimIsAvailable(userData, token);
+    } catch (error) {
+      if (!(error instanceof ClaimTokenUnavailableError)) throw error;
+      if (error.status === 410) {
+        await clearExpiredClaimTokenIfUnchanged(userDoc.ref, token);
+      }
+      return NextResponse.json(
+        {
+          valid: false,
+          error: error.status === 410
+            ? "This claim link has expired."
+            : "Invalid or expired claim link.",
+        },
+        { status: error.status },
+      );
     }
 
     // Return minimal info for the login page welcome message
+    const phone = getClaimPreviewText(userData.phone, "", 40);
     return NextResponse.json({
       valid: true,
       status: "valid",
       preview: "claim-token",
-      businessName: userData.name || "Your Business",
-      phone: userData.phone ? `****${(userData.phone || "").slice(-4)}` : null, // Masked for privacy
+      businessName: getClaimPreviewText(userData.name, "Your Business", 100),
+      phone: phone ? `****${phone.slice(-4)}` : null,
     });
   } catch (error) {
+    if (error instanceof ClaimTokenUnavailableError) {
+      return NextResponse.json(
+        { valid: false, error: "Invalid or expired claim link." },
+        { status: error.status },
+      );
+    }
     const { searchParams } = new URL(request.url);
     logAuthFailure(
       "validate_claim_unexpected_error",

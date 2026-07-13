@@ -2,7 +2,7 @@
 
 **Status:** First-build internal workflow, investment controls, governed source/research/content/partner rails, solo-founder Operating Layer, and bounded Revenue Operating Layer implemented; paid campaigns, external paid-provider adapters, provider send, auto-publish, calendar/proposal/payment providers, and deploy remain skipped or blocked
 **Created:** June 23, 2026
-**Last Updated:** July 10, 2026
+**Last Updated:** July 11, 2026
 **Runtime:** Product-isolated app shell, guarded APIs, first-build workflow service, provider/budget/model controls, governed source/research/content/partner rails, Revenue Operating Layer, run timelines, Firebase config/rules/indexes/storage rules, and functions skeleton created.
 **Implementation posture:** Product-isolated internal module inside this monorepo first; extraction-ready boundaries.
 
@@ -35,7 +35,7 @@ The June 23 investment-control implementation added the internal controls needed
 | Provider registry | `signaldeskProviderAccounts` stores provider, use, credential state, owner approval, status, per-run/daily/monthly caps, spend counters, and disabled reason. |
 | Budget governor | `signaldeskBudgetPolicies` stores provider/global/task-style caps; provider spend checks block unregistered, unapproved, disabled, over-run, over-daily, and over-monthly use. |
 | Model routes | `signaldeskModelRoutes` route AI tasks by provider/model/status/cost cap; current executable route is Gemini only, while stronger OpenAI/Anthropic routes remain held until adapters/accounts are approved. |
-| Model evals | `signaldeskModelEvals` records sampled confidence/pass/rejected-fact state for AI assist runs. |
+| Model evals | `signaldeskModelEvals` records cumulative run confidence/rejected-fact counters plus founder shadow-review decisions, rates, and attention. Rates are derived from counters instead of being overwritten by the latest run. The first new result preserves non-reconstructable legacy values separately and starts the exact `cumulative-v1` window. |
 | Waterfall policy | `signaldeskEnrichmentWaterfalls` stores provider order, requested field, max credits, stop condition, verification requirement, source policy, retention, and active/hold state. |
 | Vendor ledger | `signaldeskVendorRuns` records source-provider and waterfall readiness/blocked states with estimated cost and blocked reason. |
 | FHRS/FHIS source provider | `fhrs-fhis` can import UK official food-business establishment seeds from the FSA API after source policy, provider account, budget governor, and feature-flag checks; contact use is not inferred and raw payloads are not stored. |
@@ -50,11 +50,47 @@ The June 23 investment-control implementation added the internal controls needed
 | Content Distribution Rail | `signaldeskContentSources`, `signaldeskContentAssets`, `signaldeskContentDistributionDrafts`, `signaldeskContentCalendarItems`, and `signaldeskContentPerformanceSummaries` support owned-proof repurposing, approval-gated channel drafts, queued calendar items, and compact performance capture without auto-publish. |
 | Trust Partner Rail | `signaldeskTrustPartnerProfiles`, `signaldeskTrustPartnerNicheTests`, `signaldeskTrustPartnerDeals`, `signaldeskTrustPartnerBriefs`, `signaldeskTrustPartnerDeliverables`, `signaldeskTrustPartnerMetrics`, and `signaldeskTrustPartnerRenewalDecisions` support internal partner testing with flat-fee gates, disclosure checks, compact metrics, renewal logic, audit, cost, and timelines. |
 | Prior-contact guard | Draft, enrichment, export, handoff, and sequencer paths block suppressed/contacted/replied/converted targets, non-new conversations, and targets with existing outcomes. |
+| Manual contact record | Protected desktop action validates an idempotency key, target/policy, bounded timestamp, route and outcome, then explicitly maps those validated fields into the server DTO. The server repeats source-policy, suppression, route, prior-export and kill-switch checks before atomic timeline/conversation/target/suppression/audit/cost writes. |
 | Sender-domain risk | `signaldeskSenderDomains` tracks authentication, ramp, bounce, complaint, unsubscribe, provider, and brand risk; email handoff/send requires an active ready sender domain. |
 | Owned email sequencer | `signaldeskSequencerHandoffs` and `signaldeskSequencerSteps` queue one approved email step through the internal `owned-email` rail after approval, sender-domain, suppression, source-policy, prior-contact, pause, and email-readiness gates. |
 | External sequencer handoff | `signaldeskSequencerHandoffs` records Smartlead/Instantly/lemlist handoff readiness or blocked reason without connecting or sending to sequencers. |
 | Run timelines | `signaldeskRunTimelines` gives founder-readable traces for defaults, providers, enrichment, models, approval packets, and handoffs. |
 | Self-service CTA | `signaldeskSelfServiceCtas` stores proof/activation CTA copy and is injected into evidence-bound drafts. |
+
+## AI Shadow Review Runtime Contract
+
+The validated July 11 AI-revenue research reuses existing records instead of adding another collection or agent layer.
+
+| Layer | Contract |
+| --- | --- |
+| AI run | `signaldeskAiWorkerRuns/{aiRunId}` stores task, provider, model route/eval IDs, target, confidence, prompt version, rejected-fact presence, cost, and optional founder review evidence. |
+| Review action | `review-ai-shadow-run` accepts `aiRunId`, `accepted|edited|rejected|held`, a bounded reason, and 0-1,440 founder-attention minutes. Non-accepted decisions require a reason. |
+| Authority | API permission maps to `signaldesk.configure`; server repeats the `founder-admin` plus configure check. Mobile maps the action to `approve` and remains server-blocked. |
+| Aggregate | One transaction rereads the run, model eval, and optional current revenue summary; it reverses any prior review contribution, applies the replacement, and recomputes all rates. |
+| Rate source | Provider runs increment `sampleSize`, `passedSampleCount`, `lowConfidenceCount`, and `rejectedFactSampleCount`. Workspace reads derive display rates from those counters. |
+| Attention | Shadow-review minutes accumulate on the model eval and, when present, the existing revenue control summary. Re-review uses the minute delta. |
+| Audit | The transaction writes an audit event, run timeline, and daily cost summary. It never writes messages, opportunities, offers, envelopes, outcomes, or MenuList collections. |
+| UI | `/signaldesk/ai` shows aggregate rates, reviewed counts, review attention, run review state, bounded reason/minutes inputs, and founder-only decision buttons. Mobile stays read-only. |
+
+No new feature flag, collection, index, provider, scheduler, or public surface is required.
+
+## AI Volume Mode Runtime Contract
+
+`ENABLE_MENULIST_SIGNALDESK_AI_VOLUME_MODE` gates `run-ai-volume-batch`. The authenticated action is Zod-validated, rate-limited as `BATCH_OPERATION`, mapped to `signaldesk.configure`, repeated as a founder-admin check in the workflow, and classified as blocked provider work on mobile.
+
+The parent and child records reuse `signaldeskAiWorkerRuns`:
+
+- parent `workerType: ai_volume_batch` uses a founder-scoped idempotency-key hash, stores no raw key, and summarizes up to fifteen target/task pairs;
+- child `workerType: ai_assist_{task}` stores fast output, critic verdict/evidence, optional same-provider escalation, final confidence/output, model calls, estimated cost, and parent ID;
+- latest bounded workspace reads split rules scores, parent volume runs, and reviewable provider children without another collection or index.
+
+Default active routes use `gemini-2.5-flash-lite` for `score`, `evidence`, `draft`, `reply-classification`, and `quality-critic`, with `gemini-2.5-flash` escalation on the four business tasks. Exact legacy score/evidence defaults migrate once; later founder-modified routes are not overwritten by reseeding.
+
+The synchronous executor uses three bounded workers. It preflights the aggregate daily/monthly Gemini budget and holds one six-minute global recovery lock so another batch cannot consume the same budget snapshot while the 300-second route has a one-minute shutdown margin. Every child retains its own provider/budget/source-policy checks, provider spend, operation ledger, model eval, decision snapshot, timeline, audit, and daily cost. The parent records only orchestration evidence and stable failure codes.
+
+If an idempotent retry finds an expired `running` parent, it reconstructs at most fifteen children from a bounded twenty-row query and finalizes the parent without a provider call. Completed children preserve calls and estimated cost; incomplete recovery stores `ai_volume_run_interrupted`. Both normal finish and recovery release the global lock only when it still belongs to that parent.
+
+Desktop writes only the bounded request envelope—key, target IDs, task list, cost maximum, and optional instruction—to browser-local storage before the call. It reuses that payload for `Retry Batch` until a terminal parent returns, disables scope edits during recovery, clears automatically on terminal state, and offers `Clear Retry` for a request blocked before parent creation.
 
 External paid-provider adapters for Apollo, Hunter, ZeroBounce, Firecrawl, Tavily, Exa, Postmark, Resend, Smartlead, Instantly, and lemlist are still not connected. This is intentional: the internal governor and owned email rail exist first, and actual account connection remains an owner decision.
 
@@ -381,7 +417,7 @@ AI may not:
 - assisted WhatsApp: implemented as gated handoff/provider-send plumbing
 - Instagram/Messenger inbound routing: implemented as gated webhook/handoff plumbing
 - live source-provider import: implemented for Google Places Text Search, FHRS/FHIS UK establishment seed, and Apify Source Broker with provider source policy, max-result cap, provider budget, manual redirect handling, bounded provider JSON parsing, parse-failure diagnostics, and no raw provider payload storage
-- real AI provider assist: implemented through the existing Gemini gateway
+- real AI provider assist: implemented through the shared Gemini retry gateway with a SignalDesk-only `MENULIST_SIGNALDESK_GEMINI_AI_KEY*` pool; no MenuList/Answerlattice credential fallback
 - trust partner rail: implemented for internal testing; real partner outreach/spend still requires active budget policy, founder approval, disclosure review, and manual partner execution
 - Meta paid intent: skipped in this session
 - Firebase deploy: skipped in this session
@@ -468,6 +504,50 @@ The bounded commercial lifecycle now adds:
 
 This layer adds no provider call, send, social publish, scheduler, calendar/proposal/payment connector, or MenuList store/menu/project/billing/customer-truth write.
 
+## July 11 Activation-Control Hardening
+
+The runtime now also implements:
+
+1. field-level source-rights metadata (`accessMethod`, allowed/blocked fields, terms/version, attribution, prohibited uses, raw-payload policy, refresh method, policy owner, and review time);
+2. current-policy revalidation of persisted research rows, with `allowedRoute`, route-permission state, hard-gate failures, and research-only handling;
+3. derived activation opportunities with a small lifecycle and separate decision dimensions;
+4. a five-item Today decision queue while Opportunities retains up to 30 research rows;
+5. five primary Ant Design navigation destinations: Today, Opportunities, Conversations, Activations, and Controls; existing protected deep routes remain available from Advanced Controls;
+6. idempotent, evidence-bound two-surface outcomes and rejection of legacy/unverified activation authority;
+7. a signed, timestamped, replay-bounded SignalDesk outcome receiver plus hashed, expiring route tokens;
+8. a founder-controlled proof-permission ledger that is rechecked at asset and draft generation time;
+9. complaint/privacy/legal classification with immediate suppression, incident creation, channel pause, audit, and mission priority;
+10. an observe-only Opportunity Case drawer with no raw contact reveal;
+11. current-policy and target-suppression revalidation for every persisted research route;
+12. composite contact/evidence/personalization checks on message preparation and delivery paths;
+13. in-request identity dedupe before manual-import batch commit;
+14. exact proof-scope binding and scope-narrowing/revocation enforcement;
+15. outcome request-fingerprint conflicts, durable owner-qualified/verified-activation target projections, and converted-state preservation;
+16. owner-qualified seven-day activation clocks independent of bounded outcome history;
+17. provider-scoped, path-safe, atomic webhook idempotency with existing-target validation and reply projection;
+18. mobile pause controls that can activate but not clear a pause while every other mutation stays server-blocked;
+19. self-only normal-member membership reads with platform-admin list access;
+20. a lightweight NextAuth session wrapper in the SignalDesk layout so MenuList store/tenant Firebase bootstrap code cannot enter the SignalDesk client bundle;
+21. a noindex SignalDesk-local credentials gateway with bounded callbacks, active-access recheck, Ant Design theme parity, and no MenuList store/Firebase-claims bootstrap.
+
+No MenuList runtime file was changed. The signed bridge receiver is ready locally, but a MenuList-owned event emitter remains an external integration decision.
+
+## July 11 Manual Action Completion Hardening
+
+The first-trial operating loop now distinguishes preparation from execution:
+
+1. `export-message` and exported assisted handoffs retain the target's existing lifecycle state and set `nextAction = contact`; they no longer claim that contact occurred.
+2. `record-manual-contact` is a protected, rate-limited, Zod-validated desktop action with `target.review` permission and hard mobile blocking.
+3. The action accepts only `email-export` or `partner-intro`, rechecks the exact current source-policy ID, contact use, retention/expiry, suppression, target state, global/channel pause, and route eligibility. `limited` contactability never implies a form, phone, social, or messaging route. A true `permissioned-referral` may use `partner-intro` without storing a direct email/phone/social route.
+4. `email-export` confirmation requires a fresh export whose creation time is not later than the recorded action and whose current conversation state remains `exported`; a consumed or older-than-30-day export cannot be reused.
+5. A hashed founder/target/idempotency key reserves one existing run-timeline document with `batch.create`; its normalized request fingerprint lets exact retries return the existing result even after the export is consumed, while changed facts under the same key fail closed. Concurrent retries cannot duplicate target, conversation, suppression, audit, or cost writes.
+6. The existing target summary stores only the latest bounded route/result/time projection. The conversation summary records a safe result label and outbound timestamp; the optional note stays in the admin audit reason rather than a new list collection.
+7. `wrong-contact` atomically blocks contactability and writes the hashed suppression record. Other results do not rewrite suppression/contactability, so a concurrently-added suppression state cannot be cleared. The action never sends, schedules follow-up, calls a provider, or writes MenuList truth.
+8. Approval rejection now requires one bounded reason. `other` requires a note, and the server independently enforces both rules for non-HTTP callers. The terminal approve/reject transition, target/draft/packet projections, queue decrement, audit, and cost write share one Firestore transaction so concurrent decisions cannot both consume a pending item.
+9. Conversations exposes the manual confirmation form. Approval Queue exposes a reason selector and optional note. Both remain disabled in mobile observe-only mode while the server still blocks forced requests.
+
+No collection, index, Firestore rule, Storage rule, provider adapter, public route, or MenuList runtime file was added.
+
 ## Remaining Implementation Gates
 
 Before real-project usage, provider send, and external integrations:
@@ -480,4 +560,5 @@ Before real-project usage, provider send, and external integrations:
 - confirm sender identity and physical address policy;
 - confirm unsubscribe, bounce, complaint, DNC, and suppression handling;
 - keep `ENABLE_MENULIST_SIGNALDESK_PROVIDER_SEND` false until the send/export gate passes.
+- provision `MENULIST_SIGNALDESK_OUTCOME_BRIDGE_SECRET` and implement a separately reviewed MenuList-owned signed event emitter before using the bridge outside local tests;
 - paid campaign automation remains skipped by founder instruction.

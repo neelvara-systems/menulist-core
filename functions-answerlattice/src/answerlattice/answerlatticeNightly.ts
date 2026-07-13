@@ -39,6 +39,8 @@ import { hasEnabledIntegrationAdapter } from '../integrations/configStore';
 import { emitIntegrationEvent, resetNightlyEventCounts } from '../integrations/eventBus';
 import { COVERAGE_DROP_THRESHOLD, EVENT_SEVERITY, INTEGRATION_EVENT_TYPES } from '../integrations/types';
 import { bumpAnswerlatticeCacheVersion, ANSWERLATTICE_CACHE_SOURCES } from './cacheVersionManifest';
+import { syncChatAnalyticsNightly } from './chatAnalyticsAggregation';
+import { syncAnswerlatticeChatIntelligence } from './chatIntelligence';
 import { repairCompiledContextBundle } from './contextBundleBuilder';
 import {
     cleanupAnswerlatticeOperationalRetention,
@@ -46,17 +48,18 @@ import {
 } from './dataRetention';
 import { normalizeAnswerlatticeResolvedFunctionEntityId } from './entityIdBoundary';
 import { generateDraftsForNewProposals } from './draftGenerator';
+import { deriveAutomatedDriftState } from './driftState';
 import { aggregateFrictionStats, cleanupExpiredFrictionStats } from './frictionAggregation';
 import { generateFrictionInsight } from './frictionInsight';
 import { syncKnowledgeIntakeSummary } from './knowledgeIntakeSummary';
 import { runOnboardingBootstrap } from './onboardingBootstrap';
 import { runPredictiveTriggerSync } from './predictiveTriggerSync';
 import { extractTicketKnowledge } from './resolutionExtractor';
+import { parseExactAnswerlatticeScope } from './scopeBoundary';
 import { syncSupportBoardNightly } from './supportBoardSync';
 import {
-    ANSWERLATTICE_TENANT_SUMMARY_DOC_ID,
     AnswerlatticeTenantStore,
-    parseAnswerlatticeTenantSummary,
+    readAnswerlatticeTenantSummaryRegistry,
     upsertAnswerlatticeTenantSummaryEntries,
 } from './tenantSummary';
 
@@ -276,18 +279,13 @@ function isAnswerlatticeEnabled(): boolean {
  * answerlattice_entities scan only for migration/backfill safety.
  */
 export async function discoverActiveTenants(): Promise<TenantDiscoveryResult> {
-    const summarySnap = await db
-        .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
-        .doc(ANSWERLATTICE_TENANT_SUMMARY_DOC_ID)
-        .get();
-    const summaryTenants = summarySnap.exists
-        ? parseAnswerlatticeTenantSummary(summarySnap.data())
-        : [];
+    const registry = await readAnswerlatticeTenantSummaryRegistry(db);
+    const summaryTenants = registry.tenants;
 
     if (summaryTenants.length > 0) {
         return {
             tenants: summaryTenants,
-            scannedDocs: 1,
+            scannedDocs: registry.readDocs,
             truncated: false,
             source: 'summary',
         };
@@ -304,19 +302,21 @@ export async function discoverActiveTenants(): Promise<TenantDiscoveryResult> {
 
     for (const doc of snapshot.docs) {
         const data = doc.data();
-        const key = `${data.tId}_${data.sId}`;
-        if (typeof data.tId !== 'number' || typeof data.sId !== 'number') {
+        const scope = parseExactAnswerlatticeScope(data.tId, data.sId);
+        if (!scope) {
             continue;
         }
+        const key = `${scope.tId}_${scope.sId}`;
 
         if (!seen.has(key)) {
             seen.add(key);
-            tenants.push({ tId: data.tId, sId: data.sId });
+            tenants.push(scope);
         }
     }
 
     await upsertAnswerlatticeTenantSummaryEntries(db, tenants, {
         source: 'entity_scan_migration',
+        active: true,
         hasEntities: true,
     }).catch(error => {
         logger.warn('[Answerlattice Nightly] Failed to backfill tenant summary from entity scan', {
@@ -339,10 +339,27 @@ export async function discoverActiveTenants(): Promise<TenantDiscoveryResult> {
 // ═══════════════════════════════════════════════════════════════
 
 const SIGNAL_DRIFT_THRESHOLDS = {
-    negativeFeedbackRate: 0.08,
+    negativeFeedbackCount: 5,
     ticketSpikeMultiplier: 2.0,
     minSignalCount: 5,
 };
+
+function timestampToMillis(value: unknown): number {
+    if (!value || typeof value !== 'object') return 0;
+    const candidate = value as { toMillis?: () => number; seconds?: unknown };
+    if (typeof candidate.toMillis === 'function') {
+        const millis = candidate.toMillis();
+        return Number.isFinite(millis) ? millis : 0;
+    }
+    const seconds = Number(candidate.seconds);
+    return Number.isFinite(seconds) && seconds > 0 ? seconds * 1_000 : 0;
+}
+
+function scopeListOverlaps(left: unknown, right: unknown): boolean {
+    const leftIds = normalizeAnswerlatticeFunctionEntityIds(left);
+    const rightIds = normalizeAnswerlatticeFunctionEntityIds(right);
+    return leftIds.length === 0 || rightIds.length === 0 || leftIds.some(id => rightIds.includes(id));
+}
 
 interface DriftResult {
     answersEvaluated: number;
@@ -413,25 +430,29 @@ async function runDriftDetection(tId: number, sId: number): Promise<DriftResult>
     const entityMap = new Map<string, { status: string; name: string }>();
     for (const doc of entitiesSnap.docs) {
         const data = doc.data();
+        if (data.pId !== 'AL') continue;
         entityMap.set(doc.id, { status: data.status, name: data.name });
     }
 
-    // Group signal counts by entityId
-    const signalsByEntity = new Map<string, { ticket: number; chat_negative: number; escalation: number; total: number }>();
+    // Group bounded recent signal rows by entity. Each answer evaluates only
+    // events newer than its last human validation.
+    const signalsByEntity = new Map<string, Array<{ type: string; timestampMs: number }>>();
     for (const doc of signalsSnap.docs) {
         const data = doc.data();
+        if (data.pId !== 'AL') continue;
         const entityId = normalizeAnswerlatticeResolvedFunctionEntityId(data.entityId);
         if (!entityId) continue;
-
-        const counts = signalsByEntity.get(entityId) || { ticket: 0, chat_negative: 0, escalation: 0, total: 0 };
-        if (data.type === 'ticket') counts.ticket++;
-        else if (data.type === 'chat_negative') counts.chat_negative++;
-        else if (data.type === 'escalation') counts.escalation++;
-        counts.total++;
-        signalsByEntity.set(entityId, counts);
+        if (data.type !== 'ticket' && data.type !== 'chat_negative' && data.type !== 'escalation') continue;
+        const timestampMs = timestampToMillis(data.timestamp);
+        if (timestampMs <= 0) continue;
+        const events = signalsByEntity.get(entityId) || [];
+        events.push({ type: data.type, timestampMs });
+        signalsByEntity.set(entityId, events);
     }
 
-    const allAnswers = answersSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
+    const allAnswers = answersSnap.docs
+        .filter(document => document.data().pId === 'AL')
+        .map(document => ({ id: document.id, ...document.data() })) as any[];
 
     for (const answer of allAnswers) {
         result.answersEvaluated++;
@@ -442,13 +463,18 @@ async function runDriftDetection(tId: number, sId: number): Promise<DriftResult>
         // Class B: Signal Drift
         const primaryEntityId = answerEntityIds[0];
         if (primaryEntityId) {
-            const signals = signalsByEntity.get(primaryEntityId);
-            if (signals && signals.total >= SIGNAL_DRIFT_THRESHOLDS.minSignalCount) {
-                const feedbackRate = answer.signalMetrics?.linkedChatCount > 0
-                    ? (answer.signalMetrics.negativeFeedbackCount || 0) / answer.signalMetrics.linkedChatCount
-                    : 0;
-                if (feedbackRate > SIGNAL_DRIFT_THRESHOLDS.negativeFeedbackRate) {
-                    driftReasons.push(`[signal_anomaly] Negative feedback rate ${(feedbackRate * 100).toFixed(1)}% exceeds threshold`);
+            const validationMillis = timestampToMillis(answer.validation?.lastValidatedOn);
+            const signals = { ticket: 0, chat_negative: 0, escalation: 0, total: 0 };
+            for (const event of signalsByEntity.get(primaryEntityId) || []) {
+                if (event.timestampMs <= validationMillis) continue;
+                if (event.type === 'ticket') signals.ticket++;
+                else if (event.type === 'chat_negative') signals.chat_negative++;
+                else if (event.type === 'escalation') signals.escalation++;
+                signals.total++;
+            }
+            if (signals.total >= SIGNAL_DRIFT_THRESHOLDS.minSignalCount) {
+                if (signals.chat_negative >= SIGNAL_DRIFT_THRESHOLDS.negativeFeedbackCount) {
+                    driftReasons.push(`[signal_anomaly] ${signals.chat_negative} negative feedback events occurred after the last validation`);
                 }
                 if (signals.ticket > SIGNAL_DRIFT_THRESHOLDS.minSignalCount * SIGNAL_DRIFT_THRESHOLDS.ticketSpikeMultiplier) {
                     driftReasons.push(`[signal_anomaly] Ticket count ${signals.ticket} exceeds baseline threshold`);
@@ -468,7 +494,10 @@ async function runDriftDetection(tId: number, sId: number): Promise<DriftResult>
             const bFrom = other.productBinding?.applicableVersions?.from || 0;
             const bTo = other.productBinding?.applicableVersions?.to;
             const versionOverlap = (aTo == null || aTo >= bFrom) && (bTo == null || bTo >= aFrom);
-            if (versionOverlap) {
+            const planOverlap = scopeListOverlaps(answer.scope?.planIds, other.scope?.planIds);
+            const roleOverlap = scopeListOverlaps(answer.scope?.roleIds, other.scope?.roleIds);
+            const stateOverlap = scopeListOverlaps(answer.scope?.stateIds, other.scope?.stateIds);
+            if (versionOverlap && planOverlap && roleOverlap && stateOverlap) {
                 driftReasons.push(`[scope_conflict] Overlap with answer "${other.id}"`);
                 break;
             }
@@ -482,38 +511,39 @@ async function runDriftDetection(tId: number, sId: number): Promise<DriftResult>
             }
         }
 
-        // Update governance if changed
-        const newDriftFlag = driftReasons.length > 0;
-        const newDriftReason = driftReasons.join('; ');
-        const changed = newDriftFlag !== previousDriftFlag ||
-            (newDriftFlag && answer.governance?.driftReason !== newDriftReason);
+        // Automated evaluation may raise or refresh drift, but it cannot clear
+        // an existing flag. Clearing requires the governed validation action.
+        const automatedState = deriveAutomatedDriftState(
+            previousDriftFlag,
+            answer.governance?.driftReason,
+            driftReasons,
+        );
 
-        if (changed) {
+        if (automatedState.shouldWrite) {
             await bumpAnswerlatticeCacheVersion(db, ANSWERLATTICE_CACHE_SOURCES.CANONICAL, tId, sId, {
-                reason: newDriftFlag ? 'drift_detected' : 'drift_cleared',
+                reason: 'drift_detected',
                 sourceId: answer.id,
                 sourceType: 'canonical_answer',
             });
             await db.collection(DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS).doc(answer.id).update({
-                'governance.driftFlag': newDriftFlag,
-                'governance.driftReason': newDriftFlag ? newDriftReason : null,
-                'governance.reviewRequired': newDriftFlag,
+                'governance.driftFlag': true,
+                'governance.driftReason': automatedState.driftReason,
+                'governance.reviewRequired': true,
             });
 
             await db.collection(DB_COLLECTIONS.ANSWERLATTICE_AUDIT_LOGS).add({
                 pId: 'AL',
                 tId, sId,
-                action: newDriftFlag ? 'drift_detected' : 'drift_cleared',
+                action: 'drift_detected',
                 entityType: 'canonicalAnswer',
                 entityId: answer.id,
                 previousState: { driftFlag: previousDriftFlag },
-                newState: { driftFlag: newDriftFlag, driftReason: newDriftFlag ? newDriftReason : null },
+                newState: { driftFlag: true, driftReason: automatedState.driftReason },
                 performedBy: 'system:drift_engine_nightly',
                 timestamp: Timestamp.now(),
             });
 
-            if (newDriftFlag) result.driftDetected++;
-            else result.driftCleared++;
+            result.driftDetected++;
         }
     }
 
@@ -537,6 +567,82 @@ interface MutationResult {
     errors: AnswerlatticeSchedulerDiagnostic[];
 }
 
+interface PendingMutationProposalInput {
+    tId: number;
+    sId: number;
+    entityId: string;
+    source: string;
+    evidenceKey: string;
+    proposal: Record<string, any>;
+    auditAction: string;
+    auditState: Record<string, any>;
+    actor: string;
+}
+
+async function createPendingMutationProposalIfAbsent(
+    input: PendingMutationProposalInput,
+): Promise<boolean> {
+    const proposalId = `almp_${createHash('sha256')
+        .update(`${input.source}:${input.tId}:${input.sId}:${input.entityId}:${input.evidenceKey}`)
+        .digest('hex')
+        .slice(0, 40)}`;
+    const entityRef = db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITIES).doc(input.entityId);
+    const proposalRef = db.collection(DB_COLLECTIONS.ANSWERLATTICE_MUTATION_PROPOSALS).doc(proposalId);
+    const auditRef = db.collection(DB_COLLECTIONS.ANSWERLATTICE_AUDIT_LOGS).doc(`created_${proposalId}`);
+    const pendingQuery = db.collection(DB_COLLECTIONS.ANSWERLATTICE_MUTATION_PROPOSALS)
+        .where('tId', '==', input.tId)
+        .where('sId', '==', input.sId)
+        .where('relatedEntityIds', 'array-contains', input.entityId)
+        .where('status', '==', 'pending_review')
+        .limit(1);
+
+    return db.runTransaction(async transaction => {
+        const [entitySnap, pendingSnap, proposalSnap] = await Promise.all([
+            transaction.get(entityRef),
+            transaction.get(pendingQuery),
+            transaction.get(proposalRef),
+        ]);
+        const entity = entitySnap.data() || {};
+        const entityScope = parseExactAnswerlatticeScope(entity.tId, entity.sId);
+        if (
+            !entitySnap.exists
+            || entity.pId !== 'AL'
+            || !entityScope
+            || entityScope.tId !== input.tId
+            || entityScope.sId !== input.sId
+            || entity.status === 'deprecated'
+        ) return false;
+        if (!pendingSnap.empty || proposalSnap.exists) return false;
+
+        const now = Timestamp.now();
+        transaction.create(proposalRef, {
+            ...input.proposal,
+            pId: 'AL',
+            tId: input.tId,
+            sId: input.sId,
+            relatedEntityIds: [input.entityId],
+            status: 'pending_review',
+            createdOn: now,
+            modifiedOn: now,
+            createdBy: input.actor,
+            modifiedBy: input.actor,
+        });
+        transaction.create(auditRef, {
+            pId: 'AL',
+            tId: input.tId,
+            sId: input.sId,
+            action: input.auditAction,
+            entityType: 'mutationProposal',
+            entityId: proposalId,
+            previousState: null,
+            newState: input.auditState,
+            performedBy: input.actor,
+            timestamp: now,
+        });
+        return true;
+    });
+}
+
 async function runSignalMutation(tId: number, sId: number): Promise<MutationResult> {
     const result: MutationResult = { clustersAnalyzed: 0, proposalsCreated: 0, proposalsSkippedExisting: 0, errors: [] };
 
@@ -557,6 +663,7 @@ async function runSignalMutation(tId: number, sId: number): Promise<MutationResu
     const clusters = new Map<string, { ticket: number; chat_negative: number; escalation: number; total: number; refs: string[] }>();
     for (const doc of signalsSnap.docs) {
         const data = doc.data();
+        if (data.pId !== 'AL') continue;
         const entityId = normalizeAnswerlatticeResolvedFunctionEntityId(data.entityId);
         if (!entityId) continue;
 
@@ -564,6 +671,7 @@ async function runSignalMutation(tId: number, sId: number): Promise<MutationResu
         if (data.type === 'ticket') c.ticket++;
         else if (data.type === 'chat_negative') c.chat_negative++;
         else if (data.type === 'escalation') c.escalation++;
+        else continue;
         c.total++;
         if (c.refs.length < 3) c.refs.push(doc.id);
         clusters.set(entityId, c);
@@ -586,45 +694,28 @@ async function runSignalMutation(tId: number, sId: number): Promise<MutationResu
                 .where('sId', '==', sId)
                 .where('scope.entityIds', 'array-contains', entityId)
                 .where('status', '==', 'active')
-                .limit(1)
+                .limit(2)
                 .get();
+            const scopedAnswerDocs = answersSnap.docs.filter(document => document.data().pId === 'AL');
 
             let mutationType: string;
             let targetAnswerId = '';
 
-            if (answersSnap.empty) {
+            if (scopedAnswerDocs.length === 0) {
                 mutationType = 'new_answer_required';
+            } else if (scopedAnswerDocs.length === 1) {
+                targetAnswerId = scopedAnswerDocs[0].id;
+                mutationType = 'content_refinement';
             } else {
-                targetAnswerId = answersSnap.docs[0].id;
-                if (cluster.chat_negative > cluster.ticket) {
-                    mutationType = 'content_refinement';
-                } else if (cluster.escalation > 0) {
-                    mutationType = 'scope_adjustment';
-                } else {
-                    mutationType = 'content_refinement';
-                }
-            }
-
-            const existingProposalSnap = await db
-                .collection(DB_COLLECTIONS.ANSWERLATTICE_MUTATION_PROPOSALS)
-                .where('tId', '==', tId)
-                .where('sId', '==', sId)
-                .where('relatedEntityIds', 'array-contains', entityId)
-                .where('status', '==', 'pending_review')
-                .limit(1)
-                .get();
-
-            if (!existingProposalSnap.empty) {
+                // Entity-level signals cannot safely choose between multiple
+                // scoped active answers. Keep the signals visible for owner
+                // triage instead of proposing an arbitrary mutation.
                 result.proposalsSkippedExisting++;
                 continue;
             }
 
             const proposal = {
-                pId: 'AL',
-                tId,
-                sId,
                 targetAnswerId,
-                relatedEntityIds: [entityId],
                 mutationType,
                 signalSummary: {
                     ticketCount: cluster.ticket,
@@ -632,30 +723,25 @@ async function runSignalMutation(tId: number, sId: number): Promise<MutationResu
                     negativeFeedbackRate: cluster.chat_negative / Math.max(cluster.total, 1),
                     exampleReferences: cluster.refs,
                 },
-                suggestedChange: {},
+                suggestedChange: {
+                    reviewReason: `${cluster.total} recent support signals require an owner-reviewed ${mutationType === 'new_answer_required' ? 'answer' : 'refinement'}.`,
+                },
                 confidenceScore: Math.min(cluster.total / 20, 1.0),
-                status: 'pending_review',
-                createdOn: Timestamp.now(),
-                modifiedOn: Timestamp.now(),
-                createdBy: 'system:mutation_engine_nightly',
-                modifiedBy: 'system:mutation_engine_nightly',
             };
 
-            const proposalRef = await db.collection(DB_COLLECTIONS.ANSWERLATTICE_MUTATION_PROPOSALS).add(proposal);
-
-            await db.collection(DB_COLLECTIONS.ANSWERLATTICE_AUDIT_LOGS).add({
-                pId: 'AL',
-                tId, sId,
-                action: 'mutation_proposal_generated',
-                entityType: 'mutationProposal',
-                entityId: proposalRef.id,
-                previousState: null,
-                newState: { mutationType, entityId, signalCount: cluster.total },
-                performedBy: 'system:mutation_engine_nightly',
-                timestamp: Timestamp.now(),
+            const created = await createPendingMutationProposalIfAbsent({
+                tId,
+                sId,
+                entityId,
+                source: 'signal_cluster',
+                evidenceKey: cluster.refs.slice().sort().join(','),
+                proposal,
+                auditAction: 'mutation_proposal_generated',
+                auditState: { mutationType, entityId, signalCount: cluster.total },
+                actor: 'system:mutation_engine_nightly',
             });
-
-            result.proposalsCreated++;
+            if (created) result.proposalsCreated++;
+            else result.proposalsSkippedExisting++;
         } catch (error) {
             const diagnostic = buildDiagnostic(error, {
                 tId,
@@ -1150,68 +1236,64 @@ async function detectRecurringFallbacks(tId: number, sId: number): Promise<{ pro
         if (historySnap.empty) return result;
 
         // Group misses by matched entity IDs
-        const entityMissCounts = new Map<string, number>();
+        const entityMissCounts = new Map<string, { count: number; refs: string[] }>();
         for (const doc of historySnap.docs) {
             const data = doc.data();
+            if (data.pId !== 'AL') continue;
             const entityIds = normalizeAnswerlatticeFunctionEntityIds(data.matchedEntityIds);
             for (const entityId of entityIds) {
-                entityMissCounts.set(entityId, (entityMissCounts.get(entityId) || 0) + 1);
+                const current = entityMissCounts.get(entityId) || { count: 0, refs: [] };
+                current.count++;
+                if (current.refs.length < 5) current.refs.push(doc.id);
+                entityMissCounts.set(entityId, current);
             }
         }
 
         // Generate proposals for entities with 5+ misses
         const MIN_MISSES_FOR_PROPOSAL = 5;
-        for (const [entityId, missCount] of Array.from(entityMissCounts.entries())) {
+        for (const [entityId, misses] of Array.from(entityMissCounts.entries())) {
+            const missCount = misses.count;
             if (missCount < MIN_MISSES_FOR_PROPOSAL) continue;
 
-            // Check if we already have a pending proposal for this entity
-            const existingSnap = await db
-                .collection(DB_COLLECTIONS.ANSWERLATTICE_MUTATION_PROPOSALS)
+            const answersSnap = await db
+                .collection(DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS)
                 .where('tId', '==', tId)
                 .where('sId', '==', sId)
-                .where('relatedEntityIds', 'array-contains', entityId)
-                .where('status', '==', 'pending_review')
-                .limit(1)
+                .where('scope.entityIds', 'array-contains', entityId)
+                .where('status', '==', 'active')
+                .limit(2)
                 .get();
+            const scopedAnswerDocs = answersSnap.docs.filter(document => document.data().pId === 'AL');
+            if (scopedAnswerDocs.length > 1) continue;
+            const mutationType = scopedAnswerDocs.length === 0 ? 'new_answer_required' : 'content_refinement';
+            const targetAnswerId = scopedAnswerDocs.length === 0 ? '' : scopedAnswerDocs[0].id;
 
-            if (!existingSnap.empty) continue; // Already has a pending proposal
-
-            // Create auto-proposal
-            await db.collection(DB_COLLECTIONS.ANSWERLATTICE_MUTATION_PROPOSALS).add({
-                pId: 'AL',
+            const created = await createPendingMutationProposalIfAbsent({
                 tId,
                 sId,
-                targetAnswerId: '',
-                relatedEntityIds: [entityId],
-                mutationType: 'new_answer_required',
-                signalSummary: {
-                    ticketCount: 0,
-                    chatCount: missCount,
-                    negativeFeedbackRate: 0,
-                    exampleReferences: [],
-                },
-                suggestedChange: {},
-                confidenceScore: Math.min(missCount / 20, 1.0),
-                status: 'pending_review',
-                createdOn: Timestamp.now(),
-                modifiedOn: Timestamp.now(),
-                createdBy: 'system:fallback_detector_nightly',
-                modifiedBy: 'system:fallback_detector_nightly',
-            });
-
-            await db.collection(DB_COLLECTIONS.ANSWERLATTICE_AUDIT_LOGS).add({
-                pId: 'AL',
-                tId, sId,
-                action: 'auto_proposal_from_recurring_fallback',
-                entityType: 'mutationProposal',
                 entityId,
-                previousState: null,
-                newState: { missCount, source: 'recurring_fallback_detection' },
-                performedBy: 'system:fallback_detector_nightly',
-                timestamp: Timestamp.now(),
+                source: 'recurring_fallback',
+                evidenceKey: misses.refs.slice().sort().join(','),
+                proposal: {
+                    targetAnswerId,
+                    mutationType,
+                    signalSummary: {
+                        ticketCount: 0,
+                        chatCount: missCount,
+                        negativeFeedbackRate: 0,
+                        exampleReferences: misses.refs,
+                    },
+                    suggestedChange: {
+                        reviewReason: `${missCount} canonical misses in 14 days require an owner-reviewed ${mutationType === 'new_answer_required' ? 'answer' : 'refinement'}.`,
+                    },
+                    confidenceScore: Math.min(missCount / 20, 1.0),
+                },
+                auditAction: 'auto_proposal_from_recurring_fallback',
+                auditState: { missCount, mutationType, source: 'recurring_fallback_detection' },
+                actor: 'system:fallback_detector_nightly',
             });
 
-            result.proposalsCreated++;
+            if (created) result.proposalsCreated++;
 
             if (result.proposalsCreated >= 5) break; // Cap at 5 per run
         }
@@ -1249,16 +1331,20 @@ async function trackMutationImpact(tId: number, sId: number): Promise<{ tracked:
             .where('tId', '==', tId)
             .where('sId', '==', sId)
             .where('status', '==', 'implemented')
+            .where('impactTracked', '==', false)
+            .where('implementedOn', '<=', fourteenDaysAgo)
+            .orderBy('implementedOn', 'asc')
             .limit(50)
             .get();
 
         for (const proposalDoc of proposalsSnap.docs) {
             const proposal = proposalDoc.data();
+            if (proposal.pId !== 'AL') continue;
 
             // Skip if already tracked or not old enough
-            if (proposal.impactTracked) continue;
-            const implementedAt = proposal.modifiedOn || proposal.createdOn;
-            if (!implementedAt || implementedAt.toMillis() > fourteenDaysAgo.toMillis()) continue;
+            const implementedAt = proposal.implementedOn;
+            const implementedAtMillis = timestampToMillis(implementedAt);
+            if (implementedAtMillis <= 0 || implementedAtMillis > fourteenDaysAgo.toMillis()) continue;
 
             // Count post-implementation signals for related entity
             const entityId = normalizeAnswerlatticeResolvedFunctionEntityId(proposal.relatedEntityIds?.[0]);
@@ -1270,11 +1356,16 @@ async function trackMutationImpact(tId: number, sId: number): Promise<{ tracked:
                 .where('sId', '==', sId)
                 .where('entityId', '==', entityId)
                 .where('timestamp', '>=', implementedAt)
+                .where('timestamp', '<', Timestamp.fromMillis(implementedAtMillis + 14 * 24 * 60 * 60 * 1000))
                 .limit(100)
                 .get();
 
             const preSignalCount = proposal.signalSummary?.ticketCount + proposal.signalSummary?.chatCount || 0;
-            const postSignalCount = postSignalsSnap.size;
+            const postSignalCount = postSignalsSnap.docs.filter(document => {
+                const signal = document.data();
+                return signal.pId === 'AL'
+                    && (signal.type === 'ticket' || signal.type === 'chat_negative' || signal.type === 'escalation');
+            }).length;
             const improvement = preSignalCount > 0 ? Math.round((1 - postSignalCount / preSignalCount) * 100) : 0;
 
             await proposalDoc.ref.update({
@@ -1325,26 +1416,35 @@ async function autoAdjustConfidence(tId: number, sId: number): Promise<{ adjuste
             .limit(200)
             .get();
 
-        for (const answerDoc of answersSnap.docs) {
+        const answerDocsToAdjust = answersSnap.docs.filter(answerDoc => {
             const answer = answerDoc.data();
+            if (answer.pId !== 'AL') return false;
             const currentConfidence = answer.validation?.confidenceScore || 0;
-
-            // Skip if already at max confidence
-            if (currentConfidence >= 0.95) continue;
-
-            // Check: served 30+ times with low negative feedback
             const linkedChat = answer.signalMetrics?.linkedChatCount || 0;
             const negFeedback = answer.signalMetrics?.negativeFeedbackCount || 0;
+            return currentConfidence < 0.95 && linkedChat >= 30 && negFeedback === 0;
+        });
 
-            if (linkedChat >= 30 && negFeedback === 0) {
-                await answerDoc.ref.update({
+        if (answerDocsToAdjust.length > 0) {
+            // Invalidate first. A later batch failure causes only an extra fresh
+            // read; the inverse ordering could leave updated ranking confidence
+            // hidden behind a stale canonical cache indefinitely.
+            await bumpAnswerlatticeCacheVersion(db, ANSWERLATTICE_CACHE_SOURCES.CANONICAL, tId, sId, {
+                reason: 'confidence_auto_adjusted',
+                sourceType: 'canonical_answer_batch',
+            });
+            const batch = db.batch();
+            const now = Timestamp.now();
+            for (const answerDoc of answerDocsToAdjust) {
+                batch.update(answerDoc.ref, {
                     'validation.confidenceScore': 0.95,
                     'validation.validationSource': 'signal_cluster',
-                    'validation.lastValidatedOn': Timestamp.now(),
-                    'validation.validatedBy': 'system:confidence_auto_adjust',
+                    modifiedOn: now,
+                    modifiedBy: 'system:confidence_auto_adjust',
                 });
-                result.adjusted++;
             }
+            await batch.commit();
+            result.adjusted = answerDocsToAdjust.length;
         }
     } catch (error) {
         const diagnostic = buildDiagnostic(error, {
@@ -1355,55 +1455,6 @@ async function autoAdjustConfidence(tId: number, sId: number): Promise<{ adjuste
         });
         result.errors.push(diagnostic);
         logger.error('[Answerlattice Confidence] Auto-adjustment failed', getSchedulerDiagnosticLogContext(diagnostic));
-    }
-
-    return result;
-}
-
-// ═══════════════════════════════════════════════════════════════
-// SIGNAL TTL AUTO-ARCHIVE (Phase 4 — 3.5)
-// ═══════════════════════════════════════════════════════════════
-
-/**
- * Archive (delete) signal events older than 12 months.
- * Doctrine mandates: "Archive events > 12 months"
- * Prevents unbounded signal collection growth.
- * 
- * @returns Number of signals archived (deleted)
- */
-async function archiveExpiredSignals(tId: number, sId: number, ttlMonths: number = 12, batchLimit: number = 100): Promise<{ archived: number; errors: AnswerlatticeSchedulerDiagnostic[] }> {
-    const result: { archived: number; errors: AnswerlatticeSchedulerDiagnostic[] } = { archived: 0, errors: [] };
-
-    try {
-        const cutoff = new Date();
-        cutoff.setMonth(cutoff.getMonth() - ttlMonths);
-        const cutoffTimestamp = Timestamp.fromDate(cutoff);
-
-        const snapshot = await db
-            .collection(DB_COLLECTIONS.ANSWERLATTICE_SIGNAL_EVENTS)
-            .where('tId', '==', tId)
-            .where('sId', '==', sId)
-            .where('timestamp', '<', cutoffTimestamp)
-            .limit(batchLimit)
-            .get();
-
-        if (snapshot.empty) return result;
-
-        const batch = db.batch();
-        for (const doc of snapshot.docs) {
-            batch.delete(doc.ref);
-            result.archived++;
-        }
-        await batch.commit();
-    } catch (error) {
-        const diagnostic = buildDiagnostic(error, {
-            tId,
-            sId,
-            phase: 'signal_ttl_archive',
-            operation: 'delete_expired_signals',
-        });
-        result.errors.push(diagnostic);
-        logger.error('[Answerlattice TTL] Signal archive failed', getSchedulerDiagnosticLogContext(diagnostic));
     }
 
     return result;
@@ -1576,8 +1627,8 @@ async function rebuildEntityGraphIndex(tId: number, sId: number): Promise<GraphR
     });
     const missingScopeMetadata = existingDoc.exists && (
         existingData.pId !== 'AL'
-        || Number(existingData.tId) !== Number(tId)
-        || Number(existingData.sId) !== Number(sId)
+        || existingData.tId !== tId
+        || existingData.sId !== sId
     );
 
     if (existingDoc.exists && existingData.sourceHash === sourceHash) {
@@ -1682,6 +1733,11 @@ export interface AnswerlatticeNightlyResult {
     knowledgeIntakeJobsScanned: number;
     knowledgeIntakeSummaryWritten: number;
     knowledgeIntakeUsageUnits: number;
+    // Daily owner conversation summaries
+    chatAnalyticsChangedSessionsScanned: number;
+    chatAnalyticsDatesProcessed: number;
+    chatAnalyticsSummariesWritten: number;
+    chatAnalyticsPartialDates: number;
     // Step 18: Predictive Trigger Sync (Expansion Item #12)
     predictiveSuggestionsGenerated: number;
     predictiveTriggersTotal: number;
@@ -1773,6 +1829,10 @@ export async function runAnswerlatticeNightly(options: {
         knowledgeIntakeJobsScanned: 0,
         knowledgeIntakeSummaryWritten: 0,
         knowledgeIntakeUsageUnits: 0,
+        chatAnalyticsChangedSessionsScanned: 0,
+        chatAnalyticsDatesProcessed: 0,
+        chatAnalyticsSummariesWritten: 0,
+        chatAnalyticsPartialDates: 0,
         predictiveSuggestionsGenerated: 0,
         predictiveTriggersTotal: 0,
         predictiveEffectivenessUpdated: 0,
@@ -1825,6 +1885,10 @@ export async function runAnswerlatticeNightly(options: {
                     knowledgeIntakeJobsScanned: result.knowledgeIntakeJobsScanned,
                     knowledgeIntakeSummaryWritten: result.knowledgeIntakeSummaryWritten,
                     knowledgeIntakeUsageUnits: result.knowledgeIntakeUsageUnits,
+                    chatAnalyticsChangedSessionsScanned: result.chatAnalyticsChangedSessionsScanned,
+                    chatAnalyticsDatesProcessed: result.chatAnalyticsDatesProcessed,
+                    chatAnalyticsSummariesWritten: result.chatAnalyticsSummariesWritten,
+                    chatAnalyticsPartialDates: result.chatAnalyticsPartialDates,
                     predictiveSuggestionsGenerated: result.predictiveSuggestionsGenerated,
                     compiledContextBundlesRebuilt: result.compiledContextBundlesRebuilt,
                     compiledContextBytesGenerated: result.compiledContextBytesGenerated,
@@ -1852,6 +1916,7 @@ export async function runAnswerlatticeNightly(options: {
                     graphEnabled: FUNCTION_FLAGS.ENABLE_ANSWERLATTICE_KNOWLEDGE_GRAPH,
                     supportBoardSyncEnabled: FUNCTION_FLAGS.ENABLE_ANSWERLATTICE_SUPPORT_BOARD_SYNC,
                     knowledgeIntakeSchedulerEnabled: FUNCTION_FLAGS.ENABLE_ANSWERLATTICE_KNOWLEDGE_INTAKE_SCHEDULER,
+                    chatAnalyticsEnabled: FUNCTION_FLAGS.ENABLE_ANSWERLATTICE_CHAT_ANALYTICS,
                     predictiveSupportEnabled: FUNCTION_FLAGS.ENABLE_ANSWERLATTICE_PREDICTIVE_SUPPORT,
                     compiledContextBundlesEnabled: FUNCTION_FLAGS.ENABLE_ANSWERLATTICE_CONTEXT_BUNDLES,
                 },
@@ -2122,18 +2187,6 @@ export async function runAnswerlatticeNightly(options: {
                 (taskResult) => ({ adjusted: taskResult.adjusted })
             );
 
-            const archiveResult = await runTenantTask(
-                tenantRun,
-                'signal_ttl_archive',
-                'archiveExpiredSignals',
-                () => archiveExpiredSignals(tId, sId),
-                (taskResult) => {
-                    result.totalSignalsArchived += taskResult.archived;
-                    tenantRun.signalsArchived = taskResult.archived;
-                },
-                (taskResult) => ({ archived: taskResult.archived })
-            );
-
             const draftResult = await runTenantTask(
                 tenantRun,
                 'draft_generation',
@@ -2297,9 +2350,58 @@ export async function runAnswerlatticeNightly(options: {
                         reviewItems: taskResult.reviewItems,
                         readySources: taskResult.readySources,
                         usageUnitsConsumed: taskResult.usageUnitsConsumed,
-                        latestJobStatus: taskResult.latestJobStatus,
+                        lastJobStatus: taskResult.lastJobStatus,
                     })
                 );
+            }
+
+            if (FUNCTION_FLAGS.ENABLE_ANSWERLATTICE_CHAT_ANALYTICS) {
+                const chatAnalyticsResult = await runTenantTask(
+                    tenantRun,
+                    'chat_analytics_summary',
+                    'syncChatAnalyticsNightly',
+                    () => syncChatAnalyticsNightly(tId, sId) as Promise<any>,
+                    (taskResult) => {
+                        result.chatAnalyticsChangedSessionsScanned += taskResult.changedSessionsScanned;
+                        result.chatAnalyticsDatesProcessed += taskResult.datesProcessed;
+                        result.chatAnalyticsSummariesWritten += taskResult.summariesWritten;
+                        result.chatAnalyticsPartialDates += taskResult.partialDates;
+                    },
+                    (taskResult) => ({
+                        changedSessionsScanned: taskResult.changedSessionsScanned,
+                        datesProcessed: taskResult.datesProcessed,
+                        summariesWritten: taskResult.summariesWritten,
+                        summariesSkipped: taskResult.summariesSkipped,
+                        partialDates: taskResult.partialDates,
+                        continuationPending: taskResult.continuationPending,
+                    })
+                );
+                if (chatAnalyticsResult && (chatAnalyticsResult.summariesWritten > 0 || dayOfWeek === 0)) {
+                    await runTenantTask(
+                        tenantRun,
+                        'chat_intelligence',
+                        'syncAnswerlatticeChatIntelligence',
+                        () => syncAnswerlatticeChatIntelligence(tId, sId, {
+                            generateWeekly: dayOfWeek === 0,
+                        }) as Promise<any>,
+                        () => { },
+                        (taskResult) => ({
+                            daysRead: taskResult.daysRead,
+                            feedbackWritten: taskResult.feedbackWritten,
+                            weeklyWritten: taskResult.weeklyWritten,
+                            generationMode: 'deterministic',
+                        }),
+                    );
+                } else {
+                    tenantRun.tasks.push({
+                        name: 'chat_intelligence',
+                        status: 'skipped',
+                        durationMs: 0,
+                        details: {
+                            reason: chatAnalyticsResult ? 'source_unchanged' : 'chat_analytics_unavailable',
+                        },
+                    });
+                }
             }
 
             if (FUNCTION_FLAGS.ENABLE_ANSWERLATTICE_PREDICTIVE_SUPPORT) {
@@ -2371,7 +2473,7 @@ export async function runAnswerlatticeNightly(options: {
                 fallbacks: fallbackResult?.proposalsCreated || 0,
                 impact: impactResult?.tracked || 0,
                 coverage: coverageResult ? Math.round(coverageResult.rate * 100) : null,
-                archived: archiveResult?.archived || 0,
+                signalRetention: 'firestore_ttl',
                 drafts: draftResult ? `${draftResult.draftsGenerated}/${draftResult.draftsGenerated + draftResult.draftsFailed}` : 'failed',
                 friction: frictionResult ? `${frictionResult.entitiesProcessed}/${frictionResult.overallHealth}` : 'failed',
                 cleanup: frictionCleanup?.cleaned || 0,
@@ -2533,11 +2635,13 @@ export async function runAnswerlatticeNightly(options: {
                         || tenantRun.coverageRate > 0;
 
                     if (tenantRun.coverageRate > 0 && tenantRun.coverageRate < COVERAGE_DROP_THRESHOLD) {
-                        await emitIntegrationEvent({
+                        const emitted = await emitIntegrationEvent({
                             tId, sId,
                             eventType: INTEGRATION_EVENT_TYPES.COVERAGE_DROP,
                             severity: EVENT_SEVERITY.CRITICAL,
+                            deduplicationKey: `${runLogId}:coverage_drop`,
                             payload: {
+                                runLogId,
                                 currentRate: tenantRun.coverageRate,
                                 previousRate: 0,
                                 threshold: COVERAGE_DROP_THRESHOLD,
@@ -2545,18 +2649,20 @@ export async function runAnswerlatticeNightly(options: {
                                 canonicalHits: 0,
                             },
                         });
-                        result.integrationEventsEmitted++;
+                        if (emitted) result.integrationEventsEmitted++;
                     }
 
                     const aiFailureSummary = getRecurringAiFailureSummary(tenantRun);
                     if (aiFailureSummary.failureCount >= AI_FAILURE_ALERT_THRESHOLD) {
-                        await emitIntegrationEvent({
+                        const emitted = await emitIntegrationEvent({
                             tId, sId,
                             eventType: INTEGRATION_EVENT_TYPES.AI_FAILURE_RECURRING,
                             severity: aiFailureSummary.failureCount >= AI_FAILURE_ALERT_THRESHOLD * 2
                                 ? EVENT_SEVERITY.CRITICAL
                                 : EVENT_SEVERITY.HIGH,
+                            deduplicationKey: `${runLogId}:ai_failure_recurring`,
                             payload: {
+                                runLogId,
                                 entityName: 'Workspace AI operations',
                                 entityType: 'support_generation',
                                 failureCount: aiFailureSummary.failureCount,
@@ -2565,16 +2671,17 @@ export async function runAnswerlatticeNightly(options: {
                                 errors: aiFailureSummary.errors,
                             },
                         });
-                        result.integrationEventsEmitted++;
+                        if (emitted) result.integrationEventsEmitted++;
                     }
 
                     if (shouldSendTenantDigest) {
-                        await emitIntegrationEvent({
+                        const emitted = await emitIntegrationEvent({
                             tId, sId,
                             eventType: INTEGRATION_EVENT_TYPES.NIGHTLY_SUMMARY,
                             severity: tenantRun.coverageRate > 0 && tenantRun.coverageRate < COVERAGE_DROP_THRESHOLD
                                 ? EVENT_SEVERITY.HIGH
                                 : EVENT_SEVERITY.LOW,
+                            deduplicationKey: `${runLogId}:nightly_summary`,
                             payload: {
                                 runLogId,
                                 tenantsProcessed: 1,
@@ -2588,7 +2695,7 @@ export async function runAnswerlatticeNightly(options: {
                                 errors: tenantRun.errors.slice(0, 5).map(diagnosticToMessage),
                             },
                         });
-                        result.integrationEventsEmitted++;
+                        if (emitted) result.integrationEventsEmitted++;
                     }
 
                 }

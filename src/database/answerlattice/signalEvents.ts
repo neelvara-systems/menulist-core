@@ -14,16 +14,24 @@
  */
 
 import { DB_COLLECTIONS } from "@constant/database";
-import { addDoc, collection, getDocs, limit, orderBy, query, Timestamp, where } from "@firebase/firestore";
+import { PRODUCT_IDS } from '@constant/product';
+import { ECOMSAI_PLATFORM_SUPPORT_USER_ROLE, ECOMSAI_PLATFORM_USER_ROLE } from '@constant/user';
+import { addDoc, collection, doc, getDoc, getDocs, limit, orderBy, query, setDoc, Timestamp, where } from "@firebase/firestore";
 import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentComposer';
-import { normalizeAnswerlatticeResolvedEntityId, normalizeAnswerlatticeResolvedEntityIds } from '@lib/answerlattice/governanceIdBoundary';
+import { normalizeAnswerlatticeEntityId, normalizeAnswerlatticeResolvedEntityId, normalizeAnswerlatticeResolvedEntityIds } from '@lib/answerlattice/governanceIdBoundary';
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
+import getActiveSession from '@lib/auth/getActiveSession';
 import { answerlatticeFirebaseClient } from "@lib/firebase/answerlatticeFirebaseClient";
-import { AnswerlatticeSignalEvent } from "@type/answerlattice";
+import { buildAnswerlatticeSignalDocumentId } from '@lib/answerlattice/signalIdentity';
+import { normalizeAnswerlatticeScopeDocumentId, resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
+import { ANSWERLATTICE_SIGNAL_TYPE, AnswerlatticeSignalEvent } from "@type/answerlattice";
+import { getAnswerlatticeRetentionExpiryMillis } from '@data/shared/answerlatticeRetention';
 
 const COLLECTION = DB_COLLECTIONS.ANSWERLATTICE_SIGNAL_EVENTS;
 const MAX_RECENT_SIGNAL_EVENTS = 500;
 const MAX_BATCH_SIGNAL_EVENTS_PER_QUERY = 1000;
+const MAX_BATCH_SIGNAL_ENTITIES = 300;
+const SIGNAL_TYPES = new Set<string>(Object.values(ANSWERLATTICE_SIGNAL_TYPE));
 
 const getCollectionRef = () => collection(answerlatticeFirebaseClient, COLLECTION);
 const clampPositiveInt = (value: number, fallback: number, max: number) => {
@@ -32,15 +40,86 @@ const clampPositiveInt = (value: number, fallback: number, max: number) => {
     return Math.min(normalized, max);
 };
 
+const isPlatformSession = (session: any): boolean => {
+    const role = String(session?.platformRole || session?.user?.platformRole || '').toUpperCase();
+    return role === ECOMSAI_PLATFORM_USER_ROLE || role === ECOMSAI_PLATFORM_SUPPORT_USER_ROLE;
+};
+
+const requireSignalScope = async (tIdValue: unknown, sIdValue: unknown) => {
+    const tId = normalizeAnswerlatticeScopeDocumentId(tIdValue);
+    const sId = normalizeAnswerlatticeScopeDocumentId(sIdValue);
+    if (!tId || !sId) throw new Error('answerlattice_signal_scope_invalid');
+    const session = await getActiveSession();
+    if (!isPlatformSession(session)) {
+        const sessionScope = resolveAnswerlatticeSessionScope(session);
+        if (!sessionScope || sessionScope.tenantId !== tId || sessionScope.storeId !== sId) {
+            throw new Error('answerlattice_signal_scope_mismatch');
+        }
+    }
+    return { tId, sId };
+};
+
+const parseSignalEvent = (
+    id: string,
+    value: Record<string, any>,
+    scope: { tId: number; sId: number },
+): AnswerlatticeSignalEvent | null => {
+    const entityId = normalizeAnswerlatticeEntityId(value.entityId);
+    if (
+        value.pId !== PRODUCT_IDS.ANSWERLATTICE
+        || normalizeAnswerlatticeScopeDocumentId(value.tId) !== scope.tId
+        || normalizeAnswerlatticeScopeDocumentId(value.sId) !== scope.sId
+        || !entityId
+        || typeof value.type !== 'string'
+        || !SIGNAL_TYPES.has(value.type)
+        || !value.timestamp
+        || typeof value.timestamp !== 'object'
+        || (value.dedupKey !== undefined && (typeof value.dedupKey !== 'string' || value.dedupKey.length > 260))
+    ) return null;
+    return { ...value, id, entityId, tId: scope.tId, sId: scope.sId } as AnswerlatticeSignalEvent;
+};
+
 /**
  * Add a signal event (append-only)
  */
 export const addSignalEvent = async (data: Omit<AnswerlatticeSignalEvent, 'id'>) => {
     return await apiCallComposer(
         async () => {
-            const submitData = await answerlatticeRequestBodyComposer(data);
-            const docRef = await addDoc(getCollectionRef(), submitData);
-            return { ...submitData, id: docRef.id } as AnswerlatticeSignalEvent;
+            const scope = await requireSignalScope(data.tId, data.sId);
+            const submitData = await answerlatticeRequestBodyComposer({
+                ...data,
+                pId: PRODUCT_IDS.ANSWERLATTICE,
+                tId: scope.tId,
+                sId: scope.sId,
+                expiresAt: Timestamp.fromMillis(getAnswerlatticeRetentionExpiryMillis('signalEvents')),
+            }, { isNew: true });
+            const deterministicId = data.dedupKey
+                ? buildAnswerlatticeSignalDocumentId({
+                    ...scope,
+                    deduplicationKey: data.dedupKey,
+                })
+                : null;
+            if (!deterministicId) {
+                const createdRef = await addDoc(getCollectionRef(), submitData);
+                return { ...submitData, id: createdRef.id } as AnswerlatticeSignalEvent;
+            }
+
+            const signalRef = doc(getCollectionRef(), deterministicId);
+            try {
+                await setDoc(signalRef, submitData);
+            } catch (writeError) {
+                const existingSnapshot = await getDoc(signalRef);
+                const existing = existingSnapshot.exists()
+                    ? parseSignalEvent(existingSnapshot.id, existingSnapshot.data(), scope)
+                    : null;
+                if (
+                    existing
+                    && existing.type === data.type
+                    && existing.dedupKey === data.dedupKey
+                ) return existing;
+                throw writeError;
+            }
+            return { ...submitData, id: deterministicId } as AnswerlatticeSignalEvent;
         },
         data,
         "addSignalEvent"
@@ -58,17 +137,20 @@ export const getSignalEventsForEntity = async (
 ) => {
     return await apiCallComposer(
         async () => {
+            const scope = await requireSignalScope(tId, sId);
             const normalizedEntityId = normalizeAnswerlatticeResolvedEntityId(entityId);
             if (!normalizedEntityId) return [];
 
+            const boundedWindowDays = clampPositiveInt(windowDays, 14, 90);
             const windowStart = new Date();
-            windowStart.setDate(windowStart.getDate() - windowDays);
+            windowStart.setDate(windowStart.getDate() - boundedWindowDays);
             const windowTimestamp = Timestamp.fromDate(windowStart);
 
             const q = query(
                 getCollectionRef(),
-                where('tId', '==', tId),
-                where('sId', '==', sId),
+                where('pId', '==', PRODUCT_IDS.ANSWERLATTICE),
+                where('tId', '==', scope.tId),
+                where('sId', '==', scope.sId),
                 where('entityId', '==', normalizedEntityId),
                 where('timestamp', '>=', windowTimestamp),
                 orderBy('timestamp', 'desc'),
@@ -77,7 +159,8 @@ export const getSignalEventsForEntity = async (
             const snapshot = await getDocs(q);
             const list: AnswerlatticeSignalEvent[] = [];
             snapshot.forEach((d) => {
-                list.push({ ...d.data(), id: d.id } as AnswerlatticeSignalEvent);
+                const event = parseSignalEvent(d.id, d.data(), scope);
+                if (event) list.push(event);
             });
             return list;
         },
@@ -96,6 +179,7 @@ export const getRecentSignalEvents = async (
 ) => {
     return await apiCallComposer(
         async () => {
+            const scope = await requireSignalScope(tId, sId);
             const boundedWindowDays = clampPositiveInt(windowDays, 14, 90);
             const boundedMaxResults = clampPositiveInt(maxResults, MAX_RECENT_SIGNAL_EVENTS, MAX_RECENT_SIGNAL_EVENTS);
             const windowStart = new Date();
@@ -104,8 +188,9 @@ export const getRecentSignalEvents = async (
 
             const q = query(
                 getCollectionRef(),
-                where('tId', '==', tId),
-                where('sId', '==', sId),
+                where('pId', '==', PRODUCT_IDS.ANSWERLATTICE),
+                where('tId', '==', scope.tId),
+                where('sId', '==', scope.sId),
                 where('timestamp', '>=', windowTimestamp),
                 orderBy('timestamp', 'desc'),
                 limit(boundedMaxResults)
@@ -113,7 +198,8 @@ export const getRecentSignalEvents = async (
             const snapshot = await getDocs(q);
             const list: AnswerlatticeSignalEvent[] = [];
             snapshot.forEach((d) => {
-                list.push({ ...d.data(), id: d.id } as AnswerlatticeSignalEvent);
+                const event = parseSignalEvent(d.id, d.data(), scope);
+                if (event) list.push(event);
             });
             return list;
         },
@@ -160,8 +246,9 @@ export const getBatchSignalCounts = async (
 ): Promise<BatchSignalCounts> => {
     return await apiCallComposer(
         async () => {
+            const scope = await requireSignalScope(tId, sId);
             const result: BatchSignalCounts = {};
-            const normalizedEntityIds = normalizeAnswerlatticeResolvedEntityIds(entityIds, entityIds.length);
+            const normalizedEntityIds = normalizeAnswerlatticeResolvedEntityIds(entityIds, MAX_BATCH_SIGNAL_ENTITIES);
             // Initialize all entities with zero counts
             for (const eid of normalizedEntityIds) {
                 result[eid] = { ticket: 0, chat_negative: 0, escalation: 0, total: 0 };
@@ -180,15 +267,17 @@ export const getBatchSignalCounts = async (
                 const batch = normalizedEntityIds.slice(i, i + BATCH_SIZE);
                 const q = query(
                     getCollectionRef(),
-                    where('tId', '==', tId),
-                    where('sId', '==', sId),
+                    where('pId', '==', PRODUCT_IDS.ANSWERLATTICE),
+                    where('tId', '==', scope.tId),
+                    where('sId', '==', scope.sId),
                     where('entityId', 'in', batch),
                     where('timestamp', '>=', windowTimestamp),
                     limit(MAX_BATCH_SIGNAL_EVENTS_PER_QUERY)
                 );
                 const snapshot = await getDocs(q);
                 snapshot.forEach((d) => {
-                    const data = d.data() as AnswerlatticeSignalEvent;
+                    const data = parseSignalEvent(d.id, d.data(), scope);
+                    if (!data) return;
                     const eid = data.entityId;
                     if (!result[eid]) return;
                     if (data.type === 'ticket') result[eid].ticket++;

@@ -158,7 +158,10 @@ export const getCategories = async () => {
             const docRef = doc(answerlatticeFirebaseClient, `${COLLECTION}`, scopedDocId);
             const docSnap = await getDoc(docRef);
             if (docSnap.exists()) {
-                return { ...docSnap.data(), id: docSnap.id };
+                const scopedData = docSnap.data();
+                return isRecord(scopedData.categories)
+                    ? { categories: scopedData.categories as KnowledgeBaseCategoriesType['categories'] }
+                    : null;
             }
             if (scopedDocId !== LEGACY_CATEGORIES_DOC_ID && isPlatform) {
                 const legacyDocSnap = await getDoc(doc(answerlatticeFirebaseClient, `${COLLECTION}`, LEGACY_CATEGORIES_DOC_ID));
@@ -174,7 +177,7 @@ export const getCategories = async () => {
                             return true;
                         })
                     );
-                    return { categories: filteredCategories, id: legacyDocSnap.id };
+                    return { categories: filteredCategories };
                 }
             }
             return null;
@@ -200,7 +203,7 @@ export const addCategory = async (category: any) => {
     return await apiCallComposer(
         async () => {
             const docRef = await getDocRef();
-            const composedCategory = await answerlatticeRequestBodyComposer(category);
+            const composedCategory = await answerlatticeRequestBodyComposer(category, { isNew: true });
             const scope = await bumpKnowledgeBaseVersionForSession('category_create', composedCategory.id);
             await setDoc(docRef, { categories: { [composedCategory.id]: composedCategory } }, { merge: true });
             await revalidateAnswerlatticePublicClientCache(scope, ['kb', 'context'], 'addCategory');
@@ -218,7 +221,7 @@ export const updateCategory = async (category: any) => {
     return await apiCallComposer(
         async () => {
             const docRef = await getDocRef();
-            const composedCategory = await answerlatticeRequestBodyComposer(category);
+            const composedCategory = await answerlatticeRequestBodyComposer(category, { isNew: false });
             const scope = await bumpKnowledgeBaseVersionForSession('category_update', composedCategory.id);
             await setDoc(docRef, { categories: { [composedCategory.id]: composedCategory } }, { merge: true });
             await revalidateAnswerlatticePublicClientCache(scope, ['kb', 'context'], 'updateCategory');

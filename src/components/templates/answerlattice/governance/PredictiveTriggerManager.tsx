@@ -91,18 +91,22 @@ export default function PredictiveTriggerManager({ tId, sId }: PredictiveTrigger
     const [editingTrigger, setEditingTrigger] = useState<AnswerlatticePredictiveTrigger | null>(null);
     const [createForm] = Form.useForm();
     const [editForm] = Form.useForm();
+    const predictiveTriggers = useMemo(
+        () => triggers.filter(trigger => trigger.kind !== 'known_issue'),
+        [triggers],
+    );
 
     // Summary stats
     const stats = useMemo(() => {
-        const active = triggers.filter(t => t.status === 'active').length;
-        const suggested = triggers.filter(t => t.status === 'suggested').length;
-        const disabled = triggers.filter(t => t.status === 'disabled').length;
-        const avgEffectiveness = triggers
+        const active = predictiveTriggers.filter(t => t.status === 'active').length;
+        const suggested = predictiveTriggers.filter(t => t.status === 'suggested').length;
+        const disabled = predictiveTriggers.filter(t => t.status === 'disabled').length;
+        const avgEffectiveness = predictiveTriggers
             .filter(t => t.effectiveness && t.effectiveness.impressions > 0)
             .reduce((sum, t) => sum + (t.effectiveness?.score || 0), 0) /
-            (triggers.filter(t => t.effectiveness && t.effectiveness.impressions > 0).length || 1);
-        return { active, suggested, disabled, total: triggers.length, avgEffectiveness };
-    }, [triggers]);
+            (predictiveTriggers.filter(t => t.effectiveness && t.effectiveness.impressions > 0).length || 1);
+        return { active, suggested, disabled, total: predictiveTriggers.length, avgEffectiveness };
+    }, [predictiveTriggers]);
 
     const handleCreate = useCallback(async () => {
         try {
@@ -396,11 +400,11 @@ export default function PredictiveTriggerManager({ tId, sId }: PredictiveTrigger
             </Flex>
 
             {/* Triggers Table */}
-            {triggers.length === 0 ? (
+            {predictiveTriggers.length === 0 ? (
                 <Empty description="No predictive triggers yet. Create one or wait for auto-suggestions from friction patterns." />
             ) : (
                 <Table
-                    dataSource={triggers}
+                    dataSource={predictiveTriggers}
                     columns={columns}
                     rowKey="id"
                     size="small"

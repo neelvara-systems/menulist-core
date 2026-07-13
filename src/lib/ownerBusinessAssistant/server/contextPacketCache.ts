@@ -1,8 +1,14 @@
 import { Redis } from '@upstash/redis';
+import { z } from 'zod';
 import { FEATURE_FLAGS } from '@config/features';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { OWNER_BUSINESS_ASSISTANT_CACHE } from '../constants';
 import type { OwnerBusinessAssistantContextPacket, OwnerBusinessAssistantPacketProfile } from '../types';
+import {
+  ownerBusinessAnalyticsPeriodSchema,
+  ownerBusinessAnalyticsResponseDataSchema,
+  ownerBusinessHealthCurrentDocSchema,
+} from '../readModelBoundary';
 
 const hasRedisConfig = Boolean(
   process.env.UPSTASH_REDIS_REST_URL &&
@@ -25,6 +31,75 @@ export type CachedOwnerBusinessAssistantPacket = Omit<
   OwnerBusinessAssistantContextPacket,
   'clientContext' | 'cacheSource' | 'metrics'
 >;
+
+const cachedOwnerBusinessAssistantPacketSchema = z.object({
+  version: z.literal(1),
+  packetId: z.string(),
+  cacheKey: z.string(),
+  tId: z.string(),
+  sId: z.string(),
+  projectId: z.string().optional(),
+  localBusinessDate: z.string(),
+  validUntil: z.string(),
+  generatedAt: z.string(),
+  sourceSignatures: z.object({
+    healthCurrent: z.string().optional(),
+    analyticsIndex: z.string().optional(),
+    todayOverlay: z.string().optional(),
+    publicProjection: z.string().optional(),
+    domainFacts: z.string().optional(),
+  }),
+  health: ownerBusinessHealthCurrentDocSchema,
+  analytics: ownerBusinessAnalyticsResponseDataSchema.optional(),
+  todayOverlay: ownerBusinessAnalyticsPeriodSchema.optional(),
+  domainFacts: z.record(z.unknown()).optional(),
+  answerRules: z.object({
+    refuseUnsupported: z.literal(true),
+    sourceFactIdsRequired: z.literal(true),
+    noRevenueProfitWithoutSource: z.literal(true),
+  }),
+});
+
+const getCacheKeyIdentity = (cacheKey: string) => {
+  const prefix = `${OWNER_BUSINESS_ASSISTANT_CACHE.serverPacketPrefix}:`;
+  if (!cacheKey.startsWith(prefix)) return null;
+  const match = cacheKey.slice(prefix.length).match(
+    /^([^:]+):([^:]+):p:([^:]+):profile:([a-z_]+)$/,
+  );
+  if (!match) return null;
+  return {
+    tId: match[1],
+    sId: match[2],
+    projectId: match[3] === '_' ? undefined : match[3],
+  };
+};
+
+const isCachedOwnerBusinessAssistantPacket = (
+  value: unknown,
+): value is CachedOwnerBusinessAssistantPacket => (
+  cachedOwnerBusinessAssistantPacketSchema.safeParse(value).success
+);
+
+export const parseCachedOwnerBusinessAssistantPacket = (
+  value: unknown,
+  requestedCacheKey: string,
+): CachedOwnerBusinessAssistantPacket | null => {
+  const parsed = cachedOwnerBusinessAssistantPacketSchema.safeParse(value);
+  const identity = getCacheKeyIdentity(requestedCacheKey);
+  if (!parsed.success || !identity || !isCachedOwnerBusinessAssistantPacket(parsed.data)) return null;
+  const packet = parsed.data;
+  if (
+    packet.cacheKey !== requestedCacheKey
+    || packet.tId !== identity.tId
+    || packet.sId !== identity.sId
+    || packet.projectId !== identity.projectId
+    || packet.health.tId !== identity.tId
+    || packet.health.sId !== identity.sId
+  ) {
+    return null;
+  }
+  return packet;
+};
 
 const isNotReadyFallbackPacket = (packet: CachedOwnerBusinessAssistantPacket) =>
   packet.health?.status === 'not_ready'
@@ -149,14 +224,27 @@ export async function readOwnerBusinessAssistantPacketCache(
 
   try {
     const result = await Promise.race([
-      redis.get<CachedOwnerBusinessAssistantPacket>(cacheKey),
+      redis.get<unknown>(cacheKey),
       new Promise<null>((resolve) => setTimeout(() => resolve(null), CACHE_TIMEOUT_MS)),
     ]);
     if (!result) return null;
-    const validUntilMs = getPacketValidUntilMs(result);
+    const packet = parseCachedOwnerBusinessAssistantPacket(result, cacheKey);
+    if (!packet) {
+      logRuntimeFailure(
+        'owner_business_assistant_packet_cache_invalid',
+        new Error('owner_business_assistant_packet_cache_invalid'),
+        getOwnerBusinessAssistantPacketCacheContext({
+          cacheKey,
+          fallbackPolicy: 'cache_miss',
+          packetProfile: getPacketProfileFromCacheKey(cacheKey),
+        }),
+      );
+      return null;
+    }
+    const validUntilMs = getPacketValidUntilMs(packet);
     if (validUntilMs && validUntilMs <= Date.now()) return null;
-    if (isNotReadyFallbackPacket(result)) return null;
-    return result;
+    if (isNotReadyFallbackPacket(packet)) return null;
+    return packet;
   } catch (error) {
     logRuntimeFailure('owner_business_assistant_packet_cache_read_failed', error, {
       ...getOwnerBusinessAssistantPacketCacheContext({

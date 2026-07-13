@@ -2,11 +2,21 @@
 
 **Status:** Initial implementation validated; production audit hardening applied
 **Audience:** Engineering / QA
-**Last Updated:** July 10, 2026
+**Last Updated:** July 13, 2026
 
 ---
 
 ## Implemented Scope
+
+Restart 239 project-integrity validation removes direct trust in scoped, legacy, and already-loaded browser `projects` snapshots before AI Menu Manager builds context, compares a proposal base hash, applies a client patch, checks an already-applied operation, or verifies an executed patch. The bounded runtime guard preserves unrelated project fields but rejects request/operation/directive identity mismatch, malformed traversed containers, more than 100 project files, oversized menu arrays, duplicate project-wide item/category IDs, duplicate per-item attribute IDs, and unsafe nested values. The 100-file AMM cap is deliberately separate from the 15-file pending-upload limit so valid projects can accumulate processed source files. Patch verification now requires every matching occurrence to satisfy the approved update, so duplicate rows cannot overwrite a failed comparison. Invalid composer truth produces an empty entity context rather than a render crash. The pure adversarial suite, source verifier, exact root TypeScript, scoped ESLint, dedicated Admin emulator, 123/123 local-readiness aggregate, and root build pass. Validation runs on already-read project documents and changes no Firebase operation count.
+
+Restart 238 proposal-integrity validation removes direct trust in Admin/Firestore proposal detail. One canonical normalizer now validates document/session/scope/project identity, duplicated card contracts, lifecycle status, patch/hash policy, approval evidence, directive/base-snapshot identity, receipt identity, idempotency keys, and timestamps. Inbox hydration drops malformed rows and every proposal mutation fails before writes when persisted truth is invalid. Numeric legacy scope encoding remains compatible through semantic identity comparison. The pure adversarial suite, source verifier, exact root TypeScript, scoped ESLint, and dedicated Admin emulator pass. Existing read/write counts are unchanged; app deployment and authenticated hosted manipulation smoke remain external.
+
+Restart 236 compact-session validation removes direct trust in Firestore and loaded browser session shapes. One runtime normalizer now enforces exact deterministic top-level identity, bounds and allowlists nested compact truth, filters malformed rows, removes duplicate operation IDs, canonicalizes counters, and preserves the production single-card `commandGroupSize: 1` compatibility shape. Admin mutation transactions reject malformed existing identity; Firestore rules reject unknown, wrong-type, negative, or oversized counter values. Receipt text and execution timestamps are bounded centrally. The pure adversarial suite, source verifier, exact root TypeScript, scoped ESLint, dedicated Admin emulator, and authenticated rules emulator pass. This adds no Firebase operation; the shared rules source still requires authorized QA deployment and authenticated hosted desktop/mobile smoke remains external.
+
+Restart 233 direct-completion validation treats caller operation bodies as untrusted references. Single and grouped completion resolve canonical operation bodies from the transaction's current compact session, reject duplicate IDs, missing or partial groups, duplicate persisted IDs and inconsistent group-size metadata, and derive receipt/counter/manual-task behavior only from current persisted truth. `npm run test:ai-menu-manager:operation-integrity`, `npm run verify:ai-menu-manager`, the dedicated Admin and authenticated rules emulators, exact root TypeScript, scoped ESLint and the complete 123/123 local readiness aggregate pass. The normal completion cost remains one transaction read and one compact-session write. Authenticated desktop/mobile browser manipulation and hosted contention smoke remain external.
+
+Restart 232 command-retry verification covers exact persisted proposal identity at both the route pre-read and transaction boundary. The dedicated emulator accepts an exact retry, rejects a cross-session deterministic collision, and proves the rejected collision does not create or mutate the current compact session. The source gate also requires the command response to use the authoritative proposal returned by the transaction. Focused `verify:ai-menu-manager`, emulator, exact TypeScript, and scoped ESLint checks pass; app deployment and authenticated browser retry smoke remain external.
 
 This implementation establishes the AMM foundation as a standalone MenuList feature:
 
@@ -50,6 +60,7 @@ Owner-facing UI name is **Menu Manager**. Internal files and docs keep `ai-menu-
 | Conversation presentation | `src/lib/ai-menu-manager/presentation.ts` |
 | Composer context picker | `src/lib/ai-menu-manager/composerContext.ts` |
 | Context packet | `src/lib/ai-menu-manager/contextPacket.ts` |
+| Project runtime integrity | `src/lib/ai-menu-manager/projectIntegrity.ts` |
 | Patch apply/verify | `src/lib/ai-menu-manager/actions/projectPatches.ts` |
 | Firestore repository | `src/database/aiMenuManager/server.ts` |
 | Client DAL | `src/database/aiMenuManager/index.ts` |
@@ -72,6 +83,7 @@ Owner-facing UI name is **Menu Manager**. Internal files and docs keep `ai-menu-
 
 ```bash
 npm run verify:ai-menu-manager
+npm run test:ai-menu-manager:project-integrity
 npx tsc --noEmit --incremental false --pretty false
 npm run lint
 git diff --check
@@ -141,10 +153,13 @@ Firestore cost posture remains aligned with the AMM Firebase doc:
 - Inbox loads one current selected-project session doc. Proposal detail docs load only when a compact summary points to server-backed durable detail.
 - Approved project mutations reuse `updateProjectWithoutLoader()` so existing cache invalidation, MCE/MOL hooks, and outlet save behavior remain in the current project mutation path.
 - Desktop and mobile approval flows require `assertProjectUpdateSucceeded()` before local project state changes or executed receipts, so fallback-array project write failures become failed project-update outcomes. If AMM cannot mark that card/proposal as failed, the secondary completion failure logs bounded desktop/mobile runtime diagnostics instead of disappearing.
-- Completion/cancel uses the already-loaded compact session snapshot to remove the pending card and write the receipt with one session write. The project write itself stays on the existing `updateProjectWithoutLoader()` path.
+- Completion/cancel transactionally re-reads the compact session before removing pending cards or appending receipts, then performs one session write. This adds one bounded read per mutation to prevent stale-tab loss; the project write itself stays on the existing `updateProjectWithoutLoader()` path.
+- Server-backed inbox hydration deduplicates compact proposal pointers before protected proposal reads and returns only exact document/card/session/tenant/store/project matches.
+- Server-backed approval checks current project truth inside the proposal-lock transaction. Server-backed completion validates proposal, directive, resulting project, and compact-session identity in one transaction, so concurrent attempts return the one persisted terminal receipt.
+- New compact sessions use a rule-verifiable tenant/store/date/project v2 ID. Direct, fallback, Admin, and Firestore-rules boundaries reject arbitrary or mismatched IDs without adding a document lookup; retained legacy IDs are update-compatible only.
 - Idempotent retries return existing cards/receipts and do not duplicate compact messages, counters, pending summaries, or execution receipts.
 - Approval revalidates the current selected-project base hash before issuing a directive.
-- Command submit reuses the already-loaded session snapshot in the open AMM screen and performs one compact-session write for normal deterministic cards.
+- Command submit reuses the loaded session for resolver context, then performs one compact-session transaction read and one write for a normal deterministic card. A loaded immediate duplicate is confirmed with one read and returns with no write or provider call.
 - Exact commands, known diagnostics, local exports, unsupported external requests, and out-of-scope questions resolve before the planner and add no provider cost.
 - An unresolved in-domain planner request sends at most 32 relevant items, 18 categories, and 5 pending-card summaries. The planner route adds no selected-project/session/proposal read or write; when cost protection is enabled it uses one SAFE_MODE read, one bounded provider call, and one existing AI operation accounting write after a valid result.
 - Planner requests retain bounded native-language aliases, attach target/value guidance for exactly the current executable action list, and constrain provider responses with the SDK structured response schema before Zod and deterministic re-resolution.
@@ -299,6 +314,7 @@ Validated runtime additions:
 - connector-aware partitioning preserves entity names such as `Fish and chips`.
 - desktop and MobileShell expose grouped approval while retaining individual review/cancel controls.
 - grouped approval performs one existing project save and one compact session completion write.
+- completion resolves canonical pending-operation bodies from current compact truth; duplicate IDs, partial groups, caller-mutated manual-task classification and inconsistent group metadata fail closed before receipt/counter mutation.
 - immediate duplicate command fingerprints reuse loaded pending cards with no additional write or planner call.
 - `Restore <item>` distinguishes sold-out, hidden, and both-off states instead of always choosing visibility.
 - accepted cloud answer/diagnostic/recommendation cards retain validated entity refs and show owner-visible grounding labels.

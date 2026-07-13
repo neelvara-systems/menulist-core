@@ -97,7 +97,7 @@ const isFeedbackSurfacePatch = (value: unknown, feedbackId: string): value is Pa
 );
 
 const isCreatedSupportCard = (value: unknown) => (
-    Boolean(value && !Array.isArray(value) && typeof value === 'object' && (value as any).id)
+    Boolean(value && !Array.isArray(value) && typeof value === 'object' && (value as Record<string, unknown>).id)
 );
 
 type FeedbackAdminTemplateProps = {
@@ -168,7 +168,7 @@ function FeedbackAdminTemplate({
         const total = feedbackList.length;
         const rated = feedbackList.filter(f => f.rating);
         const avgRating = rated.length > 0 ? rated.reduce((s, f) => s + (f.rating || 0), 0) / rated.length : 0;
-        const featureRequests = feedbackList.filter(f => f.type === 'feature_request' || f.type === 'feature_requests' || f.featureRequest).length;
+        const featureRequests = feedbackList.filter(f => f.type === 'feature_requests' || f.featureRequest).length;
         const linkedSurfaces = new Set(feedbackList.map(f => f.contextKey || f.surfaceId).filter(Boolean)).size;
         const unsorted = feedbackList.filter(f => !f.contextKey && !f.surfaceId).length;
         return { total, avgRating, featureRequests, linkedSurfaces, unsorted };

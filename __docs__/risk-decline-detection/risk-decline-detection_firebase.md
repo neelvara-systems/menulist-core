@@ -7,9 +7,11 @@
 
 ## Cost Summary
 
-**Monthly Additional Cost (100 stores): ~₹1**
+**Current runtime cost: zero.**
 
-This is a meta-signal — it reads states already computed by Pillars 4 and 5. No additional Firestore reads needed. Only adds one field to the existing `healthSignals` write.
+The shared computation is not exported or scheduled, all prerequisite flags are `false`, and no risk state is written. If later activated, risk must remain a pure derivation inside the same bounded trust/loyalty run and the same store update.
+
+## Historical Planning Estimate (Not Current Evidence)
 
 | Component | Cost |
 |-----------|------|
@@ -31,4 +33,4 @@ This is negligible — less than the cost of a single cup of chai per month.
 
 ---
 
-**Last Updated:** February 19, 2026
+**Last Updated:** July 13, 2026

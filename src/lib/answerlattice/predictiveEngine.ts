@@ -24,6 +24,9 @@
 import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
+import { parseAnswerlatticePredictiveTriggerIndex } from '@lib/answerlattice/runtimeSummaryContracts';
+import { parseAnswerlatticeRetrievalCanonicalAnswer } from '@lib/answerlattice/retrievalContracts';
+import { PRODUCT_IDS } from '@constant/product';
 import type {
     AnswerlatticeCanonicalAnswer,
     AnswerlatticeContextPayload,
@@ -57,6 +60,31 @@ const normalizeConditionValue = (value: string | undefined): string | undefined 
     return normalized || undefined;
 };
 
+const getTimestampMillis = (value: unknown): number | null => {
+    if (!value) return null;
+    if (typeof value === 'string') {
+        const parsed = Date.parse(value);
+        return Number.isFinite(parsed) ? parsed : null;
+    }
+    if (value instanceof Date) return value.getTime();
+    if (typeof (value as any)?.toMillis === 'function') {
+        const millis = Number((value as any).toMillis());
+        return Number.isFinite(millis) ? millis : null;
+    }
+    const seconds = Number((value as any)?.seconds);
+    return Number.isFinite(seconds) ? seconds * 1000 : null;
+};
+
+const isTriggerWithinActiveWindow = (trigger: AnswerlatticePredictiveTrigger, now = Date.now()) => {
+    if (trigger.kind !== 'known_issue') return true;
+    if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_KNOWN_ISSUES) return false;
+    const startsAt = getTimestampMillis(trigger.knownIssue?.startsAt);
+    const endsAt = getTimestampMillis(trigger.knownIssue?.endsAt);
+    if (startsAt !== null && startsAt > now) return false;
+    if (endsAt !== null && endsAt <= now) return false;
+    return true;
+};
+
 /**
  * Load the cached trigger index for a tenant.
  * Single Firestore read. Returns null if not available.
@@ -68,8 +96,14 @@ export async function loadTriggerIndex(
     sId: number
 ): Promise<AnswerlatticePredictiveTriggerIndex | null> {
     if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_PREDICTIVE_SUPPORT) return null;
+    if (
+        !Number.isSafeInteger(tId)
+        || tId <= 0
+        || !Number.isSafeInteger(sId)
+        || sId <= 0
+    ) return null;
 
-    const cacheKey = `${Number(tId)}:${Number(sId)}`;
+    const cacheKey = `${tId}:${sId}`;
     const cached = triggerIndexCache.get(cacheKey);
     if (cached && cached.expiresAt > Date.now()) {
         return cached.value;
@@ -83,7 +117,9 @@ export async function loadTriggerIndex(
             .collection(PLATFORM_SUMMARY_COLLECTION)
             .doc(`predictiveTriggers_${tId}_${sId}`)
             .get();
-        const value = snap.exists ? snap.data() as AnswerlatticePredictiveTriggerIndex : null;
+        const value = snap.exists
+            ? parseAnswerlatticePredictiveTriggerIndex(snap.data(), { tId, sId })
+            : null;
         const hasActiveTriggers = Number(value?.activeTriggerCount || 0) > 0
             || (value?.activeTriggerCount === undefined
                 && value?.triggers
@@ -105,6 +141,7 @@ async function getActiveAnswersForEntityServer(
 ): Promise<AnswerlatticeCanonicalAnswer[]> {
     const snapshot = await getAnswerlatticeAdminDb()
         .collection(DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS)
+        .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
         .where('tId', '==', tId)
         .where('sId', '==', sId)
         .where('scope.entityIds', 'array-contains', entityId)
@@ -112,7 +149,13 @@ async function getActiveAnswersForEntityServer(
         .limit(1)
         .get();
 
-    return snapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id } as AnswerlatticeCanonicalAnswer));
+    return snapshot.docs.flatMap((doc) => {
+        try {
+            return [parseAnswerlatticeRetrievalCanonicalAnswer({ ...doc.data(), id: doc.id }, { tId, sId })];
+        } catch {
+            return [];
+        }
+    });
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -171,9 +214,9 @@ const isRedisConfigured = () => Boolean(process.env.UPSTASH_REDIS_REST_URL && pr
  * Returns true if on cooldown (skip trigger), false if eligible.
  * Fail-closed: returns true (skip trigger) if Redis unavailable.
  */
-async function checkCooldown(userId: string, triggerId: string): Promise<boolean> {
+async function checkCooldown(userId: string, triggerId: string, failClosed = true): Promise<boolean> {
     if (!isRedisConfigured()) {
-        return true;
+        return failClosed;
     }
 
     try {
@@ -187,7 +230,7 @@ async function checkCooldown(userId: string, triggerId: string): Promise<boolean
         return exists === 1;
     } catch {
         // Fail closed to avoid repeated proactive prompts when cooldown storage is unavailable.
-        return true;
+        return failClosed;
     }
 }
 
@@ -233,6 +276,12 @@ async function resolveSuggestion(
             summary: trigger.action.customSummary || trigger.resolvedSuggestion.summary || '',
             articles: trigger.resolvedSuggestion.articles,
             procedure: trigger.action.type === 'workflow_guide' ? trigger.resolvedSuggestion.procedure : undefined,
+            ...(trigger.kind === 'known_issue' ? {
+                knownIssue: {
+                    severity: trigger.knownIssue?.severity || 'info',
+                    ...(trigger.knownIssue?.statusPageUrl ? { statusPageUrl: trigger.knownIssue.statusPageUrl } : {}),
+                },
+            } : {}),
         };
     }
 
@@ -271,6 +320,12 @@ async function resolveSuggestion(
         summary,
         articles: articles.length > 0 ? articles : undefined,
         procedure: trigger.action.type === 'workflow_guide' ? procedure : undefined,
+        ...(trigger.kind === 'known_issue' ? {
+            knownIssue: {
+                severity: trigger.knownIssue?.severity || 'info',
+                ...(trigger.knownIssue?.statusPageUrl ? { statusPageUrl: trigger.knownIssue.statusPageUrl } : {}),
+            },
+        } : {}),
     };
 }
 
@@ -310,6 +365,7 @@ export async function evaluateTriggers(
         // 3. Evaluate conditions + filter active only + sort by priority
         const matchedTriggers = pageTriggers
             .filter(t => t.status === 'active')
+            .filter(t => isTriggerWithinActiveWindow(t))
             .filter(t => evaluateConditions(t.conditions, context))
             .sort((a, b) => b.priority - a.priority);
 
@@ -317,7 +373,7 @@ export async function evaluateTriggers(
 
         // 4. Check cooldown and resolve content for first eligible trigger
         for (const trigger of matchedTriggers) {
-            const onCooldown = await checkCooldown(userId, trigger.id);
+            const onCooldown = await checkCooldown(userId, trigger.id, trigger.kind !== 'known_issue');
             if (onCooldown) continue;
 
             // 5. Resolve content

@@ -1,20 +1,22 @@
 import { DB_COLLECTIONS } from "@constant/database";
-import { uploadPreparedMediaImage } from "@database/storage/uploadPreparedMediaImage";
-import { collection, doc, getDoc, getDocs, limit, orderBy, query, serverTimestamp, setDoc, Timestamp, where } from "@firebase/firestore";
+import { deleteFileByUrl } from "@database/storage/deleteFromStorage";
+import { uploadPreparedMediaImageWithLedger } from "@database/storage/uploadPreparedMediaImage";
+import { collection, deleteField, doc, getDoc, getDocs, limit, orderBy, query, runTransaction, serverTimestamp, setDoc, Timestamp, type Transaction, where } from "@firebase/firestore";
 import { requestBodyComposer } from "@lib/apiHelper";
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import getActiveSession from "@lib/auth/getActiveSession";
-import { getStoreContextName } from "@lib/businessIdentity/names";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
-import { parseSummaryProjects } from "@lib/firestore/parseSummaryProjects";
 import { isDataUrl } from "@lib/media/mediaStorage";
-import { getDefaultProjectUrl } from "@lib/obp/generateOBPUrl";
 import {
-    extractScreenMenuItemsFromProject,
-    normalizeOwnerSlideCaption,
-} from "@lib/screen/screenContent";
-import { syncPublicScreenState } from "@lib/screen/publicScreenState";
-import { generateScreenToken } from "@lib/screen/utils";
+    buildCampaignCompletionState,
+    buildCampaignSkipState,
+    campaignTodayContains,
+    getCampaignTodayState,
+    removeCampaignFromToday,
+} from "@lib/campaigns/campaignActionState";
+import { normalizeOwnerSlideCaption } from "@lib/screen/screenContent";
+import { getPublicScreenStateDocRef, toPublicScreenState } from "@lib/screen/publicScreenState";
+import { generateScreenToken, isValidScreenToken } from "@lib/screen/utils";
 import { secureError } from "@lib/security/secureLogger";
 import { createRandomIdSegment } from "@lib/runtime/randomId";
 import {
@@ -27,10 +29,10 @@ import {
     ExecutionSurface,
     PhysicalSurfaceEligibility,
     ScreenSlide,
-    ScreenStoreInfo,
     StaffPrompt
 } from "@type/campaigns";
 import { UserUploadedFileType } from "@type/common";
+import type LoginUserType from "@type/loginUser";
 
 const CAMPAIGNS_COLLECTION = DB_COLLECTIONS.CAMPAIGNS;
 const EXPORTS_COLLECTION = DB_COLLECTIONS.CAMPAIGN_EXPORTS;
@@ -60,11 +62,59 @@ export type DigitalScreenMutationResult = {
     screen: DigitalScreenState;
 };
 
+const isFirestoreTimestampLike = (value: unknown): boolean => (
+    Boolean(value && typeof value === 'object')
+    && typeof (value as { toDate?: unknown }).toDate === 'function'
+    && typeof (value as { toMillis?: unknown }).toMillis === 'function'
+);
+
+const isPinnedScreenSlide = (value: unknown): value is ScreenSlide => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+    const slide = value as Partial<ScreenSlide>;
+    return typeof slide.id === 'string'
+        && slide.id.length > 0
+        && slide.id.length <= 128
+        && slide.source === 'pinned'
+        && slide.type === 'owner_upload'
+        && typeof slide.imageUrl === 'string'
+        && slide.imageUrl.length > 0
+        && slide.imageUrl.length <= 4096
+        && (slide.caption === undefined || (typeof slide.caption === 'string' && slide.caption.length <= 48))
+        && typeof slide.confidenceScore === 'number'
+        && Number.isFinite(slide.confidenceScore)
+        && slide.confidenceScore >= 0
+        && slide.confidenceScore <= 1
+        && slide.availabilityLinked === false
+        && slide.availabilityReliability === 'high'
+        && isFirestoreTimestampLike(slide.validUntil);
+};
+
+export const isDigitalScreenState = (value: unknown): value is DigitalScreenState => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+    const screen = value as Partial<DigitalScreenState>;
+    return typeof screen.enabled === 'boolean'
+        && typeof screen.screenToken === 'string'
+        && isValidScreenToken(screen.screenToken)
+        && isFirestoreTimestampLike(screen.lastRefreshed)
+        && Number.isInteger(screen.contentVersion)
+        && Number(screen.contentVersion) >= 1
+        && isFirestoreTimestampLike(screen.lastContentChangeAt)
+        && typeof screen.currentMinConfidence === 'number'
+        && Number.isFinite(screen.currentMinConfidence)
+        && screen.currentMinConfidence >= 0
+        && screen.currentMinConfidence <= 1
+        && typeof screen.ownerOverrideEnabled === 'boolean'
+        && Array.isArray(screen.pinnedSlides)
+        && screen.pinnedSlides.length <= 3
+        && screen.pinnedSlides.every(isPinnedScreenSlide)
+        && (screen.screenLastSeenAt === undefined || isFirestoreTimestampLike(screen.screenLastSeenAt));
+};
+
 export const isDigitalScreenMutationResult = (result: unknown): result is DigitalScreenMutationResult => (
     Boolean(result && typeof result === 'object')
     && !Array.isArray(result)
     && (result as DigitalScreenMutationResult).success === true
-    && Boolean((result as DigitalScreenMutationResult).screen)
+    && isDigitalScreenState((result as DigitalScreenMutationResult).screen)
 );
 
 export function assertDigitalScreenMutationSucceeded(
@@ -76,14 +126,7 @@ export function assertDigitalScreenMutationSucceeded(
 }
 
 export const isDigitalScreenSlideUploadResult = (result: unknown): result is ScreenSlide => (
-    Boolean(result && typeof result === 'object')
-    && !Array.isArray(result)
-    && typeof (result as ScreenSlide).id === 'string'
-    && (result as ScreenSlide).id.length > 0
-    && (result as ScreenSlide).source === 'pinned'
-    && (result as ScreenSlide).type === 'owner_upload'
-    && typeof (result as ScreenSlide).imageUrl === 'string'
-    && (result as ScreenSlide).imageUrl.length > 0
+    isPinnedScreenSlide(result)
 );
 
 export function assertDigitalScreenSlideUploadSucceeded(
@@ -215,15 +258,30 @@ export function assertCampaignSkipSucceeded(
 // DOCUMENT REFERENCES
 // ═══════════════════════════════════════════════════════════════
 
-const getCampaignsCollectionRef = (session: any) => {
+type CampaignSessionScope = Pick<LoginUserType, 'tId' | 'sId'>;
+
+const requireCampaignSessionScope = (session: LoginUserType | null): LoginUserType => {
+    if (
+        !session
+        || !Number.isSafeInteger(session.tId)
+        || session.tId <= 0
+        || !Number.isSafeInteger(session.sId)
+        || session.sId <= 0
+    ) {
+        throw new Error('campaign_session_scope_invalid');
+    }
+    return session;
+};
+
+const getCampaignsCollectionRef = (session: CampaignSessionScope) => {
     return collection(firebaseClient, `${CAMPAIGNS_COLLECTION}/${session.tId}/${session.sId}`);
 };
 
-const getCampaignDocRef = (session: any, campaignId: string) => {
+const getCampaignDocRef = (session: CampaignSessionScope, campaignId: string) => {
     return doc(firebaseClient, `${CAMPAIGNS_COLLECTION}/${session.tId}/${session.sId}`, campaignId);
 };
 
-const getExportsCollectionRef = (session: any) => {
+const getExportsCollectionRef = (session: CampaignSessionScope) => {
     return collection(firebaseClient, `${EXPORTS_COLLECTION}/${session.tId}/${session.sId}`);
 };
 
@@ -232,8 +290,20 @@ const getExportsCollectionRef = (session: any) => {
  * Document path: platformSummary/campaigns_{sId}
  * This is the Summary Document Pattern for 1-read Today screen
  */
-const getCampaignsSummaryDocRef = (session: any) => {
+const getCampaignsSummaryDocRef = (session: CampaignSessionScope) => {
     return doc(firebaseClient, PLATFORM_SUMMARY, `campaigns_${session.sId}`);
+};
+
+const setScreenStateInTransaction = (
+    transaction: Transaction,
+    session: CampaignSessionScope,
+    screen: DigitalScreenState,
+): void => {
+    const publicState = toPublicScreenState(session.sId, screen);
+    if (!publicState) throw new Error('digital_screen_public_state_invalid');
+
+    transaction.set(getCampaignsSummaryDocRef(session), { screen }, { merge: true });
+    transaction.set(getPublicScreenStateDocRef(session.sId), publicState, { merge: false });
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -257,7 +327,7 @@ export interface TodayScreenData {
 export const getTodayCampaigns = async (): Promise<TodayScreenData | null> => {
     return await apiCallComposer(
         async () => {
-            const session = await getActiveSession();
+            const session = requireCampaignSessionScope(await getActiveSession());
             const docRef = getCampaignsSummaryDocRef(session);
             const docSnap = await getDoc(docRef);
 
@@ -303,7 +373,7 @@ export const getTodayCampaigns = async (): Promise<TodayScreenData | null> => {
 export const getCampaign = async (campaignId: string): Promise<Campaign | null> => {
     return await apiCallComposer(
         async () => {
-            const session = await getActiveSession();
+            const session = requireCampaignSessionScope(await getActiveSession());
             const docRef = getCampaignDocRef(session, campaignId);
             const docSnap = await getDoc(docRef);
 
@@ -333,7 +403,7 @@ export const getCampaignHistory = async (
     return await apiCallComposer(
         async () => {
             try {
-                const session = await getActiveSession();
+                const session = requireCampaignSessionScope(await getActiveSession());
                 const collectionRef = getCampaignsCollectionRef(session);
                 const q = projectId
                     ? query(
@@ -392,28 +462,13 @@ export const completeCampaign = async (
 ) => {
     return await apiCallComposer(
         async () => {
-            const session = await getActiveSession();
+            const session = requireCampaignSessionScope(await getActiveSession());
             const now = Timestamp.now();
             const today = new Date().toISOString().split('T')[0];
             const campaignDocRef = getCampaignDocRef(session, campaignId);
-            const campaignDocSnap = await getDoc(campaignDocRef);
             const campaignsSummaryRef = getCampaignsSummaryDocRef(session);
-            const summarySnap = await getDoc(campaignsSummaryRef);
-
-            if (!campaignDocSnap.exists()) {
-                throw new Error('Campaign not found');
-            }
-
-            // Mark campaign completed
-            await setDoc(campaignDocRef, {
-                status: 'completed',
-                updatedAt: now,
-                resolvedAt: now,
-            }, { merge: true });
-
-            // Record export event
-            const timestamp = Date.now().toString(36);
-            const exportId = `${session.tId}-${timestamp}-${session.sId}`;
+            const exportId = `complete_${campaignId}`;
+            const exportRef = doc(getExportsCollectionRef(session), exportId);
             const exportEvent = await requestBodyComposer({
                 id: exportId,
                 tId: session.tId,
@@ -424,61 +479,117 @@ export const completeCampaign = async (
                 method,
                 menuLinkWithTracking,
                 exportedAt: now,
-            }) as CampaignExport;
-            await setDoc(doc(getExportsCollectionRef(session), exportId), exportEvent);
+            }, { isNew: true }) as CampaignExport;
 
-            const summaryData = summarySnap.exists()
-                ? (summarySnap.data() as Partial<CampaignsSummaryDocument>)
-                : null;
-            const currentStats = summaryData?.stats ?? {
-                totalCompleted: 0,
-                totalSkipped: 0,
-                typeSkipCounts: {},
-            };
-            const currentToday = summaryData?.today?.date === today
-                ? summaryData.today
-                : { date: today, primary: undefined, operational: [], isEmpty: true };
-            const nextPrimary = currentToday.primary?.campaignId === campaignId
-                ? undefined
-                : currentToday.primary;
-            const nextOperational = (currentToday.operational || []).filter(
-                campaign => campaign.campaignId !== campaignId
-            );
-            const nextToday = {
-                date: today,
-                primary: nextPrimary,
-                operational: nextOperational,
-                isEmpty: !nextPrimary && nextOperational.length === 0,
-            };
-            const nextStats = {
-                ...currentStats,
-                totalCompleted: (currentStats.totalCompleted || 0) + 1,
-                totalSkipped: currentStats.totalSkipped || 0,
-                lastCampaignDate: today,
-                typeSkipCounts: currentStats.typeSkipCounts || {},
-            };
+            return runTransaction(firebaseClient, async (transaction) => {
+                const campaignDocSnap = await transaction.get(campaignDocRef);
+                const summarySnap = await transaction.get(campaignsSummaryRef);
+                const existingExportSnap = await transaction.get(exportRef);
 
-            await setDoc(campaignsSummaryRef, {
-                lastUpdated: serverTimestamp(),
-                stats: nextStats,
-                today: {
-                    ...nextToday,
-                    primary: nextToday.primary || null,
-                },
-            }, { merge: true });
+                if (!campaignDocSnap.exists()) {
+                    throw new Error('campaign_not_found');
+                }
 
-            return {
-                campaignId,
-                campaignType,
-                exportEvent,
-                exportId,
-                method,
-                projectId,
-                status: 'completed',
-                success: true,
-                surface,
-                today: nextToday,
-            } satisfies CampaignCompleteResult;
+                const campaign = campaignDocSnap.data() as Campaign;
+                if (
+                    campaign.id !== campaignId
+                    || campaign.projectId !== projectId
+                    || campaign.type !== campaignType
+                    || Number(campaign.tId) !== session.tId
+                    || Number(campaign.sId) !== session.sId
+                ) {
+                    throw new Error('campaign_action_identity_mismatch');
+                }
+                if (
+                    campaign.primarySurface !== surface
+                    && !(campaign.secondarySurfaces || []).includes(surface)
+                ) {
+                    throw new Error('campaign_action_surface_mismatch');
+                }
+
+                const summaryData = summarySnap.exists()
+                    ? (summarySnap.data() as Partial<CampaignsSummaryDocument>)
+                    : null;
+                const currentToday = getCampaignTodayState(summaryData, today);
+
+                if (campaign.status === 'completed') {
+                    if (!existingExportSnap.exists()) {
+                        throw new Error('campaign_completion_marker_missing');
+                    }
+                    const existingExport = existingExportSnap.data() as CampaignExport;
+                    if (
+                        existingExport.id !== exportId
+                        || existingExport.campaignId !== campaignId
+                        || existingExport.projectId !== projectId
+                        || existingExport.surface !== surface
+                        || existingExport.method !== method
+                        || Number(existingExport.tId) !== session.tId
+                        || Number(existingExport.sId) !== session.sId
+                    ) {
+                        throw new Error('campaign_completion_marker_mismatch');
+                    }
+
+                    const idempotentToday = removeCampaignFromToday(currentToday, campaignId);
+                    if (campaignTodayContains(currentToday, campaignId)) {
+                        transaction.set(campaignsSummaryRef, {
+                            lastUpdated: serverTimestamp(),
+                            today: {
+                                ...idempotentToday,
+                                primary: idempotentToday.primary || null,
+                            },
+                        }, { merge: true });
+                    }
+
+                    return {
+                        campaignId,
+                        campaignType,
+                        exportEvent: existingExport,
+                        exportId,
+                        method,
+                        projectId,
+                        status: 'completed',
+                        success: true,
+                        surface,
+                        today: idempotentToday,
+                    } satisfies CampaignCompleteResult;
+                }
+
+                if (campaign.status !== 'suggested') {
+                    throw new Error('campaign_completion_status_invalid');
+                }
+                if (existingExportSnap.exists()) {
+                    throw new Error('campaign_completion_marker_conflict');
+                }
+
+                const nextState = buildCampaignCompletionState(summaryData, today, campaignId);
+                transaction.set(campaignDocRef, {
+                    status: 'completed',
+                    updatedAt: now,
+                    resolvedAt: now,
+                }, { merge: true });
+                transaction.set(exportRef, exportEvent);
+                transaction.set(campaignsSummaryRef, {
+                    lastUpdated: serverTimestamp(),
+                    stats: nextState.stats,
+                    today: {
+                        ...nextState.today,
+                        primary: nextState.today.primary || null,
+                    },
+                }, { merge: true });
+
+                return {
+                    campaignId,
+                    campaignType,
+                    exportEvent,
+                    exportId,
+                    method,
+                    projectId,
+                    status: 'completed',
+                    success: true,
+                    surface,
+                    today: nextState.today,
+                } satisfies CampaignCompleteResult;
+            });
         },
         { campaignId, projectId, campaignType, surface, method },
         "completeCampaign"
@@ -495,89 +606,105 @@ export const completeCampaign = async (
 export const skipCampaign = async (campaignId: string, campaignType: CampaignType) => {
     return await apiCallComposer(
         async () => {
-            const session = await getActiveSession();
+            const session = requireCampaignSessionScope(await getActiveSession());
             const now = Timestamp.now();
             const today = new Date().toISOString().split('T')[0];
             const campaignDocRef = getCampaignDocRef(session, campaignId);
-            const campaignDocSnap = await getDoc(campaignDocRef);
             const campaignsSummaryRef = getCampaignsSummaryDocRef(session);
-            const summarySnap = await getDoc(campaignsSummaryRef);
 
-            if (!campaignDocSnap.exists()) {
-                throw new Error('Campaign not found');
-            }
+            return runTransaction(firebaseClient, async (transaction) => {
+                const campaignDocSnap = await transaction.get(campaignDocRef);
+                const summarySnap = await transaction.get(campaignsSummaryRef);
 
-            const campaign = campaignDocSnap.data() as Campaign;
-            const nextSkipCount = (campaign.skipCount || 0) + 1;
-            const shouldSuppress = nextSkipCount >= 2;
-            const status: CampaignStatus = shouldSuppress ? 'suppressed' : 'skipped';
-            const updateData: Partial<Campaign> = {
-                status,
-                skipCount: nextSkipCount,
-                updatedAt: now,
-                resolvedAt: now,
-            };
-            if (shouldSuppress) {
-                updateData.suppressedUntil = Timestamp.fromDate(
-                    new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
+                if (!campaignDocSnap.exists()) {
+                    throw new Error('campaign_not_found');
+                }
+
+                const campaign = campaignDocSnap.data() as Campaign;
+                if (
+                    campaign.id !== campaignId
+                    || campaign.type !== campaignType
+                    || Number(campaign.tId) !== session.tId
+                    || Number(campaign.sId) !== session.sId
+                ) {
+                    throw new Error('campaign_action_identity_mismatch');
+                }
+
+                const summaryData = summarySnap.exists()
+                    ? (summarySnap.data() as Partial<CampaignsSummaryDocument>)
+                    : null;
+                const currentToday = getCampaignTodayState(summaryData, today);
+
+                if (campaign.status === 'skipped' || campaign.status === 'suppressed') {
+                    const idempotentToday = removeCampaignFromToday(currentToday, campaignId);
+                    if (campaignTodayContains(currentToday, campaignId)) {
+                        transaction.set(campaignsSummaryRef, {
+                            lastUpdated: serverTimestamp(),
+                            today: {
+                                ...idempotentToday,
+                                primary: idempotentToday.primary || null,
+                            },
+                        }, { merge: true });
+                    }
+                    return {
+                        campaignId,
+                        campaignType,
+                        skipCount: Number.isSafeInteger(Number(campaign.skipCount)) && Number(campaign.skipCount) > 0
+                            ? Number(campaign.skipCount)
+                            : 1,
+                        status: campaign.status,
+                        success: true,
+                        today: idempotentToday,
+                    } satisfies CampaignSkipResult;
+                }
+
+                if (campaign.status !== 'suggested') {
+                    throw new Error('campaign_skip_status_invalid');
+                }
+
+                const persistedSkipCount = Number(campaign.skipCount);
+                const nextSkipCount = (
+                    Number.isSafeInteger(persistedSkipCount) && persistedSkipCount >= 0
+                        ? persistedSkipCount
+                        : 0
+                ) + 1;
+                const shouldSuppress = nextSkipCount >= 2;
+                const status: CampaignStatus = shouldSuppress ? 'suppressed' : 'skipped';
+                const updateData = {
+                    status,
+                    skipCount: nextSkipCount,
+                    updatedAt: now,
+                    resolvedAt: now,
+                    suppressedUntil: shouldSuppress
+                        ? Timestamp.fromMillis(now.toMillis() + 14 * 24 * 60 * 60 * 1000)
+                        : deleteField(),
+                };
+                const nextState = buildCampaignSkipState(
+                    summaryData,
+                    today,
+                    campaignId,
+                    campaignType,
                 );
-            } else {
-                delete updateData.suppressedUntil;
-            }
-            await setDoc(campaignDocRef, updateData, { merge: true });
 
-            const summaryData = summarySnap.exists()
-                ? (summarySnap.data() as Partial<CampaignsSummaryDocument>)
-                : null;
-            const currentStats = summaryData?.stats ?? {
-                totalCompleted: 0,
-                totalSkipped: 0,
-                typeSkipCounts: {},
-            };
-            const currentToday = summaryData?.today?.date === today
-                ? summaryData.today
-                : { date: today, primary: undefined, operational: [], isEmpty: true };
-            const nextPrimary = currentToday.primary?.campaignId === campaignId
-                ? undefined
-                : currentToday.primary;
-            const nextOperational = (currentToday.operational || []).filter(
-                current => current.campaignId !== campaignId
-            );
-            const nextToday = {
-                date: today,
-                primary: nextPrimary,
-                operational: nextOperational,
-                isEmpty: !nextPrimary && nextOperational.length === 0,
-            };
-            const currentTypeSkipCounts = currentStats.typeSkipCounts || {};
-            const nextStats = {
-                ...currentStats,
-                totalCompleted: currentStats.totalCompleted || 0,
-                totalSkipped: (currentStats.totalSkipped || 0) + 1,
-                lastCampaignDate: today,
-                typeSkipCounts: {
-                    ...currentTypeSkipCounts,
-                    [campaignType]: (currentTypeSkipCounts[campaignType] || 0) + 1,
-                },
-            };
+                transaction.set(campaignDocRef, updateData, { merge: true });
+                transaction.set(campaignsSummaryRef, {
+                    lastUpdated: serverTimestamp(),
+                    stats: nextState.stats,
+                    today: {
+                        ...nextState.today,
+                        primary: nextState.today.primary || null,
+                    },
+                }, { merge: true });
 
-            await setDoc(campaignsSummaryRef, {
-                lastUpdated: serverTimestamp(),
-                stats: nextStats,
-                today: {
-                    ...nextToday,
-                    primary: nextToday.primary || null,
-                },
-            }, { merge: true });
-
-            return {
-                campaignId,
-                campaignType,
-                skipCount: nextSkipCount,
-                status,
-                success: true,
-                today: nextToday,
-            } satisfies CampaignSkipResult;
+                return {
+                    campaignId,
+                    campaignType,
+                    skipCount: nextSkipCount,
+                    status,
+                    success: true,
+                    today: nextState.today,
+                } satisfies CampaignSkipResult;
+            });
         },
         { campaignId, campaignType },
         "skipCampaign"
@@ -590,266 +717,12 @@ export const skipCampaign = async (campaignId: string, campaignType: CampaignTyp
 // ═══════════════════════════════════════════════════════════════
 
 /**
- * Get screen data by token (PUBLIC - no session required)
- * Used by /screen/[token] page for TV display
- * Per DAL pattern: Direct Firestore query, no API route needed
-     *
- * LICENSE CHECK: Returns null if store is inactive/blocked
- */
-export const getScreenDataByToken = async (token: string): Promise<{
-    screen: DigitalScreenState;
-    today: CampaignsSummaryDocument['today'];
-    storeId: string;
-    tenantId: string;
-    baseProjectId: string | null;
-    activeSpecialMenuId: string | null;
-    storeInfo: ScreenStoreInfo;
-} | null> => {
-    try {
-        // Query platformSummary where screen.screenToken == token
-        const summaryRef = collection(firebaseClient, DB_COLLECTIONS.PLATFORM_SUMMARY);
-        const q = query(summaryRef, where('screen.screenToken', '==', token));
-        const snapshot = await getDocs(q);
-
-        if (snapshot.empty) return null;
-
-        const docSnap = snapshot.docs[0];
-        const data = docSnap.data() as CampaignsSummaryDocument;
-
-        if (!data.screen?.enabled) return null;
-
-        // Extract storeId from document ID (campaigns_{sId})
-        const storeId = docSnap.id.replace('campaigns_', '');
-
-        // Fetch store info (simple approach - 1 extra read, but no sync complexity)
-        const storeDoc = await getDoc(doc(firebaseClient, DB_COLLECTIONS.STORES, storeId));
-        const storeData = storeDoc.exists() ? storeDoc.data() : null;
-
-        // LICENSE CHECK: Block if store is inactive or blocked
-        if (storeData && (storeData.active === false || storeData.blocked === true)) return null;
-
-        // R5 link-emitter audit (§9 PUBLIC-ROUTING-DOCTRINE): emit the real
-        // canonical slug URL for the QR, not the /menu alias. If the QR
-        // encoded /menu and an owner later named a project "Menu", Layer 1
-        // would silently hijack what the physical QR resolves to. Canonical
-        // URL is immutable (rename → previousSlugs 301 chain) and matches
-        // the "internal emitters use canonical URL" rule.
-        let selectedProjectSlug: string | undefined;
-        let baseProjectId: string | null = null;
-        try {
-            const summaryRef = doc(
-                firebaseClient,
-                DB_COLLECTIONS.PLATFORM_SUMMARY,
-                `projects_${storeId}`,
-            );
-            const summarySnap = await getDoc(summaryRef);
-            if (summarySnap.exists()) {
-                const projectMap = parseSummaryProjects(summarySnap.data() || {});
-                const activeProjects = Object.entries(projectMap)
-                    .map(([projectId, projectData]) => ({ projectId, ...(projectData || {}) }))
-                    .filter((project: any) => project?.active !== false && project?.deleted !== true && project?.isSpecialMenu !== true);
-                const fallbackProject = activeProjects.find((project: any) => project?.isDefault === true) || activeProjects[0];
-                baseProjectId = fallbackProject?.projectId || null;
-                selectedProjectSlug = fallbackProject?.slug;
-            }
-        } catch {
-            // Silent fallback — alias URL still works via Layer 2.
-        }
-
-        const storeInfo = {
-            name: getStoreContextName(storeData, storeData?.businessName || 'Menu'),
-            logoUrl: storeData?.logo || undefined,
-            menuQrUrl: getDefaultProjectUrl(
-                storeData?.subdomain || storeId,
-                storeData?.customDomain,
-                selectedProjectSlug,
-            ),
-            currencySymbol: storeData?.currencySymbol || '₹',
-            activePlanType: storeData?.activePlanType || null,
-        };
-
-        return {
-            screen: data.screen,
-            today: data.today,
-            storeId,
-            tenantId: String(storeData?.tenantId || ''),
-            baseProjectId,
-            activeSpecialMenuId: storeData?.activeSpecialMenuId || null,
-            storeInfo
-        };
-    } catch (error) {
-        logCampaignScreenFailure(
-            "digital_screen_client_token_resolver_failed",
-            error,
-            {
-                tokenLength: token.length,
-            },
-        );
-        return null;
-    }
-};
-
-/**
- * Get menu items for screen display (PUBLIC - no session required)
- * Fetches top items from the store's default project for evergreen slides
- * Returns empty array on any failure (graceful fallback — screen still works with brand slides)
- *
- * Cost: 2 reads (1 metadata query + 1 project data get)
- */
-export const getMenuItemsForScreen = async (
-    storeId: string,
-    tenantId: string,
-    activeSpecialMenuId?: string | null
-): Promise<Array<{
-    id: string;
-    name: string;
-    imageUrl?: string;
-    price?: number;
-    available: boolean;
-    isBestSeller?: boolean;
-    categoryName?: string;
-    categoryOrderIndex?: number;
-    orderIndex?: number;
-    description?: string;
-    tags?: string[];
-}>> => {
-    try {
-        if (!tenantId) return [];
-
-        const extractMenuItemsFromProject = extractScreenMenuItemsFromProject;
-
-        const mergeOverlayMenu = (baseProject: any, specialProject: any) => {
-            if (!specialProject?.files?.length) return baseProject;
-            if (!baseProject?.files?.length) return specialProject;
-
-            const merged = JSON.parse(JSON.stringify(baseProject));
-            const specialData = specialProject.files[0]?.extractedData?.data;
-            if (!specialData) return merged;
-
-            const specialCategories = specialData.categories || [];
-            const specialItems = specialData.items || [];
-
-            if (merged.files[0]?.extractedData?.data) {
-                const baseData = merged.files[0].extractedData.data;
-
-                if (specialCategories.length > 0) {
-                    baseData.categories = [
-                        ...(baseData.categories || []),
-                        ...specialCategories.map((category: any) => ({
-                            ...category,
-                            _isSpecialSection: true,
-                        })),
-                    ];
-                }
-
-                if (specialItems.length > 0) {
-                    baseData.items = [
-                        ...(baseData.items || []),
-                        ...specialItems.map((item: any) => ({
-                            ...item,
-                            _isSpecialSection: true,
-                        })),
-                    ];
-                }
-            }
-
-            return merged;
-        };
-
-        const projectsRef = collection(
-            firebaseClient,
-            `${DB_COLLECTIONS.PROJECTS}/${tenantId}/${storeId}`
-        );
-        const getProjectDoc = async (projectId: string) => {
-            const projectDoc = await getDoc(doc(projectsRef, projectId));
-            return projectDoc.exists() ? projectDoc : null;
-        };
-
-        const summaryRef = doc(
-            firebaseClient,
-            DB_COLLECTIONS.PLATFORM_SUMMARY,
-            `projects_${storeId}`,
-        );
-        const summarySnap = await getDoc(summaryRef);
-        const projectMap = summarySnap.exists() ? parseSummaryProjects(summarySnap.data() || {}) : {};
-        const activeProjects = Object.entries(projectMap)
-            .map(([projectId, projectData]) => ({ projectId, ...(projectData || {}) }))
-            .filter((project: any) => project?.active !== false && project?.deleted !== true && project?.isSpecialMenu !== true);
-        const defaultProjectId = activeProjects.find((project: any) => project?.isDefault === true)?.projectId;
-        const orderedProjectIds = [
-            ...(defaultProjectId ? [defaultProjectId] : []),
-            ...activeProjects
-                .map((project: any) => project.projectId)
-                .filter((projectId, index, allProjectIds) => allProjectIds.indexOf(projectId) === index),
-        ];
-
-        if (activeSpecialMenuId) {
-            const specialDoc = await getProjectDoc(activeSpecialMenuId);
-            const specialProject = specialDoc?.data();
-            const specialEndsAt = specialProject?._specialMenu?.endsAt
-                ? new Date(specialProject._specialMenu.endsAt).getTime()
-                : null;
-
-            if (
-                specialProject?._specialMenu?.status === 'active' &&
-                specialEndsAt != null &&
-                Number.isFinite(specialEndsAt) &&
-                specialEndsAt > Date.now()
-            ) {
-                if (specialProject._specialMenu.mode === 'replace') {
-                    const specialItems = extractMenuItemsFromProject(specialProject);
-                    if (specialItems.length > 0) {
-                        return specialItems;
-                    }
-                }
-
-                if (specialProject._specialMenu.mode === 'overlay') {
-                    const baseProjectId = specialProject._specialMenu.baseProjectId || orderedProjectIds[0];
-                    if (baseProjectId) {
-                        const baseDoc = await getProjectDoc(baseProjectId);
-                        const baseProject = baseDoc?.data();
-                        if (baseProject) {
-                            const mergedItems = extractMenuItemsFromProject(mergeOverlayMenu(baseProject, specialProject));
-                            if (mergedItems.length > 0) {
-                                return mergedItems;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        for (const projectId of orderedProjectIds) {
-            const projectDoc = await getProjectDoc(projectId);
-            if (!projectDoc) continue;
-
-            const fallbackItems = extractMenuItemsFromProject(projectDoc.data());
-            if (fallbackItems.length > 0) return fallbackItems;
-        }
-
-        return [];
-    } catch (error) {
-        logCampaignScreenFailure(
-            "digital_screen_client_menu_items_failed",
-            error,
-            {
-                storeIdLength: storeId.length,
-                tenantIdLength: tenantId.length,
-                hasActiveSpecialMenuId: Boolean(activeSpecialMenuId),
-                activeSpecialMenuIdLength: String(activeSpecialMenuId || "").length,
-            },
-        );
-        return [];
-    }
-};
-
-/**
  * Get screen state for current store
  */
 export const getScreenState = async (): Promise<DigitalScreenState | null> => {
-    return await apiCallComposer(
+    const result = await apiCallComposer(
         async () => {
-            const session = await getActiveSession();
+            const session = requireCampaignSessionScope(await getActiveSession());
             const docRef = getCampaignsSummaryDocRef(session);
             const docSnap = await getDoc(docRef);
 
@@ -863,6 +736,7 @@ export const getScreenState = async (): Promise<DigitalScreenState | null> => {
         null,
         "getScreenState"
     );
+    return isDigitalScreenState(result) ? result : null;
 };
 
 /**
@@ -870,37 +744,49 @@ export const getScreenState = async (): Promise<DigitalScreenState | null> => {
  * Per spec: Screen token generated on first access
  */
 export const initializeScreenState = async (): Promise<DigitalScreenState> => {
-    return await apiCallComposer(
+    const result = await apiCallComposer(
         async () => {
-            const session = await getActiveSession();
+            const session = requireCampaignSessionScope(await getActiveSession());
             const docRef = getCampaignsSummaryDocRef(session);
+            return runTransaction(firebaseClient, async (transaction) => {
+                const currentSnap = await transaction.get(docRef);
+                const currentScreen = currentSnap.exists()
+                    ? (currentSnap.data() as Partial<CampaignsSummaryDocument>).screen
+                    : null;
+                if (currentScreen) {
+                    if (!isDigitalScreenState(currentScreen)) {
+                        throw new Error('digital_screen_state_invalid');
+                    }
+                    setScreenStateInTransaction(transaction, session, currentScreen);
+                    return currentScreen;
+                }
 
-            // Generate high-entropy screen token (22 chars, ~130-bit)
-            // Per ChatGPT review v3: 8-char tokens vulnerable to enumeration
-            const screenToken = generateScreenToken();
-            const now = Timestamp.now();
+                // Generate high-entropy screen token (22 chars, ~130-bit).
+                // Transaction retries remain safe because only the committed token
+                // is returned and the canonical/public documents commit together.
+                const now = Timestamp.now();
+                const screenState: DigitalScreenState = {
+                    enabled: true,
+                    screenToken: generateScreenToken(),
+                    lastRefreshed: now,
+                    contentVersion: 1,
+                    lastContentChangeAt: now,
+                    currentMinConfidence: 0,
+                    ownerOverrideEnabled: false,
+                    pinnedSlides: [],
+                };
 
-            const screenState: DigitalScreenState = {
-                enabled: true,
-                screenToken,
-                lastRefreshed: now,
-                contentVersion: 1,
-                lastContentChangeAt: now,
-                currentMinConfidence: 0,
-                ownerOverrideEnabled: false,
-                pinnedSlides: []
-            };
-
-            await setDoc(docRef, {
-                screen: screenState
-            }, { merge: true });
-            await syncPublicScreenState(session.sId, screenState);
-
-            return screenState;
+                setScreenStateInTransaction(transaction, session, screenState);
+                return screenState;
+            });
         },
         null,
         "initializeScreenState"
     );
+    if (!isDigitalScreenState(result)) {
+        throw new Error('digital_screen_initialization_rejected');
+    }
+    return result;
 };
 
 /**
@@ -910,30 +796,31 @@ export const initializeScreenState = async (): Promise<DigitalScreenState> => {
 export const updateScreenSettings = async (settings: { ownerOverrideEnabled?: boolean }): Promise<DigitalScreenMutationResult> => {
     return await apiCallComposer(
         async () => {
-            const session = await getActiveSession();
+            const session = requireCampaignSessionScope(await getActiveSession());
             const docRef = getCampaignsSummaryDocRef(session);
-            const docSnap = await getDoc(docRef);
+            return runTransaction(firebaseClient, async (transaction) => {
+                const docSnap = await transaction.get(docRef);
+                const currentScreen = docSnap.exists()
+                    ? (docSnap.data() as Partial<CampaignsSummaryDocument>).screen
+                    : null;
+                if (!isDigitalScreenState(currentScreen)) throw new Error("Screen not initialized");
 
-            if (!docSnap.exists() || !docSnap.data().screen?.screenToken) {
-                throw new Error("Screen not initialized");
-            }
-
-            const data = docSnap.data() as CampaignsSummaryDocument;
-            const now = Timestamp.now();
-            const nextScreen: DigitalScreenState = {
-                ...data.screen!,
-                ownerOverrideEnabled: typeof settings.ownerOverrideEnabled === "boolean"
+                const ownerOverrideEnabled = typeof settings.ownerOverrideEnabled === "boolean"
                     ? settings.ownerOverrideEnabled
-                    : data.screen!.ownerOverrideEnabled,
-                contentVersion: (data.screen?.contentVersion || 0) + 1,
-                lastContentChangeAt: now,
-            };
+                    : currentScreen.ownerOverrideEnabled;
+                if (ownerOverrideEnabled === currentScreen.ownerOverrideEnabled) {
+                    return { success: true, screen: currentScreen } satisfies DigitalScreenMutationResult;
+                }
 
-            await setDoc(docRef, {
-                screen: nextScreen
-            }, { merge: true });
-            await syncPublicScreenState(session.sId, nextScreen);
-            return { success: true, screen: nextScreen } satisfies DigitalScreenMutationResult;
+                const nextScreen: DigitalScreenState = {
+                    ...currentScreen,
+                    ownerOverrideEnabled,
+                    contentVersion: (currentScreen.contentVersion || 0) + 1,
+                    lastContentChangeAt: Timestamp.now(),
+                };
+                setScreenStateInTransaction(transaction, session, nextScreen);
+                return { success: true, screen: nextScreen } satisfies DigitalScreenMutationResult;
+            });
         },
         settings,
         "updateScreenSettings"
@@ -947,39 +834,36 @@ export const updateScreenSettings = async (settings: { ownerOverrideEnabled?: bo
 export const addPinnedSlide = async (slide: ScreenSlide): Promise<DigitalScreenMutationResult> => {
     return await apiCallComposer(
         async () => {
-            const session = await getActiveSession();
+            const session = requireCampaignSessionScope(await getActiveSession());
             const docRef = getCampaignsSummaryDocRef(session);
-            const docSnap = await getDoc(docRef);
-
-            if (!docSnap.exists()) {
-                throw new Error("Screen not initialized");
+            if (!isDigitalScreenSlideUploadResult(slide)) {
+                throw new Error('digital_screen_slide_invalid');
             }
 
-            const data = docSnap.data() as CampaignsSummaryDocument;
-            if (!data.screen?.screenToken) {
-                throw new Error("Screen not initialized");
-            }
+            return runTransaction(firebaseClient, async (transaction) => {
+                const docSnap = await transaction.get(docRef);
+                const currentScreen = docSnap.exists()
+                    ? (docSnap.data() as Partial<CampaignsSummaryDocument>).screen
+                    : null;
+                if (!isDigitalScreenState(currentScreen)) throw new Error("Screen not initialized");
 
-            const currentSlides = data.screen?.pinnedSlides || [];
+                const currentSlides = currentScreen.pinnedSlides || [];
+                if (currentSlides.some((currentSlide) => currentSlide.id === slide.id)) {
+                    return { success: true, screen: currentScreen } satisfies DigitalScreenMutationResult;
+                }
+                if (currentSlides.length >= 3) {
+                    throw new Error("Maximum 3 pinned slides allowed");
+                }
 
-            if (currentSlides.length >= 3) {
-                throw new Error("Maximum 3 pinned slides allowed");
-            }
-
-            const updatedSlides = [...currentSlides, slide];
-            const now = Timestamp.now();
-            const nextScreen: DigitalScreenState = {
-                ...data.screen,
-                pinnedSlides: updatedSlides,
-                contentVersion: (data.screen?.contentVersion || 0) + 1,
-                lastContentChangeAt: now,
-            };
-
-            await setDoc(docRef, {
-                screen: nextScreen
-            }, { merge: true });
-            await syncPublicScreenState(session.sId, nextScreen);
-            return { success: true, screen: nextScreen } satisfies DigitalScreenMutationResult;
+                const nextScreen: DigitalScreenState = {
+                    ...currentScreen,
+                    pinnedSlides: [...currentSlides, slide],
+                    contentVersion: (currentScreen.contentVersion || 0) + 1,
+                    lastContentChangeAt: Timestamp.now(),
+                };
+                setScreenStateInTransaction(transaction, session, nextScreen);
+                return { success: true, screen: nextScreen } satisfies DigitalScreenMutationResult;
+            });
         },
         { slideId: slide.id },
         "addPinnedSlide"
@@ -992,34 +876,28 @@ export const addPinnedSlide = async (slide: ScreenSlide): Promise<DigitalScreenM
 export const removePinnedSlide = async (slideId: string): Promise<DigitalScreenMutationResult> => {
     return await apiCallComposer(
         async () => {
-            const session = await getActiveSession();
+            const session = requireCampaignSessionScope(await getActiveSession());
             const docRef = getCampaignsSummaryDocRef(session);
-            const docSnap = await getDoc(docRef);
+            return runTransaction(firebaseClient, async (transaction) => {
+                const docSnap = await transaction.get(docRef);
+                const currentScreen = docSnap.exists()
+                    ? (docSnap.data() as Partial<CampaignsSummaryDocument>).screen
+                    : null;
+                if (!isDigitalScreenState(currentScreen)) throw new Error("Screen not initialized");
 
-            if (!docSnap.exists()) {
-                throw new Error("Screen not initialized");
-            }
-
-            const data = docSnap.data() as CampaignsSummaryDocument;
-            if (!data.screen?.screenToken) {
-                throw new Error("Screen not initialized");
-            }
-
-            const currentSlides = data.screen?.pinnedSlides || [];
-            const updatedSlides = currentSlides.filter(s => s.id !== slideId);
-            const now = Timestamp.now();
-            const nextScreen: DigitalScreenState = {
-                ...data.screen,
-                pinnedSlides: updatedSlides,
-                contentVersion: (data.screen?.contentVersion || 0) + 1,
-                lastContentChangeAt: now,
-            };
-
-            await setDoc(docRef, {
-                screen: nextScreen
-            }, { merge: true });
-            await syncPublicScreenState(session.sId, nextScreen);
-            return { success: true, screen: nextScreen } satisfies DigitalScreenMutationResult;
+                const currentSlides = currentScreen.pinnedSlides || [];
+                if (!currentSlides.some((slide) => slide.id === slideId)) {
+                    return { success: true, screen: currentScreen } satisfies DigitalScreenMutationResult;
+                }
+                const nextScreen: DigitalScreenState = {
+                    ...currentScreen,
+                    pinnedSlides: currentSlides.filter((slide) => slide.id !== slideId),
+                    contentVersion: (currentScreen.contentVersion || 0) + 1,
+                    lastContentChangeAt: Timestamp.now(),
+                };
+                setScreenStateInTransaction(transaction, session, nextScreen);
+                return { success: true, screen: nextScreen } satisfies DigitalScreenMutationResult;
+            });
         },
         { slideId },
         "removePinnedSlide"
@@ -1032,39 +910,36 @@ export const removePinnedSlide = async (slideId: string): Promise<DigitalScreenM
 export const updatePinnedSlideCaption = async (slideId: string, caption: string): Promise<DigitalScreenMutationResult> => {
     return await apiCallComposer(
         async () => {
-            const session = await getActiveSession();
+            const session = requireCampaignSessionScope(await getActiveSession());
             const docRef = getCampaignsSummaryDocRef(session);
-            const docSnap = await getDoc(docRef);
-
-            if (!docSnap.exists()) {
-                throw new Error("Screen not initialized");
-            }
-
-            const data = docSnap.data() as CampaignsSummaryDocument;
-            if (!data.screen?.screenToken) {
-                throw new Error("Screen not initialized");
-            }
-
-            const currentSlides = data.screen?.pinnedSlides || [];
             const nextCaption = normalizeOwnerSlideCaption(caption);
-            const updatedSlides = currentSlides.map((slide) => (
-                slide.id === slideId
-                    ? { ...slide, caption: nextCaption }
-                    : slide
-            ));
-            const now = Timestamp.now();
-            const nextScreen: DigitalScreenState = {
-                ...data.screen,
-                pinnedSlides: updatedSlides,
-                contentVersion: (data.screen?.contentVersion || 0) + 1,
-                lastContentChangeAt: now,
-            };
+            return runTransaction(firebaseClient, async (transaction) => {
+                const docSnap = await transaction.get(docRef);
+                const currentScreen = docSnap.exists()
+                    ? (docSnap.data() as Partial<CampaignsSummaryDocument>).screen
+                    : null;
+                if (!isDigitalScreenState(currentScreen)) throw new Error("Screen not initialized");
 
-            await setDoc(docRef, {
-                screen: nextScreen
-            }, { merge: true });
-            await syncPublicScreenState(session.sId, nextScreen);
-            return { success: true, screen: nextScreen } satisfies DigitalScreenMutationResult;
+                const currentSlides = currentScreen.pinnedSlides || [];
+                const targetSlide = currentSlides.find((slide) => slide.id === slideId);
+                if (!targetSlide) throw new Error('digital_screen_slide_not_found');
+                if ((targetSlide.caption || '') === nextCaption) {
+                    return { success: true, screen: currentScreen } satisfies DigitalScreenMutationResult;
+                }
+
+                const nextScreen: DigitalScreenState = {
+                    ...currentScreen,
+                    pinnedSlides: currentSlides.map((slide) => (
+                        slide.id === slideId
+                            ? { ...slide, caption: nextCaption }
+                            : slide
+                    )),
+                    contentVersion: (currentScreen.contentVersion || 0) + 1,
+                    lastContentChangeAt: Timestamp.now(),
+                };
+                setScreenStateInTransaction(transaction, session, nextScreen);
+                return { success: true, screen: nextScreen } satisfies DigitalScreenMutationResult;
+            });
         },
         { slideId },
         "updatePinnedSlideCaption"
@@ -1079,26 +954,25 @@ export const updatePinnedSlideCaption = async (slideId: string, caption: string)
 export const bumpScreenContentVersion = async (): Promise<void> => {
     return await apiCallComposer(
         async () => {
-            const session = await getActiveSession();
+            const session = requireCampaignSessionScope(await getActiveSession());
             const docRef = getCampaignsSummaryDocRef(session);
-            const docSnap = await getDoc(docRef);
+            await runTransaction(firebaseClient, async (transaction) => {
+                const docSnap = await transaction.get(docRef);
+                const currentScreen = docSnap.exists()
+                    ? (docSnap.data() as Partial<CampaignsSummaryDocument>).screen
+                    : null;
+                if (!currentScreen) return;
+                if (!isDigitalScreenState(currentScreen)) {
+                    throw new Error('digital_screen_state_invalid');
+                }
 
-            if (!docSnap.exists() || !docSnap.data().screen) {
-                return; // Screen not initialized, nothing to bump
-            }
-
-            const data = docSnap.data() as CampaignsSummaryDocument;
-            const now = Timestamp.now();
-            const nextScreen: DigitalScreenState = {
-                ...data.screen!,
-                contentVersion: (data.screen?.contentVersion || 0) + 1,
-                lastContentChangeAt: now,
-            };
-
-            await setDoc(docRef, {
-                screen: nextScreen
-            }, { merge: true });
-            await syncPublicScreenState(session.sId, nextScreen);
+                const nextScreen: DigitalScreenState = {
+                    ...currentScreen,
+                    contentVersion: (currentScreen.contentVersion || 0) + 1,
+                    lastContentChangeAt: Timestamp.now(),
+                };
+                setScreenStateInTransaction(transaction, session, nextScreen);
+            });
         },
         null,
         "bumpScreenContentVersion"
@@ -1120,7 +994,7 @@ export const uploadScreenSlide = async (
 ): Promise<ScreenSlide> => {
     const result = await apiCallComposer(
         async () => {
-            const session = await getActiveSession();
+            const session = requireCampaignSessionScope(await getActiveSession());
 
             // Check screen state exists (initialize if not)
             let screenState = await getScreenState();
@@ -1136,14 +1010,15 @@ export const uploadScreenSlide = async (
             // Generate unique slide ID
             const slideId = `upload-${Date.now()}-${createRandomIdSegment(9)}`;
             let imageUrl = data.url;
+            let uploadedUrls: string[] = [];
 
             // Upload prepared media to immutable profile-aware Storage path
             if (data.blob || isDataUrl(data.url)) {
-                imageUrl = await uploadPreparedMediaImage({
+                const uploaded = await uploadPreparedMediaImageWithLedger({
                     blob: data.blob,
                     contentType: data.type,
                     dataUrl: data.url,
-                    entityId: data.mediaEntityId || slideId,
+                    entityId: slideId,
                     mediaChecksum: data.mediaChecksum,
                     mediaId: data.mediaId,
                     prepared: data.preparedMedia,
@@ -1152,6 +1027,8 @@ export const uploadScreenSlide = async (
                     tenantId: session.tId,
                     variant: 'full',
                 });
+                imageUrl = uploaded.primaryUrl;
+                uploadedUrls = uploaded.uploadedUrls;
             }
 
             // Calculate expiry (14 days)
@@ -1172,11 +1049,26 @@ export const uploadScreenSlide = async (
             };
 
             // Add to pinned slides
-            const addResult = await addPinnedSlide(newSlide);
-            assertDigitalScreenMutationSucceeded(
-                addResult,
-                'digital_screen_slide_upload_update_rejected',
-            );
+            try {
+                const addResult = await addPinnedSlide(newSlide);
+                assertDigitalScreenMutationSucceeded(
+                    addResult,
+                    'digital_screen_slide_upload_update_rejected',
+                );
+            } catch (error) {
+                const cleanupResults = await Promise.all(uploadedUrls.map((url) => deleteFileByUrl(url)));
+                if (cleanupResults.some((cleanup) => !cleanup.success)) {
+                    logCampaignScreenFailure(
+                        'digital_screen_slide_upload_cleanup_failed',
+                        error,
+                        {
+                            uploadedVariantCount: uploadedUrls.length,
+                            failedCleanupCount: cleanupResults.filter((cleanup) => !cleanup.success).length,
+                        },
+                    );
+                }
+                throw error;
+            }
 
             return newSlide;
         },

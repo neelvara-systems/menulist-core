@@ -163,7 +163,7 @@ export async function regenerateDraftForProposal(
                     ...proposal.suggestedChange,
                     draftStatus: 'failed',
                 },
-            });
+            }, { isNew: false });
             await setDoc(
                 doc(answerlatticeFirebaseClient, DB_COLLECTIONS.ANSWERLATTICE_MUTATION_PROPOSALS, normalizedProposalId),
                 updateData,
@@ -195,7 +195,7 @@ export async function regenerateDraftForProposal(
                 draftEntityContext: `${entity.name}: ${entity.description}`.substring(0, 500),
                 draftPromptVersion: DRAFT_PROMPT_VERSION,
             },
-        });
+        }, { isNew: false });
 
         await setDoc(
             doc(answerlatticeFirebaseClient, DB_COLLECTIONS.ANSWERLATTICE_MUTATION_PROPOSALS, normalizedProposalId),

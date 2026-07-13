@@ -4,11 +4,17 @@
 **Created:** July 7, 2026
 **Primary output:** Pre-launch, launch-week, and post-launch video sequence
 
+**Mandatory production standard:** [MenuList Founder-Approved Video Production Standard](./videos_founder-approved-production-standard.md).
+
 ## Purpose
 
 This calendar turns the video assets into a launch/distribution rhythm.
 
+Distribution must follow the measurement and test rules in [videos_launch-video-conversion-research.md](./videos_launch-video-conversion-research.md). Organic founder and WhatsApp distribution can establish the first baseline. Paid scale waits until video-level UTM naming and deeper create-menu milestone attribution can distinguish clicks from private-preview, claim, and approved-publish progress.
+
 The campaign should build the problem first, then explain MenuList, then answer objections.
+
+Every scheduled version must already exist in [videos_campaign-measurement-ledger.md](./videos_campaign-measurement-ledger.md). The calendar controls when an asset appears; the ledger controls which exact version, CTA, destination, UTM identity, metric, and paid status is allowed to appear.
 
 ## AI-Era Funnel Overlay
 
@@ -100,18 +106,33 @@ Goal: convert skeptical owners.
 
 ## Final Recommended Production Order
 
-1. 75-second launch film.
-2. 2-3 minute product demo.
-3. 30-second launch cut.
-4. Old PDF problem reel.
-5. QR stale page reel.
-6. Photo/PDF to customer link reel.
-7. Owner approval reel.
-8. One link everywhere reel.
-9. AI Menu Manager reel.
-10. Official Business Page reel.
-11. Multi-location reel.
-12. Founder/brand POV video.
+1. Approve Owner Ease V4 16:9.
+2. Produce native Owner Ease V4 9:16.
+3. Produce one alternate-hook Owner Ease 9:16 variant.
+4. Photo/PDF to customer link reel.
+5. Owner approval reel.
+6. 75-second launch film.
+7. 2-3 minute product demo.
+8. 30-second launch cut.
+9. Old PDF problem reel.
+10. QR stale page reel.
+11. One link everywhere reel.
+12. AI Menu Manager reel.
+13. Official Business Page reel.
+14. Multi-location reel.
+15. Founder/brand POV video.
+
+Reason: validate setup relief and owner control in one small conversion system before expanding the approved language and motion system into every launch asset.
+
+## Measurement Rhythm
+
+| Timing | Review action |
+| --- | --- |
+| Before scheduling | Confirm asset id, UTM, CTA, destination, publish owner, and paid status in the ledger |
+| First 24 hours | Check delivery, broken links, caption/audio issues, comments, and obvious category misunderstanding |
+| After the platform review window | Record retention, completions, linked actions, and available product milestones |
+| Before the next variant | Choose one variable only; keep all other conversion-contract fields stable |
+| Before paid scale | Confirm primary and guard product milestones are measurable and the version passed final claim/product review |
 
 ## Channel Notes
 
@@ -144,3 +165,6 @@ Do not continue broad posting if:
 - owner comments show misunderstanding about automatic external updates;
 - launch assets overpromise beyond live product truth;
 - tracking cannot separate curiosity from approved customer-link activation.
+- the exact published version is missing from the campaign ledger;
+- variants changed multiple variables and cannot produce a useful learning;
+- a click-rate improvement reduces private-preview, claim, or approved-publish quality.

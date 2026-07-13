@@ -1,7 +1,7 @@
 # Help Center — Technical Implementation Blueprint
 
-> **Version:** 1.0.8
-> **Last Updated:** 2026-07-06
+> **Version:** 1.0.9
+> **Last Updated:** 2026-07-13
 > **Audience:** Developers
 > **Source:** Codebase forensic audit (code is truth)
 
@@ -14,7 +14,7 @@ The Help Center is a **multi-layered feature** spanning frontend components, API
 - **Frontend:** Next.js 14 App Router + Ant Design + TipTap Editor
 - **Backend:** Next.js API routes (for AI operations requiring server-side secrets)
 - **Database:** Firestore client SDK via DAL pattern (for CRUD operations)
-- **AI:** Gemini 2.5 Flash (chat), Gemini 2.5 Pro (image analysis), text-embedding-004 (embeddings)
+- **AI:** Gemini 2.5 Flash (chat), Gemini 2.5 Pro (image analysis), `gemini-embedding-2` (active embeddings)
 - **Cloud Functions:** Nightly aggregation, article embedding, AI intelligence
 - **Caching:** Firestore-based embedding cache + response cache
 
@@ -294,11 +294,10 @@ Answerlattice KB owner content scope boundary: Help Center KB categories, articl
 
 | Function                                            | Reads    | Writes | Notes                                         |
 | --------------------------------------------------- | -------- | ------ | --------------------------------------------- |
-| `getArticles()`                                     | Scoped list | 0      | Deprecated compatibility helper; non-platform callers are filtered by tenant/store, platform admins can read the global list |
-| `addArticle(data)`                                  | 0        | 1      | Uses `requestBodyComposer`                    |
-| `updateArticle(data)`                               | 0        | 1      | Merge update                                  |
-| `deleteArticle(id)`                                 | 0        | 1      | Hard delete                                   |
-| `deleteMultipleArticles(ids)`                       | 0        | N      | Batch delete                                  |
+| `getArticles()`                                     | Scoped list | 0      | Deprecated compatibility helper; every path requires exact `pId: AL`; non-platform callers also require tenant/store scope |
+| `addArticle(data)`                                  | 0        | 1      | Uses exact active/selected workspace scope                    |
+| `updateArticle(data)`                               | 2+N      | 1+N    | Transaction rechecks stored article scope and atomically moves active linked FAQs to review when truth changes |
+| `deleteArticle(id)`                                 | 2+N      | 1+N    | Transaction rechecks stored scope, archives linked FAQs and hard-deletes the article atomically |
 | `getArticlesByCategoryId(categoryId)`               | N        | 0      | Query by categoryId                           |
 | `getArticlesBySectionId(sectionId)`                 | N        | 0      | Query by sectionId                            |
 | `getArticlesByIds(ids)`                             | N        | 0      | `__name__ in ids` query                       |
@@ -307,7 +306,7 @@ Answerlattice KB owner content scope boundary: Help Center KB categories, articl
 
 **Scope observation:** `getArticles()` is a deprecated compatibility helper. It now resolves the readable article scope before querying: non-platform sessions require tenant/store scope and platform admins can still perform the global administrative read.
 
-**Scope boundary:** `src/database/knowledgeBase/articles.ts` resolves article data scope and active-session scope through the shared Answerlattice exact positive numeric Firestore document-ID normalizer before article filters, article final guards, cache-version bumps, entity-extraction triggers, and public-cache revalidation. Bulk article delete now revalidates the public KB/context cache with the resolved tenant/store scope instead of a session fallback payload.
+**Scope boundary:** `src/database/knowledgeBase/articles.ts` resolves article/session scope through the shared exact positive numeric document-ID normalizer and requires exact `pId: AL` on queries and final rows. Single mutations derive ownership from the stored article and recheck it in a transaction. Bulk publish/archive accepts at most 100 exact unique IDs, one explicit status, and one stored workspace; it never rewrites scope from a platform session. The unused unscoped `deleteMultipleArticles()` API was removed.
 
 ### 3.2 KB Categories (`src/database/knowledgeBase/categories.ts`)
 
@@ -328,13 +327,13 @@ Answerlattice KB owner content scope boundary: Help Center KB categories, articl
 | --------------------------------------------------------- | ----- | ----------- | --------------------------------------------- |
 | `uploadChatImage(image, session)`                         | 0     | 1 (storage) | Tenant-scoped storage path                    |
 | `saveChatSession(data)`                                   | 0     | 1           | `apiCallComposerClientWithoutLoader`; new-session UI requires persisted session acknowledgement before selecting it |
-| `updateChatSession(sessionId, updates)`                   | 0     | 1           | Merge update; returns explicit `{ success, sessionId, updatedFields }` acknowledgement |
-| `deleteChatSession(sessionId)`                            | 0     | 1           | Hard delete; returns explicit `{ success, sessionId, deleted, storageFilesDeleted }` acknowledgement |
+| `updateChatSession(sessionId, updates)`                   | 1     | 0-1         | Transactionally validates current scope/schema before a changed-field update; returns explicit `{ success, sessionId, updatedFields }` acknowledgement |
+| `deleteChatSession(sessionId)`                            | 1     | 1 delete + N storage cleanup | Transactionally validates and deletes authoritative truth before best-effort image cleanup; returns the acknowledged cleanup count |
 | `getUserChatSessions(session)`                            | N     | 0           | `tId + uId` scoped, ordered by modifiedOn     |
-| `getChatSessionById(sessionId)`                           | 1     | 0           | Admin use                                     |
-| `updateMessageFeedback(sessionId, messageId, feedback)`   | 1     | 1           | Read-modify-write on messages array; returns explicit `{ success, sessionId, messageId }` acknowledgement |
-| `updateSessionInternalNote(sessionId, noteJson, session)` | 0     | 1           | Admin notes; returns explicit `{ success, sessionId, note }` acknowledgement |
-| `batchUpdateSessionMetadata(sessionIds, metadata)`        | 0     | N batch     | Batch admin metadata update; returns explicit `{ success, sessionIds, updatedCount, updatedFields }` acknowledgement |
+| `getChatSessionById(sessionId)`                           | 1     | 0           | Active workspace scope and persisted runtime shape are required |
+| `updateMessageFeedback(sessionId, messageId, searchHistoryId, feedback)` | 2 | 2 transaction | Atomically updates the exactly linked chat message and search-history row; same feedback retries are idempotent |
+| `updateSessionInternalNote(sessionId, noteJson, session)` | 1     | 1 transaction | Validates current scope/schema, derives actor from the active session and preserves original creator metadata |
+| `batchUpdateSessionMetadata(sessionIds, metadata)`        | N     | N batch     | Reads and validates every scoped row before the batch; returns explicit `{ success, sessionIds, updatedCount, updatedFields }` acknowledgement |
 | `getAllChatSessionsForAdmin(session, filters)`            | N+1   | 0           | Paginated with client-side search             |
 | `getChatStatistics(session, dateRange)`                   | N     | 0           | Full scan (EXPENSIVE - use optimized version) |
 | `getTopQuestions(session, limitCount)`                    | N     | 0           | Full scan                                     |
@@ -343,9 +342,9 @@ Answerlattice KB owner content scope boundary: Help Center KB categories, articl
 
 New-session saves require `assertChatSessionSaveSucceeded()` before HelpChat inserts the saved session or selects its ID. Existing-session send/retry persistence remains a non-blocking UI path, but `updateChatSession()` now returns an explicit acknowledgement and failed or malformed merge results must emit the bounded `help_chat_session_persist_failed` diagnostic with fixed reason labels and presence/length metadata only. Rename and platform metadata saves require `assertChatSessionUpdateSucceeded()` before success copy or parent session state updates. HelpChat deletes require `assertChatSessionDeleteSucceeded()` before success copy; if the acknowledgement fails, the handler reloads sessions and restores the active-session/search snapshot. Platform internal-note and batch-status saves require `assertChatSessionInternalNoteUpdateSucceeded()` or `assertChatSessionBatchMetadataUpdateSucceeded()` before note state, selected conversation state, batch selection state, or success copy advances. This preserves the current Firestore operation count while making failed chat-session writes visible for support-truth monitoring.
 
-HelpChat answer feedback writes both the `aiSearchHistory` feedback row and the chat-session message feedback mirror before changing local feedback state or showing thank-you copy. `submitSearchFeedback()` requires `assertAiSearchHistoryFeedbackUpdateSucceeded()` and `assertChatMessageFeedbackUpdateSucceeded()` acknowledgements; malformed or fallback write results route through the existing `help_chat_feedback_up_submit_failed` / `help_chat_feedback_down_submit_failed` bounded diagnostics. Negative-feedback signal emission still runs only after both feedback writes are acknowledged.
+HelpChat answer feedback updates the `aiSearchHistory` feedback row and the exactly linked chat-session message in one Firestore transaction before changing local feedback state or showing thank-you copy. The transaction validates exact product/tenant/store ownership for both rows, requires the message's stored `searchHistoryId` to match the requested source row, refuses a conflicting repeat, and treats the same already-persisted feedback as idempotent. `submitSearchFeedback()` requires `assertChatMessageFeedbackUpdateSucceeded()`; malformed or rejected results route through the existing `help_chat_feedback_up_submit_failed` / `help_chat_feedback_down_submit_failed` bounded diagnostics. Negative-feedback signal emission runs only after the coupled transaction is acknowledged.
 
-Answerlattice chat session scope boundary: chat image uploads, user chat history, admin conversation lists, chat statistics, top questions, knowledge gaps, and chat-volume reads now normalize session `tId/sId` as exact positive numeric Firestore document IDs before composing Storage paths or `chatSessions` query filters. Whitespace-mutated, leading-zero, zero, negative, unsafe, nonnumeric, reserved, empty, or path-shaped scope fails before chat image Storage writes or session reads/scans. Valid sessions keep the same `tId + sId` query shape, existing read caps, storage path shape, and acknowledgement behavior.
+Answerlattice chat session scope boundary: chat image uploads, user chat history, single-record reads, deletes, message/branch/feedback mutations, internal notes, batch metadata, admin conversation lists, chat statistics, top questions, knowledge gaps, and chat-volume reads use the shared exact Answerlattice session scope. Single-record operations normalize the document ID and revalidate persisted `pId/tId/sId` plus the bounded runtime chat shape before returning or mutating data. Cursor rows and query results re-enter the same contract; malformed timestamps, message IDs, references, feedback, or cross-workspace rows fail closed. Aggregations use `Map` for user-controlled question keys, and quality metrics accept the compact reference contract. Valid sessions keep the existing scoped query caps and storage paths; writes add only the reads required for transaction-local ownership/schema validation.
 
 ### 3.4 Chat Analytics (`src/database/chatAnalytics/index.ts`)
 
@@ -353,16 +352,15 @@ Answerlattice chat session scope boundary: chat image uploads, user chat history
 | ------------------------------------------------------- | -------------- | ------ | --------------------------- |
 | `getTodayLiveStats(session)`                            | N (today only) | 0      | Real-time today's data      |
 | `getChatStatisticsOptimized(session, days)`             | ~30+N          | 0      | Historical + today hybrid   |
-| `getTopQuestionsOptimized(session, days)`               | ~30            | 0      | From aggregated data        |
-| `getKnowledgeGapsOptimized(session, days)`              | ~30            | 0      | From aggregated data        |
-| `getChatVolumeOverTimeOptimized(session, days)`         | ~N             | 0      | From aggregated data        |
+| `getChatDashboardAggregatesOptimized(session, days)`    | ~30+N          | 0      | One historical query plus today's live rows returns statistics, top questions and gaps |
 | `getConversationsPaginated(session, pageSize, filters)` | pageSize+1     | 0      | Cost-controlled pagination  |
-| `aggregateDailyStats(session, date)`                    | N (day)        | 1      | Creates daily aggregate doc |
 | `getLastAnalyticsUpdate(session)`                       | 1              | 0      | Data freshness check        |
 
 The optimized chat analytics DAL uses `src/database/chatAnalytics/diagnostics.ts` for bounded fallback diagnostics. If today's live session read fails, `getChatStatisticsOptimized()` and `getChatDashboardAggregatesOptimized()` continue with historical aggregates and log `answerlattice_chat_analytics_today_live_stats_failed` with bounded tenant/store/day metadata and source error name/code/status only. Raw Firestore/provider errors and session payloads are not direct-console logged.
 
-Answerlattice chat analytics scope boundary: optimized dashboard stats, top questions, knowledge gaps, volume charts, paginated conversations, daily aggregation, and last-update reads now normalize session `tId/sId` through the shared Answerlattice exact positive numeric Firestore document-ID helper before composing `chatAnalytics` document IDs or `chatAnalytics` / `chatSessions` query filters. Malformed tenant/store scope returns empty read models for read paths or rejects daily aggregation before the `{tId}_{sId}_{YYYY-MM-DD}` document ID is composed. Valid sessions keep the same read caps, query shapes, daily aggregate document shape, and bounded fallback diagnostics.
+Answerlattice chat analytics scope boundary: browser reads derive the active workspace through the shared exact Answerlattice session resolver and include `pId/tId/sId` in every `chatAnalytics` / `chatSessions` query. Daily summary documents re-enter an exact runtime contract: document ID must equal `{tId}_{sId}_{YYYY-MM-DD}`, the calendar date must be real, source completeness must be explicit, counters must be safe nonnegative integers and reconcile, and every bounded question/gap row must be valid. Dashboard question/gap aggregation uses `Map` so user-controlled text cannot collide with object prototypes.
+
+Answerlattice Functions workspace scope boundary: manual nightly retry JSON, persisted integration events, entity-scan scheduler discovery, and entity-graph summary metadata now share `functions-answerlattice/src/answerlattice/scopeBoundary.ts`. Runtime scope is admitted only when both IDs are positive safe-integer numbers; numeric strings, exponent/leading-zero strings, decimals, unsafe integers, non-finite numbers, booleans, nulls, and partial pairs fail before workspace reads, adapter dispatch, scheduler selection, or summary writes. A manual request with neither field remains the authorized all-workspace retry; supplying either field requires an exact pair. Existing graph summaries with string/coercive scope are treated as missing metadata and receive the maintained numeric backfill rather than being accepted as current.
 
 The Help Center search wrapper, search core, browser clients, and visual query helper keep failure diagnostics bounded. `src/app/api/helpCenter/search-kb/route.ts` records `answerlattice_search_operation_log_failed` and `answerlattice_help_center_search_failed` with source error name/code/status only. Search request validation returns the shared safe Zod detail payload with issue count, field path, and issue code only; it does not echo raw Zod issue messages. `src/lib/search/searchCore.ts` records image fallback, image fetch HTTP failure, product-surface context, FAQ retrieval, vector search, answer-JSON parse, instant-cache stage, canonical cache-version, instant-cache write invocation/import, and perf-log write failures with stable codes plus bounded metadata; it does not persist exception messages, raw image fetch status text, or AI response previews. Trusted image URL fetches use the shared bounded response reader so oversized image streams are rejected before full buffering. `src/lib/answerlattice/instantCache.ts` logs Redis lookup, stale-delete, and write failures with bounded tenant/store/entity/version/count context while continuing to degrade to the live retrieval pipeline. `src/components/organisms/AISearchModal/AiSearchBarComponent.tsx` and `src/components/templates/main-app/helpChat/api.ts` use fixed client failure copy instead of raw search-route response text. `src/components/organisms/AISearchModal/ActionButtons.tsx`, `src/components/templates/main-app/helpChat/hooks/useChatHandlers.ts`, and platform `chatManagement/MessageBubble.tsx` now check Clipboard API support before answer/message copy, await copy acknowledgement, and log unavailable/rejected copy attempts with bounded metadata before fixed local copy. `src/lib/vectorEmbeddings/index.ts` records `answerlattice_image_query_generation_failed` for failed image-to-search-context generation, throws generic image-query failure text, caps Gemini text extracted for vector/chat helpers before downstream parsing, and logs only prompt/query length plus provider-response length/truncation metadata for image-query success breadcrumbs. These changes do not alter canonical-first retrieval, FAQ fallback, embedding/vector search, RAG fallback, cache behavior, AI operation accounting, or tenant/store scoping.
 
@@ -398,6 +396,8 @@ Ticket mutation hardening: `src/database/tickets/index.ts` validates selected ti
 | `updateChangelogEntry(entryId, updatedPayload)`                     | N     | 1      | Transaction: find page containing entry              |
 
 **Path:** `changelog/{tId}/{sId}/page_XXXXXX` — Tenant+Store scoped subcollection.
+
+Answerlattice changelog runtime boundary: browser page reads require exact `AL` product, numeric tenant/store, page identity/order, entry IDs, Firestore timestamps, counters and fully valid bounded nested file/KB/video/release fields before returning a page. Create/update/delete actions use an authenticated, permissioned, bounded server route and transaction-owned page/index/context invalidation. The server reuses the same page contract before preserving or mutating existing rows. Browser action responses are no-store, same-origin, manual-redirect and capped at 64 KB; numeric strings and timestamp-shaped partial objects fail closed.
 
 ### 3.7 Feedback (`src/database/feedback/index.ts`)
 
@@ -462,9 +462,9 @@ Ticket mutation hardening: `src/database/tickets/index.ts` validates selected ti
 6. **Cache key construction** — `normalizeQuery()` + optional image hash
 7. **Response cache check** — `findCachedSearchByCacheKey()`
 8. **Embedding cache check** — `getCachedEmbedding()`
-9. **Embedding generation** — `callGeminiEmbedding()` → `text-embedding-004`
+9. **Embedding generation** — `callGeminiEmbeddingWithMetadata()` → version-locked `gemini-embedding-2`
 10. **Save embedding to cache** — `saveCachedEmbedding()`
-11. **Vector search** — `firestoreAdmin.collection(KB_ARTICLES).where('status','==','published').findNearest({vectorField:'embedding', queryVector, limit:12, distanceMeasure:'COSINE'})`
+11. **Vector search** — exact `pId+tId+sId+status+active` scope followed by `findNearest({vectorField:'embeddingV2', queryVector, limit:12, distanceMeasure:'COSINE'})`
 12. **Similarity filtering** — Primary threshold 0.6, fallback 0.4
 13. **Answer generation** — `callGeminiChat()` → Gemini 2.5 Flash
 14. **Reference enrichment** — Map referenced doc IDs to full article data
@@ -475,10 +475,12 @@ Ticket mutation hardening: `src/database/tickets/index.ts` validates selected ti
 
 **Models:**
 
-- `text-embedding-004` — Query and article embeddings (768 dimensions)
-- Embedding input format: `Category: {cat}\nSection: {sec}\nTitle: {title}\nContent: {text}`
+- `gemini-embedding-2` — Active query and article embeddings (768 dimensions)
+- Query format: `task: question answering | query: {query}`
+- Document format: `title: {title} | text: {normalized category/section/title/content}`
+- Legacy `gemini-embedding-001` vectors remain only in `embedding` for rollback.
 
-**Storage:** Embeddings stored directly on article documents as `embedding` field (Firestore Vector type).
+**Storage:** Active embeddings are stored on article documents as `embeddingV2` (Firestore Vector type); query-cache keys include the v2 cache version.
 
 ### 4.3 Gemini Chat Configuration
 
@@ -507,11 +509,11 @@ Ticket mutation hardening: `src/database/tickets/index.ts` validates selected ti
 
 ### 5.1 Chat Analytics Aggregation
 
-**File:** `functions/src/aggregateDailyChatStats.ts`
-**Schedule:** Daily at 1 AM UTC
-**Exports:** `aggregateDailyChatStats`, `backfillAggregates`
+**File:** `functions-answerlattice/src/answerlattice/chatAnalyticsAggregation.ts`
+**Schedule owner:** the existing hourly `answerlatticeNightly` master scheduler, through the workspace-local EOD settlement lease and `chat_analytics_summary` tenant task
+**Export:** `syncChatAnalyticsNightly(tId, sId)`
 
-Aggregates all chat sessions per store per day into `chatAnalytics/{tId}_{sId}_{YYYY-MM-DD}` documents.
+The task scans at most 501 changed sessions from its compact `platformSummary/chatAnalyticsState_{tId}_{sId}` continuation, then recomputes yesterday plus at most six other affected UTC dates. Each day scan is capped at 2,001 rows and writes `chatAnalytics/{tId}_{sId}_{YYYY-MM-DD}` only when the deterministic source hash changes. A capped day records `sourceComplete: false`. Scope IDs, persisted session scope, timestamps, messages, continuation-state ownership and cursor document ID are runtime-validated; malformed state fails closed rather than moving the cursor. Browser code has no aggregate writer.
 
 ### 5.2 Article Embedding Worker
 
@@ -651,6 +653,8 @@ Alerts on negative feedback patterns.
 | `useFeedback`       | `src/hooks/useFeedback.ts`       | Feedback state management |
 
 These client hooks and browser storage helpers use `src/hooks/hookDiagnostics.ts` for bounded failure diagnostics. Normal cache hits, misses, clears, realtime updates, LRU evictions, recently-viewed writes, and content-feedback storage paths stay quiet. Failed fetch/update/localStorage paths log normalized `answerlattice_*`, `recently_viewed_*`, or `content_feedback_storage_*` failure codes with bounded content/page/cache counts, user/content length metadata, value lengths, counts, and source error metadata only; they do not log raw article IDs, ticket IDs, feedback comments, localStorage payloads, cache payloads, Firestore documents, or browser/provider error objects.
+
+Recently Viewed is a versioned Answerlattice browser-state envelope scoped by exact tenant, store, and user identity. Runtime admission permits only ten bounded entries and the small presentation metadata required for article/changelog labels; it rejects unknown fields, malformed timestamps, external destinations, and whole article/changelog objects. Identity-less `recentlyViewed:{userId}` state is evicted instead of migrated because its originating workspace cannot be proven. Selecting an admitted row follows its normalized internal `/help-center` route and lets the authoritative content reader load the current DTO.
 
 The shared callable client wrapper in `src/lib/firebase/functions.ts` also uses bounded secure diagnostics for Answerlattice manual re-embed and approved-job publish trigger failures. `regenerateEmbedding` and `publishApprovedJobFn` failures log normalized `answerlattice_*_callable_failed` codes with bounded article/job metadata and source error name/code/status only; they do not direct-console raw callable/provider errors or publish payload contents.
 

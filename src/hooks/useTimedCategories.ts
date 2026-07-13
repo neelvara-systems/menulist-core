@@ -13,6 +13,12 @@
  */
 
 import { CategoryTimeSlot, ExtractedDataCategory } from '@template/main-app/projects/types';
+import {
+    clockRangeAppliesOnDay,
+    isMinuteWithinClockRange,
+    isValidClockRange,
+    parseClockMinutes,
+} from '@lib/menu/timeSlotPresetBoundary';
 import { formatClockTime } from '@util/dateTime';
 import { useEffect, useMemo, useState } from 'react';
 
@@ -39,18 +45,16 @@ export function validateTimeSlot(slot: CategoryTimeSlot): {
         return { valid: false, error: 'Start and end time are required' };
     }
 
-    const [sh, sm] = slot.startTime.split(':').map(Number);
-    const [eh, em] = slot.endTime.split(':').map(Number);
-
-    if (isNaN(sh) || isNaN(sm) || isNaN(eh) || isNaN(em)) {
-        return { valid: false, error: 'Invalid time format' };
+    if (!isValidClockRange(slot.startTime, slot.endTime)) {
+        return { valid: false, error: 'Enter different start and end times in HH:mm format' };
     }
 
-    const startMinutes = sh * 60 + sm;
-    const endMinutes = eh * 60 + em;
-
-    if (startMinutes >= endMinutes) {
-        return { valid: false, error: 'End time must be after start time' };
+    if (slot.days !== undefined && (
+        !Array.isArray(slot.days)
+        || !slot.days.length
+        || slot.days.some((day) => !Number.isInteger(day) || day < 0 || day > 6)
+    )) {
+        return { valid: false, error: 'Days must use values from 0 to 6' };
     }
 
     return { valid: true };
@@ -79,27 +83,49 @@ export function validateTimeSlots(timeSlots?: CategoryTimeSlot[]): {
     return { valid: true };
 }
 
-function getCurrentMinutesForTimeZone(timeZone?: string, now = new Date()): number {
+type CurrentTimeParts = { day: number; minutes: number };
+
+const WEEKDAY_INDEX: Record<string, number> = {
+    Sun: 0,
+    Mon: 1,
+    Tue: 2,
+    Wed: 3,
+    Thu: 4,
+    Fri: 5,
+    Sat: 6,
+};
+
+function getCurrentTimePartsForTimeZone(timeZone?: string, now = new Date()): CurrentTimeParts {
     if (timeZone) {
         try {
             const parts = new Intl.DateTimeFormat('en-GB', {
                 hour: '2-digit',
                 minute: '2-digit',
+                weekday: 'short',
                 hour12: false,
                 hourCycle: 'h23',
                 timeZone,
             }).formatToParts(now);
             const hour = Number(parts.find((part) => part.type === 'hour')?.value);
             const minute = Number(parts.find((part) => part.type === 'minute')?.value);
-            if (Number.isFinite(hour) && Number.isFinite(minute)) {
-                return hour * 60 + minute;
+            const day = WEEKDAY_INDEX[parts.find((part) => part.type === 'weekday')?.value || ''];
+            if (
+                Number.isInteger(hour)
+                && hour >= 0
+                && hour <= 24
+                && Number.isInteger(minute)
+                && minute >= 0
+                && minute < 60
+                && Number.isInteger(day)
+            ) {
+                return { day, minutes: (hour % 24) * 60 + minute };
             }
         } catch {
             // Fall back to browser/server local time.
         }
     }
 
-    return now.getHours() * 60 + now.getMinutes();
+    return { day: now.getDay(), minutes: now.getHours() * 60 + now.getMinutes() };
 }
 
 /**
@@ -114,17 +140,17 @@ export function isWithinTimeSlot(
 ): boolean {
     if (!timeSlots || timeSlots.length === 0) return true;
 
-    const currentMinutes = getCurrentMinutesForTimeZone(timeZone, now);
+    const current = getCurrentTimePartsForTimeZone(timeZone, now);
 
     return timeSlots.some(slot => {
-        if (!slot.startTime || !slot.endTime) return false;
-        const [sh, sm] = slot.startTime.split(':').map(Number);
-        const [eh, em] = slot.endTime.split(':').map(Number);
-        if (![sh, sm, eh, em].every(Number.isFinite)) return false;
-        const startMinutes = sh * 60 + sm;
-        const endMinutes = eh * 60 + em;
-        if (startMinutes >= endMinutes) return false;
-        return currentMinutes >= startMinutes && currentMinutes < endMinutes;
+        return isMinuteWithinClockRange(current.minutes, slot.startTime, slot.endTime)
+            && clockRangeAppliesOnDay(
+                current.day,
+                slot.days,
+                current.minutes,
+                slot.startTime,
+                slot.endTime,
+            );
     });
 }
 
@@ -137,25 +163,23 @@ export function getNextSlotStart(
 ): string | null {
     // Try new format first
     if (category.timeSlots?.length) {
-        const currentMinutes = getCurrentMinutesForTimeZone(timeZone);
+        const current = getCurrentTimePartsForTimeZone(timeZone);
 
         let nextStart: string | null = null;
         let minFutureMinutes = Infinity;
 
-        for (const slot of category.timeSlots) {
-            if (!slot.startTime) continue;
-            const [sh, sm] = slot.startTime.split(':').map(Number);
-            if (![sh, sm].every(Number.isFinite)) continue;
-            const startMinutes = sh * 60 + sm;
-
-            if (startMinutes > currentMinutes && startMinutes < minFutureMinutes) {
-                minFutureMinutes = startMinutes;
-                nextStart = slot.startTime;
+        for (let dayOffset = 0; dayOffset <= 7; dayOffset += 1) {
+            const candidateDay = (current.day + dayOffset) % 7;
+            for (const slot of category.timeSlots) {
+                if (slot.days?.length && !slot.days.includes(candidateDay)) continue;
+                const startMinutes = parseClockMinutes(slot.startTime);
+                if (startMinutes === null || !isValidClockRange(slot.startTime, slot.endTime)) continue;
+                const futureMinutes = dayOffset * 24 * 60 + startMinutes - current.minutes;
+                if (futureMinutes > 0 && futureMinutes < minFutureMinutes) {
+                    minFutureMinutes = futureMinutes;
+                    nextStart = slot.startTime;
+                }
             }
-        }
-
-        if (!nextStart && category.timeSlots.length > 0) {
-            nextStart = category.timeSlots[0].startTime;
         }
 
         return nextStart;

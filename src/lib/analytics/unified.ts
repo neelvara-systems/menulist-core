@@ -18,6 +18,31 @@ import {
 import { getDeviceInfo } from './device';
 import { getLocationInfo } from './geo';
 import { getSessionId } from './session';
+import { buildGA4DefaultEventParameters, normalizeGA4CommerceItems } from './ga4Boundary';
+import {
+  ANALYTICS_DECISION_BLOCK_TYPES,
+  ANALYTICS_MENU_ACTIONS,
+  ANALYTICS_MENU_RESOLUTION_LAYERS,
+  ANALYTICS_OBP_ACTIONS,
+  ANALYTICS_OBP_LINKS,
+  ANALYTICS_OBP_SHARE_METHODS,
+  ANALYTICS_PWA_INSTALL_SOURCES,
+  ANALYTICS_PWA_INSTALL_SURFACES,
+  ANALYTICS_PWA_PLATFORMS,
+  buildAuthoritativeAnalyticsPayload,
+  normalizeAnalyticsCount,
+  normalizeAnalyticsEnum,
+} from './eventPayload';
+import type { AnalyticsWriteValue } from './writePolicy';
+import {
+  ALLOWED_ANALYTICS_ATTRIBUTE_FILTERS,
+  normalizeAnalyticsAttributeFilterState,
+  normalizeAnalyticsSessionMilestoneState,
+  normalizeStoredAnalyticsEntrySource,
+  type AnalyticsAttributeFilterState,
+  type AnalyticsEntrySource,
+  type AnalyticsSessionMilestoneState,
+} from './browserState';
 
 // ================================================================
 // CLIENT-SIDE RATE LIMITING & DEBOUNCING
@@ -37,42 +62,40 @@ const RATE_LIMIT = {
 const recentEvents: Map<string, number[]> = new Map();
 const lastEventTime: Map<string, number> = new Map();
 const menuViewTracker: Map<string, number> = new Map();
+const MAX_RUNTIME_TRACKER_KEYS = 256;
 const SESSION_MILESTONE_STORAGE_PREFIX = 'menulist_analytics_session_milestones_v1';
 const SESSION_SOURCE_STORAGE_PREFIX = 'menulist_analytics_session_source_v1';
 const SESSION_FILTER_STORAGE_PREFIX = 'menulist_analytics_active_filter_v1';
-const ALLOWED_ATTRIBUTE_FILTERS = new Set(['popular', 'veg', 'nonveg', 'forMen', 'forWomen']);
 const MAX_ENTRY_SOURCE_INFERENCE_DIAGNOSTICS = 25;
 const reportedEntrySourceInferenceFailures = new Set<string>();
 
-type SessionMilestoneState = {
-  menuSession?: boolean;
-  engaged?: boolean;
-  intent?: boolean;
-  action?: boolean;
-  itemIds?: string[];
-  viewedItemIds?: string[];
-  languageSessions?: string[];
-  languageAdoptions?: string[];
+const pruneTimestampMap = (
+  map: Map<string, number>,
+  now: number,
+  maxAgeMs: number,
+): void => {
+  if (map.size <= MAX_RUNTIME_TRACKER_KEYS) return;
+  map.forEach((timestamp, key) => {
+    if (now - timestamp > maxAgeMs) map.delete(key);
+  });
+  while (map.size > MAX_RUNTIME_TRACKER_KEYS) {
+    const oldestKey = map.keys().next().value;
+    if (oldestKey === undefined) break;
+    map.delete(oldestKey);
+  }
 };
 
-type EntrySource =
-  | 'copy_link'
-  | 'qr'
-  | 'whatsapp'
-  | 'instagram'
-  | 'facebook'
-  | 'google'
-  | 'obp'
-  | 'menu_kit'
-  | 'native_share'
-  | 'shortcut'
-  | 'direct'
-  | 'other';
-
-type ActiveAttributeFilterState = {
-  filter: string;
-  label?: string;
-  selectedAt?: number;
+const pruneRecentEvents = (now: number): void => {
+  if (recentEvents.size <= MAX_RUNTIME_TRACKER_KEYS) return;
+  recentEvents.forEach((timestamps, key) => {
+    const latest = timestamps[timestamps.length - 1] || 0;
+    if (now - latest > 60000) recentEvents.delete(key);
+  });
+  while (recentEvents.size > MAX_RUNTIME_TRACKER_KEYS) {
+    const oldestKey = recentEvents.keys().next().value;
+    if (oldestKey === undefined) break;
+    recentEvents.delete(oldestKey);
+  }
 };
 
 const getAnalyticsSessionStorageContext = (
@@ -84,7 +107,7 @@ const getAnalyticsSessionStorageContext = (
   ...(includeValue ? getBoundedAnalyticsStringContext('storedValue', value) : {}),
 });
 
-const getSessionMilestoneStateContext = (state?: SessionMilestoneState | null) => ({
+const getSessionMilestoneStateContext = (state?: AnalyticsSessionMilestoneState | null) => ({
   hasMenuSession: Boolean(state?.menuSession),
   hasEngagedSession: Boolean(state?.engaged),
   hasIntentSession: Boolean(state?.intent),
@@ -121,6 +144,7 @@ const shouldRateLimit = (eventKey: string): boolean => {
   // Add current timestamp
   timestamps.push(now);
   recentEvents.set(eventKey, timestamps);
+  pruneRecentEvents(now);
 
   return false;
 };
@@ -139,6 +163,7 @@ const shouldDebounce = (eventType: string, projectId?: string): boolean => {
   }
 
   lastEventTime.set(key, now);
+  pruneTimestampMap(lastEventTime, now, RATE_LIMIT.DEBOUNCE_MS);
   return false;
 };
 
@@ -157,6 +182,7 @@ const shouldBlockMenuView = (projectId?: string): boolean => {
   }
 
   menuViewTracker.set(projectId, now);
+  pruneTimestampMap(menuViewTracker, now, RATE_LIMIT.MENU_VIEW_COOLDOWN_MS);
   return false;
 };
 
@@ -196,31 +222,26 @@ const getSessionFilterKey = (data: Partial<TrackingData>, localDate: string, ses
   ].join('|');
 };
 
-const readSessionMilestoneState = (key: string | null): SessionMilestoneState | null => {
+const readSessionMilestoneState = (key: string | null): AnalyticsSessionMilestoneState | null => {
   if (!key || typeof window === 'undefined') return null;
   let raw: string | null = null;
   try {
     raw = window.sessionStorage.getItem(key);
-    return raw ? JSON.parse(raw) : {};
+    if (!raw) return {};
+    return normalizeAnalyticsSessionMilestoneState(JSON.parse(raw)) || {};
   } catch (error) {
     logAnalyticsFailure('analytics_session_milestones_read_failed', error, {
       ...getAnalyticsSessionStorageContext(key, raw, true),
     });
-    return null;
+    return {};
   }
 };
 
-const writeSessionMilestoneState = (key: string | null, state: SessionMilestoneState | null): void => {
+const writeSessionMilestoneState = (key: string | null, state: AnalyticsSessionMilestoneState | null): void => {
   if (!key || !state || typeof window === 'undefined') return;
   let serializedState = '';
   try {
-    serializedState = JSON.stringify({
-      ...state,
-      itemIds: Array.from(new Set(state.itemIds || [])).slice(-10),
-      viewedItemIds: Array.from(new Set(state.viewedItemIds || [])).slice(-20),
-      languageSessions: Array.from(new Set(state.languageSessions || [])).slice(-8),
-      languageAdoptions: Array.from(new Set(state.languageAdoptions || [])).slice(-8),
-    });
+    serializedState = JSON.stringify(normalizeAnalyticsSessionMilestoneState(state) || {});
     window.sessionStorage.setItem(key, serializedState);
   } catch (error) {
     logAnalyticsFailure('analytics_session_milestones_write_failed', error, {
@@ -231,12 +252,12 @@ const writeSessionMilestoneState = (key: string | null, state: SessionMilestoneS
   }
 };
 
-const readSessionEntrySource = (key: string | null): EntrySource | null => {
+const readSessionEntrySource = (key: string | null): AnalyticsEntrySource | null => {
   if (!key || typeof window === 'undefined') return null;
   let raw: string | null = null;
   try {
     raw = window.sessionStorage.getItem(key);
-    return raw ? JSON.parse(raw)?.entrySource || null : null;
+    return raw ? normalizeStoredAnalyticsEntrySource(JSON.parse(raw)?.entrySource) : null;
   } catch (error) {
     logAnalyticsFailure('analytics_session_source_read_failed', error, {
       ...getAnalyticsSessionStorageContext(key, raw, true),
@@ -245,7 +266,7 @@ const readSessionEntrySource = (key: string | null): EntrySource | null => {
   }
 };
 
-const writeSessionEntrySource = (key: string | null, entrySource: EntrySource | null): void => {
+const writeSessionEntrySource = (key: string | null, entrySource: AnalyticsEntrySource | null): void => {
   if (!key || !entrySource || typeof window === 'undefined') return;
   let serializedSource = '';
   try {
@@ -260,18 +281,12 @@ const writeSessionEntrySource = (key: string | null, entrySource: EntrySource | 
   }
 };
 
-const readActiveAttributeFilter = (key: string | null): ActiveAttributeFilterState | null => {
+const readActiveAttributeFilter = (key: string | null): AnalyticsAttributeFilterState | null => {
   if (!key || typeof window === 'undefined') return null;
   let raw: string | null = null;
   try {
     raw = window.sessionStorage.getItem(key);
-    const parsed = raw ? JSON.parse(raw) : null;
-    const filter = String(parsed?.filter || '').trim();
-    return ALLOWED_ATTRIBUTE_FILTERS.has(filter) ? {
-      filter,
-      label: parsed?.label,
-      selectedAt: parsed?.selectedAt,
-    } : null;
+    return raw ? normalizeAnalyticsAttributeFilterState(JSON.parse(raw)) : null;
   } catch (error) {
     logAnalyticsFailure('analytics_active_filter_read_failed', error, {
       ...getAnalyticsSessionStorageContext(key, raw, true),
@@ -289,17 +304,17 @@ const writeActiveAttributeFilter = (
   let serializedFilter = '';
   let operation: 'remove' | 'write' = 'write';
   try {
-    if (!filter || !ALLOWED_ATTRIBUTE_FILTERS.has(filter)) {
+    if (!filter || !ALLOWED_ANALYTICS_ATTRIBUTE_FILTERS.has(filter)) {
       operation = 'remove';
       window.sessionStorage.removeItem(key);
       return;
     }
 
-    serializedFilter = JSON.stringify({
+    serializedFilter = JSON.stringify(normalizeAnalyticsAttributeFilterState({
       filter,
       label: label || filter,
       selectedAt: Date.now(),
-    });
+    }));
     window.sessionStorage.setItem(key, serializedFilter);
   } catch (error) {
     logAnalyticsFailure('analytics_active_filter_write_failed', error, {
@@ -313,8 +328,8 @@ const writeActiveAttributeFilter = (
 };
 
 const addAttributeFilterContextCounters = (
-  updateData: Record<string, any>,
-  filterState: ActiveAttributeFilterState | null,
+  updateData: Record<string, AnalyticsWriteValue>,
+  filterState: AnalyticsAttributeFilterState | null,
   eventName: TrackingEvent,
 ) => {
   if (!filterState?.filter) return;
@@ -343,7 +358,7 @@ const addAttributeFilterContextCounters = (
   }
 };
 
-const normalizeEntrySource = (value?: string | null): EntrySource | null => {
+const normalizeEntrySource = (value?: string | null): AnalyticsEntrySource | null => {
   const source = String(value || '').trim().toLowerCase();
   if (!source) return null;
   if (source.includes('copy')) return 'copy_link';
@@ -380,7 +395,7 @@ const logEntrySourceInferenceFailure = (error: unknown): void => {
   });
 };
 
-const inferEntrySource = (data: TrackingData): EntrySource => {
+const inferEntrySource = (data: TrackingData): AnalyticsEntrySource => {
   const explicit = normalizeEntrySource(data.entrySource);
   if (explicit) return explicit;
 
@@ -415,14 +430,21 @@ const normalizeMenuLanguageName = (code: string, value?: string | null): string 
 };
 
 const normalizeSearchTermForAnalytics = (value?: string | null): string | null => {
-  const searchTerm = String(value || '').trim().toLowerCase().replace(/\s+/g, ' ').slice(0, 64);
+  const searchTerm = String(value || '')
+    .normalize('NFKC')
+    .toLowerCase()
+    .replace(/[\u0000-\u001F\u007F.\/\\<>{}\[\]`$]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 64)
+    .trim();
   if (searchTerm.length < 2) return null;
   return searchTerm;
 };
 
 const addMenuLanguageCounters = (
-  updateData: Record<string, any>,
-  state: SessionMilestoneState | null,
+  updateData: Record<string, AnalyticsWriteValue>,
+  state: AnalyticsSessionMilestoneState | null,
   data: TrackingData,
   mode: 'view' | 'adoption',
 ): boolean => {
@@ -456,8 +478,8 @@ const addMenuLanguageCounters = (
 };
 
 const addOBPLanguageCounters = (
-  updateData: Record<string, any>,
-  state: SessionMilestoneState | null,
+  updateData: Record<string, AnalyticsWriteValue>,
+  state: AnalyticsSessionMilestoneState | null,
   data: TrackingData,
   mode: 'view' | 'adoption',
 ): boolean => {
@@ -491,8 +513,8 @@ const addOBPLanguageCounters = (
 };
 
 const markSessionMilestone = (
-  updateData: Record<string, any>,
-  state: SessionMilestoneState | null,
+  updateData: Record<string, AnalyticsWriteValue>,
+  state: AnalyticsSessionMilestoneState | null,
   milestone: 'menuSession' | 'engaged' | 'intent' | 'action'
 ) => {
   if (!state || state[milestone]) return;
@@ -504,8 +526,8 @@ const markSessionMilestone = (
 };
 
 const trackSessionItemView = (
-  updateData: Record<string, any>,
-  state: SessionMilestoneState | null,
+  updateData: Record<string, AnalyticsWriteValue>,
+  state: AnalyticsSessionMilestoneState | null,
   itemId?: string,
 ) => {
   if (!state || !itemId) return true;
@@ -527,13 +549,16 @@ const trackSessionItemView = (
   return isNewSessionItemView;
 };
 
-const markEngagedIntentSession = (updateData: Record<string, any>, state: SessionMilestoneState | null) => {
+const markEngagedIntentSession = (
+  updateData: Record<string, AnalyticsWriteValue>,
+  state: AnalyticsSessionMilestoneState | null,
+) => {
   markSessionMilestone(updateData, state, 'engaged');
   markSessionMilestone(updateData, state, 'intent');
 };
 
 const addCategoryInterestCounters = (
-  updateData: Record<string, any>,
+  updateData: Record<string, AnalyticsWriteValue>,
   data: TrackingData,
   counterPrefix: 'viewsByCategory' | 'clicksByCategory',
 ) => {
@@ -593,12 +618,6 @@ export enum TrackingEvent {
   // owner-facing outcome through OBP menu clicks and destination menu views.
   PROJECT_SWITCH = 'project_switch',
 
-  // T5-N-02 / §11 PUBLIC-ROUTING-DOCTRINE: G-08 subdomain immutability guard.
-  // Fires server-side when an owner attempts to mutate subdomain after first
-  // publish and the guard blocks it. Key security/support signal — repeated
-  // attempts may indicate confusion or attempted circumvention.
-  SUBDOMAIN_MUTATION_BLOCKED = 'subdomain_mutation_blocked',
-
   // Owner-side events (lightweight, GA4-only — no Firestore writes)
   MENU_KIT_DOWNLOAD = 'menu_kit_download',  // Owner downloaded Menu Kit ZIP or shared individual asset
 
@@ -645,6 +664,7 @@ export interface TrackingData {
   tax?: number;               // Tax amount
   shipping?: number;          // Shipping cost
   coupon?: string;            // Coupon code used
+  items?: unknown[];
 
   // User properties
   userId?: string;            // User identifier
@@ -679,7 +699,7 @@ export interface TrackingData {
   utm_medium?: string;
   utm_campaign?: string;
   utm_content?: string;
-  entrySource?: EntrySource | string;
+  entrySource?: AnalyticsEntrySource | string;
 
   // Menu language usage. Counts only current language on existing menu-view
   // writes and validated switched-language adoption, not every quick toggle.
@@ -730,9 +750,18 @@ export interface TrackingData {
   // This is distinct from 'obp_secondary_card' and 'in_menu' — it captures
   // the "latent switch" from URL typed to project rendered.
   switchSource?: 'obp_secondary_card' | 'in_menu' | 'menu_alias_layer2' | string;
+  fromProjectId?: string;
+  obpSurface?: 'brand' | 'outlet';
+  blocksShown?: Array<'popular' | 'quickPick' | 'bestValue'>;
+  blockCount?: number;
+  language?: string;
+  languageName?: string;
+  page?: string;
+  page_title?: string;
+  menuKitAction?: 'zip_download' | 'share_instagram' | 'share_whatsapp' | 'share_google_maps';
 
   // Additional properties
-  [key: string]: any;         // Any other custom properties
+  [key: string]: unknown;
 }
 
 const logMissingRequiredAnalyticsField = (
@@ -756,37 +785,39 @@ const logMissingRequiredAnalyticsField = (
  * - Special cooldown for menu views (30 seconds per project)
  */
 export const trackEvent = async (eventName: TrackingEvent, data: TrackingData = {}): Promise<void> => {
+  let eventData = data;
   try {
-    // Add session ID to tracking data if not already present
-    if (!data.sessionId) {
-      data.sessionId = getSessionId();
-    }
+    const suppliedSessionId = typeof data.sessionId === 'string' ? data.sessionId.trim().slice(0, 128) : '';
+    eventData = {
+      ...data,
+      sessionId: suppliedSessionId || getSessionId(),
+    };
 
     // COST OPTIMIZATION: Rate limiting check
-    const sessionId = data.sessionId;
+    const sessionId = eventData.sessionId!;
     if (shouldRateLimit(sessionId)) {
       return;
     }
 
     // COST OPTIMIZATION: Debounce rapid-fire same events
-    if (shouldDebounce(eventName, data.projectId)) {
+    if (shouldDebounce(eventName, eventData.projectId)) {
       return; // Silently skip duplicate event.
     }
 
     // COST OPTIMIZATION: Special handling for menu views
-    if (eventName === TrackingEvent.MENU_VIEW && shouldBlockMenuView(data.projectId)) {
+    if (eventName === TrackingEvent.MENU_VIEW && shouldBlockMenuView(eventData.projectId)) {
       return; // Silently skip repeated menu view.
     }
 
     // Track in Firebase Analytics
-    await trackFirebaseEvent(eventName, data);
+    await trackFirebaseEvent(eventName, eventData);
 
     // Track in Google Analytics 4
-    trackGA4Event(eventName, data);
+    trackGA4Event(eventName, eventData);
   } catch (error) {
     logAnalyticsFailure('analytics_track_event_failed', error, {
       eventName,
-      ...getAnalyticsTrackingContext(data),
+      ...getAnalyticsTrackingContext(eventData),
     });
   }
 };
@@ -849,7 +880,7 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
     };
 
     // Prepare update data
-    const updateData: any = {
+    const updateData: Record<string, AnalyticsWriteValue> = {
       date: localDate,
     };
 
@@ -883,8 +914,12 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
           if (utmContent) updateData[`viewsByContent.${utmContent}`] = 1;
           // T5-N-01: R5 Layer resolution split — lets us measure how often /menu
           // resolves via Layer 1 (owner-claimed slug) vs Layer 2 (universal alias).
-          if (data.menuResolutionLayer) {
-            updateData[`menuResolutionLayer.${data.menuResolutionLayer}`] = 1;
+          const menuResolutionLayer = normalizeAnalyticsEnum(
+            data.menuResolutionLayer,
+            ANALYTICS_MENU_RESOLUTION_LAYERS,
+          );
+          if (menuResolutionLayer) {
+            updateData[`menuResolutionLayer.${menuResolutionLayer}`] = 1;
           }
         }
         break;
@@ -953,6 +988,7 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
 
       case TrackingEvent.SEARCH:
         const normalizedSearchTerm = normalizeSearchTermForAnalytics(data.searchTerm);
+        const normalizedSearchResults = normalizeAnalyticsCount(data.searchResults);
         if (data.searchTerm && !normalizedSearchTerm) {
           return;
         }
@@ -962,7 +998,7 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
         markEngagedIntentSession(updateData, sessionMilestones);
         if (normalizedSearchTerm) {
           updateData[`searchTerms.${normalizedSearchTerm}`] = 1;
-          if ((data.searchResults || 0) === 0) {
+          if (normalizedSearchResults === 0) {
             updateData.zeroResultSearches = 1;
             updateData[`zeroResultSearchTerms.${normalizedSearchTerm}`] = 1;
           }
@@ -985,13 +1021,14 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
         break;
 
       case TrackingEvent.MENU_ACTION_CLICK:
-        if (!data.menuAction) {
+        const menuAction = normalizeAnalyticsEnum(data.menuAction, ANALYTICS_MENU_ACTIONS);
+        if (!menuAction) {
           logMissingRequiredAnalyticsField(eventName, 'menuAction', data);
           return;
         }
         const menuActionOpenHoursState = normalizeOpenHoursState(data.openHoursState);
         updateData.totalMenuActionClicks = 1;
-        updateData[`menuActionClicks.${data.menuAction}`] = 1;
+        updateData[`menuActionClicks.${menuAction}`] = 1;
         updateData[`menuActionClicksByOpenHoursState.${menuActionOpenHoursState}`] = 1;
         updateData[`hourlyMenuActionClicks.${hour}`] = 1;
         markEngagedIntentSession(updateData, sessionMilestones);
@@ -1005,12 +1042,13 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
         break;
 
       case TrackingEvent.DECISION_BLOCK_CLICK:
-        if (!data.itemId || !data.blockType) {
+        const decisionBlockType = normalizeAnalyticsEnum(data.blockType, ANALYTICS_DECISION_BLOCK_TYPES);
+        if (!data.itemId || !decisionBlockType) {
           logMissingRequiredAnalyticsField(eventName, data.itemId ? 'blockType' : 'itemId', data);
           return;
         }
         updateData.totalRecommendationClicks = 1;
-        updateData[`recommendationClicks.${data.blockType}`] = 1;
+        updateData[`recommendationClicks.${decisionBlockType}`] = 1;
         updateData[`recommendationClicksByItem.${data.itemId}`] = 1;
         updateData[`hourlyRecommendationClicks.${hour}`] = 1;
         addCategoryInterestCounters(updateData, data, 'clicksByCategory');
@@ -1049,13 +1087,14 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
 
       case TrackingEvent.OBP_ACTION_CLICK:
         // OBP action button click (Call, WhatsApp, Directions)
-        if (!data.obpAction) {
+        const obpAction = normalizeAnalyticsEnum(data.obpAction, ANALYTICS_OBP_ACTIONS);
+        if (!obpAction) {
           logMissingRequiredAnalyticsField(eventName, 'obpAction', data);
           return;
         }
         const obpActionOpenHoursState = normalizeOpenHoursState(data.openHoursState);
         updateData.totalOBPActionClicks = 1;
-        updateData[`obpActionClicks.${data.obpAction}`] = 1;
+        updateData[`obpActionClicks.${obpAction}`] = 1;
         updateData[`obpActionClicksBySource.${entrySource}`] = 1;
         updateData[`obpActionClicksByOpenHoursState.${obpActionOpenHoursState}`] = 1;
         updateData[`hourlyOBPActionClicks.${hour}`] = 1;
@@ -1075,12 +1114,13 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
       }
 
       case TrackingEvent.OBP_LINK_CLICK:
-        if (!data.obpLink) {
+        const obpLink = normalizeAnalyticsEnum(data.obpLink, ANALYTICS_OBP_LINKS);
+        if (!obpLink) {
           logMissingRequiredAnalyticsField(eventName, 'obpLink', data);
           return;
         }
         updateData.totalOBPLinkClicks = 1;
-        updateData[`obpLinkClicks.${data.obpLink}`] = 1;
+        updateData[`obpLinkClicks.${obpLink}`] = 1;
         updateData[`obpLinkClicksBySource.${entrySource}`] = 1;
         updateData[`obpLinkClicksByOpenHoursState.${normalizeOpenHoursState(data.openHoursState)}`] = 1;
         updateData[`hourlyOBPLinkClicks.${hour}`] = 1;
@@ -1088,12 +1128,13 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
 
       case TrackingEvent.OBP_SHARE:
         // Owner shared OBP link via WhatsApp/copy — measures distribution behavior
-        if (!data.obpAction) {
+        const obpShareMethod = normalizeAnalyticsEnum(data.obpAction, ANALYTICS_OBP_SHARE_METHODS);
+        if (!obpShareMethod) {
           logMissingRequiredAnalyticsField(eventName, 'obpAction', data);
           return;
         }
         updateData.totalOBPShares = 1;
-        updateData[`obpShares.${data.obpAction}`] = 1;
+        updateData[`obpShares.${obpShareMethod}`] = 1;
         break;
 
       case TrackingEvent.DECISION_BLOCKS_RENDERED:
@@ -1105,9 +1146,14 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
           logMissingRequiredAnalyticsField(eventName, 'blocksShown', data);
           return;
         }
+        const blocksShown = Array.from(new Set(data.blocksShown.flatMap((blockType) => {
+          const normalized = normalizeAnalyticsEnum(blockType, ANALYTICS_DECISION_BLOCK_TYPES);
+          return normalized ? [normalized] : [];
+        })));
+        if (blocksShown.length === 0) return;
         updateData.totalDecisionBlocksRendered = 1;
         // Track each block type that was rendered
-        data.blocksShown.forEach((blockType: string) => {
+        blocksShown.forEach((blockType) => {
           updateData[`decisionBlocksRendered.${blockType}`] = 1;
         });
         updateData[`hourlyDecisionBlocksRendered.${hour}`] = 1;
@@ -1129,7 +1175,6 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
       case TrackingEvent.SIGN_UP:
       case TrackingEvent.SHARE:
       case TrackingEvent.USER_LOCATION:
-      case TrackingEvent.SUBDOMAIN_MUTATION_BLOCKED:
         // Operational or generic analytics event. Keep in GA4 only unless a
         // real owner-facing dashboard/report needs the Firestore counter.
         return;
@@ -1156,18 +1201,21 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
         if (locationKey) updateData[`installsByLocation.${locationKey}`] = 1;
         // Platform breakdown (iOS / Android / Desktop). Optional — only
         // writes when caller supplied pwaPlatform.
-        if (data.pwaPlatform) {
-          updateData[`installsByPlatform.${data.pwaPlatform}`] = 1;
+        const installedPlatform = normalizeAnalyticsEnum(data.pwaPlatform, ANALYTICS_PWA_PLATFORMS);
+        if (installedPlatform) {
+          updateData[`installsByPlatform.${installedPlatform}`] = 1;
         }
         // Install source (native vs ios-inferred) — lets owners distinguish
         // confirmed installs from heuristic ones.
-        if (data.pwaInstallSource) {
-          updateData[`installsBySource.${data.pwaInstallSource}`] = 1;
+        const installSource = normalizeAnalyticsEnum(data.pwaInstallSource, ANALYTICS_PWA_INSTALL_SOURCES);
+        if (installSource) {
+          updateData[`installsBySource.${installSource}`] = 1;
         }
         // Entry/source breakdown only. All entries map to the same store-level
         // installed Customer App identity.
-        if (data.pwaInstallSurface) {
-          updateData[`installsBySurface.${data.pwaInstallSurface}`] = 1;
+        const installSurface = normalizeAnalyticsEnum(data.pwaInstallSurface, ANALYTICS_PWA_INSTALL_SURFACES);
+        if (installSurface) {
+          updateData[`installsBySurface.${installSurface}`] = 1;
         }
         break;
 
@@ -1179,13 +1227,15 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
         updateData.totalSessions = 1;
         // Per-platform app-open count — used by the "active by platform" row
         // on the owner dashboard.
-        if (data.pwaPlatform) {
-          updateData[`appOpensByPlatform.${data.pwaPlatform}`] = 1;
+        const openedPlatform = normalizeAnalyticsEnum(data.pwaPlatform, ANALYTICS_PWA_PLATFORMS);
+        if (openedPlatform) {
+          updateData[`appOpensByPlatform.${openedPlatform}`] = 1;
         }
         // Entry/source breakdown only. A project path launch does not imply a
         // separate installed app.
-        if (data.pwaInstallSurface) {
-          updateData[`appOpensBySurface.${data.pwaInstallSurface}`] = 1;
+        const openedSurface = normalizeAnalyticsEnum(data.pwaInstallSurface, ANALYTICS_PWA_INSTALL_SURFACES);
+        if (openedSurface) {
+          updateData[`appOpensBySurface.${openedSurface}`] = 1;
         }
         break;
 
@@ -1248,7 +1298,15 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
 
     // Use the database function to track the event
     // Pass projectId and tenantId for project-wise analytics storage
-    await trackAnalyticsEvent(updateData, data.tenantId, data.storeId, effectiveProjectId, data.storeTimeZone, data.businessDayEndTime);
+    const accepted = await trackAnalyticsEvent(
+      updateData,
+      data.tenantId,
+      data.storeId,
+      effectiveProjectId,
+      data.storeTimeZone,
+      data.businessDayEndTime,
+    );
+    if (!accepted) return;
     writeSessionMilestoneState(sessionMilestoneKey, sessionMilestones);
     if (eventName === TrackingEvent.MENU_VIEW || eventName === TrackingEvent.OBP_VIEW) {
       writeSessionEntrySource(sessionSourceKey, entrySource);
@@ -1270,11 +1328,12 @@ const trackGA4Event = (
   data: TrackingData
 ): void => {
   // Only track if GA4 is available
-  if (typeof window.gtag !== 'function' || !window.gaId) {
+  if (typeof window === 'undefined' || typeof window.gtag !== 'function' || !window.gaId) {
     return;
   }
 
   try {
+    const parameters = buildGA4DefaultEventParameters(data);
     // Map unified events to GA4 format
     switch (eventName) {
       case TrackingEvent.PAGE_VIEW:
@@ -1287,8 +1346,8 @@ const trackGA4Event = (
       case TrackingEvent.MENU_VIEW:
         // Track viewing the entire menu/store page (not individual items)
         window.gtag('event', 'view_item_list', {
-          item_list_id: data.storeId,       // ID of the entire menu/store
-          item_list_name: data.storeName    // Name of the store/restaurant
+          item_list_id: parameters.store_id,
+          item_list_name: parameters.store_name    // Name of the store/restaurant
         });
         break;
 
@@ -1296,11 +1355,11 @@ const trackGA4Event = (
         // Track viewing a specific menu item/dish (not the entire menu)
         window.gtag('event', 'view_item', {
           items: [{
-            item_id: data.itemId,           // ID of the specific dish
-            item_name: data.itemName,       // Name of the specific dish
-            item_category: data.itemCategory,
-            price: data.price,
-            currency: data.currency || 'USD'
+            item_id: parameters.item_id,
+            item_name: parameters.item_name,
+            item_category: parameters.item_category,
+            price: parameters.price,
+            currency: parameters.currency || 'USD'
           }]
         });
         break;
@@ -1308,100 +1367,89 @@ const trackGA4Event = (
       case TrackingEvent.ITEM_CLICK:
         window.gtag('event', 'select_item', {
           items: [{
-            item_id: data.itemId,
-            item_name: data.itemName,
-            item_category: data.itemCategory,
-            price: data.price,
-            currency: data.currency || 'USD'
+            item_id: parameters.item_id,
+            item_name: parameters.item_name,
+            item_category: parameters.item_category,
+            price: parameters.price,
+            currency: parameters.currency || 'USD'
           }]
         });
         break;
 
       case TrackingEvent.ADD_TO_CART:
         window.gtag('event', 'add_to_cart', {
-          currency: data.currency || 'USD',
-          value: data.price,
+          currency: parameters.currency || 'USD',
+          value: parameters.price,
           items: [{
-            item_id: data.itemId,
-            item_name: data.itemName,
-            item_category: data.itemCategory,
-            price: data.price,
-            currency: data.currency || 'USD',
-            quantity: data.quantity || 1
+            item_id: parameters.item_id,
+            item_name: parameters.item_name,
+            item_category: parameters.item_category,
+            price: parameters.price,
+            currency: parameters.currency || 'USD',
+            quantity: parameters.quantity ?? 1
           }]
         });
         break;
 
       case TrackingEvent.PURCHASE:
         window.gtag('event', 'purchase', {
-          transaction_id: data.transactionId,
-          value: data.revenue,
-          currency: data.currency || 'USD',
-          tax: data.tax,
-          shipping: data.shipping,
-          coupon: data.coupon,
-          items: data.items || []
+          transaction_id: parameters.transaction_id,
+          value: parameters.value,
+          currency: parameters.currency || 'USD',
+          tax: parameters.tax,
+          shipping: parameters.shipping,
+          coupon: parameters.coupon,
+          items: normalizeGA4CommerceItems(data.items)
         });
         break;
 
       case TrackingEvent.SEARCH:
         window.gtag('event', 'search', {
-          search_term: data.searchTerm,
-          search_results_count: data.searchResults
+          search_term: parameters.search_term,
+          search_results_count: parameters.search_results_count
         });
         break;
 
       case TrackingEvent.SHARE:
         window.gtag('event', 'share', {
-          method: data.shareMethod || 'native_share',
-          content_type: data.shareContentType || (data.itemId ? 'menu_item' : 'menu'),
-          item_id: data.itemId,
-          item_name: data.itemName,
-          item_category: data.itemCategory,
-        });
-        break;
-
-        window.gtag('event', eventName, {
-          content_type: 'menu_item',
-          item_id: data.itemId,
-          item_name: data.itemName,
-          item_category: data.itemCategory,
-          project_id: data.projectId,
-          store_id: data.storeId,
+          method: parameters.share_method || 'native_share',
+          content_type: parameters.share_content_type || (parameters.item_id ? 'menu_item' : 'menu'),
+          item_id: parameters.item_id,
+          item_name: parameters.item_name,
+          item_category: parameters.item_category,
         });
         break;
 
       case TrackingEvent.USER_LOCATION:
         window.gtag('event', 'user_location', {
-          city: data.city,
-          region: data.region,
-          country: data.country
+          city: parameters.city,
+          region: parameters.region,
+          country: parameters.country
         });
         break;
 
       case TrackingEvent.DECISION_BLOCK_CLICK:
+        if (!parameters.block_type || !parameters.item_id) return;
         window.gtag('event', 'select_promotion', {
-          creative_name: data.blockType,
+          creative_name: parameters.block_type,
           creative_slot: 'decision_block',
-          promotion_id: `rec_${data.blockType}`,
-          promotion_name: data.blockType === 'popular' ? 'Popular Right Now' :
-            data.blockType === 'quickPick' ? 'Quick Pick' : 'Best Value',
+          promotion_id: `rec_${parameters.block_type}`,
+          promotion_name: parameters.block_type === 'popular' ? 'Popular Right Now' :
+            parameters.block_type === 'quickPick' ? 'Quick Pick' : 'Best Value',
           items: [{
-            item_id: data.itemId,
-            item_name: data.itemName,
-            item_category: data.itemCategory,
-            price: data.price,
-            currency: data.currency || 'USD'
+            item_id: parameters.item_id,
+            item_name: parameters.item_name,
+            item_category: parameters.item_category,
+            price: parameters.price,
+            currency: parameters.currency || 'USD'
           }]
         });
         break;
 
       default:
-        // For other events, pass all data as parameters
-        window.gtag('event', eventName, {
-          ...data,
-          timestamp: new Date().toISOString()
-        });
+        // Default events use an exact primitive allowlist. Internal session,
+        // tenant, timezone, and arbitrary caller fields never cross into GA4.
+        window.gtag('event', eventName, parameters);
     }
   } catch (error) {
     logAnalyticsFailure('analytics_ga4_event_failed', error, {
@@ -1422,8 +1470,12 @@ const trackGA4Event = (
  * @param additionalData Optional additional tracking data
  */
 export const trackPageView = (additionalData: Partial<TrackingData> = {}): void => {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return;
   // Only track in GA4, not Firebase
-  trackGA4Event(TrackingEvent.PAGE_VIEW, { page: window.location.pathname, page_title: document.title, ...additionalData });
+  trackGA4Event(TrackingEvent.PAGE_VIEW, buildAuthoritativeAnalyticsPayload(additionalData, {
+    page: window.location.pathname,
+    page_title: document.title,
+  }));
 };
 
 /**
@@ -1433,7 +1485,10 @@ export const trackPageView = (additionalData: Partial<TrackingData> = {}): void 
  * @param additionalData Optional additional tracking data (e.g., sessionId)
  */
 export const trackMenuView = (storeId?: string, storeName?: string, additionalData: Partial<TrackingData> = {}): Promise<void> => {
-  return trackEvent(TrackingEvent.MENU_VIEW, { storeId, storeName, ...additionalData });
+  return trackEvent(TrackingEvent.MENU_VIEW, buildAuthoritativeAnalyticsPayload(additionalData, {
+    storeId,
+    storeName,
+  }));
 };
 
 export const trackMenuLanguageAdoption = (
@@ -1441,12 +1496,11 @@ export const trackMenuLanguageAdoption = (
   previousMenuLanguage?: string,
   additionalData: Partial<TrackingData> = {},
 ): Promise<void> => {
-  return trackEvent(TrackingEvent.MENU_LANGUAGE_ADOPTION, {
+  return trackEvent(TrackingEvent.MENU_LANGUAGE_ADOPTION, buildAuthoritativeAnalyticsPayload(additionalData, {
     menuLanguage,
     previousMenuLanguage,
     languageAdoptionReason: 'dwell',
-    ...additionalData,
-  });
+  }));
 };
 
 /**
@@ -1474,7 +1528,13 @@ export const setMenuAttributeFilterContext = (
  * @param additionalData Optional additional tracking data (e.g., sessionId)
  */
 export const trackItemView = (itemId: string, itemName: string, itemCategory?: string, price?: number, currency?: string, additionalData: Partial<TrackingData> = {}): Promise<void> => {
-  return trackEvent(TrackingEvent.ITEM_VIEW, { itemId, itemName, itemCategory, price, currency, ...additionalData });
+  return trackEvent(TrackingEvent.ITEM_VIEW, buildAuthoritativeAnalyticsPayload(additionalData, {
+    itemId,
+    itemName,
+    itemCategory,
+    price,
+    currency,
+  }));
 };
 
 /**
@@ -1487,7 +1547,13 @@ export const trackItemView = (itemId: string, itemName: string, itemCategory?: s
  * @param additionalData Optional additional tracking data (e.g., sessionId)
  */
 export const trackItemClick = (itemId: string, itemName: string, itemCategory?: string, price?: number, currency?: string, additionalData: Partial<TrackingData> = {}): Promise<void> => {
-  return trackEvent(TrackingEvent.ITEM_CLICK, { itemId, itemName, itemCategory, price, currency, ...additionalData });
+  return trackEvent(TrackingEvent.ITEM_CLICK, buildAuthoritativeAnalyticsPayload(additionalData, {
+    itemId,
+    itemName,
+    itemCategory,
+    price,
+    currency,
+  }));
 };
 
 /**
@@ -1502,14 +1568,13 @@ export const trackItemShare = (
   shareMethod: 'native_share' | 'copy_link' = 'native_share',
   additionalData: Partial<TrackingData> = {}
 ): Promise<void> => {
-  return trackEvent(TrackingEvent.SHARE, {
+  return trackEvent(TrackingEvent.SHARE, buildAuthoritativeAnalyticsPayload(additionalData, {
     itemId,
     itemName,
     itemCategory,
     shareMethod,
     shareContentType: 'menu_item',
-    ...additionalData,
-  });
+  }));
 };
 
 /**
@@ -1522,7 +1587,13 @@ export const trackItemShare = (
  * @param additionalData Optional additional tracking data (e.g., sessionId)
  */
 export const trackAddToCart = (itemId: string, itemName: string, price: number, quantity: number = 1, currency: string = 'USD', additionalData: Partial<TrackingData> = {}): Promise<void> => {
-  return trackEvent(TrackingEvent.ADD_TO_CART, { itemId, itemName, price, quantity, currency, ...additionalData });
+  return trackEvent(TrackingEvent.ADD_TO_CART, buildAuthoritativeAnalyticsPayload(additionalData, {
+    itemId,
+    itemName,
+    price,
+    quantity,
+    currency,
+  }));
 };
 
 /**
@@ -1536,8 +1607,16 @@ export const trackAddToCart = (itemId: string, itemName: string, price: number, 
  * @param coupon Coupon code used
  * @param additionalData Optional additional tracking data (e.g., sessionId)
  */
-export const trackPurchase = (transactionId: string, revenue: number, items: any[], currency: string = 'USD', tax?: number, shipping?: number, coupon?: string, additionalData: Partial<TrackingData> = {}): Promise<void> => {
-  return trackEvent(TrackingEvent.PURCHASE, { transactionId, revenue, items, currency, tax, shipping, coupon, ...additionalData });
+export const trackPurchase = (transactionId: string, revenue: number, items: unknown[], currency: string = 'USD', tax?: number, shipping?: number, coupon?: string, additionalData: Partial<TrackingData> = {}): Promise<void> => {
+  return trackEvent(TrackingEvent.PURCHASE, buildAuthoritativeAnalyticsPayload(additionalData, {
+    transactionId,
+    revenue,
+    items,
+    currency,
+    tax,
+    shipping,
+    coupon,
+  }));
 };
 
 /**
@@ -1547,7 +1626,10 @@ export const trackPurchase = (transactionId: string, revenue: number, items: any
  * @param additionalData Optional additional tracking data (e.g., sessionId)
  */
 export const trackSearch = (searchTerm: string, searchResults: number, additionalData: Partial<TrackingData> = {}): Promise<void> => {
-  return trackEvent(TrackingEvent.SEARCH, { searchTerm, searchResults, ...additionalData });
+  return trackEvent(TrackingEvent.SEARCH, buildAuthoritativeAnalyticsPayload(additionalData, {
+    searchTerm,
+    searchResults,
+  }));
 };
 
 /**
@@ -1560,12 +1642,11 @@ export const trackUnavailableItemAttempt = (
   itemCategory?: string,
   additionalData: Partial<TrackingData> = {}
 ): Promise<void> => {
-  return trackEvent(TrackingEvent.UNAVAILABLE_ITEM_ATTEMPT, {
+  return trackEvent(TrackingEvent.UNAVAILABLE_ITEM_ATTEMPT, buildAuthoritativeAnalyticsPayload(additionalData, {
     itemId,
     itemName,
     itemCategory,
-    ...additionalData,
-  });
+  }));
 };
 
 /**
@@ -1576,10 +1657,9 @@ export const trackMenuAction = (
   menuAction: 'call' | 'whatsapp' | 'directions' | 'reserve' | 'order',
   additionalData: Partial<TrackingData> = {}
 ): Promise<void> => {
-  return trackEvent(TrackingEvent.MENU_ACTION_CLICK, {
+  return trackEvent(TrackingEvent.MENU_ACTION_CLICK, buildAuthoritativeAnalyticsPayload(additionalData, {
     menuAction,
-    ...additionalData,
-  });
+  }));
 };
 
 /**
@@ -1589,7 +1669,10 @@ export const trackMenuAction = (
  * @param additionalData Optional additional tracking data (e.g., sessionId)
  */
 export const trackLogin = (userId: string, userType: string = 'customer', additionalData: Partial<TrackingData> = {}): Promise<void> => {
-  return trackEvent(TrackingEvent.LOGIN, { userId, userType, ...additionalData });
+  return trackEvent(TrackingEvent.LOGIN, buildAuthoritativeAnalyticsPayload(additionalData, {
+    userId,
+    userType,
+  }));
 };
 
 // ============================================
@@ -1613,14 +1696,13 @@ export const trackDecisionBlockClick = (
   price?: number,
   additionalData: Partial<TrackingData> = {}
 ): Promise<void> => {
-  return trackEvent(TrackingEvent.DECISION_BLOCK_CLICK, {
+  return trackEvent(TrackingEvent.DECISION_BLOCK_CLICK, buildAuthoritativeAnalyticsPayload(additionalData, {
     blockType,
     itemId,
     itemName,
     itemCategory,
     price,
-    ...additionalData
-  });
+  }));
 };
 
 /**
@@ -1639,11 +1721,10 @@ export const trackDecisionBlocksRendered = (
   blocksShown: Array<'popular' | 'quickPick' | 'bestValue'>,
   additionalData: Partial<TrackingData> = {}
 ): Promise<void> => {
-  return trackEvent(TrackingEvent.DECISION_BLOCKS_RENDERED, {
+  return trackEvent(TrackingEvent.DECISION_BLOCKS_RENDERED, buildAuthoritativeAnalyticsPayload(additionalData, {
     blocksShown,
     blockCount: blocksShown.length,
-    ...additionalData
-  });
+  }));
 };
 
 // ============================================
@@ -1660,11 +1741,10 @@ export const trackOBPView = (
   storeId: string | number,
   additionalData: Partial<TrackingData> = {}
 ): Promise<void> => {
-  return trackEvent(TrackingEvent.OBP_VIEW, {
+  return trackEvent(TrackingEvent.OBP_VIEW, buildAuthoritativeAnalyticsPayload(additionalData, {
     storeId: String(storeId),
     projectId: 'obp',
-    ...additionalData
-  });
+  }));
 };
 
 export const trackOBPLanguageAdoption = (
@@ -1673,14 +1753,13 @@ export const trackOBPLanguageAdoption = (
   previousOBPLanguage?: string,
   additionalData: Partial<TrackingData> = {},
 ): Promise<void> => {
-  return trackEvent(TrackingEvent.OBP_LANGUAGE_ADOPTION, {
+  return trackEvent(TrackingEvent.OBP_LANGUAGE_ADOPTION, buildAuthoritativeAnalyticsPayload(additionalData, {
     storeId: String(storeId),
     projectId: 'obp',
     obpLanguage,
     previousOBPLanguage,
     languageAdoptionReason: 'dwell',
-    ...additionalData,
-  });
+  }));
 };
 
 /**
@@ -1694,12 +1773,11 @@ export const trackOBPAction = (
   obpAction: 'call' | 'whatsapp' | 'directions' | 'reserve' | 'order' | 'feedback',
   additionalData: Partial<TrackingData> = {}
 ): Promise<void> => {
-  return trackEvent(TrackingEvent.OBP_ACTION_CLICK, {
+  return trackEvent(TrackingEvent.OBP_ACTION_CLICK, buildAuthoritativeAnalyticsPayload(additionalData, {
     storeId: String(storeId),
     projectId: 'obp',
     obpAction,
-    ...additionalData
-  });
+  }));
 };
 
 /**
@@ -1722,12 +1800,11 @@ export const trackOBPMenuClick = (
   obpSurface: 'brand' | 'outlet' = 'brand',
   additionalData: Partial<TrackingData> = {}
 ): Promise<void> => {
-  return trackEvent(TrackingEvent.OBP_MENU_CLICK, {
+  return trackEvent(TrackingEvent.OBP_MENU_CLICK, buildAuthoritativeAnalyticsPayload(additionalData, {
     storeId: String(storeId),
     projectId: 'obp',
     obpSurface,
-    ...additionalData
-  });
+  }));
 };
 
 export const trackOBPLinkClick = (
@@ -1735,12 +1812,11 @@ export const trackOBPLinkClick = (
   obpLink: 'google_review' | 'instagram' | 'facebook' | 'twitter' | 'linkedin' | 'youtube' | 'whatsapp' | 'website',
   additionalData: Partial<TrackingData> = {}
 ): Promise<void> => {
-  return trackEvent(TrackingEvent.OBP_LINK_CLICK, {
+  return trackEvent(TrackingEvent.OBP_LINK_CLICK, buildAuthoritativeAnalyticsPayload(additionalData, {
     storeId: String(storeId),
     projectId: 'obp',
     obpLink,
-    ...additionalData
-  });
+  }));
 };
 
 /**
@@ -1755,12 +1831,11 @@ export const trackOBPShare = (
   shareMethod: 'whatsapp' | 'copy_link' | 'copy_message',
   additionalData: Partial<TrackingData> = {}
 ): Promise<void> => {
-  return trackEvent(TrackingEvent.OBP_SHARE, {
+  return trackEvent(TrackingEvent.OBP_SHARE, buildAuthoritativeAnalyticsPayload(additionalData, {
     storeId: String(storeId),
     projectId: 'obp',
     obpAction: shareMethod,
-    ...additionalData
-  });
+  }));
 };
 
 // ============================================
@@ -1793,13 +1868,12 @@ export const trackProjectSwitch = (
   source: 'in_menu' | 'obp_secondary_card' | 'menu_alias_layer2',
   additionalData: Partial<TrackingData> = {}
 ): Promise<void> => {
-  return trackEvent(TrackingEvent.PROJECT_SWITCH, {
+  return trackEvent(TrackingEvent.PROJECT_SWITCH, buildAuthoritativeAnalyticsPayload(additionalData, {
     storeId: String(storeId),
     projectId: toProjectId,
     fromProjectId: fromProjectId || undefined,
     switchSource: source,
-    ...additionalData
-  });
+  }));
 };
 
 // ============================================
@@ -1817,8 +1891,7 @@ export const trackMenuKitDownload = (
   action: 'zip_download' | 'share_instagram' | 'share_whatsapp' | 'share_google_maps',
   additionalData: Partial<TrackingData> = {}
 ): Promise<void> => {
-  return trackEvent(TrackingEvent.MENU_KIT_DOWNLOAD, {
+  return trackEvent(TrackingEvent.MENU_KIT_DOWNLOAD, buildAuthoritativeAnalyticsPayload(additionalData, {
     menuKitAction: action,
-    ...additionalData
-  });
+  }));
 };

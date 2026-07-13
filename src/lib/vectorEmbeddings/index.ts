@@ -1,11 +1,18 @@
 import {
+    ANSWERLATTICE_ACTIVE_EMBEDDING_CONFIG,
     ANSWERLATTICE_EMBEDDING_CACHE_VERSION,
     ANSWERLATTICE_EMBEDDING_MODEL,
     ANSWERLATTICE_EMBEDDING_OUTPUT_DIMENSIONALITY,
     ANSWERLATTICE_VISION_CONTEXT_MODEL,
 } from '@constant/answerlattice/ai';
-import { Vector } from '@lib/firebase/firebaseAdmin';
-import { genAIClient } from '@lib/google/genAi';
+import {
+    type AnswerlatticeEmbeddingPurpose,
+    type AnswerlatticeEmbeddingVersion,
+    buildAnswerlatticeEmbeddingRequest,
+    getAnswerlatticeEmbeddingConfig,
+} from '@data/shared/answerlatticeEmbedding';
+import { answerlatticeGenAIClient } from '@lib/answerlattice/genAiClient';
+import { AnswerlatticeVector as Vector } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { writeLogEntry } from 'logs/utils';
 
 export const EMBED_MODEL = ANSWERLATTICE_EMBEDDING_MODEL;
@@ -15,6 +22,12 @@ const CHAT_MODEL = ANSWERLATTICE_VISION_CONTEXT_MODEL;
 
 type VectorInstance = InstanceType<typeof Vector>;
 type EmbeddingTaskType = 'RETRIEVAL_QUERY' | 'RETRIEVAL_DOCUMENT';
+type EmbeddingCallOptions = {
+    purpose?: AnswerlatticeEmbeddingPurpose;
+    taskType?: EmbeddingTaskType;
+    title?: string;
+    version?: AnswerlatticeEmbeddingVersion;
+};
 export type GeminiTokenCountSource = 'provider' | 'estimated' | 'none';
 export type GeminiUsageMetadata = {
     candidatesTokenCount?: number;
@@ -139,32 +152,50 @@ const getGeminiResponseText = (
 
 export async function callGeminiEmbeddingWithMetadata(
     text: string,
-    options: { taskType?: EmbeddingTaskType; title?: string } = {}
-): Promise<{ vector: VectorInstance; usageMetadata: GeminiUsageMetadata }> {
-    const response = await genAIClient.models.embedContent({
-        model: EMBED_MODEL,
-        contents: text,
-        config: {
-            outputDimensionality: EMBED_OUTPUT_DIMENSIONALITY,
-            taskType: options.taskType || 'RETRIEVAL_QUERY',
-            ...(options.title ? { title: options.title } : {}),
-        },
+    options: EmbeddingCallOptions = {}
+): Promise<{
+    cacheVersion: string;
+    model: string;
+    usageMetadata: GeminiUsageMetadata;
+    vector: VectorInstance;
+    vectorField: string;
+    version: AnswerlatticeEmbeddingVersion;
+}> {
+    const purpose: AnswerlatticeEmbeddingPurpose = options.purpose
+        || (options.taskType === 'RETRIEVAL_DOCUMENT' ? 'document' : 'query');
+    const embeddingConfig = getAnswerlatticeEmbeddingConfig(
+        options.version || ANSWERLATTICE_ACTIVE_EMBEDDING_CONFIG.version,
+    );
+    const request = buildAnswerlatticeEmbeddingRequest({
+        content: text,
+        purpose,
+        title: options.title,
+        version: embeddingConfig.version,
     });
+    const response = await answerlatticeGenAIClient.models.embedContent(request);
     const embedding = response.embeddings[0];
 
-    if (!embedding?.values) {
+    if (
+        !embedding?.values
+        || embedding.values.length !== embeddingConfig.outputDimensionality
+        || !embedding.values.some(value => typeof value === 'number' && Number.isFinite(value) && value !== 0)
+    ) {
         throw new Error('Unexpected Gemini embedding response shape');
     }
 
     return {
+        cacheVersion: embeddingConfig.cacheVersion,
+        model: embeddingConfig.model,
         vector: new Vector(embedding.values),
-        usageMetadata: normalizeGeminiUsageMetadata(response, text),
+        vectorField: embeddingConfig.vectorField,
+        version: embeddingConfig.version,
+        usageMetadata: normalizeGeminiUsageMetadata(response, request.contents),
     };
 }
 
 export async function callGeminiEmbedding(
     text: string,
-    options: { taskType?: EmbeddingTaskType; title?: string } = {}
+    options: EmbeddingCallOptions = {}
 ): Promise<VectorInstance> {
     const result = await callGeminiEmbeddingWithMetadata(text, options);
     return result.vector;
@@ -201,7 +232,7 @@ User Question: "${userPrompt}"`;
             }
         ];
 
-        const response = await genAIClient.models.generateContent({
+        const response = await answerlatticeGenAIClient.models.generateContent({
             model: CHAT_MODEL,
             contents: contentParts,
         });
@@ -412,7 +443,7 @@ export async function callGeminiChatWithMetadata(
         imageContext
     );
 
-    const response = await genAIClient.models.generateContent({
+    const response = await answerlatticeGenAIClient.models.generateContent({
         model: CHAT_MODEL,
         contents: contentParts,
         config: generationConfig,

@@ -1,5 +1,7 @@
 # Answerlattice — Activation Clearance & System Guide
 
+Release activation failure recovery now observes a secondary rollback failure through `answerlattice_release_activation_failure_marker_failed` with bounded release/request/workspace metadata while preserving the original activation error. The activation lease still supplies eventual retry admission, but a failed pending-state/audit recovery transaction is no longer silent.
+
 > **Status:** CLEARED FOR CONTROLLED EXPERIMENT
 > **Audit Date:** 2026-03-03 (re-audited)
 > **Auditor:** Cascade (forensic parity audit + operational loop completion)
@@ -267,7 +269,7 @@ INTEGRATION POINTS (existing system):
 6. Release status set to `active` regardless of drift evaluation outcome
 7. Drift is **advisory** — it flags answers for review, never blocks releases
 
-Answerlattice App Release ID Boundary: release activation and processing normalize the release document ID before Firestore refs, drift-audit entity IDs, bounded diagnostics, and compiled-context source invalidation. Malformed release IDs fail before release document access.
+Answerlattice App Release ID Boundary: browser reads normalize the release document ID. Create/activate actions use the bounded authenticated release route; the Admin transaction/lease lifecycle validates exact persisted release, entity and affected-answer scope/version before drift-audit and compiled-context writes. Malformed IDs or coercive stored identity fail before governed mutation.
 
 **Files:** `src/database/answerlattice/releases.ts`, `src/lib/answerlattice/driftDetection.ts`
 
@@ -661,7 +663,7 @@ Every integration point is designed to fail silently:
 | 7   | Signal emitter wired to ticket creation (fire-and-forget)                 | ✅     |
 | 8   | Signal emitter wired to chat negative feedback (fire-and-forget)          | ✅     |
 | 9   | Canonical retrieval wired to search-kb API (with feature flag)            | ✅     |
-| 10  | Drift evaluation wired to release activation (fire-and-forget)            | ✅     |
+| 10  | Drift evaluation owned by the leased, transactional release activation path | ✅     |
 | 11  | All DAL files use DB_COLLECTIONS constants                                | ✅     |
 | 12  | Answerlattice DAL files use apiCallComposer + answerlatticeRequestBodyComposer      | ✅     |
 | 13  | All queries have tenant isolation (tId + sId)                             | ✅     |

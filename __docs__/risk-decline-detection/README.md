@@ -4,7 +4,7 @@
 
 **Created:** February 19, 2026  
 **Pillar:** 6 of 6 — Customer-Facing Infrastructure  
-**Status:** ✅ IMPLEMENTED (flags OFF — needs Pillars 4+5 active with traffic)  
+**Status:** Dormant implementation skeleton; flag OFF and prerequisite signals inactive
 **Parent:** [`__docs__/customer-facing-infrastructure/`](../customer-facing-infrastructure/README.md)
 
 ---
@@ -31,7 +31,11 @@ An early warning signal that combines trust, loyalty, and engagement trends to d
 
 Businesses rarely collapse suddenly. They decline slowly over 3-6 months: repeat visits drop, engagement weakens, trust erodes. Owners notice too late — after revenue has already fallen. MenuList can detect the pattern earlier by combining signals from Pillars 4 and 5 with engagement data.
 
-## Architecture Overview
+## Current Runtime Truth — July 13, 2026
+
+The risk helper is retained but not exported or scheduled, its desktop component is unmounted, no mobile consumer exists, and `ENABLE_RISK_DECLINE_DETECTION` is intentionally `false`. Trust and loyalty are also dormant, so no current risk read/write pipeline exists. The diagram below is a target design only.
+
+## Target Architecture (Not Active Runtime)
 
 ```
 Trust Signal (Pillar 4) + Loyalty Signal (Pillar 5) + Engagement Trends
@@ -48,7 +52,7 @@ Owner Dashboard
 ## Feature Flag
 
 ```typescript
-ENABLE_RISK_DECLINE_DETECTION: false; // To be added to features.ts
+ENABLE_RISK_DECLINE_DETECTION: false; // Present and intentionally dormant
 ```
 
 ## Dependency Chain
@@ -68,4 +72,4 @@ This pillar REQUIRES Pillars 4 and 5 to be active first. It is a meta-signal com
 
 ---
 
-**Last Updated:** February 19, 2026
+**Last Updated:** July 13, 2026

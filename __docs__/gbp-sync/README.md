@@ -2,7 +2,9 @@
 
 > **Feature:** Google Business Profile Synchronization  
 > **Status:** Feature-Flagged (ENABLE_GBP_SYNC) — BLOCKED on API access  
-> **Last Updated:** July 2, 2026
+> **Last Updated:** July 10, 2026
+
+> **Launch boundary:** Not current launch certification or deploy approval. This document records disabled/reserved GBP Sync evidence only: `ENABLE_GBP_SYNC` remains false, token operations fail closed with `GBP_TOKEN_STORE_DISABLED`, and manual Google handoff is the only current owner path. Current implementation or release approval still requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md), `npm run verify:production-readiness-local`, `npm run verify:public-business-truth`, Google Business Profile API access, OAuth and target-secret setup, provider smoke, scoped deploy evidence, browser/device QA, and production-host smoke.
 
 ---
 
@@ -40,7 +42,7 @@ GBP API sync remains a conditional integration candidate after Google Business P
 | Document                                                                                                | Purpose                                                                                                     |
 | ------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
 | [gbp-sync_validation.md](./gbp-sync_validation.md)                                                      | Validation report                                                                                           |
-| [gbp-sync_doc-feedback-audit.md](./gbp-sync_doc-feedback-audit.md)                                      | Documentation feedback audit                                                                                |
+| [gbp-sync_doc-feedback-audit.md](./gbp-sync_doc-feedback-audit.md)                                      | Historical docs-only feedback audit; no current implementation approval                                      |
 | [gbp-chatgpt-critical-review.md](./gbp-chatgpt-critical-review.md)                                      | ChatGPT critical review (Session 1 — Jan 2026)                                                              |
 | [\_archive/chatgpt-review-session2-api-strategy.md](./_archive/chatgpt-review-session2-api-strategy.md) | ChatGPT critical review (Session 2 — Mar 2026) — API approval strategy, application template, proof metrics |
 

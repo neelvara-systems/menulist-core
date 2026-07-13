@@ -3,6 +3,7 @@ import {
     HELP_CENTER_SEARCH_REQUEST_POLICY,
     readHelpCenterSearchResponse,
 } from '@lib/search/helpCenterSearchResponse';
+import { createRuntimeId } from '@lib/runtime/randomId';
 import { ANSWERLATTICE_SIGNAL_TYPE } from '@type/answerlattice';
 import { UserUploadedFileType } from '@type/common';
 import { Timestamp } from 'firebase/firestore';
@@ -43,6 +44,7 @@ export async function searchKnowledgeBase({ query, mode, conversationHistory, im
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+            requestId: createRuntimeId('help_search'),
             query,
             mode,
             context: cleanContext, // Send cleaned conversation history
@@ -80,10 +82,7 @@ export async function submitSearchFeedback({
     tId?: number;
     sId?: number;
 }) {
-    const aiSearchHistoryDal: typeof import('@database/aiSearchHistory') = await import('@database/aiSearchHistory');
     const chatSessionsDal: typeof import('@database/chatSessions') = await import('@database/chatSessions');
-    const assertAiSearchHistoryFeedbackUpdateSucceeded: typeof aiSearchHistoryDal.assertAiSearchHistoryFeedbackUpdateSucceeded =
-        aiSearchHistoryDal.assertAiSearchHistoryFeedbackUpdateSucceeded;
     const assertChatMessageFeedbackUpdateSucceeded: typeof chatSessionsDal.assertChatMessageFeedbackUpdateSucceeded =
         chatSessionsDal.assertChatMessageFeedbackUpdateSucceeded;
 
@@ -94,16 +93,13 @@ export async function submitSearchFeedback({
         submittedAt: Timestamp.now() // Changed from createdOn to submittedAt
     };
 
-    // Save to aiSearchHistory (for analytics)
-    const searchHistoryUpdateResult = await aiSearchHistoryDal.updateAiSearchHistoryWithFeedback({ id: searchHistoryId, ...feedbackData });
-    assertAiSearchHistoryFeedbackUpdateSucceeded(
-        searchHistoryUpdateResult,
+    // Keep analytics and the reopenable chat message consistent in one Firestore transaction.
+    const messageFeedbackUpdateResult = await chatSessionsDal.updateMessageFeedback(
+        sessionId,
+        messageId,
         searchHistoryId,
-        'help_chat_search_history_feedback_update_rejected',
+        feedbackData,
     );
-
-    // Save to chatSession message (for UI display)
-    const messageFeedbackUpdateResult = await chatSessionsDal.updateMessageFeedback(sessionId, messageId, feedbackData);
     assertChatMessageFeedbackUpdateSucceeded(
         messageFeedbackUpdateResult,
         sessionId,

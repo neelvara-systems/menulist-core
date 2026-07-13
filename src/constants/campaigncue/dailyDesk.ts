@@ -37,7 +37,10 @@ export type CampaignCueDailyDeskTaskKind =
     | "result_memory"
     | "approval"
     | "location_variant"
-    | "local_visibility";
+    | "local_visibility"
+    | "operating_pulse"
+    | "commercial_safety"
+    | "staff_execution";
 
 export type CampaignCueDailyDeskMissingInputType =
     | "business_cta"
@@ -57,7 +60,13 @@ export type CampaignCueDailyDeskMissingInputType =
     | "location_detail"
     | "approval"
     | "result_note"
-    | "local_visibility";
+    | "local_visibility"
+    | "commercial_policy"
+    | "capacity_or_stock"
+    | "review_destination"
+    | "completed_customer_interaction"
+    | "owner_managed_audience"
+    | "target_language";
 
 export type CampaignCueDailyDeskOwnerGoal =
     | "bring_people_today"
@@ -65,7 +74,9 @@ export type CampaignCueDailyDeskOwnerGoal =
     | "sell_product"
     | "book_service"
     | "remind_customers"
-    | "prepare_local_pack";
+    | "prepare_local_pack"
+    | "collect_reviews"
+    | "bring_back_customers";
 
 export interface CampaignCueDailyDeskResultSignal {
     id: string;
@@ -77,7 +88,7 @@ export interface CampaignCueDailyDeskRecipe {
     id: string;
     businessTypes: CampaignCueBusinessType[];
     title: string;
-    scenario: "daily_default" | "slow_period" | "slot_fill" | "new_offer" | "review_push" | "asset_reuse" | "local_visibility";
+    scenario: "daily_default" | "slow_period" | "slot_fill" | "new_offer" | "review_push" | "retention" | "asset_reuse" | "local_visibility";
     ownerOutcome: string;
     ownerGoal: CampaignCueDailyDeskOwnerGoal;
     plainAction: string;
@@ -609,6 +620,102 @@ export const CAMPAIGNCUE_DAILY_DESK_RECIPES: CampaignCueDailyDeskRecipe[] = [
             { id: "product_questions", label: "Got product questions", note: "Owner got calls, messages, or walk-in questions." },
             { id: "not_used", label: "Not used yet", note: "Owner prepared the product pack but did not use it." },
             { id: "not_useful", label: "Not useful", note: "Owner did not find this product pack useful." },
+        ],
+    },
+    {
+        id: "local_review_request",
+        businessTypes: ["restaurant", "salon", "retail", "local_service", "fitness", "clinic", "other", "multi_location", "agency_client"],
+        title: "Customer review request",
+        scenario: "review_push",
+        ownerOutcome: "Ask recent customers for an honest review using a verified destination and a simple staff handoff.",
+        ownerGoal: "collect_reviews",
+        plainAction: "Prepare a polite review request for customers who already used the business.",
+        whenToUse: "Use after a real customer visit, order, appointment, or completed service when the owner has a verified review destination.",
+        requiredInputs: [
+            "Verified Google review or feedback destination",
+            "Completed customer visit, order, booking, or service",
+            "Owner-managed follow-up audience",
+            "Staff instruction for when to ask",
+        ],
+        recommendedChannels: ["whatsapp", "google_local", "creative", "calendar"],
+        outputFormats: [
+            "WhatsApp review request",
+            "Customer follow-up text",
+            "Staff review request script",
+            "Counter review card",
+            "Google review handoff",
+            "Downloadable reputation pack",
+        ],
+        printFormats: ["Counter review card", "Receipt insert", "QR feedback card", "Front-desk prompt", "Takeaway insert"],
+        photoTasks: [
+            "Use the business logo or a current storefront image only if a visual is useful.",
+            "Do not use a customer photo or testimonial without explicit consent.",
+            "Keep the review destination visible and easy to verify.",
+        ],
+        guardrails: [
+            "Ask only real customers for an honest review.",
+            "Do not offer rewards for positive reviews or ask staff to fabricate reviews.",
+            "Keep sending manual and owner-controlled; CampaignCue does not store customer contact lists.",
+        ],
+        manualDeliveryTasks: [
+            "Copy the review request into the owner-managed customer conversation after a completed service or purchase.",
+            "Give staff the short request script and verified review destination.",
+            "Use the QR or counter card only after the owner checks the destination.",
+        ],
+        resultQuestion: "What happened after the review request?",
+        resultOptions: [
+            { id: "reviews_received", label: "Got reviews", note: "Owner reported one or more genuine customer reviews." },
+            { id: "customers_opened_link", label: "Customers opened it", note: "Owner reported interest or link opens without claiming a review." },
+            { id: "not_used", label: "Not used yet", note: "Owner prepared the reputation pack but has not used it." },
+            { id: "not_useful", label: "Not useful", note: "Owner did not find the review-request pack useful." },
+        ],
+    },
+    {
+        id: "return_customer_reminder",
+        businessTypes: ["restaurant", "salon", "retail", "local_service", "fitness", "clinic", "other", "multi_location", "agency_client"],
+        title: "Return-customer reminder",
+        scenario: "retention",
+        ownerOutcome: "Prepare a useful reminder for an owner-managed customer audience without importing contacts or inventing an offer.",
+        ownerGoal: "bring_back_customers",
+        plainAction: "Remind recent or past customers about one current reason to return.",
+        whenToUse: "Use when the owner has a legitimate customer relationship and a current service, item, availability window, or update worth sharing.",
+        requiredInputs: [
+            "Owner-managed customer audience description",
+            "Current item, service, availability, or update",
+            "Confirmed next step or destination",
+            "Offer terms only when an approved offer exists",
+        ],
+        recommendedChannels: ["whatsapp", "creative", "google_local", "calendar"],
+        outputFormats: [
+            "WhatsApp return-customer message",
+            "SMS or email reminder",
+            "Customer reply script",
+            "Staff follow-up note",
+            "Optional social reminder",
+            "Downloadable retention pack",
+        ],
+        printFormats: ["Receipt insert", "Return-visit card", "Booking reminder card", "Bag insert", "Counter note"],
+        photoTasks: [
+            "Prefer one current real business, item, service, or storefront image.",
+            "Do not include customer names, phone numbers, or private contact lists in the campaign pack.",
+            "Use customer photos only with clear consent.",
+        ],
+        guardrails: [
+            "Use only an owner-managed audience with an existing customer relationship.",
+            "Do not invent a discount or create a contact database inside CampaignCue.",
+            "Keep sending manual and follow the owner's consent and messaging obligations.",
+        ],
+        manualDeliveryTasks: [
+            "Copy the reminder into the owner-managed WhatsApp, SMS, or email workflow.",
+            "Send only to customers the owner is allowed to contact.",
+            "Record replies, bookings, orders, or opt-out concerns as an owner-reported result.",
+        ],
+        resultQuestion: "What happened after the return-customer reminder?",
+        resultOptions: [
+            { id: "customers_returned", label: "Customers returned", note: "Owner reported orders, bookings, visits, or repeat inquiries." },
+            { id: "customers_replied", label: "Customers replied", note: "Owner reported genuine replies or questions." },
+            { id: "not_used", label: "Not used yet", note: "Owner prepared the retention pack but has not used it." },
+            { id: "not_useful", label: "Not useful", note: "Owner did not find the return-customer pack useful." },
         ],
     },
     {

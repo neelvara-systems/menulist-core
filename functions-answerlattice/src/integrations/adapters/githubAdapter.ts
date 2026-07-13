@@ -17,10 +17,21 @@ import {
     INTEGRATION_LIMITS,
     INTEGRATION_EVENT_TYPES,
 } from '../types';
-import { safeText } from '../safety';
+import {
+    safePayloadCount,
+    safePayloadRatio,
+    safePayloadStringArray,
+    safeText,
+} from '../safety';
+import {
+    INTEGRATION_PROVIDER_FETCH_POLICY,
+    isIntegrationProviderRecord,
+    readIntegrationProviderJson,
+} from './providerJson';
 
 const GITHUB_API_URL = 'https://api.github.com';
 const GITHUB_PATH_SEGMENT_PATTERN = /^[A-Za-z0-9_.-]{1,100}$/;
+const GITHUB_SUCCESS_RESPONSE_PARSE_FAILED = 'ANSWERLATTICE_GITHUB_SUCCESS_RESPONSE_PARSE_FAILED';
 
 const EVENT_TITLES: Record<string, string> = {
     [INTEGRATION_EVENT_TYPES.DRIFT_DETECTED]: 'Drift Detected',
@@ -61,10 +72,10 @@ function formatIssueBody(event: IntegrationEvent): string {
             lines.push(
                 `### Mutation Details`,
                 '',
-                `- **Type:** ${p.mutationType}`,
-                `- **Entities:** ${(p.entityNames || []).map((name: unknown) => safeText(name, 80)).join(', ')}`,
-                `- **Signal Count:** ${p.signalCount}`,
-                `- **Confidence:** ${Math.round((p.confidenceScore || 0) * 100)}%`,
+                `- **Type:** ${safeText(p.mutationType)}`,
+                `- **Entities:** ${safePayloadStringArray(p.entityNames, 5, 80).join(', ')}`,
+                `- **Signal Count:** ${safePayloadCount(p.signalCount)}`,
+                `- **Confidence:** ${Math.round(safePayloadRatio(p.confidenceScore) * 100)}%`,
             );
             break;
 
@@ -73,10 +84,10 @@ function formatIssueBody(event: IntegrationEvent): string {
                 `### Knowledge Gap Details`,
                 '',
                 `- **Entity:** ${safeText(p.entityName)} (${safeText(p.entityType, 80)})`,
-                `- **Fallback Count:** ${p.fallbackCount} in ${p.windowDays} days`,
+                `- **Fallback Count:** ${safePayloadCount(p.fallbackCount)} in ${safePayloadCount(p.windowDays, 3650)} days`,
                 '',
                 `**Sample Queries:**`,
-                ...(p.sampleQueries || []).map((q: string) => `- ${safeText(q, 160)}`),
+                ...safePayloadStringArray(p.sampleQueries, 5, 160).map(q => `- ${q}`),
             );
             break;
 
@@ -85,10 +96,10 @@ function formatIssueBody(event: IntegrationEvent): string {
                 `### AI Failure Details`,
                 '',
                 `- **Entity:** ${safeText(p.entityName)} (${safeText(p.entityType, 80)})`,
-                `- **Failure Count:** ${p.failureCount} in ${p.windowDays} days`,
+                `- **Failure Count:** ${safePayloadCount(p.failureCount)} in ${safePayloadCount(p.windowDays, 3650)} days`,
                 '',
                 `**Common Queries:**`,
-                ...(p.commonQueries || []).map((q: string) => `- ${safeText(q, 160)}`),
+                ...safePayloadStringArray(p.commonQueries, 5, 160).map(q => `- ${q}`),
             );
             break;
 
@@ -166,39 +177,58 @@ export class GithubAdapter implements IIntegrationAdapter {
             }
             const url = `${GITHUB_API_URL}/repos/${encodedOwner}/${encodedRepo}/issues`;
 
-            const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), INTEGRATION_LIMITS.GITHUB_TIMEOUT_MS);
-
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Accept': 'application/vnd.github+json',
-                    'Authorization': `Bearer ${config.token}`,
-                    'X-GitHub-Api-Version': '2022-11-28',
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ title, body, labels }),
-                signal: controller.signal,
-            });
-
-            clearTimeout(timeout);
-            const durationMs = Date.now() - startMs;
+            const response = await (async () => {
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), INTEGRATION_LIMITS.GITHUB_TIMEOUT_MS);
+                try {
+                    return await fetch(url, {
+                        ...INTEGRATION_PROVIDER_FETCH_POLICY,
+                        method: 'POST',
+                        headers: {
+                            'Accept': 'application/vnd.github+json',
+                            'Authorization': `Bearer ${config.token}`,
+                            'X-GitHub-Api-Version': '2022-11-28',
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ title, body, labels }),
+                        signal: controller.signal,
+                    });
+                } finally {
+                    clearTimeout(timeout);
+                }
+            })();
 
             if (response.ok) {
-                const data = await response.json() as any;
-                const issueUrl = typeof data.html_url === 'string' ? data.html_url : '';
+                let data: Record<string, unknown> | null = null;
+                try {
+                    const payload = await readIntegrationProviderJson(response);
+                    data = isIntegrationProviderRecord(payload) ? payload : null;
+                } catch (error) {
+                    logger.warn('[Answerlattice Integration] GitHub success response unavailable', {
+                        failureCode: GITHUB_SUCCESS_RESPONSE_PARSE_FAILED,
+                        sourceErrorName: error instanceof Error ? error.name.slice(0, 80) : typeof error,
+                    });
+                }
+                const issueUrl = typeof data?.html_url === 'string' ? data.html_url : '';
                 logger.info('[Answerlattice Integration] GitHub issue created', {
-                    issueNumber: typeof data.number === 'number' ? data.number : undefined,
+                    issueNumber: typeof data?.number === 'number' ? data.number : undefined,
                     issueUrlPresent: issueUrl.length > 0,
                     issueUrlLength: issueUrl.length,
                 });
-                return { success: true, statusCode: response.status, durationMs };
+                return { success: true, statusCode: response.status, durationMs: Date.now() - startMs };
             }
 
-            return { success: false, statusCode: response.status, error: 'GitHub issue creation returned bad status', durationMs };
+            return {
+                success: false,
+                retryable: response.status === 429 || response.status >= 500,
+                statusCode: response.status,
+                error: 'GitHub issue creation returned bad status',
+                durationMs: Date.now() - startMs,
+            };
         } catch {
             return {
                 success: false,
+                retryable: false,
                 error: 'GitHub issue creation failed',
                 durationMs: Date.now() - startMs,
             };

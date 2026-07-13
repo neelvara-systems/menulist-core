@@ -1,8 +1,8 @@
-# Invite Another Business
+# Invite a Business Owner You Know
 
 **Feature:** Owner Referral
 **Status:** Help source aligned to implemented disabled runtime; publication pending release approval
-**Last updated:** July 10, 2026
+**Last updated:** July 11, 2026
 
 ---
 
@@ -14,14 +14,14 @@ The feature is implemented behind disabled rollout controls. Do not publish this
 
 ## Overview
 
-A paid MenuList business can privately invite another business.
+A paid MenuList business can privately invite a business owner they know.
 
 When both businesses have verified paid MenuList subscriptions:
 
 - the referring business receives 100 credits;
 - the referred business receives 50 credits.
 
-Credits are added to Pack balance and can be used for generated menu images, descriptions, translations, and edits.
+Credits are added to Pack balance. At current rates, 100 credits can cover up to 20 generated menu images or 100 description rewrites; 50 credits can cover up to 10 generated menu images or 50 description rewrites.
 
 There is no referral limit. Publishing, QR downloads, sharing, distribution actions, and waiting periods are not required.
 
@@ -33,14 +33,14 @@ There is no referral limit. Publishing, QR downloads, sharing, distribution acti
 
 1. Open MenuList.
 2. Open `Use MenuList`.
-3. Select `Invite another business`.
+3. Select `Invite a business owner you know`.
 4. Select Share, WhatsApp, or Copy link.
 5. Send the editable message.
 
 ### Mobile
 
 1. Open the Share tab.
-2. Select `Invite another business`.
+2. Select `Invite a business owner you know`.
 3. Select Share, WhatsApp, or Copy link.
 4. Send the message.
 
@@ -48,7 +48,7 @@ MenuList does not import contacts, select recipients, or send the message for yo
 
 Default message:
 
-> We use MenuList to keep our menu and business information current from one place. You can set up yours here: [invite link]
+> We use MenuList to keep our menu and business information current from one place. I thought it could help your business too: [invite link]
 >
 > MenuList adds credits to both businesses after both MenuList subscriptions are paid.
 
@@ -95,12 +95,11 @@ MenuList does not require:
 
 ## Check Referral Status
 
-Open `Invite another business` to view up to ten recent referrals.
+Open `Invite a business owner you know` to view up to ten recent referrals.
 
 | Status | Meaning |
 | --- | --- |
-| Waiting for payment | The referral is attached; the referred first subscription payment is not verified. |
-| Waiting for both payments | One of the two MenuList subscription wallets is not currently verified paid. |
+| Their payment pending | The referral is attached; the referred first subscription payment is not verified. |
 | Credits added | 100 credits were added to the referrer and 50 to the referred business. |
 
 The list shows the referred business display name and general status. It does not show contact details, plan, price, payment amount, method, or account activity.
@@ -137,7 +136,7 @@ The referral cannot be attached after the first paid subscription. The existing 
 
 ## Troubleshooting
 
-### I cannot see `Invite another business`
+### I cannot see `Invite a business owner you know`
 
 The business may not be included in the current rollout. If the action is visible but opens an unavailable state, the paid subscription, billing authority, rollout configuration, or invitation service may not be ready. Contact MenuList Support if it should be available.
 
@@ -178,7 +177,7 @@ The referred business retains full account and public-information ownership.
 
 ## Good Use
 
-- Share when another business owner asks how you manage MenuList.
+- Share when a business owner you know asks how you manage MenuList.
 - Keep the reward note clear.
 - Use owner-controlled Share, WhatsApp, or Copy link.
 - Do not present credits as cash, commission, or guaranteed income.
@@ -190,8 +189,8 @@ The referred business retains full account and public-information ownership.
 1. Desktop Share action and panel.
 2. Mobile Share action and bottom sheet.
 3. Payment-only 100/50 reward summary with no-limit line.
-4. Waiting for payment status.
-5. Waiting for both payments status.
+4. Their payment pending status.
+5. Their payment pending status.
 6. Credits added status.
 7. Billing Pack balance after reward.
 8. Valid invite page with privacy notice.

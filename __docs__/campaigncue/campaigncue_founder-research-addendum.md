@@ -106,6 +106,28 @@ Rejected scope:
 
 Cost impact: existing output-picker and campaign-create runtime only. No feature flag, route, API, provider adapter, Firestore read/write beyond the normal guarded campaign-create path, Storage object, Cloud Function, scheduler, billing surface, Firebase deploy, Vercel deploy, or production build is introduced by this review.
 
+## July 12, 2026 Yorby Review
+
+Yorby's current public product combines short-form script remixing, creator-account monitoring, AI UGC generation, and human strategy support. The CampaignCue-fit insight is that owners benefit from seeing a useful format translated into an actionable brief. The creator-growth product center does not fit CampaignCue.
+
+Source: https://www.yorby.ai/
+
+| Yorby pattern | CampaignCue decision |
+| --- | --- |
+| Remix a successful short-form format. | Implement Pattern Cue: one owner-submitted public link plus notes becomes an abstract structural observation and original business-specific hooks. |
+| Monitor accounts for viral movement. | Reject recurring monitoring, scraping, follower surveillance, and viral alerts. CampaignCue accepts explicit one-time owner input only. |
+| AI UGC generation. | Keep CampaignCue brief-first: real owner/staff/creator footage, consent, disclosure, original hooks, phone-camera plan, and manual export. Do not present synthetic people as real customers. |
+| Human strategic review. | Keep owner/agency approval, Trust Center, proof deck, and result memory inside the product rather than making founder consulting a runtime dependency. |
+
+Implementation boundary:
+
+- one current pattern is stored on the existing workspace document;
+- raw transcript/notes are discarded after request processing;
+- inspiration does not become Business Brain truth or decision readiness;
+- video/UGC packs pin the pattern ID/hash and fail public-use recheck after replacement;
+- no new collection, overview read, listener, Storage object, Cloud Function, provider call, or social integration is added;
+- model-assisted classification remains disabled until CampaignCue-specific capacity accounting, SAFE_MODE, rate limits, candidate validation, and cost reporting are active.
+
 ## Required Product Principles
 
 1. **Export-first is not a weakness.** Manual download/export/share is a core product path because local channels and APIs are inconsistent.

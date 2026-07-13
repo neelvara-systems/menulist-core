@@ -24,6 +24,7 @@ import {
 } from '../constants/database';
 import { firestoreAdmin } from '../firebaseAdmin';
 import { logger as appLogger } from '../lib/logger';
+import { parsePlatformStoreSummary } from '../sharedData/storeSummaryBoundary';
 import {
     addDaysToAnalyticsDateKey,
     getAnalyticsDateKey,
@@ -36,17 +37,23 @@ const logger = functions.logger;
 
 const OBP_PROJECT_ID = 'obp';
 const OBP_DAILY_CACHE_DAYS = 45;
+const OBP_LIFETIME_DATE_LEDGER_LIMIT = 120;
+const OBP_ANALYTICS_DAILY_CONTRACT_INVALID = 'OBP_ANALYTICS_DAILY_CONTRACT_INVALID';
+const OBP_ANALYTICS_DASHBOARD_CONTRACT_INVALID = 'OBP_ANALYTICS_DASHBOARD_CONTRACT_INVALID';
+const OBP_ANALYTICS_DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 // ================================================================
 // TYPES
 // ================================================================
 
 interface OBPDailyData {
+    date?: string;
     totalOBPViews?: number;
     totalOBPActionClicks?: number;
     totalOBPMenuClicks?: number;
     totalOBPLinkClicks?: number;
     totalOBPShares?: number;
+    totalSessions?: number;
     obpActionClicks?: {
         call?: number;
         whatsapp?: number;
@@ -83,8 +90,51 @@ interface OBPDailyData {
     obpLanguageAdoptions?: Record<string, number>;
     obpLanguageNames?: Record<string, string>;
     viewsByDevice?: Record<string, number>;
+    viewsByLocation?: Record<string, number>;
+    viewsByMedium?: Record<string, number>;
+    viewsByCampaign?: Record<string, number>;
+    viewsByContent?: Record<string, number>;
     hourlyViews?: Record<string, number>;
+    hourlyOBPActionClicks?: Record<string, number>;
+    hourlyOBPLinkClicks?: Record<string, number>;
+    hourlyOBPMenuClicks?: Record<string, number>;
+    obpMenuClicksBySurface?: Record<string, number>;
 }
+
+const OBP_DAILY_NUMERIC_FIELDS: ReadonlyArray<keyof OBPDailyData> = [
+    'totalOBPActionClicks',
+    'totalOBPLinkClicks',
+    'totalOBPMenuClicks',
+    'totalOBPShares',
+    'totalOBPViews',
+    'totalSessions',
+];
+const OBP_DAILY_NUMERIC_MAP_FIELDS: ReadonlyArray<keyof OBPDailyData> = [
+    'hourlyViews',
+    'hourlyOBPActionClicks',
+    'hourlyOBPLinkClicks',
+    'hourlyOBPMenuClicks',
+    'obpActionClicks',
+    'obpActionClicksByOpenHoursState',
+    'obpActionClicksBySource',
+    'obpLanguageAdoptions',
+    'obpLinkClicks',
+    'obpLinkClicksByOpenHoursState',
+    'obpLinkClicksBySource',
+    'obpMenuClicksByOpenHoursState',
+    'obpMenuClicksBySource',
+    'obpMenuClicksBySurface',
+    'obpSessionsByLanguage',
+    'obpShares',
+    'obpViewsByLanguage',
+    'viewsByDevice',
+    'viewsByLocation',
+    'viewsByMedium',
+    'viewsByCampaign',
+    'viewsByContent',
+    'viewsByEntrySource',
+    'viewsBySource',
+];
 
 interface OBPAggregatedMetrics {
     totalOBPViews: number;
@@ -182,6 +232,135 @@ function normalizeOBPAnalyticsMapKey(value: string): string | null {
         .replace(/^_+|_+$/g, '')
         .slice(0, 80);
     return normalized || null;
+}
+
+function isOBPAnalyticsRecord(value: unknown): value is Record<string, unknown> {
+    return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function normalizeOBPAnalyticsDateKey(value: unknown): string | null {
+    if (typeof value !== 'string' || !OBP_ANALYTICS_DATE_KEY_PATTERN.test(value)) return null;
+    const parsed = new Date(`${value}T00:00:00.000Z`);
+    return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value ? value : null;
+}
+
+function isValidOBPNumberMap(value: unknown): boolean {
+    return value === undefined || (
+        isOBPAnalyticsRecord(value)
+        && Object.entries(value).every(([key, entry]) => (
+            /^[A-Za-z0-9_:-]{1,120}$/.test(key)
+            && typeof entry === 'number'
+            && Number.isFinite(entry)
+            && entry >= 0
+        ))
+    );
+}
+
+function isValidOBPStringMap(value: unknown): boolean {
+    return value === undefined || (
+        isOBPAnalyticsRecord(value)
+        && Object.entries(value).every(([key, entry]) => (
+            /^[A-Za-z0-9_:-]{1,120}$/.test(key)
+            && typeof entry === 'string'
+            && entry.trim().length > 0
+            && entry.length <= 120
+        ))
+    );
+}
+
+function normalizeOBPDailyMetrics(value: unknown, expectedDate: string): OBPDailyData | null {
+    if (!isOBPAnalyticsRecord(value) || normalizeOBPAnalyticsDateKey(value.date ?? expectedDate) !== expectedDate) return null;
+    if (
+        OBP_DAILY_NUMERIC_FIELDS.some((field) => (
+            value[field] !== undefined
+            && (typeof value[field] !== 'number' || !Number.isFinite(value[field]) || Number(value[field]) < 0)
+        ))
+        || OBP_DAILY_NUMERIC_MAP_FIELDS.some((field) => !isValidOBPNumberMap(value[field]))
+        || !isValidOBPStringMap(value.obpLanguageNames)
+        || value.obpLanguageTrackingEnabled !== undefined && typeof value.obpLanguageTrackingEnabled !== 'boolean'
+    ) return null;
+    return { ...value, date: expectedDate } as OBPDailyData;
+}
+
+function normalizeOBPDailyDocument(
+    value: unknown,
+    expected: { date: string; docId: string; sId: string; tId: string },
+): OBPDailyData | null {
+    if (!isOBPAnalyticsRecord(value)) return null;
+    const date = normalizeOBPAnalyticsDateKey(value.localDate ?? value.date);
+    const optionalDate = value.date === undefined ? expected.date : normalizeOBPAnalyticsDateKey(value.date);
+    if (
+        String(value.tId ?? '') !== expected.tId
+        || String(value.sId ?? '') !== expected.sId
+        || value.projectId !== OBP_PROJECT_ID
+        || value.grain !== 'daily'
+        || value.analyticsScope !== 'customer'
+        || value.surface !== 'obp'
+        || date !== expected.date
+        || optionalDate !== expected.date
+        || expected.docId !== getAnalyticsDocId.daily(expected.tId, expected.sId, OBP_PROJECT_ID, expected.date)
+    ) return null;
+    return normalizeOBPDailyMetrics(value, expected.date);
+}
+
+function normalizeOBPDashboardIdentity(value: unknown, tId: string, sId: string): Record<string, any> | null {
+    if (!isOBPAnalyticsRecord(value)) return null;
+    return String(value.tId ?? '') === tId
+        && String(value.sId ?? '') === sId
+        && value.projectId === OBP_PROJECT_ID
+        && value.kind === 'obpDashboardSummary'
+        ? value as Record<string, any>
+        : null;
+}
+
+function assertValidOBPAnalyticsSummary(value: unknown, tId: string, sId: string): asserts value is Record<string, any> {
+    if (!isOBPAnalyticsRecord(value)) throw new Error('OBP_ANALYTICS_SUMMARY_CONTRACT_INVALID');
+    if (
+        value.tId !== undefined && String(value.tId) !== tId
+        || value.sId !== undefined && String(value.sId) !== sId
+        || value.projectId !== undefined && value.projectId !== OBP_PROJECT_ID
+        || value.grain !== undefined && value.grain !== 'summary'
+        || value.analyticsScope !== undefined && value.analyticsScope !== 'customer'
+        || value.surface !== undefined && value.surface !== 'obp'
+    ) throw new Error('OBP_ANALYTICS_SUMMARY_CONTRACT_INVALID');
+    for (const field of ['firstDataDate', 'lastCorrectionDate', 'lastProcessedDate'] as const) {
+        if (value[field] !== undefined && !normalizeOBPAnalyticsDateKey(value[field])) {
+            throw new Error('OBP_ANALYTICS_SUMMARY_CONTRACT_INVALID');
+        }
+    }
+    if (value.processedLifetimeDates !== undefined) {
+        if (
+            !isOBPAnalyticsRecord(value.processedLifetimeDates)
+            || Object.keys(value.processedLifetimeDates).length > OBP_LIFETIME_DATE_LEDGER_LIMIT
+            || Object.entries(value.processedLifetimeDates).some(([date, settled]) => (
+                !normalizeOBPAnalyticsDateKey(date) || settled !== true
+            ))
+        ) throw new Error('OBP_ANALYTICS_SUMMARY_CONTRACT_INVALID');
+    }
+    if (value.lifetime === undefined) return;
+    if (!isOBPAnalyticsRecord(value.lifetime)) throw new Error('OBP_ANALYTICS_SUMMARY_CONTRACT_INVALID');
+    const lifetime = value.lifetime;
+    for (const field of OBP_DAILY_NUMERIC_FIELDS) {
+        if (
+            lifetime[field] !== undefined
+            && (typeof lifetime[field] !== 'number' || !Number.isFinite(lifetime[field]) || Number(lifetime[field]) < 0)
+        ) throw new Error('OBP_ANALYTICS_SUMMARY_CONTRACT_INVALID');
+    }
+    for (const field of OBP_DAILY_NUMERIC_MAP_FIELDS) {
+        if (!isValidOBPNumberMap(lifetime[field])) throw new Error('OBP_ANALYTICS_SUMMARY_CONTRACT_INVALID');
+    }
+    if (
+        !isValidOBPStringMap(lifetime.obpLanguageNames)
+        || lifetime.obpLanguageTrackingEnabled !== undefined && typeof lifetime.obpLanguageTrackingEnabled !== 'boolean'
+    ) throw new Error('OBP_ANALYTICS_SUMMARY_CONTRACT_INVALID');
+}
+
+export function normalizeOBPDailyForTest(value: unknown, expectedDate: string): OBPDailyData | null {
+    return normalizeOBPDailyMetrics(value, expectedDate);
+}
+
+export function normalizeOBPDashboardIdentityForTest(value: unknown, tId: string, sId: string): Record<string, any> | null {
+    return normalizeOBPDashboardIdentity(value, tId, sId);
 }
 
 function assignOBPNumericMapValue(target: Record<string, number>, key: string, value: unknown): void {
@@ -431,6 +610,40 @@ function normalizeOBPLifetimeData(data: Record<string, any>): OBPDailyData {
     };
 }
 
+function buildOBPLifetimeUpdate(
+    existingLifetime: OBPDailyData,
+    daily: OBPDailyData | null,
+    shouldIncrement: boolean,
+): OBPDailyData {
+    if (!shouldIncrement || !daily) return existingLifetime;
+    return {
+        totalOBPViews: (existingLifetime.totalOBPViews || 0) + (daily.totalOBPViews || 0),
+        totalOBPActionClicks: (existingLifetime.totalOBPActionClicks || 0) + (daily.totalOBPActionClicks || 0),
+        totalOBPMenuClicks: (existingLifetime.totalOBPMenuClicks || 0) + (daily.totalOBPMenuClicks || 0),
+        totalOBPLinkClicks: (existingLifetime.totalOBPLinkClicks || 0) + (daily.totalOBPLinkClicks || 0),
+        totalOBPShares: (existingLifetime.totalOBPShares || 0) + (daily.totalOBPShares || 0),
+        obpActionClicks: sumNumericMaps(existingLifetime.obpActionClicks, daily.obpActionClicks),
+        obpLinkClicks: sumNumericMaps(existingLifetime.obpLinkClicks, daily.obpLinkClicks),
+        obpShares: sumNumericMaps(existingLifetime.obpShares, daily.obpShares),
+        viewsByEntrySource: sumNumericMaps(existingLifetime.viewsByEntrySource, daily.viewsByEntrySource),
+        viewsBySource: sumNumericMaps(existingLifetime.viewsBySource, daily.viewsBySource),
+        obpActionClicksBySource: sumNumericMaps(existingLifetime.obpActionClicksBySource, daily.obpActionClicksBySource),
+        obpMenuClicksBySource: sumNumericMaps(existingLifetime.obpMenuClicksBySource, daily.obpMenuClicksBySource),
+        obpLinkClicksBySource: sumNumericMaps(existingLifetime.obpLinkClicksBySource, daily.obpLinkClicksBySource),
+        obpActionClicksByOpenHoursState: sumNumericMaps(existingLifetime.obpActionClicksByOpenHoursState, daily.obpActionClicksByOpenHoursState),
+        obpMenuClicksByOpenHoursState: sumNumericMaps(existingLifetime.obpMenuClicksByOpenHoursState, daily.obpMenuClicksByOpenHoursState),
+        obpLinkClicksByOpenHoursState: sumNumericMaps(existingLifetime.obpLinkClicksByOpenHoursState, daily.obpLinkClicksByOpenHoursState),
+        obpLanguageTrackingEnabled: Boolean(existingLifetime.obpLanguageTrackingEnabled || daily.obpLanguageTrackingEnabled),
+        obpViewsByLanguage: sumNumericMaps(existingLifetime.obpViewsByLanguage, daily.obpViewsByLanguage),
+        obpSessionsByLanguage: sumNumericMaps(existingLifetime.obpSessionsByLanguage, daily.obpSessionsByLanguage),
+        obpLanguageAdoptions: sumNumericMaps(existingLifetime.obpLanguageAdoptions, daily.obpLanguageAdoptions),
+        obpLanguageNames: {
+            ...(existingLifetime.obpLanguageNames || {}),
+            ...(daily.obpLanguageNames || {}),
+        },
+    };
+}
+
 function assignNestedPathUpdate(target: Record<string, any>, path: string, value: any): void {
     const parts = path.split('.');
     let cursor = target;
@@ -509,9 +722,10 @@ function compactOBPAnalyticsDay(date: string, data: OBPDailyData) {
 function buildOBPDailyMapFromRows(rows: any[], startDate: string, endDate: string): Map<string, OBPDailyData> {
     const result = new Map<string, OBPDailyData>();
     rows.forEach((row) => {
-        const date = String(row?.date || '');
-        if (!date || date < startDate || date > endDate) return;
-        result.set(date, row as OBPDailyData);
+        const date = normalizeOBPAnalyticsDateKey(row?.date);
+        const normalized = date ? normalizeOBPDailyMetrics(row, date) : null;
+        if (!date || !normalized || date < startDate || date > endDate) return;
+        result.set(date, normalized);
     });
     return result;
 }
@@ -530,20 +744,34 @@ async function buildIncrementalOBPDailyMap(
     const startDate = requiredStartDate < cacheStartDate ? requiredStartDate : cacheStartDate;
     const previousSettledDate = addDaysToAnalyticsDateKey(settlementDate, -1);
     const existingRows = Array.isArray(existingDashboard?.daily30d) ? existingDashboard.daily30d : [];
-    const firstExistingDate = existingRows
-        .map((row: any) => String(row?.date || ''))
+    const normalizedExistingRows = existingRows.flatMap((row: unknown) => {
+        const date = normalizeOBPAnalyticsDateKey(isOBPAnalyticsRecord(row) ? row.date : null);
+        const normalized = date ? normalizeOBPDailyMetrics(row, date) : null;
+        return normalized ? [normalized] : [];
+    });
+    const firstExistingDate = normalizedExistingRows
+        .map((row) => String(row.date || ''))
         .filter(Boolean)
         .sort()[0] || '';
     const canIncrement = existingDashboard?.lastSettledLocalDate === previousSettledDate
         && existingRows.length > 0
+        && normalizedExistingRows.length === existingRows.length
         && firstExistingDate <= startDate;
 
     if (canIncrement) {
         const yesterdayRef = db.collection(DB_COLLECTIONS.ANALYTICS)
             .doc(getAnalyticsDocId.daily(tId, sId, OBP_PROJECT_ID, settlementDate));
         const yesterdaySnap = await yesterdayRef.get();
-        const yesterdayData = yesterdaySnap.exists ? yesterdaySnap.data() as OBPDailyData : null;
-        const dailyDocsByDate = buildOBPDailyMapFromRows(existingRows, startDate, previousSettledDate);
+        const yesterdayData = yesterdaySnap.exists
+            ? normalizeOBPDailyDocument(yesterdaySnap.data(), {
+                date: settlementDate,
+                docId: yesterdaySnap.id,
+                sId,
+                tId,
+            })
+            : null;
+        if (yesterdaySnap.exists && !yesterdayData) throw new Error(OBP_ANALYTICS_DAILY_CONTRACT_INVALID);
+        const dailyDocsByDate = buildOBPDailyMapFromRows(normalizedExistingRows, startDate, previousSettledDate);
 
         if (yesterdayData) {
             dailyDocsByDate.set(settlementDate, compactOBPAnalyticsDay(settlementDate, yesterdayData));
@@ -560,97 +788,104 @@ async function buildIncrementalOBPDailyMap(
     };
 }
 
-async function applyLateOBPCorrection(
+export async function applyLateOBPCorrection(
     db: FirebaseFirestore.Firestore,
     tId: string,
     sId: string,
     correctionDate: string,
-    existingDashboard: Record<string, any> | null,
 ): Promise<boolean> {
-    const dailyRows = Array.isArray(existingDashboard?.daily30d) ? existingDashboard.daily30d : [];
-    const previousRow = dailyRows.find((row: any) => String(row?.date || '') === correctionDate);
-    if (!previousRow) return false;
-
+    const dashboardRef = db.collection(DB_COLLECTIONS.ANALYTICS).doc(getOBPDashboardSummaryDocId(tId, sId));
     const dailyRef = db.collection(DB_COLLECTIONS.ANALYTICS)
         .doc(getAnalyticsDocId.daily(tId, sId, OBP_PROJECT_ID, correctionDate));
-    const dailySnap = await dailyRef.get();
-    if (!dailySnap.exists) return false;
+    const summaryRef = db.collection(DB_COLLECTIONS.ANALYTICS)
+        .doc(getAnalyticsDocId.summary(tId, sId, OBP_PROJECT_ID));
+    const corrected = await db.runTransaction(async (transaction) => {
+        const [dashboardSnap, dailySnap, summarySnap] = await Promise.all([
+            transaction.get(dashboardRef),
+            transaction.get(dailyRef),
+            transaction.get(summaryRef),
+        ]);
+        if (!dashboardSnap.exists || !dailySnap.exists) return false;
 
-    const currentDaily = compactOBPAnalyticsDay(correctionDate, dailySnap.data() as OBPDailyData);
-    const updates: Record<string, any> = {
-        lastCorrectionDate: correctionDate,
-        lastCorrectedAt: FieldValue.serverTimestamp(),
-    };
-    let hasDelta = false;
-
-    const addNumericDelta = (field: string, target: string) => {
-        const delta = Math.max(0, ((currentDaily as any)[field] || 0) - (previousRow[field] || 0));
-        if (delta > 0) {
-            assignNestedPathUpdate(updates, target, FieldValue.increment(delta));
-            hasDelta = true;
-        }
-    };
-    const addMapDelta = (field: string, target: string) => {
-        const currentMap = readAnalyticsMap(currentDaily as Record<string, any>, field);
-        const previousMap = readAnalyticsMap(previousRow as Record<string, any>, field);
-        for (const [key, value] of Object.entries(currentMap)) {
-            if (typeof value !== 'number') continue;
-            const normalizedKey = normalizeOBPAnalyticsMapKey(key);
-            if (!normalizedKey) continue;
-            const delta = Math.max(0, value - (previousMap[normalizedKey] || 0));
+        const dashboard = normalizeOBPDashboardIdentity(dashboardSnap.data(), tId, sId);
+        if (!dashboard) throw new Error(OBP_ANALYTICS_DASHBOARD_CONTRACT_INVALID);
+        if (summarySnap.exists) assertValidOBPAnalyticsSummary(summarySnap.data(), tId, sId);
+        const rawRows = Array.isArray(dashboard.daily30d) ? dashboard.daily30d : [];
+        const dailyRows = rawRows.flatMap((row: unknown) => {
+            const date = normalizeOBPAnalyticsDateKey(isOBPAnalyticsRecord(row) ? row.date : null);
+            const normalized = date ? normalizeOBPDailyMetrics(row, date) : null;
+            return normalized ? [normalized] : [];
+        });
+        if (dailyRows.length !== rawRows.length) throw new Error(OBP_ANALYTICS_DAILY_CONTRACT_INVALID);
+        const previousRow = dailyRows.find((row) => row.date === correctionDate);
+        if (!previousRow) return false;
+        const normalizedCurrent = normalizeOBPDailyDocument(dailySnap.data(), {
+            date: correctionDate,
+            docId: dailySnap.id,
+            sId,
+            tId,
+        });
+        if (!normalizedCurrent) throw new Error(OBP_ANALYTICS_DAILY_CONTRACT_INVALID);
+        const currentDaily = compactOBPAnalyticsDay(correctionDate, normalizedCurrent);
+        const updates: Record<string, any> = {
+            lastCorrectionDate: correctionDate,
+            lastCorrectedAt: FieldValue.serverTimestamp(),
+        };
+        let hasDelta = false;
+        const addNumericDelta = (field: string, target: string) => {
+            const currentValue = (currentDaily as Record<string, any>)[field] || 0;
+            const previousValue = (previousRow as Record<string, any>)[field] || 0;
+            const delta = Math.max(0, currentValue - previousValue);
             if (delta > 0) {
-                assignNestedPathUpdate(updates, `${target}.${normalizedKey}`, FieldValue.increment(delta));
+                assignNestedPathUpdate(updates, target, FieldValue.increment(delta));
                 hasDelta = true;
             }
+        };
+        const addMapDelta = (field: string, target: string) => {
+            const currentMap = readAnalyticsMap(currentDaily as Record<string, any>, field);
+            const previousMap = readAnalyticsMap(previousRow as Record<string, any>, field);
+            for (const [key, value] of Object.entries(currentMap)) {
+                const delta = Math.max(0, value - (previousMap[key] || 0));
+                if (delta > 0) {
+                    assignNestedPathUpdate(updates, `${target}.${key}`, FieldValue.increment(delta));
+                    hasDelta = true;
+                }
+            }
+        };
+
+        addNumericDelta('totalOBPViews', 'lifetime.totalOBPViews');
+        addNumericDelta('totalOBPActionClicks', 'lifetime.totalOBPActionClicks');
+        addNumericDelta('totalOBPMenuClicks', 'lifetime.totalOBPMenuClicks');
+        addNumericDelta('totalOBPLinkClicks', 'lifetime.totalOBPLinkClicks');
+        addNumericDelta('totalOBPShares', 'lifetime.totalOBPShares');
+        for (const field of [
+            'obpActionClicks', 'obpLinkClicks', 'obpShares', 'viewsByEntrySource', 'viewsBySource',
+            'obpActionClicksBySource', 'obpMenuClicksBySource', 'obpLinkClicksBySource',
+            'obpActionClicksByOpenHoursState', 'obpMenuClicksByOpenHoursState', 'obpLinkClicksByOpenHoursState',
+            'obpViewsByLanguage', 'obpSessionsByLanguage', 'obpLanguageAdoptions',
+        ]) addMapDelta(field, `lifetime.${field}`);
+        if (currentDaily.obpLanguageTrackingEnabled) {
+            assignNestedPathUpdate(updates, 'lifetime.obpLanguageTrackingEnabled', true);
+            Object.entries(currentDaily.obpLanguageNames || {}).forEach(([language, name]) => {
+                assignNestedPathUpdate(updates, `lifetime.obpLanguageNames.${language}`, name);
+            });
+            hasDelta = true;
         }
-    };
+        if (!hasDelta) return false;
 
-    addNumericDelta('totalOBPViews', 'lifetime.totalOBPViews');
-    addNumericDelta('totalOBPActionClicks', 'lifetime.totalOBPActionClicks');
-    addNumericDelta('totalOBPMenuClicks', 'lifetime.totalOBPMenuClicks');
-    addNumericDelta('totalOBPLinkClicks', 'lifetime.totalOBPLinkClicks');
-    addNumericDelta('totalOBPShares', 'lifetime.totalOBPShares');
-    addMapDelta('obpActionClicks', 'lifetime.obpActionClicks');
-    addMapDelta('obpLinkClicks', 'lifetime.obpLinkClicks');
-    addMapDelta('obpShares', 'lifetime.obpShares');
-    addMapDelta('viewsByEntrySource', 'lifetime.viewsByEntrySource');
-    addMapDelta('viewsBySource', 'lifetime.viewsBySource');
-    addMapDelta('obpActionClicksBySource', 'lifetime.obpActionClicksBySource');
-    addMapDelta('obpMenuClicksBySource', 'lifetime.obpMenuClicksBySource');
-    addMapDelta('obpLinkClicksBySource', 'lifetime.obpLinkClicksBySource');
-    addMapDelta('obpActionClicksByOpenHoursState', 'lifetime.obpActionClicksByOpenHoursState');
-    addMapDelta('obpMenuClicksByOpenHoursState', 'lifetime.obpMenuClicksByOpenHoursState');
-    addMapDelta('obpLinkClicksByOpenHoursState', 'lifetime.obpLinkClicksByOpenHoursState');
-    addMapDelta('obpViewsByLanguage', 'lifetime.obpViewsByLanguage');
-    addMapDelta('obpSessionsByLanguage', 'lifetime.obpSessionsByLanguage');
-    addMapDelta('obpLanguageAdoptions', 'lifetime.obpLanguageAdoptions');
-    if (currentDaily.obpLanguageTrackingEnabled) {
-        assignNestedPathUpdate(updates, 'lifetime.obpLanguageTrackingEnabled', true);
-        Object.entries(currentDaily.obpLanguageNames || {}).forEach(([language, name]) => {
-            const normalizedLanguage = normalizeOBPAnalyticsMapKey(language);
-            if (!normalizedLanguage) return;
-            assignNestedPathUpdate(updates, `lifetime.obpLanguageNames.${normalizedLanguage}`, name);
-        });
-        hasDelta = true;
-    }
-
-    if (!hasDelta) return false;
-
-    const updatedRows = dailyRows.map((row: any) => (
-        String(row?.date || '') === correctionDate ? currentDaily : row
-    ));
-
-    await Promise.all([
-        db.collection(DB_COLLECTIONS.ANALYTICS).doc(getAnalyticsDocId.summary(tId, sId, OBP_PROJECT_ID)).set(updates, { merge: true }),
-        db.collection(DB_COLLECTIONS.ANALYTICS).doc(getOBPDashboardSummaryDocId(tId, sId)).set({
+        const updatedRows = dailyRows.map((row) => row.date === correctionDate ? currentDaily : row);
+        transaction.set(summaryRef, updates, { merge: true });
+        transaction.set(dashboardRef, {
             daily30d: updatedRows,
             lateCorrection: {
                 lastCorrectedLocalDate: correctionDate,
                 correctedAt: FieldValue.serverTimestamp(),
             },
             modifiedOn: FieldValue.serverTimestamp(),
-        }, { merge: true }),
-    ]);
+        }, { merge: true });
+        return true;
+    });
+    if (!corrected) return false;
 
     appLogger.warn('[OBPAnalyticsSettlement] Late daily correction applied', {
         tId,
@@ -688,11 +923,12 @@ async function fetchOBPDailyDocsByDate(
         .get();
 
     snapshot.docs.forEach((doc) => {
-        const data = doc.data() as OBPDailyData;
-        const date = String((data as any).date || (data as any).localDate || doc.id.slice(prefix.length));
-        if (allowedDates.has(date)) {
-            result.set(date, data);
-        }
+        const data = doc.data();
+        const date = normalizeOBPAnalyticsDateKey(data.date ?? data.localDate ?? doc.id.slice(prefix.length));
+        if (!date || !allowedDates.has(date)) return;
+        const normalized = normalizeOBPDailyDocument(data, { date, docId: doc.id, sId, tId });
+        if (!normalized) throw new Error(OBP_ANALYTICS_DAILY_CONTRACT_INVALID);
+        result.set(date, normalized);
     });
 
     return result;
@@ -793,19 +1029,23 @@ export async function aggregateOBPAnalyticsForStoreDate(
     const summaryDocId = getAnalyticsDocId.summary(tId, sId, OBP_PROJECT_ID);
     const summaryRef = db.collection(DB_COLLECTIONS.ANALYTICS).doc(summaryDocId);
     const dashboardRef = db.collection(DB_COLLECTIONS.ANALYTICS).doc(getOBPDashboardSummaryDocId(tId, sId));
-    let [existingSummary, existingDashboardSnap] = await Promise.all([
-        summaryRef.get(),
-        dashboardRef.get(),
-    ]);
-    let existingDashboard = existingDashboardSnap.exists ? existingDashboardSnap.data() || {} : null;
+    let existingDashboardSnap = await dashboardRef.get();
+    let existingDashboard = existingDashboardSnap.exists
+        ? normalizeOBPDashboardIdentity(existingDashboardSnap.data(), tId, sId)
+        : null;
+    if (existingDashboardSnap.exists && !existingDashboard) {
+        throw new Error(OBP_ANALYTICS_DASHBOARD_CONTRACT_INVALID);
+    }
     const correctionDate = addDaysToAnalyticsDateKey(yesterdayStr, -1);
-    const correctionApplied = await applyLateOBPCorrection(db, tId, sId, correctionDate, existingDashboard);
+    const correctionApplied = await applyLateOBPCorrection(db, tId, sId, correctionDate);
     if (correctionApplied) {
-        [existingSummary, existingDashboardSnap] = await Promise.all([
-            summaryRef.get(),
-            dashboardRef.get(),
-        ]);
-        existingDashboard = existingDashboardSnap.exists ? existingDashboardSnap.data() || {} : null;
+        existingDashboardSnap = await dashboardRef.get();
+        existingDashboard = existingDashboardSnap.exists
+            ? normalizeOBPDashboardIdentity(existingDashboardSnap.data(), tId, sId)
+            : null;
+        if (existingDashboardSnap.exists && !existingDashboard) {
+            throw new Error(OBP_ANALYTICS_DASHBOARD_CONTRACT_INVALID);
+        }
     }
 
     // COST OPTIMIZATION: steady-state OBP aggregation reads the existing compact
@@ -853,9 +1093,6 @@ export async function aggregateOBPAnalyticsForStoreDate(
         }, { merge: true });
     }
 
-    // ── 4. Update summary doc with weekly + lifetime ──
-    const existingData = existingSummary.exists ? existingSummary.data() : {};
-
     // Calculate week-over-week change
     let viewsChange: number | null = null;
     if (prevWeekMetrics.totalOBPViews > 0 && currentWeekMetrics.totalOBPViews > 0) {
@@ -865,90 +1102,64 @@ export async function aggregateOBPAnalyticsForStoreDate(
         );
     }
 
-    // Lifetime: accumulate from existing + today's new data
-    // We recalculate lifetime from all-time by reading existing lifetime and adding delta
-    const existingLifetime = normalizeOBPLifetimeData(existingData || {});
     const normalizedYesterdayData = yesterdayData ? normalizeOBPDailyData(yesterdayData) : null;
+    const summaryState = await db.runTransaction(async (transaction) => {
+        const summarySnap = await transaction.get(summaryRef);
+        const rawExistingData = summarySnap.exists ? summarySnap.data() : null;
+        if (summarySnap.exists) assertValidOBPAnalyticsSummary(rawExistingData, tId, sId);
+        const existingData = rawExistingData || {};
+        const existingLifetime = normalizeOBPLifetimeData(existingData);
+        const lastProcessedDate = existingData.lastProcessedDate
+            ? normalizeOBPAnalyticsDateKey(existingData.lastProcessedDate) || ''
+            : '';
+        const hasDateLedger = isOBPAnalyticsRecord(existingData.processedLifetimeDates);
+        const processedLifetimeDates: Record<string, true> = hasDateLedger
+            ? Object.fromEntries(Object.keys(existingData.processedLifetimeDates).map((date) => [date, true]))
+            : {};
+        const alreadySettled = processedLifetimeDates[yesterdayStr] === true
+            || !hasDateLedger && lastProcessedDate >= yesterdayStr;
+        const shouldIncrementLifetime = Boolean(normalizedYesterdayData) && !alreadySettled;
+        const lifetimeUpdate = buildOBPLifetimeUpdate(
+            existingLifetime,
+            normalizedYesterdayData,
+            shouldIncrementLifetime,
+        );
+        if (shouldIncrementLifetime) processedLifetimeDates[yesterdayStr] = true;
+        const boundedProcessedLifetimeDates = Object.fromEntries(
+            Object.entries(processedLifetimeDates)
+                .sort(([left], [right]) => right.localeCompare(left))
+                .slice(0, OBP_LIFETIME_DATE_LEDGER_LIMIT),
+        );
+        const hasAnyData = currentWeekMetrics.daysWithData > 0
+            || currentMonthMetrics.daysWithData > 0
+            || (lifetimeUpdate.totalOBPViews || 0) > 0;
+        if (!hasAnyData) return null;
 
-    // For lifetime, we use a simple approach: store lifetime counters that get
-    // updated by adding today's daily doc (yesterday's data) to existing lifetime
-    // Only increment lifetime if yesterday had data and we haven't processed this date yet
-    const lastProcessedDate = existingData?.lastProcessedDate || '';
-    const shouldIncrementLifetime = yesterdayData && lastProcessedDate < yesterdayStr;
-
-    const lifetimeUpdate = shouldIncrementLifetime ? {
-        totalOBPViews: (existingLifetime.totalOBPViews || 0) + (normalizedYesterdayData?.totalOBPViews || 0),
-        totalOBPActionClicks: (existingLifetime.totalOBPActionClicks || 0) + (normalizedYesterdayData?.totalOBPActionClicks || 0),
-        totalOBPMenuClicks: (existingLifetime.totalOBPMenuClicks || 0) + (normalizedYesterdayData?.totalOBPMenuClicks || 0),
-        totalOBPLinkClicks: (existingLifetime.totalOBPLinkClicks || 0) + (normalizedYesterdayData?.totalOBPLinkClicks || 0),
-        totalOBPShares: (existingLifetime.totalOBPShares || 0) + (normalizedYesterdayData?.totalOBPShares || 0),
-        obpActionClicks: {
-            call: (existingLifetime.obpActionClicks?.call || 0) + (normalizedYesterdayData?.obpActionClicks?.call || 0),
-            whatsapp: (existingLifetime.obpActionClicks?.whatsapp || 0) + (normalizedYesterdayData?.obpActionClicks?.whatsapp || 0),
-            directions: (existingLifetime.obpActionClicks?.directions || 0) + (normalizedYesterdayData?.obpActionClicks?.directions || 0),
-            reserve: (existingLifetime.obpActionClicks?.reserve || 0) + (normalizedYesterdayData?.obpActionClicks?.reserve || 0),
-            order: (existingLifetime.obpActionClicks?.order || 0) + (normalizedYesterdayData?.obpActionClicks?.order || 0),
-        },
-        obpLinkClicks: {
-            google_review: (existingLifetime.obpLinkClicks?.google_review || 0) + (normalizedYesterdayData?.obpLinkClicks?.google_review || 0),
-            instagram: (existingLifetime.obpLinkClicks?.instagram || 0) + (normalizedYesterdayData?.obpLinkClicks?.instagram || 0),
-            facebook: (existingLifetime.obpLinkClicks?.facebook || 0) + (normalizedYesterdayData?.obpLinkClicks?.facebook || 0),
-            website: (existingLifetime.obpLinkClicks?.website || 0) + (normalizedYesterdayData?.obpLinkClicks?.website || 0),
-        },
-        obpShares: {
-            whatsapp: (existingLifetime.obpShares?.whatsapp || 0) + (normalizedYesterdayData?.obpShares?.whatsapp || 0),
-            copy_link: (existingLifetime.obpShares?.copy_link || 0) + (normalizedYesterdayData?.obpShares?.copy_link || 0),
-            copy_message: (existingLifetime.obpShares?.copy_message || 0) + (normalizedYesterdayData?.obpShares?.copy_message || 0),
-        },
-        viewsByEntrySource: sumNumericMaps(existingLifetime.viewsByEntrySource, normalizedYesterdayData?.viewsByEntrySource),
-        viewsBySource: sumNumericMaps(existingLifetime.viewsBySource, normalizedYesterdayData?.viewsBySource),
-        obpActionClicksBySource: sumNumericMaps(existingLifetime.obpActionClicksBySource, normalizedYesterdayData?.obpActionClicksBySource),
-        obpMenuClicksBySource: sumNumericMaps(existingLifetime.obpMenuClicksBySource, normalizedYesterdayData?.obpMenuClicksBySource),
-        obpLinkClicksBySource: sumNumericMaps(existingLifetime.obpLinkClicksBySource, normalizedYesterdayData?.obpLinkClicksBySource),
-        obpActionClicksByOpenHoursState: sumNumericMaps(existingLifetime.obpActionClicksByOpenHoursState, normalizedYesterdayData?.obpActionClicksByOpenHoursState),
-        obpMenuClicksByOpenHoursState: sumNumericMaps(existingLifetime.obpMenuClicksByOpenHoursState, normalizedYesterdayData?.obpMenuClicksByOpenHoursState),
-        obpLinkClicksByOpenHoursState: sumNumericMaps(existingLifetime.obpLinkClicksByOpenHoursState, normalizedYesterdayData?.obpLinkClicksByOpenHoursState),
-        obpLanguageTrackingEnabled: Boolean(existingLifetime.obpLanguageTrackingEnabled || normalizedYesterdayData?.obpLanguageTrackingEnabled),
-        obpViewsByLanguage: sumNumericMaps(existingLifetime.obpViewsByLanguage, normalizedYesterdayData?.obpViewsByLanguage),
-        obpSessionsByLanguage: sumNumericMaps(existingLifetime.obpSessionsByLanguage, normalizedYesterdayData?.obpSessionsByLanguage),
-        obpLanguageAdoptions: sumNumericMaps(existingLifetime.obpLanguageAdoptions, normalizedYesterdayData?.obpLanguageAdoptions),
-        obpLanguageNames: {
-            ...(existingLifetime.obpLanguageNames || {}),
-            ...(normalizedYesterdayData?.obpLanguageNames || {}),
-        },
-    } : existingLifetime;
-
-    const hasAnyData = currentWeekMetrics.daysWithData > 0 ||
-        currentMonthMetrics.daysWithData > 0 ||
-        (lifetimeUpdate.totalOBPViews || 0) > 0;
-
-    if (!hasAnyData) return false;
-
-    await summaryRef.set({
-        // Weekly namespace — same pattern as menu analytics
-        weekly: {
-            ...currentWeekMetrics,
-            weekStr,
-            viewsChange,
-        },
-        // Monthly namespace
-        monthly: {
-            ...currentMonthMetrics,
-            monthStr,
-        },
-        // Previous week for comparison
-        previousWeek: {
-            totalOBPViews: prevWeekMetrics.totalOBPViews,
-            totalOBPActionClicks: prevWeekMetrics.totalOBPActionClicks,
-            weekStr: prevWeekStr,
-        },
-        // Lifetime counters
-        lifetime: lifetimeUpdate,
-        // Meta
-        lastProcessedDate: yesterdayStr,
-        firstDataDate: existingData?.firstDataDate || yesterdayStr,
-        modifiedOn: FieldValue.serverTimestamp(),
-    }, { merge: true });
+        const firstDataDate = existingData.firstDataDate || yesterdayStr;
+        transaction.set(summaryRef, {
+            analyticsScope: 'customer',
+            firstDataDate,
+            grain: 'summary',
+            lastProcessedDate: lastProcessedDate > yesterdayStr ? lastProcessedDate : yesterdayStr,
+            lifetime: lifetimeUpdate,
+            modifiedOn: FieldValue.serverTimestamp(),
+            monthly: { ...currentMonthMetrics, monthStr },
+            previousWeek: {
+                totalOBPViews: prevWeekMetrics.totalOBPViews,
+                totalOBPActionClicks: prevWeekMetrics.totalOBPActionClicks,
+                weekStr: prevWeekStr,
+            },
+            processedLifetimeDates: boundedProcessedLifetimeDates,
+            projectId: OBP_PROJECT_ID,
+            sId,
+            surface: 'obp',
+            tId,
+            weekly: { ...currentWeekMetrics, weekStr, viewsChange },
+        }, { merge: true });
+        return { firstDataDate, lifetimeUpdate };
+    });
+    if (!summaryState) return false;
+    const { firstDataDate, lifetimeUpdate } = summaryState;
 
     const yesterdayMetrics = yesterdayData ? toDashboardDailyMetrics(yesterdayData) : null;
     const wtd = currentWeekMetrics.daysWithData > 0 ? toDashboardMetrics(currentWeekMetrics) : null;
@@ -984,7 +1195,7 @@ export async function aggregateOBPAnalyticsForStoreDate(
             obpLanguageAdoptions: lifetimeUpdate.obpLanguageAdoptions || {},
             obpLanguageNames: lifetimeUpdate.obpLanguageNames || {},
         }),
-        firstDataDate: existingData?.firstDataDate || yesterdayStr,
+        firstDataDate,
         lastUpdated: FieldValue.serverTimestamp(),
     };
     let status: 'working' | 'low_activity' | 'no_data' = 'no_data';
@@ -1002,7 +1213,7 @@ export async function aggregateOBPAnalyticsForStoreDate(
         statusMessage = 'Activity detected yesterday.';
     }
 
-    await dashboardRef.set({
+    const dashboardPayload = {
         tId,
         sId,
         projectId: OBP_PROJECT_ID,
@@ -1032,7 +1243,18 @@ export async function aggregateOBPAnalyticsForStoreDate(
             .sort(([a], [b]) => a.localeCompare(b))
             .map(([date, data]) => compactOBPAnalyticsDay(date, data)),
         modifiedOn: FieldValue.serverTimestamp(),
-    }, { merge: true });
+    };
+    await db.runTransaction(async (transaction) => {
+        const latestDashboardSnap = await transaction.get(dashboardRef);
+        if (latestDashboardSnap.exists) {
+            const latestDashboard = normalizeOBPDashboardIdentity(latestDashboardSnap.data(), tId, sId);
+            if (!latestDashboard) throw new Error(OBP_ANALYTICS_DASHBOARD_CONTRACT_INVALID);
+            const latestSettledDate = normalizeOBPAnalyticsDateKey(latestDashboard.lastSettledLocalDate);
+            if (!latestSettledDate) throw new Error(OBP_ANALYTICS_DASHBOARD_CONTRACT_INVALID);
+            if (latestSettledDate > yesterdayStr) return;
+        }
+        transaction.set(dashboardRef, dashboardPayload, { merge: true });
+    });
 
     return true;
 }
@@ -1064,25 +1286,28 @@ export async function aggregateOBPAnalyticsForAllStores(): Promise<{
             return result;
         }
 
-        const storesMap = summaryDoc.data()?.stores || {};
-        const storeEntries = Object.entries(storesMap) as [string, any][];
+        const storesMap = parsePlatformStoreSummary(summaryDoc.data());
+        const storeEntries = Object.entries(storesMap);
 
         for (const [sId, storeInfo] of storeEntries) {
-            if (!storeInfo?.active) continue;
+            if (storeInfo.active === false) continue;
 
-            const tId = storeInfo.tId != null ? String(storeInfo.tId) : '';
-            if (!tId) continue;
-            const businessDayEndTime = resolveBusinessDayEndTime(storeInfo?.businessType, storeInfo?.businessDayEndTime, storeInfo?.businessCategory);
+            const tId = storeInfo.tId;
+            const businessType = typeof storeInfo.businessType === 'string' ? storeInfo.businessType : undefined;
+            const businessCategory = typeof storeInfo.businessCategory === 'string' ? storeInfo.businessCategory : undefined;
+            const configuredDayEnd = typeof storeInfo.businessDayEndTime === 'string' ? storeInfo.businessDayEndTime : undefined;
+            const timeZone = typeof storeInfo.timeZone === 'string' ? storeInfo.timeZone : undefined;
+            const businessDayEndTime = resolveBusinessDayEndTime(businessType, configuredDayEnd, businessCategory);
             result.storesProcessed++;
 
             try {
-                const hadData = await aggregateOBPAnalyticsForStore(db, tId, sId, new Date(), storeInfo?.timeZone, businessDayEndTime);
+                const hadData = await aggregateOBPAnalyticsForStore(db, tId, sId, new Date(), timeZone, businessDayEndTime);
                 if (hadData) result.storesWithData++;
             } catch (e: any) {
                 appLogger.error('[OBPAnalyticsSettlement] Store aggregation failed', e, {
                     tId,
                     sId,
-                    timeZone: storeInfo?.timeZone || 'UTC',
+                    timeZone: timeZone || 'UTC',
                     businessDayEndTime,
                 });
                 result.errors++;

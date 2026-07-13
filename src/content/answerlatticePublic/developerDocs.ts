@@ -90,9 +90,110 @@ export const ANSWERLATTICE_DEVELOPER_DOCS: AnswerlatticeDeveloperDoc[] = [
             },
         ],
     },
+    {
+        slug: 'verified-visitor-context',
+        path: '/developers/verified-visitor-context',
+        title: 'Verified Visitor Context | AnswerLattice Developers',
+        metaDescription: 'Sign short-lived AnswerLattice visitor context on your server and attach bounded allowlisted diagnostic links without trusting browser identity or recording sessions.',
+        eyebrow: 'Developer Doc',
+        heroTitle: 'Verify sensitive context on your server. Keep normal support available.',
+        heroDescription:
+            'Use optional signed context when an answer depends on a trusted plan, role, locale, or requester. Use external evidence links only for support-safe diagnostics you already control.',
+        proof: [
+            { label: 'Signing', value: 'Ed25519 private key stays server-side' },
+            { label: 'Token life', value: '10 minutes maximum' },
+            { label: 'Evidence', value: '3 links on exact allowed HTTPS hosts' },
+        ],
+        sections: [
+            {
+                title: 'Create and protect the signing key',
+                description: 'Create the key in Widget > Access & Security. AnswerLattice stores the public verification record and shows the private PKCS8 key once.',
+                bullets: [
+                    'Store the private key in your server secret manager or protected server environment.',
+                    'Never include the private key in browser JavaScript, public environment variables, logs, or repository files.',
+                    'Rotate the key when exposure is suspected; tokens signed by the prior key stop verifying.',
+                ],
+            },
+            {
+                title: 'Sign a short-lived visitor token',
+                description: 'Use EdDSA with the current key ID, the `answerlattice-widget` audience, and a lifetime no longer than 600 seconds.',
+                bullets: [
+                    'Use `sub` for a support-safe requester identifier and optionally include name, email, plan, role, or locale.',
+                    'Do not put tenant IDs, workspace IDs, secrets, payment data, or private account records in the token.',
+                    'Issue the token only after your own server authenticates the current app user, and return it with no-store headers.',
+                    'Pass the finished token with `window.AnswerlatticeWidget?.identifySigned(token)` and clear it on sign-out with `clearIdentity()`.',
+                ],
+                code: `import { createPrivateKey, sign } from 'node:crypto';
+
+const encode = (value: unknown) =>
+  Buffer.from(JSON.stringify(value)).toString('base64url');
+
+export function createAnswerlatticeVisitorToken({
+  privateKeyPkcs8,
+  keyId,
+  visitor,
+}: {
+  privateKeyPkcs8: string;
+  keyId: string;
+  visitor: { id: string; name?: string; email?: string; plan?: string; role?: string; locale?: string };
+}) {
+  const now = Math.floor(Date.now() / 1000);
+  const header = encode({ alg: 'EdDSA', typ: 'JWT', kid: keyId });
+  const payload = encode({
+    aud: 'answerlattice-widget',
+    iat: now,
+    exp: now + 300,
+    sub: visitor.id,
+    name: visitor.name,
+    email: visitor.email,
+    plan: visitor.plan,
+    role: visitor.role,
+    locale: visitor.locale,
+  });
+  const input = \`\${header}.\${payload}\`;
+  const key = createPrivateKey({
+    key: Buffer.from(privateKeyPkcs8, 'base64'),
+    format: 'der',
+    type: 'pkcs8',
+  });
+  const signature = sign(null, Buffer.from(input), key).toString('base64url');
+  return \`\${input}.\${signature}\`;
+}`,
+            },
+            {
+                title: 'Attach bounded diagnostic evidence',
+                description: 'Configure exact evidence hosts in Access & Security, then pass links only when they are useful for the current support question.',
+                bullets: [
+                    'Call `setEvidenceLinks([{ label, url }])` with at most three HTTPS links.',
+                    'Links with credentials, ports, unapproved hosts, or malformed URLs are discarded.',
+                    'AnswerLattice stores validated links with private widget-search activity and never fetches or embeds their content.',
+                ],
+            },
+            {
+                title: 'Failure behavior',
+                description: 'Signed identity is optional and must never become a support availability dependency.',
+                bullets: [
+                    'Invalid or expired tokens discard signed-only identity and plan/role claims.',
+                    'Safe page, feature, and workflow context can still serve generic page-aware support.',
+                    'Workspace scope always comes from the authenticated widget key, never from the token or browser context.',
+                ],
+                code: `const { token } = await fetch('/api/my-answerlattice-token', {
+  credentials: 'same-origin',
+  cache: 'no-store',
+}).then((response) => response.json());
+
+window.AnswerlatticeWidget?.identifySigned?.(token);
+window.AnswerlatticeWidget?.setEvidenceLinks?.([
+  { label: 'Error details', url: 'https://errors.example.com/event/abc123' },
+]);
+
+// Run when the host user signs out or changes account.
+window.AnswerlatticeWidget?.clearIdentity?.();`,
+            },
+        ],
+    },
 ];
 
 export function getAnswerlatticeDeveloperDoc(path: string) {
     return ANSWERLATTICE_DEVELOPER_DOCS.find((item) => item.path === path);
 }
-

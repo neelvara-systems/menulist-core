@@ -11,7 +11,7 @@ export interface ChatMessage {
     craftedAnswer?: string; // For assistant messages (from backend)
     createdOn?: Timestamp; // Firestore Timestamp
     searchHistoryId?: string; // Links to aiSearchHistory for analytics
-    references?: KnowledgeBaseArticleType[]; // KB articles with similarity scores
+    references?: ChatReference[]; // Compact persisted references; full article content is loaded on demand.
     answerSource?: 'canonical' | 'faq' | 'rag' | 'cache' | 'empty' | string;
     relatedContent?: import('@type/answerlattice').AnswerlatticeSurfaceContentItem;
     suggestedQuestions?: string[]; // AI-generated follow-up questions (3 contextual questions)
@@ -42,6 +42,16 @@ export interface ChatMessage {
     };
     // Quality flags are calculated in real-time from similarityScore (not stored)
 }
+
+export type ChatReference = Pick<KnowledgeBaseArticleType, 'id' | 'title'>
+    & Partial<Pick<KnowledgeBaseArticleType,
+        'categoryTitle'
+        | 'sectionTitle'
+        | 'url'
+        | 'content'
+        | 'similarityScore'
+    >>
+    & { slug?: string };
 
 export type ChatMode = 'qna' | 'assistant';
 

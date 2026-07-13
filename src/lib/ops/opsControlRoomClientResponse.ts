@@ -28,6 +28,7 @@ export type OpsControlRoomMuteAlertsResponse = {
 
 export type OpsControlRoomForceRepublishResponse = {
     success: boolean;
+    projectCount: number;
     projectId: string;
     verification: string;
     publicMenuUrl?: string;
@@ -59,6 +60,9 @@ export function isOpsControlRoomForceRepublishResponse(
 ): value is OpsControlRoomForceRepublishResponse {
     return isRecord(value)
         && typeof value.success === 'boolean'
+        && Number.isSafeInteger(value.projectCount)
+        && Number(value.projectCount) >= 1
+        && Number(value.projectCount) <= 100
         && typeof value.projectId === 'string'
         && value.projectId.trim().length > 0
         && typeof value.verification === 'string'
@@ -76,6 +80,9 @@ export function logInvalidOpsControlRoomForceRepublishResponse(
         new Error('ops_control_room_force_republish_response_invalid'),
         {
             ...context,
+            projectCountValid: Number.isSafeInteger(response?.projectCount)
+                && Number(response?.projectCount) >= 1
+                && Number(response?.projectCount) <= 100,
             hasProjectId: typeof response?.projectId === 'string' && response.projectId.trim().length > 0,
             hasVerification: typeof response?.verification === 'string' && response.verification.trim().length > 0,
             successKnown: typeof response?.success === 'boolean',

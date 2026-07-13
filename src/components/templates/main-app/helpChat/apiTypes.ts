@@ -8,7 +8,7 @@ import { KnowledgeBaseArticleType } from "@type/knowledgeBase";
  * No frontend enrichment needed - use as-is!
  */
 export type SearchAPIResponseType = {
-    id: string; // Search history ID from aiSearchHistory collection
+    id?: string; // Search history ID when analytics persistence succeeds
     craftedAnswer: string; // AI-generated answer
     references: KnowledgeBaseArticleType[]; // Full article objects with similarityScore
     relatedContent?: import('@type/answerlattice').AnswerlatticeSurfaceContentItem; // Product-surface contextual help links

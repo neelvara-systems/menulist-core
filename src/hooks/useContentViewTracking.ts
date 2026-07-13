@@ -1,17 +1,14 @@
 import { useEffect } from 'react';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
 import { getBoundedHookStringContext, logHookFailure } from '@hook/hookDiagnostics';
-import { addRecentlyViewedEntry } from '@lib/recentlyViewed';
+import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
+import { addRecentlyViewedEntry, type RecentlyViewedEntry } from '@lib/recentlyViewed';
 
-type ContentType = 'article' | 'changelog' | 'faq' | 'workflow';
-
-interface BaseViewTrackingData {
-    id: string;
-    type: ContentType;
-    title: string;
-    href?: string;
-    meta?: Record<string, any>;
-}
+type BaseViewTrackingData = RecentlyViewedEntry extends infer TEntry
+    ? TEntry extends RecentlyViewedEntry
+        ? Omit<TEntry, 'href' | 'viewedAt'> & { href?: string }
+        : never
+    : never;
 
 /**
  * Generic hook for tracking content views across all content types
@@ -46,24 +43,37 @@ interface BaseViewTrackingData {
  * ```
  */
 export const useContentViewTracking = (data: BaseViewTrackingData | null) => {
-    const { user } = useClientAuthSession() || {};
+    const session = useClientAuthSession();
+    const { user } = session || {};
+    const scope = resolveAnswerlatticeSessionScope(session);
+    const metaFingerprint = data?.type === 'article'
+        ? [data.meta?.categoryTitle || '', data.meta?.sectionTitle || ''].join('\u001e')
+        : data?.type === 'changelog'
+            ? [
+                  data.meta?.version || '',
+                  (data.meta?.tags || []).join('\u001f'),
+                  data.meta?.pageId || '',
+              ].join('\u001e')
+            : '';
 
     useEffect(() => {
         // Don't track if no user or data
-        if (!user?.id || !data) return;
+        if (!user?.id || !scope || !data) return;
         
         // Don't track on server-side
         if (typeof window === 'undefined') return;
 
         try {
-            addRecentlyViewedEntry(user.id, {
-                id: data.id,
-                type: data.type,
-                title: data.title,
-                href: data.href || window.location.pathname,
-                viewedAt: new Date().toISOString(),
-                meta: data.meta || {},
-            });
+            const storageScope = { tId: scope.tenantId, sId: scope.storeId };
+            const href = data.href || window.location.pathname;
+            const viewedAt = new Date().toISOString();
+            if (data.type === 'article') {
+                addRecentlyViewedEntry(storageScope, user.id, { ...data, type: 'article', href, viewedAt });
+            } else if (data.type === 'changelog') {
+                addRecentlyViewedEntry(storageScope, user.id, { ...data, type: 'changelog', href, viewedAt });
+            } else {
+                addRecentlyViewedEntry(storageScope, user.id, { ...data, type: data.type, href, viewedAt });
+            }
         } catch (error) {
             // Fail silently - don't break the UI if tracking fails
             logHookFailure('content_view_tracking_persist_failed', error, {
@@ -76,5 +86,5 @@ export const useContentViewTracking = (data: BaseViewTrackingData | null) => {
                 ...getBoundedHookStringContext('href', data.href || window.location.pathname),
             });
         }
-    }, [data?.id, user?.id, data?.type, data?.href, data?.meta]);
+    }, [data?.href, data?.id, data?.title, data?.type, metaFingerprint, scope?.storeId, scope?.tenantId, user?.id]);
 };

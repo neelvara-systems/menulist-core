@@ -103,7 +103,7 @@ Extraction Monitor `JobInspector` copy actions are browser-local and do not affe
 
 Menu-intake identity source fetches fail closed after target validation. The helper validates the configured Firebase Storage bucket, expected owner/public draft prefix, and app-server public DNS target, then fetches the normalized URL with manual redirect handling before the bounded response reader. A Storage 3xx response is skipped through the existing unreadable-file preflight fallback instead of reading bytes from a redirected target.
 
-Owner menu-link import cleanup is best-effort but observable before a durable extraction job exists. If route failure happens after an artifact or Storage object is created but before `menuImageProcessingJobs/{jobId}` is written, failed artifact cleanup logs `menu_link_import_artifact_cleanup_failed` and failed Storage cleanup logs `menu_link_import_storage_cleanup_failed` with bounded project/artifact/storage metadata only.
+Owner menu-link import cleanup is best-effort but observable before a durable extraction job exists. The route writes the private Storage artifact first, then creates the `menuImageProcessingJobs/{jobId}` document and `menuLinkImportArtifacts/{artifactId}` metadata document atomically through the shared active-job transaction. If route failure happens after Storage creation but before that transaction commits, no artifact metadata document exists to delete; failed Storage cleanup logs `menu_link_import_storage_cleanup_failed` with bounded project/storage metadata only.
 
 Menu-link render fallback is optional and observable. When the Chrome render fallback itself fails after the target URL has passed SSRF validation, `src/lib/menu-link-import/sourceAcquisition.ts` logs `menu_link_import_render_fallback_failed` with fixed `skip_rendered_html` fallback policy plus render host, timeout, temporary-directory-created, business category, and business type metadata only. The acquisition helper still returns `null` for the rendered fallback and continues through the existing source-rejection path if no fetched source is usable.
 
@@ -137,7 +137,7 @@ July 2 follow-up: after the worker wins the pending-job transaction, it checks `
 
 ## Public Draft Job Creation
 
-`POST /api/public/create-menu` still creates `publicMenuDrafts/{draftId}` first. It then writes a `menuImageProcessingJobs/{jobId}` document with:
+`POST /api/public/create-menu` stores the source first, then atomically creates `publicMenuDrafts/{draftId}` and deterministic `menuImageProcessingJobs/public_{draftId}` with create-only batch operations. The draft ID and download token derive from owner plus validated/acquired content hash, so concurrent identical requests converge on one draft/job without invalidating the winning Storage metadata. The job contains:
 
 - `skipProjectSave: true`
 - `destination.type = "public_menu_draft"`
@@ -146,6 +146,8 @@ July 2 follow-up: after the worker wins the pending-job transaction, it checks `
 - `projectId = 0-public-{draftId}-0`
 
 When the public source is readable by the shared identity helper, the route also attaches `sourceMetadata.identityCheck` to the job. The worker uses that metadata to fill `publicMenuDrafts.detectedBusinessName`, `detectedBusinessType`, and `detectedBusinessCategory` on completion. If the specific type is not identifiable, the claim flow stores canonical `Other` while preserving the best known category.
+
+Before provider work, the worker verifies deterministic job ID, destination and denormalized destination type, requested owner metadata, platform project identity, source path/URL/type/size, draft token/owner/status/expiry, and the draft's `extractionJobId`. A failed binding may fail the job but is not allowed to update the referenced draft. Completion uses the byte-for-byte mirrored `publicMenuDraftData.ts` allowlist contract; preview and claim normalize the stored DTO again. Claim also validates the configured Storage bucket and exact draft source envelope, stores a complete conversion receipt, and supports exact-owner idempotent retry after a lost response.
 
 The worker marks the draft as `processing`, then writes `completed` or `failed`.
 

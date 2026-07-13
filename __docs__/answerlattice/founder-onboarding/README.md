@@ -29,8 +29,8 @@ Answerlattice ALREADY has "auto activation" via RAG. When KB articles are publis
 After KB job publishes (existing pipeline):
 
 1. **Auto-extract entities** from all published articles (batch, not per-article)
-2. **Auto-promote high-confidence entities** (skip manual review for strong candidates)
-3. **Auto-generate provisional canonical answer drafts** from article content
+2. **Hold every generated candidate for explicit owner review**
+3. **Generate provisional canonical answer drafts only for already approved active entities**
 4. **Place drafts in review queue** (mutation proposals with `draftStatus: generated`)
 5. **Track onboarding progress** via metrics on the KB generation job
 
@@ -54,8 +54,8 @@ Upload → AI Extraction → Staging → Review → Publish → Embed
                               Extraction      Answer Draft      Metrics
                               (batch)         Generation        Update
                                     ↓               ↓
-                              Auto-Promote    Review Queue
-                              (high conf)     (mutation proposals)
+                              Owner Review    Review Queue
+                              (candidates)    (mutation proposals)
 ```
 
 ---
@@ -66,7 +66,7 @@ Upload → AI Extraction → Staging → Review → Publish → Embed
 |----------|-----------|
 | **No new Firestore collections** | Uses existing: `answerlattice_entities`, `answerlattice_entityCandidates`, `answerlattice_canonicalAnswers`, `answerlattice_mutationProposals`, `answerlattice_auditLogs`, `kb_generation_jobs` |
 | **Extends existing KB pipeline** | Hooks into post-publish step, not a parallel system |
-| **Auto-promote with authority guard** | High-confidence (≥0.7) + multi-article (≥2) entities auto-promoted. Respects doctrine via guardrails, not by removing automation. |
+| **Explicit entity authority** | Generated candidates remain pending until an owner promotes them. The bootstrap never creates authoritative entities from model confidence alone. |
 | **Draft answers ≠ active answers** | Generated drafts are `pending_review` proposals, never served as canonical until approved. RAG handles immediate answers. |
 | **No crawler** | Existing KB pipeline already handles URL import, PDF, images, etc. |
 | **No queue collections** | Uses Firebase Cloud Functions (existing pattern), not custom queues |

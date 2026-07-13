@@ -50,6 +50,7 @@ import {
     LuCheckCircle2,
     LuExternalLink,
     LuLayers,
+    LuListChecks,
     LuRefreshCw,
     LuShieldCheck,
     LuTicket,
@@ -155,6 +156,9 @@ export default function AnswerlatticeDashboardPage() {
                 <Space wrap>
                     <Button icon={<LuRefreshCw />} loading={refreshing} onClick={() => loadSummary(true)}>
                         Refresh
+                    </Button>
+                    <Button icon={<LuListChecks />} onClick={() => openRoute(ANSWERLATTICE_ROUTES.SUPPORT_ASSISTANT)}>
+                        Today&apos;s Brief
                     </Button>
                     <Button type="primary" icon={<LuExternalLink />} onClick={() => openRoute(ANSWERLATTICE_ROUTES.ACTIVATION)}>
                         Open Launch Setup

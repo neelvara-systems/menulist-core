@@ -3,10 +3,15 @@ export const dynamic = 'force-dynamic';
 import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
 import { PERMISSIONS } from '@constant/permissions';
-import { getAiMenuManagerProject, getAiMenuManagerProposal, persistAiMenuManagerCommand } from '@database/aiMenuManager/server';
+import {
+    assertAiMenuManagerCommandProposalIdentity,
+    getAiMenuManagerProject,
+    getAiMenuManagerProposal,
+    persistAiMenuManagerCommand,
+} from '@database/aiMenuManager/server';
 import { buildAiMenuManagerContextBaseHash, buildAiMenuManagerContextPacket } from '@lib/ai-menu-manager/contextPacket';
 import { resolveAiMenuManagerCommand } from '@lib/ai-menu-manager/commandResolver';
-import { buildDailySessionId, buildProposalId, hashStableValue, todaySessionDate } from '@lib/ai-menu-manager/idempotency';
+import { buildProposalId, hashStableValue, resolveDailySessionId, todaySessionDate } from '@lib/ai-menu-manager/idempotency';
 import { isAiMenuManagerActionEnabled, getAiMenuManagerActionDefinition } from '@lib/ai-menu-manager/actionRegistry';
 import {
     applyAiMenuManagerRateLimit,
@@ -104,18 +109,25 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         : sessionStore;
     const storeName = getStoreName(store, scope.sId);
     const context = buildAiMenuManagerContextPacket({
+        expectedProjectId: parsed.data.projectId,
         project,
         storeName,
         businessType: store?.businessType || store?.businessCategory,
     });
 
     const sessionDate = todaySessionDate();
-    const sessionId = parsed.data.sessionId || buildDailySessionId({
-        tId: scope.tId,
-        sId: scope.sId,
-        projectId: parsed.data.projectId,
-        sessionDate,
-    });
+    let sessionId: string;
+    try {
+        sessionId = resolveDailySessionId({
+            sessionId: parsed.data.sessionId,
+            tId: scope.tId,
+            sId: scope.sId,
+            projectId: parsed.data.projectId,
+            sessionDate,
+        });
+    } catch {
+        return buildAiMenuManagerInvalidRequestResponse(request, session, 'command-session');
+    }
     const messageId = `amm_msg_${hashStableValue(`${sessionId}:${parsed.data.idempotencyKey}`).slice(0, 20)}`;
     const preliminaryCardId = `amm_card_${hashStableValue(`${messageId}:card`).slice(0, 20)}`;
     const resolvedResult = resolveAiMenuManagerCommand({
@@ -143,23 +155,6 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         patchHash: resolvedResult.resolved?.patchHash,
     });
     const existingProposal = await getAiMenuManagerProposal(proposalId);
-    if (
-        existingProposal
-        && String(existingProposal.tId) === String(scope.tId)
-        && String(existingProposal.sId) === String(scope.sId)
-        && String(existingProposal.projectId || '') === String(parsed.data.projectId || '')
-    ) {
-        return NextResponse.json({
-            sessionId: existingProposal.sessionId,
-            messageId,
-            cards: [existingProposal.cardPayload],
-            nextRequiredAction: existingProposal.cardPayload.kind === 'clarification'
-                ? 'clarification'
-                : existingProposal.cardPayload.status === 'pending_approval'
-                    ? 'owner_approval'
-                    : 'none',
-        });
-    }
     const card = {
         ...resolvedResult.card,
         cardId: proposalId,
@@ -190,27 +185,56 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         updatedAt: new Date().toISOString(),
     };
 
-    await persistAiMenuManagerCommand({
-        sessionId,
-        sessionDate,
-        storageMode: FEATURE_FLAGS.AI_MENU_MANAGER_SESSION_STORAGE_MODE,
-        tId: scope.tId,
-        sId: scope.sId,
-        projectId: parsed.data.projectId,
-        ownerText: parsed.data.text || 'Uploaded menu file',
-        messageId,
-        card,
-        proposal,
-        replaceOperationId: parsed.data.replaceOperationId,
-    });
+    if (existingProposal) {
+        try {
+            assertAiMenuManagerCommandProposalIdentity({ existing: existingProposal, expected: proposal });
+        } catch {
+            return NextResponse.json({ error: 'Request conflict' }, { status: 409 });
+        }
+        return NextResponse.json({
+            sessionId: existingProposal.sessionId,
+            messageId,
+            cards: [existingProposal.cardPayload],
+            nextRequiredAction: existingProposal.cardPayload.kind === 'clarification'
+                ? 'clarification'
+                : existingProposal.cardPayload.status === 'pending_approval'
+                    ? 'owner_approval'
+                    : 'none',
+        });
+    }
+
+    let persistedProposal: AiMenuManagerProposalDoc;
+    try {
+        persistedProposal = await persistAiMenuManagerCommand({
+            sessionId,
+            sessionDate,
+            storageMode: FEATURE_FLAGS.AI_MENU_MANAGER_SESSION_STORAGE_MODE,
+            tId: scope.tId,
+            sId: scope.sId,
+            projectId: parsed.data.projectId,
+            ownerText: parsed.data.text || 'Uploaded menu file',
+            messageId,
+            card,
+            proposal,
+            replaceOperationId: parsed.data.replaceOperationId,
+        });
+    } catch (error) {
+        if (
+            error instanceof Error
+            && ['Proposal identity mismatch', 'Invalid proposal data'].includes(error.message)
+        ) {
+            return NextResponse.json({ error: 'Request conflict' }, { status: 409 });
+        }
+        throw error;
+    }
 
     return NextResponse.json({
-        sessionId,
+        sessionId: persistedProposal.sessionId,
         messageId,
-        cards: [card],
-        nextRequiredAction: card.kind === 'clarification'
+        cards: [persistedProposal.cardPayload],
+        nextRequiredAction: persistedProposal.cardPayload.kind === 'clarification'
             ? 'clarification'
-            : card.status === 'pending_approval'
+            : persistedProposal.cardPayload.status === 'pending_approval'
                 ? 'owner_approval'
                 : 'none',
     });

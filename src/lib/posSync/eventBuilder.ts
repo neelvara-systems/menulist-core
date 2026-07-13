@@ -15,7 +15,11 @@ const POS_SYNC_DEBOUNCE_MS = 25_000; // 25 seconds
 const POS_SYNC_DELIVERY_TRIGGER_FAILED = 'pos_sync_delivery_trigger_failed';
 const POS_SYNC_DELIVERY_REQUEST_REJECTED = 'pos_sync_delivery_request_rejected';
 
-let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+const debounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+function getPosSyncDebounceKey(storeId: number, tenantId: number, projectId: string): string {
+    return `${tenantId}:${storeId}:${projectId}`;
+}
 
 function createPosSyncDeliveryError(code: string, status?: number): Error & { code: string; status?: number } {
     return Object.assign(new Error(code), {
@@ -58,12 +62,12 @@ export function triggerPosSyncDebounced(
     if (!posSync?.webhookUrl) return;
     if (!posSync?.webhookSecret) return;
 
-    if (debounceTimer) {
-        clearTimeout(debounceTimer);
-    }
+    const debounceKey = getPosSyncDebounceKey(storeId, tenantId, projectId);
+    const existingTimer = debounceTimers.get(debounceKey);
+    if (existingTimer) clearTimeout(existingTimer);
 
-    debounceTimer = setTimeout(() => {
-        debounceTimer = null;
+    const timer = setTimeout(() => {
+        if (debounceTimers.get(debounceKey) === timer) debounceTimers.delete(debounceKey);
         createDeliveryJob(storeId, tenantId, projectId).catch((error) => {
             logSecurityFailure(
                 POS_SYNC_DELIVERY_TRIGGER_FAILED,
@@ -72,6 +76,7 @@ export function triggerPosSyncDebounced(
             );
         });
     }, POS_SYNC_DEBOUNCE_MS);
+    debounceTimers.set(debounceKey, timer);
 }
 
 /**
@@ -79,10 +84,8 @@ export function triggerPosSyncDebounced(
  * Call this when navigating away from the editor.
  */
 export function cancelPendingPosSync(): void {
-    if (debounceTimer) {
-        clearTimeout(debounceTimer);
-        debounceTimer = null;
-    }
+    debounceTimers.forEach((timer) => clearTimeout(timer));
+    debounceTimers.clear();
 }
 
 /**

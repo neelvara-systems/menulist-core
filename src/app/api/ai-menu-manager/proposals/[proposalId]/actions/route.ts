@@ -4,7 +4,6 @@ import { FEATURE_FLAGS } from '@config/features';
 import { PERMISSIONS } from '@constant/permissions';
 import {
     approveAiMenuManagerProposal,
-    getAiMenuManagerProject,
     getAiMenuManagerProposal,
     updateAiMenuManagerProposalStatus,
 } from '@database/aiMenuManager/server';
@@ -13,7 +12,6 @@ import {
     buildAiMenuManagerInvalidRequestResponse,
     resolveAiMenuManagerSelectedStoreScope,
 } from '@lib/ai-menu-manager/apiGuards';
-import { buildAiMenuManagerContextBaseHash, buildAiMenuManagerContextPacket } from '@lib/ai-menu-manager/contextPacket';
 import { normalizeAiMenuManagerProposalId } from '@lib/ai-menu-manager/routeIds';
 import { AiMenuManagerProposalActionSchema } from '@lib/ai-menu-manager/schemas';
 import { requireAnyStorePermissionForStore } from '@lib/permissions/server';
@@ -142,24 +140,6 @@ export const POST = withAuth(async (
         }, { status: 403 });
     }
 
-    if (proposal.projectId && proposal.baseProjectHash) {
-        const currentProject = await getAiMenuManagerProject({
-            tId: scope.tId,
-            sId: scope.sId,
-            projectId: proposal.projectId,
-        });
-        if (!currentProject) {
-            return NextResponse.json({ error: 'Menu changed. Prepare a new card before approval.' }, { status: 409 });
-        }
-        const currentContext = buildAiMenuManagerContextPacket({
-            project: currentProject,
-            storeName: proposal.scope.label,
-        });
-        if (buildAiMenuManagerContextBaseHash(currentContext) !== proposal.baseProjectHash) {
-            return NextResponse.json({ error: 'Menu changed. Prepare a new card before approval.' }, { status: 409 });
-        }
-    }
-
     let result;
     try {
         result = await approveAiMenuManagerProposal({
@@ -171,6 +151,9 @@ export const POST = withAuth(async (
         });
     } catch (error) {
         logRuntimeFailure('ai_menu_manager_proposal_approval_failed', error, getProposalActionLogContext());
+        if (error instanceof Error && error.message === 'Menu changed') {
+            return NextResponse.json({ error: 'Menu changed. Prepare a new card before approval.' }, { status: 409 });
+        }
         return NextResponse.json({ error: 'Card could not be approved' }, { status: 409 });
     }
 

@@ -53,7 +53,10 @@ type PageData = {
     slug: 'products' | 'about' | 'contact' | 'legal' | 'privacy' | 'terms';
     title: string;
     description: string;
+    headline?: string;
     eyebrow: string;
+    summaryTitle?: string;
+    summaryRows?: string[];
     lastUpdated?: string;
     cards: InfoCard[];
     sections: Array<{
@@ -135,14 +138,13 @@ export const DIRECTORY_ROWS = [
 const PRODUCT_ICON_BY_NAME: Record<typeof NEELVARA_PRODUCT_LINEUP[number]['name'], IconType> = {
     MenuList: LuMenuSquare,
     Answerlattice: LuNetwork,
-    CampaignCue: LuLayers,
 };
 
 export const PAGE_DATA: Record<PageData['slug'], PageData> = {
     products: {
         slug: 'products',
         title: 'Operated Products',
-        description: 'Current operated products and product website routing for Neelvara Systems.',
+        description: 'Products currently operated by Neelvara Systems and links to their official websites.',
         eyebrow: 'Operated products',
         cards: NEELVARA_PRODUCT_LINEUP.map((product, index) => ({
             title: product.name,
@@ -157,7 +159,7 @@ export const PAGE_DATA: Record<PageData['slug'], PageData> = {
                 title: 'Product boundary',
                 body: 'This company site identifies operated products and routes visitors to the correct product website.',
                 items: [
-                    'MenuList, Answerlattice, and CampaignCue keep separate websites, policies, support paths, and product commitments.',
+                    'MenuList and Answerlattice keep separate websites, policies, support paths, and product commitments.',
                     'Only approved operated products appear on this website.',
                     'Company, legal, and privacy questions route through the Neelvara contact paths.',
                 ],
@@ -166,13 +168,20 @@ export const PAGE_DATA: Record<PageData['slug'], PageData> = {
     },
     about: {
         slug: 'about',
-        title: 'About',
+        title: 'About Neelvara Systems',
         description: 'Neelvara Systems operates infrastructure for customer-facing business information that should stay accurate without constant maintenance.',
+        headline: 'An operating company for focused information products.',
         eyebrow: 'Company overview',
+        summaryTitle: 'Company reference',
+        summaryRows: [
+            'Focused product lineup',
+            'Clear public boundaries',
+            'Direct company contact',
+        ],
         cards: [
             {
                 title: 'Business information',
-                description: 'The work is centered on public facts, approved answers, and reusable business context.',
+                description: 'The work is centered on public facts, support knowledge, and approved answers.',
                 icon: LuFileText,
                 meta: 'Customer-facing facts',
                 variant: 'blue',
@@ -194,22 +203,30 @@ export const PAGE_DATA: Record<PageData['slug'], PageData> = {
         ],
         sections: [
             {
-                title: 'Why the company exists',
-                body: 'Neelvara Systems exists because unclear public facts, unapproved answers, and scattered business context create avoidable customer friction.',
+                title: 'What Neelvara operates',
+                body: 'Neelvara Systems operates a focused set of software products for customer-facing business information.',
                 items: [
-                    'The company site stays calm, narrow, and factual.',
-                    'Product details stay on product domains.',
-                    'MenuList, Answerlattice, and CampaignCue operate as separate products with separate product surfaces.',
-                    'Company copy identifies the operating company behind those products.',
+                    'MenuList keeps public business details such as menus, hours, and profiles clear.',
+                    'Answerlattice keeps support knowledge and business responses tied to approved answers.',
+                    'Each product maintains its own website, policies, support, and commitments.',
                 ],
             },
             {
-                title: 'What this company website does not claim',
-                body: 'This company site does not present Neelvara Systems as a general back-office software suite.',
+                title: 'Why this website stays narrow',
+                body: 'This website is a public company reference for verification and routing, not a product sales or account surface.',
                 items: [
-                    'No POS, payroll, accounting, CRM, delivery, or internal operations platform is claimed on this company website.',
-                    'Product websites explain product capabilities instead of stretching the company site.',
-                    'Company pages make product operation and contact routes easy to verify.',
+                    'It identifies the company and its current operated products.',
+                    'It provides official business, legal, and privacy contact routes.',
+                    'It keeps company information separate from product commitments.',
+                ],
+            },
+            {
+                title: 'Operating approach',
+                body: 'Neelvara favors focused products, explicit information ownership, and clear public boundaries.',
+                items: [
+                    'Public statements stay narrow and verifiable.',
+                    'Product commitments come from the relevant product website or agreement.',
+                    'Company questions and product support use different routes.',
                 ],
             },
         ],
@@ -255,7 +272,7 @@ export const PAGE_DATA: Record<PageData['slug'], PageData> = {
             },
             {
                 title: 'Looking for product support?',
-                body: 'MenuList, Answerlattice, and CampaignCue keep product-specific support and documentation on their own websites.',
+                body: 'MenuList and Answerlattice keep product-specific support and documentation on their own websites.',
                 items: NEELVARA_PRODUCT_LINEUP.map((product) => `${product.name}: ${product.url}`),
             },
         ],
@@ -272,7 +289,14 @@ export const PAGE_DATA: Record<PageData['slug'], PageData> = {
         slug: 'legal',
         title: 'Legal',
         description: 'Public entity and product relationship information for Neelvara Systems.',
+        headline: 'Company and product relationships, stated plainly.',
         eyebrow: 'Entity information',
+        summaryTitle: 'Legal reference',
+        summaryRows: [
+            'Company website scope',
+            'Separate product policies',
+            'Direct legal contact',
+        ],
         cards: [
             {
                 title: 'Operating trade name',
@@ -337,7 +361,14 @@ export const PAGE_DATA: Record<PageData['slug'], PageData> = {
         slug: 'privacy',
         title: 'Privacy Policy',
         description: 'This Privacy Policy explains how Neelvara Systems handles information related to this company website.',
+        headline: 'A narrow privacy policy for a narrow company website.',
         eyebrow: 'Privacy Policy',
+        summaryTitle: 'Privacy scope',
+        summaryRows: [
+            'Static public pages',
+            'Basic hosting and security logs',
+            'Visitor-initiated email',
+        ],
         lastUpdated: 'June 26, 2026',
         cards: [
             {
@@ -412,8 +443,8 @@ export const PAGE_DATA: Record<PageData['slug'], PageData> = {
                 title: 'Product privacy',
                 body: 'This Privacy Policy applies only to the Neelvara Systems company website.',
                 items: [
-                    'MenuList, Answerlattice, and CampaignCue may maintain separate privacy policies for their product websites and product services.',
-                    'Product account, business, support, campaign, billing, or customer interaction data is governed by the relevant product policy.',
+                    'MenuList and Answerlattice may maintain separate privacy policies for their product websites and product services.',
+                    'Product account, business, support, billing, or customer interaction data is governed by the relevant product policy.',
                     'Product privacy questions should start from the relevant product website or support path.',
                 ],
             },
@@ -447,7 +478,14 @@ export const PAGE_DATA: Record<PageData['slug'], PageData> = {
         slug: 'terms',
         title: 'Terms of Use',
         description: 'These Terms govern use of the Neelvara Systems company website.',
+        headline: 'Terms for this company information website.',
         eyebrow: 'Terms of Use',
+        summaryTitle: 'Website terms',
+        summaryRows: [
+            'General company information',
+            'Separate product terms',
+            'Direct legal contact',
+        ],
         lastUpdated: 'June 26, 2026',
         cards: [
             {
@@ -549,17 +587,6 @@ export const PAGE_DATA: Record<PageData['slug'], PageData> = {
         },
     },
 };
-
-export const MARQUEE_ITEMS = [
-    'Neelvara Systems',
-    'MenuList',
-    'Answerlattice',
-    'CampaignCue',
-    'Customer-facing business information',
-    'Company email',
-    'Privacy inbox',
-    'Legal inbox',
-];
 
 export const COMPARISON_ROWS: ComparisonRow[] = [
     {
@@ -670,11 +697,12 @@ export function SiteFooter() {
 export function PageShell({ children }: { children: React.ReactNode }) {
     return (
         <div className="neelvara-site">
+            <a className="nv-skip-link" href="#main-content">Skip to main content</a>
             <div className="nv-page-mesh" aria-hidden="true" />
             <div className="nv-grain" aria-hidden="true" />
             <ScrollRevealController />
             <SiteHeader />
-            <main>{children}</main>
+            <main id="main-content" tabIndex={-1}>{children}</main>
             <SiteFooter />
         </div>
     );
@@ -775,52 +803,6 @@ export function StructuredData() {
     );
 }
 
-export function HeroStudioMock() {
-    const pipelineRows = [
-        ['Company', 'reference', '#9fc6f6'],
-        ['Products', 'operated', '#8798e7'],
-        ['Policies', 'separate', '#b7acef'],
-        ['Contact', 'email', '#6f86e2'],
-    ] as const;
-
-    return (
-        <div className="nv-hero-mock glass nv-reveal">
-            <div className="nv-hero-mock-head mono">
-                <span className="nv-traffic" aria-hidden="true">
-                    <span />
-                    <span />
-                    <span />
-        </span>
-                <span>neelvara.com / company website</span>
-            </div>
-            <div className="nv-hero-mock-grid">
-                <div className="nv-mock-tile">
-                    <span className="nv-tile-label mono">Reference routing</span>
-                    <strong className="serif">Mapped</strong>
-                    <p>Company identity, product boundaries, and contact routes stay easy to verify.</p>
-                    <div className="nv-spark-bars" aria-hidden="true">
-                        {[36, 44, 30, 58, 46, 68, 82, 74].map((height) => (
-                            <span style={{ height: `${height}%` }} key={height} />
-                        ))}
-                    </div>
-                </div>
-                <div className="nv-mock-tile">
-                    <span className="nv-tile-label mono">Company website</span>
-                    <div className="nv-pipeline-list">
-                        {pipelineRows.map(([label, meta, color]) => (
-                            <span className="nv-pipeline-row mono" key={label}>
-                                <i style={{ backgroundColor: color }} />
-                                {label}
-                                <small>{meta}</small>
-                            </span>
-                        ))}
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-}
-
 export function PagePrismPanel({
     eyebrow,
     title,
@@ -831,15 +813,14 @@ export function PagePrismPanel({
     rows: string[];
 }) {
     return (
-        <aside className="nv-page-prism glass nv-reveal" aria-label={`${title} routing summary`}>
+        <aside className="nv-page-prism glass nv-reveal" aria-label={`${title} reference summary`}>
             <div className="nv-page-prism-top">
-                <span className="mono">{eyebrow}</span>
+                <span className="mono">Neelvara Systems</span>
                 <NeelvaraLogoMark />
             </div>
-            <div className="nv-page-prism-visual" aria-hidden="true">
-                <span />
-                <span />
-                <span />
+            <div className="nv-page-prism-heading">
+                <span className="mono">{eyebrow}</span>
+                <h2>{title}</h2>
             </div>
             <div className="nv-page-prism-rows">
                 {rows.map((row) => (
@@ -850,22 +831,6 @@ export function PagePrismPanel({
                 ))}
             </div>
         </aside>
-    );
-}
-
-export function MarqueeBand() {
-    const track = [...MARQUEE_ITEMS, ...MARQUEE_ITEMS];
-
-    return (
-        <div className="nv-marquee-wrap" aria-label="Neelvara reference scope">
-            <div className="nv-marquee-track">
-                {track.map((item, index) => (
-                    <span className="mono" key={`${item}-${index}`}>
-                        {item}
-                    </span>
-                ))}
-            </div>
-        </div>
     );
 }
 
@@ -882,7 +847,7 @@ export function ComparisonTable() {
                                 <em>Company reference</em>
                             </th>
                             <th>Product websites</th>
-                            <th>Owner apps</th>
+                            <th>Product apps</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -909,7 +874,7 @@ export function ComparisonTable() {
                                 <dd>{row.products}</dd>
                             </div>
                             <div>
-                                <dt>Owner apps</dt>
+                                <dt>Product apps</dt>
                                 <dd>{row.apps}</dd>
                             </div>
                         </dl>
@@ -939,36 +904,23 @@ export function SecondaryPage({ page }: { page: PageData }) {
                             <span className="nv-pip" aria-hidden="true" />
                             {page.eyebrow}
                         </span>
-                        <h1 className="serif">{page.title}</h1>
+                        <h1 className="serif">{page.headline ?? page.title}</h1>
                         <p>{page.description}</p>
-                        <div className="nv-page-hero-meta glass">
-                            {page.lastUpdated ? <span className="mono">Last updated: {page.lastUpdated}</span> : null}
-                            <span className="mono">company website</span>
-                            <span className="mono">{page.slug}</span>
-                        </div>
+                        {page.lastUpdated ? <p className="nv-last-updated">Last updated: {page.lastUpdated}</p> : null}
                     </div>
                     <PagePrismPanel
-                        eyebrow="Company website"
-                        title={page.title}
-                        rows={[
-                            page.lastUpdated ? `Updated ${page.lastUpdated}` : 'Company reference',
-                            'Product boundaries',
-                            'Direct email routing',
-                        ]}
+                        eyebrow="Reference summary"
+                        title={page.summaryTitle ?? page.title}
+                        rows={page.summaryRows ?? ['Company reference', 'Product boundaries', 'Direct email routing']}
                     />
-                </div>
-            </section>
-            <section className="nv-section nv-reveal">
-                <div className="nv-wrap">
-                    <OperatingRows rows={page.cards} />
                 </div>
             </section>
             {page.sections.map((section, index) => (
                 <section
-                    className={`nv-section nv-section-tight nv-reveal nv-secondary-section nv-secondary-section-${index % 3}`}
+                    className="nv-section nv-section-tight nv-reveal nv-secondary-section"
                     key={section.title}
                 >
-                    <div className="nv-wrap nv-text-panel glass">
+                    <div className="nv-wrap nv-text-panel glass" data-section-index={index + 1}>
                         <div>
                             <h2 className="serif">{section.title}</h2>
                             <p>{section.body}</p>

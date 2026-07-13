@@ -41,8 +41,9 @@ const STORE_ID_PATTERN = /^\d{1,20}$/;
 
 type FormFactor = 'narrow' | 'wide';
 
-function parseFormFactor(raw: string): FormFactor {
-    return raw === 'wide' ? 'wide' : 'narrow';
+function parseFormFactor(raw: string): FormFactor | null {
+    if (raw === 'narrow' || raw === 'wide') return raw;
+    return null;
 }
 
 function firstLetter(name: string): string {
@@ -165,6 +166,10 @@ export async function GET(
     { params }: { params: { storeId: string; formFactor: string } },
 ) {
     const form = parseFormFactor(params.formFactor);
+    if (!form) {
+        return new Response('Unsupported screenshot form factor', { status: 404 });
+    }
+
     const storeId = params.storeId;
     const width = form === 'narrow' ? 1080 : 1920;
     const height = form === 'narrow' ? 1920 : 1080;

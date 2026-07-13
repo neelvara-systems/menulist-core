@@ -237,6 +237,22 @@ export function createAnswerlatticeWebClient(initialOptions) {
             var _a, _b;
             (_b = (_a = getRuntime()) === null || _a === void 0 ? void 0 : _a.clearHistory) === null || _b === void 0 ? void 0 : _b.call(_a);
         },
+        clearIdentity() {
+            var _a, _b;
+            (_b = (_a = getRuntime()) === null || _a === void 0 ? void 0 : _a.clearIdentity) === null || _b === void 0 ? void 0 : _b.call(_a);
+        },
+        identify(visitor) {
+            var _a, _b;
+            (_b = (_a = getRuntime()) === null || _a === void 0 ? void 0 : _a.identify) === null || _b === void 0 ? void 0 : _b.call(_a, visitor);
+        },
+        identifySigned(token) {
+            var _a, _b;
+            (_b = (_a = getRuntime()) === null || _a === void 0 ? void 0 : _a.identifySigned) === null || _b === void 0 ? void 0 : _b.call(_a, token);
+        },
+        setEvidenceLinks(links) {
+            var _a, _b;
+            (_b = (_a = getRuntime()) === null || _a === void 0 ? void 0 : _a.setEvidenceLinks) === null || _b === void 0 ? void 0 : _b.call(_a, links);
+        },
         on(eventName, callback) {
             var _a, _b;
             (_b = (_a = getRuntime()) === null || _a === void 0 ? void 0 : _a.on) === null || _b === void 0 ? void 0 : _b.call(_a, eventName, callback);

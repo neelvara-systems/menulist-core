@@ -10,26 +10,10 @@ import type {
   OwnerBusinessHealthCurrentDoc,
   OwnerBusinessMultiLocationStoreSummary,
 } from './types';
+import { sanitizeForFirestore } from '../lib/sanitizeForFirestore';
 
 function stripUndefined(value: unknown): unknown {
-  if (Array.isArray(value)) {
-    return value
-      .map(stripUndefined)
-      .filter((entry) => entry !== undefined);
-  }
-  if (!value || typeof value !== 'object') {
-    return value;
-  }
-  if (value instanceof Timestamp) {
-    return value;
-  }
-
-  const result: Record<string, unknown> = {};
-  for (const [key, nested] of Object.entries(value as Record<string, unknown>)) {
-    if (nested === undefined) continue;
-    result[key] = stripUndefined(nested);
-  }
-  return result;
+  return sanitizeForFirestore(value, { undefinedObjectValue: 'omit' });
 }
 
 export async function writeOwnerBusinessHealthDocs(params: {
@@ -53,13 +37,13 @@ export async function writeOwnerBusinessHealthDocs(params: {
     ...params.current,
     kind: 'ownerBusinessHealthCurrent',
     expiresAt,
-  }) as FirebaseFirestore.DocumentData, { merge: true });
+  }) as FirebaseFirestore.DocumentData);
   batch.set(snapshotRef, stripUndefined({
     ...params.current,
     kind: 'ownerBusinessHealthSnapshot',
     snapshotForLocalDate: params.localDate,
     expiresAt,
-  }) as FirebaseFirestore.DocumentData, { merge: true });
+  }) as FirebaseFirestore.DocumentData);
 
   let writeCount = 2;
   if (params.analytics) {
@@ -68,7 +52,7 @@ export async function writeOwnerBusinessHealthDocs(params: {
       ...params.analytics,
       kind: 'ownerBusinessAnalyticsIndex',
       expiresAt,
-    }) as FirebaseFirestore.DocumentData, { merge: true });
+    }) as FirebaseFirestore.DocumentData);
     writeCount++;
   }
 

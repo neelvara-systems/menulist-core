@@ -36,14 +36,19 @@ const asPositiveInteger = (value: unknown): number | null => {
     return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
 };
 
-const timestampToIso = (value: any): string => {
+const timestampToIso = (value: unknown): string | null => {
     try {
-        if (value?.toDate) return value.toDate().toISOString();
+        if (
+            value
+            && typeof value === 'object'
+            && 'toDate' in value
+            && typeof value.toDate === 'function'
+        ) return value.toDate().toISOString();
         if (value instanceof Date) return value.toISOString();
     } catch {
-        // Return a stable current value only for malformed historical rows.
+        return null;
     }
-    return new Date().toISOString();
+    return null;
 };
 
 export const GET = withAuth(async (request: NextRequest, session) => {
@@ -84,18 +89,27 @@ export const GET = withAuth(async (request: NextRequest, session) => {
             .orderBy('createdAt', 'desc')
             .limit(OWNER_REFERRAL_RECENT_LIMIT)
             .get();
-        const recent = recentSnapshot.docs.map((document) => {
-            const referral = document.data() as OwnerReferralDocument;
+        const recent = recentSnapshot.docs.flatMap((document) => {
+            const referral = document.data() as Partial<OwnerReferralDocument>;
+            if (
+                referral.status !== OWNER_REFERRAL_STATUS.ATTRIBUTED
+                && referral.status !== OWNER_REFERRAL_STATUS.PAYMENT_PENDING
+                && referral.status !== OWNER_REFERRAL_STATUS.REWARD_ISSUED
+            ) return [];
+            const date = timestampToIso(referral.rewardIssuedAt || referral.updatedAt || referral.createdAt);
+            if (!date) return [];
             const status = referral.status === OWNER_REFERRAL_STATUS.REWARD_ISSUED
                 ? OWNER_REFERRAL_OWNER_STATUS.ISSUED
-                : referral.status === OWNER_REFERRAL_STATUS.PAYMENT_PENDING
-                    ? OWNER_REFERRAL_OWNER_STATUS.WAITING_FOR_BOTH_PAYMENTS
-                    : OWNER_REFERRAL_OWNER_STATUS.WAITING_FOR_PAYMENT;
-            return {
-                businessName: String(referral.referredBusinessNameSnapshot || 'A business').slice(0, 100),
+                : OWNER_REFERRAL_OWNER_STATUS.WAITING_FOR_PAYMENT;
+            const businessName = typeof referral.referredBusinessNameSnapshot === 'string'
+                && referral.referredBusinessNameSnapshot.trim()
+                ? referral.referredBusinessNameSnapshot.trim().slice(0, 100)
+                : 'A business';
+            return [{
+                businessName,
                 status,
-                date: timestampToIso(referral.rewardIssuedAt || referral.updatedAt || referral.createdAt),
-            };
+                date,
+            }];
         });
 
         return NextResponse.json({

@@ -1,7 +1,7 @@
 # Chat Monitoring — Feature Documentation
 
-> **Status:** DOCUMENTED (Forensic Audit)
-> **Last Updated:** 2026-06-30
+> **Status:** ACTIVE (Answerlattice isolated runtime)
+> **Last Updated:** 2026-07-12
 > **Parent Feature:** Help Center
 > **Audit Type:** Codebase-first, every file read
 
@@ -9,9 +9,9 @@
 
 ## What Is This
 
-Chat Monitoring is MenuList's **platform admin dashboard for managing AI chatbot conversations** — a comprehensive system where administrators view all conversations, filter by quality/status/priority/feedback, manage conversation metadata (status, priority, tags), add internal team notes, calculate ROI metrics, and view AI-generated weekly performance digests.
+Chat Monitoring is Answerlattice's operator dashboard for reviewing support conversations, quality, feedback, internal notes, aggregate trends, and source-backed weekly summaries.
 
-**Product-boundary note:** this doc lives under the historical Answerlattice/support documentation family, but the current runtime is MenuList-hosted. The Cloud Functions listed below run from `functions/src/`, scan MenuList `tenants`, `stores`, `chatAnalytics`, `aiSearchHistory`, and nested `knowledgeBase` data, and write MenuList `insights/{tId}/stores/{sId}/ai/*` documents. They are not active `functions-answerlattice/` scheduler exports.
+**Product boundary:** `chatSessions`, `chatAnalytics`, and `insights` are read and written through the dedicated Answerlattice Firebase clients and `functions-answerlattice/`. The MenuList scheduler records the migrated task names as skipped and its two legacy manual callable names return `failed-precondition`; they perform no help-center reads, writes, or provider calls.
 
 ---
 
@@ -43,7 +43,7 @@ Chat Monitoring is MenuList's **platform admin dashboard for managing AI chatbot
 - `src/components/templates/platform/chatManagement/AdminMetadataPopover.tsx` — Status/priority/tag management
 - `src/components/templates/platform/chatManagement/TeamNoteModal.tsx` — Internal notes editor
 - `src/components/templates/platform/chatManagement/ROICalculator.tsx` — ROI calculation dashboard
-- `src/components/templates/platform/chatManagement/WeeklyDigest.tsx` — AI-generated weekly summary
+- `src/components/templates/platform/chatManagement/WeeklyDigest.tsx` — source-backed weekly summary with optional explicit refresh
 - `src/components/templates/platform/chatManagement/ChatInsights.tsx` — Analytics insights
 - `src/components/templates/platform/chatManagement/ComprehensiveDashboard.tsx` — Empty (deprecated)
 - `src/lib/answerlattice/supportClipboard.ts` — Shared acknowledged copy helper for platform message copy and ROI share text
@@ -52,11 +52,10 @@ Chat Monitoring is MenuList's **platform admin dashboard for managing AI chatbot
 - `src/database/chatSessions/index.ts` — Admin methods: `getAllChatSessionsForAdmin`, `getChatStatistics`, `getTopQuestions`, `getKnowledgeGaps`, `getChatVolumeOverTime`, `updateSessionInternalNote`
 - `src/database/chatAnalytics/index.ts` — Optimized: `getChatStatisticsOptimized`, `getTopQuestionsOptimized`, `getKnowledgeGapsOptimized`, `getChatVolumeOverTimeOptimized`, `getConversationsPaginated`
 
-### Cloud Functions (AI Intelligence)
-- `functions/src/aggregateDailyChatStats.ts` — Nightly aggregation
-- `functions/src/analytics/feedbackIntelligence.ts` — AI feedback analysis
-- `functions/src/analytics/kbQuality.ts` — KB article quality scoring
-- `functions/src/analytics/weeklyNarrative.ts` — Weekly digest generation
+### Cloud Functions (Derived Intelligence)
+- `functions-answerlattice/src/answerlattice/chatAnalyticsAggregation.ts` — bounded, resumable daily summary aggregation
+- `functions-answerlattice/src/answerlattice/chatIntelligence.ts` — deterministic feedback and weekly insight projection
+- `functions-answerlattice/src/answerlattice/answerlatticeNightly.ts` — existing tenant scheduler orchestration
 
 ### Types
 - `src/types/chatSession.ts` — ConversationFilters, ADMIN_STATUS/PRIORITY/TAG/QUALITY_OPTIONS
@@ -67,4 +66,5 @@ Chat Monitoring is MenuList's **platform admin dashboard for managing AI chatbot
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-07-12 | 1.2.0 | Migrated chat analytics and insight truth to isolated Answerlattice Firebase; scheduled insight wording is deterministic and source-hash idempotent; retired MenuList workers/callables no longer touch help-center data. |
 | 2026-03-02 | 1.0.0 | Initial forensic documentation — 13 UI files, 13 DAL functions, 4 Cloud Functions |

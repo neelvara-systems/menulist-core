@@ -2,43 +2,47 @@ import { DB_COLLECTIONS } from "@constant/database";
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import { getAnalyticsQueueContext, getAnalyticsTrackingContext, getBoundedAnalyticsStringContext, logAnalyticsFailure } from "@lib/analytics/analyticsDiagnostics";
 import { getBusinessAnalyticsDateKey } from "@lib/analytics/businessDay";
-import { addDaysToAnalyticsDateKey } from "@lib/analytics/dateKey";
-import { filterAnalyticsUpdateData } from "@lib/analytics/writePolicy";
+import {
+  normalizeAnalyticsDashboardReadModel,
+  normalizeAnalyticsDateKey,
+  normalizeAnalyticsProjectId,
+  normalizeAnalyticsScopeDocumentId,
+  normalizeDailyAnalytics,
+} from "@lib/analytics/readBoundary";
+import {
+  ANALYTICS_QUEUE_MAX_AGE_MS,
+  ANALYTICS_QUEUE_MAX_ENTRIES,
+  ANALYTICS_QUEUE_MAX_RETRY_COUNT,
+  ANALYTICS_QUEUE_MAX_STORAGE_CHARS,
+  getAnalyticsQueueKey,
+  mergeAnalyticsUpdateData,
+  normalizePersistedAnalyticsQueue,
+  subtractFlushedAnalyticsData,
+} from "@lib/analytics/queueBoundary";
+import { filterAnalyticsUpdateData, type AnalyticsWriteValue } from "@lib/analytics/writePolicy";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
-import { collection, doc, DocumentData, getDoc, getDocs, increment, orderBy, query, serverTimestamp, setDoc, Timestamp, where } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
 
 // Base collection path
 const COLLECTION = DB_COLLECTIONS.ANALYTICS;
 const DAILY_ANALYTICS_COLLECTION = 'daily';
-const OVERALL_ANALYTICS_COLLECTION = 'overall';
-const SUMMARY_ANALYTICS_DOC = 'summary';
-
-
 /**
  * Get reference to a specific daily analytics document
  * Format: {tId}_{sId}_{projectId}_daily_{date}
  */
-const getDailyAnalyticsDocRef = (tId: string | number, sId: string | number, projectId: string, date: string) => {
+const getDailyAnalyticsDocRef = (tId: string, sId: string, projectId: string, date: string) => {
   const docId = `${tId}_${sId}_${projectId}_${DAILY_ANALYTICS_COLLECTION}_${date}`;
   return doc(firebaseClient, COLLECTION, docId);
 };
 
-/**
- * Get reference to the analytics summary document
- * Format: {tId}_{sId}_{projectId}_overall_summary
- */
-const getAnalyticsSummaryDocRef = (tId: string | number, sId: string | number, projectId: string) => {
-  const docId = `${tId}_${sId}_${projectId}_${OVERALL_ANALYTICS_COLLECTION}_${SUMMARY_ANALYTICS_DOC}`;
-  return doc(firebaseClient, COLLECTION, docId);
-};
-
-const getAnalyticsDashboardSummaryDocRef = (tId: string | number, sId: string | number, projectId: string) => {
+const getAnalyticsDashboardSummaryDocRef = (tId: string, sId: string, projectId: string) => {
   const docId = `${tId}_${sId}_${projectId}_dashboard_summary`;
   return doc(firebaseClient, COLLECTION, docId);
 };
 
 const ANALYTICS_FLUSH_DELAY_MS = 30000;
 const ANALYTICS_FLUSH_MAX_EVENTS = 40;
+const ANALYTICS_FLUSH_MAX_RETRY_DELAY_MS = 5 * 60 * 1000;
 const ANALYTICS_QUEUE_STORAGE_KEY = 'menulist_pending_analytics_queue_v1';
 
 type QueuedAnalyticsWrite = {
@@ -48,18 +52,31 @@ type QueuedAnalyticsWrite = {
   dateString: string;
   storeTimeZone?: string;
   businessDayEndTime?: string;
-  updateData: Record<string, any>;
+  updateData: Record<string, AnalyticsWriteValue>;
   eventCount: number;
+  retryCount: number;
+  createdAt: number;
   flushTimer?: ReturnType<typeof setTimeout>;
 };
+
+class AnalyticsFlushHttpError extends Error {
+  constructor(
+    readonly status: number,
+    readonly retryAfterMs?: number,
+  ) {
+    super(`Public analytics flush failed with HTTP ${status}`);
+    this.name = 'AnalyticsFlushHttpError';
+  }
+}
 
 const analyticsWriteQueue = new Map<string, QueuedAnalyticsWrite>();
 const flushingAnalyticsKeys = new Set<string>();
 const reportedAnalyticsQueueFailures = new Set<string>();
 let reportedAnalyticsQueuePersistFailure = false;
+let reportedAnalyticsQueueCapacityFailure = false;
 
 const getQueuedAnalyticsEventCount = () => (
-  Array.from(analyticsWriteQueue.values()).reduce((total, queued) => total + (queued.eventCount || 0), 0)
+  Array.from(analyticsWriteQueue.values()).reduce((total, queued) => total + queued.eventCount, 0)
 );
 
 const reportAnalyticsQueuePersistError = (
@@ -95,6 +112,8 @@ const persistAnalyticsQueue = () => {
         businessDayEndTime: queued.businessDayEndTime,
         updateData: queued.updateData,
         eventCount: queued.eventCount,
+        retryCount: queued.retryCount,
+        createdAt: queued.createdAt,
       },
     ]);
 
@@ -106,6 +125,15 @@ const persistAnalyticsQueue = () => {
     }
 
     serializedQueue = JSON.stringify(serializable);
+    if (serializedQueue.length > ANALYTICS_QUEUE_MAX_STORAGE_CHARS) {
+      window.localStorage.removeItem(ANALYTICS_QUEUE_STORAGE_KEY);
+      reportAnalyticsQueuePersistError(
+        new Error('analytics_queue_storage_limit_exceeded'),
+        'serialize',
+        null,
+      );
+      return;
+    }
     phase = 'set';
     window.localStorage.setItem(ANALYTICS_QUEUE_STORAGE_KEY, serializedQueue);
     reportedAnalyticsQueuePersistFailure = false;
@@ -114,13 +142,6 @@ const persistAnalyticsQueue = () => {
     reportAnalyticsQueuePersistError(error, phase, serializedQueue);
   }
 };
-
-const getAnalyticsQueueKey = (
-  tenantId: string | number,
-  storeId: string | number,
-  projectId: string,
-  dateString: string
-) => `${tenantId}_${storeId}_${projectId}_${dateString}`;
 
 const reportAnalyticsQueueFlushError = (
   queueKey: string,
@@ -137,193 +158,8 @@ const reportAnalyticsQueueFlushError = (
   });
 };
 
-const mergeQueuedAnalyticsData = (target: Record<string, any>, source: Record<string, any>) => {
-  Object.entries(source).forEach(([key, value]) => {
-    if (typeof value === 'number') {
-      target[key] = (target[key] || 0) + value;
-      return;
-    }
-
-    target[key] = value;
-  });
-};
-
-const TWO_LEVEL_ANALYTICS_MAP_FIELDS = new Set([
-  'actionSessionsBySource',
-  'actionSessionsByOpenHoursState',
-  'appOpensByPlatform',
-  'appOpensBySurface',
-  'attributeFilterActionClicks',
-  'attributeFilterInteractions',
-  'attributeFilterItemTaps',
-  'attributeFilterItemViews',
-  'attributeFilterNames',
-  'attributeFilterSearches',
-  'attributeFilterUnavailableTaps',
-  'categoryNames',
-  'clicksByCategory',
-  'clicksByDevice',
-  'clicksByItem',
-  'clicksByLocation',
-  'decisionBlocksRendered',
-  'hourlyAppOpens',
-  'hourlyClicks',
-  'hourlyDecisionBlocksRendered',
-  'hourlyItemViews',
-  'hourlyMenuActionClicks',
-  'hourlyOBPActionClicks',
-  'hourlyOBPLinkClicks',
-  'hourlyOBPMenuClicks',
-  'hourlyPromptShown',
-  'hourlyRecommendationClicks',
-  'hourlySearches',
-  'hourlyUnavailableItemTaps',
-  'hourlyViews',
-  'installsByDevice',
-  'installsByLocation',
-  'installsByPlatform',
-  'installsBySource',
-  'installsBySurface',
-  'itemNames',
-  'languageAdoptions',
-  'languageNames',
-  'menuActionClicks',
-  'menuActionClicksByOpenHoursState',
-  'menuActionClicksBySource',
-  'menuResolutionLayer',
-  'menuSessionsByLanguage',
-  'menuSessionsBySource',
-  'obpActionClicks',
-  'obpActionClicksByOpenHoursState',
-  'obpActionClicksBySource',
-  'obpLinkClicks',
-  'obpLinkClicksByOpenHoursState',
-  'obpLinkClicksBySource',
-  'obpLanguageAdoptions',
-  'obpLanguageNames',
-  'obpSessionsByLanguage',
-  'obpMenuClicksByOpenHoursState',
-  'obpMenuClicksBySource',
-  'obpMenuClicksBySurface',
-  'obpShares',
-  'obpViewsByLanguage',
-  'recommendationClicks',
-  'recommendationClicksByItem',
-  'searchTerms',
-  'shortcutClicks',
-  'unavailableItemTapsByItem',
-  'viewsByCampaign',
-  'viewsByContent',
-  'viewsByCategory',
-  'viewsByDevice',
-  'viewsByEntrySource',
-  'menuViewsByLanguage',
-  'viewsByLocation',
-  'viewsByMedium',
-  'viewsBySource',
-  'viewsByItem',
-  'zeroResultSearchTerms',
-]);
-
-const setAnalyticsObjectValue = (target: Record<string, any>, key: string, value: any) => {
-  Object.defineProperty(target, key, {
-    value,
-    enumerable: true,
-    configurable: true,
-    writable: true,
-  });
-};
-
-const ensureAnalyticsObject = (target: Record<string, any>, key: string): Record<string, any> => {
-  const existing = Object.prototype.hasOwnProperty.call(target, key) ? target[key] : undefined;
-  if (existing && typeof existing === 'object' && !Array.isArray(existing)) return existing;
-  const next: Record<string, any> = {};
-  setAnalyticsObjectValue(target, key, next);
-  return next;
-};
-
-const assignProcessedAnalyticsField = (
-  target: Record<string, any>,
-  key: string,
-  value: any
-) => {
-  const firstDotIndex = key.indexOf('.');
-  if (firstDotIndex === -1) {
-    setAnalyticsObjectValue(target, key, value);
-    return;
-  }
-
-  const parent = key.slice(0, firstDotIndex);
-  const childPath = key.slice(firstDotIndex + 1);
-
-  if (parent === 'hourlyClicksByItem') {
-    const lastDotIndex = childPath.lastIndexOf('.');
-    if (lastDotIndex === -1) {
-      target[key] = value;
-      return;
-    }
-
-    const itemId = childPath.slice(0, lastDotIndex);
-    const hour = childPath.slice(lastDotIndex + 1);
-    const parentMap = ensureAnalyticsObject(target, parent);
-    const itemMap = ensureAnalyticsObject(parentMap, itemId);
-    setAnalyticsObjectValue(itemMap, hour, value);
-    return;
-  }
-
-  if (!TWO_LEVEL_ANALYTICS_MAP_FIELDS.has(parent)) {
-    setAnalyticsObjectValue(target, key, value);
-    return;
-  }
-
-  const parentMap = ensureAnalyticsObject(target, parent);
-  setAnalyticsObjectValue(parentMap, childPath, value);
-};
-
-const writeAnalyticsEventNow = async (
-  updateData: Record<string, any>,
-  tenantId: string | number,
-  storeId: string | number,
-  projectId: string,
-  dateString: string,
-  storeTimeZone?: string,
-  businessDayEndTime?: string,
-) => {
-  const policyData = filterAnalyticsUpdateData(updateData);
-  if (Object.keys(policyData).length === 0) return;
-
-  const dailyDocRef = getDailyAnalyticsDocRef(tenantId, storeId, projectId, dateString);
-  const processedData: any = {};
-
-  Object.keys(policyData).forEach(key => {
-    const value = typeof policyData[key] === 'number'
-      ? increment(policyData[key])
-      : policyData[key];
-
-    assignProcessedAnalyticsField(processedData, key, value);
-  });
-
-  await setDoc(dailyDocRef, {
-    tId: String(tenantId),
-    sId: String(storeId),
-    projectId: String(projectId),
-    grain: DAILY_ANALYTICS_COLLECTION,
-    analyticsScope: 'customer',
-    surface: projectId === 'obp'
-      ? 'obp'
-      : projectId === 'customerApp'
-        ? 'customerApp'
-        : 'menu',
-    localDate: dateString,
-    storeTimeZone: storeTimeZone || 'UTC',
-    businessDayEndTime: businessDayEndTime || null,
-    ...processedData,
-    lastUpdated: serverTimestamp()
-  }, { merge: true });
-};
-
 const writeAnalyticsEventViaPublicApi = async (
-  updateData: Record<string, any>,
+  updateData: Record<string, AnalyticsWriteValue>,
   tenantId: string | number,
   storeId: string | number,
   projectId: string,
@@ -355,8 +191,47 @@ const writeAnalyticsEventViaPublicApi = async (
   });
 
   if (!response.ok) {
-    throw new Error(`Public analytics flush failed with HTTP ${response.status}`);
+    const retryAfterSeconds = Number(response.headers.get('Retry-After'));
+    const retryAfterMs = Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0
+      ? Math.min(retryAfterSeconds * 1000, ANALYTICS_FLUSH_MAX_RETRY_DELAY_MS)
+      : undefined;
+    throw new AnalyticsFlushHttpError(response.status, retryAfterMs);
   }
+};
+
+const isRetryableAnalyticsFlushError = (error: unknown): boolean => {
+  if (!(error instanceof AnalyticsFlushHttpError)) return true;
+  return error.status === 408
+    || error.status === 425
+    || error.status === 429
+    || error.status >= 500;
+};
+
+const getAnalyticsRetryDelayMs = (error: unknown, retryCount: number): number => {
+  if (error instanceof AnalyticsFlushHttpError && error.retryAfterMs) return error.retryAfterMs;
+  return Math.min(
+    ANALYTICS_FLUSH_DELAY_MS * (2 ** Math.max(0, retryCount - 1)),
+    ANALYTICS_FLUSH_MAX_RETRY_DELAY_MS,
+  );
+};
+
+const scheduleAnalyticsQueueFlush = (
+  queueKey: string,
+  delayMs: number,
+  forceEarlier = false,
+): void => {
+  const queued = analyticsWriteQueue.get(queueKey);
+  if (!queued) return;
+  if (queued.flushTimer && !forceEarlier) return;
+  if (queued.flushTimer) clearTimeout(queued.flushTimer);
+
+  queued.flushTimer = setTimeout(() => {
+    const current = analyticsWriteQueue.get(queueKey);
+    if (current) current.flushTimer = undefined;
+    void flushAnalyticsQueueKey(queueKey).catch((error) => {
+      reportAnalyticsQueueFlushError(queueKey, error, 'retry');
+    });
+  }, delayMs);
 };
 
 const flushAnalyticsQueueKey = async (queueKey: string) => {
@@ -366,43 +241,56 @@ const flushAnalyticsQueueKey = async (queueKey: string) => {
 
   flushingAnalyticsKeys.add(queueKey);
   if (queued.flushTimer) clearTimeout(queued.flushTimer);
+  queued.flushTimer = undefined;
+  const flushedData = { ...queued.updateData };
+  const flushedEventCount = queued.eventCount;
 
   try {
-    if (typeof window !== 'undefined') {
-      await writeAnalyticsEventViaPublicApi(
-        queued.updateData,
-        queued.tenantId,
-        queued.storeId,
-        queued.projectId,
-        queued.dateString,
-        queued.storeTimeZone,
-        queued.businessDayEndTime,
-      );
-    } else {
-      await writeAnalyticsEventNow(
-        queued.updateData,
-        queued.tenantId,
-        queued.storeId,
-        queued.projectId,
-        queued.dateString,
-        queued.storeTimeZone,
-        queued.businessDayEndTime,
-      );
+    await writeAnalyticsEventViaPublicApi(
+      flushedData,
+      queued.tenantId,
+      queued.storeId,
+      queued.projectId,
+      queued.dateString,
+      queued.storeTimeZone,
+      queued.businessDayEndTime,
+    );
+
+    const current = analyticsWriteQueue.get(queueKey);
+    if (current) {
+      current.updateData = subtractFlushedAnalyticsData(current.updateData, flushedData);
+      current.eventCount = Math.max(0, current.eventCount - flushedEventCount);
+      current.retryCount = 0;
+      current.createdAt = Date.now();
+      if (current.eventCount === 0 || Object.keys(current.updateData).length === 0) {
+        analyticsWriteQueue.delete(queueKey);
+      }
     }
-    analyticsWriteQueue.delete(queueKey);
     reportedAnalyticsQueueFailures.delete(queueKey);
     persistAnalyticsQueue();
   } catch (error) {
-    queued.flushTimer = setTimeout(() => {
-      void flushAnalyticsQueueKey(queueKey).catch((retryError) => {
-        reportAnalyticsQueueFlushError(queueKey, retryError, 'retry');
-      });
-    }, ANALYTICS_FLUSH_DELAY_MS);
-    analyticsWriteQueue.set(queueKey, queued);
+    const current = analyticsWriteQueue.get(queueKey);
+    const retryable = isRetryableAnalyticsFlushError(error);
+    if (current) {
+      current.retryCount += 1;
+      const expired = Date.now() - current.createdAt > ANALYTICS_QUEUE_MAX_AGE_MS;
+      if (!retryable || expired || current.retryCount >= ANALYTICS_QUEUE_MAX_RETRY_COUNT) {
+        analyticsWriteQueue.delete(queueKey);
+      } else {
+        scheduleAnalyticsQueueFlush(queueKey, getAnalyticsRetryDelayMs(error, current.retryCount), true);
+      }
+    }
     persistAnalyticsQueue();
     throw error;
   } finally {
     flushingAnalyticsKeys.delete(queueKey);
+    const pending = analyticsWriteQueue.get(queueKey);
+    if (pending && !pending.flushTimer) {
+      scheduleAnalyticsQueueFlush(
+        queueKey,
+        pending.eventCount >= ANALYTICS_FLUSH_MAX_EVENTS ? 0 : ANALYTICS_FLUSH_DELAY_MS,
+      );
+    }
   }
 };
 
@@ -415,80 +303,98 @@ const flushAllAnalyticsQueue = () => {
 };
 
 const enqueueAnalyticsWrite = (
-  updateData: Record<string, any>,
-  tenantId: string | number,
-  storeId: string | number,
+  updateData: Record<string, unknown>,
+  tenantId: string,
+  storeId: string,
   projectId: string,
   dateString: string,
   storeTimeZone?: string,
   businessDayEndTime?: string,
-) => {
+): boolean => {
   const policyData = filterAnalyticsUpdateData(updateData);
-  if (Object.keys(policyData).length === 0) return;
+  if (Object.keys(policyData).length === 0) return false;
 
   const queueKey = getAnalyticsQueueKey(tenantId, storeId, projectId, dateString);
   const existing = analyticsWriteQueue.get(queueKey);
 
   if (existing) {
-    mergeQueuedAnalyticsData(existing.updateData, policyData);
-    existing.eventCount += 1;
-
-    if (existing.eventCount >= ANALYTICS_FLUSH_MAX_EVENTS) {
+    const mergedFieldCount = new Set([
+      ...Object.keys(existing.updateData),
+      ...Object.keys(policyData),
+    ]).size;
+    if (mergedFieldCount > 100 && !flushingAnalyticsKeys.has(queueKey)) {
       void flushAnalyticsQueueKey(queueKey).catch((error) => {
         reportAnalyticsQueueFlushError(queueKey, error, 'flush');
       });
     }
+    if (mergedFieldCount > 200) return false;
+
+    mergeAnalyticsUpdateData(existing.updateData, policyData);
+    existing.eventCount += 1;
+
+    if (existing.eventCount >= ANALYTICS_FLUSH_MAX_EVENTS) {
+      scheduleAnalyticsQueueFlush(queueKey, 0, true);
+    }
     persistAnalyticsQueue();
-    return;
+    return true;
+  }
+
+  if (analyticsWriteQueue.size >= ANALYTICS_QUEUE_MAX_ENTRIES) {
+    if (!reportedAnalyticsQueueCapacityFailure) {
+      reportedAnalyticsQueueCapacityFailure = true;
+      logAnalyticsFailure('analytics_queue_capacity_exceeded', undefined, {
+        queueEntryCount: analyticsWriteQueue.size,
+        queuedEventCount: getQueuedAnalyticsEventCount(),
+      });
+    }
+    return false;
   }
 
   const queued: QueuedAnalyticsWrite = {
-    tenantId: String(tenantId),
-    storeId: String(storeId),
-    projectId: String(projectId),
+    tenantId,
+    storeId,
+    projectId,
     dateString,
     storeTimeZone,
     businessDayEndTime,
     updateData: { ...policyData },
     eventCount: 1,
+    retryCount: 0,
+    createdAt: Date.now(),
   };
 
-  queued.flushTimer = setTimeout(() => {
-    void flushAnalyticsQueueKey(queueKey).catch((error) => {
-      reportAnalyticsQueueFlushError(queueKey, error, 'flush');
-    });
-  }, ANALYTICS_FLUSH_DELAY_MS);
-
   analyticsWriteQueue.set(queueKey, queued);
+  reportedAnalyticsQueueCapacityFailure = false;
+  scheduleAnalyticsQueueFlush(queueKey, ANALYTICS_FLUSH_DELAY_MS);
   persistAnalyticsQueue();
+  return true;
 };
 
 if (typeof window !== 'undefined') {
   try {
     const persisted = window.localStorage.getItem(ANALYTICS_QUEUE_STORAGE_KEY);
-    const entries = persisted ? JSON.parse(persisted) : [];
-    if (Array.isArray(entries)) {
-      entries.forEach(([queueKey, queued]) => {
-        if (!queueKey || !queued?.updateData) return;
-        const currentLocalDate = getBusinessAnalyticsDateKey(new Date(), queued.storeTimeZone, queued.businessDayEndTime);
-        const oldestRecoverableDate = addDaysToAnalyticsDateKey(currentLocalDate, -1);
-        if (String(queued.dateString || '') < oldestRecoverableDate) return;
-        analyticsWriteQueue.set(queueKey, {
-          tenantId: String(queued.tenantId),
-          storeId: String(queued.storeId),
-          projectId: String(queued.projectId),
-          dateString: String(queued.dateString),
-          storeTimeZone: queued.storeTimeZone,
-          businessDayEndTime: queued.businessDayEndTime,
-          updateData: filterAnalyticsUpdateData(queued.updateData),
-          eventCount: queued.eventCount || 1,
-        });
-        void flushAnalyticsQueueKey(queueKey).catch((error) => {
-          reportAnalyticsQueueFlushError(queueKey, error, 'persisted');
-        });
-      });
-      persistAnalyticsQueue();
+    if (persisted && persisted.length > ANALYTICS_QUEUE_MAX_STORAGE_CHARS) {
+      throw new Error('analytics_persisted_queue_storage_limit_exceeded');
     }
+    const entries = normalizePersistedAnalyticsQueue(persisted ? JSON.parse(persisted) : []);
+    entries.forEach((queued) => {
+      analyticsWriteQueue.set(queued.queueKey, {
+        tenantId: queued.tenantId,
+        storeId: queued.storeId,
+        projectId: queued.projectId,
+        dateString: queued.dateString,
+        storeTimeZone: queued.storeTimeZone,
+        businessDayEndTime: queued.businessDayEndTime,
+        updateData: queued.updateData,
+        eventCount: queued.eventCount,
+        retryCount: queued.retryCount,
+        createdAt: queued.createdAt,
+      });
+      void flushAnalyticsQueueKey(queued.queueKey).catch((error) => {
+        reportAnalyticsQueueFlushError(queued.queueKey, error, 'persisted');
+      });
+    });
+    persistAnalyticsQueue();
   } catch (error) {
     logAnalyticsFailure('analytics_persisted_queue_invalid', error);
     window.localStorage.removeItem(ANALYTICS_QUEUE_STORAGE_KEY);
@@ -503,95 +409,14 @@ if (typeof window !== 'undefined') {
   });
 }
 
-/**
- * Converts Firestore data to proper types
- */
-const convertFirestoreData = (doc: DocumentData): any => {
-  const data = doc.data();
-
-  // Convert Firestore Timestamps to JavaScript Dates
-  if (data) {
-    Object.keys(data).forEach(key => {
-      if (data[key] instanceof Timestamp) {
-        data[key] = data[key].toDate();
-      }
-    });
-    return { ...data, id: doc.id };
-  }
-
-  return null;
-};
-
-/**
- * Get analytics summary for a specific project
- * Document key: {tId}_{sId}_{projectId}_overall_summary
- */
-export const getAnalyticsSummary = async (tId: string | number, sId: string | number, projectId: string) => {
-  return await apiCallComposer(
-    async () => {
-      const summaryDocRef = getAnalyticsSummaryDocRef(tId, sId, projectId);
-      const docSnap = await getDoc(summaryDocRef);
-
-      if (docSnap.exists()) {
-        return convertFirestoreData(docSnap);
-      } else {
-        return null;
-      }
-    },
-    "getAnalyticsSummary"
-  );
-};
-
-/**
- * Get daily analytics for a specific date and project
- * Document key: {tId}_{sId}_{projectId}_daily_{date}
- */
-export const getDailyAnalytics = async (tId: string | number, sId: string | number, projectId: string, date: string) => {
-  return await apiCallComposer(
-    async () => {
-      const dailyDocRef = getDailyAnalyticsDocRef(tId, sId, projectId, date);
-      const docSnap = await getDoc(dailyDocRef);
-
-      if (docSnap.exists()) {
-        return convertFirestoreData(docSnap);
-      } else {
-        return null;
-      }
-    },
-    "getDailyAnalytics"
-  );
-};
-
-/**
- * Get daily analytics for a date range for a specific project
- * Document key pattern: {tId}_{sId}_{projectId}_daily_{date}
- */
-export const getDailyAnalyticsRange = async (tId: string | number, sId: string | number, projectId: string, startDate: string, endDate: string) => {
-  return await apiCallComposer(
-    async () => {
-      const collectionRef = collection(firebaseClient, COLLECTION);
-
-      // Create the prefix for our documents: {tId}_{sId}_{projectId}_daily_
-      const docPrefix = `${tId}_${sId}_${projectId}_${DAILY_ANALYTICS_COLLECTION}_`;
-
-      // Query documents within date range, ordered by date
-      const q = query(
-        collectionRef,
-        where('__name__', '>=', `${docPrefix}${startDate}`),
-        where('__name__', '<=', `${docPrefix}${endDate}`),
-        orderBy('__name__')
-      );
-
-      const querySnapshot = await getDocs(q);
-
-      if (querySnapshot.empty) {
-        return [];
-      } else {
-        return querySnapshot.docs.map(doc => convertFirestoreData(doc));
-      }
-    },
-    "getDailyAnalyticsRange"
-  );
+const getDailyAnalyticsDocument = async (
+  tId: string,
+  sId: string,
+  projectId: string,
+  date: string,
+) => {
+  const docSnap = await getDoc(getDailyAnalyticsDocRef(tId, sId, projectId, date));
+  return docSnap.exists() ? normalizeDailyAnalytics(docSnap.data(), date) : null;
 };
 
 export const getOptimizedAnalyticsData = async (
@@ -605,39 +430,60 @@ export const getOptimizedAnalyticsData = async (
 ) => {
   return await apiCallComposer(
     async () => {
-      const dashboardRef = getAnalyticsDashboardSummaryDocRef(tId, sId, projectId);
+      const tenantId = normalizeAnalyticsScopeDocumentId(tId);
+      const storeId = normalizeAnalyticsScopeDocumentId(sId);
+      const analyticsProjectId = normalizeAnalyticsProjectId(projectId);
+      const normalizedStartDate = normalizeAnalyticsDateKey(startDate);
+      const normalizedEndDate = normalizeAnalyticsDateKey(endDate);
+      if (
+        !tenantId
+        || !storeId
+        || !analyticsProjectId
+        || !normalizedStartDate
+        || !normalizedEndDate
+        || normalizedStartDate > normalizedEndDate
+      ) {
+        throw new Error('Invalid analytics read scope or date range');
+      }
+
+      const dashboardRef = getAnalyticsDashboardSummaryDocRef(tenantId, storeId, analyticsProjectId);
       const dashboardSnap = await getDoc(dashboardRef);
       const todayKey = getBusinessAnalyticsDateKey(new Date(), timeZone, businessDayEndTime);
 
       if (dashboardSnap.exists()) {
-        const dashboardData = dashboardSnap.data();
-        const daily30d = Array.isArray(dashboardData.daily30d) ? dashboardData.daily30d : [];
-        const lastSettledLocalDate = String(dashboardData.lastSettledLocalDate || '');
-        const firstCachedDate = daily30d[0]?.date ? String(daily30d[0].date) : '';
-        const rangeNeedsToday = endDate >= todayKey;
-        const settledEndDate = rangeNeedsToday ? lastSettledLocalDate : endDate;
+        const dashboardData = normalizeAnalyticsDashboardReadModel(
+          dashboardSnap.data(),
+          tenantId,
+          storeId,
+          analyticsProjectId,
+        );
+        if (!dashboardData) throw new Error('Invalid analytics dashboard read model');
+        const daily30d = dashboardData.daily30d;
+        const lastSettledLocalDate = dashboardData.lastSettledLocalDate;
+        const firstCachedDate = daily30d[0]?.date || '';
+        const rangeNeedsToday = normalizedEndDate >= todayKey;
+        const settledEndDate = rangeNeedsToday ? lastSettledLocalDate : normalizedEndDate;
         const canUseCachedRange = Boolean(
           firstCachedDate &&
           lastSettledLocalDate &&
-          startDate >= firstCachedDate &&
+          normalizedStartDate >= firstCachedDate &&
           settledEndDate <= lastSettledLocalDate
         );
 
         if (canUseCachedRange) {
-          const daily = daily30d.filter((day: any) => {
-            const date = String(day.date || '');
-            return date >= startDate && date <= settledEndDate;
+          const daily = daily30d.filter((day) => {
+            return day.date >= normalizedStartDate && day.date <= settledEndDate;
           });
 
-          if (rangeNeedsToday && todayKey >= startDate) {
-            const todayDoc = await getDailyAnalytics(tId, sId, projectId, todayKey);
+          if (rangeNeedsToday && todayKey >= normalizedStartDate) {
+            const todayDoc = await getDailyAnalyticsDocument(tenantId, storeId, analyticsProjectId, todayKey);
             if (todayDoc) {
               daily.push(todayDoc);
             }
           }
 
           return {
-            summary: dashboardData.analyticsSummary || null,
+            summary: dashboardData.analyticsSummary,
             daily,
             source: rangeNeedsToday ? 'dashboard_summary_plus_today' : 'dashboard_summary',
           };
@@ -655,31 +501,11 @@ export const getOptimizedAnalyticsData = async (
 };
 
 /**
- * Get top performing menu items for a specific project
- */
-export const getTopItems = async (tId: string | number, sId: string | number, projectId: string, limit: number = 10) => {
-  return await apiCallComposer(
-    async () => {
-      const summaryDocRef = getAnalyticsSummaryDocRef(tId, sId, projectId);
-      const docSnap = await getDoc(summaryDocRef);
-
-      if (docSnap.exists() && docSnap.data()?.topItems) {
-        // Return top N items from the summary document
-        return docSnap.data()?.topItems.slice(0, limit);
-      } else {
-        return [];
-      }
-    },
-    "getTopItems"
-  );
-};
-
-/**
  * Track an analytics event by updating the daily document
  * Document key: {tId}_{sId}_{projectId}_daily_{date}
  */
 export const trackAnalyticsEvent = async (
-  updateData: any,
+  updateData: Record<string, unknown>,
   tenantId?: string | number,
   storeId?: string | number,
   projectId?: string,
@@ -699,20 +525,33 @@ export const trackAnalyticsEvent = async (
   }
 
   try {
-    const dateString = getBusinessAnalyticsDateKey(new Date(), storeTimeZone, businessDayEndTime);
-
-    // Public analytics must not go through apiCallComposerClient. That wrapper
-    // fetches auth/session state and dispatches global loaders per event, which
-    // is wrong for anonymous customer surfaces and defeats the local write queue.
-    if (typeof window !== 'undefined') {
-      enqueueAnalyticsWrite(updateData, tenantId, storeId, projectId, dateString, storeTimeZone, businessDayEndTime);
-      return true;
+    const normalizedTenantId = normalizeAnalyticsScopeDocumentId(tenantId);
+    const normalizedStoreId = normalizeAnalyticsScopeDocumentId(storeId);
+    const normalizedProjectId = normalizeAnalyticsProjectId(projectId);
+    if (!normalizedTenantId || !normalizedStoreId || !normalizedProjectId) {
+      logAnalyticsFailure('analytics_invalid_write_scope', undefined, getAnalyticsTrackingContext({
+        tenantId,
+        storeId,
+        projectId,
+      }));
+      return false;
     }
 
-    // Server-side callers cannot rely on browser localStorage/timers, so keep
-    // the write direct outside the client queue.
-    await writeAnalyticsEventNow(updateData, tenantId, storeId, projectId, dateString, storeTimeZone, businessDayEndTime);
-    return true;
+    const dateString = getBusinessAnalyticsDateKey(new Date(), storeTimeZone, businessDayEndTime);
+
+    // Anonymous customer tracking is browser-only and always crosses the
+    // validated Admin-backed public route. Server callers must use an explicit
+    // server analytics helper with independently validated scope.
+    if (typeof window === 'undefined') return false;
+    return enqueueAnalyticsWrite(
+      updateData,
+      normalizedTenantId,
+      normalizedStoreId,
+      normalizedProjectId,
+      dateString,
+      storeTimeZone,
+      businessDayEndTime,
+    );
   } catch (error) {
     logAnalyticsFailure('analytics_enqueue_failed', error, getAnalyticsTrackingContext({
       tenantId,
@@ -720,59 +559,6 @@ export const trackAnalyticsEvent = async (
       projectId,
       storeTimeZone,
       businessDayEndTime,
-    }));
-    return false;
-  }
-};
-
-/**
- * Update the analytics summary document with new data
- * Document key: {tId}_{sId}_{projectId}_overall_summary
- */
-const updateAnalyticsSummary = async (
-  updateData: any,
-  tenantId: string | number,
-  storeId: string | number,
-  projectId: string
-) => {
-  try {
-    // Get reference to summary document: {tId}_{sId}_{projectId}_overall_summary
-    const summaryDocRef = getAnalyticsSummaryDocRef(tenantId, storeId, projectId);
-
-    // Prepare data for summary document
-    const summaryData: any = {};
-
-    // Process the update data for summary
-    Object.keys(updateData).forEach(key => {
-      // Skip hourly data in summary
-      if (key.startsWith('hourly')) return;
-
-      // For core metrics, update lifetime totals
-      if (key === 'totalViews') {
-        summaryData['lifetimeTotalViews'] = updateData[key];
-      } else if (key === 'totalClicks') {
-        summaryData['lifetimeTotalClicks'] = updateData[key];
-      } else if (!key.startsWith('itemNames')) {
-        // Include other metrics except itemNames
-        summaryData[key] = updateData[key];
-      }
-    });
-
-    // Add last updated timestamp
-    summaryData.lastUpdated = serverTimestamp();
-
-    // Update summary document with merge
-    await setDoc(summaryDocRef, summaryData, { merge: true });
-
-    // Summary aggregation is intentionally limited to the fields written above;
-    // scheduled analytics aggregation owns heavier rolling-period computation.
-
-    return true;
-  } catch (error) {
-    logAnalyticsFailure('analytics_summary_update_failed', error, getAnalyticsTrackingContext({
-      tenantId,
-      storeId,
-      projectId,
     }));
     return false;
   }

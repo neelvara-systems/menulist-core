@@ -52,6 +52,8 @@ export default function MobileNavigation({ activeTab, onTabChange, feedbackCount
 
     return (
         <div
+            aria-label="Primary mobile navigation"
+            role="navigation"
             style={{
                 backgroundColor: token.colorBgElevated,
                 borderTop: `1px solid ${token.colorBorderSecondary}`,
@@ -78,6 +80,8 @@ export default function MobileNavigation({ activeTab, onTabChange, feedbackCount
                     const isMoreTab = tab.key === 'more';
                     const tabButton = (
                         <Button
+                            aria-label={tab.title}
+                            aria-pressed={isActive}
                             key={tab.key}
                             fill="none"
                             onClick={() => {

@@ -62,6 +62,7 @@ export type OwnerNotificationEventDoc = {
     createdAt: Timestamp;
     updatedAt: Timestamp;
     processingStartedAt?: Timestamp;
+    processingAttempt?: number;
     processedAt?: Timestamp;
     error?: string | null;
 };
@@ -84,6 +85,7 @@ export type OwnerNotificationFormattingContext = {
 };
 
 export type OwnerNotificationScope = {
+    readCount: number;
     storeData?: Record<string, any> | null;
     workspaceData?: Record<string, any> | null;
 };
@@ -109,4 +111,7 @@ export type OwnerNotificationProcessResult = {
     sent: number;
     failed: number;
     skipped: number;
+    created?: boolean;
+    claimed?: boolean;
+    claimReason?: 'not_found_or_product_mismatch' | 'not_claimable';
 };

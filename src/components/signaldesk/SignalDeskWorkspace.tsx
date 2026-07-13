@@ -11,8 +11,15 @@ import { useAppSelector } from "@hook/useAppSelector";
 import { useSignalDeskOverview } from "@hook/signaldesk/useSignalDeskOverview";
 import { getDarkModeState, getSidebarState, toggleDarkMode, toggleSidbar } from "@reduxSlices/clientThemeConfig";
 import type {
+    SignalDeskAiShadowReviewDecision,
+    SignalDeskAiVolumeRunSummary,
+    SignalDeskAiVolumeTask,
+    SignalDeskApprovalRejectionReason,
     SignalDeskApprovalItem,
     SignalDeskKillSwitchScope,
+    SignalDeskManualContactResult,
+    SignalDeskManualContactRoute,
+    SignalDeskProofPermissionScope,
     SignalDeskRole,
     SignalDeskSection,
     SignalDeskTargetSummary,
@@ -34,17 +41,9 @@ import type {
 import { Children, isValidElement, useEffect, useMemo, useState } from "react";
 import {
     LuAlertTriangle,
-    LuArchive,
     LuBarChart3,
     LuBell,
-    LuBriefcase,
-    LuClipboardCheck,
-    LuDatabase,
-    LuFileText,
-    LuGlobe2,
     LuInbox,
-    LuListChecks,
-    LuMegaphone,
     LuMenu,
     LuMoon,
     LuPanelLeftClose,
@@ -52,10 +51,7 @@ import {
     LuPauseCircle,
     LuRefreshCw,
     LuRouter,
-    LuSend,
-    LuSettings,
     LuShield,
-    LuSparkles,
     LuSun,
     LuTarget,
 } from "react-icons/lu";
@@ -65,6 +61,75 @@ import styles from "./SignalDeskWorkspace.module.scss";
 const { Content } = Layout;
 const { Text } = Typography;
 const SIGNALDESK_SIDEBAR_EXPANDED_WIDTH = 220;
+const SIGNALDESK_AI_VOLUME_RETRY_STORAGE_KEY = "menulist.signaldesk.ai-volume-retry-v1";
+const SIGNALDESK_ACTIVATION_SURFACES = ["qr", "whatsapp", "google-profile", "instagram", "website", "print", "other"] as const;
+const SIGNALDESK_PUBLIC_PROOF_SCOPES = new Set<SignalDeskProofPermissionScope>([
+    "business-name",
+    "logo",
+    "quotation",
+    "before-after-screenshots",
+    "public-case-study",
+    "partner-material",
+]);
+const SIGNALDESK_APPROVAL_REJECTION_OPTIONS: Array<{ label: string; value: SignalDeskApprovalRejectionReason }> = [
+    { label: "Evidence weak or stale", value: "evidence-weak-or-stale" },
+    { label: "Identity uncertain", value: "identity-uncertain" },
+    { label: "No customer-truth gap", value: "no-customer-truth-gap" },
+    { label: "Contact route not allowed", value: "contact-route-not-allowed" },
+    { label: "Already solved", value: "already-solved" },
+    { label: "Wrong segment", value: "wrong-segment" },
+    { label: "Duplicate", value: "duplicate" },
+    { label: "Other", value: "other" },
+];
+const SIGNALDESK_MANUAL_CONTACT_RESULTS: Array<{ label: string; value: SignalDeskManualContactResult }> = [
+    { label: "Contacted", value: "contacted" },
+    { label: "No answer", value: "no-answer" },
+    { label: "Requested later", value: "requested-later" },
+    { label: "Declined", value: "declined" },
+    { label: "Wrong contact", value: "wrong-contact" },
+    { label: "Introduced", value: "introduced" },
+];
+
+type SignalDeskAiVolumeRetryPayload = {
+    idempotencyKey: string;
+    instruction?: string;
+    maxEstimatedCostUsd: number;
+    targetIds: string[];
+    tasks: SignalDeskAiVolumeTask[];
+};
+
+const parseAiVolumeRetryPayload = (value: string | null): SignalDeskAiVolumeRetryPayload | null => {
+    if (!value) return null;
+    try {
+        const parsed = JSON.parse(value) as Partial<SignalDeskAiVolumeRetryPayload>;
+        const allowedTasks: SignalDeskAiVolumeTask[] = ["score", "evidence", "draft", "reply-classification"];
+        if (
+            typeof parsed.idempotencyKey !== "string"
+            || parsed.idempotencyKey.length < 8
+            || parsed.idempotencyKey.length > 180
+            || typeof parsed.maxEstimatedCostUsd !== "number"
+            || parsed.maxEstimatedCostUsd < 0.01
+            || parsed.maxEstimatedCostUsd > 5
+            || !Array.isArray(parsed.targetIds)
+            || parsed.targetIds.length < 1
+            || parsed.targetIds.length > 5
+            || parsed.targetIds.some((targetId) => typeof targetId !== "string" || targetId.length < 3 || targetId.length > 160)
+            || !Array.isArray(parsed.tasks)
+            || parsed.tasks.length < 1
+            || parsed.tasks.length > 3
+            || parsed.tasks.some((task) => !allowedTasks.includes(task))
+        ) return null;
+        return {
+            idempotencyKey: parsed.idempotencyKey,
+            instruction: typeof parsed.instruction === "string" ? parsed.instruction.slice(0, 500) : undefined,
+            maxEstimatedCostUsd: parsed.maxEstimatedCostUsd,
+            targetIds: Array.from(new Set(parsed.targetIds)),
+            tasks: Array.from(new Set(parsed.tasks)),
+        };
+    } catch {
+        return null;
+    }
+};
 
 type WorkspaceButtonProps = ButtonHTMLAttributes<HTMLButtonElement>;
 type WorkspaceInputProps = InputHTMLAttributes<HTMLInputElement>;
@@ -208,13 +273,13 @@ function WorkspaceTextarea({
 const SECTION_META: Record<SignalDeskSection, { description: string; label: string; title: string }> = {
     dashboard: {
         description: "Observe system movement, monitor risk, and approve only the work that needs human control.",
-        label: "Dashboard",
-        title: "SignalDesk Dashboard",
+        label: "Today",
+        title: "Today",
     },
     mission: {
         description: "Daily founder mission, experiment cards, approved offers, reply playbooks, and source-learning decisions.",
-        label: "Mission",
-        title: "Daily Growth Mission",
+        label: "Opportunities",
+        title: "Opportunities",
     },
     revenue: {
         description: "Commercial accounts, opportunities, standard offers, bounded operating envelopes, activation watches, and founder attention.",
@@ -243,13 +308,13 @@ const SECTION_META: Record<SignalDeskSection, { description: string; label: stri
     },
     inbox: {
         description: "Manual replies, classification, and suppression-sensitive conversations.",
-        label: "Inbox",
-        title: "Inbox",
+        label: "Conversations",
+        title: "Conversations",
     },
     attribution: {
         description: "MenuList outcomes and demand signals.",
-        label: "Attribution",
-        title: "Outcome Bridge",
+        label: "Activations",
+        title: "Activations",
     },
     policies: {
         description: "Source policy and template seeds.",
@@ -288,8 +353,8 @@ const SECTION_META: Record<SignalDeskSection, { description: string; label: stri
     },
     "control-room": {
         description: "Pause, redirect, and monitor health across sources, channels, cost, and queues.",
-        label: "Control Room",
-        title: "Control Room",
+        label: "Controls",
+        title: "Controls",
     },
     audit: {
         description: "Admin audit trail.",
@@ -304,25 +369,12 @@ type SignalDeskNavItem = {
     section: SignalDeskSection;
 };
 
-const NAV_ITEMS: SignalDeskNavItem[] = [
+const PRIMARY_NAV_ITEMS: SignalDeskNavItem[] = [
     { href: SIGNALDESK_ROUTES.DASHBOARD, icon: LuBarChart3, section: "dashboard" },
-    { href: SIGNALDESK_ROUTES.MISSION, icon: LuListChecks, section: "mission" },
-    { href: SIGNALDESK_ROUTES.REVENUE, icon: LuBriefcase, section: "revenue" },
-    { href: SIGNALDESK_ROUTES.TARGETS, icon: LuTarget, section: "targets" },
-    { href: SIGNALDESK_ROUTES.IMPORTS, icon: LuDatabase, section: "imports" },
-    { href: SIGNALDESK_ROUTES.APPROVALS, icon: LuClipboardCheck, section: "approvals" },
-    { href: SIGNALDESK_ROUTES.TEMPLATES, icon: LuFileText, section: "templates" },
-    { href: SIGNALDESK_ROUTES.INBOX, icon: LuInbox, section: "inbox" },
-    { href: SIGNALDESK_ROUTES.ATTRIBUTION, icon: LuRouter, section: "attribution" },
-    { href: SIGNALDESK_ROUTES.POLICIES, icon: LuShield, section: "policies" },
-    { href: SIGNALDESK_ROUTES.SOURCES, icon: LuGlobe2, section: "sources" },
-    { href: SIGNALDESK_ROUTES.AI, icon: LuSparkles, section: "ai" },
-    { href: SIGNALDESK_ROUTES.CHANNELS, icon: LuSend, section: "channels" },
-    { href: SIGNALDESK_ROUTES.CONTENT, icon: LuMegaphone, section: "content" },
-    { href: SIGNALDESK_ROUTES.PARTNERS, icon: LuTarget, section: "partners" },
-    { href: SIGNALDESK_ROUTES.SETTINGS, icon: LuSettings, section: "settings" },
-    { href: SIGNALDESK_ROUTES.CONTROL_ROOM, icon: LuAlertTriangle, section: "control-room" },
-    { href: SIGNALDESK_ROUTES.AUDIT, icon: LuArchive, section: "audit" },
+    { href: SIGNALDESK_ROUTES.OPPORTUNITIES, icon: LuTarget, section: "mission" },
+    { href: SIGNALDESK_ROUTES.CONVERSATIONS, icon: LuInbox, section: "inbox" },
+    { href: SIGNALDESK_ROUTES.ACTIVATIONS, icon: LuRouter, section: "attribution" },
+    { href: SIGNALDESK_ROUTES.CONTROLS, icon: LuShield, section: "control-room" },
 ];
 
 const PAUSE_SCOPES: SignalDeskKillSwitchScope[] = [
@@ -365,8 +417,8 @@ const MARKET_SEARCH_PRESETS = [
 ];
 
 const tagClass = (tone?: string) => {
-    if (tone === "good" || tone === "healthy" || tone === "active" || tone === "approved" || tone === "interested" || tone === "ready" || tone === "completed" || tone === "verified") return styles.tagGood;
-    if (tone === "warning" || tone === "partial" || tone === "paused" || tone === "stale" || tone === "pending" || tone === "queued" || tone === "needs_review" || tone === "hold" || tone === "held" || tone === "evaluation" || tone === "candidate") return styles.tagWarning;
+    if (tone === "good" || tone === "healthy" || tone === "active" || tone === "approved" || tone === "accepted" || tone === "interested" || tone === "ready" || tone === "completed" || tone === "verified") return styles.tagGood;
+    if (tone === "warning" || tone === "partial" || tone === "paused" || tone === "stale" || tone === "pending" || tone === "queued" || tone === "needs_review" || tone === "hold" || tone === "held" || tone === "edited" || tone === "evaluation" || tone === "candidate") return styles.tagWarning;
     if (tone === "danger" || tone === "missing" || tone === "over_limit" || tone === "critical" || tone === "rejected" || tone === "dnc" || tone === "blocked" || tone === "failed" || tone === "disabled" || tone === "suppressed") return styles.tagDanger;
     return styles.tag;
 };
@@ -377,6 +429,8 @@ const metricClass = (tone?: string) => [
     tone === "warning" ? styles.metricToneWarning : "",
     tone === "danger" ? styles.metricToneDanger : "",
 ].filter(Boolean).join(" ");
+
+const formatRate = (value?: number | null) => `${Math.round(Math.max(0, Number(value) || 0) * 100)}%`;
 
 const parseImportRows = (raw: string) => raw
     .split(/\n+/)
@@ -627,65 +681,6 @@ const opportunityLabelForLead = (opportunity?: string | null) => {
     return "Menu presence unclear";
 };
 
-const sourceLabelForLead = (sourceRefs: string[] = [], sourcePolicyId?: string | null) => {
-    const firstSource = sourceRefs[0] || (sourcePolicyId ? `source-policy:${sourcePolicyId}` : "");
-    if (!firstSource) return "source pending";
-    return firstSource
-        .replace("source-policy:", "policy ")
-        .replace("source-run:", "run ")
-        .replace("provider-run:", "provider ");
-};
-
-const leadStatusForDecision = (decision?: string): LeadPlan => {
-    if (decision === "pass") return { detail: "Ready for founder review", label: "Validated", tone: "good" };
-    if (decision === "unsure") return { detail: "Needs one more evidence check", label: "Needs evidence", tone: "warning" };
-    return { detail: "Keep out of today's actions", label: "Hold", tone: "danger" };
-};
-
-const contactPlanForLead = (contactability?: string, recommendedNextAction?: string): LeadPlan => {
-    if (recommendedNextAction === "hold") {
-        return { detail: "Not safe for outreach from this batch.", label: "Do not contact", tone: "danger" };
-    }
-    if (recommendedNextAction === "partner-review") {
-        return { detail: "Use partner intro review, not consumer-style influencer outreach.", label: "Partner intro", tone: "warning" };
-    }
-    if (recommendedNextAction === "pod-review") {
-        return { detail: "Review pod fit before any target action.", label: "Pod review", tone: "warning" };
-    }
-    if (contactability === "ready") {
-        return { detail: "Use only after evidence and approval gates pass.", label: "Email/export likely", tone: "good" };
-    }
-    if (contactability === "limited") {
-        return { detail: "Prefer website/contact form or assisted social, then approval.", label: "Manual contact path", tone: "warning" };
-    }
-    if (contactability === "blocked") {
-        return { detail: "Source/evidence use only. Do not use for outreach.", label: "Source-only", tone: "danger" };
-    }
-    return { detail: "Find a permitted contact path before outreach.", label: "Contact missing", tone: "warning" };
-};
-
-const sharePlanForLead = (currentListGap?: string | null, recommendedNextAction?: string): LeadPlan => {
-    if (recommendedNextAction === "partner-review") {
-        return { detail: "Ask for trusted intros around one current customer-ready menu link.", label: "Partner brief", tone: "warning" };
-    }
-    if (recommendedNextAction === "hold") {
-        return { detail: "No message until the row is reviewed again.", label: "No message", tone: "danger" };
-    }
-    if (currentListGap === "pdf-only") {
-        return { detail: "Turn the PDF menu into one mobile current link for QR, WhatsApp, Google/Profile, and Instagram.", label: "PDF to live link", tone: "good" };
-    }
-    if (currentListGap === "instagram-only") {
-        return { detail: "Keep Instagram for discovery, but use one reviewed current menu link as the customer source.", label: "Instagram plus current link", tone: "good" };
-    }
-    if (currentListGap === "missing-current-list" || currentListGap === "no-link") {
-        return { detail: "Create one current menu link customers can open from QR, WhatsApp, Google/Profile, and Instagram.", label: "One current menu link", tone: "good" };
-    }
-    if (currentListGap === "stale-menu") {
-        return { detail: "Prepare a reviewed current-menu preview so outdated links do not keep spreading.", label: "Refresh current menu", tone: "warning" };
-    }
-    return { detail: "Use only evidence-backed current-list wording.", label: "Evidence-bound message", tone: "warning" };
-};
-
 const actionLabelForLead = (action?: string) => {
     if (action === "score") return "Score next";
     if (action === "evidence") return "Build evidence";
@@ -751,66 +746,64 @@ function TodayLeadBatch({
     onScore: (targetId: string) => void;
     saving: boolean;
 }) {
-    const latestResearchRunId = data.workspace.researchRuns[0]?.researchRunId;
-    const researchRows = latestResearchRunId
-        ? data.workspace.researchTableRows.filter((row) => row.researchRunId === latestResearchRunId)
-        : data.workspace.researchTableRows;
-    const rows = researchRows
-        .filter((row) => row.fitDecision !== "fail")
-        .slice()
-        .sort((left, right) => {
-            const decisionRank = (decision: string) => decision === "pass" ? 0 : decision === "unsure" ? 1 : 2;
-            return decisionRank(left.fitDecision) - decisionRank(right.fitDecision) || right.fitScore - left.fitScore;
-        })
-        .slice(0, 30);
-    const fallbackTargets = researchRows.length ? [] : data.workspace.targets
-        .filter((target) => target.suppressionStatus === "clear" && target.segment !== "hold" && target.segment !== "reject" && target.nextAction !== "hold" && target.nextAction !== "reject")
-        .slice(0, 30);
-    const emptyMessage = researchRows.length
-        ? "Latest market search produced no actionable leads. Refine the prompt or source."
-        : "Run a market search to prepare today's lead batch.";
+    const inventory = data.workspace.activationOpportunities.filter((opportunity) => (
+        opportunity.state !== "activated"
+        && opportunity.state !== "closed"
+        && opportunity.state !== "rejected"
+    ));
+    const decisions = inventory.slice(0, 5);
 
     return (
         <div className={styles.panelWide}>
             <div className={styles.panelHeader}>
-                <h2>Today&apos;s Lead Batch</h2>
-                <span className={styles.tag}>{rows.length || fallbackTargets.length}/30</span>
+                <h2>Today&apos;s Decisions</h2>
+                <span className={styles.tag}>{decisions.length} shown / {inventory.length} inventory</span>
             </div>
-            {rows.length ? (
+            {decisions.length ? (
                 <div className={styles.table}>
-                    {rows.map((row) => {
-                        const contactPlan = contactPlanForLead(row.contactability, row.recommendedNextAction);
-                        const sharePlan = sharePlanForLead(row.currentListGap, row.recommendedNextAction);
-                        const statusPlan = leadStatusForDecision(row.fitDecision);
+                    {decisions.map((opportunity) => {
+                        const target = data.workspace.targets.find((item) => item.targetId === opportunity.targetId);
+                        const researchRow = data.workspace.researchTableRows.find((row) => row.targetId === opportunity.targetId);
+                        const controlAction = opportunity.state === "actionable" || opportunity.state === "verified"
+                            ? researchRow?.recommendedNextAction || target?.nextAction || "evidence"
+                            : "hold";
                         return (
-                            <div className={styles.leadCard} key={row.researchRowId}>
+                            <div className={styles.leadCard} key={opportunity.activationOpportunityId}>
                                 <div className={styles.leadCardHeader}>
                                     <div>
-                                        <strong>{row.displayName}</strong>
-                                        <span>{[row.category, row.city, row.country].filter(Boolean).join(" / ") || "Unknown location"}</span>
+                                        <strong>{opportunity.displayName}</strong>
+                                        <span>{[opportunity.category, opportunity.city].filter(Boolean).join(" / ") || "Location needs review"}</span>
                                     </div>
                                     <div className={styles.leadScore}>
-                                        <span className={tagClass(statusPlan.tone)}>{statusPlan.label}</span>
-                                        <span>{row.fitScore}/100</span>
+                                        <span className={tagClass(opportunity.state === "suppressed" || opportunity.state === "expired" ? "danger" : opportunity.state === "engaged" || opportunity.state === "activation_started" ? "good" : "warning")}>{opportunity.state.replace(/_/g, " ")}</span>
                                     </div>
                                 </div>
                                 <div className={styles.leadPlanGrid}>
                                     <LeadPlanBlock plan={{
-                                        detail: sourceLabelForLead(row.sourceRefs, row.sourcePolicyId),
-                                        label: opportunityLabelForLead(row.currentListGap),
-                                        tone: row.fitDecision === "pass" ? "good" : "warning",
+                                        detail: `Evidence ${opportunity.evidenceGrade}; source policy ${opportunity.sourcePolicyState}.`,
+                                        label: opportunityLabelForLead(opportunity.truthGap),
+                                        tone: opportunity.evidenceGrade === "high" ? "good" : "warning",
                                     }} title="Evidence" />
-                                    <LeadPlanBlock plan={contactPlan} title="Contact" />
-                                    <LeadPlanBlock plan={sharePlan} title="Share" />
+                                    <LeadPlanBlock plan={{
+                                        detail: opportunity.allowedRouteReason,
+                                        label: opportunity.allowedRoute === "none" ? "No contact action" : opportunity.allowedRoute,
+                                        tone: opportunity.allowedRoute === "none" ? "warning" : "good",
+                                    }} title="Allowed Route" />
+                                    <LeadPlanBlock plan={{
+                                        detail: opportunity.activationDeadlineAt ? `Deadline ${opportunity.activationDeadlineAt}` : "The seven-day clock starts only after owner-qualified intent.",
+                                        label: opportunity.state.replace(/_/g, " "),
+                                        tone: opportunity.state === "engaged" || opportunity.state === "activation_started" ? "good" : "warning",
+                                    }} title="Activation" />
                                     <div className={styles.leadActionBlock}>
                                         <span>Next</span>
+                                        <small>{opportunity.nextAction}</small>
                                         <LeadActionControls
                                             disabled={saving || mobileReadOnly}
-                                            nextAction={row.recommendedNextAction}
+                                            nextAction={controlAction}
                                             onDraft={onDraft}
                                             onEvidence={onEvidence}
                                             onScore={onScore}
-                                            targetId={row.targetId}
+                                            targetId={opportunity.targetId}
                                         />
                                     </div>
                                 </div>
@@ -818,48 +811,7 @@ function TodayLeadBatch({
                         );
                     })}
                 </div>
-            ) : fallbackTargets.length ? (
-                <div className={styles.table}>
-                    {fallbackTargets.map((target) => {
-                        const contactPlan = contactPlanForLead(target.contactability, target.nextAction);
-                        const sharePlan = sharePlanForLead(target.primaryOpportunity, target.nextAction);
-                        return (
-                            <div className={styles.leadCard} key={target.targetId}>
-                                <div className={styles.leadCardHeader}>
-                                    <div>
-                                        <strong>{target.displayName}</strong>
-                                        <span>{[target.category, target.city, target.country].filter(Boolean).join(" / ") || "Uncategorized"}</span>
-                                    </div>
-                                    <div className={styles.leadScore}>
-                                        <span className={tagClass(target.segment === "a" || target.segment === "b" ? "good" : "warning")}>{target.segment.toUpperCase()}</span>
-                                        <span>{target.fitScore ?? target.currentListGapScore ?? 0}/100</span>
-                                    </div>
-                                </div>
-                                <div className={styles.leadPlanGrid}>
-                                    <LeadPlanBlock plan={{
-                                        detail: sourceLabelForLead([], target.sourcePolicyId),
-                                        label: opportunityLabelForLead(target.primaryOpportunity),
-                                        tone: target.segment === "a" || target.segment === "b" ? "good" : "warning",
-                                    }} title="Evidence" />
-                                    <LeadPlanBlock plan={contactPlan} title="Contact" />
-                                    <LeadPlanBlock plan={sharePlan} title="Share" />
-                                    <div className={styles.leadActionBlock}>
-                                        <span>Next</span>
-                                        <LeadActionControls
-                                            disabled={saving || mobileReadOnly}
-                                            nextAction={target.nextAction}
-                                            onDraft={onDraft}
-                                            onEvidence={onEvidence}
-                                            onScore={onScore}
-                                            targetId={target.targetId}
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        );
-                    })}
-                </div>
-            ) : <div className={styles.empty}>{emptyMessage}</div>}
+            ) : <div className={styles.empty}>Run a bounded market search or handle the current conversation and activation queue.</div>}
         </div>
     );
 }
@@ -1043,9 +995,20 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
     const [sourceName, setSourceName] = useState("Manual import");
     const [importRows, setImportRows] = useState("Demo Cafe,Cafe,Bengaluru,India,https://example.invalid,,,,\nDemo QSR,QSR,Bengaluru,India,https://example.invalid,,,,");
     const [selectedTargetId, setSelectedTargetId] = useState("");
+    const [selectedOpportunityId, setSelectedOpportunityId] = useState("");
+    const [manualContactRoute, setManualContactRoute] = useState<SignalDeskManualContactRoute>("email-export");
+    const [manualContactResult, setManualContactResult] = useState<SignalDeskManualContactResult>("contacted");
+    const [manualContactOccurredAt, setManualContactOccurredAt] = useState("");
+    const [manualContactNote, setManualContactNote] = useState("");
+    const [approvalRejectionReason, setApprovalRejectionReason] = useState<SignalDeskApprovalRejectionReason | "">("");
+    const [approvalRejectionNote, setApprovalRejectionNote] = useState("");
     const [replyChannel, setReplyChannel] = useState("email");
     const [replyText, setReplyText] = useState("");
     const [outcomeType, setOutcomeType] = useState("route_created");
+    const [outcomeEvidenceRef, setOutcomeEvidenceRef] = useState("");
+    const [outcomeOwnerQualifiedAt, setOutcomeOwnerQualifiedAt] = useState("");
+    const [outcomeOwnerReviewedAt, setOutcomeOwnerReviewedAt] = useState("");
+    const [outcomeSurfaces, setOutcomeSurfaces] = useState<string[]>([]);
     const [demandSignalType, setDemandSignalType] = useState("link_click");
     const [sourceProvider, setSourceProvider] = useState("google-places");
     const [sourceQuery, setSourceQuery] = useState("independent cafes, dessert shops, and QSRs with weak current-menu presence in Indiranagar and Koramangala");
@@ -1054,6 +1017,13 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
     const [sourceMaxResults, setSourceMaxResults] = useState(25);
     const [aiTask, setAiTask] = useState("evidence");
     const [aiInstruction, setAiInstruction] = useState("");
+    const [aiVolumeInstruction, setAiVolumeInstruction] = useState("");
+    const [aiVolumeMaxCostUsd, setAiVolumeMaxCostUsd] = useState(2);
+    const [aiVolumeTargetCount, setAiVolumeTargetCount] = useState(5);
+    const [aiVolumeTasks, setAiVolumeTasks] = useState<SignalDeskAiVolumeTask[]>(["score", "evidence", "draft"]);
+    const [aiVolumeRetryPayload, setAiVolumeRetryPayload] = useState<SignalDeskAiVolumeRetryPayload | null>(null);
+    const [aiShadowReviewReason, setAiShadowReviewReason] = useState("");
+    const [aiShadowReviewMinutes, setAiShadowReviewMinutes] = useState(1);
     const [channel, setChannel] = useState("whatsapp");
     const [channelWindowSource, setChannelWindowSource] = useState("inbound");
     const [channelWindowStatus, setChannelWindowStatus] = useState("open");
@@ -1108,6 +1078,10 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
     const [contentAssetSourceType, setContentAssetSourceType] = useState("proof-page");
     const [contentAssetAudience, setContentAssetAudience] = useState("restaurant-owner");
     const [contentAssetProofLevel, setContentAssetProofLevel] = useState("owned");
+    const [proofPermissionEvidenceRef, setProofPermissionEvidenceRef] = useState("");
+    const [proofPermissionExpiresAt, setProofPermissionExpiresAt] = useState("");
+    const [proofPermissionScopes, setProofPermissionScopes] = useState<string[]>(["business-name", "before-after-screenshots"]);
+    const [selectedProofPermissionId, setSelectedProofPermissionId] = useState("");
     const [selectedContentAssetId, setSelectedContentAssetId] = useState("");
     const [selectedContentDraftId, setSelectedContentDraftId] = useState("");
     const [contentDraftChannels, setContentDraftChannels] = useState<string[]>(["linkedin", "email", "partner-brief"]);
@@ -1174,6 +1148,9 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
     const [operatingEnvelopeVersion, setOperatingEnvelopeVersion] = useState(1);
 
     useEffect(() => {
+        const retryPayload = parseAiVolumeRetryPayload(window.localStorage.getItem(SIGNALDESK_AI_VOLUME_RETRY_STORAGE_KEY));
+        if (retryPayload) setAiVolumeRetryPayload(retryPayload);
+        else window.localStorage.removeItem(SIGNALDESK_AI_VOLUME_RETRY_STORAGE_KEY);
         const evaluate = () => {
             const mobileUserAgent = /\b(Android|iPhone|iPad|iPod|Mobile|Windows Phone)\b/i.test(window.navigator.userAgent || "");
             const mobileViewport = typeof window.matchMedia === "function" && window.matchMedia("(max-width: 767px)").matches;
@@ -1188,7 +1165,7 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
     const sidebarOffset = isCollapsed && !sidebarShellExpanded
         ? DASHBOARD_SIDEBAR_COLLAPSED_WIDTH
         : SIGNALDESK_SIDEBAR_EXPANDED_WIDTH;
-    const navItems = useMemo<DashboardSidebarShellItem[]>(() => NAV_ITEMS.map((item) => {
+    const navItems = useMemo<DashboardSidebarShellItem[]>(() => PRIMARY_NAV_ITEMS.map((item) => {
         const Icon = item.icon;
         const href = withSignalDeskBasePath(item.href, basePath);
         return {
@@ -1203,6 +1180,28 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
         };
     }), [activeSection, basePath, router]);
     const resolvedTargetId = data ? (selectedTargetId || firstTargetId(data)) : "";
+    const resolvedTarget = data?.workspace.targets.find((target) => target.targetId === resolvedTargetId) || null;
+    const resolvedTargetPolicy = data?.workspace.policies.find((policy) => policy.sourcePolicyId === resolvedTarget?.sourcePolicyId) || null;
+    const resolvedTargetConversation = data?.workspace.conversations.find((conversation) => conversation.targetId === resolvedTargetId) || null;
+    const allowedManualContactRoutes = new Set<SignalDeskManualContactRoute>();
+    const policyExpiresAtMillis = resolvedTargetPolicy?.expiresAt
+        ? new Date(resolvedTargetPolicy.expiresAt).getTime()
+        : Number.NaN;
+    const contactPolicyActive = Boolean(
+        resolvedTarget
+        && resolvedTarget.suppressionStatus === "clear"
+        && (resolvedTargetPolicy?.status === "active" || resolvedTargetPolicy?.status === "approved")
+        && resolvedTargetPolicy?.allowedUse.contact
+        && resolvedTargetPolicy.retentionDays > 0
+        && (resolvedTargetPolicy.policyState === "active"
+            || resolvedTargetPolicy.policyState === "expires_soon"
+            || (!resolvedTargetPolicy.policyState && Number.isFinite(policyExpiresAtMillis) && policyExpiresAtMillis > Date.now()))
+    );
+    if (contactPolicyActive && resolvedTargetConversation?.state === "exported") allowedManualContactRoutes.add("email-export");
+    if (contactPolicyActive && resolvedTargetPolicy?.accessMethod === "permissioned-referral") allowedManualContactRoutes.add("partner-intro");
+    const resolvedManualContactRoute = allowedManualContactRoutes.has(manualContactRoute)
+        ? manualContactRoute
+        : Array.from(allowedManualContactRoutes)[0] || null;
     const resolvedPolicyId = data ? (sourcePolicyId || firstPolicyId(data)) : "";
     const providerPolicies = data?.workspace.policies.filter((policy) => policy.sourceType === "provider") || [];
     const resolvedProviderPolicyId = data
@@ -1226,6 +1225,11 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
     const resolvedSourceRunId = data ? (selectedSourceRunId || firstSourceRunId(data)) : "";
     const resolvedContentSourceId = data ? (selectedContentSourceId || firstContentSourceId(data)) : "";
     const resolvedContentAssetId = data ? (selectedContentAssetId || firstContentAssetId(data)) : "";
+    const resolvedProofPermissionId = data
+        ? (selectedProofPermissionId || data.workspace.proofPermissions[0]?.proofPermissionId || "")
+        : "";
+    const resolvedProofPermission = data?.workspace.proofPermissions.find((permission) => permission.proofPermissionId === resolvedProofPermissionId) || null;
+    const resolvedPublicProofScopes = (resolvedProofPermission?.scopes || []).filter((scope) => SIGNALDESK_PUBLIC_PROOF_SCOPES.has(scope));
     const resolvedContentDraftId = data ? (selectedContentDraftId || firstContentDraftId(data)) : "";
     const resolvedSenderDomainId = data ? firstReadySenderDomainId(data) : "";
     const resolvedCommercialOfferId = data ? (selectedCommercialOfferId || firstCommercialOfferId(data)) : "";
@@ -1233,13 +1237,34 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
     const resolvedRevenueMarketPodId = data ? firstActiveMarketPodId(data) : "";
     const resolvedRevenueBudgetPolicyId = data ? firstRevenueBudgetPolicyId(data, resolvedRevenueMarketPodId) : "";
     const resolvedRevenueTemplateId = data ? firstActiveTemplateId(data) : "";
+    const selectedOpportunity = data?.workspace.activationOpportunities.find((opportunity) => opportunity.activationOpportunityId === selectedOpportunityId) || null;
     const globalPauseActive = Boolean(data?.activeKillSwitches.some((item) => item.scope === "global-outbound" && item.status === "active"));
     const scopedPauseActive = Boolean(data?.activeKillSwitches.some((item) => item.scope === pauseScope && item.status === "active"));
     const canPause = Boolean(data?.access.permissions.includes("kill-switch.activate"));
     const canResume = Boolean(data?.access.permissions.includes("kill-switch.deactivate"));
     const canConfigureSignalDesk = Boolean(data?.access.permissions.includes("signaldesk.configure"));
     const canApproveMarketPod = Boolean(data?.access.role === "founder-admin" && data.access.permissions.includes("signaldesk.configure"));
+    const canReviewAiShadow = Boolean(data?.access.role === "founder-admin" && canConfigureSignalDesk && !mobileReadOnly);
+    const canRunAiVolume = Boolean(data?.access.role === "founder-admin" && canConfigureSignalDesk && !mobileReadOnly);
+    const aiVolumeRetryActive = Boolean(aiVolumeRetryPayload);
     const actionDisabled = saving || mobileReadOnly;
+    const globalPauseDisabled = saving || (mobileReadOnly
+        ? globalPauseActive || !canPause
+        : (!globalPauseActive && !canPause) || (globalPauseActive && !canResume));
+    const scopedPauseDisabled = saving || (mobileReadOnly
+        ? scopedPauseActive || !canPause
+        : (!scopedPauseActive && !canPause) || (scopedPauseActive && !canResume));
+    const activationOutcomeIncomplete = outcomeType === "two_surface_activation" && (
+        !resolvedTargetId
+        || !outcomeEvidenceRef.trim()
+        || !outcomeOwnerQualifiedAt.trim()
+        || !outcomeOwnerReviewedAt.trim()
+        || new Set(outcomeSurfaces).size < 2
+    );
+    const manualContactIncomplete = !resolvedTarget
+        || !resolvedTargetPolicy
+        || !resolvedManualContactRoute
+        || (manualContactResult === "introduced" && resolvedManualContactRoute !== "partner-intro");
 
     const pendingApproval = useMemo(
         () => data?.workspace.approvals.find((item) => item.status === "pending") || null,
@@ -1251,6 +1276,7 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
     );
 
     const handlePauseToggle = () => {
+        if (mobileReadOnly && globalPauseActive) return;
         void updateKillSwitch({
             reason: globalPauseActive ? "Control room cleared global outbound pause." : "Control room activated global outbound pause.",
             scope: "global-outbound",
@@ -1259,6 +1285,7 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
     };
 
     const handleScopedPauseToggle = () => {
+        if (mobileReadOnly && scopedPauseActive) return;
         void updateKillSwitch({
             reason: scopedPauseActive ? `Control room cleared ${pauseScope} pause.` : `Control room activated ${pauseScope} pause.`,
             scope: pauseScope,
@@ -1272,16 +1299,34 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
 
     const handlePolicyCreate = (event: FormEvent) => {
         event.preventDefault();
+        const baseAllowedFields = ["displayName", "category", "city", "country", "currentListUrl", "website", "notes", "providerRecordId", "providerRecordUrl"];
+        const contactFields = ["email", "phone", "instagram"];
         void runAction("create-source-policy", {
+            accessMethod: policyAllowContact
+                ? "permissioned-referral"
+                : policySourceType === "provider"
+                    ? "licensed-api"
+                    : "manual-public-research",
             allowContact: policyAllowContact,
             allowEvidence: policyAllowEvidence,
             allowPersonalization: policyAllowPersonalization,
+            allowedFields: policyAllowContact ? [...baseAllowedFields, ...contactFields] : baseAllowedFields,
+            attributionRequirements: ["Keep source policy, source run, and source reference attached to evidence."],
+            blockedFields: policyAllowContact ? ["personal-profile", "sensitive-attribute"] : contactFields,
+            lastReviewedAt: new Date().toISOString(),
             name: policyName,
             notes: policyAllowContact
                 ? "Contact use is limited to a permissioned manual introduction or referral; public availability alone is not permission."
                 : "Candidate discovery and evidence review only; contact fields, personalization, export, and send remain blocked.",
+            policyOwner: data?.access.userId || "founder-admin",
+            prohibitedUses: policyAllowContact
+                ? ["cold WhatsApp", "cold social DM", "unapproved provider send", "proof use without permission"]
+                : ["contact", "personalization", "provider send", "raw provider payload storage"],
+            rawPayloadPolicy: "never-store",
+            refreshMethod: policySourceType === "provider" ? "provider-refresh" : "manual-review",
             retentionDays,
             sourceType: policySourceType,
+            termsVersion: "internal-source-rights-v1",
         });
     };
 
@@ -1318,13 +1363,33 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
     const reviewApproval = (approval: SignalDeskApprovalItem, status: "approved" | "rejected") => {
         void runAction("review-approval", {
             approvalId: approval.approvalId,
-            reason: status === "approved" ? "Approved from control room." : "Rejected from control room.",
+            reason: status === "approved" ? "Approved from control room." : approvalRejectionNote || undefined,
+            rejectionReason: status === "rejected" ? approvalRejectionReason || undefined : undefined,
             status,
         });
     };
 
     const exportMessage = (approvalId: string) => {
         void runAction("export-message", { approvalId });
+    };
+
+    const recordManualContact = (event: FormEvent) => {
+        event.preventDefault();
+        if (!resolvedTarget || !resolvedTargetPolicy || !resolvedManualContactRoute) return;
+        const occurredAtDate = manualContactOccurredAt
+            ? new Date(manualContactOccurredAt)
+            : new Date();
+        if (Number.isNaN(occurredAtDate.getTime())) return;
+        const occurredAt = occurredAtDate.toISOString();
+        void runAction("record-manual-contact", {
+            idempotencyKey: `manual:${resolvedTarget.targetId}:${resolvedManualContactRoute}:${manualContactResult}:${occurredAt.slice(0, 16)}`,
+            note: manualContactNote || undefined,
+            occurredAt,
+            result: manualContactResult,
+            route: resolvedManualContactRoute,
+            sourcePolicyId: resolvedTargetPolicy.sourcePolicyId,
+            targetId: resolvedTarget.targetId,
+        });
     };
 
     const captureReply = (event: FormEvent) => {
@@ -1338,12 +1403,26 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
 
     const recordOutcome = (event: FormEvent) => {
         event.preventDefault();
+        const activation = outcomeType === "two_surface_activation";
         void runAction("record-outcome", {
             channel: "manual",
+            evidenceRef: outcomeEvidenceRef || undefined,
+            idempotencyKey: activation
+                ? `manual:${resolvedTargetId}:${outcomeType}:${outcomeOwnerReviewedAt}`
+                : undefined,
             outcomeType,
+            ownerQualifiedAt: outcomeOwnerQualifiedAt || undefined,
+            ownerReviewedAt: outcomeOwnerReviewedAt || undefined,
             source: "manual",
+            surfaces: outcomeSurfaces,
             targetId: resolvedTargetId || undefined,
         });
+    };
+
+    const toggleOutcomeSurface = (surface: string) => {
+        setOutcomeSurfaces((current) => current.includes(surface)
+            ? current.filter((item) => item !== surface)
+            : [...current, surface]);
     };
 
     const captureDemand = (event: FormEvent) => {
@@ -1391,6 +1470,42 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
             instruction: aiInstruction || undefined,
             targetId: resolvedTargetId,
             task: aiTask,
+        });
+    };
+
+    const toggleAiVolumeTask = (task: SignalDeskAiVolumeTask, checked: boolean) => {
+        setAiVolumeTasks((current) => checked
+            ? Array.from(new Set([...current, task])).slice(0, 3)
+            : current.filter((item) => item !== task));
+    };
+
+    const clearAiVolumeRetry = () => {
+        setAiVolumeRetryPayload(null);
+        window.localStorage.removeItem(SIGNALDESK_AI_VOLUME_RETRY_STORAGE_KEY);
+    };
+
+    const runAiVolumeBatch = async (event: FormEvent) => {
+        event.preventDefault();
+        if (!data) return;
+        const payload: SignalDeskAiVolumeRetryPayload = aiVolumeRetryPayload || {
+            idempotencyKey: `ai-volume-${Date.now()}`,
+            instruction: aiVolumeInstruction || undefined,
+            maxEstimatedCostUsd: aiVolumeMaxCostUsd,
+            targetIds: data.workspace.targets.slice(0, aiVolumeTargetCount).map((target) => target.targetId),
+            tasks: aiVolumeTasks,
+        };
+        setAiVolumeRetryPayload(payload);
+        window.localStorage.setItem(SIGNALDESK_AI_VOLUME_RETRY_STORAGE_KEY, JSON.stringify(payload));
+        const result = await runAction<SignalDeskAiVolumeRunSummary>("run-ai-volume-batch", payload);
+        if (result && result.status !== "running") clearAiVolumeRetry();
+    };
+
+    const reviewAiShadowRun = (aiRunId: string, decision: SignalDeskAiShadowReviewDecision) => {
+        void runAction("review-ai-shadow-run", {
+            aiRunId,
+            decision,
+            founderAttentionMinutes: aiShadowReviewMinutes,
+            reason: aiShadowReviewReason || (decision === "accepted" ? "Accepted unchanged." : undefined),
         });
     };
 
@@ -1741,12 +1856,33 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
             marketPodId: resolvedMarketPodId || undefined,
             primaryAudience: contentAssetAudience,
             proofLevel: contentAssetProofLevel,
+            proofPermissionId: contentAssetProofLevel === "customer-proof" ? resolvedProofPermissionId || undefined : undefined,
+            proofScopes: contentAssetProofLevel === "customer-proof" ? resolvedPublicProofScopes : [],
             riskNotes: contentAssetProofLevel === "internal-note" ? ["Internal note needs proof before broad distribution."] : [],
             sourceId: resolvedContentSourceId || undefined,
             sourceNotes: "Prepared from internal owner-approved MenuList proof.",
             sourceType: contentAssetSourceType,
             sourceUrl: contentAssetUrl || contentSourceUrl || undefined,
             title: contentAssetTitle,
+        });
+    };
+
+    const toggleProofPermissionScope = (scope: string) => {
+        setProofPermissionScopes((current) => current.includes(scope)
+            ? current.filter((item) => item !== scope)
+            : [...current, scope]);
+    };
+
+    const upsertProofPermission = (event: FormEvent) => {
+        event.preventDefault();
+        void runAction("upsert-proof-permission", {
+            evidenceRef: proofPermissionEvidenceRef,
+            expiresAt: proofPermissionExpiresAt || undefined,
+            grantedAt: new Date().toISOString(),
+            proofPermissionId: selectedProofPermissionId || undefined,
+            scopes: proofPermissionScopes,
+            status: "active",
+            targetId: resolvedTargetId,
         });
     };
 
@@ -2018,11 +2154,21 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                                         <span>{latestResearchRun.passCount} pass / {latestResearchRun.unsureCount} unsure / {latestResearchRun.failCount} fail</span>
                                         <span>{latestResearchRun.sourceTransparency.join(" | ")}</span>
                                     </div>
-                                    {latestResearchRows.slice(0, 8).map((row) => (
+                                    {latestResearchRows.slice(0, 30).map((row) => (
                                         <div className={styles.listItem} key={row.researchRowId}>
                                             <strong>{row.displayName}</strong>
                                             <span>{row.category || "category unknown"} / {row.city || "location unknown"} / {row.currentListGap}</span>
-                                            <span className={tagClass(row.fitDecision === "pass" ? "good" : row.fitDecision === "fail" ? "danger" : "warning")}>{row.fitDecision} / {row.recommendedNextAction}</span>
+                                            <span>{row.allowedRouteReason}</span>
+                                            <span className={tagClass(row.actionabilityState === "actionable" ? "good" : row.actionabilityState === "blocked" ? "danger" : "warning")}>{row.actionabilityState} / {row.allowedRoute}</span>
+                                            {row.targetId ? (
+                                                <WorkspaceButton
+                                                    className={styles.ghostButton}
+                                                    onClick={() => setSelectedOpportunityId(`activation_opportunity_${row.targetId}`)}
+                                                    type="button"
+                                                >
+                                                    Open Case
+                                                </WorkspaceButton>
+                                            ) : null}
                                         </div>
                                     ))}
                                     {!latestResearchRows.length ? <div className={styles.empty}>Research run created but no table rows are ready.</div> : null}
@@ -2030,8 +2176,6 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                             ) : <div className={styles.empty}>No research table yet.</div>}
                         </div>
                     </div>
-
-                    <TodayLeadBatch data={data} mobileReadOnly={mobileReadOnly} onDraft={createDraft} onEvidence={createEvidence} onScore={scoreTarget} saving={saving} />
 
                     <div className={styles.contentGrid}>
                         <div className={styles.panel}>
@@ -2286,7 +2430,7 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                         <form className={styles.panel} onSubmit={upsertCommercialOffer}>
                             <div className={styles.panelHeader}>
                                 <h2>Commercial Offer Registry</h2>
-                                <WorkspaceButton className={styles.button} disabled={actionDisabled} type="submit">Save Version</WorkspaceButton>
+                                <WorkspaceButton className={styles.button} disabled={actionDisabled || !canConfigureSignalDesk} type="submit">Save Version</WorkspaceButton>
                             </div>
                             <WorkspaceInput className={styles.input} onChange={(event) => setCommercialOfferName(event.target.value)} value={commercialOfferName} />
                             <div className={styles.formGrid}>
@@ -2397,7 +2541,7 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                                 <h2>Operating Envelope</h2>
                                 <WorkspaceButton
                                     className={styles.button}
-                                    disabled={actionDisabled || !resolvedCommercialOfferId || !resolvedPolicyId || !resolvedRevenueMarketPodId || !resolvedRevenueTemplateId}
+                                    disabled={actionDisabled || !canConfigureSignalDesk || !resolvedCommercialOfferId || !resolvedPolicyId || !resolvedRevenueMarketPodId || !resolvedRevenueTemplateId}
                                     type="submit"
                                 >
                                     Save Envelope
@@ -2521,7 +2665,7 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                     <form className={styles.panel} onSubmit={handlePolicyCreate}>
                         <div className={styles.panelHeader}>
                             <h2>Source Policy</h2>
-                            <WorkspaceButton className={styles.button} disabled={actionDisabled} type="submit">Create</WorkspaceButton>
+                            <WorkspaceButton className={styles.button} disabled={actionDisabled || !canConfigureSignalDesk} type="submit">Create</WorkspaceButton>
                         </div>
                         <div className={styles.formGrid}>
                             <WorkspaceInput className={styles.input} onChange={(event) => setPolicyName(event.target.value)} value={policyName} />
@@ -2546,7 +2690,7 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                             </WorkspaceInput>
                         </div>
                         <div className={styles.empty}>Public-business research should stay evidence-only. Enable contact use only for a permissioned manual introduction or referral.</div>
-                        <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled} onClick={handleSeed} type="button">Seed Defaults</WorkspaceButton>
+                        <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled || !canConfigureSignalDesk} onClick={handleSeed} type="button">Seed Defaults</WorkspaceButton>
                     </form>
                     <div className={styles.panel}>
                         <div className={styles.panelHeader}><h2>Policies</h2><span className={styles.tag}>{data.workspace.policies.length}</span></div>
@@ -2554,7 +2698,8 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                             {data.workspace.policies.map((policy) => (
                                 <div className={styles.listItem} key={policy.sourcePolicyId}>
                                     <strong>{policy.name}</strong>
-                                    <span>{policy.sourceType} / {policy.retentionDays} days / {policy.policyState || policy.status}</span>
+                                    <span>{policy.sourceType} / {policy.accessMethod || "rights review required"} / {policy.retentionDays} days / {policy.policyState || policy.status}</span>
+                                    <span>{policy.allowedFields?.length || 0} allowed fields / {policy.prohibitedUses?.length || 0} prohibited uses / owner {policy.policyOwner || "unassigned"}</span>
                                 </div>
                             ))}
                         </div>
@@ -2586,7 +2731,7 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                             <h2>Budget Policies</h2>
                             <div className={styles.rowActions}>
                                 <span className={styles.tag}>{data.workspace.budgetPolicies.length}</span>
-                                <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled} onClick={approveZeroSpendTrustPartnerTest} type="button">Approve Zero-Spend Trust Test</WorkspaceButton>
+                                <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled || !canConfigureSignalDesk} onClick={approveZeroSpendTrustPartnerTest} type="button">Approve Zero-Spend Trust Test</WorkspaceButton>
                             </div>
                         </div>
                         <div className={styles.table}>
@@ -2643,16 +2788,38 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                 <section className={styles.stack}>
                     <div className={styles.panel}>
                         <div className={styles.panelHeader}><h2>Queue</h2><span className={styles.tag}>{data.workspace.approvals.length}</span></div>
+                        <div className={styles.formGrid}>
+                            <WorkspaceSelect className={styles.input} onChange={(event) => setApprovalRejectionReason(event.target.value as SignalDeskApprovalRejectionReason | "")} value={approvalRejectionReason}>
+                                <option value="">Choose rejection reason</option>
+                                {SIGNALDESK_APPROVAL_REJECTION_OPTIONS.map((option) => (
+                                    <option key={option.value} value={option.value}>{option.label}</option>
+                                ))}
+                            </WorkspaceSelect>
+                            <WorkspaceInput
+                                className={styles.input}
+                                maxLength={500}
+                                onChange={(event) => setApprovalRejectionNote(event.target.value)}
+                                placeholder={approvalRejectionReason === "other" ? "Required rejection note" : "Optional review note"}
+                                value={approvalRejectionNote}
+                            />
+                        </div>
                         <div className={styles.table}>
                             {data.workspace.approvals.map((approval) => (
                                 <div className={styles.tableRow} key={approval.approvalId}>
-                                    <div><strong>{approval.targetName}</strong><span>{approval.reviewReason}</span></div>
+                                    <div><strong>{approval.targetName}</strong><span>{approval.rejectionReason || approval.reviewReason}</span></div>
                                     <span className={tagClass(approval.status)}>{approval.status}</span>
                                     <span>{approval.priority}</span>
                                     <div className={styles.rowActions}>
                                         <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled} onClick={() => createApprovalPacket(approval)} type="button">Packet</WorkspaceButton>
                                         <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled || approval.status !== "pending"} onClick={() => reviewApproval(approval, "approved")} type="button">Approve</WorkspaceButton>
-                                        <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled || approval.status !== "pending"} onClick={() => reviewApproval(approval, "rejected")} type="button">Reject</WorkspaceButton>
+                                        <WorkspaceButton
+                                            className={styles.ghostButton}
+                                            disabled={actionDisabled || approval.status !== "pending" || !approvalRejectionReason || (approvalRejectionReason === "other" && !approvalRejectionNote.trim())}
+                                            onClick={() => reviewApproval(approval, "rejected")}
+                                            type="button"
+                                        >
+                                            Reject
+                                        </WorkspaceButton>
                                         <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled || approval.status !== "approved"} onClick={() => exportMessage(approval.approvalId)} type="button">Export</WorkspaceButton>
                                     </div>
                                 </div>
@@ -2683,6 +2850,38 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
         if (activeSection === "inbox") {
             return (
                 <section className={styles.contentGrid}>
+                    <form className={styles.panel} onSubmit={recordManualContact}>
+                        <div className={styles.panelHeader}>
+                            <h2>Manual Contact</h2>
+                            <WorkspaceButton className={styles.button} disabled={actionDisabled || manualContactIncomplete} type="submit">Record</WorkspaceButton>
+                        </div>
+                        <TargetSelect data={data} onChange={setSelectedTargetId} value={resolvedTargetId} />
+                        {allowedManualContactRoutes.size ? (
+                            <WorkspaceSelect className={styles.input} onChange={(event) => setManualContactRoute(event.target.value as SignalDeskManualContactRoute)} value={resolvedManualContactRoute || ""}>
+                                {Array.from(allowedManualContactRoutes).map((route) => (
+                                    <option key={route} value={route}>{route}</option>
+                                ))}
+                            </WorkspaceSelect>
+                        ) : <div className={styles.alert}>No policy-approved contact route is ready.</div>}
+                        <WorkspaceSelect className={styles.input} onChange={(event) => setManualContactResult(event.target.value as SignalDeskManualContactResult)} value={manualContactResult}>
+                            {SIGNALDESK_MANUAL_CONTACT_RESULTS.map((option) => (
+                                <option key={option.value} value={option.value}>{option.label}</option>
+                            ))}
+                        </WorkspaceSelect>
+                        <WorkspaceInput
+                            className={styles.input}
+                            onChange={(event) => setManualContactOccurredAt(event.target.value)}
+                            type="datetime-local"
+                            value={manualContactOccurredAt}
+                        />
+                        <WorkspaceTextarea
+                            className={styles.textareaSmall}
+                            maxLength={300}
+                            onChange={(event) => setManualContactNote(event.target.value)}
+                            placeholder="Optional internal note"
+                            value={manualContactNote}
+                        />
+                    </form>
                     <form className={styles.panel} onSubmit={captureReply}>
                         <div className={styles.panelHeader}>
                             <h2>Reply</h2>
@@ -2716,7 +2915,7 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
             return (
                 <section className={styles.contentGrid}>
                     <form className={styles.panel} onSubmit={recordOutcome}>
-                        <div className={styles.panelHeader}><h2>Outcome</h2><WorkspaceButton className={styles.button} disabled={actionDisabled} type="submit">Record</WorkspaceButton></div>
+                        <div className={styles.panelHeader}><h2>Outcome</h2><WorkspaceButton className={styles.button} disabled={actionDisabled || activationOutcomeIncomplete} type="submit">Record</WorkspaceButton></div>
                         <TargetSelect data={data} onChange={setSelectedTargetId} value={resolvedTargetId} />
                         <WorkspaceSelect className={styles.input} onChange={(event) => setOutcomeType(event.target.value)} value={outcomeType}>
                             <option value="route_created">route_created</option>
@@ -2725,6 +2924,16 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                             <option value="published">published</option>
                             <option value="two_surface_activation">two_surface_activation</option>
                         </WorkspaceSelect>
+                        <WorkspaceInput className={styles.input} onChange={(event) => setOutcomeEvidenceRef(event.target.value)} placeholder="Evidence reference" value={outcomeEvidenceRef} />
+                        <WorkspaceInput className={styles.input} onChange={(event) => setOutcomeOwnerQualifiedAt(event.target.value)} placeholder="Owner-qualified ISO time" value={outcomeOwnerQualifiedAt} />
+                        <WorkspaceInput className={styles.input} onChange={(event) => setOutcomeOwnerReviewedAt(event.target.value)} placeholder="Owner-review ISO time" value={outcomeOwnerReviewedAt} />
+                        <div className={styles.checkboxGrid}>
+                            {SIGNALDESK_ACTIVATION_SURFACES.map((surface) => (
+                                <WorkspaceInput className={styles.checkboxLabel} checked={outcomeSurfaces.includes(surface)} key={surface} onChange={() => toggleOutcomeSurface(surface)} type="checkbox">
+                                    {surface}
+                                </WorkspaceInput>
+                            ))}
+                        </div>
                     </form>
                     <form className={styles.panel} onSubmit={captureDemand}>
                         <div className={styles.panelHeader}><h2>Demand Signal</h2><WorkspaceButton className={styles.button} disabled={actionDisabled} type="submit">Capture</WorkspaceButton></div>
@@ -2743,7 +2952,8 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                             {data.workspace.outcomes.map((outcome) => (
                                 <div className={styles.listItem} key={outcome.outcomeSummaryId}>
                                     <strong>{outcome.targetName || outcome.outcomeType}</strong>
-                                    <span>{outcome.outcomeType} / {outcome.count}</span>
+                                    <span>{outcome.outcomeType} / {outcome.count} / {outcome.integrityStatus || "legacy-unverified"}</span>
+                                    {outcome.surfaces?.length ? <span>{outcome.surfaces.join(" + ")}</span> : null}
                                 </div>
                             ))}
                         </div>
@@ -2986,15 +3196,68 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                         </div>
                         <TargetSelect data={data} onChange={setSelectedTargetId} value={resolvedTargetId} />
                         <WorkspaceSelect className={styles.input} onChange={(event) => setAiTask(event.target.value)} value={aiTask}>
-                            <option value="score">score</option>
-                            <option value="evidence">evidence</option>
-                            <option value="draft">draft</option>
-                            <option value="reply-classification">reply-classification</option>
-                            <option value="approval-packet">approval-packet</option>
-                            <option value="weekly-strategist">weekly-strategist</option>
-                            <option value="vendor-audit">vendor-audit</option>
+                            {data.workspace.modelRoutes
+                                .filter((route) => route.status === "active" && route.task !== "quality-critic")
+                                .map((route) => <option key={route.modelRouteId} value={route.task}>{route.task}</option>)}
                         </WorkspaceSelect>
                         <WorkspaceTextarea className={styles.textareaSmall} onChange={(event) => setAiInstruction(event.target.value)} value={aiInstruction} />
+                    </form>
+                    <form className={styles.panelWide} onSubmit={runAiVolumeBatch}>
+                        <div className={styles.panelHeader}>
+                            <div><h2>AI Volume Mode</h2><span>Fast generation, independent critic, and bounded escalation.</span></div>
+                            <WorkspaceButton
+                                className={styles.button}
+                                disabled={!canRunAiVolume || saving || (!aiVolumeRetryActive && (!data.workspace.targets.length || !aiVolumeTasks.length))}
+                                type="submit"
+                            >{aiVolumeRetryActive ? "Retry Batch" : "Run Batch"}</WorkspaceButton>
+                        </div>
+                        {aiVolumeRetryActive ? (
+                            <div className={styles.rowActions}>
+                                <span>Retrying the same protected batch until it reaches a final state.</span>
+                                <WorkspaceButton className={styles.ghostButton} disabled={!canRunAiVolume || saving} onClick={clearAiVolumeRetry} type="button">Clear Retry</WorkspaceButton>
+                            </div>
+                        ) : null}
+                        <div className={styles.formGrid}>
+                            <WorkspaceInput
+                                className={styles.input}
+                                disabled={!canRunAiVolume || saving || aiVolumeRetryActive}
+                                max={5}
+                                min={1}
+                                onChange={(event) => setAiVolumeTargetCount(Math.max(1, Math.min(5, Number(event.target.value) || 1)))}
+                                type="number"
+                                value={aiVolumeTargetCount}
+                            />
+                            <WorkspaceInput
+                                className={styles.input}
+                                disabled={!canRunAiVolume || saving || aiVolumeRetryActive}
+                                max={5}
+                                min={0.01}
+                                onChange={(event) => setAiVolumeMaxCostUsd(Math.max(0.01, Math.min(5, Number(event.target.value) || 0.01)))}
+                                step="0.01"
+                                type="number"
+                                value={aiVolumeMaxCostUsd}
+                            />
+                        </div>
+                        <span>First {Math.min(aiVolumeTargetCount, data.workspace.targets.length)} current targets / maximum estimated AI cost ${aiVolumeMaxCostUsd.toFixed(2)}</span>
+                        <div className={styles.rowActions}>
+                            {(["score", "evidence", "draft", "reply-classification"] as SignalDeskAiVolumeTask[]).map((task) => (
+                                <WorkspaceInput
+                                    checked={aiVolumeTasks.includes(task)}
+                                    disabled={!canRunAiVolume || saving || aiVolumeRetryActive || (!aiVolumeTasks.includes(task) && aiVolumeTasks.length >= 3)}
+                                    key={task}
+                                    onChange={(event) => toggleAiVolumeTask(task, event.target.checked)}
+                                    type="checkbox"
+                                >{task}</WorkspaceInput>
+                            ))}
+                        </div>
+                        <WorkspaceTextarea
+                            className={styles.textareaSmall}
+                            disabled={!canRunAiVolume || saving || aiVolumeRetryActive}
+                            maxLength={500}
+                            onChange={(event) => setAiVolumeInstruction(event.target.value)}
+                            placeholder="Optional bounded instruction for every target/task pair"
+                            value={aiVolumeInstruction}
+                        />
                     </form>
                     <div className={styles.panel}>
                         <div className={styles.panelHeader}><h2>Model Routes</h2><span className={styles.tag}>{data.workspace.modelRoutes.length}</span></div>
@@ -3026,19 +3289,75 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                                 <div className={styles.tableRowCompact} key={evaluation.modelEvalId}>
                                     <div><strong>{evaluation.task}</strong><span>{evaluation.provider} / {evaluation.model}</span></div>
                                     <span className={tagClass(evaluation.status)}>{evaluation.status}</span>
-                                    <span>{evaluation.sampleSize} samples</span>
-                                    <span>{evaluation.rejectedFactRate} rejected fact rate</span>
+                                    <span>{evaluation.sampleSize} runs / {evaluation.reviewedSampleSize || 0} reviewed</span>
+                                    <span>{formatRate(evaluation.passRate)} pass / {formatRate(evaluation.rejectedFactRate)} rejected facts</span>
+                                    <span>{formatRate(evaluation.acceptanceRate)} accepted / {formatRate(evaluation.editRate)} edited / {formatRate(evaluation.rejectionRate)} rejected</span>
+                                    <span>{evaluation.founderAttentionMinutes || 0} founder min</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                    <div className={styles.panel}>
+                        <div className={styles.panelHeader}><h2>Shadow Review</h2><span className={tagClass(canReviewAiShadow ? "ready" : "held")}>{canReviewAiShadow ? "founder ready" : "read only"}</span></div>
+                        <WorkspaceInput
+                            className={styles.input}
+                            disabled={!canReviewAiShadow || saving}
+                            max={1440}
+                            min={0}
+                            onChange={(event) => setAiShadowReviewMinutes(Math.max(0, Number(event.target.value) || 0))}
+                            type="number"
+                            value={aiShadowReviewMinutes}
+                        />
+                        <span>Founder attention minutes for this review.</span>
+                        <WorkspaceTextarea
+                            className={styles.textareaSmall}
+                            disabled={!canReviewAiShadow || saving}
+                            maxLength={500}
+                            onChange={(event) => setAiShadowReviewReason(event.target.value)}
+                            placeholder="Reason required for edit, reject, or hold"
+                            value={aiShadowReviewReason}
+                        />
+                    </div>
+                    <div className={styles.panelWide}>
+                        <div className={styles.panelHeader}><h2>AI Volume Runs</h2><span className={styles.tag}>{data.workspace.aiVolumeRuns.length}</span></div>
+                        <div className={styles.list}>
+                            {data.workspace.aiVolumeRuns.map((run) => (
+                                <div className={styles.listItem} key={run.volumeRunId}>
+                                    <div><strong>{run.targetIds.length} targets / {run.tasks.length} tasks</strong><span>{run.completedPairCount}/{run.requestedPairCount} pairs / {run.modelCallCount} model calls</span></div>
+                                    <span className={tagClass(run.status)}>{run.status}</span>
+                                    <span>${Number(run.estimatedCostUsd || 0).toFixed(3)} estimated / ${Number(run.maxEstimatedCostUsd || 0).toFixed(2)} founder max</span>
+                                    {run.failureCodes.length ? <span>{run.failureCodes.join(", ")}</span> : null}
                                 </div>
                             ))}
                         </div>
                     </div>
                     <div className={styles.panelWide}>
-                        <div className={styles.panelHeader}><h2>AI Runs</h2><span className={styles.tag}>{data.workspace.scores.length}</span></div>
+                        <div className={styles.panelHeader}><h2>Provider AI Runs</h2><span className={styles.tag}>{data.workspace.aiWorkerRuns.length}</span></div>
                         <div className={styles.list}>
-                            {data.workspace.scores.map((score: any) => (
-                                <div className={styles.listItem} key={score.scoreId || score.aiRunId || score.signaldeskAiWorkerRunsDocId}>
-                                    <strong>{score.workerType || "target_score"}</strong>
-                                    <span>{score.segment || score.confidence || "recorded"} / {score.targetId}</span>
+                            {data.workspace.aiWorkerRuns.map((run) => (
+                                <div className={styles.listItem} key={run.aiRunId}>
+                                    <div><strong>{run.task || run.workerType}</strong><span>{run.provider} / {run.model} / {run.targetId}</span></div>
+                                    <span className={tagClass(run.reviewDecision || (!run.provider || !run.modelEvalId ? "held" : run.confidence === "low" ? "held" : "pending"))}>{run.reviewDecision || (!run.provider || !run.modelEvalId ? "legacy run" : "pending review")}</span>
+                                    <span>{run.confidence} confidence / {run.rejectedFactCount || 0} rejected facts / {run.modelCallCount || 1} calls / {run.founderAttentionMinutes || 0} min</span>
+                                    {run.criticVerdict ? <span>critic {run.criticVerdict} / {run.criticConfidence} / {run.escalated ? `escalated ${run.escalationModel}` : run.escalationBlocked ? "escalation blocked" : "no escalation"}</span> : null}
+                                    {run.reviewReason ? <span>{run.reviewReason}</span> : null}
+                                    <div className={styles.rowActions}>
+                                        <WorkspaceButton className={styles.ghostButton} disabled={!canReviewAiShadow || saving || !run.provider || !run.modelEvalId} onClick={() => reviewAiShadowRun(run.aiRunId, "accepted")} type="button">Accept</WorkspaceButton>
+                                        <WorkspaceButton className={styles.ghostButton} disabled={!canReviewAiShadow || saving || !run.provider || !run.modelEvalId || !aiShadowReviewReason.trim()} onClick={() => reviewAiShadowRun(run.aiRunId, "edited")} type="button">Edited</WorkspaceButton>
+                                        <WorkspaceButton className={styles.dangerButton} disabled={!canReviewAiShadow || saving || !run.provider || !run.modelEvalId || !aiShadowReviewReason.trim()} onClick={() => reviewAiShadowRun(run.aiRunId, "rejected")} type="button">Reject</WorkspaceButton>
+                                        <WorkspaceButton className={styles.ghostButton} disabled={!canReviewAiShadow || saving || !run.provider || !run.modelEvalId || !aiShadowReviewReason.trim()} onClick={() => reviewAiShadowRun(run.aiRunId, "held")} type="button">Hold</WorkspaceButton>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                    <div className={styles.panelWide}>
+                        <div className={styles.panelHeader}><h2>Rules Scores</h2><span className={styles.tag}>{data.workspace.scores.length}</span></div>
+                        <div className={styles.list}>
+                            {data.workspace.scores.map((score) => (
+                                <div className={styles.listItem} key={score.scoreId}>
+                                    <strong>target_score</strong>
+                                    <span>{score.segment} / {score.targetId}</span>
                                 </div>
                             ))}
                         </div>
@@ -3193,8 +3512,31 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
         }
         if (activeSection === "content") {
             const contentChannelOptions = ["linkedin", "x", "email", "newsletter", "partner-brief", "blog", "short-video", "other"];
+            const proofScopeOptions = ["internal-learning", "anonymous-aggregate", "business-name", "logo", "quotation", "before-after-screenshots", "public-case-study", "partner-material"];
             return (
                 <section className={styles.contentGrid}>
+                    <form className={styles.panel} onSubmit={upsertProofPermission}>
+                        <div className={styles.panelHeader}>
+                            <h2>Proof Permission</h2>
+                            <WorkspaceButton className={styles.button} disabled={actionDisabled || !canConfigureSignalDesk || !resolvedTargetId || !proofPermissionEvidenceRef.trim() || !proofPermissionScopes.length} type="submit">Save</WorkspaceButton>
+                        </div>
+                        <TargetSelect data={data} onChange={setSelectedTargetId} value={resolvedTargetId} />
+                        <WorkspaceInput className={styles.input} onChange={(event) => setProofPermissionEvidenceRef(event.target.value)} placeholder="Consent record or evidence reference" value={proofPermissionEvidenceRef} />
+                        <WorkspaceInput className={styles.input} onChange={(event) => setProofPermissionExpiresAt(event.target.value)} placeholder="Optional expiry ISO time" value={proofPermissionExpiresAt} />
+                        <div className={styles.checkboxGrid}>
+                            {proofScopeOptions.map((scope) => (
+                                <WorkspaceInput className={styles.checkboxLabel} checked={proofPermissionScopes.includes(scope)} key={scope} onChange={() => toggleProofPermissionScope(scope)} type="checkbox">
+                                    {scope}
+                                </WorkspaceInput>
+                            ))}
+                        </div>
+                        <WorkspaceSelect className={styles.input} onChange={(event) => setSelectedProofPermissionId(event.target.value)} value={resolvedProofPermissionId}>
+                            <option value="">New permission</option>
+                            {data.workspace.proofPermissions.map((permission) => (
+                                <option key={permission.proofPermissionId} value={permission.proofPermissionId}>{permission.targetName || permission.targetId} / {permission.status}</option>
+                            ))}
+                        </WorkspaceSelect>
+                    </form>
                     <form className={styles.panel} onSubmit={upsertContentSource}>
                         <div className={styles.panelHeader}>
                             <h2>Source</h2>
@@ -3233,7 +3575,7 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                     <form className={styles.panel} onSubmit={createContentAsset}>
                         <div className={styles.panelHeader}>
                             <h2>Asset</h2>
-                            <WorkspaceButton className={styles.button} disabled={actionDisabled || !contentAssetTitle.trim() || !contentAssetMessage.trim()} type="submit">Create</WorkspaceButton>
+                            <WorkspaceButton className={styles.button} disabled={actionDisabled || !contentAssetTitle.trim() || !contentAssetMessage.trim() || (contentAssetProofLevel === "customer-proof" && (!resolvedProofPermissionId || !resolvedPublicProofScopes.length))} type="submit">Create</WorkspaceButton>
                         </div>
                         <WorkspaceInput className={styles.input} onChange={(event) => setContentAssetTitle(event.target.value)} value={contentAssetTitle} />
                         <WorkspaceTextarea className={styles.textareaSmall} onChange={(event) => setContentAssetMessage(event.target.value)} value={contentAssetMessage} />
@@ -3270,6 +3612,14 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                                 <option key={asset.contentAssetId} value={asset.contentAssetId}>{asset.title}</option>
                             ))}
                         </WorkspaceSelect>
+                        {contentAssetProofLevel === "customer-proof" ? (
+                            <WorkspaceSelect className={styles.input} onChange={(event) => setSelectedProofPermissionId(event.target.value)} value={resolvedProofPermissionId}>
+                                <option value="">Select proof permission</option>
+                                {data.workspace.proofPermissions.filter((permission) => permission.status === "active").map((permission) => (
+                                    <option key={permission.proofPermissionId} value={permission.proofPermissionId}>{permission.targetName || permission.targetId}</option>
+                                ))}
+                            </WorkspaceSelect>
+                        ) : null}
                     </form>
                     <div className={styles.panel}>
                         <div className={styles.panelHeader}>
@@ -3721,11 +4071,11 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                                 <h2>Scoped Pause</h2>
                                 <WorkspaceButton
                                     className={scopedPauseActive ? styles.button : styles.dangerButton}
-                                    disabled={actionDisabled || (!scopedPauseActive && !canPause) || (scopedPauseActive && !canResume)}
+                                    disabled={scopedPauseDisabled}
                                     onClick={handleScopedPauseToggle}
                                     type="button"
                                 >
-                                    {scopedPauseActive ? "Clear" : "Pause"}
+                                    {scopedPauseActive ? (mobileReadOnly ? "Paused" : "Clear") : "Pause"}
                                 </WorkspaceButton>
                             </div>
                             <WorkspaceSelect className={styles.input} onChange={(event) => setPauseScope(event.target.value as SignalDeskKillSwitchScope)} value={pauseScope}>
@@ -3734,6 +4084,23 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                                 ))}
                             </WorkspaceSelect>
                             <div className={styles.statusRow}><span>Selected scope</span><span className={tagClass(scopedPauseActive ? "warning" : "good")}>{scopedPauseActive ? "paused" : "clear"}</span></div>
+                        </div>
+                        <div className={styles.panel}>
+                            <div className={styles.panelHeader}><h2>Advanced Controls</h2><span className={styles.tag}>internal</span></div>
+                            <div className={styles.rowActions}>
+                                {[
+                                    ["Team & connectors", SIGNALDESK_ROUTES.SETTINGS],
+                                    ["Source policies", SIGNALDESK_ROUTES.POLICIES],
+                                    ["Source providers", SIGNALDESK_ROUTES.SOURCES],
+                                    ["Channels", SIGNALDESK_ROUTES.CHANNELS],
+                                    ["AI controls", SIGNALDESK_ROUTES.AI],
+                                    ["Content", SIGNALDESK_ROUTES.CONTENT],
+                                    ["Partners", SIGNALDESK_ROUTES.PARTNERS],
+                                    ["Audit", SIGNALDESK_ROUTES.AUDIT],
+                                ].map(([label, href]) => (
+                                    <WorkspaceButton className={styles.ghostButton} key={href} onClick={() => router.push(withSignalDeskBasePath(href, basePath))} type="button">{label}</WorkspaceButton>
+                                ))}
+                            </div>
                         </div>
                         <div className={styles.panel}>
                             <div className={styles.panelHeader}><h2>Run Timelines</h2><span className={styles.tag}>{data.workspace.runTimelines.length}</span></div>
@@ -3847,6 +4214,46 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                 />
             </Drawer>
 
+            <Drawer
+                destroyOnClose
+                onClose={() => setSelectedOpportunityId("")}
+                open={Boolean(selectedOpportunity)}
+                placement="right"
+                title={selectedOpportunity?.displayName || "Opportunity Case"}
+                width="min(520px, 100vw)"
+            >
+                {selectedOpportunity ? (
+                    <div className={styles.stack}>
+                        <div className={styles.statusList}>
+                            <div className={styles.statusRow}><span>State</span><span className={tagClass(selectedOpportunity.state)}>{selectedOpportunity.state.replace(/_/g, " ")}</span></div>
+                            <div className={styles.statusRow}><span>Truth gap</span><span>{opportunityLabelForLead(selectedOpportunity.truthGap)}</span></div>
+                            <div className={styles.statusRow}><span>Allowed route</span><span>{selectedOpportunity.allowedRoute}</span></div>
+                            <div className={styles.statusRow}><span>Source policy</span><span>{selectedOpportunity.sourcePolicyState}</span></div>
+                            <div className={styles.statusRow}><span>Owner qualified</span><span>{selectedOpportunity.ownerQualifiedAt || "not yet"}</span></div>
+                            <div className={styles.statusRow}><span>Activation deadline</span><span>{selectedOpportunity.activationDeadlineAt || "not started"}</span></div>
+                        </div>
+                        <div className={styles.panel}>
+                            <div className={styles.panelHeader}><h2>Decision Basis</h2><span className={styles.tag}>{selectedOpportunity.evidenceGrade}</span></div>
+                            <div className={styles.list}>
+                                <div className={styles.listItem}><strong>Route</strong><span>{selectedOpportunity.allowedRouteReason}</span></div>
+                                <div className={styles.listItem}><strong>Next action</strong><span>{selectedOpportunity.nextAction}</span></div>
+                                {selectedOpportunity.hardGateFailures.map((failure) => (
+                                    <div className={styles.listItem} key={failure}><strong>Gate</strong><span>{failure}</span></div>
+                                ))}
+                            </div>
+                        </div>
+                        <div className={styles.panel}>
+                            <div className={styles.panelHeader}><h2>Dimensions</h2><span className={styles.tag}>separate</span></div>
+                            <div className={styles.statusList}>
+                                {Object.entries(selectedOpportunity.dimensions).map(([label, value]) => (
+                                    <div className={styles.statusRow} key={label}><span>{label}</span><span>{value}</span></div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                ) : null}
+            </Drawer>
+
             <Layout
                 className={styles.dashboardBody}
                 style={{
@@ -3905,12 +4312,12 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                             </Tooltip>
                             <Button
                                 danger={!globalPauseActive}
-                                disabled={actionDisabled || (!globalPauseActive && !canPause) || (globalPauseActive && !canResume)}
+                                disabled={globalPauseDisabled}
                                 icon={<LuPauseCircle />}
                                 onClick={handlePauseToggle}
                                 type={globalPauseActive ? "primary" : "default"}
                             >
-                                {globalPauseActive ? "Clear Pause" : "Global Pause"}
+                                {globalPauseActive ? (mobileReadOnly ? "Paused" : "Clear Pause") : "Global Pause"}
                             </Button>
                         </Flex>
                     }

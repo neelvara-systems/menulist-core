@@ -1,25 +1,22 @@
-import { getBatchImageJobCollectionRef } from '@database/imageBatchProcessing';
+import { getBatchImageJobCollectionRef, getLegacyBatchImageJobCollectionRef } from '@database/imageBatchProcessing';
 import { getBoundedHookStringContext, logHookDiagnostic, logHookFailure } from '@hook/hookDiagnostics';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
+import {
+    isImageBatchOwnerVisibleStatus,
+    normalizeImageBatchJobForClient,
+    shouldApplyImageBatchListenerSnapshot,
+} from '@lib/ai/imageBatchClientBoundary';
 import { message } from 'antd';
-import { onSnapshot } from "firebase/firestore";
+import { onSnapshot, type DocumentData, type QuerySnapshot } from "firebase/firestore";
 import { useContext, useEffect, useRef } from "react";
 import { BatchImageGenerationJobType, Project } from '../components/templates/main-app/projects/types';
+import { toDate, type DateLike } from '@util/dateTime';
 
 function timestampValue(value: unknown): number {
-    if (!value) return 0;
-    if (typeof value === 'number') return value;
-    if (typeof value === 'string') return Date.parse(value) || 0;
-    if (value instanceof Date) return value.getTime();
-    if (typeof value === 'object' && 'toMillis' in value && typeof (value as { toMillis?: unknown }).toMillis === 'function') {
-        return ((value as { toMillis: () => number }).toMillis());
-    }
-    if (typeof value === 'object' && 'seconds' in value && typeof (value as { seconds?: unknown }).seconds === 'number') {
-        return (value as { seconds: number }).seconds * 1000;
-    }
-    return 0;
+    const date = toDate(value as DateLike);
+    return Number.isNaN(date.getTime()) ? 0 : date.getTime();
 }
 
 function getJobSortTime(job: BatchImageGenerationJobType): number {
@@ -55,13 +52,14 @@ const getImageBatchJobListenerLogContext = (
 
 interface UseImageBatchJobListenerProps {
     project?: Project | null;
-    setActiveBatchImageJob: any;
+    setActiveBatchImageJob: (job: BatchImageGenerationJobType | null) => void;
 }
 
 export const useImageBatchJobListener = ({ project, setActiveBatchImageJob }: UseImageBatchJobListenerProps) => {
     const dispatch = useAppDispatch();
     const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
     const unsubscribeRef = useRef<(() => void) | null>(null);
+    const legacyUnsubscribeRef = useRef<(() => void) | null>(null);
     const projectId = project?.projectId;
     const tenantId = Number(storeDetails?.tenantId);
     const storeId = Number(storeDetails?.storeId);
@@ -72,6 +70,10 @@ export const useImageBatchJobListener = ({ project, setActiveBatchImageJob }: Us
                 logHookDiagnostic('image_batch_job_listener_scope_cleanup', {}, { developmentOnly: true });
                 unsubscribeRef.current();
                 unsubscribeRef.current = null;
+            }
+            if (legacyUnsubscribeRef.current) {
+                legacyUnsubscribeRef.current();
+                legacyUnsubscribeRef.current = null;
             }
             setActiveBatchImageJob(null);
             return;
@@ -85,40 +87,101 @@ export const useImageBatchJobListener = ({ project, setActiveBatchImageJob }: Us
             unsubscribeRef.current();
             unsubscribeRef.current = null;
         }
+        if (legacyUnsubscribeRef.current) {
+            legacyUnsubscribeRef.current();
+            legacyUnsubscribeRef.current = null;
+        }
 
         try {
             logHookDiagnostic('image_batch_job_listener_setup_started', getImageBatchJobListenerLogContext(projectId, tenantId, storeId), { developmentOnly: true });
             dispatch(startLoader("Listening to batch jobs for project: " + projectId));
 
-            // Get the collection reference
-            const jobsCollectionRef = getBatchImageJobCollectionRef({ tId: tenantId, sId: storeId }, projectId);
-
-            // Set up the snapshot listener
-            const unsubscribe = onSnapshot(
-                jobsCollectionRef,
-                (querySnapshot) => {
+            const sessionScope = { tId: tenantId, sId: storeId };
+            let listenerActive = true;
+            let primaryHasJob = false;
+            const applySnapshot = (
+                querySnapshot: QuerySnapshot<DocumentData>,
+                source: 'legacy' | 'primary',
+            ) => {
+                    if (!listenerActive || !shouldApplyImageBatchListenerSnapshot(source, primaryHasJob)) return;
                     logHookDiagnostic('image_batch_job_listener_snapshot_received', {
                         ...getBoundedHookStringContext('projectId', projectId),
                         snapshotSize: querySnapshot.size,
+                        source,
                     }, { developmentOnly: true });
 
                     const jobsList: BatchImageGenerationJobType[] = [];
-                    querySnapshot.forEach((doc) => {
-                        jobsList.push({ id: doc.id, ...doc.data() } as BatchImageGenerationJobType);
+                    let rejectedJobCount = 0;
+                    querySnapshot.forEach((snapshotDoc) => {
+                        const job = normalizeImageBatchJobForClient(snapshotDoc.data(), snapshotDoc.id, {
+                            projectId,
+                            storeId,
+                            tenantId,
+                        });
+                        if (job) jobsList.push(job);
+                        else rejectedJobCount += 1;
                     });
+                    if (rejectedJobCount > 0) {
+                        logHookFailure(
+                            'image_batch_job_listener_payload_rejected',
+                            new Error('Stored image batch job failed runtime validation.'),
+                            {
+                                ...getImageBatchJobListenerLogContext(projectId, tenantId, storeId),
+                                rejectedJobCount,
+                                source,
+                            },
+                        );
+                    }
 
                     if (jobsList.length > 0) {
-                        const updatedJob = withSelectedGeneratedImages(
-                            jobsList.sort((a, b) => getJobSortTime(b) - getJobSortTime(a))[0]
-                        );
-                        logHookDiagnostic('image_batch_job_listener_active_job_updated', {
-                            ...getBoundedHookStringContext('jobId', updatedJob.id),
-                            itemsCount: updatedJob.itemsList.length,
-                        }, { developmentOnly: true });
-                        setActiveBatchImageJob(updatedJob);
+                        const latestJob = jobsList.sort((a, b) => getJobSortTime(b) - getJobSortTime(a))[0];
+                        if (isImageBatchOwnerVisibleStatus(latestJob.status)) {
+                            const updatedJob = withSelectedGeneratedImages(latestJob);
+                            logHookDiagnostic('image_batch_job_listener_active_job_updated', {
+                                ...getBoundedHookStringContext('jobId', updatedJob.id),
+                                itemsCount: updatedJob.itemsList.length,
+                                source,
+                            }, { developmentOnly: true });
+                            setActiveBatchImageJob(updatedJob);
+                        } else {
+                            setActiveBatchImageJob(null);
+                        }
                     } else {
                         logHookDiagnostic('image_batch_job_listener_empty_snapshot', getBoundedHookStringContext('projectId', projectId), { developmentOnly: true });
                         setActiveBatchImageJob(null);
+                    }
+            };
+
+            const subscribeLegacy = () => {
+                if (legacyUnsubscribeRef.current) return;
+                const legacyQuery = getLegacyBatchImageJobCollectionRef(sessionScope, projectId);
+                legacyUnsubscribeRef.current = onSnapshot(
+                    legacyQuery,
+                    (querySnapshot) => {
+                        if (listenerActive && !primaryHasJob) applySnapshot(querySnapshot, 'legacy');
+                        dispatch(stopLoader("Listening to batch jobs for project: " + projectId));
+                    },
+                    (error) => {
+                        logHookFailure('image_batch_job_legacy_listener_snapshot_failed', error, getImageBatchJobListenerLogContext(projectId, tenantId, storeId));
+                    },
+                );
+            };
+
+            const jobsCollectionRef = getBatchImageJobCollectionRef(sessionScope, projectId);
+            const unsubscribe = onSnapshot(
+                jobsCollectionRef,
+                (querySnapshot) => {
+                    if (!listenerActive) return;
+                    if (querySnapshot.empty) {
+                        primaryHasJob = false;
+                        subscribeLegacy();
+                    } else {
+                        primaryHasJob = true;
+                        if (legacyUnsubscribeRef.current) {
+                            legacyUnsubscribeRef.current();
+                            legacyUnsubscribeRef.current = null;
+                        }
+                        applySnapshot(querySnapshot, 'primary');
                     }
 
                     dispatch(stopLoader("Listening to batch jobs for project: " + projectId));
@@ -134,10 +197,15 @@ export const useImageBatchJobListener = ({ project, setActiveBatchImageJob }: Us
             unsubscribeRef.current = unsubscribe;
 
             return () => {
+                listenerActive = false;
                 logHookDiagnostic('image_batch_job_listener_cleanup', getBoundedHookStringContext('projectId', projectId), { developmentOnly: true });
                 if (unsubscribeRef.current) {
                     unsubscribeRef.current();
                     unsubscribeRef.current = null;
+                }
+                if (legacyUnsubscribeRef.current) {
+                    legacyUnsubscribeRef.current();
+                    legacyUnsubscribeRef.current = null;
                 }
                 dispatch(stopLoader("Listening to batch jobs for project: " + projectId));
             };

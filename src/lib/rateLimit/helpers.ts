@@ -21,6 +21,10 @@ const normalizeRateLimitHelperError = (error: unknown): Error => {
     return normalized;
 };
 
+type AIRateLimitOptions = {
+    failClosedOnProviderError?: boolean;
+};
+
 /**
  * Check rate limit and return 429 response if exceeded
  * 
@@ -41,7 +45,8 @@ const normalizeRateLimitHelperError = (error: unknown): Error => {
  */
 export async function checkAIRateLimit(
     feature: RateLimitFeature = 'AI_OPERATION',
-    keyPrefix: string = 'ai'
+    keyPrefix: string = 'ai',
+    options: AIRateLimitOptions = {},
 ): Promise<NextResponse | null> {
     try {
         const session = await getActiveSession();
@@ -58,6 +63,7 @@ export async function checkAIRateLimit(
         const rateLimitKey = `${keyPrefix}:${userRateLimitHash}:${tenantRateLimitHash}`;
         const rateLimitConfig = getRateLimitForFeature(feature);
         const rateLimit = await checkRateLimit({
+            failClosedOnProviderError: options.failClosedOnProviderError,
             key: rateLimitKey,
             ...rateLimitConfig
         });
@@ -66,7 +72,8 @@ export async function checkAIRateLimit(
             const waitSeconds = Math.ceil((rateLimit.resetAt - Date.now()) / 1000);
             
             // Log rate limit violation to Sentry
-            logger.security('Rate Limit Exceeded', {
+            const providerUnavailable = rateLimit.reason === 'provider_unavailable';
+            logger.security(providerUnavailable ? 'Rate Limit Provider Unavailable' : 'Rate Limit Exceeded', {
                 feature,
                 ...getBoundedSecurityStringContext('userId', session.user.id),
                 ...getBoundedSecurityStringContext('tenantId', session.user.tenantId),
@@ -79,12 +86,14 @@ export async function checkAIRateLimit(
             
             return NextResponse.json(
                 {
-                    error: `Too many requests. Please wait ${waitSeconds} seconds before trying again.`,
+                    error: providerUnavailable
+                        ? 'This operation is temporarily unavailable. Please try again shortly.'
+                        : `Too many requests. Please wait ${waitSeconds} seconds before trying again.`,
                     retryAfter: waitSeconds,
                     resetAt: rateLimit.resetAt
                 },
                 {
-                    status: 429,
+                    status: providerUnavailable ? 503 : 429,
                     headers: {
                         'X-RateLimit-Limit': String(rateLimitConfig.limit),
                         'X-RateLimit-Remaining': String(rateLimit.remaining),
@@ -99,6 +108,17 @@ export async function checkAIRateLimit(
         return null;
         
     } catch (error) {
+        if (options.failClosedOnProviderError) {
+            secureError(
+                '[Rate Limit Helper] Failed, blocking request',
+                normalizeRateLimitHelperError(error),
+                { feature, keyPrefix },
+            );
+            return NextResponse.json(
+                { error: 'This operation is temporarily unavailable. Please try again shortly.' },
+                { status: 503, headers: { 'Retry-After': '60' } },
+            );
+        }
         secureError(
             '[Rate Limit Helper] Failed, allowing request',
             normalizeRateLimitHelperError(error),
@@ -143,5 +163,5 @@ export async function checkExpensiveAILimit(): Promise<NextResponse | null> {
  * Very strict limit to prevent Cloud Task queue abuse
  */
 export async function checkBatchOperationLimit(): Promise<NextResponse | null> {
-    return checkAIRateLimit('BATCH_OPERATION', 'batch');
+    return checkAIRateLimit('BATCH_OPERATION', 'batch', { failClosedOnProviderError: true });
 }

@@ -70,26 +70,30 @@ Layout language:
 - glass panels with consistent stroke, blur, and inset highlight
 - current-color prism panels on major page heroes and not-found recovery
 - Akshar typography across display headlines, compact labels, and concise body copy, with Inter retained only as fallback
-- home page uses the Prism rhythm of hero, marquee, ledger, bento/reference modules, spotlight cards, quote, comparison table, product lineup, contact routing, CTA, and footer
-- secondary pages use a two-column page hero with a Prism panel and alternating glass text sections
+- home page uses a split company hero, factual reference summary, compact company ledger, unframed operating principles, relationship statement, product lineup, boundary table, contact routing, CTA, and footer
+- secondary pages use a two-column page hero with a factual reference panel and consistent horizontal content rows
+- decorative browser mocks, fake charts, marquees, numbered section labels, and duplicate summary-card grids are not part of the current public layout
 
 Logo rule:
 
 - use the glass-prism Neelvara mark with the supplied three-path geometry preserved
 - `public/neelvara-logo.svg` is the source website mark used in header, footer, 404, and structured data
 - the source SVG is a true vector file; path geometry must not be redrawn, filtered, simplified, or replaced by an embedded raster image
-- the approved logo palette is frosted periwinkle, muted blue-violet, and silver-lavender so the parent mark stays distinct from MenuList blue, Answerlattice green, and CampaignCue dark-blue/pink
+- the master SVG uses the balanced `68 0 487 320` viewBox; this corrects transparent canvas padding without resizing, moving, rotating, or transforming any path
+- the approved logo palette is frosted periwinkle, muted blue-violet, and silver-lavender so the parent mark stays distinct from the product brands
 - the visible website logo must not sit inside a square, rounded-rectangle, card, or boxed frame
 - PNG derivatives are only for browser/favicon, Open Graph, or platform compatibility surfaces
-- `public/neelvara-favicon.svg` is the preferred browser favicon and keeps the refined mark centered on a transparent square canvas
-- favicon PNG fallbacks, Apple touch icon, and manifest PNG derivatives are generated from the source mark and must not show a visible frame
+- `public/neelvara-favicon.svg` is the preferred browser favicon and uses the exact three paths on a balanced transparent square canvas without path transforms
+- favicon-only fill opacity and outline strength may be increased for 16-32px legibility; path geometry, gradients, colors, relative placement, and angles remain locked
+- favicon PNG fallbacks, Apple touch icon, manifest PNG derivatives, the compatibility PNG, and the Open Graph image are generated with `npm run generate:neelvara-assets` and verified with `npm run verify:neelvara-logo-assets`
+- all generated derivatives must keep transparent corners, a centered silhouette, and no visible frame
 - wordmark/page text stays `#071323`
 
 Avoid:
 
 - cyan-heavy gradients
 - pure purple branding
-- MenuList-blue, Answerlattice-green, or CampaignCue-pink logo recolors
+- direct product-brand logo recolors
 - rose, amber, peach, or warm SaaS palettes
 - black-only luxury styling
 - broad AI-tool, crypto, or spiritual visual cues
@@ -107,13 +111,13 @@ Neelvara Systems operates software infrastructure for customer-facing business i
 Relationship sentence:
 
 ```text
-MenuList, Answerlattice, and CampaignCue are operated by Neelvara Systems.
+MenuList and Answerlattice are operated by Neelvara Systems.
 ```
 
 Homepage support copy:
 
 ```text
-Neelvara Systems operates products that keep public business facts, approved answers, and reusable business context clear before they reach customers.
+We operate focused products that keep public business facts and approved answers clear, current, and easy to use.
 ```
 
 Do not use the old relationship phrasing in runtime copy. Use `operated by`.
@@ -126,18 +130,16 @@ Purpose: establish entity identity, explain why the company exists, show the ope
 
 Required flow:
 
-1. Hero: `Neelvara Systems`, category eyebrow, support copy, `View Products`, `Email Neelvara`.
-2. Marquee band: company reference, product boundaries, direct email, public facts, approved answers, reusable context.
-3. Entity ledger: company, products, contact.
-4. Why Neelvara exists: problem-first bento cards for company, products, contact, policies, support, and legal boundary.
-5. Spotlight cards: public business facts need one accountable source; each product handles a distinct information job; company questions stay separate from product support.
-6. Company relationship quote using the canonical relationship sentence.
-7. Comparison/reference table separating company reference, product websites, and product apps.
-8. Current products: linked rows with actual MenuList, Answerlattice, and CampaignCue marks.
-9. Contact routes: business, legal, and privacy inbox cards.
-10. Final company-contact band.
+1. Split hero: infrastructure headline, concise operating description, `View Products`, `Email Neelvara`, and a factual company reference summary.
+2. Entity ledger: company, operated products, and country.
+3. Operating approach: three unframed principles for company reference, independent product surfaces, and direct inquiry routing.
+4. Company relationship statement using the canonical relationship sentence.
+5. Current products: two linked product cards with the actual MenuList and Answerlattice marks.
+6. Comparison/reference table separating company reference, product websites, and product apps.
+7. Contact routes: business, legal, and privacy inbox cards.
+8. Final company-contact band.
 
-Do not show product-count stats, page-count stats, internal implementation labels, storage claims, API claims, or broad boundary tables on the homepage. The hero artifact should show company routing and verification context, not a numeric product total.
+Do not show product-count stats, page-count stats, internal implementation labels, storage claims, API claims, fake dashboards, decorative activity charts, or numeric product proof. The hero reference panel must contain only factual company, product, contact, and country information.
 
 ---
 
@@ -153,12 +155,12 @@ Products operated by Neelvara Systems.
 
 Required sections:
 
-- Product map: `Each product has a distinct role.`
-- Product architecture cards:
+- Product map: a full-width section header, one company-information root strip, and two equal compact product nodes under `Each product has a distinct role.`
+- Product architecture nodes:
   - MenuList: `Public business information`
   - Answerlattice: `Approved business answers`
-  - CampaignCue: `Reusable business context`
-- Product detail cards with focus chips and direct product-site CTAs.
+- Product map nodes show category and product identity only; product summaries are not repeated there.
+- Two equal product detail cards carry the summaries, focus chips, and direct product-site CTAs.
 - Product boundaries: product pricing, onboarding, support, documentation, privacy, and terms remain on individual product websites.
 - Looking for something specific: product questions go to product sites; company questions go to Neelvara.
 
@@ -166,7 +168,6 @@ Product summaries:
 
 - MenuList: `Keeps menus, hours, profiles, and customer-facing details in a public business information source.`
 - Answerlattice: `Keeps support knowledge, help content, and business responses tied to approved answers.`
-- CampaignCue: `Keeps campaign briefs, reusable content, and marketing assets tied to business context.`
 
 Only show products approved for company-site mention. Do not show Canonica, GrowthOS, KitStamp, SurfaceOS, MyCodex, private/internal tools, placeholder products, or future-product cards.
 
@@ -211,7 +212,7 @@ Choose the right contact route.
 Required sections:
 
 - Company inboxes: business, legal, and privacy cards.
-- Product support: direct links to MenuList, Answerlattice, and CampaignCue websites.
+- Product support: direct links to MenuList and Answerlattice websites.
 - Before you contact us: keep first message focused; do not include private records, secrets, customer datasets, or sensitive documents unless requested.
 - Country of operation: India.
 - Final email CTA to the business inbox.
@@ -307,6 +308,6 @@ Required actions:
 
 Required secondary content:
 
-- Product shortcuts to MenuList, Answerlattice, and CampaignCue.
+- Product shortcuts to MenuList and Answerlattice.
 - Plain explanation that product support, onboarding, billing, documentation, and account questions should start from the relevant product site.
 - Current-color Prism recovery panel with Home, Products, and Contact routes.

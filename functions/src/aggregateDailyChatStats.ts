@@ -1,10 +1,12 @@
 import { FieldValue, Firestore, Timestamp } from 'firebase-admin/firestore';
+import { createHash } from 'crypto';
 import * as functions from 'firebase-functions';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { FUNCTION_MAX_INSTANCES } from './config/secrets';
 import { DB_COLLECTIONS, getChatAnalyticsDocId } from './constants/database';
 import { ECOMSAI_PLATFORM_USER_ROLE } from './constants/user';
 import { firestoreAdmin } from './firebaseAdmin';
+import { parsePlatformStoreSummary } from './sharedData/storeSummaryBoundary';
 import { getAnalyticsErrorContext, getAnalyticsIdContext } from './analytics/analyticsDiagnostics';
 import { validateNetworkTargetUrl } from './utils/networkTarget';
 
@@ -45,8 +47,9 @@ function getSlackTargetContext(result: { addressCount?: number; error?: string; 
  */
 
 interface DailyStats {
-    tId: string;
-    sId: string; // Store ID (critical for multi-store tenants)
+    pId: 'AL';
+    tId: number;
+    sId: number; // Store ID (critical for multi-store tenants)
     date: string;
     totalChats: number;
     qnaChats: number;
@@ -58,7 +61,12 @@ interface DailyStats {
     totalRegenerations: number;
     topQuestions: Array<{ question: string; count: number }>;
     knowledgeGaps: Array<{ question: string; count: number; examples: string[] }>;
+    sourceComplete: boolean;
+    sourceSessionCount: number;
+    sourceLimit: number;
 }
+
+const ANSWERLATTICE_CHAT_DAILY_SESSION_LIMIT = 2000;
 
 export async function aggregateDailyChatStatsLogic(): Promise<{
     totalTenants: number;
@@ -87,8 +95,8 @@ export async function aggregateDailyChatStatsLogic(): Promise<{
         // This reduces N tenant reads + N store queries to 1 read
         // See: __docs__/patterns/summary-document-pattern.md
         const storesSummaryDoc = await db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc('storesSummary').get();
-        const storesSummary = storesSummaryDoc.exists ? storesSummaryDoc.data()?.stores || {} : {};
-        const storeEntries = Object.entries(storesSummary) as [string, { tId: number | string; active?: boolean }][];
+        const storesSummary = parsePlatformStoreSummary(storesSummaryDoc.exists ? storesSummaryDoc.data() : undefined);
+        const storeEntries = Object.entries(storesSummary);
 
         // Count unique tenants for logging
         const uniqueTenants = new Set(storeEntries.map(([, info]) => String(info.tId)));
@@ -106,10 +114,11 @@ export async function aggregateDailyChatStatsLogic(): Promise<{
 
         // Process each store directly from summary
         for (const [storeId, storeInfo] of storeEntries) {
-            const tId = storeInfo.tId != null ? String(storeInfo.tId) : '';
+            const tId = Number(storeInfo.tId);
+            const numericStoreId = Number(storeId);
 
             // Skip inactive stores
-            if (storeInfo.active === false || !tId) {
+            if (storeInfo.active === false || !Number.isSafeInteger(tId) || tId <= 0 || !Number.isSafeInteger(numericStoreId) || numericStoreId <= 0) {
                 logger.info('[ChatAggregation] Skipping inactive or unscoped store', {
                     storeId: getAnalyticsIdContext(storeId),
                     hasTenantId: Boolean(tId),
@@ -133,34 +142,22 @@ export async function aggregateDailyChatStatsLogic(): Promise<{
 
                 // Check if aggregation already exists for this day
                 const dateStr = yesterday.toISOString().split('T')[0];
-                const docId = getChatAnalyticsDocId(tId, storeId, dateStr);
+                const docId = getChatAnalyticsDocId(tId, numericStoreId, dateStr);
                 const existingDoc = await db.collection(DB_COLLECTIONS.CHAT_ANALYTICS).doc(docId).get();
 
-                if (existingDoc.exists) {
-                    logger.info('[ChatAggregation] Aggregation already exists; skipping', {
-                        tId: getAnalyticsIdContext(tId),
-                        storeId: getAnalyticsIdContext(storeId),
-                        date: dateStr,
-                    });
-                    results.skippedCount++;
+                const stats = await aggregateForStore(db, tId, numericStoreId, yesterday);
+                const sourceHash = createHash('sha256').update(JSON.stringify(stats)).digest('hex');
+                const summaryChanged = !existingDoc.exists || existingDoc.get('sourceHash') !== sourceHash;
 
-                    // Still mark as success since data exists
-                    await db.collection(DB_COLLECTIONS.STORES).doc(storeId).update({
-                        'chatAnalytics.lastSuccessfulRun': FieldValue.serverTimestamp(),
-                        'chatAnalytics.lastStatus': 'SUCCESS',
-                        'chatAnalytics.lastProcessedDate': dateStr,
-                        'chatAnalytics.lastError': FieldValue.delete()
-                    });
-                    continue;
-                }
-
-                const stats = await aggregateForStore(db, tId, storeId, yesterday);
-
-                // Only create document if there's data
-                if (stats.totalChats > 0) {
+                // Persist only changed summaries. Existing non-empty summaries are
+                // overwritten with zeroes if their source chats were removed.
+                if ((stats.totalChats > 0 || existingDoc.exists) && summaryChanged) {
                     await db.collection(DB_COLLECTIONS.CHAT_ANALYTICS).doc(docId).set({
                         ...stats,
-                        createdOn: FieldValue.serverTimestamp(),
+                        sourceHash,
+                        createdOn: existingDoc.exists
+                            ? existingDoc.get('createdOn') || FieldValue.serverTimestamp()
+                            : FieldValue.serverTimestamp(),
                         modifiedOn: FieldValue.serverTimestamp()
                     });
 
@@ -174,13 +171,15 @@ export async function aggregateDailyChatStatsLogic(): Promise<{
 
                     logger.info('[ChatAggregation] Store aggregation written', {
                         tId: getAnalyticsIdContext(tId),
-                        storeId: getAnalyticsIdContext(storeId),
+                        storeId: getAnalyticsIdContext(numericStoreId),
                         date: dateStr,
                         totalChats: stats.totalChats,
                     });
                     results.successCount++;
                 } else {
-                    logger.info('[ChatAggregation] Store had no chats for date', {
+                    logger.info(stats.totalChats > 0
+                        ? '[ChatAggregation] Store summary unchanged'
+                        : '[ChatAggregation] Store had no chats for date', {
                         tId: getAnalyticsIdContext(tId),
                         storeId: getAnalyticsIdContext(storeId),
                         date: dateStr,
@@ -219,7 +218,7 @@ export async function aggregateDailyChatStatsLogic(): Promise<{
                 });
 
                 results.failedCount++;
-                results.errors.push({ tId, storeId, error: CHAT_DAILY_STORE_AGGREGATION_FAILED });
+                results.errors.push({ tId: String(tId), storeId, error: CHAT_DAILY_STORE_AGGREGATION_FAILED });
             }
         }
 
@@ -263,8 +262,8 @@ export async function aggregateDailyChatStatsLogic(): Promise<{
  */
 async function aggregateForStore(
     db: Firestore,  // ✅ Using imported type (no shadowing)
-    tId: string,
-    storeId: string,
+    tId: number,
+    storeId: number,
     date: Date
 ): Promise<DailyStats> {
     const dateStr = date.toISOString().split('T')[0];
@@ -276,8 +275,8 @@ async function aggregateForStore(
     endOfDay.setHours(23, 59, 59, 999);
 
     // 🔍 CRITICAL: Convert tId and storeId to numbers (Firebase stores them as numbers)
-    const tIdNumber = typeof tId === 'string' ? parseInt(tId) : tId;
-    const storeIdNumber = typeof storeId === 'string' ? parseInt(storeId) : storeId;
+    const tIdNumber = tId;
+    const storeIdNumber = storeId;
 
     logger.info('[ChatAggregation] Querying daily chat stats', {
         tId: getAnalyticsIdContext(tIdNumber),
@@ -287,10 +286,13 @@ async function aggregateForStore(
 
     // Query all chats for this STORE on this date
     const chatsSnapshot = await db.collection(DB_COLLECTIONS.CHAT_SESSIONS)
+        .where('pId', '==', 'AL')
         .where('tId', '==', tIdNumber)  // ✅ Use number
         .where('sId', '==', storeIdNumber)  // ✅ Use number
         .where('createdOn', '>=', Timestamp.fromDate(startOfDay))  // ✅ Direct import
         .where('createdOn', '<=', Timestamp.fromDate(endOfDay))    // ✅ Direct import
+        .orderBy('createdOn', 'asc')
+        .limit(ANSWERLATTICE_CHAT_DAILY_SESSION_LIMIT + 1)
         .get();
 
     logger.info('[ChatAggregation] Daily chat session query completed', {
@@ -303,6 +305,7 @@ async function aggregateForStore(
     if (chatsSnapshot.size === 0) {
         // Query without date filter to see if there are any sessions at all
         const anyChats = await db.collection(DB_COLLECTIONS.CHAT_SESSIONS)
+            .where('pId', '==', 'AL')
             .where('tId', '==', tIdNumber)
             .where('sId', '==', storeIdNumber)
             .limit(1)
@@ -316,6 +319,7 @@ async function aggregateForStore(
 
     // Initialize stats
     const stats: DailyStats = {
+        pId: 'AL',
         tId,
         sId: storeId, // CRITICAL: Include storeId
         date: dateStr,
@@ -328,14 +332,17 @@ async function aggregateForStore(
         totalFeedback: 0,
         totalRegenerations: 0,
         topQuestions: [],
-        knowledgeGaps: []
+        knowledgeGaps: [],
+        sourceComplete: chatsSnapshot.size <= ANSWERLATTICE_CHAT_DAILY_SESSION_LIMIT,
+        sourceSessionCount: Math.min(chatsSnapshot.size, ANSWERLATTICE_CHAT_DAILY_SESSION_LIMIT),
+        sourceLimit: ANSWERLATTICE_CHAT_DAILY_SESSION_LIMIT,
     };
 
     const questionCounts: Record<string, number> = {};
     const gapCounts: Record<string, { question: string; count: number; examples: string[] }> = {};
 
     // Process each chat session
-    chatsSnapshot.forEach((doc) => {
+    chatsSnapshot.docs.slice(0, ANSWERLATTICE_CHAT_DAILY_SESSION_LIMIT).forEach((doc) => {
         const data = doc.data();
         stats.totalChats++;
 
@@ -495,7 +502,9 @@ const backfillOptions = {
 };
 
 export const backfillAggregates = onCall(backfillOptions, async (request) => {
-    const data = request.data as { tenantId?: string; storeId?: string; days?: number };
+    const data = request.data && typeof request.data === 'object'
+        ? request.data as Record<string, unknown>
+        : {};
     const context = request.auth;
 
     if (!context) {
@@ -509,16 +518,23 @@ export const backfillAggregates = onCall(backfillOptions, async (request) => {
         throw new HttpsError('permission-denied', 'Only platform owners can run backfill operations');
     }
 
-    const { tenantId, storeId, days = 30 } = data;
+    const tenantId = String(data.tenantId || '').trim();
+    const storeId = String(data.storeId || '').trim();
+    const requestedDays = Number(data.days ?? 30);
 
-    if (!tenantId || !storeId) {
+    if (!/^[1-9]\d*$/.test(tenantId) || !/^[1-9]\d*$/.test(storeId)) {
         throw new HttpsError('invalid-argument', 'tenantId and storeId are required');
     }
+    if (!Number.isInteger(requestedDays) || requestedDays < 1 || requestedDays > 90) {
+        throw new HttpsError('invalid-argument', 'days must be an integer between 1 and 90');
+    }
+    const tenantIdNumber = Number(tenantId);
+    const storeIdNumber = Number(storeId);
 
     const db = firestoreAdmin;
     const results = [];
 
-    for (let i = 1; i <= days; i++) {
+    for (let i = 1; i <= requestedDays; i++) {
         const date = new Date();
         date.setDate(date.getDate() - i);
         const dateStr = date.toISOString().split('T')[0];
@@ -529,13 +545,17 @@ export const backfillAggregates = onCall(backfillOptions, async (request) => {
                 storeId: getAnalyticsIdContext(storeId),
                 date: dateStr,
             });
-            const stats = await aggregateForStore(db, tenantId, storeId, date);
+            const stats = await aggregateForStore(db, tenantIdNumber, storeIdNumber, date);
 
-            if (stats.totalChats > 0) {
-                const docId = getChatAnalyticsDocId(tenantId, storeId, dateStr);
-                await db.collection(DB_COLLECTIONS.CHAT_ANALYTICS).doc(docId).set({
+            const docId = getChatAnalyticsDocId(tenantIdNumber, storeIdNumber, dateStr);
+            const summaryRef = db.collection(DB_COLLECTIONS.CHAT_ANALYTICS).doc(docId);
+            const existing = await summaryRef.get();
+            if (stats.totalChats > 0 || existing.exists) {
+                await summaryRef.set({
                     ...stats,
-                    createdOn: FieldValue.serverTimestamp(),
+                    createdOn: existing.exists
+                        ? existing.get('createdOn') || FieldValue.serverTimestamp()
+                        : FieldValue.serverTimestamp(),
                     modifiedOn: FieldValue.serverTimestamp()
                 }, { merge: true }); // merge: true makes it idempotent
 
@@ -559,5 +579,5 @@ export const backfillAggregates = onCall(backfillOptions, async (request) => {
         }
     }
 
-    return { tenantId, storeId, days, results };
+    return { tenantId, storeId, days: requestedDays, results };
 });

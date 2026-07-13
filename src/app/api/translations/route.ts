@@ -5,7 +5,9 @@ import { CHARGE_PER_CREDIT, TOKENS_PER_CREDIT } from "@constant/common";
 import { PERMISSIONS } from "@constant/permissions";
 import { HarmBlockThreshold, HarmCategory } from "@google/genai";
 import { finalizeAiOperationAccounting } from "@lib/ai/accounting";
-import { checkAICapacity } from "@lib/ai/capacityCheck";
+import { summarizeAiProviderUsage } from "@lib/ai/providerUsage";
+import { normalizeTranslationText, resolveTranslationBillingAction } from "@lib/ai/translationOutput";
+import { checkAICapacity, refundAiCapacityReservationSafely, reserveAiCapacity } from "@lib/ai/capacityCheck";
 import { getAIGatewayDiagnostics, getAIErrorDiagnostics, getAIRouteLogContext, getAIRouteSecurityContext, logAIRouteFailure } from "@lib/google/genAi/diagnostics";
 import { genAIClient } from "@lib/google/genAi";
 import { logger } from "@lib/monitoring/logger";
@@ -18,7 +20,7 @@ import { validateAPIInput } from "@lib/security/inputValidation";
 import { TranslationRequestSchema } from "@lib/validation/apiSchemas";
 import { writeErrorLogEntry, writeLogEntry, writeMissingParamsLogEntry } from 'logs/utils';
 import { NextResponse } from 'next/server';
-import { verifyTenantAccess, withAuth } from "../../../middleware/auth";
+import { withAuth } from "../../../middleware/auth";
 import getPrompt, { systemInstruction } from "./prompt";
 
 const AI_MODEL = getModelName('TRANSLATION');
@@ -169,13 +171,11 @@ function parseTranslationProviderResponse(
     }
 }
 
-const isStringRecord = (value: unknown): value is Record<string, string> =>
+const isRecord = (value: unknown): value is Record<string, unknown> =>
     typeof value === 'object' && value !== null && !Array.isArray(value);
 
 const normalizeTranslatedField = (value: unknown, fallbackValue: string) => {
-    if (typeof value !== 'string') return fallbackValue;
-    const trimmedValue = value.trim();
-    return trimmedValue.length > 0 ? trimmedValue : fallbackValue;
+    return normalizeTranslationText(value) || fallbackValue;
 };
 
 const extractTranslationTargetIds = (inputJson: Record<string, string>) => {
@@ -216,15 +216,15 @@ const normalizeSingleTranslationResponse = ({
     languageCode: string;
 }) => {
     const rawTranslations = generatedData?.translations;
-    if (!isStringRecord(rawTranslations)) {
+    if (!isRecord(rawTranslations)) {
         throw new Error('Translation failed: AI returned invalid single-language response shape');
     }
 
     const normalizedTranslations = Object.fromEntries(
         inputKeys.map((key) => [key, normalizeTranslatedField(rawTranslations[key], inputJson[key])])
     );
-    const missingKeys = inputKeys.filter((key) => !(key in rawTranslations));
-    const invalidKeys = inputKeys.filter((key) => key in rawTranslations && normalizeTranslatedField(rawTranslations[key], '') === '');
+    const missingKeys = inputKeys.filter((key) => !Object.prototype.hasOwnProperty.call(rawTranslations, key));
+    const invalidKeys = inputKeys.filter((key) => Object.prototype.hasOwnProperty.call(rawTranslations, key) && !normalizeTranslationText(rawTranslations[key]));
 
     return {
         normalizedData: { translations: normalizedTranslations },
@@ -232,7 +232,7 @@ const normalizeSingleTranslationResponse = ({
             language: languageCode,
             missingKeys,
             invalidKeys,
-            translatedKeyCount: Object.keys(rawTranslations).length,
+            translatedKeyCount: inputKeys.length - missingKeys.length - invalidKeys.length,
             fallbackKeyCount: missingKeys.length + invalidKeys.length,
         }],
     };
@@ -260,7 +260,7 @@ const normalizeBatchTranslationResponse = ({
                 throw new Error('Translation failed: target language code is missing');
             }
             const rawTranslations = rawTranslationsByLanguage[language.code];
-            if (!isStringRecord(rawTranslations)) {
+            if (!isRecord(rawTranslations)) {
                 throw new Error(`Translation failed: AI returned invalid language payload for ${language.code}`);
             }
 
@@ -277,14 +277,14 @@ const normalizeBatchTranslationResponse = ({
             throw new Error('Translation failed: target language code is missing');
         }
         const rawTranslations = rawTranslationsByLanguage[language.code] as Record<string, unknown>;
-        const missingKeys = inputKeys.filter((key) => !(key in rawTranslations));
-        const invalidKeys = inputKeys.filter((key) => key in rawTranslations && normalizeTranslatedField(rawTranslations[key], '') === '');
+        const missingKeys = inputKeys.filter((key) => !Object.prototype.hasOwnProperty.call(rawTranslations, key));
+        const invalidKeys = inputKeys.filter((key) => Object.prototype.hasOwnProperty.call(rawTranslations, key) && !normalizeTranslationText(rawTranslations[key]));
 
         return {
             language: language.code,
             missingKeys,
             invalidKeys,
-            translatedKeyCount: Object.keys(rawTranslations).length,
+            translatedKeyCount: inputKeys.length - missingKeys.length - invalidKeys.length,
             fallbackKeyCount: missingKeys.length + invalidKeys.length,
         };
     });
@@ -320,6 +320,7 @@ export const POST = withAuth(async (request, session) => {
     const userId = session.user.id;
     const requestId = crypto.randomUUID();
     let requestAction = 'unknown';
+    let capacityReservation: Awaited<ReturnType<typeof reserveAiCapacity>> | null = null;
     try {
 
         // �️ SAFE_MODE: Block expensive operations during system maintenance
@@ -363,9 +364,15 @@ export const POST = withAuth(async (request, session) => {
         }
 
         const validated = validation.data;
-        const { inputJson, targetLang, sourceLang, action, projectId, fileId } = validated;
-        requestAction = action;
+        const { inputJson, targetLang, sourceLang, projectId, fileId } = validated;
+        const requestedAction = validated.action;
         const targetLanguages = Array.isArray(targetLang) ? targetLang : [targetLang];
+        const action = resolveTranslationBillingAction(
+            requestedAction,
+            Object.keys(inputJson),
+            targetLanguages.length,
+        );
+        requestAction = action;
         const permissionError = await requireAnyStorePermission(
             request,
             session,
@@ -382,6 +389,7 @@ export const POST = withAuth(async (request, session) => {
             model: AI_MODEL,
             projectId,
             requestId,
+            requestedAction,
             sourceLang: sourceLang.code,
             storeId: session.sId,
             targetLangs: targetLanguages.map((language) => language.code),
@@ -389,33 +397,22 @@ export const POST = withAuth(async (request, session) => {
             userId,
         }));
 
-        if (projectId) {
-            if (!verifyTenantAccess(session, session.tId, session.sId, request)) {
-                logger.security('Tenant Access Violation - Translation API', {
-                    ...getAIRouteSecurityContext(session, request),
-                    endpoint: '/api/translations',
-                    attemptedProject: getAIRouteLogContext({ projectId }),
-                }, 'critical');
-                return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-            }
-
-            const translationTargets = extractTranslationTargetIds(inputJson as Record<string, string>);
-            const outletPolicyBlockReason = await getLinkedOutletPolicyBlockReason({
-                action: "translation",
-                categoryIds: translationTargets.categoryIds,
-                itemIds: translationTargets.itemIds,
-                projectId,
-                session,
-            });
-            if (outletPolicyBlockReason) {
-                logger.security('Outlet Policy Violation - Translation API', {
-                    ...getAIRouteSecurityContext(session, request),
-                    endpoint: '/api/translations',
-                    project: getAIRouteLogContext({ projectId }),
-                    reason: outletPolicyBlockReason,
-                }, 'medium');
-                return NextResponse.json({ error: outletPolicyBlockReason }, { status: 403 });
-            }
+        const translationTargets = extractTranslationTargetIds(inputJson as Record<string, string>);
+        const outletPolicyBlockReason = await getLinkedOutletPolicyBlockReason({
+            action: "translation",
+            categoryIds: translationTargets.categoryIds,
+            itemIds: translationTargets.itemIds,
+            projectId,
+            session,
+        });
+        if (outletPolicyBlockReason) {
+            logger.security('Outlet Policy Violation - Translation API', {
+                ...getAIRouteSecurityContext(session, request),
+                endpoint: '/api/translations',
+                project: getAIRouteLogContext({ projectId }),
+                reason: outletPolicyBlockReason,
+            }, 'medium');
+            return NextResponse.json({ error: outletPolicyBlockReason }, { status: 403 });
         }
 
         // 🔋 AI CAPACITY CHECK: Verify store has sufficient capacity
@@ -431,6 +428,18 @@ export const POST = withAuth(async (request, session) => {
                     : 'Additional AI enhancements needed for your menu.',
                 code: capacityCheck.reason,
             }, { status: 402 });
+        }
+        if (capacityCheck.unitsRequired > 0) {
+            capacityReservation = await reserveAiCapacity({
+                action,
+                pId: session.pId ?? session.user?.pId ?? session.user?.productId,
+                sId: session.sId,
+                source: '/api/translations',
+                subscription: capacityCheck.subscription!,
+                tId: session.tId,
+                uId: session.uId ?? session.user?.id,
+                unitsToReserve: capacityCheck.unitsRequired,
+            });
         }
 
         const startTime = new Date().getTime();
@@ -454,12 +463,14 @@ export const POST = withAuth(async (request, session) => {
             }]
         }
         let response;
+        const providerResponses: unknown[] = [];
         try {
             response = await genAIClient.models.generateContent({
                 model: AI_MODEL,
                 contents: prompt,
                 config: generationConfig,
             });
+            providerResponses.push(response);
         } catch (generationError) {
             const errorDiagnostics = getAIErrorDiagnostics(generationError);
             const gatewayDiagnostics = getAIGatewayDiagnostics(genAIClient);
@@ -504,9 +515,6 @@ export const POST = withAuth(async (request, session) => {
             throw generationError;
         }
 
-        const endTime = new Date().getTime();
-        const processingTime = endTime - startTime;
-
         let generatedData: Record<string, any>;
         try {
             generatedData = parseTranslationProviderResponse(response.text, {
@@ -533,6 +541,7 @@ export const POST = withAuth(async (request, session) => {
                     contents: prompt,
                     config: generationConfig,
                 });
+                providerResponses.push(retryResponse);
             } catch (retryGenerationError) {
                 const errorDiagnostics = getAIErrorDiagnostics(retryGenerationError);
                 const gatewayDiagnostics = getAIGatewayDiagnostics(genAIClient);
@@ -673,6 +682,9 @@ export const POST = withAuth(async (request, session) => {
             translatedKeyCount,
             translationCoverageCount: translationCoverage.length,
         };
+        const processingTime = Date.now() - startTime;
+        const providerUsage = summarizeAiProviderUsage(providerResponses);
+        const realCostPaise = getRealCostPaise(action) * providerUsage.providerCallCount;
 
         let transactionObject = {
             transactionId: null,
@@ -682,23 +694,25 @@ export const POST = withAuth(async (request, session) => {
             projectId,
             fileId,
             action,
+            requestedAction,
             unitsConsumed: 0,
             clientResponse: getTranslationClientResponseSummary(normalizedData, translationCoverageSummary),
             geminiResponse: response,
             generationConfig,
             model: AI_MODEL,
-            promptTokenCount: response.usageMetadata?.promptTokenCount || 0,
-            candidatesTokenCount: response.usageMetadata?.candidatesTokenCount || 0,
-            totalTokenCount: response.usageMetadata?.totalTokenCount || 0,
+            promptTokenCount: providerUsage.promptTokenCount,
+            candidatesTokenCount: providerUsage.candidatesTokenCount,
+            providerCallCount: providerUsage.providerCallCount,
+            totalTokenCount: providerUsage.totalTokenCount,
             processingTime, // in ms
             tokenPerCredit: TOKENS_PER_CREDIT,
             chargePerCredit: CHARGE_PER_CREDIT,
-            totalCredits: ((response.usageMetadata?.totalTokenCount || 0) / TOKENS_PER_CREDIT),
-            totalCharge: CHARGE_PER_CREDIT * ((response.usageMetadata?.totalTokenCount || 0) / TOKENS_PER_CREDIT), // in paise
+            totalCredits: providerUsage.totalTokenCount / TOKENS_PER_CREDIT,
+            totalCharge: CHARGE_PER_CREDIT * (providerUsage.totalTokenCount / TOKENS_PER_CREDIT), // in paise
             // Deep tracking: real Google cost vs our charge vs margin (all in paise)
-            realCostPaise: getRealCostPaise(action),
+            realCostPaise,
             ourChargePaise: getOurChargePaise(action),
-            marginPaise: getOurChargePaise(action) - getRealCostPaise(action),
+            marginPaise: getOurChargePaise(action) - realCostPaise,
             translationCoverageSummary,
         };
         const getTransactionLogSummary = () => ({
@@ -710,6 +724,7 @@ export const POST = withAuth(async (request, session) => {
             processingTime: transactionObject.processingTime,
             projectId: transactionObject.projectId,
             promptTokenCount: transactionObject.promptTokenCount,
+            providerCallCount: transactionObject.providerCallCount,
             candidatesTokenCount: transactionObject.candidatesTokenCount,
             totalTokenCount: transactionObject.totalTokenCount,
             totalCharge: transactionObject.totalCharge,
@@ -724,6 +739,7 @@ export const POST = withAuth(async (request, session) => {
         try {
             transactionObject.unitsConsumed = getUnitCost(transactionObject.action);
             const accounting = await finalizeAiOperationAccounting({
+                capacityReservation: capacityReservation || undefined,
                 capacitySubscription: capacityCheck.subscription,
                 context: {
                     action,
@@ -738,6 +754,7 @@ export const POST = withAuth(async (request, session) => {
                 logLabel: 'Translation',
                 session,
             });
+            capacityReservation = null;
             transactionObject.unitsConsumed = accounting.unitsConsumed;
             transactionObject.transactionId = accounting.transactionId;
             remainingBalance = accounting.remainingBalance;
@@ -831,5 +848,10 @@ export const POST = withAuth(async (request, session) => {
             { error: 'Translation failed' },
             { status: 500 }
         );
+    } finally {
+        await refundAiCapacityReservationSafely(capacityReservation, 'translation_request_did_not_settle', {
+            endpoint: '/api/translations',
+            requestId,
+        });
     }
 });

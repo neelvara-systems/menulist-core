@@ -1,6 +1,7 @@
 import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
 
-export const AI_MENU_MANAGER_SESSION_ID_PATTERN = /^amm_[a-f0-9]{24}$/;
+export const AI_MENU_MANAGER_LEGACY_SESSION_ID_PATTERN = /^amm_[a-f0-9]{24}$/;
+export const AI_MENU_MANAGER_SESSION_ID_PATTERN = /^amm2_[1-9]\d*_[1-9]\d*_\d{4}-\d{2}-\d{2}_[\s\S]{1,160}$/;
 export const AI_MENU_MANAGER_PROPOSAL_ID_PATTERN = /^amm_prop_[a-f0-9]{28}$/;
 export const AI_MENU_MANAGER_PROJECT_ID_MAX_LENGTH = 160;
 
@@ -17,7 +18,8 @@ function normalizePatternedFirestoreId(value: unknown, pattern: RegExp): string 
 }
 
 export function normalizeAiMenuManagerSessionId(value: unknown): string | null {
-    return normalizePatternedFirestoreId(value, AI_MENU_MANAGER_SESSION_ID_PATTERN);
+    return normalizePatternedFirestoreId(value, AI_MENU_MANAGER_SESSION_ID_PATTERN)
+        || normalizePatternedFirestoreId(value, AI_MENU_MANAGER_LEGACY_SESSION_ID_PATTERN);
 }
 
 export function normalizeAiMenuManagerProposalId(value: unknown): string | null {

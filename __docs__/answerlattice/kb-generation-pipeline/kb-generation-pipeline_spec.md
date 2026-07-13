@@ -82,8 +82,8 @@ Enable platform administrators to generate structured knowledge base articles fr
 - Articles written to `kb_articles` collection
 - Article metadata synced to `kb_categories` parent document
 - Embedding generation triggered per article
-- Job tracks: `articlesToEmbedCount` and `articlesEmbeddedCount`
-- Job status: `published` when all embeddings complete
+- Job stores bounded `embeddingPendingArticleIds`, `embeddingCompletedArticleIds`, and `embeddingFailedArticleIds` sets plus display counters derived from those sets
+- Job status becomes `published` only when every exact pending ID is completed for the current embedding run and the failed set is empty
 
 ### Stage 7: Embedding
 
@@ -91,6 +91,8 @@ Enable platform administrators to generate structured knowledge base articles fr
 - Embedding input: `Category: {cat}\nSection: {sec}\nTitle: {title}\nContent: {text}`
 - Cloud Function `embedArticleWorker` processes embedding queue
 - Uses `genrateEmbedding()` utility from Cloud Functions
+- Every task carries the current `embeddingRunId`; missing or stale-run tasks are skipped, and article IDs outside the job cannot change job failure state
+- Existing vectors are reusable only when model cache version, dimensions, non-zero finite values, and the normalized category/section/title/content source hash all match
 
 ---
 
@@ -121,7 +123,7 @@ Enable platform administrators to generate structured knowledge base articles fr
 - View job history (completed/failed/cancelled)
 - View job details in drawer (source files, generated content tree, metadata)
 - Cancel active jobs
-- Delete jobs (with cascade: removes articles + categories + storage files)
+- Delete unpublished terminal/review jobs with recoverable draft and source-file cleanup
 
 ---
 
@@ -137,16 +139,17 @@ Active jobs use Firestore `onSnapshot` listener via `useIngestionJobsListener` h
 
 ---
 
-## 6. Job Deletion (Cascade)
+## 6. Job Deletion (Recoverable Cleanup)
 
 When a job is deleted (`deleteIngestionJob()`):
 
-1. **Transaction:** Remove job categories from master `kb_categories` document
-2. **Transaction:** Delete all articles associated with this jobId from `kb_articles`
-3. **Transaction:** Delete the job document itself
-4. **Post-transaction:** Delete source files from Firebase Storage
+1. The caller must be a platform administrator and the job must be `needs_review`, `failed`, or `cancelled`. Published/active jobs and embedding-failed jobs are refused.
+2. The job, every related article query, and every compatibility read are checked against exact positive-integer `pId`/`tId`/`sId` scope. Coercible or malformed legacy scope does not match.
+3. A transaction rechecks job status and `modifiedOn`, refuses active deletion ownership, deletes only unpublished/inactive article drafts, and writes a bounded `deletionRun` lease to the retained job.
+4. Firebase Storage source deletion runs after the lease is owned. Both thrown failures and fulfilled `{ success: false }` results count as failures.
+5. If any source cleanup fails, the retained job records `deletionRun.status = failed` and remains available for an explicit delete retry. If all cleanup succeeds, a final transaction proves the same deletion-run ownership before deleting the job.
 
-This ensures no orphaned articles or categories remain.
+Published jobs and any job with a published/active article remain durable so `jobId` provenance cannot be orphaned. Category documents are not deleted by this DAL path; article publication owns category placement.
 
 ---
 
@@ -157,10 +160,10 @@ This ensures no orphaned articles or categories remain.
 | 1   | Deprecated `getIngestionJobs()` compatibility helper could read globally                              | ✅ RESOLVED — non-platform reads are tenant/store scoped; platform admins keep the administrative list path. |
 | 2   | No retry mechanism for failed jobs                                                                     | ✅ RESOLVED — `retryJob()` DAL + UI button implemented                              |
 | 3   | No job timeout (stuck in processing forever)                                                           | ✅ RESOLVED — Watchdog in hourly scheduler auto-fails after 30 min                  |
-| 4   | Source files not cleaned up on job failure or cancellation                                             | By design — preserves files for retry, audit, and review. Cleaned on explicit job delete. |
+| 4   | Source files not cleaned up on job failure or cancellation                                             | By design — preserves files for retry, audit, and review. Explicit delete is restricted to unpublished safe states and retains a retryable job record if Storage cleanup fails. |
 | 5   | No progress granularity during processing stage                                                        | Status is binary (processing or not)                                                |
 | 6   | Dev/prod behavior difference: dev manually triggers CF, prod uses Firestore trigger                    | By design — documented in code                                                      |
-| 7   | `embedArticleWorker` increments counter on error — failed embeddings count as "done"                   | Risk: job marked "published" with missing embeddings. Low frequency mitigates risk. |
+| 7   | Failed or stale embedding tasks could previously satisfy a counter-only finalizer                       | ✅ RESOLVED — durable pending/completed/failed ID sets, exact run identity, and set-based finalization prevent incomplete publication. |
 | 8   | ReviewModal delete handlers are empty stubs (`onDeleteCategory`, `onDeleteSection`, `onDeleteArticle`) | ✅ RESOLVED — All three delete handlers implemented with confirmation dialogs       |
 
 ---

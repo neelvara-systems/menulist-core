@@ -24,9 +24,10 @@ const PublicAnswerRequestSchema = z.object({
     currentVersion: z.number().int().positive().max(999_999_999).optional(),
     planId: z.string().trim().max(80).optional(),
     roleId: z.string().trim().max(80).optional(),
+    stateId: z.string().trim().max(80).optional(),
     context: z.unknown().optional(),
     includeDebug: z.boolean().optional().default(false),
-});
+}).strict();
 
 const isPublicApiDebugResponseAllowed = () => (
     process.env.ANSWERLATTICE_PUBLIC_API_DEBUG === 'true'
@@ -80,6 +81,9 @@ function serializeFallbackReason(reason?: string | null): string | null {
         'no_entity_match',
         'no_canonical_answers_for_entities',
         'no_version_match',
+        'canonical_answer_review_required',
+        'canonical_scope_context_required',
+        'canonical_scope_not_covered',
     ]);
 
     return allowedReasons.has(reason) ? reason : 'fallback_required';
@@ -115,6 +119,9 @@ export async function POST(request: NextRequest) {
         const productContext = body.context && FEATURE_FLAGS.ENABLE_ANSWERLATTICE_CONTEXT_AWARE
             ? AnswerlatticeContextSchema.safeParse(body.context)
             : null;
+        if (productContext && !productContext.success) {
+            return apiError('INVALID_INPUT', 'Invalid page context', 400);
+        }
 
         const result = await attemptCanonicalRetrieval(body.query, {
             tId: auth.context.tId,
@@ -122,6 +129,7 @@ export async function POST(request: NextRequest) {
             currentVersion: body.currentVersion,
             planId: body.planId,
             roleId: body.roleId,
+            stateId: body.stateId,
             context: productContext?.success ? productContext.data : undefined,
         });
 

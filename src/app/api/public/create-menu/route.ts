@@ -23,6 +23,10 @@ import {
     PUBLIC_CREATE_MENU_IMAGE_MIME_TYPES,
 } from '@data/shared/menuExtractionJob';
 import { MenuIntakeFileInput } from '@data/shared/menuIntakeIdentity';
+import {
+    getPublicMenuDraftTimestampMillis,
+    normalizePublicMenuDraftExtractedData,
+} from '@data/shared/publicMenuDraftData';
 import { firestoreAdmin, storageAdmin } from '@lib/firebase/firebaseAdmin';
 import {
     normalizeGrowthAcquisitionAttribution,
@@ -70,7 +74,7 @@ const PUBLIC_MENU_ENTRY_LINK_IMPORT_FAILED = 'public_menu_entry_link_import_fail
 const PUBLIC_MENU_ENTRY_UPLOAD_FAILED = 'public_menu_entry_upload_failed';
 const PUBLIC_MENU_ENTRY_POLL_FAILED = 'public_menu_entry_poll_failed';
 const PUBLIC_MENU_ENTRY_STORAGE_CLEANUP_FAILED = 'public_menu_entry_storage_cleanup_failed';
-const PUBLIC_MENU_ENTRY_DRAFT_CLEANUP_FAILED = 'public_menu_entry_draft_cleanup_failed';
+const PUBLIC_MENU_ENTRY_COLLISION_LOOKUP_FAILED = 'public_menu_entry_collision_lookup_failed';
 
 function buildPublicMenuEntryLogContext(context: {
     draftToken?: unknown;
@@ -107,20 +111,6 @@ async function deletePublicMenuEntryStoragePath(
     }
 }
 
-async function deletePublicMenuEntryDraft(
-    draftToken: string,
-    context: { cleanupReason: string; userId: string },
-): Promise<void> {
-    try {
-        await firestoreAdmin.collection(COLLECTION).doc(draftToken).delete();
-    } catch (error) {
-        logSecurityFailure(PUBLIC_MENU_ENTRY_DRAFT_CLEANUP_FAILED, error, {
-            ...buildPublicMenuEntryLogContext({ draftToken, userId: context.userId }),
-            cleanupReason: context.cleanupReason,
-        });
-    }
-}
-
 const PublicMenuLinkSchema = z.object({
     growthAcquisition: z.object({
         source: z.string().max(80),
@@ -147,7 +137,7 @@ type PublicDraftSource = {
 };
 
 type ReusableDraft = {
-    data: Record<string, any>;
+    data: Record<string, unknown>;
     id: string;
 };
 
@@ -176,12 +166,11 @@ function hashBuffer(value: Buffer): string {
     return crypto.createHash('sha256').update(value).digest('hex');
 }
 
-function getTimestampMillis(value: any): number | null {
-    if (!value) return null;
-    if (typeof value.toMillis === 'function') return value.toMillis();
-    if (value instanceof Date) return value.getTime();
-    if (typeof value === 'number') return value;
-    return null;
+function buildIdempotentPublicDraftToken(userId: string, sourceFingerprint: string): string {
+    const hex = hashString(`public-menu-draft:v1:${userId}:${sourceFingerprint}`).slice(0, 32).split('');
+    hex[12] = '5';
+    hex[16] = ((Number.parseInt(hex[16], 16) & 0x3) | 0x8).toString(16);
+    return `${hex.slice(0, 8).join('')}-${hex.slice(8, 12).join('')}-${hex.slice(12, 16).join('')}-${hex.slice(16, 20).join('')}-${hex.slice(20, 32).join('')}`;
 }
 
 function buildReusableDraftResponse(reusableDraft: ReusableDraft): NextResponse {
@@ -211,11 +200,11 @@ async function findReusableDraftForUser(
 
     snapshot.docs.forEach((doc) => {
         const data = doc.data();
-        const expiresAtMillis = getTimestampMillis(data.expiresAt);
+        const expiresAtMillis = getPublicMenuDraftTimestampMillis(data.expiresAt);
         const status = String(data.extractionStatus || '');
 
         if (data.claimed === true) return;
-        if (expiresAtMillis !== null && expiresAtMillis < now) return;
+        if (expiresAtMillis === null || expiresAtMillis <= now) return;
 
         if (!activeDraft && ACTIVE_DRAFT_STATUSES.has(status)) {
             activeDraft = { id: doc.id, data };
@@ -234,6 +223,30 @@ async function findReusableDraftForUser(
     });
 
     return activeDraft || matchingDraft;
+}
+
+async function getReusableDraftByIdForUser(
+    draftToken: string,
+    userId: string,
+    criteria: ReusableDraftCriteria,
+): Promise<ReusableDraft | null> {
+    const draftDoc = await firestoreAdmin.collection(COLLECTION).doc(draftToken).get();
+    if (!draftDoc.exists) return null;
+    const data = draftDoc.data() || {};
+    const expiresAtMillis = getPublicMenuDraftTimestampMillis(data.expiresAt);
+    const status = String(data.extractionStatus || '');
+    if (
+        data.createdByUId !== userId
+        || data.claimed === true
+        || expiresAtMillis === null
+        || expiresAtMillis <= Date.now()
+        || !REUSABLE_DRAFT_STATUSES.has(status)
+    ) {
+        return null;
+    }
+    if (criteria.contentHash && data.contentHash !== criteria.contentHash) return null;
+    if (criteria.sourceInputHash && data.sourceInputHash !== criteria.sourceInputHash) return null;
+    return { id: draftDoc.id, data };
 }
 
 async function checkAuthenticatedPublicMenuEntryLimit(userId: string): Promise<NextResponse | null> {
@@ -303,13 +316,21 @@ async function runPublicDraftIdentityCheck(draftToken: string, projectId: string
     };
 }
 
-async function createPublicDraftExtractionJob(draftToken: string, source: PublicDraftSource, sourceUrl: string, userId: string): Promise<string> {
-    const jobRef = firestoreAdmin.collection(DB_COLLECTIONS.MENU_IMAGE_PROCESSING_JOBS).doc();
+async function createPublicDraftExtractionJob(
+    draftToken: string,
+    source: PublicDraftSource,
+    sourceUrl: string,
+    userId: string,
+    draftData: Record<string, unknown>,
+): Promise<string> {
+    const jobRef = firestoreAdmin.collection(DB_COLLECTIONS.MENU_IMAGE_PROCESSING_JOBS).doc(`public_${draftToken}`);
+    const draftRef = firestoreAdmin.collection(COLLECTION).doc(draftToken);
     const now = Timestamp.now();
     const projectId = buildPublicDraftProjectId(draftToken);
     const identityCheck = await runPublicDraftIdentityCheck(draftToken, projectId, source, sourceUrl);
 
-    await jobRef.set({
+    const batch = firestoreAdmin.batch();
+    batch.create(jobRef, {
         action: AI_ACTIONS_TYPES.PUBLIC_MENU_EXTRACTION,
         createdAt: now,
         currentStep: 'Queued',
@@ -351,11 +372,12 @@ async function createPublicDraftExtractionJob(draftToken: string, source: Public
         uId: String(ECOMSAI_PLATFORM_USER_ID),
         updatedAt: now,
     });
-
-    await firestoreAdmin.collection(COLLECTION).doc(draftToken).update({
+    batch.create(draftRef, {
+        ...draftData,
         extractionJobId: jobRef.id,
         updatedAt: now,
     });
+    await batch.commit();
 
     return jobRef.id;
 }
@@ -407,17 +429,18 @@ async function createImageDraft(
     const rateLimitResponse = await checkAuthenticatedPublicMenuEntryLimit(userId);
     if (rateLimitResponse) return rateLimitResponse;
 
-    const draftToken = crypto.randomUUID();
+    const draftToken = buildIdempotentPublicDraftToken(userId, `image:${contentHash}`);
     const ext = imageFile.type === 'image/png' ? 'png' : imageFile.type === 'image/webp' ? 'webp' : 'jpg';
     const storagePath = `publicMenuDrafts/${draftToken}/menu.${ext}`;
-    const downloadToken = crypto.randomUUID();
+    // The object path is deliberately deterministic. Its download token must be
+    // deterministic too so a concurrent identical upload cannot invalidate the
+    // URL committed by the request that wins the Firestore create batch.
+    const downloadToken = draftToken;
     const bucket = storageAdmin.bucket();
     const imageUrl = buildDownloadUrl(bucket.name, storagePath, downloadToken);
     const now = Timestamp.now();
     const expiresAt = Timestamp.fromMillis(Date.now() + DRAFT_TTL_MS);
     const ipHash = hashClientIp(req);
-    let draftCreated = false;
-
     try {
         await bucket.file(storagePath).save(buffer, {
             metadata: {
@@ -431,7 +454,7 @@ async function createImageDraft(
             },
         });
 
-        await firestoreAdmin.collection(COLLECTION).doc(draftToken).set({
+        const draftData = {
             token: draftToken,
             imageUrl,
             imagePath: storagePath,
@@ -443,7 +466,6 @@ async function createImageDraft(
             contentHash,
             extractedData: null,
             extractionStatus: 'pending' as const,
-            extractionJobId: null,
             detectedBusinessName: null,
             detectedBusinessType: null,
             detectedBusinessCategory: null,
@@ -458,8 +480,7 @@ async function createImageDraft(
             updatedAt: now,
             expiresAt,
             claimed: false,
-        });
-        draftCreated = true;
+        };
 
         const jobId = await createPublicDraftExtractionJob(draftToken, {
             contentType: imageFile.type,
@@ -467,7 +488,7 @@ async function createImageDraft(
             originalFileName: imageFile.name || 'menu.jpg',
             size: imageFile.size,
             storagePath,
-        }, imageUrl, userId);
+        }, imageUrl, userId, draftData);
 
         await recordFounderGrowthEvent({
             attribution: growthAcquisition,
@@ -487,14 +508,36 @@ async function createImageDraft(
             status: 'processing',
         });
     } catch (error) {
-        await deletePublicMenuEntryStoragePath(storagePath, {
-            cleanupReason: 'image_draft_job_create_failed',
-            draftToken,
-            userId,
-        });
-        if (draftCreated) {
-            await deletePublicMenuEntryDraft(draftToken, {
+        let collisionLookupFailed = false;
+        try {
+            const existingDraft = await getReusableDraftByIdForUser(draftToken, userId, { contentHash });
+            if (existingDraft) {
+                logSecurityDiagnostic(PUBLIC_MENU_ENTRY_REUSED_DRAFT, {
+                    ...buildPublicMenuEntryLogContext({
+                        draftToken,
+                        sourceType: existingDraft.data.sourceType || 'image_upload',
+                        status: existingDraft.data.extractionStatus,
+                        userId,
+                    }),
+                    reason: 'deterministic_create_collision',
+                });
+                return buildReusableDraftResponse(existingDraft);
+            }
+        } catch (lookupError) {
+            collisionLookupFailed = true;
+            logSecurityFailure(PUBLIC_MENU_ENTRY_COLLISION_LOOKUP_FAILED, lookupError, {
+                ...buildPublicMenuEntryLogContext({ draftToken, sourceType: 'image_upload', userId }),
+                cleanupDeferred: true,
+            });
+        }
+
+        // If the lookup itself failed, the deterministic path may belong to a
+        // concurrently committed draft. Preserve it rather than corrupting a
+        // possible winner; the failure is logged for operational cleanup.
+        if (!collisionLookupFailed) {
+            await deletePublicMenuEntryStoragePath(storagePath, {
                 cleanupReason: 'image_draft_job_create_failed',
+                draftToken,
                 userId,
             });
         }
@@ -542,11 +585,14 @@ async function createMenuLinkDraft(req: NextRequest, userId: string, body: unkno
     const rateLimitResponse = await checkAuthenticatedPublicMenuEntryLimit(userId);
     if (rateLimitResponse) return rateLimitResponse;
 
-    const draftToken = crypto.randomUUID();
+    let draftToken = buildIdempotentPublicDraftToken(userId, `link-input:${sourceInputHash}`);
+    let acquiredContentHash: string | null = null;
     const createdStoragePaths: string[] = [];
 
     try {
         const acquisition = await acquireMenuLinkSource(requestedSourceUrl);
+        acquiredContentHash = acquisition.contentHash;
+        draftToken = buildIdempotentPublicDraftToken(userId, `link-content:${acquisition.contentHash}`);
         const matchingDraft = await findReusableDraftForUser(userId, { contentHash: acquisition.contentHash });
         if (matchingDraft) {
             logSecurityDiagnostic(PUBLIC_MENU_ENTRY_REUSED_LINK_DRAFT_AFTER_ACQUISITION, {
@@ -563,7 +609,7 @@ async function createMenuLinkDraft(req: NextRequest, userId: string, body: unkno
 
         const bucket = storageAdmin.bucket();
         const storagePath = `publicMenuDrafts/${draftToken}/source.${acquisition.artifactExtension}`;
-        const downloadToken = crypto.randomUUID();
+        const downloadToken = draftToken;
 
         await bucket.file(storagePath).save(acquisition.artifactBuffer, {
             metadata: {
@@ -585,7 +631,7 @@ async function createMenuLinkDraft(req: NextRequest, userId: string, body: unkno
         const ipHash = hashClientIp(req);
         const fileName = `Imported menu link.${acquisition.artifactExtension}`;
 
-        await firestoreAdmin.collection(COLLECTION).doc(draftToken).set({
+        const draftData = {
             token: draftToken,
             imageUrl: sourceArtifactUrl,
             imagePath: storagePath,
@@ -612,7 +658,6 @@ async function createMenuLinkDraft(req: NextRequest, userId: string, body: unkno
             },
             extractedData: null,
             extractionStatus: 'pending' as const,
-            extractionJobId: null,
             detectedBusinessName: null,
             detectedBusinessType: null,
             detectedBusinessCategory: null,
@@ -627,7 +672,7 @@ async function createMenuLinkDraft(req: NextRequest, userId: string, body: unkno
             updatedAt: now,
             expiresAt,
             claimed: false,
-        });
+        };
 
         const jobId = await createPublicDraftExtractionJob(draftToken, {
             contentType: acquisition.artifactContentType,
@@ -641,7 +686,7 @@ async function createMenuLinkDraft(req: NextRequest, userId: string, body: unkno
             sourceTextPresent: acquisition.sourceTextPresent,
             sourceUrl: requestedSourceUrl,
             storagePath,
-        }, sourceArtifactUrl, userId);
+        }, sourceArtifactUrl, userId, draftData);
 
         await recordFounderGrowthEvent({
             attribution: growthAcquisition,
@@ -661,16 +706,6 @@ async function createMenuLinkDraft(req: NextRequest, userId: string, body: unkno
             status: 'processing',
         });
     } catch (error) {
-        await Promise.all(createdStoragePaths.map((path) => deletePublicMenuEntryStoragePath(path, {
-            cleanupReason: 'link_draft_create_failed',
-            draftToken,
-            userId,
-        })));
-        await deletePublicMenuEntryDraft(draftToken, {
-            cleanupReason: 'link_draft_create_failed',
-            userId,
-        });
-
         if (error instanceof MenuLinkImportError) {
             logSecurityDiagnostic(PUBLIC_MENU_ENTRY_LINK_SOURCE_REJECTED, {
                 code: error.code,
@@ -680,6 +715,41 @@ async function createMenuLinkDraft(req: NextRequest, userId: string, body: unkno
                 { success: false, error: getMenuLinkImportClientMessage(error, { publicEntry: true }), code: error.code },
                 { status: error.status },
             );
+        }
+
+        let collisionLookupFailed = false;
+        if (acquiredContentHash) {
+            try {
+                const existingDraft = await getReusableDraftByIdForUser(draftToken, userId, {
+                    contentHash: acquiredContentHash,
+                });
+                if (existingDraft) {
+                    logSecurityDiagnostic(PUBLIC_MENU_ENTRY_REUSED_LINK_DRAFT_AFTER_ACQUISITION, {
+                        ...buildPublicMenuEntryLogContext({
+                            draftToken,
+                            sourceType: existingDraft.data.sourceType || 'menu_link_import',
+                            status: existingDraft.data.extractionStatus,
+                            userId,
+                        }),
+                        reason: 'deterministic_create_collision',
+                    });
+                    return buildReusableDraftResponse(existingDraft);
+                }
+            } catch (lookupError) {
+                collisionLookupFailed = true;
+                logSecurityFailure(PUBLIC_MENU_ENTRY_COLLISION_LOOKUP_FAILED, lookupError, {
+                    ...buildPublicMenuEntryLogContext({ draftToken, sourceType: 'menu_link_import', userId }),
+                    cleanupDeferred: true,
+                });
+            }
+        }
+
+        if (!collisionLookupFailed) {
+            await Promise.all(createdStoragePaths.map((path) => deletePublicMenuEntryStoragePath(path, {
+                cleanupReason: 'link_draft_create_failed',
+                draftToken,
+                userId,
+            })));
         }
 
         logSecurityFailure(PUBLIC_MENU_ENTRY_LINK_IMPORT_FAILED, error, buildPublicMenuEntryLogContext({ draftToken, userId }));
@@ -819,13 +889,15 @@ export const GET = withAuth(async (req: NextRequest, session) => {
             );
         }
 
-        if (draft.expiresAt && draft.expiresAt.toMillis() < Date.now()) {
+        const expiresAtMillis = getPublicMenuDraftTimestampMillis(draft.expiresAt);
+        if (expiresAtMillis === null || expiresAtMillis <= Date.now()) {
             return NextResponse.json(
                 { success: false, error: 'Draft expired. Please upload again.', status: 'expired' },
                 { status: 410 }
             );
         }
 
+        const extractedData = normalizePublicMenuDraftExtractedData(draft.extractedData);
         const responseBody: Record<string, unknown> = {
             success: true,
             status: draft.extractionStatus,
@@ -840,11 +912,11 @@ export const GET = withAuth(async (req: NextRequest, session) => {
             imageUrl: draft.imageUrl,
             sourceType: draft.sourceType || 'image_upload',
             error: draft.extractionStatus === 'failed' ? PUBLIC_CREATE_MENU_DRAFT_FAILED_MESSAGE : null,
-            resultReady: draft.extractionStatus === 'completed' && Boolean(draft.extractedData),
+            resultReady: draft.extractionStatus === 'completed' && Boolean(extractedData),
         };
 
         if (!statusOnly) {
-            responseBody.extractedData = draft.extractedData || null;
+            responseBody.extractedData = extractedData;
         }
 
         return NextResponse.json(responseBody);

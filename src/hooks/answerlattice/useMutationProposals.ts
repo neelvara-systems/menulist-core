@@ -44,7 +44,7 @@ interface UseMutationProposalsReturn {
     reject: (proposalId: string) => Promise<void>;
     implement: (proposalId: string) => Promise<void>;
     approveDraft: (proposalId: string, editedContent: DraftApprovalContent, approvedBy: string) => Promise<void>;
-    regenerateDraft: (proposalId: string, regeneratedBy: string) => Promise<void>;
+    regenerateDraft: (proposalId: string) => Promise<void>;
     refresh: () => Promise<void>;
 }
 
@@ -74,8 +74,10 @@ export function useMutationProposals(tId: number, sId: number): UseMutationPropo
 
     const approve = useCallback(async (proposalId: string) => {
         try {
-            await approveMutationProposal(proposalId);
-            message.success('Proposal approved');
+            const result = await approveMutationProposal(proposalId);
+            message.success(result?.status === 'implemented'
+                ? 'Proposal approved and answer updated'
+                : 'Proposal approved');
             await refresh();
         } catch {
             message.error(ANSWERLATTICE_MUTATION_PROPOSAL_APPROVE_FAILED);
@@ -113,14 +115,14 @@ export function useMutationProposals(tId: number, sId: number): UseMutationPropo
         }
     }, [refresh, sId, tId]);
 
-    const regenerateDraft = useCallback(async (proposalId: string, regeneratedBy: string) => {
+    const regenerateDraft = useCallback(async (proposalId: string) => {
         if (!tId || !sId) {
             message.error(ANSWERLATTICE_WORKSPACE_SCOPE_MISSING);
             return;
         }
 
         try {
-            const result = await regenerateMutationProposalDraft(proposalId, regeneratedBy);
+            const result = await regenerateMutationProposalDraft(proposalId);
 
             if (!result.success) {
                 throw new Error(ANSWERLATTICE_MUTATION_DRAFT_GENERATE_FAILED);

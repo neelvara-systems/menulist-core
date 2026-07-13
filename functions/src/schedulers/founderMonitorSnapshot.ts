@@ -4,6 +4,7 @@ import { DB_COLLECTIONS } from '../constants/database';
 import { firestoreAdmin as db } from '../firebaseAdmin';
 import { createAlert } from '../monitoring/alerts';
 import { PLATFORM_NOTIFICATION_TRIGGER_TYPES } from '../sharedData/platformNotificationRegistry';
+import { parsePlatformStoreSummary } from '../sharedData/storeSummaryBoundary';
 
 const logger = functions.logger;
 const INDIA_OFFSET_MS = 330 * 60 * 1000;
@@ -426,7 +427,7 @@ export async function rebuildFounderMonitorSnapshotLogic(): Promise<ReconcileRes
         readCollection(DB_COLLECTIONS.FOUNDER_ONBOARDING_TRANSITIONS, ONBOARDING_TRANSITION_LIMIT),
     ]);
 
-    const storesSummary = storesSummarySnap.exists ? (storesSummarySnap.data()?.stores || {}) : {};
+    const storesSummary = parsePlatformStoreSummary(storesSummarySnap.exists ? storesSummarySnap.data() : undefined);
     const truthStores = truthSnap.exists ? (truthSnap.data()?.stores || {}) : {};
     const subscriptionReadCapped = (subscriptionSnap?.size || 0) >= SUBSCRIPTION_LIMIT;
     const supportReadCapped = (supportSnap?.size || 0) >= SUPPORT_TICKET_LIMIT;
@@ -496,7 +497,7 @@ export async function rebuildFounderMonitorSnapshotLogic(): Promise<ReconcileRes
     const onboardingTransitionCandidates: OnboardingTransitionCandidate[] = [];
 
     const storeRows = Object.entries(storesSummary).map(([storeId, summaryValue]) => {
-        const summary = (summaryValue || {}) as Record<string, any>;
+        const summary = summaryValue;
         const active = storeIsActive(summary);
         const subscription = subscriptionByStore.get(storeId);
         const truth = truthStores[storeId] || {};

@@ -6,9 +6,11 @@ import {
 } from '@database/ownerDashboard';
 import {
     getCachedData,
+    removeCachedData,
     setCachedData,
     shouldRevalidate,
 } from '@lib/cache/swrLocalStorageProvider';
+import { normalizeOBPDashboardCacheValue, normalizeOBPTodayCacheValue } from '@lib/analytics/obpReadBoundary';
 import { getBusinessAnalyticsDateKey } from '@lib/analytics/businessDay';
 import { getAnalyticsSchedulerCacheKey } from '@lib/analytics/dateKey';
 import { PlatformGlobalDataContext, type PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
@@ -40,21 +42,44 @@ function createCacheKey(type: string, tId: string, sId: string): string {
     return `obpDashboard-${type}-${tId}-${sId}`;
 }
 
+interface ScopedOBPCacheEnvelope<T> {
+    tId: string;
+    sId: string;
+    data: T;
+}
+
+function normalizeScopedCache<T>(
+    value: unknown,
+    tId: string,
+    sId: string,
+    normalize: (input: unknown) => T | null,
+): T | undefined {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+    const envelope = value as Partial<ScopedOBPCacheEnvelope<unknown>>;
+    if (envelope.tId !== tId || envelope.sId !== sId) return undefined;
+    return normalize(envelope.data) || undefined;
+}
+
 async function cachedFetcher<T>(
     cacheKey: string,
     fetcher: () => Promise<T | null>,
     dayKey?: string,
+    tId?: string,
+    sId?: string,
+    normalize?: (input: unknown) => T | null,
 ): Promise<T | null> {
     if (!shouldRevalidate(cacheKey, dayKey)) {
-        const cached = getCachedData<T>(cacheKey, undefined, dayKey);
+        const cached = getCachedData<unknown>(cacheKey, undefined, dayKey);
         if (cached !== undefined) {
-            return cached;
+            const normalized = tId && sId && normalize ? normalizeScopedCache(cached, tId, sId, normalize) : undefined;
+            if (normalized) return normalized;
+            removeCachedData(cacheKey);
         }
     }
 
     const data = await fetcher();
     if (data !== null) {
-        setCachedData(cacheKey, data, dayKey);
+        setCachedData(cacheKey, { tId, sId, data }, dayKey);
     }
     return data;
 }
@@ -64,25 +89,41 @@ async function cachedFetcherWithTTL<T>(
     fetcher: () => Promise<T | null>,
     maxAgeMs: number,
     dayKey?: string,
+    tId?: string,
+    sId?: string,
+    normalize?: (input: unknown) => T | null,
 ): Promise<T | null> {
-    const cached = getCachedData<T>(cacheKey, maxAgeMs, dayKey);
+    const cached = getCachedData<unknown>(cacheKey, maxAgeMs, dayKey);
     if (cached !== undefined) {
-        return cached;
+        const normalized = tId && sId && normalize ? normalizeScopedCache(cached, tId, sId, normalize) : undefined;
+        if (normalized) return normalized;
+        removeCachedData(cacheKey);
     }
 
     const data = await fetcher();
     if (data !== null) {
-        setCachedData(cacheKey, data, dayKey);
+        setCachedData(cacheKey, { tId, sId, data }, dayKey);
     }
     return data;
 }
 
-function getInitialCachedValue<T>(cacheKey: string | null, maxAgeMs?: number, dayKey?: string): T | undefined {
+function getInitialCachedValue<T>(
+    cacheKey: string | null,
+    tId: string | null,
+    sId: string | null,
+    normalize: (input: unknown) => T | null,
+    maxAgeMs?: number,
+    dayKey?: string,
+): T | undefined {
     if (typeof window === 'undefined' || !cacheKey) {
         return undefined;
     }
 
-    return getCachedData<T>(cacheKey, maxAgeMs, dayKey);
+    const cached = getCachedData<unknown>(cacheKey, maxAgeMs, dayKey);
+    if (cached === undefined || !tId || !sId) return undefined;
+    const normalized = normalizeScopedCache(cached, tId, sId, normalize);
+    if (!normalized) removeCachedData(cacheKey);
+    return normalized;
 }
 
 export function useOBPDashboard(options?: UseOBPDashboardOptions) {
@@ -102,8 +143,14 @@ export function useOBPDashboard(options?: UseOBPDashboardOptions) {
     const canFetch = Boolean(tId && sId);
     const settledCacheKey = canFetch ? createCacheKey('settled', tId!, sId!) : null;
     const todayCacheKey = canFetch ? createCacheKey('today', tId!, sId!) : null;
-    const settledFallbackData = useMemo(() => getInitialCachedValue<OBPDashboardData>(settledCacheKey, undefined, schedulerCacheKey), [schedulerCacheKey, settledCacheKey]);
-    const todayFallbackData = useMemo(() => getInitialCachedValue<OBPTodayData>(todayCacheKey, 600000, analyticsDayKey), [analyticsDayKey, todayCacheKey]);
+    const settledFallbackData = useMemo(
+        () => getInitialCachedValue(settledCacheKey, tId, sId, (value) => normalizeOBPDashboardCacheValue(value, tId!, sId!), undefined, schedulerCacheKey),
+        [sId, schedulerCacheKey, settledCacheKey, tId],
+    );
+    const todayFallbackData = useMemo(
+        () => getInitialCachedValue(todayCacheKey, tId, sId, normalizeOBPTodayCacheValue, 600000, analyticsDayKey),
+        [analyticsDayKey, sId, tId, todayCacheKey],
+    );
 
     const {
         data: settledData,
@@ -119,6 +166,9 @@ export function useOBPDashboard(options?: UseOBPDashboardOptions) {
                 return response;
             },
             schedulerCacheKey,
+            tId!,
+            sId!,
+            (value) => normalizeOBPDashboardCacheValue(value, tId!, sId!),
         ),
         {
             ...SETTLED_SWR_CONFIG,
@@ -142,6 +192,9 @@ export function useOBPDashboard(options?: UseOBPDashboardOptions) {
             },
             600000,
             analyticsDayKey,
+            tId!,
+            sId!,
+            normalizeOBPTodayCacheValue,
         ),
         {
             ...TODAY_SWR_CONFIG,

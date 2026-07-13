@@ -2,7 +2,7 @@
 
 ## Summary
 
-Creative Trust Center is the review layer that checks campaign outputs before export, scheduling, publishing, or agency handoff.
+Creative Trust Center is the review layer that checks campaign outputs before export, manual scheduling tasks, agency handoff, or any separately enabled provider publish/send layer.
 
 ## Goals
 
@@ -18,7 +18,7 @@ Creative Trust Center is the review layer that checks campaign outputs before ex
 | Source check | Price, date, location, item/service, availability, and CTA are compared against source facts. |
 | Claim check | Performance, health/beauty, testimonial, urgency, scarcity, and review-like claims are flagged. |
 | Channel check | Platform-specific restrictions are reported per output. |
-| Approval gate | Blocked outputs cannot be exported, scheduled, or handed off until fixed or allowed by policy. |
+| Approval gate | Blocked outputs cannot be exported, scheduled as manual tasks, or handed off until fixed or allowed by policy. |
 | Evidence view | Owner can see which source facts support a claim. |
 | Brand Playbook check | Saved avoid-list terms, brand feel, and visual motifs are shown as review context before export or handoff. |
 | Proof deck check | Campaign Proof Deck remains a review brief with source trace; it cannot be represented as final rendered creative, website, or video output. |
@@ -34,7 +34,7 @@ Creative Trust Center is the review layer that checks campaign outputs before ex
 | Salon/beauty claim | Flag before/after, transformation, health, skin, hair, body, or guaranteed-result claims unless supported and consented. |
 | Restaurant accuracy | Check price, item name, availability, photo match, allergen-sensitive wording, offer date, and public menu link. |
 | WhatsApp consent | Block direct send/export workflows that lack consent posture, opt-out posture, or audience exclusion rules. |
-| Google/local | Block ranking, SEO, or visibility guarantees; treat Google product-post automation as manual unless API support is proven. |
+| Google/local | Block ranking, SEO, or visibility guarantees; Google output is manual handoff unless a separate provider layer with API support, consent, idempotency, quota, and approval is enabled. |
 | Ads policy | Flag misleading claims, personal-attribute assertions, restricted categories, deceptive urgency, unsupported offers, and unsafe destinations. |
 | Synthetic media/likeness | Flag synthetic voice, staff likeness, customer likeness, and creator likeness unless permission and disclosure are recorded. |
 | Rights and assets | Block unknown-rights assets from paid ads and public posts until source/permission is recorded. |

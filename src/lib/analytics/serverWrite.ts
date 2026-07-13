@@ -2,7 +2,11 @@ import { DB_COLLECTIONS } from '@constant/database';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
 import { FieldValue } from 'firebase-admin/firestore';
-import { filterAnalyticsUpdateData, TWO_LEVEL_ANALYTICS_MAP_FIELDS } from './writePolicy';
+import {
+  filterAnalyticsUpdateData,
+  TWO_LEVEL_ANALYTICS_MAP_FIELDS,
+  type AnalyticsWriteValue,
+} from './writePolicy';
 
 const DAILY_ANALYTICS_COLLECTION = 'daily';
 const PUBLIC_ANALYTICS_PROJECT_ID_PATTERN = /^[A-Za-z0-9_-]{1,120}$/;
@@ -39,7 +43,24 @@ function normalizePublicAnalyticsWriteDateKey(value: unknown): string | null {
     : dateKey;
 }
 
-const setAnalyticsObjectValue = (target: Record<string, any>, key: string, value: any) => {
+type AnalyticsAdminWriteValue = AnalyticsWriteValue | FieldValue;
+interface AnalyticsAdminWriteObject {
+  [key: string]: AnalyticsAdminWriteValue | AnalyticsAdminWriteObject;
+}
+
+const isAnalyticsAdminWriteObject = (
+  value: AnalyticsAdminWriteValue | AnalyticsAdminWriteObject | undefined,
+): value is AnalyticsAdminWriteObject => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+};
+
+const setAnalyticsObjectValue = (
+  target: AnalyticsAdminWriteObject,
+  key: string,
+  value: AnalyticsAdminWriteValue | AnalyticsAdminWriteObject,
+) => {
   Object.defineProperty(target, key, {
     value,
     enumerable: true,
@@ -48,18 +69,21 @@ const setAnalyticsObjectValue = (target: Record<string, any>, key: string, value
   });
 };
 
-const ensureAnalyticsObject = (target: Record<string, any>, key: string): Record<string, any> => {
+const ensureAnalyticsObject = (
+  target: AnalyticsAdminWriteObject,
+  key: string,
+): AnalyticsAdminWriteObject => {
   const existing = Object.prototype.hasOwnProperty.call(target, key) ? target[key] : undefined;
-  if (existing && typeof existing === 'object' && !Array.isArray(existing)) return existing;
-  const next: Record<string, any> = {};
+  if (isAnalyticsAdminWriteObject(existing)) return existing;
+  const next: AnalyticsAdminWriteObject = {};
   setAnalyticsObjectValue(target, key, next);
   return next;
 };
 
 const assignProcessedAnalyticsField = (
-  target: Record<string, any>,
+  target: AnalyticsAdminWriteObject,
   key: string,
-  value: any
+  value: AnalyticsAdminWriteValue,
 ) => {
   const firstDotIndex = key.indexOf('.');
   if (firstDotIndex === -1) {
@@ -73,7 +97,7 @@ const assignProcessedAnalyticsField = (
   if (parent === 'hourlyClicksByItem') {
     const lastDotIndex = childPath.lastIndexOf('.');
     if (lastDotIndex === -1) {
-      target[key] = value;
+      setAnalyticsObjectValue(target, key, value);
       return;
     }
 
@@ -103,7 +127,7 @@ export async function writePublicAnalyticsEventAdmin({
   storeTimeZone,
   businessDayEndTime,
 }: {
-  updateData: Record<string, string | number | boolean | null>;
+  updateData: Record<string, unknown>;
   tenantId: string | number;
   storeId: string | number;
   projectId: string;
@@ -120,7 +144,7 @@ export async function writePublicAnalyticsEventAdmin({
   }
 
   const docId = `${tenantDocumentId}_${storeDocumentId}_${analyticsProjectId}_${DAILY_ANALYTICS_COLLECTION}_${analyticsDateKey}`;
-  const processedData: Record<string, any> = {};
+  const processedData: AnalyticsAdminWriteObject = {};
   const policyData = filterAnalyticsUpdateData(updateData);
   if (Object.keys(policyData).length === 0) return;
 
@@ -145,6 +169,7 @@ export async function writePublicAnalyticsEventAdmin({
       : analyticsProjectId === 'customerApp'
         ? 'customerApp'
         : 'menu',
+    date: analyticsDateKey,
     localDate: analyticsDateKey,
     storeTimeZone: storeTimeZone || 'UTC',
     businessDayEndTime: businessDayEndTime || null,

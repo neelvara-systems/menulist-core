@@ -13,19 +13,42 @@
  * @see __docs__/answerlattice/doctrine/05-architecture-evolution.md
  */
 
-import { FEATURE_FLAGS } from "@config/features";
 import { DB_COLLECTIONS } from "@constant/database";
-import { addDoc, collection, doc, getDoc, getDocs, limit, query, setDoc, where } from "@firebase/firestore";
-import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentComposer';
-import { normalizeAnswerlatticeCanonicalAnswerId, normalizeAnswerlatticeResolvedEntityId, normalizeAnswerlatticeResolvedEntityIds } from '@lib/answerlattice/governanceIdBoundary';
+import { collection, doc, getDoc, getDocs, limit, query, where } from "@firebase/firestore";
+import { runAnswerlatticeGovernanceAction } from '@lib/answerlattice/governanceClient';
+import type { AnswerlatticeCanonicalProposalAnswer } from '@lib/answerlattice/governanceContracts';
+import { normalizeAnswerlatticeCanonicalAnswerId, normalizeAnswerlatticeResolvedEntityId } from '@lib/answerlattice/governanceIdBoundary';
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
-import { bumpAnswerlatticeCacheVersion } from "@lib/answerlattice/cacheVersionClient";
-import { ANSWERLATTICE_CACHE_SOURCES } from "@lib/answerlattice/cacheVersionManifest";
-import { normalizeStepOrder, validateProcedure } from "@lib/answerlattice/procedureValidation";
 import { answerlatticeFirebaseClient } from "@lib/firebase/answerlatticeFirebaseClient";
+import { createRuntimeId } from '@lib/runtime/randomId';
 import { AnswerlatticeCanonicalAnswer } from "@type/answerlattice";
 
 const COLLECTION = DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS;
+const MAX_PENDING_GOVERNANCE_RETRY_KEYS = 50;
+const pendingGovernanceRequestIds = new Map<string, string>();
+
+const stableSerializeGovernancePayload = (value: unknown): string => {
+    if (Array.isArray(value)) return `[${value.map(stableSerializeGovernancePayload).join(',')}]`;
+    if (value && typeof value === 'object') {
+        const record = value as Record<string, unknown>;
+        return `{${Object.keys(record).sort().map(key => (
+            `${JSON.stringify(key)}:${stableSerializeGovernancePayload(record[key])}`
+        )).join(',')}}`;
+    }
+    return JSON.stringify(value) ?? String(value);
+};
+
+const getGovernanceRetryRequestId = (retryKey: string): string => {
+    const existing = pendingGovernanceRequestIds.get(retryKey);
+    if (existing) return existing;
+    if (pendingGovernanceRequestIds.size >= MAX_PENDING_GOVERNANCE_RETRY_KEYS) {
+        const oldestKey = pendingGovernanceRequestIds.keys().next().value;
+        if (oldestKey) pendingGovernanceRequestIds.delete(oldestKey);
+    }
+    const requestId = createRuntimeId('al_gov');
+    pendingGovernanceRequestIds.set(retryKey, requestId);
+    return requestId;
+};
 
 const getCollectionRef = () => collection(answerlatticeFirebaseClient, COLLECTION);
 const getDocRef = (docId: string) => {
@@ -34,53 +57,16 @@ const getDocRef = (docId: string) => {
     return doc(answerlatticeFirebaseClient, COLLECTION, normalizedDocId);
 };
 
-const resolveAnswerScope = async (
-    data?: Partial<AnswerlatticeCanonicalAnswer> | null,
-    answerId?: string,
-) => {
-    const dataTId = Number(data?.tId);
-    const dataSId = Number(data?.sId);
-    if (Number.isFinite(dataTId) && dataTId > 0 && Number.isFinite(dataSId) && dataSId > 0) {
-        return { tId: dataTId, sId: dataSId };
-    }
-
-    const normalizedAnswerId = normalizeAnswerlatticeCanonicalAnswerId(answerId);
-    if (normalizedAnswerId) {
-        const docSnap = await getDoc(getDocRef(normalizedAnswerId));
-        if (docSnap.exists()) {
-            const existing = docSnap.data() as Partial<AnswerlatticeCanonicalAnswer>;
-            const existingTId = Number(existing.tId);
-            const existingSId = Number(existing.sId);
-            if (Number.isFinite(existingTId) && existingTId > 0 && Number.isFinite(existingSId) && existingSId > 0) {
-                return { tId: existingTId, sId: existingSId };
-            }
-        }
-    }
-
-    return null;
-};
-
-const bumpCanonicalAnswerVersion = async (
-    data: Partial<AnswerlatticeCanonicalAnswer> | null,
-    reason: string,
-    answerId?: string,
-) => {
-    const normalizedAnswerId = answerId === undefined ? undefined : normalizeAnswerlatticeCanonicalAnswerId(answerId);
-    if (answerId !== undefined && !normalizedAnswerId) {
-        throw new Error('Invalid canonical answer id');
-    }
-
-    const scope = await resolveAnswerScope(data, normalizedAnswerId);
-    if (!scope) {
-        throw new Error('Cannot update Answerlattice canonical cache version without tenant and store scope.');
-    }
-
-    await bumpAnswerlatticeCacheVersion(ANSWERLATTICE_CACHE_SOURCES.CANONICAL, scope.tId, scope.sId, {
-        reason,
-        sourceId: normalizedAnswerId,
-        sourceType: 'canonical_answer',
-    });
-};
+const toProposalAnswer = (
+    data: Omit<AnswerlatticeCanonicalAnswer, 'id'> | AnswerlatticeCanonicalAnswer,
+): AnswerlatticeCanonicalProposalAnswer => ({
+    title: data.title,
+    status: data.status,
+    answerType: data.answerType || 'explanation',
+    scope: data.scope,
+    productBinding: data.productBinding,
+    content: data.content,
+});
 
 /**
  * Get all canonical answers for a tenant+store
@@ -178,114 +164,90 @@ export const getCanonicalAnswerById = async (answerId: string) => {
 };
 
 /**
- * Add a new canonical answer
- * INVARIANT: scope.entityIds.length must be ≥ 1
+ * Submit a new canonical answer to the governed mutation queue.
+ * Canonical documents are created only by the server after human approval.
  */
-export const addCanonicalAnswer = async (data: Omit<AnswerlatticeCanonicalAnswer, 'id'>) => {
+export const proposeCanonicalAnswerCreate = async (data: Omit<AnswerlatticeCanonicalAnswer, 'id'>) => {
+    const answer = toProposalAnswer(data);
+    const retryKey = `create:${stableSerializeGovernancePayload(answer)}`;
+    const requestId = getGovernanceRetryRequestId(retryKey);
     return await apiCallComposer(
         async () => {
-            const entityIds = normalizeAnswerlatticeResolvedEntityIds(data.scope?.entityIds, 25);
-            if (entityIds.length === 0) {
-                throw new Error('CanonicalAnswer requires at least one entityId in scope');
-            }
-            const canonicalData = {
-                ...data,
-                scope: {
-                    ...data.scope,
-                    entityIds,
-                },
-            };
-            // Guided Workflows: validate procedure structure at write-time
-            if (FEATURE_FLAGS.ENABLE_ANSWERLATTICE_GUIDED_WORKFLOWS && canonicalData.content?.procedure) {
-                normalizeStepOrder(canonicalData.content.procedure);
-                const validation = validateProcedure(canonicalData.answerType, canonicalData.content.procedure);
-                if (!validation.valid) {
-                    throw new Error(`Procedure validation failed: ${validation.errors.join('; ')}`);
-                }
-            }
-            const submitData = await answerlatticeRequestBodyComposer(canonicalData);
-            await bumpCanonicalAnswerVersion(submitData as Partial<AnswerlatticeCanonicalAnswer>, 'canonical_answer_create');
-            const docRef = await addDoc(getCollectionRef(), submitData);
-            return { ...submitData, id: docRef.id } as AnswerlatticeCanonicalAnswer;
+            const result = await runAnswerlatticeGovernanceAction({
+                action: 'propose_create',
+                requestId,
+                answer,
+            });
+            pendingGovernanceRequestIds.delete(retryKey);
+            return result;
         },
         data,
-        "addCanonicalAnswer"
+        "proposeCanonicalAnswerCreate"
     );
 };
 
 /**
- * Update a canonical answer (merge update)
- * NOTE: In production, prefer mutation pipeline over direct edits.
+ * Submit a complete canonical answer revision to the governed mutation queue.
  */
-export const updateCanonicalAnswer = async (data: Partial<AnswerlatticeCanonicalAnswer> & { id: string }) => {
+export const proposeCanonicalAnswerUpdate = async (data: AnswerlatticeCanonicalAnswer) => {
+    const answer = toProposalAnswer(data);
+    const retryKey = `update:${data.id}:${stableSerializeGovernancePayload(answer)}`;
+    const requestId = getGovernanceRetryRequestId(retryKey);
     return await apiCallComposer(
         async () => {
             const normalizedAnswerId = normalizeAnswerlatticeCanonicalAnswerId(data.id);
             if (!normalizedAnswerId) throw new Error('Invalid canonical answer id');
-
-            const canonicalData = { ...data, id: normalizedAnswerId };
-            // Guided Workflows: validate procedure structure at write-time
-            if (FEATURE_FLAGS.ENABLE_ANSWERLATTICE_GUIDED_WORKFLOWS && canonicalData.content?.procedure) {
-                normalizeStepOrder(canonicalData.content.procedure);
-                const validation = validateProcedure(canonicalData.answerType, canonicalData.content.procedure);
-                if (!validation.valid) {
-                    throw new Error(`Procedure validation failed: ${validation.errors.join('; ')}`);
-                }
-            }
-            const composedData = await answerlatticeRequestBodyComposer(canonicalData);
-            await bumpCanonicalAnswerVersion(
-                composedData as Partial<AnswerlatticeCanonicalAnswer>,
-                'canonical_answer_update',
-                normalizedAnswerId,
-            );
-            await setDoc(getDocRef(normalizedAnswerId), composedData, { merge: true });
-            return composedData;
+            const result = await runAnswerlatticeGovernanceAction({
+                action: 'propose_update',
+                requestId,
+                answerId: normalizedAnswerId,
+                answer,
+            });
+            pendingGovernanceRequestIds.delete(retryKey);
+            return result;
         },
         data,
-        "updateCanonicalAnswer"
+        "proposeCanonicalAnswerUpdate"
     );
 };
 
 /**
- * Update governance flags on a canonical answer (drift engine use)
+ * Record a deterministic drift finding. This path can only set drift; clearing
+ * drift requires the separate server-owned validation action below.
  */
-export const updateAnswerGovernance = async (
+export const recordCanonicalAnswerDrift = async (
     answerId: string,
-    governance: AnswerlatticeCanonicalAnswer['governance']
+    driftReason: string,
 ) => {
     const normalizedAnswerId = normalizeAnswerlatticeCanonicalAnswerId(answerId);
     return await apiCallComposer(
-        async () => {
+        () => {
             if (!normalizedAnswerId) throw new Error('Invalid canonical answer id');
-
-            const composedData = await answerlatticeRequestBodyComposer({ governance });
-            await bumpCanonicalAnswerVersion(null, 'canonical_answer_governance_update', normalizedAnswerId);
-            await setDoc(getDocRef(normalizedAnswerId), composedData, { merge: true });
-            return composedData;
+            return runAnswerlatticeGovernanceAction({
+                action: 'record_drift',
+                answerId: normalizedAnswerId,
+                driftReason,
+            });
         },
-        { answerId: normalizedAnswerId, governance },
-        "updateAnswerGovernance"
+        { answerId: normalizedAnswerId },
+        "recordCanonicalAnswerDrift"
     );
 };
 
 /**
- * Update signal metrics on a canonical answer
+ * Clear drift only through an auditable server-side validation event.
  */
-export const updateAnswerSignalMetrics = async (
-    answerId: string,
-    signalMetrics: AnswerlatticeCanonicalAnswer['signalMetrics']
-) => {
+export const validateCanonicalAnswerDrift = async (answerId: string) => {
     const normalizedAnswerId = normalizeAnswerlatticeCanonicalAnswerId(answerId);
     return await apiCallComposer(
-        async () => {
+        () => {
             if (!normalizedAnswerId) throw new Error('Invalid canonical answer id');
-
-            const composedData = await answerlatticeRequestBodyComposer({ signalMetrics });
-            await bumpCanonicalAnswerVersion(null, 'canonical_answer_signal_update', normalizedAnswerId);
-            await setDoc(getDocRef(normalizedAnswerId), composedData, { merge: true });
-            return composedData;
+            return runAnswerlatticeGovernanceAction({
+                action: 'validate_drift',
+                answerId: normalizedAnswerId,
+            });
         },
-        { answerId: normalizedAnswerId, signalMetrics },
-        "updateAnswerSignalMetrics"
+        { answerId: normalizedAnswerId },
+        "validateCanonicalAnswerDrift"
     );
 };

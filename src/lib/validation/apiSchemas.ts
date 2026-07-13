@@ -8,6 +8,9 @@
 
 import { normalizeGuestFeedbackProjectId } from '@lib/feedback/guestFeedbackProjectIdBoundary';
 import { normalizeImageBatchJobId, normalizeImageBatchProjectId } from '@lib/ai/imageBatchIdBoundary';
+import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
+import { isValidMediaStoragePathSegment } from '@lib/media/mediaStorage';
+import { normalizeMultiOutletProjectId } from '@lib/multiOutlet/projectIdBoundary';
 import { z } from 'zod';
 
 // ═══════════════════════════════════════════════════════════
@@ -24,6 +27,10 @@ const languageObjectSchema = z.object({
     name: z.string().max(100),
     nativeName: z.string().max(100).optional(),
     direction: z.enum(['ltr', 'rtl']).optional(),
+});
+
+const translationLanguageObjectSchema = languageObjectSchema.extend({
+    name: z.string().trim().min(1).max(100),
 });
 
 const contentLengthSchema = z.enum(['Standard', 'Detailed']);
@@ -92,8 +99,8 @@ const imageGenerationConfigSchema = z.object({
 
 // Item object schema for description generation
 const descriptionItemSchema = z.object({
-    id: z.string().max(100),
-    name: z.string().max(500),
+    id: z.string().trim().min(1).max(100),
+    name: z.string().trim().min(1).max(500),
     category: z.string().max(200).optional(),
     attributes: z.string().max(500).optional(),
     description: z.string().max(2000).optional()
@@ -102,15 +109,27 @@ const descriptionItemSchema = z.object({
 const toneSchema = z.enum(['Professional', 'Friendly', 'Premium']);
 
 export const DescriptionRequestSchema = z.object({
-    itemsList: z.array(descriptionItemSchema).min(1).max(100),
-    targetLang: z.array(languageObjectSchema).min(1).max(20),
-    sourceLang: languageObjectSchema,
+    itemsList: z.array(descriptionItemSchema).min(1).max(100).refine(
+        (items) => new Set(items.map((item) => item.id)).size === items.length,
+        'Description item IDs must be unique',
+    ),
+    targetLang: z.array(translationLanguageObjectSchema).min(1).max(20),
+    sourceLang: translationLanguageObjectSchema,
     action: z.enum(['add_description', 'rewrite_description']),
-    projectId: z.string().max(100).optional(),
-    fileId: z.string().max(100).optional(),
+    projectId: z.string().refine(value => normalizeMultiOutletProjectId(value) !== null, 'Invalid project ID'),
+    fileId: z.string().trim().min(1).max(100).refine(isValidFirestoreDocumentId, 'Invalid file ID'),
     contentLength: contentLengthSchema,
     tone: toneSchema.optional().default('Professional')
     // keywords removed per ChatGPT doctrine review - reintroduces prompting behavior
+}).superRefine((request, context) => {
+    const targetCodes = request.targetLang.map(language => language.code);
+    if (new Set(targetCodes).size !== targetCodes.length) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Target languages must be unique',
+            path: ['targetLang'],
+        });
+    }
 });
 
 export type DescriptionRequest = z.infer<typeof DescriptionRequestSchema>;
@@ -210,22 +229,48 @@ const TRANSLATION_INPUT_KEY_MAX_LENGTH = 240;
 const TRANSLATION_INPUT_VALUE_MAX_LENGTH = 2000;
 const TRANSLATION_INPUT_MAX_ITEMS = 1000;
 
+const translationInputKeySchema = z.string()
+    .min(3)
+    .max(TRANSLATION_INPUT_KEY_MAX_LENGTH)
+    .refine(
+        key => !['__proto__', 'constructor', 'prototype'].includes(key)
+            && ['_c', '_i', '_d', '_a'].some(suffix => key.endsWith(suffix)),
+        'Invalid translation input key',
+    );
+
 export const TranslationRequestSchema = z.object({
     inputJson: z.record(
-        z.string().max(TRANSLATION_INPUT_KEY_MAX_LENGTH),
-        z.string().max(TRANSLATION_INPUT_VALUE_MAX_LENGTH)
+        translationInputKeySchema,
+        z.string().trim().min(1).max(TRANSLATION_INPUT_VALUE_MAX_LENGTH)
     ).refine(
-        obj => Object.keys(obj).length <= TRANSLATION_INPUT_MAX_ITEMS,
-        'Too many items to translate'
+        obj => Object.keys(obj).length > 0 && Object.keys(obj).length <= TRANSLATION_INPUT_MAX_ITEMS,
+        'Translation input must contain between 1 and 1000 items'
     ),
     targetLang: z.union([
-        languageObjectSchema,
-        z.array(languageObjectSchema).min(1).max(20)
+        translationLanguageObjectSchema,
+        z.array(translationLanguageObjectSchema).min(1).max(20)
     ]),  // Single or batched language objects
-    sourceLang: languageObjectSchema,  // Language object with code and name
+    sourceLang: translationLanguageObjectSchema,  // Language object with code and name
     action: z.enum(['language_addition', 'image_translation', 'item_translation']),  // Match AI_ACTIONS_TYPES
-    projectId: z.string().max(100).optional(),
-    fileId: z.string().max(100).optional()
+    projectId: z.string().refine(value => normalizeMultiOutletProjectId(value) !== null, 'Invalid project ID'),
+    fileId: z.string().trim().min(1).max(100).refine(isValidFirestoreDocumentId, 'Invalid file ID')
+}).superRefine((request, context) => {
+    const targetLanguages = Array.isArray(request.targetLang) ? request.targetLang : [request.targetLang];
+    const targetCodes = targetLanguages.map(language => language.code);
+    if (new Set(targetCodes).size !== targetCodes.length) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Target languages must be unique',
+            path: ['targetLang'],
+        });
+    }
+    if (targetCodes.includes(request.sourceLang.code)) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Target language must differ from source language',
+            path: ['targetLang'],
+        });
+    }
 });
 
 export type TranslationRequest = z.infer<typeof TranslationRequestSchema>;
@@ -236,23 +281,35 @@ export type TranslationRequest = z.infer<typeof TranslationRequestSchema>;
 
 export const NewItemMetadataRequestSchema = z.object({
     item: z.object({
-        id: z.string().max(100),
-        name: z.string().max(500),
-        category: z.string().max(100).optional(),
-        description: z.string().max(2000).optional(),
+        id: z.string().trim().min(1).max(100),
+        name: z.string().trim().min(1).max(500),
+        category: z.string().trim().max(100).optional(),
+        description: z.string().trim().max(2000).optional(),
         attributes: z.array(z.object({
-            id: z.string().max(100),
-            name: z.string().max(500).optional(),
-            price: z.union([z.string().max(120), z.number().finite()]).optional()
-        })).optional()
+            id: z.string().trim().min(1).max(100),
+            name: z.string().trim().max(500).optional(),
+            price: z.union([z.string().trim().max(120), z.number().finite()]).optional()
+        })).max(100).optional().refine(
+            attributes => !attributes || new Set(attributes.map(attribute => attribute.id)).size === attributes.length,
+            'Attribute IDs must be unique',
+        )
     }),
-    targetLang: z.array(languageObjectSchema).min(1).max(20),  // Array of language objects
-    sourceLang: languageObjectSchema,  // Single language object
-    projectId: z.string().max(100).optional(),
-    fileId: z.string().max(100).optional(),
-    contentLength: contentLengthSchema.optional(),
+    targetLang: z.array(translationLanguageObjectSchema).min(1).max(20),  // Array of language objects
+    sourceLang: translationLanguageObjectSchema,  // Single language object
+    projectId: z.string().refine(value => normalizeMultiOutletProjectId(value) !== null, 'Invalid project ID'),
+    fileId: z.string().trim().min(1).max(100).refine(isValidFirestoreDocumentId, 'Invalid file ID'),
+    contentLength: contentLengthSchema.optional().default('Standard'),
     tone: toneSchema.optional().default('Professional'),
-    businessType: z.string().max(100).optional()
+    businessType: z.string().trim().min(1).max(100).optional()
+}).superRefine((request, context) => {
+    const targetCodes = request.targetLang.map(language => language.code);
+    if (new Set(targetCodes).size !== targetCodes.length) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Target languages must be unique',
+            path: ['targetLang'],
+        });
+    }
 });
 
 export type NewItemMetadataRequest = z.infer<typeof NewItemMetadataRequestSchema>;
@@ -307,15 +364,15 @@ export type CreateSubscriptionRequest = z.infer<typeof CreateSubscriptionRequest
 
 // Onboarding + Subscription (for new users)
 export const OnboardingSubscriptionSchema = z.object({
-    businessName: z.string().min(1, 'Business name is required').max(100, 'Business name too long'),
-    businessIndustry: z.string().min(1, 'Industry is required').max(100, 'Industry name too long'),
+    businessName: z.string().trim().min(1, 'Business name is required').max(100, 'Business name too long'),
+    businessIndustry: z.string().trim().min(1, 'Industry is required').max(100, 'Industry name too long'),
     planId: z.string().regex(/^[a-zA-Z0-9_-]+$/, 'Invalid plan ID'),
     interval: z.enum(['MONTH', 'YEAR']),
     currency: z.enum(['INR', 'USD']),
     userType: z.enum(['B2C', 'B2B']),
-    timeZone: z.string().max(100).optional(),
+    timeZone: z.string().trim().min(1).max(100).optional(),
     businessDayEndTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/).optional()
-});
+}).strict();
 
 export type OnboardingSubscriptionRequest = z.infer<typeof OnboardingSubscriptionSchema>;
 
@@ -388,11 +445,20 @@ export const BatchImageGenerationRequestSchema = z.object({
     generationConfig: imageGenerationConfigSchema,
     projectId: z.string().max(160).refine((value) => normalizeImageBatchProjectId(value)?.projectId === value),
     itemsList: z.array(imageGenerationItemDetailsSchema.extend({
-        id: z.string().min(1).max(100),
+        id: z.string().min(1).max(100).refine(isValidMediaStoragePathSegment, 'Invalid item identifier'),
         name: z.string().min(1).max(500),
     })).min(1).max(50),
     businessType: z.string().max(100).optional(),
     jobId: z.string().max(100).refine((value) => normalizeImageBatchJobId(value) === value)
+}).superRefine((value, context) => {
+    const itemIds = value.itemsList.map((item) => item.id);
+    if (new Set(itemIds).size !== itemIds.length) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Batch item identifiers must be unique',
+            path: ['itemsList'],
+        });
+    }
 });
 
 export type BatchImageGenerationRequest = z.infer<typeof BatchImageGenerationRequestSchema>;
@@ -402,7 +468,7 @@ export const BatchImageGenerationWorkerRequestSchema = z.object({
     projectId: z.string().max(160).refine((value) => normalizeImageBatchProjectId(value)?.projectId === value),
     businessType: z.string().max(100).optional(),
     itemDetails: imageGenerationItemDetailsSchema.extend({
-        id: z.string().min(1).max(100),
+        id: z.string().min(1).max(100).refine(isValidMediaStoragePathSegment, 'Invalid item identifier'),
         name: z.string().min(1).max(500),
     }),
     jobId: z.string().max(100).refine((value) => normalizeImageBatchJobId(value) === value)

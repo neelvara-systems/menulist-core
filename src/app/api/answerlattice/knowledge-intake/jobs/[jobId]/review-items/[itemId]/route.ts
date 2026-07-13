@@ -15,23 +15,36 @@ import {
     requireAnswerlatticeKnowledgeIntakeContext,
 } from '@lib/answerlattice/knowledgeIntakeApi';
 import { readOptionalBoundedJsonBody } from '@lib/security/boundedRequestBody';
+import {
+    ANSWERLATTICE_INTAKE_REVIEW_STATUS,
+    ANSWERLATTICE_INTAKE_REVIEW_TARGET,
+} from '@type/answerlattice';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { withAuth } from '@/middleware/auth';
 
 const ReviewItemPatchSchema = z.object({
-    status: z.string().trim().max(80).optional(),
-    target: z.string().trim().max(80).optional(),
+    status: z.enum([
+        ANSWERLATTICE_INTAKE_REVIEW_STATUS.DRAFT,
+        ANSWERLATTICE_INTAKE_REVIEW_STATUS.ACCEPTED,
+        ANSWERLATTICE_INTAKE_REVIEW_STATUS.REJECTED,
+    ]).optional(),
+    target: z.enum([
+        ANSWERLATTICE_INTAKE_REVIEW_TARGET.KB_ARTICLE,
+        ANSWERLATTICE_INTAKE_REVIEW_TARGET.FAQ,
+        ANSWERLATTICE_INTAKE_REVIEW_TARGET.CANONICAL_PROPOSAL,
+        ANSWERLATTICE_INTAKE_REVIEW_TARGET.PRODUCT_SURFACE,
+    ]).optional(),
     title: z.string().trim().max(180).optional(),
-    body: z.string().max(12_500).optional(),
-    question: z.string().trim().max(260).optional(),
-    answer: z.string().max(2200).optional(),
+    body: z.string().max(12_000).optional(),
+    question: z.string().trim().max(240).optional(),
+    answer: z.string().max(2000).optional(),
     routePath: z.string().trim().max(240).nullable().optional(),
     versionLabel: z.string().trim().max(40).nullable().optional(),
     tags: z.array(z.string().trim().max(80)).max(20).optional(),
     contextKeys: z.array(z.string().trim().max(100)).max(20).optional(),
     entityIds: z.array(z.string().trim().max(160)).max(25).optional(),
-});
+}).strict().refine(value => Object.keys(value).length > 0, { message: 'At least one review item field is required.' });
 const KNOWLEDGE_INTAKE_REVIEW_ITEM_MAX_BODY_BYTES = 32 * 1024;
 
 export const PATCH = withAuth(async (request: NextRequest, session, params: { jobId: string; itemId: string }) => {
@@ -62,8 +75,8 @@ export const PATCH = withAuth(async (request: NextRequest, session, params: { jo
         }
 
         const parsed = ReviewItemPatchSchema.parse(bodyResult.data);
-        const item = await updateKnowledgeIntakeReviewItem(access.context.scope, jobId, itemId, parsed as any, access.context.actor);
-        return NextResponse.json({ item: serializeIntakeValue(item) });
+        const item = await updateKnowledgeIntakeReviewItem(access.context.scope, jobId, itemId, parsed, access.context.actor);
+        return NextResponse.json({ item: serializeIntakeValue(item) }, { headers: { 'Cache-Control': 'private, no-store' } });
     } catch (error) {
         if (error instanceof z.ZodError) {
             return NextResponse.json({ error: 'Invalid review item update.' }, { status: 400 });

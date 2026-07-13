@@ -47,6 +47,10 @@ function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);
 }
 
+function isNonNegativeSafeInteger(value: unknown): value is number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
+}
+
 function isNullableString(value: unknown): value is string | null {
   return value === null || typeof value === 'string';
 }
@@ -82,7 +86,6 @@ function isPlatformNotificationRow(value: unknown): value is PlatformNotificatio
     && typeof value.actionTaken === 'boolean'
     && isNullableString(value.timestamp)
     && (value.acknowledgedAt === undefined || isNullableString(value.acknowledgedAt))
-    && (value.acknowledgedBy === undefined || isNullableString(value.acknowledgedBy))
     && (value.manualHandoffAt === undefined || isNullableString(value.manualHandoffAt))
     && (
       value.manualHandoffChannel === undefined
@@ -98,10 +101,11 @@ function isPlatformNotificationRow(value: unknown): value is PlatformNotificatio
 
 function isPlatformNotificationOpsCost(value: unknown): value is PlatformNotificationOpsCost {
   return isRecord(value)
-    && isFiniteNumber(value.alertReads)
-    && isFiniteNumber(value.countQueries)
-    && isFiniteNumber(value.writes)
-    && isFiniteNumber(value.scanLimit)
+    && isNonNegativeSafeInteger(value.authReads)
+    && isNonNegativeSafeInteger(value.alertReads)
+    && isNonNegativeSafeInteger(value.countQueries)
+    && isNonNegativeSafeInteger(value.writes)
+    && isNonNegativeSafeInteger(value.scanLimit)
     && typeof value.note === 'string';
 }
 
@@ -124,20 +128,20 @@ function isPlatformNotificationSnapshot(value: unknown): value is PlatformNotifi
     && typeof value.generatedAt === 'string'
     && isRecord(value.feature)
     && typeof value.feature.dashboardEnabled === 'boolean'
-    && value.feature.accessModel === 'platform_role'
+    && value.feature.accessModel === 'current_persisted_platform_user'
     && value.feature.realtimeListeners === false
     && isRecord(value.filters)
     && isAllowedString(value.filters.status, STATUS_FILTERS)
     && isAllowedString(value.filters.severity, SEVERITY_FILTERS)
     && typeof value.filters.triggerType === 'string'
-    && isFiniteNumber(value.filters.limit)
-    && isFiniteNumber(value.filters.scanLimit)
+    && isNonNegativeSafeInteger(value.filters.limit)
+    && isNonNegativeSafeInteger(value.filters.scanLimit)
     && isRecord(value.counts)
-    && isFiniteNumber(value.counts.active)
-    && isFiniteNumber(value.counts.acknowledged)
-    && isFiniteNumber(value.counts.critical)
-    && isFiniteNumber(value.counts.warning)
-    && isFiniteNumber(value.counts.info)
+    && isNonNegativeSafeInteger(value.counts.active)
+    && isNonNegativeSafeInteger(value.counts.acknowledged)
+    && isNonNegativeSafeInteger(value.counts.critical)
+    && isNonNegativeSafeInteger(value.counts.warning)
+    && isNonNegativeSafeInteger(value.counts.info)
     && Array.isArray(value.events)
     && value.events.every(isPlatformNotificationRow)
     && (value.selectedEvent === undefined || isPlatformNotificationRow(value.selectedEvent))

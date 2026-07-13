@@ -2,15 +2,17 @@ import { assertIngestionJobDeleteSucceeded, deleteIngestionJob } from '@database
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
+import { INGESTION_JOB_STATUS, type IngestionJob } from '@type/knowledgeBase';
 import { Button, Dropdown, message, Popconfirm } from 'antd';
 import { LuEye, LuMoreVertical, LuTrash } from 'react-icons/lu';
 
 interface JobActionMenuProps {
     jobId: string;
+    status: IngestionJob['status'];
     onCardClick: () => void;
 }
 
-const JobActionMenu: React.FC<JobActionMenuProps> = ({ jobId, onCardClick }) => {
+const JobActionMenu: React.FC<JobActionMenuProps> = ({ jobId, status, onCardClick }) => {
     const dispatch = useAppDispatch();
 
     const handleDelete = async () => {
@@ -35,13 +37,14 @@ const JobActionMenu: React.FC<JobActionMenuProps> = ({ jobId, onCardClick }) => 
         }
     };
 
+    const canDelete = status === INGESTION_JOB_STATUS.FAILED || status === INGESTION_JOB_STATUS.CANCELLED;
     const menuItems = [
         {
             key: 'view',
             label: 'View Details',
             icon: <LuEye />
         },
-        {
+        ...(canDelete ? [{
             key: 'delete',
             icon: <LuTrash />,
             label: (
@@ -57,7 +60,7 @@ const JobActionMenu: React.FC<JobActionMenuProps> = ({ jobId, onCardClick }) => 
                     </Popconfirm>
                 </span>
             ),
-        },
+        }] : []),
     ];
 
     return (

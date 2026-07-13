@@ -297,7 +297,7 @@ MCE does not replace existing features. It strengthens them by adding a validati
 - **Pricing Integrity System:** PIS price validation rules become CSR validation rules. PIS remains unchanged; CSR adds centralized enforcement.
 - **Multi-Outlet Consistency:** MCE validates that `resolveProjectForRender()` output is correct. The resolution logic is unchanged.
 - **POS Webhook Sync:** POS continues reading from project data. MCE ensures that data is validated before the save completes.
-- **Digital Screens:** Screens continue using `getMenuItemsForScreen()` + `contentVersion` polling. MCE ensures the underlying project data is validated.
+- **Digital Screens:** Screens use server-only `getMenuItemsForScreenServer()` plus `contentVersion` polling. MCE ensures the underlying project data is validated.
 - **Existing caching:** `MenuBoardDisplay.tsx` localStorage cache, Vercel ISR cache, `guardedReload()` — all continue working as-is. MCE doesn't touch surface-level caching.
 
 ---
@@ -424,7 +424,7 @@ These decisions were made during the design phase after evaluating the full Chat
 **Rationale:**
 
 - QR/web reads from project data via Firestore → already works
-- Screens read via `getMenuItemsForScreen()` → already works
+- Screens read via `getMenuItemsForScreenServer()` → already works
 - PDF generates via `generateMenuPdf()` with project data passed in → already works
 - POS reads via webhook sync → already works
 - SEC was solving a problem that the snapshot architecture created. Without snapshots, it's unnecessary.

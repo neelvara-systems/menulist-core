@@ -1,21 +1,21 @@
 # Owner Referral - Product Specification
 
 **Feature:** Owner Referral
-**Owner-facing label:** Invite another business
+**Owner-facing label:** Invite a business owner you know
 **Status:** Implemented and locally verified behind disabled flags; pilot not enabled
 **Decision owner:** Founder
-**Last updated:** July 10, 2026
+**Last updated:** July 11, 2026
 **Audience:** Founder, product, engineering, operations, support, finance
 
 ---
 
 ## Product Definition
 
-An eligible MenuList business can privately share a referral link with another business. When the referring business and the referred business both have verified paid MenuList subscriptions, MenuList atomically adds 100 credits to the referring business and 50 credits to the referred business.
+An eligible MenuList business can privately share a referral link with a business owner they know. When the referring business and the referred business both have verified paid MenuList subscriptions, MenuList atomically adds 100 credits to the referring business and 50 credits to the referred business.
 
 The reward is based on payment only. MenuList does not require the referred business to publish, share, download a QR, complete distribution actions, remain paid for a waiting period, or meet a usage threshold.
 
-Credits are added to the existing `topUpCredits` Pack balance. They can be used for generated menu images, descriptions, translations, and edits. They are not cash, monthly plan allowance, commission, or a transferable asset.
+Credits are added to the existing `topUpCredits` Pack balance. At current rates, 100 credits can cover up to 20 generated menu images or 100 description rewrites; 50 credits can cover up to 10 generated menu images or 50 description rewrites. They are not cash, monthly plan allowance, commission, or a transferable asset.
 
 ---
 
@@ -44,7 +44,7 @@ The complete decision record is [owner-referral_payment-only-policy-amendment-20
 
 ## Goals
 
-1. Let a paid MenuList business privately introduce another business.
+1. Let a paid MenuList business privately introduce a business owner they know.
 2. Reward both businesses as soon as MenuList verifies that both subscriptions are paid.
 3. Keep the owner flow to one share action and one clear rule.
 4. Reuse the existing credit wallet and payment truth.
@@ -81,6 +81,7 @@ Pilot allowlisting and feature flags are rollout controls. They are not reward-e
 | Subscription wallets contain `monthlyCredits` and non-resetting `topUpCredits`. | `src/types/razorpay.ts:92` | Add rewards only to `topUpCredits`. |
 | AI capacity consumes monthly credits before Pack credits. | `src/lib/ai/capacityCheck.ts:136,159-215` | Referral credits work through the existing capacity model. |
 | Pack copy names generated images, descriptions, and translations. | `src/data/PlatformPlansList.ts:116`; `src/components/templates/main-app/billing/ActiveSubscriptionCard.tsx:482-483` | Explain the reward through those outcomes. |
+| Public-safe credit rates are centralized. | `src/data/shared/contentCreditPolicy.ts` | Derive pricing and referral examples from one rate source; keep provider cost and margin internal. |
 | Subscription verification requires captured provider payment. | `src/app/api/razorpay/verify-subscription/route.ts:295,426` | Browser state alone cannot issue a reward. |
 | The verified callback may return after a webhook already activated the subscription. | `src/app/api/razorpay/verify-subscription/route.ts:295` | Both success branches call the same idempotent settlement helper. |
 | Signed webhooks process subscription activation and charge events. | `src/app/api/razorpay/webhook/route.ts:687` | Webhook and callback races must settle once. |
@@ -138,14 +139,14 @@ Later cancellation, refund, or chargeback does not subtract pooled Pack credits 
 ### Flow A: Paid Business Shares
 
 1. The business opens MenuList Share.
-2. The owner selects `Invite another business`.
+2. The owner selects `Invite a business owner you know`.
 3. MenuList verifies that the business has a paid MenuList subscription record.
 4. MenuList creates a stateless authenticated encrypted 30-day link.
 5. The owner shares through native Share, WhatsApp, or Copy link.
 
 Default message:
 
-> We use MenuList to keep our menu and business information current from one place. You can set up yours here: [invite link]
+> We use MenuList to keep our menu and business information current from one place. I thought it could help your business too: [invite link]
 >
 > Referral note: MenuList adds credits to both businesses after both MenuList subscriptions are paid.
 
@@ -179,11 +180,11 @@ There is no publish, usage, distribution, retention, deadline, cap, or scheduler
 
 | Internal state | Owner-facing status | Meaning |
 | --- | --- | --- |
-| `attributed` | Waiting for payment | Referral is attached, but the referred first subscription payment is not verified. |
-| `payment_pending` | Waiting for both payments | One paid subscription is not currently verified. |
+| `attributed` | Their payment pending | Referral is attached, but the referred first subscription payment is not verified. |
+| `payment_pending` | Their payment pending | Settlement is still waiting for the referred business while the paid referrer is viewing the panel. |
 | `reward_issued` | Credits added | 100 credits were added to the referring business and 50 to the referred business. |
 
-The status list shows the referred business display name, general status, and relevant date only. It never exposes plan, price, payment amount, payment method, email, phone, or account activity.
+The protected owner API is available only while the referring business has a verified paid subscription. Therefore, an unsettled row shown in this panel always uses `Their payment pending`; the richer internal `payment_pending` state remains for settlement and repair. The status list shows the referred business display name, general status, and relevant date only. It never exposes plan, price, payment amount, payment method, email, phone, or account activity.
 
 ---
 
@@ -342,6 +343,7 @@ No owner ranking, threshold, or reward limit is derived from these metrics.
 - [x] Callback, webhook, activation retry, and concurrent attempts cannot issue twice.
 - [x] Pending referrals have no expiry and settle when both subscriptions become paid.
 - [x] Status reveals no cross-business financial or contact information.
+- [x] Credit examples are derived from `src/data/shared/contentCreditPolicy.ts` and match the charged operation rates.
 - [x] Acquisition and settlement controls default off and the pilot allowlist defaults empty.
 - [x] English/Hindi runtime copy, legal source copy, help source, website, desktop, and mobile are aligned.
 

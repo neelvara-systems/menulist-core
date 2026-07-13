@@ -26,6 +26,7 @@ import { applyCategoryIconDefaults } from "../sharedData/categoryIconSuggestions
 import {
     getSuggestionValue,
     normalizeCurrencyCode,
+    normalizeExtractedBusinessProfile,
     normalizeLanguageCodes,
     type ExtractedBusinessProfile,
     type ExtractedBusinessProfileConfidence,
@@ -41,6 +42,11 @@ import {
     OWNER_MENU_UPLOAD_MIME_TYPES,
     PUBLIC_CREATE_MENU_IMAGE_MIME_TYPES,
 } from "../sharedData/menuExtractionJob";
+import {
+    findDuplicateMenuExtractionFileUids,
+    resolveMenuExtractionBatchCompletion,
+} from "../sharedData/menuExtractionIntegrity";
+import { normalizePublicMenuDraftExtractedData } from "../sharedData/publicMenuDraftData";
 import { ConfidenceSummary, MENU_IMAGE_PROCESSING_JOBS_COLLECTION, MENU_PROCESSING_STATUS, MenuImageProcessingJob, MenuItem, ProcessMenuImagesRequest } from "../types";
 import { buildExtractionResultSummary } from "../utils/menuExtractionResultSummary";
 import { hardenExtractedData } from "./extractionHardening";
@@ -64,7 +70,6 @@ const OWNER_JOB_FILE_TYPES = new Set<string>(OWNER_MENU_UPLOAD_MIME_TYPES);
 const PUBLIC_CREATE_MENU_IMAGE_FILE_TYPES = new Set<string>(PUBLIC_CREATE_MENU_IMAGE_MIME_TYPES);
 const LINK_IMPORT_JOB_FILE_TYPES = new Set<string>(MENU_LINK_IMPORT_MIME_TYPES);
 const MESSAGING_JOB_FILE_TYPES = new Set<string>(MESSAGING_ONBOARDING_MENU_UPLOAD_MIME_TYPES);
-const CANONICAL_SOURCE_LANGUAGE = "en";
 const PROFILE_CONFIDENCE_RANK: Record<ExtractedBusinessProfileConfidence, number> = {
     high: 3,
     medium: 2,
@@ -73,12 +78,22 @@ const PROFILE_CONFIDENCE_RANK: Record<ExtractedBusinessProfileConfidence, number
 const EXTRACTION_DETAIL_RETENTION_MS = FUNCTION_RETENTION_CONFIG.MENU_EXTRACTION_DETAIL_RETENTION_HOURS * 60 * 60 * 1000;
 const PROCESS_MENU_IMAGES_JOB_FAILED = "PROCESS_MENU_IMAGES_JOB_FAILED";
 const PROCESS_MENU_IMAGES_JOB_STATUS_UPDATE_FAILED = "PROCESS_MENU_IMAGES_JOB_STATUS_UPDATE_FAILED";
-const PROCESS_MENU_IMAGES_JOB_TENANT_MISMATCH = "PROCESS_MENU_IMAGES_JOB_TENANT_MISMATCH";
 const PROCESS_MENU_IMAGES_JOB_BUSINESS_DEFAULTS_FAILED = "PROCESS_MENU_IMAGES_JOB_BUSINESS_DEFAULTS_FAILED";
 const PROCESS_MENU_IMAGES_JOB_PUBLIC_DRAFT_STATUS_UPDATE_FAILED = "PROCESS_MENU_IMAGES_JOB_PUBLIC_DRAFT_STATUS_UPDATE_FAILED";
+const PROCESS_MENU_IMAGES_JOB_PUBLIC_DRAFT_BINDING_INVALID = "PUBLIC_DRAFT_BINDING_INVALID";
 const PROCESS_MENU_IMAGES_JOB_SAFE_MODE_ACTIVE = "PROCESS_MENU_IMAGES_JOB_SAFE_MODE_ACTIVE";
 const PROCESS_MENU_IMAGES_JOB_FAILED_MESSAGE = "Menu extraction failed";
 const PROCESS_MENU_IMAGES_JOB_SAFE_MODE_MESSAGE = "Menu extraction is paused. Please try again in a few minutes.";
+const PROCESS_MENU_IMAGES_JOB_PARTIAL_BATCH_FAILURE = "PARTIAL_BATCH_FAILURE";
+
+class PartialBatchFailureError extends Error {
+    readonly code = PROCESS_MENU_IMAGES_JOB_PARTIAL_BATCH_FAILURE;
+
+    constructor() {
+        super("One or more extraction batches failed.");
+        this.name = "PartialBatchFailureError";
+    }
+}
 
 function getBoundedFunctionStringContext(label: string, value: unknown): Record<string, boolean | number> {
     const normalized = value === undefined || value === null ? "" : String(value);
@@ -202,11 +217,13 @@ function resolveJobBusinessCategory(businessType?: string, businessCategory?: st
     return resolveStoreBusinessCategory(businessType, businessCategory || normalizeBusinessCategory(businessType));
 }
 
-function parseStoreIdFromProjectId(projectId?: string): string | null {
-    if (!projectId) return null;
+function parseScopedProjectId(projectId?: string): { sId: string; tId: string } | null {
+    if (!projectId || !/^[A-Za-z0-9_-]{3,160}$/.test(projectId)) return null;
     const parts = projectId.split("-");
+    if (parts.length < 3) return null;
+    const tId = parts[0];
     const storeId = parts[parts.length - 1];
-    return storeId && Number.isSafeInteger(Number(storeId)) ? storeId : null;
+    return tId && storeId ? { sId: storeId, tId } : null;
 }
 
 function shouldSkipProjectSave(job: MenuImageProcessingJob): boolean {
@@ -317,6 +334,9 @@ function validateJobFiles(job: MenuImageProcessingJob): void {
     if (job.files.length > MENU_EXTRACTION_JOB_LIMITS.MAX_FILES) {
         throw new Error("Too many files in extraction job.");
     }
+    if (findDuplicateMenuExtractionFileUids(job.files).length > 0) {
+        throw new Error("Duplicate file identities in extraction job.");
+    }
 
     for (const file of job.files) {
         if (!file?.uid || !file?.name || !file?.url) {
@@ -325,7 +345,8 @@ function validateJobFiles(job: MenuImageProcessingJob): void {
         if (!isSupportedJobFileType(job, String(file.type || ""))) {
             throw new Error(`Unsupported extraction file type: ${file.type || "unknown"}`);
         }
-        if (Number(file.size || 0) > MENU_EXTRACTION_JOB_LIMITS.MAX_FILE_SIZE_BYTES) {
+        const fileSize = Number(file.size);
+        if (!Number.isFinite(fileSize) || fileSize <= 0 || fileSize > MENU_EXTRACTION_JOB_LIMITS.MAX_FILE_SIZE_BYTES) {
             throw new Error("Extraction file is too large.");
         }
 
@@ -336,33 +357,139 @@ function validateJobFiles(job: MenuImageProcessingJob): void {
     }
 }
 
-function normalizeDraftExtractionLanguages(languages: any): Array<{ code: string; name: string; isPrimary?: boolean }> {
-    const normalized = Array.isArray(languages)
-        ? languages
-            .map((language) => typeof language === "string"
-                ? { code: language, name: language === CANONICAL_SOURCE_LANGUAGE ? "English" : language, isPrimary: language === CANONICAL_SOURCE_LANGUAGE }
-                : {
-                    code: String(language?.code || "").trim().toLowerCase(),
-                    name: String(language?.name || "").trim(),
-                    isPrimary: Boolean(language?.isPrimary),
-                })
-            .filter((language) => language.code)
-        : [];
-
-    const deduped = Array.from(new Map(normalized.map((language) => [language.code, language])).values());
-    const hasPrimary = deduped.some((language) => language.isPrimary);
-    const withPrimary = hasPrimary
-        ? deduped
-        : deduped.map((language, index) => ({ ...language, isPrimary: index === 0 }));
-
-    if (withPrimary.some((language) => language.code === CANONICAL_SOURCE_LANGUAGE)) {
-        return withPrimary;
+function validateJobRouting(job: MenuImageProcessingJob): void {
+    if (!Array.isArray(job.targetLanguages) || job.targetLanguages.length === 0 || job.targetLanguages.length > 12) {
+        throw new Error("Invalid extraction target languages.");
+    }
+    const languageCodes = new Set<string>();
+    for (const language of job.targetLanguages) {
+        const code = typeof language?.code === "string" ? language.code.trim().toLowerCase() : "";
+        const name = typeof language?.name === "string" ? language.name.trim() : "";
+        if (!code || !name || languageCodes.has(code)) {
+            throw new Error("Invalid extraction target languages.");
+        }
+        languageCodes.add(code);
     }
 
-    return [
-        ...withPrimary,
-        { code: CANONICAL_SOURCE_LANGUAGE, name: "English", isPrimary: false },
-    ];
+    const destination = job.destination;
+    if (!destination || job.destinationType !== destination.type) {
+        throw new Error("Invalid extraction destination.");
+    }
+
+    if (destination.type === MENU_EXTRACTION_DESTINATION_TYPES.MESSAGING_ONBOARDING) {
+        if (
+            !destination.sessionId
+            || job.projectId !== `msg-onboarding-${destination.sessionId}`
+            || job.source !== MENU_EXTRACTION_SOURCES.MESSAGING_ONBOARDING
+            || job.skipProjectSave !== true
+        ) {
+            throw new Error("Invalid messaging extraction destination.");
+        }
+        return;
+    }
+
+    if (!job.tId || !job.sId || !job.uId) {
+        throw new Error("Missing extraction tenant scope.");
+    }
+
+    if (destination.type === MENU_EXTRACTION_DESTINATION_TYPES.PROJECT) {
+        const projectScope = parseScopedProjectId(job.projectId);
+        if (
+            destination.projectId !== job.projectId
+            || !projectScope
+            || projectScope.tId !== String(job.tId)
+            || projectScope.sId !== String(job.sId)
+            || job.skipProjectSave === true
+        ) {
+            throw new Error("Project does not belong to the extraction tenant.");
+        }
+        return;
+    }
+
+    if (destination.type === MENU_EXTRACTION_DESTINATION_TYPES.PUBLIC_MENU_DRAFT && job.skipProjectSave !== true) {
+        throw new Error("Invalid public draft extraction destination.");
+    }
+}
+
+class PublicDraftBindingError extends Error {
+    readonly code = PROCESS_MENU_IMAGES_JOB_PUBLIC_DRAFT_BINDING_INVALID;
+
+    constructor() {
+        super("Public draft extraction job binding is invalid.");
+        this.name = "PublicDraftBindingError";
+    }
+}
+
+const PUBLIC_MENU_DRAFT_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+/**
+ * Firestore rules make extraction-job creation server-only, but the Admin SDK
+ * bypasses those rules. Re-derive and verify every public-draft binding before
+ * provider work so a malformed or forged job cannot read one source and write
+ * its result/status into another owner's draft.
+ */
+async function assertPublicDraftJobBinding(jobId: string, job: MenuImageProcessingJob): Promise<void> {
+    if (job.destination?.type !== MENU_EXTRACTION_DESTINATION_TYPES.PUBLIC_MENU_DRAFT) return;
+
+    const draftId = job.destination.draftId;
+    const sourceType = job.destination.sourceType;
+    const requestedByUId = typeof job.sourceMetadata?.requestedByUId === "string"
+        ? job.sourceMetadata.requestedByUId
+        : "";
+    const sourceMetadataDraftId = typeof job.sourceMetadata?.publicDraftId === "string"
+        ? job.sourceMetadata.publicDraftId
+        : "";
+    const sourceMetadataStoragePath = typeof job.sourceMetadata?.storagePath === "string"
+        ? job.sourceMetadata.storagePath
+        : "";
+    const expectedSource = sourceType === "menu_link_import"
+        ? MENU_EXTRACTION_SOURCES.MENU_LINK_IMPORT
+        : sourceType === "image_upload"
+            ? MENU_EXTRACTION_SOURCES.PUBLIC_CREATE_MENU
+            : "";
+    const file = job.files[0];
+    const fileStoragePath = file ? getStoragePathFromDownloadUrl(file.url) : null;
+
+    if (
+        !PUBLIC_MENU_DRAFT_ID_PATTERN.test(draftId)
+        || jobId !== `public_${draftId}`
+        || job.destinationType !== MENU_EXTRACTION_DESTINATION_TYPES.PUBLIC_MENU_DRAFT
+        || sourceMetadataDraftId !== draftId
+        || !requestedByUId
+        || sourceMetadataStoragePath !== fileStoragePath
+        || job.source !== expectedSource
+        || job.action !== "public_menu_extraction"
+        || job.skipProjectSave !== true
+        || job.files.length !== 1
+        || job.projectId !== `${job.tId}-public-${draftId}-${job.sId}`
+    ) {
+        throw new PublicDraftBindingError();
+    }
+
+    const draftDoc = await firestoreAdmin
+        .collection(DB_COLLECTIONS.PUBLIC_MENU_DRAFTS)
+        .doc(draftId)
+        .get();
+    const draft = draftDoc.data();
+    const expiresAtMillis = timestampMillis(draft?.expiresAt);
+    if (
+        !draftDoc.exists
+        || !draft
+        || draft.token !== draftId
+        || draft.extractionJobId !== jobId
+        || draft.createdByUId !== requestedByUId
+        || draft.sourceType !== sourceType
+        || draft.imageUrl !== file.url
+        || draft.imagePath !== fileStoragePath
+        || draft.fileType !== file.type
+        || Number(draft.fileSize) !== Number(file.size)
+        || draft.claimed === true
+        || draft.extractionStatus !== "pending"
+        || expiresAtMillis === null
+        || expiresAtMillis <= Date.now()
+    ) {
+        throw new PublicDraftBindingError();
+    }
 }
 
 function cleanProfileText(value: unknown, maxLength = 160): string | null {
@@ -488,47 +615,6 @@ function getProfileBusinessCategory(menuData: any): string | null {
     return getSuggestionValue(menuData?.extractedBusinessProfile?.identity?.businessCategory, "medium") || null;
 }
 
-function normalizeDraftCategory(category: any): any | null {
-    if (category?.id === undefined || category?.id === null || !category?.name || typeof category.name !== "object") return null;
-    const { sourceFileIndex: _sourceFileIndex, ...rest } = category;
-    return {
-        ...rest,
-        id: String(category.id),
-        active: category.active !== false,
-    };
-}
-
-function normalizeDraftItem(item: any): any | null {
-    if (item?.id === undefined || item?.id === null || !item?.name || typeof item.name !== "object") return null;
-    const {
-        sourceFileIndex: _sourceFileIndex,
-        categoryId,
-        attributes: rawAttributes,
-        price: rawPrice,
-        ...rest
-    } = item;
-    const normalizedAttributes = Array.isArray(rawAttributes)
-        ? rawAttributes.map((attribute: any) => ({
-            ...attribute,
-            id: String(attribute?.id || ""),
-            name: attribute?.name && typeof attribute.name === "object" ? attribute.name : {},
-            price: attribute?.price != null ? String(attribute.price) : "",
-            active: attribute?.active !== false,
-        })).filter((attribute: any) => attribute.id && Object.keys(attribute.name).length > 0)
-        : [];
-
-    return {
-        ...rest,
-        id: String(item.id),
-        category: String(item.category ?? categoryId ?? ""),
-        name: item.name,
-        price: rawPrice != null ? String(rawPrice) : "",
-        active: item.active !== false,
-        available: item.available !== false,
-        attributes: normalizedAttributes,
-    };
-}
-
 function buildPublicDraftExtractedData(menuData: any, redistributedFiles?: Record<string, any>) {
     const fileData = Object.values(redistributedFiles || {})
         .map((file: any) => file?.data)
@@ -541,15 +627,11 @@ function buildPublicDraftExtractedData(menuData: any, redistributedFiles?: Recor
         }
         : menuData;
 
-    return {
-        categories: (Array.isArray(sourceData?.categories) ? sourceData.categories : [])
-            .map(normalizeDraftCategory)
-            .filter((category: any) => category !== null),
-        items: (Array.isArray(sourceData?.items) ? sourceData.items : [])
-            .map(normalizeDraftItem)
-            .filter((item: any) => item !== null),
-        languages: normalizeDraftExtractionLanguages(sourceData?.languages),
-    };
+    const normalized = normalizePublicMenuDraftExtractedData(sourceData);
+    if (!normalized) {
+        throw new Error("No coherent public menu data remained after validation.");
+    }
+    return normalized;
 }
 
 async function updatePublicDraftFromExtraction(
@@ -575,7 +657,7 @@ async function updatePublicDraftFromExtraction(
             getIdentityBusinessCategory(job) || getProfileBusinessCategory(menuData) || job.businessCategory,
         ) || null,
         detectedCurrencyCode: getSuggestionValue(menuData?.extractedBusinessProfile?.identity?.currencyCode, "medium") || null,
-        extractedBusinessProfile: menuData?.extractedBusinessProfile || null,
+        extractedBusinessProfile: normalizeExtractedBusinessProfile(menuData?.extractedBusinessProfile) || null,
         suggestedProjectName: getSuggestionValue(menuData?.extractedBusinessProfile?.project?.projectName, "medium") || null,
         detectedBrandAccentColor: getSuggestionValue(menuData?.extractedBusinessProfile?.visualBrand?.brandAccentColor, "medium") || null,
         detectedImageBackgroundColor: getSuggestionValue(menuData?.extractedBusinessProfile?.visualBrand?.imageBackgroundColor, "medium") || null,
@@ -639,8 +721,12 @@ async function getOutletExtractionPolicyBlockReason(job: MenuImageProcessingJob,
     const masterProjectId = existingProject?.masterProjectId;
     if (!masterProjectId) return null;
 
-    const masterStoreId = parseStoreIdFromProjectId(masterProjectId);
-    if (!masterStoreId || String(masterStoreId) === String(job.sId)) return null;
+    const masterScope = parseScopedProjectId(masterProjectId);
+    if (!masterScope || masterScope.tId !== String(job.tId)) {
+        return "Linked menu does not belong to this business";
+    }
+    const masterStoreId = masterScope.sId;
+    if (String(masterStoreId) === String(job.sId)) return null;
 
     const masterStoreSnap = await firestoreAdmin
         .collection(DB_COLLECTIONS.STORES)
@@ -725,6 +811,7 @@ export async function processMenuImagesJobLogic(
     let postProcessingCompletedAtMillis: number | null = null;
     let saveStartedAtMillis: number | null = null;
     let saveCompletedAtMillis: number | null = null;
+    let publicDraftBindingVerified = job.destination?.type !== MENU_EXTRACTION_DESTINATION_TYPES.PUBLIC_MENU_DRAFT;
     const loadExistingProject = async () => {
         if (skipProjectSave) return null;
         if (existingProjectCache === undefined) {
@@ -740,53 +827,8 @@ export async function processMenuImagesJobLogic(
     });
 
     try {
-        if (job.source === MENU_EXTRACTION_SOURCES.MENU_LINK_IMPORT && !isFunctionFeatureEnabled('ENABLE_MENU_LINK_IMPORT')) {
-            await jobRef.update({
-                status: MENU_PROCESSING_STATUS.FAILED,
-                completedAt: Timestamp.now(),
-                updatedAt: Timestamp.now(),
-                error: {
-                    code: 'FEATURE_DISABLED',
-                    message: 'Menu link import is not enabled.',
-                    retryable: false,
-                },
-            });
-            return;
-        }
-
         validateJobFiles(job);
-
-        // ─────────────────────────────────────────────────────────────
-        // Step 0: Validate tenant isolation (server-side defense-in-depth)
-        // Ensures projectId is consistent with job's tId/sId
-        // Prevents cross-tenant data injection even if Firestore rules are bypassed
-        // ─────────────────────────────────────────────────────────────
-        if (job.tId && job.projectId) {
-            const projectIdParts = job.projectId.split('-');
-            if (projectIdParts.length >= 3) {
-                const projectTId = projectIdParts[0];
-                const projectSId = projectIdParts[projectIdParts.length - 1];
-                if (projectTId !== String(job.tId) || projectSId !== String(job.sId)) {
-                    logger.error(`[processMenuImagesJob] SECURITY: projectId tenant mismatch`, {
-                        failureCode: PROCESS_MENU_IMAGES_JOB_TENANT_MISMATCH,
-                        ...getMenuExtractionJobLogContext(jobId, job),
-                        ...getBoundedFunctionStringContext("projectTenantId", projectTId),
-                        ...getBoundedFunctionStringContext("projectStoreId", projectSId),
-                    });
-                    await jobRef.update({
-                        status: MENU_PROCESSING_STATUS.FAILED,
-                        completedAt: Timestamp.now(),
-                        updatedAt: Timestamp.now(),
-                        error: {
-                            code: 'TENANT_MISMATCH',
-                            message: 'Project does not belong to the job tenant',
-                            retryable: false,
-                        },
-                    });
-                    return;
-                }
-            }
-        }
+        validateJobRouting(job);
 
         // ─────────────────────────────────────────────────────────────
         // Step 1: Update status to processing (with idempotency check)
@@ -836,6 +878,29 @@ export async function processMenuImagesJobLogic(
 
         if (!updated) {
             return; // Job already being processed
+        }
+
+        await assertPublicDraftJobBinding(jobId, job);
+        publicDraftBindingVerified = true;
+
+        if (job.source === MENU_EXTRACTION_SOURCES.MENU_LINK_IMPORT && !isFunctionFeatureEnabled('ENABLE_MENU_LINK_IMPORT')) {
+            const disabledAt = Timestamp.now();
+            await markPublicDraftExtractionFailed(
+                jobId,
+                job,
+                "Menu link import is not enabled.",
+            );
+            await jobRef.update({
+                status: MENU_PROCESSING_STATUS.FAILED,
+                completedAt: disabledAt,
+                updatedAt: disabledAt,
+                error: {
+                    code: 'FEATURE_DISABLED',
+                    message: 'Menu link import is not enabled.',
+                    retryable: false,
+                },
+            });
+            return;
         }
 
         if (await isSafeModeActive()) {
@@ -962,6 +1027,13 @@ export async function processMenuImagesJobLogic(
         const deterministicLinkResult = await tryExtractMenuLinkTextFromJob(jobId, job);
         const result = deterministicLinkResult || await processMenuImagesLogic(request);
         aiCompletedAtMillis = Date.now();
+        const batchCompletion = resolveMenuExtractionBatchCompletion(result.batchResults, {
+            canReviewPartialResult: !skipProjectSave,
+        });
+        if (batchCompletion === "failed") {
+            throw new PartialBatchFailureError();
+        }
+        const partialResultNeedsReview = batchCompletion === "needs_review";
 
         logger.info(`[processMenuImagesJob] === STEP 2 AI PROCESSING COMPLETE ===`, {
             ...getMenuExtractionJobLogContext(jobId, job),
@@ -981,10 +1053,13 @@ export async function processMenuImagesJobLogic(
         // Category normalization + integrity validation + anomaly detection
         // Non-blocking: logs issues but never fails the job
         // ─────────────────────────────────────────────────────────────
+        let hardeningRequiresReview = false;
         try {
             const hardening = hardenExtractedData(result.data.data);
             // Apply normalized data back (categories merged, items remapped)
             result.data.data = hardening.data;
+            hardeningRequiresReview = !hardening.integrity.valid
+                || hardening.anomalies.some((anomaly) => anomaly.severity === "critical");
 
             logger.info(`[processMenuImagesJob] Hardening complete`, {
                 ...getMenuExtractionJobLogContext(jobId, job),
@@ -1002,10 +1077,11 @@ export async function processMenuImagesJobLogic(
                 sourceErrorCode: getFunctionErrorCode(hardeningError),
                 sourceStatusCode: getFunctionErrorStatus(hardeningError),
             });
+            hardeningRequiresReview = true;
         }
 
         const mergedBusinessProfile = mergeExtractedBusinessProfiles(
-            result.data.data?.extractedBusinessProfile,
+            normalizeExtractedBusinessProfile(result.data.data?.extractedBusinessProfile),
             buildProfileFromIdentityCheck(job),
         );
         result.data.data = {
@@ -1135,7 +1211,9 @@ export async function processMenuImagesJobLogic(
 
         // Linked outlets always require review for safety
         const forceReview = job.forceReview === true;
-        const requiresReview = skipProjectSave ? false : (forceReview || hasExistingItems || isLinkedOutlet);
+        const requiresReview = skipProjectSave
+            ? false
+            : (forceReview || hasExistingItems || isLinkedOutlet || partialResultNeedsReview || hardeningRequiresReview);
         const isFirstExtraction = !requiresReview;
 
         logger.info(`[processMenuImagesJob] Extraction type detected`, {
@@ -1144,6 +1222,8 @@ export async function processMenuImagesJobLogic(
             hasExistingItems,
             isLinkedOutlet,
             forceReview,
+            hardeningRequiresReview,
+            partialResultNeedsReview,
             source: job.source || null,
             existingFilesCount: existingProject?.files?.length || 0,
             ...getBoundedFunctionStringContext("masterProjectId", existingProject?.masterProjectId),
@@ -1208,6 +1288,10 @@ export async function processMenuImagesJobLogic(
 
             saveStartedAtMillis = Date.now();
             if (!skipProjectSave) {
+                const projectStoreId = job.sId;
+                if (!projectStoreId) {
+                    throw new Error("Missing project store scope.");
+                }
                 // Save files to project directly
                 logger.info(`[processMenuImagesJob] === STEP 6 SAVING TO PROJECT ===`, {
                     ...getMenuExtractionJobLogContext(jobId, job),
@@ -1230,7 +1314,7 @@ export async function processMenuImagesJobLogic(
                 let businessAttributeDefaultsApplied = false;
                 try {
                     businessAttributeDefaultsApplied = await applyMenuDerivedBusinessAttributeDefaultsForStore({
-                        storeId: job.sId,
+                        storeId: projectStoreId,
                         menuData: result.data.data,
                         context: 'processMenuImagesJob:firstExtraction',
                         touchDigitalScreen: true,
@@ -1245,7 +1329,7 @@ export async function processMenuImagesJobLogic(
                     });
                 }
                 if (!businessAttributeDefaultsApplied) {
-                    await revalidatePublicClientCacheForStore(job.sId, 'processMenuImagesJob:firstExtractionProjectSave', {
+                    await revalidatePublicClientCacheForStore(projectStoreId, 'processMenuImagesJob:firstExtractionProjectSave', {
                         touchDigitalScreen: true,
                     });
                 }
@@ -1254,17 +1338,6 @@ export async function processMenuImagesJobLogic(
                     ...getMenuExtractionJobLogContext(jobId, job),
                     step: 'SAVE_TO_PROJECT_COMPLETE',
                     timestamp: Date.now()
-                });
-
-                // Verify the project was actually updated
-                const projectVerifyRef = firestoreAdmin.collection(DB_COLLECTIONS.PROJECTS).doc(String(job.tId)).collection(String(job.sId)).doc(job.projectId);
-                const verifyDoc = await projectVerifyRef.get();
-                logger.info(`[processMenuImagesJob] === VERIFY PROJECT UPDATE ===`, {
-                    ...getMenuExtractionJobLogContext(jobId, job),
-                    projectExists: verifyDoc.exists,
-                    projectFilesCount: verifyDoc.data()?.files?.length || 0,
-                    projectLanguageCount: Array.isArray(verifyDoc.data()?.languages) ? verifyDoc.data()?.languages.length : 0,
-                    projectPathLength: projectVerifyRef.path.length,
                 });
             } else {
                 logger.info(`[processMenuImagesJob] Project save skipped for extraction-only job`, {
@@ -1303,7 +1376,8 @@ export async function processMenuImagesJobLogic(
                     qualityDetails: result.data.qualityDetails,
                     processingTime: result.transaction.processingTime,
                     summary: buildExtractionResultSummary(result.data.data, confidenceSummary, extractedBusinessProfile),
-                    batchResults: (result as any).batchResults,
+                    ...(result.batchResults ? { batchResults: result.batchResults } : {}),
+                    ...(partialResultNeedsReview ? { partialResult: true } : {}),
                     // Infrastructure Compounding 10.1 — piggybacked on existing write
                     ...(confidenceSummary ? { confidenceSummary } : {}),
                     ...(skipProjectSave ? { redistributedFiles } : {}),
@@ -1328,6 +1402,7 @@ export async function processMenuImagesJobLogic(
                 fileResults,
                 transaction: {
                     transactionId: result.transaction.transactionId,
+                    recorded: result.transaction.recorded,
                     totalCredits: result.transaction.totalCredits,
                     totalCharge: result.transaction.totalCharge,
                     unitsConsumed: result.transaction.unitsConsumed || 0,
@@ -1369,7 +1444,9 @@ export async function processMenuImagesJobLogic(
                 updatedAt: Timestamp.fromMillis(previewReadyAtMillis),
                 ...buildExtractionDetailRetentionFields(previewReadyAtMillis),
                 progress: 100,
-                currentStep: "Preview ready - awaiting review",
+                currentStep: partialResultNeedsReview
+                    ? "Preview ready - some files need review"
+                    : "Preview ready - awaiting review",
                 isFirstExtraction: false,
                 expiresAt: Timestamp.fromMillis(Date.now() + ttlMs),
                 result: {
@@ -1379,7 +1456,8 @@ export async function processMenuImagesJobLogic(
                     qualityDetails: result.data.qualityDetails,
                     processingTime: result.transaction.processingTime,
                     summary: buildExtractionResultSummary(result.data.data, reExtractConfidence, extractedBusinessProfile),
-                    batchResults: (result as any).batchResults,
+                    ...(result.batchResults ? { batchResults: result.batchResults } : {}),
+                    ...(partialResultNeedsReview ? { partialResult: true } : {}),
                     // Infrastructure Compounding 10.1 — piggybacked on existing write
                     ...(reExtractConfidence ? { confidenceSummary: reExtractConfidence } : {}),
                     // Extraction provenance (P0 hardening — Mar 2026)
@@ -1400,6 +1478,7 @@ export async function processMenuImagesJobLogic(
                 }),
                 transaction: {
                     transactionId: result.transaction.transactionId,
+                    recorded: result.transaction.recorded,
                     totalCredits: result.transaction.totalCredits,
                     totalCharge: result.transaction.totalCharge,
                     unitsConsumed: result.transaction.unitsConsumed || 0,
@@ -1440,13 +1519,15 @@ export async function processMenuImagesJobLogic(
         });
 
         try {
-            await markPublicDraftExtractionFailed(
-                jobId,
-                job,
-                job.destination?.type === MENU_EXTRACTION_DESTINATION_TYPES.PUBLIC_MENU_DRAFT && job.destination.sourceType === "menu_link_import"
-                    ? "We could not read this menu link. Upload a photo or try another public menu link."
-                    : "Extraction failed. Please try again with a clearer photo.",
-            );
+            if (publicDraftBindingVerified) {
+                await markPublicDraftExtractionFailed(
+                    jobId,
+                    job,
+                    job.destination?.type === MENU_EXTRACTION_DESTINATION_TYPES.PUBLIC_MENU_DRAFT && job.destination.sourceType === "menu_link_import"
+                        ? "We could not read this menu link. Upload a photo or try another public menu link."
+                        : "Extraction failed. Please try again with a clearer photo.",
+                );
+            }
             const failedAtMillis = Date.now();
             await jobRef.update({
                 status: MENU_PROCESSING_STATUS.FAILED,
@@ -1500,6 +1581,12 @@ function getErrorCode(error: any): string {
     const sourceName = String(getFunctionErrorName(error) || "").toUpperCase();
     const sourceStatus = getFunctionErrorStatus(error);
 
+    if (sourceCode === PROCESS_MENU_IMAGES_JOB_PUBLIC_DRAFT_BINDING_INVALID) {
+        return PROCESS_MENU_IMAGES_JOB_PUBLIC_DRAFT_BINDING_INVALID;
+    }
+    if (sourceCode === PROCESS_MENU_IMAGES_JOB_PARTIAL_BATCH_FAILURE) {
+        return PROCESS_MENU_IMAGES_JOB_PARTIAL_BATCH_FAILURE;
+    }
     if (
         sourceStatus === 429 ||
         sourceCode.includes("RATE_LIMIT") ||
@@ -1545,7 +1632,11 @@ function getErrorCode(error: any): string {
 }
 
 function isRetryableCode(code: string): boolean {
-    return code === "RATE_LIMIT" || code === "TIMEOUT" || code === "CIRCUIT_BREAKER" || code === "AI_ERROR";
+    return code === "RATE_LIMIT"
+        || code === "TIMEOUT"
+        || code === "CIRCUIT_BREAKER"
+        || code === "AI_ERROR"
+        || code === PROCESS_MENU_IMAGES_JOB_PARTIAL_BATCH_FAILURE;
 }
 
 function getRetryAfterSeconds(error: any): number | null {

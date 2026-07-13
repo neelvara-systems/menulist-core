@@ -1,9 +1,11 @@
 # AI System Layer
 
 **Feature:** Centralized AI Infrastructure for MenuList
-**Status:** ✅ PRODUCTION HARDENING ACTIVE — Gateway, rotation, model constants, daily health checks
+**Status:** Source-implemented and hardened — not current launch or deploy certification
 **Source:** ChatGPT extraction hardening session (Mar 2026) → Cascade codebase validation
-**Last Updated:** July 5, 2026
+**Last Updated:** July 13, 2026
+
+> **Launch boundary:** Not current launch certification or deploy approval. This document records source-gated AI System Layer evidence only. Current MenuList approval still requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:ai-accounting`, `npm run verify:functions-deploy-preflight`, `npm run verify:menu-extraction-pipeline`, scoped Firebase deploy evidence for affected MenuList Functions, target Vercel deploy evidence for affected app routes, provider smoke with target-specific key/model/quota configuration, SAFE_MODE/rate-limit/accounting/provider-health smoke, authenticated browser/device QA for affected owner/platform surfaces, and production-host smoke. Answerlattice retains separate doctrine, credentials, Firebase target, billing/cost evidence, deploy approval, and release certification; this document cannot authorize an Answerlattice deploy or release.
 
 ---
 
@@ -14,6 +16,20 @@ The AI System Layer is a centralized infrastructure that governs AI operations a
 **Core principle:** AI is an expensive, rate-limited external resource. Treat it like a database — centralize access, control cost, and monitor health.
 
 Production rule: API keys are failover and rotation credentials, not a quota scaling strategy. Google Gemini rate limits are enforced at the project/model tier, so production capacity must be handled with billing, quota monitoring, model choice, and provider health checks.
+
+### 2026 provider migration register
+
+| Workload | Active source | Stable candidate | Current action |
+| --- | --- | --- | --- |
+| Answerlattice query/article embeddings | `gemini-embedding-2` on `embeddingV2` | Active | Complete source migration; Firebase deploy/live corpus proof blocked by project IAM and tracked in the Knowledge Base validation doc |
+| Deterministic extraction, translation, summaries, structured JSON | Gemini 2.5 Flash / Flash-Lite by existing operation | `gemini-3.1-flash-lite` | Benchmark exact prompts, schema validity, latency, token use, retries, and effective cost before any operation mapping changes |
+| Complex reasoning and KB generation | Gemini 2.5 Flash / Pro by existing operation | `gemini-3.5-flash` | Selective benchmark only; no blanket model replacement |
+| High-volume image generation/editing | `gemini-2.5-flash-image` | `gemini-3.1-flash-lite-image` | Use the shared generator adapter and benchmark 1K output quality, edit fidelity, latency, failures, and per-image effective cost |
+| Quality-sensitive image output | `gemini-2.5-flash-image` | `gemini-3.1-flash-image` | Reserve as the higher-quality candidate when conversion impact justifies the cost |
+
+All candidate IDs are concrete stable IDs in `src/constants/AI/models.ts`; active operation mappings remain unchanged until benchmark evidence is accepted. Image operation accounting now records the concrete provider model ID instead of the internal `GEMINI` adapter key. All three Cloud Functions packages already declare Node.js 22, so the Node.js 20 decommission alert requires no repository change.
+
+Firebase AI Logic one-time App Check tokens do not map to the current expensive-operation architecture: MenuList and Answerlattice AI calls are server-mediated by authenticated/rate-limited Next routes or dedicated Cloud Functions, and the repository has no client-side Firebase AI Logic call path. Do not add a second client-exposed AI transport solely to use replay protection. Cloud Storage hierarchical namespace is also not configured in the repository's Firebase Storage setup; the empty-folder lifecycle change has no source action unless a bucket is later enabled outside this repo.
 
 July 5 Weekly narrative output boundary: `/api/analytics/weekly-narrative/generate-local` now normalizes AI-generated `narrative`, `highlights`, and `recommendations` before writing `insights/{tId}/stores/{sId}/ai/weekly`. The route strips control/template characters, collapses whitespace, caps the narrative and list items, keeps the existing deterministic fallback narrative, and returns only the existing count/length success envelope.
 
@@ -61,7 +77,7 @@ June 28 hardening: frontend and Cloud Functions AI gateways classify rate limits
 | KB Quality Analysis     | `@google/genai` | `gemini-2.5-flash`                   | ✅ Gateway   | ✅ Gateway      | ❌ Nightly    |
 | Weekly Narrative        | `@google/genai` | `gemini-2.5-flash`                   | ✅ Gateway   | ✅ Gateway      | ❌ Nightly    |
 | KB Generation           | `@google/genai` | `gemini-2.5-pro`                     | ✅ Gateway   | ✅ Gateway      | ❌ None       |
-| Embeddings (CF)         | `@google/genai` | `text-embedding-004`                 | ✅ Gateway   | ✅ Gateway      | ❌ None       |
+| Embeddings (CF)         | `@google/genai` | `gemini-embedding-2`                 | ✅ Gateway   | ✅ Gateway      | ❌ None       |
 | Help Center Search      | `@google/genai` | `gemini-2.5-flash`                   | ✅ Gateway   | ✅ Gateway      | ✅ Upstash    |
 | Descriptions            | `@google/genai` | `gemini-2.5-flash`                   | ✅ Gateway   | ✅ Gateway      | ✅ Upstash    |
 | Translations            | `@google/genai` | `gemini-2.5-flash`                   | ✅ Gateway   | ✅ Gateway      | ✅ Upstash    |
@@ -72,7 +88,7 @@ June 28 hardening: frontend and Cloud Functions AI gateways classify rate limits
 | Review Drafts           | `@google/genai` | `gemini-2.5-flash`                   | ✅ Gateway   | ✅ Gateway      | ✅ Upstash    |
 | Answerlattice Translate | `@google/genai` | `gemini-2.5-flash`                   | ✅ Gateway   | ✅ Gateway      | ✅ Upstash    |
 | Public Create Menu      | `@google/genai` | varies                               | ✅ Gateway   | ✅ Gateway      | ✅ Upstash    |
-| Answerlattice Embeddings | `@google/genai` | `gemini-embedding-001`               | ✅ Gateway   | ✅ Gateway      | ✅ Upstash    |
+| Answerlattice Embeddings | `@google/genai` | `gemini-embedding-2`                 | ✅ Gateway   | ✅ Gateway      | ✅ Upstash    |
 
 ### Architecture (Implemented)
 
@@ -108,7 +124,7 @@ Gemini API (via @google/genai SDK)
 | Production key policy | Separate restricted keys per environment | Limits blast radius; keys are not exposed client-side       |
 | Quota policy          | Per Google project/model tier    | Extra keys are for failover/rotation, not unlimited quota   |
 | Model names           | Stable names only for production | No `latest`, preview, or experimental aliases in active prod paths |
-| Answerlattice embeddings | Keep `gemini-embedding-001` until reindex | Embedding 2 migration requires a planned vector-space rebuild |
+| Answerlattice embeddings | `gemini-embedding-2` on versioned `embeddingV2` | Registry-locked query/document formatting, versioned query cache, bounded backfill, and legacy `embedding` rollback field prevent vector-space mixing |
 | Answerlattice Functions provider | `@google/genai` API-key gateway | Same SDK/gateway pattern as MenuList while preserving Answerlattice credential and billing isolation |
 | Provider health       | Daily scheduler checks           | Detect key, model, or quota failures before owners report them |
 | Universal task queue  | Not current runtime              | Extraction already has a job queue; other paths use route guards or schedulers |
@@ -192,7 +208,7 @@ Answerlattice Cloud Functions do not use MenuList's `GEMINI_AI_KEY` pool. They u
 
 ### Accounting Guardrails
 
-Billable AI routes must finalize successful provider output through `src/lib/ai/accounting.ts`. The finalizer writes operation telemetry with Admin SDK access, then consumes paid capacity. Operation logging is best-effort; credit consumption is not. `menulistAiOperations/{tId}/{sId}` is read-scoped to the store/admin and write-denied to browser clients.
+Billable MenuList AI routes must reserve exact positive integer units through `reserveAiCapacity()` before provider work and finalize successful output through `src/lib/ai/accounting.ts` with that reservation. The reservation transaction debits current subscription buckets and writes a hidden operation shell atomically; settlement promotes that same shell into operation telemetry without a second debit. Provider/pre-settlement failure refunds the exact charged buckets idempotently. Free platform-absorbed actions remain zero-unit and do not reserve. `menulistAiOperations/{tId}/{sId}` is read-scoped to the store/admin and write-denied to browser clients.
 
 Every declared `AI_ACTIONS_TYPES` value must be present in both `AI_UNIT_COSTS` and `GEMINI_COST_USD`. Unknown AI actions throw during capacity/logging instead of defaulting to a free operation.
 
@@ -206,4 +222,5 @@ npm run verify:ai-accounting
 
 ---
 
-_Last Updated: July 5, 2026_
+_Document Status: Source-implemented and hardened; not current launch or deploy certification._
+_Last Updated: July 10, 2026_

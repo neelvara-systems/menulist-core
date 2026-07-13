@@ -22,6 +22,56 @@ const REALTIME_FEEDBACK_TRACKING_FAILED = 'REALTIME_FEEDBACK_TRACKING_FAILED';
 const REALTIME_REGENERATION_TRACKING_FAILED = 'REALTIME_REGENERATION_TRACKING_FAILED';
 const REALTIME_TODAY_STATS_FETCH_FAILED = 'REALTIME_TODAY_STATS_FETCH_FAILED';
 const REALTIME_TODAY_DOC_INIT_FAILED = 'REALTIME_TODAY_DOC_INIT_FAILED';
+const ANALYTICS_DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+function getUtcDateKey(date = new Date()): string {
+  return date.toISOString().slice(0, 10);
+}
+
+function normalizeAnalyticsDateKey(value: unknown): string | null {
+  if (typeof value !== 'string' || !ANALYTICS_DATE_KEY_PATTERN.test(value)) return null;
+
+  const parsed = new Date(`${value}T00:00:00.000Z`);
+  return Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== value
+    ? null
+    : value;
+}
+
+function requireAnalyticsDateKey(value: unknown): string {
+  const normalized = normalizeAnalyticsDateKey(value);
+  if (!normalized) throw new Error('Invalid analytics date key.');
+  return normalized;
+}
+
+function requireNumericScopeDocumentId(value: unknown, field: string): string {
+  const raw = typeof value === 'string' || typeof value === 'number' ? String(value) : '';
+  if (!/^[1-9]\d*$/.test(raw)) throw new Error(`Invalid ${field}.`);
+  const numeric = Number(raw);
+  if (!Number.isSafeInteger(numeric) || String(numeric) !== raw) throw new Error(`Invalid ${field}.`);
+  return raw;
+}
+
+function requireBoolean(value: unknown, field: string): boolean {
+  if (typeof value !== 'boolean') throw new Error(`Invalid ${field}.`);
+  return value;
+}
+
+function requireNonNegativeCount(value: unknown, field: string): number {
+  if (!Number.isSafeInteger(value) || Number(value) < 0) {
+    throw new Error(`Invalid ${field}.`);
+  }
+  return Number(value);
+}
+
+function readNonNegativeCount(value: unknown): number {
+  return Number.isSafeInteger(value) && Number(value) >= 0 ? Number(value) : 0;
+}
+
+function isAlreadyExistsError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const code = (error as { code?: unknown }).code;
+  return code === 6 || code === '6' || code === 'already-exists';
+}
 
 function getRealtimeScope(data: {
   tId: string;
@@ -65,35 +115,42 @@ export interface ChatCompletionData {
 export async function onChatComplete(data: ChatCompletionData): Promise<void> {
   try {
     const db = admin.firestore();
-    const today = new Date().toISOString().split('T')[0];
-    const docId = getChatAnalyticsDocId(data.tId, data.sId, today);
+    const today = getUtcDateKey();
+    const tId = requireNumericScopeDocumentId(data.tId, 'tenant ID');
+    const sId = requireNumericScopeDocumentId(data.sId, 'store ID');
+    if (data.mode !== 'qna' && data.mode !== 'assistant') throw new Error('Invalid chat mode.');
+    const hasFeedback = requireBoolean(data.hasFeedback, 'feedback presence');
+    const isPositive = requireBoolean(data.isPositive, 'feedback sentiment');
+    const docId = getChatAnalyticsDocId(tId, sId, today);
+    const messageCount = requireNonNegativeCount(data.messageCount, 'message count');
+    const regenerationCount = requireNonNegativeCount(data.regenerationCount, 'regeneration count');
 
     const todayDoc = db.collection(DB_COLLECTIONS.CHAT_ANALYTICS).doc(docId);
 
     // Build update object with atomic increments
-    const updateData: any = {
-      tId: data.tId,
-      sId: data.sId,
+    const updateData: Record<string, string | FieldValue> = {
+      tId,
+      sId,
       date: today,
 
       // Core counters (atomic increments)
       totalChats: FieldValue.increment(1),
-      totalMessages: FieldValue.increment(data.messageCount || 0),
-      totalRegenerations: FieldValue.increment(data.regenerationCount || 0),
-
-      // Mode-specific counters
-      qnaChats: data.mode === 'qna' ? FieldValue.increment(1) : 0,
-      assistantChats: data.mode === 'assistant' ? FieldValue.increment(1) : 0,
+      totalMessages: FieldValue.increment(messageCount),
+      totalRegenerations: FieldValue.increment(regenerationCount),
 
       // Metadata
       lastUpdated: FieldValue.serverTimestamp(),
     };
 
+    // Increment only the selected mode. Writing zero for the other mode would
+    // overwrite its previously accumulated counter on every completion.
+    updateData[data.mode === 'qna' ? 'qnaChats' : 'assistantChats'] = FieldValue.increment(1);
+
     // Only increment feedback if it exists
-    if (data.hasFeedback) {
+    if (hasFeedback) {
       updateData.totalFeedback = FieldValue.increment(1);
 
-      if (data.isPositive) {
+      if (isPositive) {
         updateData.positiveFeedback = FieldValue.increment(1);
       } else {
         updateData.negativeFeedback = FieldValue.increment(1);
@@ -106,9 +163,9 @@ export async function onChatComplete(data: ChatCompletionData): Promise<void> {
     analyticsLogger.info('[Realtime Tracking] Chat completion tracked', {
       ...getRealtimeScope(data),
       mode: data.mode,
-      messageCount: data.messageCount || 0,
-      regenerationCount: data.regenerationCount || 0,
-      hasFeedback: data.hasFeedback,
+      messageCount,
+      regenerationCount,
+      hasFeedback,
     });
   } catch (error) {
     analyticsLogger.error('[Realtime Tracking] Chat completion tracking failed', {
@@ -131,17 +188,23 @@ export async function onFeedbackAdded(data: {
 }): Promise<void> {
   try {
     const db = admin.firestore();
-    const targetDate = data.date || new Date().toISOString().split('T')[0];
-    const docId = getChatAnalyticsDocId(data.tId, data.sId, targetDate);
+    const tId = requireNumericScopeDocumentId(data.tId, 'tenant ID');
+    const sId = requireNumericScopeDocumentId(data.sId, 'store ID');
+    const isPositive = requireBoolean(data.isPositive, 'feedback sentiment');
+    const targetDate = data.date === undefined ? getUtcDateKey() : requireAnalyticsDateKey(data.date);
+    const docId = getChatAnalyticsDocId(tId, sId, targetDate);
 
     const doc = db.collection(DB_COLLECTIONS.CHAT_ANALYTICS).doc(docId);
 
-    const updateData: any = {
+    const updateData: Record<string, string | FieldValue> = {
+      tId,
+      sId,
+      date: targetDate,
       totalFeedback: FieldValue.increment(1),
       lastUpdated: FieldValue.serverTimestamp(),
     };
 
-    if (data.isPositive) {
+    if (isPositive) {
       updateData.positiveFeedback = FieldValue.increment(1);
     } else {
       updateData.negativeFeedback = FieldValue.increment(1);
@@ -152,7 +215,7 @@ export async function onFeedbackAdded(data: {
     analyticsLogger.info('[Realtime Tracking] Feedback tracked', {
       ...getRealtimeScope(data),
       targetDate,
-      isPositive: data.isPositive,
+      isPositive,
     });
   } catch (error) {
     analyticsLogger.error('[Realtime Tracking] Feedback tracking failed', {
@@ -173,12 +236,17 @@ export async function onRegenerationEvent(data: {
 }): Promise<void> {
   try {
     const db = admin.firestore();
-    const targetDate = data.date || new Date().toISOString().split('T')[0];
-    const docId = getChatAnalyticsDocId(data.tId, data.sId, targetDate);
+    const tId = requireNumericScopeDocumentId(data.tId, 'tenant ID');
+    const sId = requireNumericScopeDocumentId(data.sId, 'store ID');
+    const targetDate = data.date === undefined ? getUtcDateKey() : requireAnalyticsDateKey(data.date);
+    const docId = getChatAnalyticsDocId(tId, sId, targetDate);
 
     const doc = db.collection(DB_COLLECTIONS.CHAT_ANALYTICS).doc(docId);
 
     await doc.set({
+      tId,
+      sId,
+      date: targetDate,
       totalRegenerations: FieldValue.increment(1),
       lastUpdated: FieldValue.serverTimestamp(),
     }, { merge: true });
@@ -215,8 +283,10 @@ export async function getTodayLiveStats(data: {
 }> {
   try {
     const db = admin.firestore();
-    const today = new Date().toISOString().split('T')[0];
-    const docId = getChatAnalyticsDocId(data.tId, data.sId, today);
+    const today = getUtcDateKey();
+    const tId = requireNumericScopeDocumentId(data.tId, 'tenant ID');
+    const sId = requireNumericScopeDocumentId(data.sId, 'store ID');
+    const docId = getChatAnalyticsDocId(tId, sId, today);
 
     const doc = await db.collection(DB_COLLECTIONS.CHAT_ANALYTICS).doc(docId).get();
 
@@ -236,14 +306,14 @@ export async function getTodayLiveStats(data: {
     const docData = doc.data() || {};
 
     return {
-      totalChats: docData.totalChats || 0,
-      qnaChats: docData.qnaChats || 0,
-      assistantChats: docData.assistantChats || 0,
-      totalMessages: docData.totalMessages || 0,
-      positiveFeedback: docData.positiveFeedback || 0,
-      negativeFeedback: docData.negativeFeedback || 0,
-      totalFeedback: docData.totalFeedback || 0,
-      totalRegenerations: docData.totalRegenerations || 0,
+      totalChats: readNonNegativeCount(docData.totalChats),
+      qnaChats: readNonNegativeCount(docData.qnaChats),
+      assistantChats: readNonNegativeCount(docData.assistantChats),
+      totalMessages: readNonNegativeCount(docData.totalMessages),
+      positiveFeedback: readNonNegativeCount(docData.positiveFeedback),
+      negativeFeedback: readNonNegativeCount(docData.negativeFeedback),
+      totalFeedback: readNonNegativeCount(docData.totalFeedback),
+      totalRegenerations: readNonNegativeCount(docData.totalRegenerations),
     };
   } catch (error) {
     analyticsLogger.error('[Realtime Tracking] Today stats fetch failed', {
@@ -274,27 +344,35 @@ export async function initializeTodayDoc(data: {
 }): Promise<void> {
   try {
     const db = admin.firestore();
-    const today = new Date().toISOString().split('T')[0];
-    const docId = getChatAnalyticsDocId(data.tId, data.sId, today);
+    const today = getUtcDateKey();
+    const tId = requireNumericScopeDocumentId(data.tId, 'tenant ID');
+    const sId = requireNumericScopeDocumentId(data.sId, 'store ID');
+    const docId = getChatAnalyticsDocId(tId, sId, today);
 
     const doc = db.collection(DB_COLLECTIONS.CHAT_ANALYTICS).doc(docId);
 
-    // Only create if doesn't exist
-    await doc.set({
-      tId: data.tId,
-      sId: data.sId,
-      date: today,
-      totalChats: 0,
-      qnaChats: 0,
-      assistantChats: 0,
-      totalMessages: 0,
-      positiveFeedback: 0,
-      negativeFeedback: 0,
-      totalFeedback: 0,
-      totalRegenerations: 0,
-      createdAt: FieldValue.serverTimestamp(),
-      lastUpdated: FieldValue.serverTimestamp(),
-    }, { merge: true });
+    // create() is atomic and never overwrites counters if tracking won the
+    // race and created today's document first.
+    try {
+      await doc.create({
+        tId,
+        sId,
+        date: today,
+        totalChats: 0,
+        qnaChats: 0,
+        assistantChats: 0,
+        totalMessages: 0,
+        positiveFeedback: 0,
+        negativeFeedback: 0,
+        totalFeedback: 0,
+        totalRegenerations: 0,
+        createdAt: FieldValue.serverTimestamp(),
+        lastUpdated: FieldValue.serverTimestamp(),
+      });
+    } catch (error) {
+      if (isAlreadyExistsError(error)) return;
+      throw error;
+    }
 
     analyticsLogger.info('[Realtime Tracking] Initialized today document', {
       ...getRealtimeScope(data),

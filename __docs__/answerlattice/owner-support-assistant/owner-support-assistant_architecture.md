@@ -1,10 +1,12 @@
 # Owner Support Assistant - Architecture Alignment
 
-> **Status:** DOCS FROZEN
+> **Status:** TARGET ARCHITECTURE - read-only summary runtime live; expansion deferred
 > **Created:** 2026-06-07
 > **Purpose:** End-to-end storage, function, API, reuse, and ChatGPT alignment contract before runtime implementation.
 
 ---
+
+Current runtime uses a consolidated deterministic library, five compact summary documents, two protected APIs, and no writes/provider calls. The action, AI, feedback, owner-analytics, bounded-detail, compact-assistant-summary, and scheduler paths below are target constraints, not current runtime inventory.
 
 ## Architecture Verdict
 
@@ -256,7 +258,7 @@ These are additive implementation changes, not new product subsystems:
 
 | Area | Additive change |
 | --- | --- |
-| Feature flag | Add `ENABLE_ANSWERLATTICE_OWNER_SUPPORT_ASSISTANT`, default `false`. |
+| Feature flag | Live app flag `ENABLE_ANSWERLATTICE_OWNER_SUPPORT_ASSISTANT: true`; no function-side summary flag is active. |
 | Navigation | Add Support Assistant route/nav item inside Answerlattice Support Control when flag allows. |
 | Support Board type | Add `assistant` as an allowed source type if saved plans need source attribution. |
 | Support Board card metadata | Add nullable `assistantContext` with `intent`, `contextHash`, `evidenceRefs`, and `answerId`. |

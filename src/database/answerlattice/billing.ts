@@ -1,16 +1,24 @@
 import { DB_COLLECTIONS } from '@constant/database';
 import { apiCallComposer } from '@lib/apiHelper/apiCallComposer';
-import { normalizeAnswerlatticeSubscriptionId } from '@lib/answerlattice/billingDocumentIdBoundary';
+import {
+    normalizeAnswerlatticeBillingScopeDocumentId,
+    normalizeAnswerlatticeSubscriptionId,
+} from '@lib/answerlattice/billingDocumentIdBoundary';
+import {
+    isAnswerlatticePaymentHistoryItemInScope,
+    isAnswerlatticeSubscriptionInScope,
+} from '@lib/answerlattice/billingScopeBoundary';
 import { getAnswerlatticeScopeLogContext, logAnswerlatticeFailure } from '@lib/answerlattice/diagnostics';
+import { isAnswerlatticeStoreInScope } from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirebaseClient } from '@lib/firebase/answerlatticeFirebaseClient';
 import type { FirestoreSubscriptionDoc } from '@type/razorpay';
-import { collection, doc, getDoc, getDocs, limit, query, where } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, limit, orderBy, query, where } from 'firebase/firestore';
 
 const subscriptionRequests = new Map<string, Promise<FirestoreSubscriptionDoc | null>>();
 
 const getSubscriptionCollectionRef = () => collection(answerlatticeFirebaseClient, DB_COLLECTIONS.SUBSCRIPTIONS);
 const getPaymentTransactionCollectionRef = () => collection(answerlatticeFirebaseClient, DB_COLLECTIONS.PAYMENT_TRANSACTIONS);
-const getStoreDocumentRef = (storeId: number) => doc(answerlatticeFirebaseClient, DB_COLLECTIONS.STORES, String(storeId));
+const getStoreDocumentRef = (storeDocumentId: string) => doc(answerlatticeFirebaseClient, DB_COLLECTIONS.STORES, storeDocumentId);
 const getSubscriptionDocumentRef = (subscriptionId: string) => {
     const normalizedSubscriptionId = normalizeAnswerlatticeSubscriptionId(subscriptionId);
     if (!normalizedSubscriptionId) throw new Error('Invalid Answerlattice subscription id');
@@ -31,16 +39,20 @@ const normalizeSubscription = (
     tenantId: number,
     storeId: number,
 ): FirestoreSubscriptionDoc => ({
-    id,
     ...data,
+    id,
     providerSubscriptionId: data.providerSubscriptionId || id,
-    tenantId: Number(data.tenantId ?? data.tId ?? tenantId),
-    storeId: Number(data.storeId ?? data.sId ?? storeId),
+    pId: data.pId ?? data.productId,
+    productId: data.productId ?? data.pId,
+    tId: tenantId,
+    sId: storeId,
+    tenantId,
+    storeId,
     amount: Number.isFinite(Number(data.amount)) ? Number(data.amount) : 0,
     quantity: Number.isFinite(Number(data.quantity)) && Number(data.quantity) > 0 ? Number(data.quantity) : 1,
-    monthlyCreditsAllowance: Number.isFinite(Number(data.monthlyCreditsAllowance)) ? Number(data.monthlyCreditsAllowance) : 0,
-    monthlyCredits: Number.isFinite(Number(data.monthlyCredits)) ? Number(data.monthlyCredits) : 0,
-    topUpCredits: Number.isFinite(Number(data.topUpCredits)) ? Number(data.topUpCredits) : 0,
+    monthlyCreditsAllowance: Number.isFinite(Number(data.monthlyCreditsAllowance)) && Number(data.monthlyCreditsAllowance) >= 0 ? Number(data.monthlyCreditsAllowance) : 0,
+    monthlyCredits: Number.isFinite(Number(data.monthlyCredits)) && Number(data.monthlyCredits) >= 0 ? Number(data.monthlyCredits) : 0,
+    topUpCredits: Number.isFinite(Number(data.topUpCredits)) && Number(data.topUpCredits) >= 0 ? Number(data.topUpCredits) : 0,
     currency: data.currency || 'INR',
     status: data.status || 'pending',
     planType: data.planType || 'MONTH',
@@ -51,11 +63,6 @@ const normalizeSubscription = (
     billingHistory: Array.isArray(data.billingHistory) ? data.billingHistory : [],
     shortUrl: data.shortUrl || '',
 } as FirestoreSubscriptionDoc);
-
-const isSubscriptionForScope = (subscription: FirestoreSubscriptionDoc, tenantId: number, storeId: number): boolean => (
-    Number(subscription.tenantId ?? subscription.tId) === Number(tenantId)
-    && Number(subscription.storeId ?? subscription.sId) === Number(storeId)
-);
 
 const isCurrentSubscription = (subscription: FirestoreSubscriptionDoc): boolean => {
     if (['pending', 'paused', 'past_due'].includes(String(subscription.status))) return true;
@@ -73,42 +80,60 @@ const isCurrentSubscription = (subscription: FirestoreSubscriptionDoc): boolean 
 const fetchSubscriptionFromStoreSummary = async (
     tenantId: number,
     storeId: number,
+    storeDocumentId: string,
 ): Promise<FirestoreSubscriptionDoc | null> => {
-    const storeSnapshot = await getDoc(getStoreDocumentRef(storeId));
-    const summary = storeSnapshot.exists() ? storeSnapshot.data()?.answerlatticeSubscription : null;
+    const storeSnapshot = await getDoc(getStoreDocumentRef(storeDocumentId));
+    if (!storeSnapshot.exists()) return null;
+    const storeData = storeSnapshot.data() || {};
+    if (!isAnswerlatticeStoreInScope(storeData, { tenantId, storeId }, storeSnapshot.id)) return null;
+    const summary = storeData.answerlatticeSubscription;
     if (!summary || typeof summary !== 'object') return null;
 
-    const rawSubscriptionId = String(summary.id || summary.providerSubscriptionId || '').trim();
+    const rawSubscriptionId = typeof (summary.id || summary.providerSubscriptionId) === 'string'
+        ? String(summary.id || summary.providerSubscriptionId)
+        : '';
     const subscriptionId = normalizeAnswerlatticeSubscriptionId(rawSubscriptionId);
     if (!rawSubscriptionId || !subscriptionId) {
-        return normalizeSubscription(summary, `answerlattice_summary_${tenantId}_${storeId}`, tenantId, storeId);
+        if (!isAnswerlatticeSubscriptionInScope(summary, { tId: tenantId, sId: storeId })) return null;
+        const summarySubscription = normalizeSubscription(
+            summary,
+            `answerlattice_summary_${tenantId}_${storeId}`,
+            tenantId,
+            storeId,
+        );
+        return isCurrentSubscription(summarySubscription) ? summarySubscription : null;
     }
 
     const subscriptionSnapshot = await getDoc(getSubscriptionDocumentRef(subscriptionId));
     if (!subscriptionSnapshot.exists()) {
-        return normalizeSubscription(summary, subscriptionId, tenantId, storeId);
+        if (!isAnswerlatticeSubscriptionInScope(summary, { tId: tenantId, sId: storeId })) return null;
+        const summarySubscription = normalizeSubscription(summary, subscriptionId, tenantId, storeId);
+        return isCurrentSubscription(summarySubscription) ? summarySubscription : null;
     }
 
-    const subscription = normalizeSubscription(subscriptionSnapshot.data(), subscriptionSnapshot.id, tenantId, storeId);
-    return isSubscriptionForScope(subscription, tenantId, storeId) ? subscription : null;
+    const subscriptionData = subscriptionSnapshot.data();
+    if (!isAnswerlatticeSubscriptionInScope(subscriptionData, { tId: tenantId, sId: storeId })) return null;
+    const subscription = normalizeSubscription(subscriptionData, subscriptionSnapshot.id, tenantId, storeId);
+    return isCurrentSubscription(subscription) ? subscription : null;
 };
 
 const fetchAnswerlatticeSubscriptionRaw = async (
     tenantId: number,
     storeId: number,
+    storeDocumentId: string,
 ): Promise<FirestoreSubscriptionDoc | null> => {
-    const summarySubscription = await fetchSubscriptionFromStoreSummary(tenantId, storeId);
+    const summarySubscription = await fetchSubscriptionFromStoreSummary(tenantId, storeId, storeDocumentId);
     if (summarySubscription) return summarySubscription;
 
     const fallbackSnapshot = await getDocs(query(
         getSubscriptionCollectionRef(),
-        where('tenantId', '==', Number(tenantId)),
-        where('storeId', '==', Number(storeId)),
+        where('tenantId', '==', tenantId),
+        where('storeId', '==', storeId),
         limit(10),
     ));
     const subscriptions = fallbackSnapshot.docs
+        .filter((docSnap) => isAnswerlatticeSubscriptionInScope(docSnap.data(), { tId: tenantId, sId: storeId }))
         .map((docSnap) => normalizeSubscription(docSnap.data(), docSnap.id, tenantId, storeId))
-        .filter((subscription) => isSubscriptionForScope(subscription, tenantId, storeId))
         .filter(isCurrentSubscription)
         .sort((a, b) => toMillis(b.cycleEndDate) - toMillis(a.cycleEndDate));
 
@@ -123,16 +148,19 @@ export const getAnswerlatticeActiveSubscriptionForStore = async (
     tenantId: number,
     storeId: number,
 ): Promise<FirestoreSubscriptionDoc | null> => {
-    const requestKey = `${tenantId}:${storeId}`;
+    const tenantScope = normalizeAnswerlatticeBillingScopeDocumentId(tenantId);
+    const storeScope = normalizeAnswerlatticeBillingScopeDocumentId(storeId);
+    if (!tenantScope || !storeScope) return null;
+    const requestKey = `${tenantScope.documentId}:${storeScope.documentId}`;
     const existingRequest = subscriptionRequests.get(requestKey);
     if (existingRequest) return existingRequest;
 
-    const request = fetchAnswerlatticeSubscriptionRaw(tenantId, storeId)
+    const request = fetchAnswerlatticeSubscriptionRaw(tenantScope.numericId, storeScope.numericId, storeScope.documentId)
         .catch((error) => {
             logAnswerlatticeFailure('answerlattice_billing_active_subscription_load_failed', error, {
                 ...getAnswerlatticeScopeLogContext({
-                    sId: storeId,
-                    tId: tenantId,
+                    sId: storeScope.numericId,
+                    tId: tenantScope.numericId,
                 }),
             });
             return null;
@@ -147,23 +175,33 @@ export const getAnswerlatticeBillingHistoryForStore = async (
     tenantId: number,
     storeId: number,
 ): Promise<any[]> => {
+    const tenantScope = normalizeAnswerlatticeBillingScopeDocumentId(tenantId);
+    const storeScope = normalizeAnswerlatticeBillingScopeDocumentId(storeId);
+    if (!tenantScope || !storeScope) return [];
     return await apiCallComposer(
         async () => {
             const historyQuery = query(
                 getPaymentTransactionCollectionRef(),
-                where('tenantId', '==', Number(tenantId)),
-                where('storeId', '==', Number(storeId)),
-                limit(50),
+                where('tenantId', '==', tenantScope.numericId),
+                where('storeId', '==', storeScope.numericId),
+                where('event', 'in', ['subscription.charged', 'order.paid']),
+                orderBy('created_at', 'desc'),
+                limit(25),
             );
 
             const snapshot = await getDocs(historyQuery);
             return snapshot.docs
-                .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
-                .filter((item: any) => Number(item.tenantId ?? item.tId) === Number(tenantId))
-                .filter((item: any) => ['subscription.charged', 'order.paid'].includes(String(item.event)))
-                .sort((a: any, b: any) => Number(b.created_at || 0) - Number(a.created_at || 0))
+                .map((docSnap): Record<string, unknown> & { id: string } => ({
+                    ...docSnap.data(),
+                    id: docSnap.id,
+                }))
+                .filter((item) => isAnswerlatticePaymentHistoryItemInScope(item, {
+                    tId: tenantScope.numericId,
+                    sId: storeScope.numericId,
+                }))
+                .filter((item) => ['subscription.charged', 'order.paid'].includes(String(item.event)))
                 .slice(0, 25);
         },
-        `getAnswerlatticeBillingHistoryForStore: ${storeId}`,
+        `getAnswerlatticeBillingHistoryForStore: ${storeScope.documentId}`,
     );
 };

@@ -5,8 +5,7 @@
  * Internally routes to the appropriate storage mechanism for each content type.
  */
 
-import { updateArticleFeedback } from '@database/knowledgeBase/articles';
-import { updateChangelogFeedback } from '@database/changelog';
+import { updateContentFeedbackWithAudit } from '@database/contentFeedback';
 import { updateFaqFeedback } from '@database/answerlattice/faqs';
 
 export type ContentType = 'article' | 'changelog' | 'faq' | 'workflow';
@@ -49,13 +48,24 @@ export const updateContentFeedback = async (params: FeedbackUpdateParams) => {
 
     switch (contentType) {
         case 'article':
-            return await updateArticleFeedback(contentId, feedbackType, increment);
+            return await updateContentFeedbackWithAudit({
+                type: 'article',
+                contentId,
+                sentiment: feedbackType,
+                increment,
+            });
 
         case 'changelog':
             if (!pageId) {
                 throw new Error('pageId is required for changelog feedback');
             }
-            return await updateChangelogFeedback(pageId, contentId, feedbackType, increment);
+            return await updateContentFeedbackWithAudit({
+                type: 'changelog',
+                contentId,
+                pageId,
+                sentiment: feedbackType,
+                increment,
+            });
 
         case 'faq':
             return await updateFaqFeedback(contentId, feedbackType, increment);

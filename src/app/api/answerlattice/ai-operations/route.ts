@@ -7,6 +7,7 @@ import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import {
     AI_OPERATION_DATE_FILTER_MAX_LENGTH,
+    isAiOperationHistoryCursorAdmissible,
     isValidAiOperationCursorId,
     normalizeAiOperationHistoryDateRange,
 } from '@lib/ai/operationHistoryQuery';
@@ -33,7 +34,7 @@ const QuerySchema = z.object({
     endDate: z.string().trim().max(AI_OPERATION_DATE_FILTER_MAX_LENGTH).optional(),
     pageSize: z.coerce.number().int().min(1).max(MAX_PAGE_SIZE).default(DEFAULT_PAGE_SIZE),
     startDate: z.string().trim().max(AI_OPERATION_DATE_FILTER_MAX_LENGTH).optional(),
-});
+}).strict();
 
 const PLATFORM_ONLY_FIELDS = new Set([
     'chargePerCredit',
@@ -273,6 +274,15 @@ export const GET = withAuth(async (request: NextRequest, session) => {
         }
 
         const cursorDoc = await getCursorDoc(tenantId, storeId, cursorId);
+        if (!isAiOperationHistoryCursorAdmissible({
+            cursorCreatedOn: cursorDoc?.get('createdOn'),
+            cursorExists: Boolean(cursorDoc),
+            cursorRequested: Boolean(cursorId),
+            dateRange,
+        })) {
+            return NextResponse.json({ error: 'Invalid cursor' }, { status: 400 });
+        }
+
         const result = action
             ? await getActionFilteredDocs({ action, cursorDoc, pageSize, query })
             : await (async () => {

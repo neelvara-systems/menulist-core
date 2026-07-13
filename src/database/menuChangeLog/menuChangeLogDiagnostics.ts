@@ -1,5 +1,5 @@
 import { secureError, secureLog } from '@lib/security/secureLogger';
-import type { MenuChangeLogInput } from '@type/menuObservation';
+import { MENU_CHANGE_ACTORS, MENU_CHANGE_TYPES } from '@type/menuObservation';
 
 type MenuChangeLogContext = Record<string, boolean | number | string | null | undefined>;
 
@@ -7,7 +7,15 @@ export const getBoundedMenuChangeLogStringContext = (
     label: string,
     value: unknown,
 ): MenuChangeLogContext => {
-    const normalized = value === undefined || value === null ? '' : String(value);
+    let normalized = '';
+    try {
+        normalized = value === undefined || value === null ? '' : String(value);
+    } catch {
+        return {
+            [`${label}Present`]: value !== undefined && value !== null,
+            [`${label}Length`]: null,
+        };
+    }
 
     return {
         [`${label}Present`]: normalized.length > 0,
@@ -16,18 +24,40 @@ export const getBoundedMenuChangeLogStringContext = (
 };
 
 export const getMenuChangeLogEntryContext = (
-    entry: MenuChangeLogInput,
-): MenuChangeLogContext => ({
-    changeType: entry.changeType,
-    changedBy: entry.changedBy,
-    ...getBoundedMenuChangeLogStringContext('projectId', entry.projectId),
-    ...getBoundedMenuChangeLogStringContext('itemId', entry.itemId),
-    ...getBoundedMenuChangeLogStringContext('categoryId', entry.categoryId),
-    ...getBoundedMenuChangeLogStringContext('userId', entry.userId),
-    oldValuePresent: entry.oldValue !== undefined && entry.oldValue !== null,
-    newValuePresent: entry.newValue !== undefined && entry.newValue !== null,
-    metadataPresent: Boolean(entry.metadata && Object.keys(entry.metadata).length > 0),
-});
+    entry: unknown,
+): MenuChangeLogContext => {
+    const record = entry !== null && typeof entry === 'object'
+        ? entry as Record<string, unknown>
+        : {};
+    const changeType = MENU_CHANGE_TYPES.some(value => value === record.changeType)
+        ? String(record.changeType)
+        : 'INVALID';
+    const changedBy = MENU_CHANGE_ACTORS.some(value => value === record.changedBy)
+        ? String(record.changedBy)
+        : 'INVALID';
+    let metadataPresent = false;
+    try {
+        metadataPresent = Boolean(
+            record.metadata
+            && typeof record.metadata === 'object'
+            && Object.keys(record.metadata).length > 0,
+        );
+    } catch {
+        metadataPresent = true;
+    }
+
+    return {
+        changeType,
+        changedBy,
+        ...getBoundedMenuChangeLogStringContext('projectId', record.projectId),
+        ...getBoundedMenuChangeLogStringContext('itemId', record.itemId),
+        ...getBoundedMenuChangeLogStringContext('categoryId', record.categoryId),
+        ...getBoundedMenuChangeLogStringContext('userId', record.userId),
+        oldValuePresent: record.oldValue !== undefined && record.oldValue !== null,
+        newValuePresent: record.newValue !== undefined && record.newValue !== null,
+        metadataPresent,
+    };
+};
 
 const getMenuChangeLogErrorName = (error: unknown): string | undefined => {
     if (error === undefined) return undefined;
@@ -39,13 +69,21 @@ const getMenuChangeLogErrorCode = (error: unknown): string | undefined => {
     if (!error || typeof error !== 'object' || !('code' in error)) return undefined;
     const code = (error as { code?: unknown }).code;
     if (code === undefined || code === null) return undefined;
-    return String(code).slice(0, 64);
+    try {
+        return String(code).slice(0, 64);
+    } catch {
+        return undefined;
+    }
 };
 
 const getMenuChangeLogErrorStatus = (error: unknown): number | undefined => {
     if (!error || typeof error !== 'object' || !('status' in error)) return undefined;
-    const status = Number((error as { status?: unknown }).status);
-    return Number.isFinite(status) ? status : undefined;
+    try {
+        const status = Number((error as { status?: unknown }).status);
+        return Number.isFinite(status) ? status : undefined;
+    } catch {
+        return undefined;
+    }
 };
 
 export const logMenuChangeLogFailure = (

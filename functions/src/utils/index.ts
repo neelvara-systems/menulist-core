@@ -1,27 +1,28 @@
 import * as functions from 'firebase-functions';
 import { KnowledgeBaseGeneratedFaq, ProcessedArticleToSave, ProcessedKBArticle, ProcessedKBCategory, ProcessedKBMap, ProcessedKBSection } from '../types';
+import { tiptapToText } from './tiptapUtils';
 
-function normalizeContent(article: ProcessedKBArticle) {
-    const rawContent = article.content;
+const MAX_GENERATED_RESPONSE_BYTES = 1024 * 1024;
+const MAX_GENERATED_CATEGORIES = 20;
+const MAX_GENERATED_SECTIONS = 60;
+const MAX_GENERATED_ARTICLES = 40;
+const MAX_GENERATED_CONTENT_BYTES = 40 * 1024;
+const RESERVED_OBJECT_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+const ALLOWED_TIPTAP_NODE_TYPES = new Set([
+    'paragraph',
+    'heading',
+    'bulletList',
+    'orderedList',
+    'listItem',
+    'text',
+    'hardBreak',
+    'blockquote',
+    'codeBlock',
+]);
 
-    // Case 1: Already a proper doc
-    if (rawContent?.type === "doc" && Array.isArray(rawContent.content)) {
-        return rawContent;
-    }
-
-    // Case 2: AI only returned the `content` array
-    if (Array.isArray(rawContent?.content)) {
-        return { type: "doc", content: rawContent.content };
-    }
-
-    // Case 3: AI returned directly an array
-    if (Array.isArray(rawContent)) {
-        return { type: "doc", content: rawContent };
-    }
-
-    // Fallback: empty doc
-    return { type: "doc", content: [] };
-}
+const isRecord = (value: unknown): value is Record<string, unknown> => (
+    Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+);
 
 const normalizeText = (value: unknown, maxLength: number): string => {
     if (typeof value !== "string") return "";
@@ -31,6 +32,73 @@ const normalizeText = (value: unknown, maxLength: number): string => {
         .trim()
         .slice(0, maxLength);
 };
+
+const normalizeMapId = (value: unknown, fallback: string): string => {
+    const normalized = normalizeText(value, 100)
+        .toLowerCase()
+        .replace(/[^a-z0-9_-]+/g, '-')
+        .replace(/-{2,}/g, '-')
+        .replace(/^-+|-+$/g, '');
+    return normalized && !RESERVED_OBJECT_KEYS.has(normalized) ? normalized : fallback;
+};
+
+const allocateUniqueId = (candidate: unknown, fallback: string, usedIds: Set<string>): string => {
+    const base = normalizeMapId(candidate, fallback);
+    let next = base;
+    let suffix = 2;
+    while (usedIds.has(next)) {
+        next = `${base}-${suffix}`.slice(0, 100);
+        suffix += 1;
+    }
+    usedIds.add(next);
+    return next;
+};
+
+function normalizeContent(value: unknown): Record<string, unknown> {
+    const rawContent = isRecord(value) && Array.isArray(value.content)
+        ? value.content
+        : Array.isArray(value) ? value : null;
+    if (!rawContent) throw new Error('Generated article content is invalid.');
+
+    let nodeCount = 0;
+    const normalizeNode = (node: unknown, depth: number): Record<string, unknown> | null => {
+        if (!isRecord(node) || depth > 8 || nodeCount >= 240) return null;
+        const type = normalizeText(node.type, 40);
+        if (!ALLOWED_TIPTAP_NODE_TYPES.has(type)) return null;
+        nodeCount += 1;
+        if (type === 'text') {
+            const text = normalizeText(node.text, 4_000);
+            return text ? { type, text } : null;
+        }
+        const children = Array.isArray(node.content)
+            ? node.content.map(child => normalizeNode(child, depth + 1)).filter(Boolean).slice(0, 80)
+            : [];
+        const normalized: Record<string, unknown> = { type };
+        if (children.length) normalized.content = children;
+        if (type === 'heading') {
+            const attrs = isRecord(node.attrs) ? node.attrs : {};
+            const level = Number(attrs.level);
+            normalized.attrs = {
+                level: Number.isSafeInteger(level) && level >= 1 && level <= 3 ? level : 2,
+            };
+        }
+        return normalized;
+    };
+
+    const content = rawContent
+        .map(node => normalizeNode(node, 1))
+        .filter((node): node is Record<string, unknown> => Boolean(node))
+        .slice(0, 120);
+    const result = { type: 'doc', content };
+    if (
+        !content.length
+        || !normalizeText(tiptapToText(result), MAX_GENERATED_CONTENT_BYTES)
+        || Buffer.byteLength(JSON.stringify(result), 'utf8') > MAX_GENERATED_CONTENT_BYTES
+    ) {
+        throw new Error('Generated article content is invalid.');
+    }
+    return result;
+}
 
 const normalizeStringList = (value: unknown, maxItems: number, maxLength: number): string[] => {
     const raw = typeof value === "string"
@@ -80,94 +148,127 @@ const normalizeGeneratedFaqs = (value: unknown): KnowledgeBaseGeneratedFaq[] => 
         .slice(0, 5) as KnowledgeBaseGeneratedFaq[];
 };
 
-export function normalizeProcessedKBData(responseText: any): ProcessedKBMap {
+export function normalizeProcessedKBData(responseText: unknown): ProcessedKBMap {
+    if (typeof responseText !== 'string' || !responseText.trim()) {
+        throw new Error('AI response was empty or in an unexpected format.');
+    }
+    if (Buffer.byteLength(responseText, 'utf8') > MAX_GENERATED_RESPONSE_BYTES) {
+        throw new Error('Generated knowledge response is too large.');
+    }
 
-    if (!responseText) throw new Error("AI response was empty or in an unexpected format.");
+    let generatedData: unknown;
+    try {
+        generatedData = JSON.parse(responseText);
+    } catch {
+        throw new Error('Generated knowledge response is invalid.');
+    }
+    if (!isRecord(generatedData)) throw new Error('Generated knowledge response is invalid.');
 
-    const generatedData = JSON.parse(responseText);
-
-    if (!generatedData || typeof generatedData !== "object") {
-        throw new Error("AI returned empty or invalid KB data");
+    const categoryEntries = Object.entries(generatedData);
+    if (!categoryEntries.length || categoryEntries.length > MAX_GENERATED_CATEGORIES) {
+        throw new Error('Generated knowledge category count is invalid.');
     }
 
     const kb: ProcessedKBMap = {};
+    const usedCategoryIds = new Set<string>();
+    const usedArticleIds = new Set<string>();
+    let sectionCount = 0;
+    let articleCount = 0;
 
-    for (const [tempCategoryId, cat] of Object.entries<any>(generatedData)) {
-        // ---- Category ----
-        if (!cat?.title) {
-            functions.logger.warn(`Skipping category ${tempCategoryId} (missing title)`);
-            continue;
+    const normalizeArticle = (
+        value: unknown,
+        fallbackId: string,
+    ): ProcessedKBArticle => {
+        if (!isRecord(value) || articleCount >= MAX_GENERATED_ARTICLES) {
+            throw new Error('Generated knowledge article count or shape is invalid.');
+        }
+        const title = normalizeText(value.title, 240);
+        if (!title) throw new Error('Generated article title is invalid.');
+        articleCount += 1;
+        return {
+            id: allocateUniqueId(value.id, fallbackId, usedArticleIds),
+            title,
+            content: normalizeContent(value.content),
+            sources: [],
+            generatedFaqs: normalizeGeneratedFaqs(value.faqs ?? value.generatedFaqs),
+        };
+    };
+
+    categoryEntries.forEach(([rawCategoryId, rawCategory], categoryIndex) => {
+        if (!isRecord(rawCategory)) throw new Error('Generated category shape is invalid.');
+        const title = normalizeText(rawCategory.title, 160);
+        if (!title) throw new Error('Generated category title is invalid.');
+        const categoryId = allocateUniqueId(
+            rawCategory.id ?? rawCategoryId,
+            `category-${categoryIndex + 1}`,
+            usedCategoryIds,
+        );
+        const directArticles = Array.isArray(rawCategory.articles) ? rawCategory.articles : [];
+        const rawSections = Array.isArray(rawCategory.sections) ? rawCategory.sections : [];
+        if (directArticles.length > 0 && rawSections.length > 0) {
+            throw new Error('Generated category cannot mix direct articles and sections.');
         }
 
         const category: ProcessedKBCategory = {
-            id: cat.id || tempCategoryId,
-            title: String(cat.title).trim(),
-            description: cat.description || "",
+            id: categoryId,
+            title,
+            description: normalizeText(rawCategory.description, 500),
             sections: [],
             articles: [],
         };
 
-        // ---- Sections ----
-        if (Array.isArray(cat.sections)) {
-            for (const section of cat.sections) {
-                if (!section?.title) {
-                    functions.logger.warn(`Skipping section in category ${category.id} (missing title)`);
-                    continue;
+        if (rawSections.length > 0) {
+            const usedSectionIds = new Set<string>();
+            for (let sectionIndex = 0; sectionIndex < rawSections.length; sectionIndex += 1) {
+                if (sectionCount >= MAX_GENERATED_SECTIONS) {
+                    throw new Error('Generated knowledge section count is invalid.');
                 }
-                const sec: ProcessedKBSection = {
-                    id: section.id || crypto.randomUUID(),
-                    title: String(section.title).trim(),
-                    description: section.description || "",
-                    articles: [],
+                const rawSection = rawSections[sectionIndex];
+                if (!isRecord(rawSection)) throw new Error('Generated section shape is invalid.');
+                const sectionTitle = normalizeText(rawSection.title, 160);
+                if (!sectionTitle || !Array.isArray(rawSection.articles)) {
+                    throw new Error('Generated section is invalid.');
+                }
+                sectionCount += 1;
+                const sectionId = allocateUniqueId(
+                    rawSection.id,
+                    `section-${categoryIndex + 1}-${sectionIndex + 1}`,
+                    usedSectionIds,
+                );
+                const section: ProcessedKBSection = {
+                    id: sectionId,
+                    title: sectionTitle,
+                    description: normalizeText(rawSection.description, 500),
+                    articles: rawSection.articles.map((article, articleIndex) => normalizeArticle(
+                        article,
+                        `article-${categoryIndex + 1}-${sectionIndex + 1}-${articleIndex + 1}`,
+                    )),
                 };
-
-                // ---- Section Articles ----
-                if (Array.isArray(section.articles)) {
-                    for (const art of section.articles) {
-                        if (!art?.title || !art?.content) {
-                            functions.logger.warn(`Skipping article in section ${sec.id} (missing title/content)`);
-                            continue;
-                        }
-                        sec.articles.push({
-                            id: art.id || crypto.randomUUID(),
-                            title: String(art.title).trim(),
-                            content: normalizeContent(art),
-                            sources: [],  // Sources are added later during embedding
-                            generatedFaqs: normalizeGeneratedFaqs(art.faqs || art.generatedFaqs),
-                        });
-                    }
-                }
-                category.sections!.push(sec);
+                category.sections!.push(section);
             }
+        } else {
+            category.articles = directArticles.map((article, articleIndex) => normalizeArticle(
+                article,
+                `article-${categoryIndex + 1}-${articleIndex + 1}`,
+            ));
         }
+        kb[categoryId] = category;
+    });
 
-        // ---- Articles directly under category ----
-        if (Array.isArray(cat.articles)) {
-            for (const art of cat.articles) {
-                if (!art?.title || !art?.content) {
-                    functions.logger.warn(`Skipping article in category ${category.id} (missing title/content)`);
-                    continue;
-                }
-                category.articles!.push({
-                    id: art.id || crypto.randomUUID(),
-                    title: String(art.title).trim(),
-                    content: normalizeContent(art),
-                    sources: [],  // Sources are added later during embedding
-                    generatedFaqs: normalizeGeneratedFaqs(art.faqs || art.generatedFaqs),
-                });
-            }
-        }
-
-        kb[category.id] = category;
-    }
-
+    if (articleCount === 0) throw new Error('Generated knowledge did not contain usable articles.');
     return kb;
 }
 
 // type VectorInstance = InstanceType<typeof Vector>;
 export function normalizeVector(vector: number[]): number[] {
+    if (!Array.isArray(vector) || vector.length === 0 || vector.length > 3072) {
+        throw new Error('Embedding vector shape is invalid.');
+    }
+    if (!vector.every(value => typeof value === 'number' && Number.isFinite(value))) {
+        throw new Error('Embedding vector contains invalid values.');
+    }
     const norm = Math.sqrt(vector.reduce((sum, val) => sum + val * val, 0));
-    if (norm === 0) return vector; // edge case: zero vector
+    if (!Number.isFinite(norm) || norm <= 0) throw new Error('Embedding vector norm is invalid.');
     return vector.map(val => val / norm);
 }
 

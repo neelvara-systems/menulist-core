@@ -5,6 +5,8 @@
 **Owner:** Founder with Codex acting as creative owner, product strategist, video director, and documentation lead
 **Audience:** Design team, motion designer, video editor, UI capture person, copywriter, founder reviewers, launch reviewers
 
+**Mandatory production standard:** [MenuList Founder-Approved Video Production Standard](./videos_founder-approved-production-standard.md). Every video, cutdown, aspect-ratio version, thumbnail, motion system, voiceover, music mix, logo slate, and review export in this blueprint must follow that standard unless the founder explicitly approves a named exception.
+
 ## Production Handoff Note
 
 Treat this as a production handoff document, not a marketing brainstorm. Each of the 12 videos is broken down so the design team knows what to create, what UI to show, what text to place, what motion to use, and what final exports are required.
@@ -65,7 +67,25 @@ Use this carefully. Keep it as readiness/source-quality language, not outcome gu
 Detailed addendum:
 
 - [AI-era market strategy layer](./videos_ai-era-market-strategy.md)
+- [launch-video conversion research](./videos_launch-video-conversion-research.md)
+- [required conversion brief template](./videos_conversion-brief-template.md)
+- [active campaign measurement ledger](./videos_campaign-measurement-ledger.md)
 - [Future AI search readiness video concept](./videos_future-ai-search-ready-video.md)
+
+### Conversion Production Rule
+
+Every master, cutdown, native aspect-ratio version, hook variant, website embed, sales share, and paid ad must have:
+
+1. one funnel stage;
+2. one owner belief change;
+3. one visible product proof moment;
+4. one display close;
+5. one linked action and destination;
+6. one asset id and `utm_content` value;
+7. one primary metric and one quality guard metric;
+8. an explicit paid-eligibility decision.
+
+Do not judge the campaign by views alone. The intended business outcome is an owner-approved customer link, with private-preview and approval progress used to distinguish qualified starts from curiosity clicks.
 
 ## 2. MenuList Brand And Messaging Rules
 

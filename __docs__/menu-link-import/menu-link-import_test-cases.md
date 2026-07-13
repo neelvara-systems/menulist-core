@@ -1,7 +1,12 @@
 # Menu Link Import Test Cases
 
+**Boundary Reviewed:** July 10, 2026
+
+> **Launch boundary:** Not current launch certification or deploy approval. This document records source-gated Menu Link Import evidence only. Both current intake paths require a signed-in owner before source acquisition or extraction: the owner app uses `/api/menu-link-imports`, while the public `/create-menu` page submits through the authenticated `/api/public/create-menu` route. Current release approval still requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md), `npm run verify:production-readiness-local`, `npm run verify:menu-extraction-pipeline`, `npm run verify:functions-deploy-preflight`, authenticated desktop/mobile owner-flow QA, signed-in `/create-menu` browser QA, direct and rendered source-acquisition smoke, Gemini extraction provider smoke where fallback is used, applicable target Firebase/Vercel deploy evidence, and production-host smoke.
+
 ## API
 
+- Unauthenticated `POST /api/menu-link-imports` and `POST /api/public/create-menu` link requests return `401` before source acquisition.
 - Feature flag off returns 404.
 - Missing permission confirmation returns 400.
 - Invalid URL returns 400.
@@ -18,6 +23,14 @@
 - Menu split across multiple same-origin HTML pages combines only bounded high-confidence pages into one text artifact.
 - Homepage/menu index with only cross-domain menu candidates does not crawl those candidates automatically.
 - Non-menu app shell or mainpage route returns `NO_MENU_CONTENT_FOUND` and does not create a job.
+
+## Signed-in `/create-menu`
+
+- The page is reachable before sign-in, but link submit redirects to sign-in before the request is sent.
+- A signed-in permission-confirmed link request creates one owner-bound `publicMenuDrafts` record, one shared processing job, and one private source object.
+- The route uses `PUBLIC_MENU_ENTRY_AUTH` with HMAC-hashed user identity, not an anonymous IP-only link-import limit.
+- Preview polling is owner-bound and authenticated.
+- Draft claim remains authenticated and is required before tenant/store/project publication.
 
 ## Desktop
 

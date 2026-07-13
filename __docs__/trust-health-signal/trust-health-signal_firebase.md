@@ -7,11 +7,21 @@
 
 ## Cost Summary
 
-**Monthly Cost (100 stores): ~₹15**
+**Current runtime cost: zero.**
 
-Extremely lightweight — reads existing analytics docs, writes one field weekly.
+The computation helper has no Cloud Functions export or scheduler caller and its flag is `false`, so it currently performs no Firestore reads or writes. The historical estimates below are planning notes, not measured or deployed cost evidence. Current project-scoped daily analytics can produce multiple documents per local date; activation must use the bounded query/pagination contract and measure real document counts rather than assuming exactly 56 reads per store.
 
----
+## Activation Cost Gate
+
+Before activation, record emulator/QA evidence for:
+
+- at most 1,000 daily analytics documents admitted per store window
+- paginated, bounded store discovery with an explicit scheduler lease
+- one merged `healthSignals` store write per successfully evaluated store/run
+- zero writes when the signal task is not scheduled or its Functions flag is off
+- measured read/write/runtime cost at representative project counts
+
+## Historical Planning Estimate (Not Current Evidence)
 
 ## Operations Breakdown
 
@@ -52,4 +62,4 @@ Extremely lightweight — reads existing analytics docs, writes one field weekly
 
 ---
 
-**Last Updated:** February 19, 2026
+**Last Updated:** July 13, 2026

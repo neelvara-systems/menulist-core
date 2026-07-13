@@ -81,13 +81,13 @@ export const SUPPORT_TICKET_STATUS = {
     RESOLVED: 'Resolved',
     CLOSED: 'Closed',
     RE_OPENED: 'Re-Opened'
-}
+} as const;
 
 export const SUPPORT_TICKET_PRIORITY = {
     LOW: 'Low',
     NORMAL: 'Normal',
     HIGH: 'High'
-}
+} as const;
 
 export const SUPPORT_TICKET_PRIORITY_LIST = [
     {
@@ -112,7 +112,7 @@ export const SUPPORT_TICKET_CATEGORY = {
     FEATURE_SUGGESTION: 'Feature Suggestion',
     ACCOUNT_LOGIN_HELP: 'Account & Login Help',
     OTHER: 'Other'
-}
+} as const;
 
 export const SUPPORT_TICKET_CATEGORY_LIST = [
     { value: SUPPORT_TICKET_CATEGORY.TECHNICAL_ISSUE, label: 'Technical Issue (something not working)' },
@@ -135,7 +135,7 @@ export const getCardColor = (status: string, token: any) => {
     }
 };
 
-export const PLATFORM_SUPPORT_TICKET_TAG_OPTIONS = ['Issue', 'Bug', 'Feature', 'Improvement', 'Performance'];
+export const PLATFORM_SUPPORT_TICKET_TAG_OPTIONS = ['Issue', 'Bug', 'Feature', 'Improvement', 'Performance'] as const;
 
 // SLA Configuration (in hours)
 export const SLA_CONFIG = {

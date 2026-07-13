@@ -1,9 +1,9 @@
 # Automatic Knowledge Creation — Implementation Blueprint
 
 > **Status:** IMPLEMENTED — Capped and human-reviewed
-> **Version:** 1.1.2
+> **Version:** 1.2.0
 > **Created:** 2026-03-09
-> **Last Updated:** 2026-06-28
+> **Last Updated:** 2026-07-11
 > **Audience:** Developers
 > **Feature Flag:** `ENABLE_ANSWERLATTICE_AUTO_KNOWLEDGE`
 
@@ -47,13 +47,13 @@ Governance UI → founder reviews draft → approve → canonical answer
 | Nightly batch (CF) | `functions-answerlattice/src/answerlattice/answerlatticeNightly.ts` → `runSignalMutation()` | ✅ Built (multi-step scheduler) |
 | Recurring fallback detection | `functions-answerlattice/src/answerlattice/answerlatticeNightly.ts` → `detectRecurringFallbacks()` | ✅ Built |
 | Proposal review UI | `src/components/templates/answerlattice/governance/MutationProposalReview` | ✅ Built |
-| Canonical answer DAL | `src/database/answerlattice/canonicalAnswers.ts` | ✅ Built (8 functions) |
+| Canonical answer DAL | `src/database/answerlattice/canonicalAnswers.ts` | ✅ Read/query helpers plus proposal submission; no direct browser canonical writes |
 | Entity extraction | `src/lib/answerlattice/entityExtraction.ts` | ✅ Built |
 | Types | `src/types/answerlattice/index.ts` | ✅ Built (604 lines) |
 
 Runtime diagnostics for signal emission and signal mutation proposal creation use `src/lib/answerlattice/diagnostics.ts`. Manual draft regeneration, FAQ generation, translation, and article entity extraction route failures use fixed-code runtime diagnostics with bounded tenant/store/user/item metadata. FAQ generation and translation cap Gemini response text before parsing; FAQ truncation logs provider-response length metadata only, while oversized translation output fails closed before article writes. Article-save entity extraction remains non-blocking, but its browser trigger uses no-store cache, same-origin credentials, manual redirect handling, and a 16 KB bounded acknowledgement parser before logging rejected, malformed, oversized, or invalid route responses. Manual draft regeneration also logs `answerlattice_draft_regeneration_signal_examples_load_failed` and `answerlattice_draft_regeneration_existing_answers_load_failed` when optional grounding reads fail, then continues with empty grounding context. These paths must preserve graceful degradation and must not log raw tenant/store IDs, entity names, article IDs, proposal IDs, provider errors, signal text, prompt text, or generated content.
 
-The manual draft regeneration DAL in `src/database/answerlattice/mutationProposals.ts` also keeps failed route responses bounded. The browser request uses no-store cache, same-origin credentials, and manual redirect handling before the response parser runs. Failed `/api/answerlattice/mutation-proposals/regenerate-draft` responses throw fixed local copy to the governance UI instead of copying route/provider text. Successful responses are parsed through a 16 KB bounded response reader and must include the route's `{ success: true }` acknowledgement before the governance hook shows draft-generated success.
+The manual draft regeneration DAL in `src/database/answerlattice/mutationProposals.ts` also keeps failed route responses bounded. The browser request uses no-store cache, same-origin credentials, manual redirect handling and a stable bounded `requestId` before the response parser runs. It sends no trusted audit actor; the route derives actor identity from the authenticated session. Failed `/api/answerlattice/mutation-proposals/regenerate-draft` responses throw fixed local copy to the governance UI instead of copying route/provider text. Successful responses are parsed through a 16 KB bounded response reader and must include the route's `{ success: true }` acknowledgement before the governance hook shows draft-generated success. The route admits only exact numeric persisted lease seconds and logs a bounded secondary failure if claim recovery cannot clear the active draft lease.
 
 Answerlattice Legacy Signal Mutation Entity ID Boundary: `src/lib/answerlattice/signalMutation.ts` is a legacy/manual reference utility, while production batch mutation runs in `functions-answerlattice/src/answerlattice/answerlatticeNightly.ts`. The reference utility still normalizes stored signal `entityId` values through the resolved entity helper in `src/lib/answerlattice/governanceIdBoundary.ts` before cluster keys, active-answer lookups, proposal `relatedEntityIds`, and proposal diagnostics. Malformed or unresolved entity IDs are skipped before proposal creation.
 
@@ -64,6 +64,8 @@ Answerlattice Manual Draft Helper Related Entity ID Boundary: the legacy/shared 
 Answerlattice Scheduled Draft Failure Diagnostic Entity ID Boundary: `functions-answerlattice/src/answerlattice/draftGenerator.ts` normalizes proposal `relatedEntityIds[0]` through the Functions entity ID boundary before scheduled draft entity reads and before per-proposal/status-marker failure diagnostics. Malformed or unresolved related entity IDs are recorded only as absent bounded identifier metadata in failure logs.
 
 The scheduled Cloud Function draft generator in `functions-answerlattice/src/answerlattice/draftGenerator.ts` uses fixed `ANSWERLATTICE_DRAFT_*` diagnostics for Gemini call, response-parse, per-proposal, failed draft-status marking, and batch failures. Those logs include source error name/code/status, tenant/store scope booleans, identifier presence/length metadata, and prompt/response lengths only; valid proposal writes, audit writes, draft content storage, and AI operation accounting remain unchanged.
+
+Scheduled proposal creation and draft generation treat persisted product/tenant/store ownership as exact runtime data. The nightly signal-mutation transaction requires an `AL` entity with positive safe-integer scope before creating a proposal. The draft claim, grounding entity/signals/answers, failed-claim marker and generated-draft commit independently recheck exact `AL` scope; the final commit also rechecks mutation type, entity binding, lease ownership and the authoritative proposal document ID. Stored numeric strings and malformed lease seconds are not coerced. Entity, signal-context and existing-answer read failures have separate fixed diagnostics so missing truth is distinguishable from datastore failure without exposing raw content.
 
 Answerlattice Nightly Mutation Impact Entity ID Boundary: `functions-answerlattice/src/answerlattice/answerlatticeNightly.ts` normalizes implemented proposal `relatedEntityIds[0]` through the Functions entity ID boundary before post-implementation signal-count queries. Malformed or unresolved related entity IDs are skipped, preserving valid impact tracking while preventing path-shaped IDs from becoming scheduler query keys.
 
@@ -84,7 +86,10 @@ Answerlattice Nightly Mutation Impact Entity ID Boundary: `functions-answerlatti
 | `functions-answerlattice/src/answerlattice/answerlatticeNightly.ts` | Add draft generation step after `runSignalMutation()` and `detectRecurringFallbacks()` | Generate drafts for new proposals |
 | `src/types/answerlattice/index.ts` | Extend `AnswerlatticeMutationProposal.suggestedChange` type | Add `draftStatus` and `draftSource` fields |
 | `src/components/templates/answerlattice/governance/MutationProposalReview` | Show draft content in review UI | Display AI draft for founder review |
-| `src/database/answerlattice/mutationProposals.ts` | Add `approveDraftAsCanonicalAnswer()` function | One-click approve draft → create canonical answer |
+| `src/database/answerlattice/mutationProposals.ts` | Route approval/rejection/implementation actions to the governance API | Keep browser code outside canonical and decision writes |
+| `src/lib/answerlattice/governanceServer.ts` | Apply approved proposals in an Admin Firestore transaction | Validate scope, entity/version/procedure constraints, overlaps, audit, and invalidation atomically |
+| `src/app/api/answerlattice/governance/actions/route.ts` | Authenticated governance action boundary | Resolve session authority, permission, rate limit, and bounded strict request schema |
+| `firestore-answerlattice.rules` | Deny canonical browser writes and proposal decision updates | Enforce server authority below the UI layer |
 
 ---
 
@@ -263,7 +268,12 @@ src/config/features.ts                              — Add ENABLE_ANSWERLATTICE
 functions-answerlattice/src/constants/features.ts         — Add ENABLE_ANSWERLATTICE_AUTO_KNOWLEDGE flag
 functions-answerlattice/src/answerlattice/answerlatticeNightly.ts   — Add draft generation step (step 9)
 src/types/answerlattice/index.ts                          — Extend suggestedChange type
-src/database/answerlattice/mutationProposals.ts           — Add approveDraftAsCanonicalAnswer()
+src/database/answerlattice/mutationProposals.ts           — Send approval/rejection/implementation actions to the governance route
+src/lib/answerlattice/governanceContracts.ts              — Strict request, stored-proposal, and response contracts
+src/lib/answerlattice/governanceClient.ts                 — Bounded same-origin browser client
+src/lib/answerlattice/governanceServer.ts                 — Server-owned governance transactions
+src/app/api/answerlattice/governance/actions/route.ts     — Protected governance endpoint
+firestore-answerlattice.rules                             — Deny canonical browser writes and proposal decision updates
 src/hooks/answerlattice/useMutationProposals.ts           — Add manual generate/regenerate draft action
 src/components/templates/answerlattice/MutationProposalReview.tsx — Surface draft evidence, publish, reject, and generate/regenerate actions
 ```
@@ -272,60 +282,39 @@ src/components/templates/answerlattice/MutationProposalReview.tsx — Surface dr
 
 ## §6 — Approve Draft → Canonical Answer Flow
 
-When a founder approves a draft:
+When a founder approves a draft, the browser sends only the proposal ID and bounded editable text to the protected governance route. The server derives tenant, store, and actor identity from the session.
 
-```typescript
-async function approveDraftAsCanonicalAnswer(
-    proposalId: string,
-    editedContent: Partial<AnswerlatticeCanonicalAnswer['content']>,
-    tId: number,
-    sId: number,
-    approvedBy: string
-): Promise<AnswerlatticeCanonicalAnswer> {
-    // 1. Fetch proposal
-    const proposal = await getMutationProposalById(proposalId);
-
-    // 2. Create canonical answer from draft (using edited content if founder modified)
-    const canonicalAnswer = await addCanonicalAnswer({
-        tId, sId,
-        title: editedContent.structuredSummary ? 'edited' : proposal.suggestedChange.draftTitle,
-        slug: generateSlug(proposal.suggestedChange.draftTitle),
-        status: 'active',
-        scope: { entityIds: proposal.relatedEntityIds },
-        productBinding: {
-            introducedInVersion: currentVersion,
-            lastValidatedInVersion: currentVersion,
-            applicableVersions: { from: currentVersion, to: null },
-        },
-        content: {
-            structuredSummary: editedContent.structuredSummary || proposal.suggestedChange.structuredSummary,
-            detailedExplanation: editedContent.detailedExplanation || proposal.suggestedChange.detailedExplanation,
-            edgeCases: editedContent.edgeCases || proposal.suggestedChange.edgeCases,
-            constraints: editedContent.constraints || proposal.suggestedChange.constraints,
-            procedure: editedContent.procedure || proposal.suggestedChange.procedure,
-        },
-        validation: {
-            confidenceScore: proposal.confidenceScore,
-            validationSource: 'signal_cluster',
-            lastValidatedOn: Timestamp.now(),
-            validatedBy: approvedBy,
-        },
-        signalMetrics: { linkedTicketCount: 0, linkedChatCount: 0, negativeFeedbackCount: 0 },
-        governance: { driftFlag: false, reviewRequired: false },
-    });
-
-    // 3. Mark proposal as implemented
-    await updateMutationProposal(proposalId, { status: 'implemented' });
-
-    // 4. Create search index entry for new answer's entities
-    // (reuse existing buildSearchIndexEntry from entityExtraction.ts)
-
-    // 5. Audit log
-    await addAuditLog({ ... });
-
-    return canonicalAnswer;
+```json
+POST /api/answerlattice/governance/actions
+{
+  "action": "approve_proposal",
+  "proposalId": "proposal-id",
+  "editedContent": {
+    "title": "Reviewed title",
+    "structuredSummary": "Reviewed summary",
+    "detailedExplanation": "Reviewed explanation"
+  }
 }
 ```
+
+The server transaction then:
+
+1. Reads and validates the stored proposal inside the authenticated workspace.
+2. Reads the target answer when the proposal updates existing truth.
+3. Resolves the current active release and validates every bound entity.
+4. Builds the candidate answer and validates content, procedure, version window, and product binding.
+5. Rejects any overlapping active answer for the same entity, plan, role, state, and version window.
+6. Creates or updates the canonical answer and marks the proposal `implemented`.
+7. Writes the before/after audit snapshot needed for governed rollback.
+8. Increments the canonical cache version and compiled-context source version, then marks the current bundle stale.
+
+All writes commit together. A failure leaves the prior canonical answer, proposal decision, audit trail, and invalidation state unchanged.
+
+Serving is fail-closed for governance review. `canonicalRetrieval.ts` excludes any active answer with `governance.driftFlag` or `governance.reviewRequired`; when that leaves a matched entity with only review-blocked answers, it returns `canonical_answer_review_required`. It also treats plan, role, and product-state scope as strict eligibility constraints. Missing restricted context returns `canonical_scope_context_required`; supplied context outside the allowed scope returns `canonical_scope_not_covered`. `searchCore.ts` converts those codes into fixed support-review messages, records non-cacheable audit-history keys, and stops before FAQ retrieval, embeddings, or RAG. A corrected and validated answer can therefore become current immediately after cache-version invalidation without an old refusal or stale answer remaining in the normal answer cache.
+
+Direct entity truth remains authoritative over graph-neighbor candidates. A drifted or review-required answer bound to the directly matched entity cannot be bypassed by a weaker clean answer found only through graph expansion. Canonical candidates are also rechecked for Answerlattice product and tenant/store ownership before they can be returned.
+
+Browser proposal submission keeps a stable request ID across ambiguous transport failures. A retry with the same serialized proposal payload reuses that ID until the server acknowledges success, preventing a lost acknowledgement from creating duplicate governance work. The bounded in-memory retry map holds at most 50 pending payloads and is not a durable queue.
 
 ---
 
@@ -386,8 +375,8 @@ Enhanced UI adds:
   - Example signal texts (from `draftSignalExamples`)
   - Entity context description
 - **Actions** (enhanced):
-  - "Approve Draft" → creates canonical answer from draft content
-  - "Edit & Approve" → opens editor, then creates answer
+  - "Approve and apply" → asks the server governance transaction to create or update canonical truth from the reviewed draft
+  - Edited draft approval → sends bounded edits to the same server transaction
   - "Reject" → unchanged
   - "Generate Draft" / "Regenerate Draft" → explicit owner action, one AI request per click, keeps result in review
 

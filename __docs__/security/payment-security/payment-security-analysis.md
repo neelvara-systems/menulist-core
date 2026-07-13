@@ -1047,13 +1047,14 @@ Current approval requires:
 
 1. `npm run verify:agent-readiness`
 2. `npm run verify:billing-entitlement-boundary`
-3. `npm run verify:auth-security-failure-matrix`
-4. Authenticated onboarding browser/API smoke for pricing, OAuth return, tenant/store creation, session refresh, and payment handoff.
-5. Razorpay sandbox subscription/top-up/webhook smoke for the target release scope.
-6. Provider-failure compensation evidence for tenant/store creation and subscription creation.
-7. Firebase Auth custom-claims/token smoke when onboarding or session handoff changes.
-8. Target deploy evidence where auth, payment, Firestore rules, indexes, Storage rules, Cloud Functions, or app routes change.
-9. Production-host smoke after the approved deploy path.
+3. `npm run test:billing-settlement-boundaries`
+4. `npm run verify:auth-security-failure-matrix`
+5. Authenticated onboarding browser/API smoke for pricing, OAuth return, tenant/store creation, session refresh, and payment handoff.
+6. Razorpay sandbox subscription/top-up/webhook smoke for the target release scope, including replay of the same captured payment/event and mismatch rejection for product, amount, currency, tenant, and store.
+7. Provider-failure compensation evidence for tenant/store creation and subscription creation.
+8. Firebase Auth custom-claims/token smoke when onboarding or session handoff changes.
+9. Target deploy evidence where auth, payment, Firestore rules, indexes, Storage rules, Cloud Functions, or app routes change.
+10. Production-host smoke after the approved deploy path.
 
 ---
 

@@ -46,3 +46,9 @@
 - Owner management is capped at 150 docs.
 - Widget related FAQ output comes from product surface summary, not direct FAQ reads per search.
 - Article FAQ refresh performs one article read, one bounded linked-FAQ query, one AI call only when clicked, and one batch write only for new suggestions.
+
+## Public DTO Boundary
+
+1. Project a published same-workspace FAQ containing actor, trace, source-context, and unknown persisted fields; confirm the browser DTO contains only the seven documented public fields.
+2. Confirm a cross-store, draft, malformed-ID, string-counter, missing-field, unknown-field, or over-80 response fails the applicable server/browser boundary.
+3. Run `npm run verify:answerlattice-faq-boundary`.

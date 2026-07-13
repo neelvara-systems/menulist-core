@@ -1,7 +1,7 @@
 # Answerlattice Billing — Firebase Cost
 
-> **Version:** 1.2.7
-> **Last Updated:** 2026-07-06
+> **Version:** 1.4.3
+> **Last Updated:** 2026-07-13
 > **Audience:** Developers / Ops
 
 ## Collections
@@ -15,21 +15,26 @@ Billing read failures and entitlement sync failures use `src/lib/answerlattice/d
 | `subscriptions` | WRITE | subscription creation / verification / webhook / mutation | One document by provider subscription id |
 | `stores` | READ | billing dashboard active subscription load | Reads `stores/{sId}.answerlatticeSubscription` summary first |
 | `subscriptions` | READ | billing dashboard active subscription load | Direct `subscriptions/{subscriptionId}` read from store summary; query fallback is tenant/store scoped and capped at 10 |
+| `subscriptions` | TRANSACTION QUERY | entitlement synchronization | Reads the triggering document plus at most 10 current active subscriptions for the same tenant/store before selecting the authoritative summary |
 | `topups` | WRITE | support credit order create / verify | One document by Razorpay order id; verification is idempotent and product-scoped |
 | `payment_transactions` | WRITE | Razorpay webhook audit | One compact transaction row per payment event |
-| `payment_transactions` | QUERY | transactions screen / billing history | Scoped by `tenantId`, `storeId`, capped at 50, then event-filtered/sorted client-side to 25 |
+| `payment_transactions` | QUERY | transactions screen / billing history | Scoped by `tenantId`, `storeId`, paid event, ordered by `created_at desc`, and limited to 25 in Firestore |
 | `stores` | WRITE | Answerlattice entitlement sync / support credit top-up verify / support-credit debit | Updates compact `answerlatticeSubscription` summary, current monthly credits, top-up credits, and reset period |
 | `answerlattice_aiOperations/{tId}/{sId}` | WRITE | Answerlattice app/API, legacy client-triggered helper, and Cloud Function AI provider calls | One compact accounting row per provider-backed call; raw provider payloads are not stored in accounting-only mode |
 | `answerlattice_aiOperations/{tId}/{sId}` | QUERY | transactions screen support-credit usage table through `/api/answerlattice/ai-operations` | Server/API-owned query scoped to resolved Answerlattice tenant/store, rate-limited before permission/read work, capped at 50 per request, default page size 12; direct tenant Firestore reads are not allowed because raw rows include platform accounting fields |
-| `answerlattice_intakeUsageLedger` | WRITE | paid Knowledge Intake OCR/transcription reserve/finalize/refund | Immutable reservation/settlement rows for charged media extraction |
+| `answerlattice_intakeUsageLedger` | WRITE | paid Knowledge Intake OCR/transcription reserve/finalize/refund | Workspace-bound reservation state machine with billing-period debit/refund evidence |
+
+The operation-history cursor lookup remains one scoped document read when a cursor is supplied. The route now admits that existing snapshot only when it exists, has a valid `createdOn` timestamp, and lies inside the active date range. An invalid cursor stops before the continuation query, so the change adds no valid-path Firestore operation, collection, index, rule, schema, cache, Function, or cross-product data access.
 
 ## Cost Controls
 
 - No realtime listeners were added.
+- Answerlattice Razorpay mutations re-read the current workspace store and current user membership/role before provider or financial mutation work. This adds one store read and up to two canonical user-query reads per admitted or rejected mutation; the bounded two-row legacy `tId` query runs only when the canonical tenant query misses. It prevents a stale session role or the default non-billing Manager role from reaching Admin-SDK billing writes.
+- Subscription and top-up creation apply their existing product/user/workspace rate limits before those authorization reads, bounding repeated denied-request read cost. Verification and lifecycle mutations already rate-limit before permission work.
 - Answerlattice onboarding user ID boundary: `/api/answerlattice/onboard` validates the authenticated session user ID with `src/lib/answerlattice/onboardingUserIdBoundary.ts` before user document refs, default auth product-account sync, subscription metadata, and product-surface creator fields. This is an admission guard only; valid onboarding keeps the same Firestore read/write shape.
-- Billing history is explicitly loaded and capped at 50 Firestore reads, then reduced to 25 display rows.
-- Active subscription reads are request-deduped in the client DAL and prefer the store summary direct-doc path.
-- Answerlattice App Billing Document ID Boundary: `src/database/answerlattice/billing.ts` validates store-summary subscription IDs before direct `subscriptions/{subscriptionId}` reads, `src/lib/billing/productBillingServer.ts` validates Answerlattice provider/store-summary subscription IDs before product-billing create/update/get-by-id/active-lookup/entitlement refs, and `normalizeAnswerlatticeBillingScopeDocumentId()` validates exact positive numeric tenant/store scope before active-subscription `stores/{storeId}` summary reads, capped fallback tenant/store queries, or entitlement-summary `stores/{storeId}` writes. `src/app/api/answerlattice/onboard/route.ts` validates provider subscription IDs before onboarding subscription creation, `src/lib/answerlattice/knowledgeIntakeApi.ts` validates store-mirror subscription IDs before active-license direct-doc reads, `src/lib/answerlattice/aiAccounting.ts` validates subscription IDs before monthly-credit refresh and credit-debit refs, and `src/lib/answerlattice/intakeUsageLedger.ts` validates subscription and `answerlattice_intakeUsageLedger/{ledgerId}` refs before reserve/finalize/refund work. Valid IDs keep the same read/write shape; malformed IDs fail or fall back before Firestore document refs.
+- Billing history is one ordered paid-event query capped at 25 Firestore reads; limiting no longer happens before sorting/filtering.
+- Active subscription reads are request-deduped with normalized tenant/store cache keys and prefer the store summary direct-doc path. The store must have exact Answerlattice ownership; direct subscriptions and standalone summaries must have exact `AL` product plus numeric tenant/store ownership with no conflicting aliases before return. An embedded `id` field cannot override the Firestore document ID.
+- Answerlattice App Billing Document ID Boundary: `src/lib/answerlattice/billingDocumentIdBoundary.ts` is the shared source for strict subscription/ledger IDs and exact positive numeric tenant/store request scope. `src/lib/answerlattice/billingScopeBoundary.ts` is the stricter persisted-financial boundary: product aliases must be exact `AL`, stored tenant/store aliases must be numeric positive safe integers, and every duplicate alias must agree. Client/server billing, onboarding, Knowledge Intake, AI accounting, entitlement, and paid-history paths validate before refs, filters, cache keys, balance changes, or projection; malformed or ambiguous financial rows fail closed for authorized reconciliation.
 - Server-side billing mutations use the same store summary direct-doc path before falling back to the capped tenant/store query. This keeps API payment operations aligned with the dashboard read model and avoids the old composite status/date lookup during normal operation.
 - Single-object billing reads do not use the generic client `apiCallComposer`, because that helper returns `[]` on error for list-style DAL calls.
 - Webhook writes compact transaction summaries instead of full raw Razorpay payloads.
@@ -42,7 +47,7 @@ Billing read failures and entitlement sync failures use `src/lib/answerlattice/d
 - Manual draft regeneration and article entity extraction do not call Gemini from the browser and do not write Firestore directly. They run through dedicated Answerlattice API routes, resolve Answerlattice scope, check safe mode, rate limit before permission/body/provider work, and record zero-unit internal usage.
 - Token counts are provider-confirmed when Gemini returns usage metadata. Older SDK and embedding paths may write estimated token counts and mark `tokenCountSource='estimated'`.
 - Support credit purchase and consumption reconcile through two ledgers: `topups`/`subscriptions.topUpCredits` for purchased credits, and `answerlattice_intakeUsageLedger` plus `answerlattice_aiOperations.unitsConsumed` for consumed credits. Provider token counts are recorded separately and do not debit support credits unless the action has a non-zero unit cost.
-- Knowledge Intake media extraction keeps the existing reserve-before-provider and refund-on-failure support-credit ledger. Non-intake Answerlattice AI calls log zero-unit internal/public usage unless an explicit support-credit unit cost is assigned.
+- Knowledge Intake media extraction keeps reserve-before-provider and refund-on-failure support-credit accounting. Reserve, finalize, and refund use transactions and require exact ledger/subscription `tId/sId` agreement. Finalize and refund can no longer both win. The reservation stores its billing-period key; an in-period failure restores monthly and top-up debits, while a later-period failure restores only purchased top-up credits and records expired monthly credits instead of inflating the new cycle. Non-intake Answerlattice AI calls log zero-unit internal/public usage unless an explicit support-credit unit cost is assigned.
 
 ## Rules And Indexes
 
@@ -57,7 +62,9 @@ Separate Answerlattice Firestore rules must allow tenant-scoped reads for:
 
 No broad client writes are allowed for those collections; payment and entitlement mutations remain server/API/webhook owned.
 
-The active-subscription direct-doc path avoids the old composite query on `status + cycleEndDate + tenantId + storeId`. The payment history query avoids `event in + orderBy` and instead uses the tenant/store scope required by rules, then filters the small result locally.
+The active-subscription direct-doc read path avoids the old general billing-page composite query. Entitlement synchronization intentionally uses a bounded current-active query so an old subscription cannot clear a concurrently active replacement; `firestore-answerlattice.indexes.json` therefore includes `subscriptions` on `status + storeId + tenantId + cycleEndDate`. Paid billing history uses the dedicated `payment_transactions` composite index on `event + storeId + tenantId + created_at desc`; the same history index exists in the shared MenuList index file and the dedicated Answerlattice index file.
+
+Lifecycle status changes and grace expiry re-read the subscription inside a transaction before appending history. Upgrade carry-forward reads and writes the old and replacement subscriptions in one transaction and preserves any existing replacement top-up balance. Entitlement sync reads the source subscription plus the bounded active-subscription query and transactionally writes the store summary and subscription audit mirror. These are correctness reads/writes on billing mutations only; no polling, scheduled function, Storage operation, or browser write is added. The dedicated Answerlattice subscription index requires a scoped Firebase index deployment before this query is runtime-certified.
 
 The AI operation history query uses the nested tenant/store path plus `orderBy(createdOn desc)`. Action filters are applied by a bounded scan window to avoid new composite indexes during this pass.
 
@@ -65,6 +72,11 @@ The AI operation history query uses the nested tenant/store path plus `orderBy(c
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-07-13 | 1.4.3 | Applied creation rate limits before persisted billing-permission reads and expanded role regression coverage |
+| 2026-07-13 | 1.4.2 | Enforced current persisted `canManageBilling` permission across every shared Answerlattice Razorpay mutation |
+| 2026-07-11 | 1.4.1 | Added strict persisted subscription/history product and numeric workspace admission plus scoped entitlement-summary ownership fields |
+| 2026-07-10 | 1.4.0 | Added transactional lifecycle/grace/upgrade settlement, authoritative active entitlement selection, and the subscription composite index |
+| 2026-07-10 | 1.3.0 | Enforced current/scoped billing summaries, strict shared scope IDs, authoritative Firestore IDs, ordered paid-history query, and dedicated composite index |
 | 2026-07-06 | 1.2.8 | Added Answerlattice product-billing store-scope document-ID boundary coverage |
 | 2026-07-06 | 1.2.7 | Documented Answerlattice product-billing subscription document-ID boundary coverage |
 | 2026-07-05 | 1.2.6 | Documented the Answerlattice onboarding user ID boundary and unchanged valid-request Firestore cost shape |

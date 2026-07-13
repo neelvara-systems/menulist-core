@@ -1,4 +1,5 @@
 import { resolveHostedHelpSiteByDomain } from '@lib/answerlattice/hostedHelpServer';
+import { resolveHostedHelpRequestDomain } from '@lib/answerlattice/hostedHelpRequest';
 import { headers } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -6,14 +7,12 @@ export const dynamic = 'force-dynamic';
 
 const getRequestDomain = (request: NextRequest) => {
     const headerList = headers();
-    const routedHost = headerList.get('x-answerlattice-hosted-help-domain');
-    if (routedHost) return routedHost;
-
-    const isDevRewrite = headerList.get('x-answerlattice-hosted-help-dev') === '1';
-    const allowQueryDomain = isDevRewrite || process.env.NODE_ENV === 'development' || process.env.VERCEL !== '1';
-    return allowQueryDomain
-        ? request.nextUrl.searchParams.get('domain') || headerList.get('host')
-        : headerList.get('host');
+    return resolveHostedHelpRequestDomain({
+        host: headerList.get('host'),
+        queryDomain: request.nextUrl.searchParams.get('domain'),
+        isDevelopmentRewrite: headerList.get('x-answerlattice-hosted-help-dev') === '1',
+        isDevelopmentRuntime: process.env.NODE_ENV === 'development' || process.env.VERCEL !== '1',
+    });
 };
 
 export async function GET(request: NextRequest) {

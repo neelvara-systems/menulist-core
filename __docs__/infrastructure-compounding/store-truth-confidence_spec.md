@@ -1,9 +1,9 @@
 # Store Truth Confidence Score — Spec + Implementation
 
-**Feature:** 10.3  
-**Priority:** P1 — Authority Phase  
-**Status:** 📋 DOCUMENTATION PHASE  
-**Depends On:** 10.1 (Extraction Confidence Scoring), 10.2 (Extraction Learning Loop)  
+**Feature:** 10.3
+**Priority:** P1 — Authority Phase
+**Status:** Active internal computation with conservative fallbacks
+**Depends On:** 10.1 (Extraction Confidence Scoring), 10.2 (Extraction Learning Loop)
 **Feeds Into:** 10.4 (Periodic Staleness Check), Future: Authority Dashboard
 
 ---
@@ -147,17 +147,12 @@ function computeStabilityScore(driftMetrics: DriftSummary | null): number {
 
 #### Extraction Score (15%)
 
-Based on extraction confidence from 10.1.
+Uses the measured global correction rate only when it is a finite value from 0 to 1. The current correction ledger does not persist an authoritative total-extraction denominator, so the aggregate stores `correctionRate: null` and this component remains at its neutral score of 80 rather than inventing a rate.
 
 ```typescript
-function computeExtractionScore(
-    confidenceSummary: ConfidenceSummary | null,
-    correctionRate: number
-): number {
-    if (!confidenceSummary) return 60;  // No extraction data = neutral
-    
-    // Base from AI confidence
-    let score = confidenceSummary.averageConfidenceScore * 100;
+function computeExtractionScore(correctionRate: number | null): number {
+    let score = 80;
+    if (correctionRate === null) return score;
     
     // Penalize high correction rate
     if (correctionRate > 0.20) score -= 30;     // >20% corrections

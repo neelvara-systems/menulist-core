@@ -62,7 +62,7 @@
 │   │                                                              │   │
 │   │  Triggered by: New review document                           │   │
 │   │  • Apply classification rules                                │   │
-│   │  • Update state in reviewsState/{tId}/{sId}/{reviewId}       │   │
+│   │  • Update state in reviewsState/{reviewId} with tId/sId      │   │
 │   │  • Log to MOL                                                │   │
 │   └─────────────────────────────────────────────────────────────┘   │
 │                                                                      │
@@ -77,7 +77,7 @@
 │   • Raw review data from GBP                                        │
 │   • Immutable after ingestion                                       │
 │                                                                      │
-│   Collection: reviewsState/{tId}/{sId}/{reviewId}                   │
+│   Collection: reviewsState/{reviewId} with embedded tId/sId         │
 │   • Classification state                                            │
 │   • Block/Escalation flags                                          │
 │   • Last updated timestamp                                          │
@@ -225,7 +225,7 @@ export interface Review {
 
 ### 3.2 Reviews State Collection (Classification)
 
-**Collection:** `reviewsState/{tId}/{sId}/{reviewId}`
+**Collection:** `reviewsState/{reviewId}` with required embedded `tId` and `sId`
 
 ```typescript
 // src/types/reviews.ts (continued)
@@ -296,6 +296,8 @@ export type ReviewClassification =
 ```
 
 ### 3.3 Classification Rules
+
+The maintained source file is authoritative. Runtime inputs fail closed unless the rating is an integer from 1 through 5 and the comment is absent or a string. Keyword rules match complete words/phrases rather than arbitrary substrings; intentional stems such as discrimination variants remain explicit regular-expression rules. `npm run verify:reviews-reputation-boundary` pins these behaviors.
 
 ```typescript
 // functions/src/reviews/classificationRules.ts
@@ -389,9 +391,10 @@ export const CLASSIFICATION_RULES: ClassificationRule[] = [
   {
     id: "high_risk_staff",
     name: "Staff misconduct",
-    keywords: ["rude staff", "manager yelled", "staff cursed", "discriminat"],
+    keywords: ["rude staff", "manager yelled", "staff cursed"],
     patterns: [
       /\b(staff|manager|waiter|server)\s+(was\s+)?(rude|yelled|cursed)/i,
+      /\bdiscriminat(?:e|ed|es|ing|ion|ory)\b/i,
     ],
     resultState: "negative_high_risk",
     priority: 77,
@@ -411,8 +414,8 @@ export const CLASSIFICATION_RULES: ClassificationRule[] = [
   {
     id: "info_question",
     name: "Questions/requests",
-    keywords: ["?", "do you", "can you", "please add", "would be nice"],
-    patterns: [/\?$/],
+    keywords: ["do you", "can you", "please add", "would be nice"],
+    patterns: [/\?/],
     resultState: "informational",
     priority: 20,
   },
@@ -432,9 +435,10 @@ export const CLASSIFICATION_RULES: ClassificationRule[] = [
  * Classify a review based on rules
  */
 export function classifyReview(
-  rating: number,
-  comment: string | undefined,
+  rawRating: unknown,
+  rawComment: unknown,
 ): { classification: ReviewClassification; triggerKeywords: string[] } {
+  const { rating, comment } = normalizeClassificationInput(rawRating, rawComment);
   // Positive reviews (4-5 stars) without concerning content = benign
   if (rating >= 4 && !comment) {
     return { classification: "benign", triggerKeywords: [] };
@@ -448,12 +452,11 @@ export function classifyReview(
   for (const rule of sortedRules) {
     if (!comment) continue;
 
-    const lowerComment = comment.toLowerCase();
     const matchedKeywords: string[] = [];
 
-    // Check keywords
+    // Match complete keywords/phrases; do not match `rat` inside `rating`.
     for (const keyword of rule.keywords) {
-      if (lowerComment.includes(keyword.toLowerCase())) {
+      if (containsWholeKeyword(comment, keyword)) {
         matchedKeywords.push(keyword);
       }
     }
@@ -510,7 +513,8 @@ export function classifyReview(
       "fields": [
         { "fieldPath": "tId", "order": "ASCENDING" },
         { "fieldPath": "sId", "order": "ASCENDING" },
-        { "fieldPath": "blockActive", "order": "ASCENDING" }
+        { "fieldPath": "blockActive", "order": "ASCENDING" },
+        { "fieldPath": "autoExpiresAt", "order": "ASCENDING" }
       ]
     },
     {
@@ -519,7 +523,8 @@ export function classifyReview(
       "fields": [
         { "fieldPath": "tId", "order": "ASCENDING" },
         { "fieldPath": "sId", "order": "ASCENDING" },
-        { "fieldPath": "escalationActive", "order": "ASCENDING" }
+        { "fieldPath": "escalationActive", "order": "ASCENDING" },
+        { "fieldPath": "autoExpiresAt", "order": "ASCENDING" }
       ]
     }
   ]
@@ -588,6 +593,7 @@ Diagnostics:
 - Generation failures log `desktop_review_reply_generation_failed` with bounded rating, business-type, and review-text length metadata only.
 - Browser response parse failures log `desktop_review_reply_response_parse_failed` with bounded status/cap and review metadata only.
 - Invalid successful suggestion envelopes log `desktop_review_reply_response_invalid`, and the UI only shows a reply after `{ success: true, reply, source: "ai" | "fallback" }` is present.
+- Provider/generation failures log `review_reply_generation_failed` with bounded tenant/store/user/business-type/rating/fallback metadata before the route returns its static, uncharged fallback. Raw review text and exception text are excluded.
 - Accounting failures log `review_reply_accounting_failed` with bounded tenant/store/user/business-type metadata and source error name/code/status only.
 - Clipboard copied feedback waits for Clipboard API success or acknowledged textarea fallback success. Clipboard copy failures log `desktop_review_reply_copy_failed` with rating, reply source, attempt count, clipboard/fallback support booleans, and presence/length metadata for business type, pasted review text, and generated reply only.
 - Raw pasted review text, generated reply text, provider exception text, and raw API response text must not be shown to the owner or written to logs.
@@ -608,7 +614,7 @@ Provider keys hash owner, tenant, and store key material before calling the shar
 
 ## 5. File Structure
 
-### 5.1 New Files to Create
+### 5.1 Current and Planned Files
 
 ```
 src/
@@ -617,7 +623,7 @@ src/
 │
 ├── database/
 │   └── reviews/
-│       └── index.ts                  # DAL for reviews and reviewsState collections
+│       └── index.ts                  # PLANNED / ABSENT: review inbox DAL
 │
 ├── app/
 │   └── api/
@@ -637,8 +643,8 @@ src/
 functions/
 └── src/
     └── reviews/
-        ├── reviewsIngestion.ts       # Cloud Function - nightly ingestion
-        ├── reviewsClassifier.ts      # Cloud Function - classification
+        ├── reviewsIngestion.ts       # PLANNED / ABSENT: nightly ingestion
+        ├── reviewsClassifier.ts      # PLANNED / ABSENT: state writer
         └── classificationRules.ts    # Classification rules
 ```
 
@@ -654,17 +660,17 @@ functions/
 
 ## 6. Implementation Checklist
 
-### Week 1: Foundation (Spec Only - BLOCKED)
+### Foundation Status
 
 | #   | Task                                | File                                           | Status     |
 | --- | ----------------------------------- | ---------------------------------------------- | ---------- |
-| 1   | Define Review and ReviewState types | `src/types/reviews.ts`                         | 🔶 BLOCKED |
-| 2   | Add DB_COLLECTIONS constants        | `src/constants/database.ts`                    | 🔶 BLOCKED |
-| 3   | Add feature flags                   | `src/config/features.ts`                       | 🔶 BLOCKED |
+| 1   | Define Review and ReviewState types | `src/types/reviews.ts`                         | Built / dormant |
+| 2   | Add DB_COLLECTIONS constants        | `src/constants/database.ts`                    | Built / dormant |
+| 3   | Add feature flags                   | `src/config/features.ts`                       | Built / both off |
 | 4   | Create DAL skeleton                 | `src/database/reviews/index.ts`                | 🔶 BLOCKED |
-| 5   | Create classification rules         | `functions/src/reviews/classificationRules.ts` | 🔶 BLOCKED |
+| 5   | Create classification rules         | `functions/src/reviews/classificationRules.ts` | Built / no writer |
 
-### Week 2: Backend (BLOCKED)
+### Backend Status (Blocked)
 
 | #   | Task                        | File                                          | Status     |
 | --- | --------------------------- | --------------------------------------------- | ---------- |
@@ -673,12 +679,12 @@ functions/
 | 8   | Add to master scheduler     | `functions/src/schedulers/masterScheduler.ts` | 🔶 BLOCKED |
 | 9   | Create Firestore indexes    | `firestore.indexes.json`                      | 🔶 BLOCKED |
 
-### Week 3: Frontend & Integration (BLOCKED)
+### Frontend and Integration Status
 
 | #   | Task                             | File                                                            | Status     |
 | --- | -------------------------------- | --------------------------------------------------------------- | ---------- |
-| 10  | Create GET /api/reviews/states   | `src/app/api/reviews/states/route.ts`                           | 🔶 BLOCKED |
-| 11  | Create ReputationGuard component | `src/components/templates/main-app/reviews/ReputationGuard.tsx` | 🔶 BLOCKED |
+| 10  | Create GET /api/reviews/states   | `src/app/api/reviews/states/route.ts`                           | Built / disabled |
+| 11  | Create ReputationGuard component | `src/components/templates/main-app/reviews/ReputationGuard.tsx` | Built / unmounted |
 | 12  | Add MOL event types              | `src/types/mol.types.ts`                                        | 🔶 BLOCKED |
 | 13  | Integration testing              | -                                                               | 🔶 BLOCKED |
 
@@ -688,13 +694,14 @@ functions/
 
 | #   | Requirement                      | Implementation                    | Status     |
 | --- | -------------------------------- | --------------------------------- | ---------- |
-| 1   | Auth required for all API routes | `withAuth` middleware             | 🔶 BLOCKED |
-| 2   | Tenant isolation in all queries  | `where('tId', '==', session.tId)` | 🔶 BLOCKED |
-| 3   | Store isolation in all queries   | `where('sId', '==', session.sId)` | 🔶 BLOCKED |
-| 4   | Rate limiting on all endpoints   | `checkRateLimit`                  | 🔶 BLOCKED |
-| 5   | Input validation (Zod)           | Zod schemas for all requests      | 🔶 BLOCKED |
-| 6   | No PII logging                   | Exclude review/reply content from logs; log length/presence only for diagnostics | 🔶 BLOCKED |
-| 7   | Feature flag protection          | Check `ENABLE_REVIEWS_REPUTATION` | 🔶 BLOCKED |
+| 1   | Auth required for existing API routes | `withAuth` middleware             | Built / source-gated |
+| 2   | Tenant isolation in state query  | Embedded `tId` equality           | Built / source-gated |
+| 3   | Store isolation in state query   | Embedded `sId` equality           | Built / source-gated |
+| 4   | Rate limiting on existing endpoints | `checkRateLimit`                | Built / source-gated |
+| 5   | Input validation for suggestion | Bounded body plus Zod              | Built / disabled |
+| 6   | No raw review/reply logging      | Log presence/length metadata only  | Built / source-gated |
+| 7   | Feature flag protection          | Both reviews flags remain off      | Built |
+| 8   | Ingestion/writer tenant tests    | Rules/emulator coverage             | Blocked with absent writers |
 
 ### Security Rules (Firestore)
 
@@ -711,11 +718,10 @@ match /reviews/{tId}/{sId}/{reviewId} {
   allow write: if false; // Frontend cannot write
 }
 
-match /reviewsState/{tId}/{sId}/{reviewId} {
-  // Read: Authenticated users with matching tenant/store
-  allow read: if request.auth != null
-    && request.auth.token.tId == int(tId)
-    && request.auth.token.sId == int(sId);
+match /reviewsState/{docId} {
+  // Read: active rules authorize from embedded tenant/store identity
+  allow read: if isAuthenticated()
+    && (isPlatformAdmin() || isTenantStoreDoc(resource.data));
 
   // Write: Cloud Functions only (no frontend writes - auto-expire handles state)
   allow write: if false;
@@ -755,7 +761,11 @@ match /reviewsState/{tId}/{sId}/{reviewId} {
 
 ## 9. Testing Guide
 
-### 9.1 Manual Testing Steps
+### 9.1 Current Local Verification
+
+Run `npm run verify:reviews-reputation-boundary`. It covers classification runtime input/keyword behavior, disabled flags, absent ingestion/reply files, unmounted components, the flat state contract, and publication holds. Provider smoke, live state reads, and activation remain external/blocked.
+
+### 9.2 Future Writer/Integration Tests (Not Currently Runnable)
 
 #### Test 1: Classification Rules
 
@@ -784,23 +794,14 @@ match /reviewsState/{tId}/{sId}/{reviewId} {
 4. Verify no other information is displayed
 ```
 
-#### Test 4: Dismiss Functionality
-
-```
-1. With block/escalation active
-2. Click dismiss
-3. Verify ownerDismissedAt is set
-4. Verify warning no longer shows
-```
-
-### 9.2 Security Tests
+### 9.3 Security Tests
 
 | Test                              | Expected Result            |
 | --------------------------------- | -------------------------- |
 | Access without auth               | 401 Unauthorized           |
 | Access different tenant's reviews | 403 Forbidden (no results) |
 | Rate limit exceeded               | 429 Too Many Requests      |
-| Invalid reviewId in dismiss       | 400 Bad Request            |
+| Invalid future writer/review ID   | Rejected before persistence |
 
 ---
 
@@ -809,11 +810,11 @@ match /reviewsState/{tId}/{sId}/{reviewId} {
 | Task              | Status     | Blocker | Notes              |
 | ----------------- | ---------- | ------- | ------------------ |
 | Spec complete     | ✅ DONE    | -       | This document      |
-| Types defined     | 🔶 BLOCKED | GBP API | Ready to implement |
+| Types defined     | Built / dormant | - | Compile-time contracts only |
 | DAL created       | 🔶 BLOCKED | GBP API | Ready to implement |
 | Cloud Functions   | 🔶 BLOCKED | GBP API | Ready to implement |
-| API routes        | 🔶 BLOCKED | GBP API | Ready to implement |
-| UI component      | 🔶 BLOCKED | GBP API | Ready to implement |
+| API routes        | Partial / disabled | Product completion | State and suggestion only; no inbox/reply route |
+| UI component      | Partial / unmounted | Product completion | Passive notice and paste tool only |
 | Integration test  | 🔶 BLOCKED | GBP API | Ready to implement |
 | Production deploy | 🔶 BLOCKED | GBP API | Ready to implement |
 
@@ -839,9 +840,9 @@ match /reviewsState/{tId}/{sId}/{reviewId} {
 
 ---
 
-**DOCUMENT STATUS:** 🔒 LOCKED  
-**IMPLEMENTATION STATUS:** BLOCKED (GBP API dependency)
+**DOCUMENT STATUS:** Reconciled to source on July 11, 2026
+**IMPLEMENTATION STATUS:** INCOMPLETE AND DISABLED (GBP API plus writer/UI/provider/deploy evidence required)
 
 ---
 
-_Implementation begins only after GBP API access is granted. All code patterns are ready to execute._
+_Do not activate from this blueprint. Re-enter docs-first implementation after GBP access and complete the missing writer, owner/mobile, provider, security, cost, and deployment evidence._

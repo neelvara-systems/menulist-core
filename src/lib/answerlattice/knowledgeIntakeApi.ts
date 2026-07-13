@@ -1,6 +1,7 @@
 import { FEATURE_FLAGS } from '@config/features';
 import { ANSWERLATTICE_PERMISSION_KEYS } from '@constant/answerlattice/permissions';
 import { DB_COLLECTIONS } from '@constant/database';
+import { PRODUCT_IDS } from '@constant/product';
 import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
 import { normalizeAnswerlatticeSubscriptionId } from '@lib/answerlattice/billingDocumentIdBoundary';
 import {
@@ -8,7 +9,7 @@ import {
     getBoundedAnswerlatticeStringContext,
 } from '@lib/answerlattice/diagnostics';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
-import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
+import { normalizeAnswerlatticeScopeDocumentId, resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { logger } from '@lib/monitoring/logger';
 import { checkRateLimit } from '@lib/rateLimit';
@@ -29,7 +30,7 @@ export type AnswerlatticeIntakeApiContext = {
 const ANSWERLATTICE_KNOWLEDGE_INTAKE_CLIENT_ERROR_PATTERNS = [
     /^Answerlattice knowledge intake is not enabled\.$/,
     /^Answerlattice workspace is not available\.$/,
-    /^An active Answerlattice beta or subscription is required before importing sources\.$/,
+    /^An active Answerlattice subscription is required before importing sources\.$/,
     /^An active Answerlattice subscription is required before running paid intake processing\.$/,
     /^Not enough Answerlattice support credits for this (?:operation|intake processing step)\.$/,
     /^Knowledge intake job not found\.$/,
@@ -42,18 +43,30 @@ const ANSWERLATTICE_KNOWLEDGE_INTAKE_CLIENT_ERROR_PATTERNS = [
     /^The uploaded file is empty\.$/,
     /^File is too large for intake extraction\. Limit is \d+MB\.$/,
     /^No support-relevant text was extracted from this file\.$/,
+    /^Media extraction for this file is already running\.$/,
     /^Review item not found\.$/,
     /^Review item is not available\.$/,
     /^Review item is not available for this intake job\.$/,
     /^Published review items cannot be edited from intake\.$/,
+    /^Review items cannot be edited while this intake job is publishing or complete\.$/,
     /^Published status is set only by the publish action\.$/,
     /^Use a valid review item status\.$/,
     /^Use a valid review item target\.$/,
     /^Changelog entries are owner-managed\. Use (?:release notes as source context, not as an intake publish target|the Changelog screen to publish release notes)\.$/,
     /^Add at least one related entity before (?:accepting|publishing) a canonical answer proposal\.$/,
     /^Add at least one source with readable text before generating drafts\.$/,
+    /^Knowledge intake analysis is already running\.$/,
+    /^This intake job can no longer generate review drafts\.$/,
+    /^Knowledge intake (?:source|review item) limit was exceeded\.$/,
     /^Accept at least one review item before publishing\.$/,
     /^Publish up to \d+ items at a time\.$/,
+    /^Knowledge intake publishing is already running\.$/,
+    /^This intake job can no longer publish review items\.$/,
+    /^One or more selected review items are not available for publishing\.$/,
+    /^Knowledge intake (?:article|FAQ) target conflicts with existing content\.$/,
+    /^Knowledge intake canonical proposal conflicts with existing governance work\.$/,
+    /^A product surface already exists for this route\. Review it before importing another\.$/,
+    /^Knowledge base navigation is too large to add another imported article safely\.$/,
     /^Add one repeated question and a reusable answer before importing a repeated reply\.$/,
     /^File signature does not match a supported intake media type\.$/,
     /^Use a valid public http\(s\) URL\.$/,
@@ -73,8 +86,9 @@ export function getAnswerlatticeKnowledgeIntakeErrorStatus(error: unknown): numb
         return Number(urlStatusMatch[1]) >= 500 ? 502 : 400;
     }
     if (message.includes('not found')) return 404;
+    if (message.includes('already running') || message.includes('conflicts') || message.includes('already exists')) return 409;
     if (message.includes('not enough answerlattice support credits') || message.includes('active answerlattice subscription')) return 402;
-    if (message.includes('not available') || message.includes('active answerlattice beta or subscription')) return 403;
+    if (message.includes('not available')) return 403;
     if (message.includes('too large')) return 413;
     if (
         message.includes('not enabled')
@@ -89,10 +103,18 @@ export function getAnswerlatticeKnowledgeIntakeErrorStatus(error: unknown): numb
         || message.includes('file signature')
         || message.includes('uploaded file is empty')
         || message.includes('add at least one source')
+        || message.includes('analysis is already running')
+        || message.includes('can no longer generate review drafts')
+        || message.includes('limit was exceeded')
         || message.includes('accept at least one review item')
         || message.includes('publish up to')
+        || message.includes('publishing is already running')
+        || message.includes('can no longer publish review items')
+        || message.includes('not available for publishing')
+        || message.includes('navigation is too large')
         || message.includes('published status')
         || message.includes('published review items')
+        || message.includes('cannot be edited')
         || message.includes('can no longer accept new sources')
         || message.includes('one intake job can hold up to')
         || message.includes('no readable text')
@@ -127,21 +149,11 @@ export async function requireAnswerlatticeKnowledgeIntakeContext(
         return { response: NextResponse.json({ error: 'Answerlattice knowledge intake is not enabled.' }, { status: 404 }) };
     }
 
-    const permission = await requireAnswerlatticePermission(request, session, ANSWERLATTICE_PERMISSION_KEYS.MANAGE_KNOWLEDGE);
-    if (permission.response) return { response: permission.response };
-
     const scope = resolveAnswerlatticeSessionScope(session);
-    const tId = Number(scope?.tenantId);
-    const sId = Number(scope?.storeId);
-    if (!Number.isFinite(tId) || !Number.isFinite(sId) || tId <= 0 || sId <= 0) {
+    const tId = normalizeAnswerlatticeScopeDocumentId(scope?.tenantId);
+    const sId = normalizeAnswerlatticeScopeDocumentId(scope?.storeId);
+    if (!tId || !sId) {
         return { response: NextResponse.json({ error: 'Answerlattice workspace is not available.' }, { status: 400 }) };
-    }
-
-    if (options.requireActiveLicense) {
-        const license = await hasActiveAnswerlatticeLicense(tId, sId);
-        if (license.allowed !== true) {
-            return { response: NextResponse.json({ error: license.message }, { status: license.status }) };
-        }
     }
 
     if (options.rateLimitKey && options.rateLimit && options.rateWindow) {
@@ -181,6 +193,22 @@ export async function requireAnswerlatticeKnowledgeIntakeContext(
                     },
                 ),
             };
+        }
+    }
+
+    const permission = await requireAnswerlatticePermission(request, session, ANSWERLATTICE_PERMISSION_KEYS.MANAGE_KNOWLEDGE);
+    if (permission.response) return { response: permission.response };
+    if (
+        permission.access.scope.tenantId !== tId
+        || permission.access.scope.storeId !== sId
+    ) {
+        return { response: NextResponse.json({ error: 'Answerlattice workspace is not available.' }, { status: 403 }) };
+    }
+
+    if (options.requireActiveLicense) {
+        const license = await hasActiveAnswerlatticeLicense(tId, sId);
+        if (license.allowed !== true) {
+            return { response: NextResponse.json({ error: license.message }, { status: license.status }) };
         }
     }
 
@@ -234,27 +262,28 @@ async function hasActiveAnswerlatticeLicense(tId: number, sId: number): Promise<
     }
 
     const storeData = storeSnap.data() || {};
-    const storeTenantId = Number(storeData.tenantId || storeData.tId);
-    if (Number.isFinite(storeTenantId) && storeTenantId !== Number(tId)) {
+    const storeTenantId = normalizeAnswerlatticeScopeDocumentId(storeData.tenantId ?? storeData.tId);
+    const storeProductId = storeData.pId ?? storeData.productId;
+    if (storeTenantId !== tId || storeProductId !== PRODUCT_IDS.ANSWERLATTICE) {
         return { allowed: false, status: 403, message: 'Answerlattice workspace is not available.' };
     }
 
     const storeSubscription = storeData.answerlatticeSubscription || {};
-    if (hasActiveSubscriptionWindow(storeSubscription)) {
-        return { allowed: true };
-    }
-
+    // The store copy is a denormalized display/read-model only. Paid access is
+    // authorized from the server-owned subscription document below.
     const summarySubscriptionId = String(storeSubscription.id || storeSubscription.providerSubscriptionId || '').trim();
     const normalizedSummarySubscriptionId = normalizeAnswerlatticeSubscriptionId(summarySubscriptionId);
     if (normalizedSummarySubscriptionId) {
         const subscriptionSnap = await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(normalizedSummarySubscriptionId).get();
         if (subscriptionSnap.exists) {
             const subscription = subscriptionSnap.data() || {};
-            const subscriptionTenantId = Number(subscription.tId || subscription.tenantId);
-            const subscriptionStoreId = Number(subscription.sId || subscription.storeId);
+            const subscriptionTenantId = normalizeAnswerlatticeScopeDocumentId(subscription.tId ?? subscription.tenantId);
+            const subscriptionStoreId = normalizeAnswerlatticeScopeDocumentId(subscription.sId ?? subscription.storeId);
+            const subscriptionProductId = subscription.pId ?? subscription.productId;
             if (
-                subscriptionTenantId === Number(tId)
-                && subscriptionStoreId === Number(sId)
+                subscriptionProductId === PRODUCT_IDS.ANSWERLATTICE
+                && subscriptionTenantId === tId
+                && subscriptionStoreId === sId
                 && hasActiveSubscriptionWindow(subscription)
             ) {
                 return { allowed: true };
@@ -270,8 +299,9 @@ async function hasActiveAnswerlatticeLicense(tId: number, sId: number): Promise<
     const activeSubscription = subscriptionSnap.docs
         .map(doc => ({ id: doc.id, ...(doc.data() || {}) }))
         .find((subscription: Record<string, any>) => (
-            Number(subscription.tId || subscription.tenantId) === Number(tId)
-            && Number(subscription.sId || subscription.storeId) === Number(sId)
+            (subscription.pId ?? subscription.productId) === PRODUCT_IDS.ANSWERLATTICE
+            && normalizeAnswerlatticeScopeDocumentId(subscription.tId ?? subscription.tenantId) === tId
+            && normalizeAnswerlatticeScopeDocumentId(subscription.sId ?? subscription.storeId) === sId
             && hasActiveSubscriptionWindow(subscription)
         ));
     if (activeSubscription) {
@@ -281,6 +311,6 @@ async function hasActiveAnswerlatticeLicense(tId: number, sId: number): Promise<
     return {
         allowed: false,
         status: 402,
-        message: 'An active Answerlattice beta or subscription is required before importing sources.',
+        message: 'An active Answerlattice subscription is required before importing sources.',
     };
 }

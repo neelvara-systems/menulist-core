@@ -8,17 +8,18 @@ import ReconciliationArticleCard from './ReconciliationArticleCard';
 
 const { Title, Paragraph, Text } = Typography;
 
-// Extended article type with reconciliation data for comparison view
-interface ArticleWithReconciliation extends KnowledgeBaseArticleType {
-    reconciliation?: {
-        similarArticles?: KnowledgeBaseArticleType[];
+// The stored reconciliation contract keeps compact summaries. This view
+// hydrates those IDs into complete articles before rendering article bodies.
+export type ArticleWithResolvedReconciliation = Omit<KnowledgeBaseArticleType, 'reconciliation'> & {
+    reconciliation: Omit<NonNullable<KnowledgeBaseArticleType['reconciliation']>, 'similarArticles'> & {
+        similarArticles: KnowledgeBaseArticleType[];
     };
-}
+};
 
 interface ComparisonViewProps {
     drawerVisible: boolean;
     handleDrawerClose: () => void;
-    article: ArticleWithReconciliation;
+    article: ArticleWithResolvedReconciliation;
     onResolved: (resolution: 'discard' | 'replace' | 'keep_both') => void;
 }
 

@@ -1,7 +1,7 @@
 # Answerlattice — External Workflow Integrations — Marketing
 
-> **Version:** 1.1.0
-> **Last Updated:** 2026-05-24
+> **Version:** 1.2.0
+> **Last Updated:** 2026-07-13
 > **Audience:** Sales / Marketing
 
 ---
@@ -20,9 +20,9 @@
 
 ### For SaaS Founders
 - **Zero monitoring burden** — Governance events come to you, not the other way around
-- **Instant drift awareness** — Know when a canonical answer is stale within minutes of detection
+- **Nightly drift awareness** — Receive bounded aggregate drift activity after the workspace governance run
 - **Knowledge gaps → review work** — Recurring support friction becomes a reviewable Answerlattice task; issue tracker creation is controlled rollout
-- **Weekly digest** — One email summarizing everything Answerlattice did this week
+- **Nightly activity digest** — One bounded email when the nightly run records governance activity
 
 ### For Engineering Leads
 - **Support signals → review items** — Convert "users keep asking about X" into actionable Answerlattice review work
@@ -40,7 +40,7 @@
 
 | Feature | Answerlattice | Zendesk | Intercom | Freshdesk |
 |---------|----------|---------|----------|-----------|
-| Knowledge drift detection → Slack | ✅ | ❌ | ❌ | ❌ |
+| Governance digest + critical coverage alert → Slack | ✅ | ❌ | ❌ | ❌ |
 | Knowledge gap → review queue | ✅ | ❌ | ❌ | ❌ |
 | Canonical coverage alerting | ✅ | ❌ | ❌ | ❌ |
 | Event-driven (not polling) | ✅ | ✅ | ✅ | ✅ |
@@ -56,7 +56,7 @@
 |-----------|----------|
 | "We already have Slack integrations with Zendesk" | "Zendesk tells you about tickets. Answerlattice tells you about knowledge health — when answers are stale, when there's a gap, when coverage drops. Different signal, different value." |
 | "Can it create Jira issues?" | "Self-service v1 focuses on Slack/email alerts. Issue tracker creation is controlled rollout until credential handling is self-service safe." |
-| "We don't use Slack" | "Email notifications are included. Weekly digest email summarizes all governance activity." |
+| "We don't use Slack" | "Email notifications are included. An activity-driven nightly digest summarizes the governance run." |
 | "How much does this cost?" | "Included in your Answerlattice subscription. No per-event pricing. No API call charges." |
 
 ---
@@ -64,9 +64,9 @@
 ## §5 — Demo Script
 
 1. Show Answerlattice governance dashboard with drift flags
-2. Show Slack channel receiving drift notification in real-time
+2. Show Slack receiving a nightly activity digest or critical coverage alert
 3. Show Answerlattice review queue with a repeated-gap item
-4. Show weekly digest email with governance summary
+4. Show the nightly activity digest email with governance summary
 5. Show integration settings — Slack/email setup, event filters, delivery health, and test notification
 
 **Key message during demo:** "You don't have to log into Answerlattice to know your knowledge is healthy. Answerlattice tells you."
@@ -77,5 +77,6 @@
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-07-13 | 1.2.0 | Aligned active notification sources and replaced unsupported instant/weekly wording with the actual nightly digest and coverage-alert contract. |
 | 2026-05-24 | 1.1.0 | Updated marketing to Slack/email production scope and controlled-rollout issue tracker positioning. |
 | 2026-03-09 | 1.0.0 | Initial marketing content |

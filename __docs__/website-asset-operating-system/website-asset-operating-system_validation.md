@@ -20,6 +20,12 @@
 | Answerlattice asset slots exist | Pass | `packages/asset-factory/slots/answerlattice.asset-slots.ts:18` |
 | Audit implementation exists | Pass | `packages/asset-factory/scripts/lib/asset-audit.ts:277` |
 | Audit blocks broken generated/approved assets | Pass | `packages/asset-factory/scripts/lib/asset-audit.ts:294` |
+| Audit blocks disconnected public media | Pass | `packages/asset-factory/scripts/lib/asset-audit.ts` |
+| Audit enforces slot destination, required outputs, non-orphan entries, and exclusive file ownership | Pass | `packages/asset-factory/scripts/lib/asset-audit.ts` |
+| Audit requires declared sources and exact added/changed/removed fingerprint parity | Pass | `packages/asset-factory/scripts/lib/asset-audit.ts` |
+| Audit blocks generated/approved media with missing, mismatched, or shared brief ownership | Pass | `packages/asset-factory/scripts/lib/asset-audit.ts` |
+| Audit blocks contradictory approved status, performance, decisions, and review scores | Pass | `packages/asset-factory/scripts/lib/asset-audit.ts` |
+| Audit enforces each required output role's declared file format | Pass | `packages/asset-factory/scripts/lib/asset-audit.ts` |
 | Fingerprint locking exists | Pass | `packages/asset-factory/scripts/lock-fingerprints.ts:30` |
 | Docs/changelog reflect implemented v1 | Pass | `__docs__/changelog.md:63` |
 
@@ -51,11 +57,20 @@ After the local HyperFrames/FFmpeg motion pass and the coordinated MenuList laun
 
 - `npm run assets:audit`: 0 errors, 0 warnings.
 - `npm run assets:review`: 0 blocked, 0 need founder review.
-- The manifest contains 22 active slots: 15 MenuList slots and 7 Answerlattice slots.
+- The manifest contains 34 active slots: 27 MenuList slots and 7 Answerlattice slots.
 - MenuList hero motion and the three Answerlattice motion clips are generated, approved, fingerprinted, and wired into their target public website surfaces with poster fallbacks.
 - The MenuList launch pack coordinates the website motion, LinkedIn and square social assets, owner-PWA device proof, and four approved launch-video frames.
 - Launch-pack status visuals use categorical demo states and do not invent customer counts, percentages, or performance claims.
-- Fourteen unrelated public website files remain informationally disconnected from AssetOS. They are not required by the current launch pack and do not block audit or review.
+- Every tracked public website media file is connected to AssetOS. Twelve previously disconnected intentional assets now have approved slots, briefs, bounded review notes, and source fingerprints.
+- The loading-state Customer Feedback owner-inbox derivative and the QR Menu Links capture with a broken logo/empty media block were removed from `public/`; their raw source captures remain in the internal feature-screenshot archive. The QR feature page now reuses the approved fictional mobile-menu proof.
+- A future disconnected public media file is an audit error and makes `npm run assets:audit` exit nonzero.
+- Generated/approved entries now fail audit when they omit the declared destination or a required output role; orphan entries and duplicate file owners also fail. The current 34-slot manifest passes all four integrity checks.
+- Declared source paths must exist, and fingerprint drift now includes watched files that appear or disappear. The current manifest has no missing source evidence or fingerprint path-set drift.
+- Every generated/approved entry has one existing `packages/asset-factory/briefs/<slot-id>.md` brief; missing, mismatched, and multiply owned briefs now fail audit.
+- Every current approved review has passing performance and valid 1-10 scores; approved asset status cannot coexist with a non-approved decision.
+- Every required output role currently points to the slot's declared format extension; mismatched role/file formats now fail audit for generated/approved assets.
+- Current follow-up gates pass: AssetOS audit/review, website public-copy and agent-readiness source gates, both public create-menu safety/truth verifiers, docs links, TypeScript, lint, and scoped diff integrity. All 87 scoped MenuList/shared verifier scripts pass. Global `git diff --check` remains blocked only by trailing whitespace in the unrelated concurrent `src/database/storage/uploadBase64ToStorage.ts` edit.
+- Desktop and 390px local browser QA pass for `/features/qr-menu-links` and `/features/customer-feedback-loop`: intended images load, rejected captures are absent, localized copy fits, viewport width does not overflow, and browser error logs are empty.
 
 ## Files Created Or Modified
 

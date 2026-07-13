@@ -21,10 +21,15 @@ const PUBLIC_RATE_LIMIT_HASH_SECRET =
     || process.env.TURNSTILE_SECRET_KEY
     || 'menulist-public-rate-limit-local';
 const TURNSTILE_RESPONSE_JSON_MAX_BYTES = 8 * 1024;
+const TURNSTILE_PROVIDER_TIMEOUT_MS = 8_000;
 
 type TurnstileVerificationResponse = {
     success?: boolean;
 };
+
+type PublicRateLimitOptions = Readonly<{
+    failClosed?: boolean;
+}>;
 
 /**
  * Extract client IP from request headers
@@ -74,7 +79,8 @@ export const hashPublicRateLimitValue = (value: unknown): string => {
  */
 export async function checkPublicRateLimit(
     req: NextRequest,
-    feature: RateLimitFeature = 'FEEDBACK_SUBMISSION'
+    feature: RateLimitFeature = 'FEEDBACK_SUBMISSION',
+    options: PublicRateLimitOptions = {},
 ): Promise<NextResponse | null> {
     const ip = getClientIp(req);
     const ipHash = hashPublicRateLimitValue(ip);
@@ -89,14 +95,25 @@ export async function checkPublicRateLimit(
         });
     } catch (error) {
         secureError(
-            '[Public API] Rate limit check failed, allowing request',
+            '[Public API] Rate limit check failed',
             error instanceof Error ? error : new Error(String(error)),
             {
                 feature,
+                failurePolicy: options.failClosed ? 'closed' : 'open',
                 pathname: req.nextUrl.pathname,
             },
         );
-        return null;
+        if (!options.failClosed) return null;
+        return NextResponse.json(
+            {
+                success: false,
+                error: 'Service temporarily unavailable. Please try again.',
+            },
+            {
+                status: 503,
+                headers: { 'Retry-After': '30' },
+            },
+        );
     }
 
     if (!result.allowed) {
@@ -166,17 +183,26 @@ export const verifyTurnstileToken = async (
     }
 
     try {
-        const response = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
-            body: new URLSearchParams({
-                secret: PUBLIC_FORM_TURNSTILE_SECRET,
-                response: token,
-                remoteip: getClientIp(request),
-            }),
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            method: 'POST',
-        });
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), TURNSTILE_PROVIDER_TIMEOUT_MS);
+        let response: Response;
+        try {
+            response = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+                body: new URLSearchParams({
+                    secret: PUBLIC_FORM_TURNSTILE_SECRET,
+                    response: token,
+                    remoteip: getClientIp(request),
+                }),
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                method: 'POST',
+                redirect: 'manual',
+                signal: controller.signal,
+            });
+        } finally {
+            clearTimeout(timeout);
+        }
 
         if (!response.ok) {
             logSecurityFailure('public_turnstile_http_rejected', undefined, {

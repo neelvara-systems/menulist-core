@@ -1,0 +1,45 @@
+.page {
+    align-items: center;
+    display: flex;
+    justify-content: center;
+    min-height: 100dvh;
+    padding: 24px;
+}
+
+.panel {
+    border-radius: 8px;
+    box-shadow: 0 12px 36px rgba(15, 23, 42, 0.08);
+    max-width: 420px;
+    width: 100%;
+}
+
+.panel :global(.ant-card-body) {
+    padding: 28px;
+}
+
+.heading {
+    margin-bottom: 24px;
+}
+
+.submit {
+    min-height: 44px;
+    width: 100%;
+}
+
+@media (max-width: 480px) {
+    .page {
+        align-items: stretch;
+        padding: 0;
+    }
+
+    .panel {
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+        max-width: none;
+    }
+
+    .panel :global(.ant-card-body) {
+        padding: 28px 20px;
+    }
+}

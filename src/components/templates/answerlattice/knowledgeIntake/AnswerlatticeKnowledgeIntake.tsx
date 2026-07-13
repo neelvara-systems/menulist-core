@@ -3,6 +3,7 @@
 import { FEATURE_FLAGS } from '@config/features';
 import { ANSWERLATTICE_ROUTES } from '@constant/answerlattice/navigations';
 import { useKnowledgeIntake, type KnowledgeIntakeEntityOption } from '@hook/answerlattice/useKnowledgeIntake';
+import { assertAnswerlatticeDocxEntryIsBounded } from '@lib/answerlattice/knowledgeIntakeFileSafety';
 import {
     ANSWERLATTICE_INTAKE_REVIEW_STATUS,
     ANSWERLATTICE_INTAKE_REVIEW_TARGET,
@@ -60,6 +61,7 @@ import {
 const { Paragraph, Text, Title } = Typography;
 const { TextArea } = Input;
 const MAX_BROWSER_TEXT_FILE_BYTES = 8 * 1024 * 1024;
+const MAX_BROWSER_EXTRACTED_TEXT_CHARS = ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_SOURCE_TEXT_CHARS + 1;
 const ANSWERLATTICE_INTAKE_ENTITY_SEARCH_FAILED = 'Could not search product entities.';
 const ANSWERLATTICE_INTAKE_URL_INSPECT_FAILED = 'Could not inspect URL.';
 
@@ -120,7 +122,13 @@ async function extractTextFromFile(file: File): Promise<{ text: string; sourceTy
     if (name.endsWith('.docx')) {
         const JSZip = (await import('jszip')).default;
         const zip = await JSZip.loadAsync(await file.arrayBuffer());
-        const xml = await zip.file('word/document.xml')?.async('string');
+        const documentEntry = zip.file('word/document.xml');
+        if (!documentEntry) throw new Error('Could not read DOCX text.');
+        const entryData = (documentEntry as unknown as {
+            _data?: { compressedSize?: unknown; uncompressedSize?: unknown };
+        })._data;
+        assertAnswerlatticeDocxEntryIsBounded(entryData);
+        const xml = await documentEntry.async('string');
         if (!xml) throw new Error('Could not read DOCX text.');
         const text = xml
             .replace(/<w:tab\/>/g, ' ')
@@ -131,7 +139,10 @@ async function extractTextFromFile(file: File): Promise<{ text: string; sourceTy
             .replace(/&gt;/g, '>')
             .replace(/\s+/g, ' ')
             .trim();
-        return { text, sourceType: ANSWERLATTICE_KNOWLEDGE_SOURCE_TYPE.DOCX_TEXT };
+        return {
+            text: text.slice(0, MAX_BROWSER_EXTRACTED_TEXT_CHARS),
+            sourceType: ANSWERLATTICE_KNOWLEDGE_SOURCE_TYPE.DOCX_TEXT,
+        };
     }
 
     if (name.endsWith('.pdf')) {
@@ -140,18 +151,41 @@ async function extractTextFromFile(file: File): Promise<{ text: string; sourceTy
         const pdf = await loadingTask.promise;
         const pages: string[] = [];
         const pageCount = Math.min(pdf.numPages, 30);
-        for (let pageNumber = 1; pageNumber <= pageCount; pageNumber += 1) {
-            const page = await pdf.getPage(pageNumber);
-            const content = await page.getTextContent();
-            pages.push(content.items.map((item: any) => item.str).join(' '));
+        let extractedChars = 0;
+        try {
+            for (let pageNumber = 1; pageNumber <= pageCount && extractedChars < MAX_BROWSER_EXTRACTED_TEXT_CHARS; pageNumber += 1) {
+                const page = await pdf.getPage(pageNumber);
+                try {
+                    const content = await page.getTextContent();
+                    const remainingChars = MAX_BROWSER_EXTRACTED_TEXT_CHARS - extractedChars;
+                    const pageText = content.items
+                        .flatMap((item: unknown) => (
+                            item && typeof item === 'object' && !Array.isArray(item) && typeof (item as { str?: unknown }).str === 'string'
+                                ? [(item as { str: string }).str]
+                                : []
+                        ))
+                        .join(' ')
+                        .slice(0, remainingChars);
+                    pages.push(pageText);
+                    extractedChars += pageText.length + 2;
+                } finally {
+                    page.cleanup?.();
+                }
+            }
+        } finally {
+            await pdf.destroy?.();
         }
-        return { text: pages.join('\n\n'), sourceType: ANSWERLATTICE_KNOWLEDGE_SOURCE_TYPE.PDF_TEXT };
+        return {
+            text: pages.join('\n\n').slice(0, MAX_BROWSER_EXTRACTED_TEXT_CHARS),
+            sourceType: ANSWERLATTICE_KNOWLEDGE_SOURCE_TYPE.PDF_TEXT,
+        };
     }
 
     const text = await file.text();
-    if (name.endsWith('.csv')) return { text, sourceType: ANSWERLATTICE_KNOWLEDGE_SOURCE_TYPE.CSV };
-    if (name.endsWith('.md') || name.endsWith('.markdown')) return { text, sourceType: ANSWERLATTICE_KNOWLEDGE_SOURCE_TYPE.MARKDOWN };
-    return { text, sourceType: ANSWERLATTICE_KNOWLEDGE_SOURCE_TYPE.FILE_TEXT };
+    const boundedText = text.slice(0, MAX_BROWSER_EXTRACTED_TEXT_CHARS);
+    if (name.endsWith('.csv')) return { text: boundedText, sourceType: ANSWERLATTICE_KNOWLEDGE_SOURCE_TYPE.CSV };
+    if (name.endsWith('.md') || name.endsWith('.markdown')) return { text: boundedText, sourceType: ANSWERLATTICE_KNOWLEDGE_SOURCE_TYPE.MARKDOWN };
+    return { text: boundedText, sourceType: ANSWERLATTICE_KNOWLEDGE_SOURCE_TYPE.FILE_TEXT };
 }
 
 function isMediaIntakeFile(file: File) {

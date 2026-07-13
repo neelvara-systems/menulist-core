@@ -34,11 +34,16 @@ const ACTIONS = [
   "create-draft",
   "review-approval",
   "export-message",
+  "record-manual-contact",
   "capture-reply",
   "record-outcome",
+  "create-route-token",
+  "revoke-route-token",
   "capture-demand-signal",
   "run-source-provider",
   "run-ai-assist",
+  "run-ai-volume-batch",
+  "review-ai-shadow-run",
   "prepare-channel-handoff",
   "upsert-channel-window-state",
   "send-approved-message",
@@ -72,6 +77,7 @@ const ACTIONS = [
   "create-sequencer-handoff",
   "send-owned-sequence-step",
   "upsert-content-source",
+  "upsert-proof-permission",
   "create-content-asset",
   "generate-content-distribution-drafts",
   "review-content-distribution-draft",
@@ -197,6 +203,7 @@ function verifyFeatureFlags() {
     "ENABLE_MENULIST_SIGNALDESK_SOURCE_PROVIDERS: true",
     "ENABLE_MENULIST_SIGNALDESK_APIFY_SOURCE_BROKER: true",
     "ENABLE_MENULIST_SIGNALDESK_AI_PROVIDER_CALLS: true",
+    "ENABLE_MENULIST_SIGNALDESK_AI_VOLUME_MODE: true",
     "ENABLE_MENULIST_SIGNALDESK_PROVIDER_WEBHOOKS: true",
     "ENABLE_MENULIST_SIGNALDESK_ASSISTED_CHANNELS: true",
     "ENABLE_MENULIST_SIGNALDESK_OWNED_EMAIL_SEQUENCER: true",
@@ -219,6 +226,10 @@ function verifyRoutesAndUi() {
   const workspaceRoute = read("src/app/api/signaldesk/workspace/route.ts");
   const workspace = read("src/components/signaldesk/SignalDeskWorkspace.tsx");
   const layout = read("src/app/(signaldesk)/layout.tsx");
+  const signinLayout = read("src/app/(signaldesk-auth)/signaldesk/signin/layout.tsx");
+  const signinPage = read("src/app/(signaldesk-auth)/signaldesk/signin/page.tsx");
+  const signinComponent = read("src/components/signaldesk/SignalDeskSignin.tsx");
+  const sessionProvider = read("src/components/signaldesk/SignalDeskSessionProvider.tsx");
   const pathProvider = read("src/components/signaldesk/SignalDeskPathProvider.tsx");
   const middleware = read("src/middleware.ts");
 
@@ -227,6 +238,18 @@ function verifyRoutesAndUi() {
   assertIncludes(pathProvider, "withSignalDeskBasePath", "SignalDesk path provider");
   assertIncludes(layout, "SignalDeskPathProvider", "SignalDesk layout base-path provider");
   assertIncludes(layout, "AntdThemeProvider", "SignalDesk layout uses shared AntD theme provider");
+  assertIncludes(layout, "SignalDeskSessionProvider", "SignalDesk layout uses the product-local session provider");
+  assertNotIncludes(layout, "@providers/sessionProvider", "SignalDesk layout excludes the MenuList store/tenant session provider");
+  assertIncludes(layout, "`${SIGNALDESK_BASE_PATH}/signin`", "SignalDesk canonical auth redirect stays product-local");
+  assertIncludes(signinLayout, "SignalDeskSessionProvider", "SignalDesk sign-in uses product-local NextAuth context");
+  assertNotIncludes(signinLayout, "@providers/sessionProvider", "SignalDesk sign-in excludes MenuList store/tenant session bootstrap");
+  assertIncludes(sessionProvider, '"use client"', "SignalDesk session wrapper is a client boundary");
+  assertIncludes(sessionProvider, "SessionProvider", "SignalDesk session wrapper provides NextAuth context");
+  assertNotIncludes(sessionProvider, "firebaseAuth", "SignalDesk session wrapper has no MenuList Firebase bootstrap");
+  assertIncludes(signinPage, "SignalDeskSignin", "SignalDesk sign-in renders the product-local form");
+  assertIncludes(signinComponent, 'signIn("credentials"', "SignalDesk sign-in uses existing credentials authentication");
+  assertIncludes(signinComponent, "getSafeCallbackUrl", "SignalDesk sign-in validates its callback route");
+  assertNotIncludes(signinComponent, "firebaseAuth", "SignalDesk sign-in does not bootstrap MenuList Firebase claims");
   assertIncludes(layout, "x-product-base-path", "SignalDesk layout reads middleware base path");
   assertIncludes(middleware, "buildSignalDeskAliasRewritePath", "Middleware rewrites /sd alias");
   assertIncludes(middleware, "setSignalDeskProductHeaders", "Middleware sets SignalDesk product headers");
@@ -244,8 +267,23 @@ function verifyRoutesAndUi() {
       assertIncludes(routes, `${routeKey}: \`\${SIGNALDESK_BASE_PATH}${suffix}\``, `SignalDesk route path ${routePath}`);
     }
     assertIncludes(workspaceRoute, `"${section}"`, `Workspace API section ${section}`);
-    assertIncludes(workspace, `section: "${section}"`, `Workspace nav section ${section}`);
   }
+
+  assertIncludes(workspace, "SIGNALDESK_ROUTES.OPPORTUNITIES", "Primary nav exposes Opportunities");
+  assertIncludes(workspace, "SIGNALDESK_ROUTES.CONVERSATIONS", "Primary nav exposes Conversations");
+  assertIncludes(workspace, "SIGNALDESK_ROUTES.ACTIVATIONS", "Primary nav exposes Activations");
+  assertIncludes(workspace, "SIGNALDESK_ROUTES.CONTROLS", "Primary nav exposes Controls");
+  const primaryNavStart = workspace.indexOf("const PRIMARY_NAV_ITEMS:");
+  const primaryNavEnd = workspace.indexOf("];", primaryNavStart);
+  assert(primaryNavStart !== -1 && primaryNavEnd > primaryNavStart, "SignalDesk primary nav declaration exists");
+  const primaryNavBlock = workspace.slice(primaryNavStart, primaryNavEnd);
+  assert((primaryNavBlock.match(/section:/g) || []).length === 5, "SignalDesk primary sidebar stays limited to five destinations");
+  ["DASHBOARD", "OPPORTUNITIES", "CONVERSATIONS", "ACTIVATIONS", "CONTROLS"].forEach((routeKey) => (
+    assertIncludes(primaryNavBlock, `SIGNALDESK_ROUTES.${routeKey}`, `Primary nav includes only governed route ${routeKey}`)
+  ));
+  ["REVENUE", "TARGETS", "IMPORTS", "APPROVALS", "TEMPLATES", "POLICIES", "SOURCES", "AI", "CHANNELS", "CONTENT", "PARTNERS", "SETTINGS", "AUDIT"].forEach((routeKey) => (
+    assertNotIncludes(primaryNavBlock, `SIGNALDESK_ROUTES.${routeKey}`, `Primary nav excludes advanced route ${routeKey}`)
+  ));
 
   assertIncludes(workspace, "Observe", "Solo-owner dashboard posture");
   assertIncludes(workspace, "Monitor", "Solo-owner dashboard posture");
@@ -284,6 +322,25 @@ function verifyRoutesAndUi() {
   assertIncludes(workspace, "resolvedRevenueMarketPodId", "Revenue envelope requires active market pod in UI");
   assertIncludes(workspace, "Approve Pod", "Market pod UI requires an explicit founder approval action");
   assertIncludes(workspace, "canApproveMarketPod", "Market pod approval UI is founder-role gated");
+  assertIncludes(workspace, "Provider AI Runs", "AI workspace separates provider-backed runs from rules scores");
+  assertIncludes(workspace, "Shadow Review", "AI workspace exposes shadow review controls");
+  assertIncludes(workspace, "canReviewAiShadow", "AI shadow review UI is founder-role gated");
+  assertIncludes(workspace, 'reviewAiShadowRun(run.aiRunId, "accepted")', "AI shadow review accepts unchanged recommendations");
+  assertIncludes(workspace, 'reviewAiShadowRun(run.aiRunId, "edited")', "AI shadow review captures edited recommendations");
+  assertIncludes(workspace, 'reviewAiShadowRun(run.aiRunId, "rejected")', "AI shadow review rejects recommendations");
+  assertIncludes(workspace, 'reviewAiShadowRun(run.aiRunId, "held")', "AI shadow review holds recommendations");
+  assertIncludes(workspace, "founderAttentionMinutes", "AI workspace surfaces founder attention");
+  assertIncludes(workspace, "AI Volume Mode", "AI workspace exposes bounded volume controls");
+  assertIncludes(workspace, "canRunAiVolume", "AI volume UI is founder-role and desktop gated");
+  assertIncludes(workspace, 'runAction<SignalDeskAiVolumeRunSummary>("run-ai-volume-batch"', "AI volume UI uses the protected action route");
+  assertIncludes(workspace, "aiVolumeTargetCount", "AI volume UI bounds target count");
+  assertIncludes(workspace, "aiVolumeMaxCostUsd", "AI volume UI requires a founder cost maximum");
+  assertIncludes(workspace, "data.workspace.aiVolumeRuns", "AI workspace surfaces parent volume-run summaries");
+  assertIncludes(workspace, "SIGNALDESK_AI_VOLUME_RETRY_STORAGE_KEY", "AI volume UI persists the bounded retry payload locally");
+  assertIncludes(workspace, "parseAiVolumeRetryPayload", "AI volume retry payload is validated before reuse");
+  assertIncludes(workspace, 'result.status !== "running"', "AI volume UI retains the paid key until terminal state");
+  assertIncludes(workspace, '"Retry Batch"', "AI volume UI exposes same-key recovery");
+  assertIncludes(workspace, ">Clear Retry<", "AI volume UI lets the founder discard a pre-parent retry payload");
 }
 
 function verifyApiSecurityAndActions() {
@@ -314,10 +371,21 @@ function verifyApiSecurityAndActions() {
   const clientDal = read("src/database/signaldesk/index.ts");
   const webhookRoute = read("src/app/api/signaldesk/webhooks/[provider]/route.ts");
   const webhookServer = read("src/lib/signaldesk/webhookServer.ts");
+  const outcomeBridgeRoute = read("src/app/api/signaldesk/outcomes/route.ts");
+  const outcomeBridgeServer = read("src/lib/signaldesk/outcomeBridgeServer.ts");
 
   assertIncludes(actions, "parseSignalDeskJsonBody", "Actions route shared JSON parser");
   assertIncludes(actions, "logSignalDeskValidationFailure", "Actions route validation logging");
   assertIncludes(actions, 'if (action === "review-market-pod") return "signaldesk.configure";', "Market-pod review requires founder-only configure permission");
+  assertIncludes(actions, 'if (action === "review-ai-shadow-run") return "signaldesk.configure";', "AI shadow review requires founder-only configure permission");
+  assertIncludes(actions, '"review-ai-shadow-run": "approve"', "AI shadow review is blocked on mobile as an approval action");
+  assertIncludes(actions, "AiShadowReviewSchema", "AI shadow review payload is schema validated");
+  assertIncludes(actions, "AiVolumeBatchSchema", "AI volume batch payload is schema validated");
+  assertIncludes(actions, "export const maxDuration = 300", "AI volume route has a finite multi-call execution window");
+  assertIncludes(actions, 'if (action === "run-ai-volume-batch") return "signaldesk.configure";', "AI volume runs require configure permission");
+  assertIncludes(actions, '"run-ai-volume-batch": "provider_run"', "AI volume runs are blocked on mobile as provider work");
+  assertIncludes(actions, '? "BATCH_OPERATION"', "AI volume runs use the bounded batch rate limit");
+  assertIncludes(actions, 'maxEstimatedCostUsd: z.number().min(0.01).max(5)', "AI volume founder cost maximum is bounded");
   assertIncludes(killSwitches, "parseSignalDeskJsonBody", "Kill-switch route shared JSON parser");
   assertIncludes(killSwitches, "logSignalDeskValidationFailure", "Kill-switch route validation logging");
   assertIncludes(apiGuards, "readBoundedJsonBody", "SignalDesk API guard bounded JSON body reader");
@@ -391,6 +459,34 @@ function verifyApiSecurityAndActions() {
   assertNotIncludes(clientDal, "await response.json()", "SignalDesk client DAL must not parse response bodies directly");
   assertIncludes(workspace, "Team Access", "Settings exposes internal team access panel");
   assertIncludes(workflow, "upsertSignalDeskTeamMemberServer", "Workflow supports audited SignalDesk team-member updates");
+  assertIncludes(workflow, "reviewSignalDeskAiShadowRunServer", "Workflow supports founder AI shadow review");
+  assertIncludes(workflow, "annotateModelEvalSummary", "Workflow derives cumulative AI model quality rates");
+  assertIncludes(workflow, "passedSampleCount", "Workflow stores cumulative AI pass counts");
+  assertIncludes(workflow, "rejectedFactSampleCount", "Workflow stores cumulative rejected-fact counts");
+  assertIncludes(workflow, 'measurementVersion: "cumulative-v1"', "Workflow marks the exact cumulative AI measurement window");
+  assertIncludes(workflow, "legacySampleSize", "Workflow preserves the non-reconstructable legacy model-eval snapshot separately");
+  assertIncludes(workflow, 'appendAudit(db, transaction, access, "ai_shadow_review"', "AI shadow review is audited transactionally");
+  assertIncludes(workflow, "previousAttentionMinutes", "AI shadow review replaces rather than double-counts attention");
+  assertIncludes(workflow, 'throw new Error("Only provider-backed AI assist runs can be reviewed")', "Rules scores cannot enter AI shadow review");
+  assertIncludes(workflow, "runSignalDeskAiVolumeBatchServer", "Workflow supports bounded AI volume batches");
+  assertIncludes(workflow, "idempotencyKey.length < 8", "AI volume server independently validates paid-run idempotency bounds");
+  assertIncludes(workflow, 'if (rejectedFacts.length) finalConfidence = "low";', "AI rejected facts force founder review");
+  assertIncludes(workflow, "enforcePerRunBudget: false", "AI volume preflights aggregate daily and monthly provider budget");
+  assertIncludes(workflow, 'SIGNALDESK_AI_VOLUME_LOCK_ID = "ai_volume_lock_global"', "AI volume serializes batches through a recoverable global lock");
+  assertIncludes(workflow, 'throw new Error("SignalDesk AI volume run is already active")', "AI volume rejects overlapping paid batches");
+  assertIncludes(workflow, "recoverExpiredSignalDeskAiVolumeRun", "AI volume reconciles expired running parents");
+  assertIncludes(workflow, 'SIGNALDESK_AI_VOLUME_INTERRUPTED_CODE = "ai_volume_run_interrupted"', "AI volume recovery uses a stable interruption code");
+  assertIncludes(workflow, '.where("volumeRunId", "==", params.volumeRef.id)', "AI volume recovery reconstructs completed children");
+  assertIncludes(workflow, 'lock?.activeVolumeRunId === params.volumeRef.id', "AI volume recovery releases only its owned lock");
+  assertIncludes(workflow, "SIGNALDESK_AI_VOLUME_LOCK_TTL_MS = 6 * 60 * 1000", "AI volume lock outlives the route window with recovery grace");
+  assertIncludes(workflow, "runSignalDeskAiCritic", "AI volume flow runs an independent critic pass");
+  assertIncludes(workflow, "projectedMaxCostUsd", "AI volume flow preflights worst-case estimated cost");
+  assertIncludes(workflow, "Math.min(3, pairs.length)", "AI volume child concurrency is bounded");
+  assertIncludes(workflow, "idempotencyKeyHash", "AI volume paid batches use deterministic idempotency");
+  assertIncludes(workflow, 'workerType: "ai_volume_batch"', "AI volume parent reuses the worker-run ledger");
+  assertIncludes(workflow, 'throw new Error("Founder approval is required for AI volume runs")', "AI volume server enforces founder role");
+  assertIncludes(workflow, 'logRuntimeFailure("signaldesk_ai_volume_child_failed"', "AI volume child failure diagnostics are stable");
+  assertIncludes(workflow, "failureCodes: Array.from(new Set(failureCodes))", "AI volume parent stores bounded failure codes only");
   assertIncludes(workflow, 'access.permissions.includes("signaldesk.configure")', "Workspace limits team-member list to configure permission");
   assertIncludes(actions, 'if (action === "upsert-team-member") return "signaldesk.configure"', "Team member updates require SignalDesk configure permission");
   assertIncludes(actions, '"upsert-team-member": "configure"', "Team member updates are blocked on mobile as configuration");
@@ -415,6 +511,8 @@ function verifyApiSecurityAndActions() {
   assertIncludes(actions, '"SOURCE_POLICY_REVIEW_REQUIRED"', "Source policy review-required safe error");
   assertIncludes(actions, '"SOURCE_POLICY_USE_NOT_ALLOWED"', "Source policy allowed-use safe error");
   assertIncludes(actions, '"SOURCE_POLICY_RETENTION_MISSING"', "Source policy retention safe error");
+  assertIncludes(actions, '"ACTIVATION_TWO_DISTINCT_SURFACES_REQUIRED"', "Activation distinct-surface safe error");
+  assertIncludes(actions, '"PROOF_PERMISSION_REQUIRED"', "Proof-permission safe error");
   assertIncludes(workflow, "sendSignalDeskApprovedMessageServer", "Approved message send server path");
   assertIncludes(workflow, "sendSignalDeskOwnedSequenceStepServer", "Owned sequencer send server path");
   assertIncludes(workflow, "recommendSignalDeskMarketPodPlanServer", "Market pod recommender server path");
@@ -464,7 +562,7 @@ function verifyApiSecurityAndActions() {
   assertIncludes(workflow, "hasTwoSurfaceActivation", "Revenue qualification distinguishes two-surface activation from generic conversion state");
   assertIncludes(workflow, 'where("outcomeType", "==", "two_surface_activation")', "Activation derivation preserves terminal activation evidence outside the latest window");
   assertIncludes(workflow, 'orderBy("updatedAt", "desc")', "Activation derivation reads a deterministic latest outcome window");
-  assertIncludes(workflow, 'orderBy("updatedAt", "asc")', "Activation derivation reads the exact first outcome for the seven-day deadline");
+  assertIncludes(workflow, "toTimestampMillis(target.ownerQualifiedAt)", "Activation deadline starts from the durable owner-qualified timestamp");
   assertIncludes(workflow, "annotateActivationWatch", "Expired activation deadlines read as stalled without a scheduler");
   assertIncludes(workflow, 'name: "Bengaluru first proof pod"', "First proof pod matches the maintained Bengaluru recommendation");
   assertIncludes(workflow, "legacyUnapprovedMarketPod", "Default seeding migrates only the exact unapproved legacy first pod");
@@ -496,12 +594,17 @@ function verifyApiSecurityAndActions() {
   assertIncludes(workflow, "rejectedPolicyCount", "Workflow tracks rejected provider policy candidates");
   assertIncludes(workflow, "isSourcePolicyExpired", "Workflow checks source policy expiry");
   assertIncludes(workflow, "getSourcePolicyState", "Workflow computes source policy UI state");
+  assertIncludes(workflow, "allowedFields", "Source policies persist field-level source rights");
+  assertIncludes(workflow, "prohibitedUses", "Source policies persist prohibited downstream uses");
   assertIncludes(workflow, "expiresAt: timestampFromIsoOrDefault(input.expiresAt, input.retentionDays)", "Source policy creation sets expiry");
   assertIncludes(workflow, 'if (!isSenderDomainReady(await readReadySenderDomain(db))) throw new Error("Sender domain is not ready")', "Email export requires sender readiness");
   assertIncludes(actions, '"SignalDesk Operating Layer is disabled"', "Actions route exposes operating-layer safe error");
   assertIncludes(actions, '"Content asset is not ready"', "Actions route exposes content asset readiness safe error");
 
   assertIncludes(webhookRoute, "checkRateLimit", "Webhook route rate limit");
+  assertIncludes(webhookRoute, "failClosedOnProviderError: true", "Webhook route fails closed when the rate-limit provider is unavailable");
+  assertIncludes(webhookRoute, 'rateLimit.reason === "provider_unavailable"', "Webhook route distinguishes provider failure from a caller rate limit");
+  assertIncludes(webhookRoute, "status: providerUnavailable ? 503 : 429", "Webhook route returns retryable 503 only for rate-limit infrastructure failure");
   assertIncludes(webhookRoute, "const ipHash = hashPublicRateLimitValue(getClientIp(request));", "Webhook route hashes public IP key material");
   assertIncludes(webhookRoute, "key: `signaldesk:webhook:${provider}:${ipHash}`", "Webhook route stores hashed IP rate-limit key material");
   assertIncludes(webhookRoute, "const SIGNALDESK_WEBHOOK_MAX_BODY_BYTES = 256 * 1024;", "Webhook route body cap");
@@ -510,6 +613,10 @@ function verifyApiSecurityAndActions() {
   assertIncludes(webhookRoute, "error: SIGNALDESK_WEBHOOK_REJECTED_REASON", "Webhook route logs stable rejection reason");
   assertIncludes(webhookRoute, "processSignalDeskProviderWebhook", "Webhook route processing");
   assertIncludes(webhookRoute, "verifySignalDeskWebhookChallenge", "Webhook challenge verification");
+  assertIncludes(webhookRoute, "getSignalDeskWebhookRequestErrorStatus", "Webhook route separates caller defects from transient processing failures");
+  assertIncludes(webhookRoute, '"Retry-After": "30"', "Webhook route asks providers to retry transient processing failures");
+  assertIncludes(webhookRoute, 'status: requestErrorStatus || 503', "Webhook route does not acknowledge transient persistence failures as caller errors");
+  assertIncludes(webhookRoute, 'const NO_STORE_HEADERS = { "Cache-Control": "no-store" };', "Webhook responses are not cached");
   assertNotIncludes(webhookRoute, "request.text()", "Webhook route direct raw body parser");
   assertNotIncludes(webhookRoute, 'key: `signaldesk:webhook:${provider}:${request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown"}`', "Webhook route does not store raw request IP in rate-limit keys");
   assertNotIncludes(webhookRoute, 'error: error instanceof Error ? error.message : "Webhook failed"', "Webhook route does not log raw exception messages");
@@ -517,8 +624,13 @@ function verifyApiSecurityAndActions() {
   assertIncludes(webhookServer, "SIGNALDESK_WEBHOOK_BODY_PARSE_FAILED", "Webhook server parse failure code");
   assertIncludes(webhookServer, "SIGNALDESK_WEBHOOK_BODY_SHAPE_INVALID", "Webhook server body-shape failure code");
   assertIncludes(webhookServer, "SIGNALDESK_WEBHOOK_EVENT_SHAPE_INVALID", "Webhook server event-shape failure code");
+  assertIncludes(webhookServer, "SIGNALDESK_WEBHOOK_EVENT_CONFLICT", "Webhook server changed-fact replay conflict code");
+  assertIncludes(webhookServer, "SIGNALDESK_WEBHOOK_TARGET_CONFLICT", "Webhook server target ownership conflict code");
   assertIncludes(webhookServer, "parseSignalDeskWebhookPayload", "Webhook server central body parser");
-  assertIncludes(webhookServer, "requireProviderEvent", "Webhook server requires provider event signal");
+  assertIncludes(webhookServer, "requireProviderEvents", "Webhook server requires one or more provider event signals");
+  assertIncludes(webhookServer, "getWhatsAppEvents", "Webhook server normalizes WhatsApp message and status arrays");
+  assertIncludes(webhookServer, "getInstagramOrMessengerEvents", "Webhook server normalizes Meta messaging arrays");
+  assertIncludes(webhookServer, 'direction: "status"', "Webhook server separates delivery callbacks from inbound replies");
   assertIncludes(webhookServer, "fallbackWebhookExternalId", "Webhook server uses deterministic fallback event IDs");
   assertIncludes(webhookServer, "logRuntimeFailure(SIGNALDESK_WEBHOOK_BODY_PARSE_FAILED", "Webhook server parse diagnostics");
   assertIncludes(webhookServer, "logRuntimeFailure(SIGNALDESK_WEBHOOK_BODY_SHAPE_INVALID", "Webhook server body-shape diagnostics");
@@ -528,7 +640,46 @@ function verifyApiSecurityAndActions() {
   assertNotIncludes(webhookServer, "randomUUID", "Webhook server does not create non-deterministic event IDs");
   assertIncludes(webhookServer, "const db = getSignalDeskDb();", "Webhook gets DB after signature verification block");
   assertIncludes(webhookServer, "existingEventSnap.exists", "Webhook duplicate event guard");
+  assertIncludes(webhookServer, "eventFingerprintHash", "Webhook duplicate guard binds the normalized event facts");
+  assertIncludes(webhookServer, "transaction.create(eventRef", "Webhook event reservation is atomic with downstream writes");
+  assertIncludes(webhookServer, "findTargetByIdentity(transaction", "Webhook identity and supplied target are resolved in one transaction");
+  assertIncludes(webhookServer, "suppliedTargetId !== identityTargetId", "Webhook rejects identity and supplied-target disagreement");
+  assertIncludes(webhookServer, "targetId: targetId || null", "Webhook preserves identity-level suppression when no target resolves");
+  assertIncludes(webhookServer, "isOutOfOrder: outOfOrder", "Webhook message evidence marks out-of-order delivery");
+  assertIncludes(webhookServer, "for (const event of events)", "Webhook processes every event in a provider batch");
+  assertIncludes(webhookServer, "qualifySignalDeskRevenueAccountServer", "Interested provider replies invoke the revenue projection path");
   assertIncludes(webhookServer, 'status: "duplicate"', "Webhook duplicate event status");
+  assertIncludes(outcomeBridgeRoute, "readBoundedTextBody", "Outcome bridge body is bounded");
+  assertIncludes(outcomeBridgeRoute, "checkRateLimit", "Outcome bridge is rate limited");
+  assertIncludes(outcomeBridgeRoute, "failClosedOnProviderError: true", "Outcome bridge fails closed when rate-limit storage is unavailable");
+  assertIncludes(outcomeBridgeRoute, 'status: providerUnavailable ? 503 : 429', "Outcome bridge separates retryable provider failure from caller limits");
+  assertIncludes(outcomeBridgeRoute, "getSignalDeskOutcomeBridgeRequestErrorStatus", "Outcome bridge separates invalid requests from transient processing failures");
+  assertIncludes(outcomeBridgeRoute, 'status: requestErrorStatus || 503', "Outcome bridge preserves retries for transient persistence failures");
+  assertIncludes(outcomeBridgeRoute, 'error: retryable ? "Outcome bridge temporarily unavailable" : "Outcome bridge rejected"', "Outcome bridge exposes bounded errors");
+  assertIncludes(outcomeBridgeServer, "createHmac", "Outcome bridge verifies HMAC signatures");
+  assertIncludes(outcomeBridgeServer, "OUTCOME_BRIDGE_MAX_CLOCK_SKEW_MS", "Outcome bridge rejects replay-window drift");
+  assertIncludes(outcomeBridgeServer, ".strict()", "Outcome bridge rejects unknown payload fields");
+  assertIncludes(outcomeBridgeServer, "Invalid SignalDesk route token", "Outcome bridge verifies route attribution token");
+  assertIncludes(outcomeBridgeServer, "SIGNALDESK_OUTCOME_ROUTE_SCOPE", "Outcome bridge requires a versioned route-token scope");
+  assertIncludes(outcomeBridgeServer, "routeTokenValidation", "Outcome bridge delegates authoritative token validation to the outcome transaction");
+  assertNotIncludes(outcomeBridgeServer, "token: payload.routeToken", "Outcome bridge does not persist the raw route token");
+  assertIncludes(actions, '"revoke-route-token"', "Actions route exposes audited route-token revocation");
+  assertIncludes(actions, "RevokeRouteTokenSchema", "Route-token revocation payload is runtime validated");
+  assertIncludes(actions, "channel: payload.data.channel,", "Outcome and route-token handlers receive explicit validated channel projections");
+  assertIncludes(actions, "outcomeType: payload.data.outcomeType,", "Outcome handler receives an explicit validated outcome projection");
+  assertIncludes(actions, "targetId: payload.data.targetId,", "Route-token handlers receive explicit validated target projections");
+  assertIncludes(actions, "reason: payload.data.reason,", "Route-token revocation receives an explicit validated reason projection");
+  assertIncludes(actions, "routeTokenId: payload.data.routeTokenId,", "Route-token revocation receives an explicit validated token ID projection");
+  assertNotIncludes(actions, "recordSignalDeskOutcomeServer(accessResult.access, payload.data)", "Outcome handler must not receive a loosely inferred payload object");
+  assertNotIncludes(actions, "createSignalDeskRouteTokenServer(accessResult.access, payload.data)", "Route-token creation must not receive a loosely inferred payload object");
+  assertNotIncludes(actions, "revokeSignalDeskRouteTokenServer(accessResult.access, payload.data)", "Route-token revocation must not receive a loosely inferred payload object");
+  assertIncludes(actions, 'if (action === "revoke-route-token") return "signaldesk.configure";', "Route-token revocation requires configure authority");
+  assertIncludes(workflow, "revokeSignalDeskRouteTokenServer", "Workflow supports transactionally audited route-token revocation");
+  assertIncludes(workflow, "routeToken.scope !== SIGNALDESK_OUTCOME_ROUTE_SCOPE", "Outcome transaction revalidates route-token scope");
+  assertIncludes(workflow, "routeToken.status !== \"active\"", "Outcome transaction rejects revoked route tokens for new events");
+  assertIncludes(workflow, "priorIdempotencySnap?.exists", "Outcome transaction resolves exact retries before current route-token state");
+  assertIncludes(workflow, "SIGNALDESK_COLLECTIONS.ATTRIBUTION_TOUCHES", "Outcome transaction writes the direct attribution touch");
+  assertIncludes(workflow, 'method: routeTokenRef ? "route-token-direct-v1" : "manual-direct-v1"', "Outcome attribution records the direct method");
 
   assertIncludes(workflow, 'SIGNALDESK_PROVIDER_BUDGET_BLOCKED_REASON = "provider_budget_blocked"', "SignalDesk provider budget blocks use stable reason");
   assertIncludes(workflow, "blockedReasons.push(`${provider}: ${SIGNALDESK_PROVIDER_BUDGET_BLOCKED_REASON}`)", "SignalDesk waterfall block summaries avoid raw provider errors");
@@ -551,6 +702,11 @@ function verifyConnectorProviderAndInvestmentControls() {
   const sourceProviders = read("src/lib/signaldesk/sourceProviders.ts");
   const providerAdapters = read("src/lib/signaldesk/providerAdapters.ts");
   const aiProvider = read("src/lib/signaldesk/aiProvider.ts");
+  const webhookServer = read("src/lib/signaldesk/webhookServer.ts");
+  const keyManager = read("src/lib/google/genAi/keyManager.ts");
+  const defaultAiClient = read("src/lib/google/genAi/index.ts");
+  const stagingEnv = read(".env.staging.example");
+  const productionEnv = read(".env.production.example");
   const e2eLocal = read("scripts/verification/e2e-signaldesk-local.js");
 
   for (const connector of CONNECTOR_KINDS) {
@@ -574,9 +730,47 @@ function verifyConnectorProviderAndInvestmentControls() {
   ].forEach((needle) => assertIncludes(workflow, needle, `Workflow investment control ${needle}`));
 
   assertIncludes(integrations, "MENULIST_SIGNALDESK_APIFY_SOURCE_ACTOR_ID", "Apify Actor ID env is product-scoped");
+  [
+    "MENULIST_SIGNALDESK_GEMINI_AI_KEY",
+    "MENULIST_SIGNALDESK_GEMINI_AI_KEY_2",
+    "MENULIST_SIGNALDESK_GEMINI_AI_KEY_3",
+    "MENULIST_SIGNALDESK_GEMINI_AI_KEY_4",
+    "MENULIST_SIGNALDESK_AI_MODEL",
+  ].forEach((token) => assertIncludes(integrations, token, `SignalDesk AI integration env ${token}`));
+  assertIncludes(keyManager, "export type GeminiKeyEnvVarCandidates", "Gemini key manager exposes scoped candidate type");
+  assertIncludes(keyManager, "constructor(keyEnvVarCandidates: GeminiKeyEnvVarCandidates = KEY_ENV_VAR_CANDIDATES)", "Gemini key manager accepts scoped env candidates");
+  assertIncludes(keyManager, "this.keyEnvVarCandidates = keyEnvVarCandidates", "Gemini key manager stores scoped env candidates");
+  assertIncludes(defaultAiClient, "createAIGateway(new KeyManager())", "MenuList default AI client retains default key pool");
+  assertNotIncludes(keyManager, "export const keyManager = new KeyManager()", "Gemini key manager module has no eager default singleton");
+  assertIncludes(aiProvider, "const signalDeskKeyManager = new KeyManager([", "SignalDesk AI provider creates scoped key manager");
+  assertIncludes(aiProvider, "const signalDeskGenAIClient = createAIGateway(signalDeskKeyManager)", "SignalDesk AI provider reuses shared gateway with scoped key manager");
+  assertIncludes(aiProvider, "signalDeskGenAIClient.models.generateContent", "SignalDesk AI provider calls scoped gateway");
+  assertIncludes(aiProvider, "signalDeskKeyManager.hasConfiguredKeys()", "SignalDesk AI provider checks scoped key readiness");
+  assertNotIncludes(aiProvider, 'from "@lib/google/genAi"', "SignalDesk AI provider does not import default MenuList AI client");
+  assertNotIncludes(aiProvider, "process.env.GEMINI_AI_KEY", "SignalDesk AI provider does not read MenuList Gemini keys");
+  assertNotIncludes(aiProvider, "process.env.GEMINI_API_KEY", "SignalDesk AI provider does not read legacy MenuList Gemini key alias");
+  [stagingEnv, productionEnv].forEach((envTemplate, index) => {
+    const label = index === 0 ? "SignalDesk staging env" : "SignalDesk production env";
+    [
+      "NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_MODE=separate",
+      "MENULIST_SIGNALDESK_FIREBASE_MODE=separate",
+      "MENULIST_SIGNALDESK_GEMINI_AI_KEY=",
+      "MENULIST_SIGNALDESK_GEMINI_AI_KEY_2=",
+      "MENULIST_SIGNALDESK_GEMINI_AI_KEY_3=",
+      "MENULIST_SIGNALDESK_GEMINI_AI_KEY_4=",
+      "MENULIST_SIGNALDESK_AI_MODEL=",
+    ].forEach((token) => assertIncludes(envTemplate, token, `${label} ${token}`));
+  });
   assertIncludes(aiProvider, "SIGNALDESK_AI_RESPONSE_PARSE_FAILED", "SignalDesk AI provider parse failure code");
   assertIncludes(aiProvider, "SIGNALDESK_AI_RESPONSE_SHAPE_INVALID", "SignalDesk AI provider shape failure code");
   assertIncludes(aiProvider, "parseSignalDeskAiJsonResponse", "SignalDesk AI provider central JSON parser");
+  assertIncludes(aiProvider, "AiAssistOutputSchema", "SignalDesk AI generation output is schema validated");
+  assertIncludes(aiProvider, "AiCriticOutputSchema", "SignalDesk AI critic output is schema validated");
+  assertIncludes(aiProvider, "runSignalDeskAiCritic", "SignalDesk AI provider exposes critic execution");
+  assertIncludes(aiProvider, 'verdict: "pass | revise | hold"', "SignalDesk critic uses bounded verdicts");
+  assertIncludes(integrations, "SIGNALDESK_FAST_AI_MODEL", "SignalDesk exposes a product-local fast-model default");
+  assertIncludes(workflow, "SIGNALDESK_FAST_AI_MODEL", "SignalDesk default routes use the fast-model cascade");
+  assertIncludes(workflow, 'escalationProvider: "gemini"', "SignalDesk active AI routes use executable same-provider escalation");
   assertIncludes(aiProvider, "logRuntimeFailure(SIGNALDESK_AI_RESPONSE_PARSE_FAILED", "SignalDesk AI provider parse diagnostics");
   assertIncludes(aiProvider, "logRuntimeFailure(SIGNALDESK_AI_RESPONSE_SHAPE_INVALID", "SignalDesk AI provider shape diagnostics");
   assertIncludes(aiProvider, "isRecord(parsed)", "SignalDesk AI provider requires object-shaped output");
@@ -600,17 +794,105 @@ function verifyConnectorProviderAndInvestmentControls() {
   assertIncludes(workflow, "FHRS/FHIS source provider is disabled", "FHRS/FHIS provider feature flag block");
   assertIncludes(workspace, 'value="fhrs-fhis"', "FHRS/FHIS provider exposed in private source run UI");
   assertIncludes(e2eLocal, "assertFhrsFhisSourceProvider", "FHRS/FHIS provider local E2E fixture");
+  assertIncludes(e2eLocal, "assertOutcomeIntegrityAndProofPermissions", "Activation integrity and proof-permission E2E fixture");
+  assertIncludes(e2eLocal, "assertSignedOutcomeBridge", "Signed outcome bridge E2E fixture");
+  assertIncludes(e2eLocal, "assertComplaintCircuitBreaker", "Complaint circuit-breaker E2E fixture");
   assertIncludes(features, "ENABLE_MENULIST_SIGNALDESK_RESEARCH_AGENT_TABLE", "Research Agent Table feature flag");
   assertIncludes(actions, '"create-research-agent-run"', "Research Agent Table action schema");
   assertIncludes(actions, "ResearchAgentRunSchema", "Research Agent Table payload validation");
   assertIncludes(database, 'RESEARCH_RUNS: "signaldeskResearchRuns"', "Research Agent run collection");
   assertIncludes(database, 'RESEARCH_TABLE_ROWS: "signaldeskResearchTableRows"', "Research Agent table row collection");
+  assertIncludes(database, 'PROOF_PERMISSIONS: "signaldeskProofPermissions"', "Proof permission ledger collection");
+  assertIncludes(firestoreRules, "match /signaldeskProofPermissions/{docId}", "Proof permissions are explicitly internal-readable");
+  assertIncludes(integrations, 'OUTCOME_BRIDGE_SECRET: "MENULIST_SIGNALDESK_OUTCOME_BRIDGE_SECRET"', "Outcome bridge uses a SignalDesk-only secret");
+  assertIncludes(stagingEnv, "MENULIST_SIGNALDESK_OUTCOME_BRIDGE_SECRET", "Staging documents the outcome bridge secret");
+  assertIncludes(productionEnv, "MENULIST_SIGNALDESK_OUTCOME_BRIDGE_SECRET", "Production documents the outcome bridge secret");
   assertIncludes(types, "SignalDeskResearchRunSummary", "Research Agent run type");
   assertIncludes(types, "SignalDeskResearchTableRowSummary", "Research Agent table row type");
+  assertIncludes(types, "SignalDeskAiVolumeRunSummary", "AI volume parent summary type");
+  assertIncludes(types, '"quality-critic"', "AI task type includes the internal critic route");
+  assertIncludes(types, "allowedRoute", "Research Agent row stores the policy-allowed route");
+  assertIncludes(types, "routePermissionState", "Research Agent row stores route permission state");
+  assertIncludes(types, "SignalDeskActivationOpportunitySummary", "SignalDesk derives activation opportunities instead of generic leads");
+  assertIncludes(types, "recommendedCta", "Research Agent row stores recommended CTA");
+  assertIncludes(types, "recommendedMessageAngle", "Research Agent row stores recommended message angle");
+  assertIncludes(types, "evidenceSummary", "Research Agent row stores evidence summary");
   assertIncludes(workflow, "createSignalDeskResearchAgentRunServer", "Research Agent Table workflow");
   assertIncludes(workflow, "fitDecision", "Research Agent pass/fail/unsure scoring");
+  assertIncludes(workflow, "revalidateResearchRowRoute", "Persisted research rows are revalidated against current source rights");
+  assertIncludes(workflow, "suppressed ? `suppression:${target?.suppressionStatus}`", "Persisted research routes are revoked after suppression");
+  assertIncludes(workflow, "deriveActivationOpportunities", "Workspace derives activation-opportunity state");
+  assertIncludes(workflow, "sourcePolicyHasCompleteRights", "Source-policy use requires a complete rights registry");
+  assertIncludes(workflow, "targetIdsByIdentity", "One import dedupes repeated business identities before batch commit");
+  assertIncludes(workflow, "allowed.contact && allowed.evidence && allowed.personalization", "Message actions require contact, evidence, and personalization rights together");
+  assertIncludes(workflow, "isVerifiedTwoSurfaceOutcome", "Activation authority requires verified two-surface evidence");
+  assertIncludes(workflow, "OUTCOME_IDEMPOTENCY_KEY_REQUIRED", "Activation outcome requires idempotency");
+  assertIncludes(workflow, "OUTCOME_IDEMPOTENCY_CONFLICT", "Outcome idempotency rejects a changed request fingerprint");
+  assertIncludes(workflow, "requestFingerprintHash", "Outcome idempotency stores a request fingerprint");
+  assertIncludes(workflow, "latestVerifiedActivationEvidenceRef", "Targets retain a durable verified-activation projection");
+  assertIncludes(workflow, "value instanceof Date", "SignalDesk API projections serialize runtime Date values instead of returning empty objects");
+  assertIncludes(workflow, "target.status === \"converted\"", "Later replies preserve a converted target lifecycle");
+  assertIncludes(types, "SignalDeskManualContactResult", "Manual contact outcomes use a bounded type");
+  assertIncludes(types, "SignalDeskApprovalRejectionReason", "Approval rejections use a bounded reason type");
+  assertIncludes(actions, '"record-manual-contact"', "Manual contact action is protected by the SignalDesk action route");
+  assertIncludes(actions, '"record-manual-contact": "configure"', "Manual contact is blocked by the mobile read-only action map");
+  assertIncludes(actions, "ManualContactSchema", "Manual contact input is Zod validated");
+  ["idempotencyKey", "note", "occurredAt", "result", "route", "sourcePolicyId", "targetId"].forEach((field) => {
+    assertIncludes(actions, `${field}: payload.data.${field}`, `Manual contact route explicitly maps validated ${field}`);
+  });
+  assertNotIncludes(actions, "recordSignalDeskManualContactServer(accessResult.access, payload.data as any)", "Manual contact route must not cast away the server DTO contract");
+  assertIncludes(actions, "ApprovalRejectionReasonSchema", "Approval rejection reason is Zod validated");
+  assertIncludes(workflow, "const transactionResult = await db.runTransaction", "Approval terminal review is transactionally single-consumer");
+  assertIncludes(e2eLocal, "Concurrent approval review accepted more than one terminal decision", "Local E2E covers concurrent approval/rejection arbitration");
+  assertIncludes(workflow, "recordSignalDeskManualContactServer", "Manual contact workflow is implemented server-side");
+  assertIncludes(workflow, "Prepared email export is required", "Manual email confirmation requires a prepared export");
+  assertIncludes(workflow, 'conversation?.state !== "exported"', "Manual email confirmation requires an unconsumed current export state");
+  assertIncludes(workflow, "preparedAt >= currentMillis - MANUAL_CONTACT_MAX_AGE_MS", "Manual email confirmation rejects stale prepared exports");
+  assertNotIncludes(types, '"manual-form"', "Unverified limited contactability is not represented as a permitted action route");
+  assertNotIncludes(workflow, 'allowedRoutes.add("manual-form")', "Manual contact cannot disguise phone, social, or generic website data as a form route");
+  assertIncludes(workflow, '"contact-route-unverified"', "Limited contactability remains held for route verification");
+  assertIncludes(e2eLocal, "Permissioned referral without direct contact was not actionable through its partner route", "Local E2E preserves permissioned partner introductions without requiring direct contact data");
+  assertNotIncludes(workflow, 'suppressionStatus: input.result === "wrong-contact" ? "wrong-contact" : target.suppressionStatus', "Manual contact does not overwrite a concurrently-added suppression state");
+  assertIncludes(workflow, 'nextAction: "contact"', "Export preparation waits for manual contact confirmation");
+  assertIncludes(workflow, "manual_contact_record", "Manual contact writes an audit event");
+  assertIncludes(workflow, "batch.create(timelineRef", "Manual contact idempotency is atomic with projections");
+  assertIncludes(workflow, "requestFingerprintHash", "Manual contact idempotency binds the normalized request facts");
+  assertIncludes(workflow, "Manual contact idempotency conflict", "Manual contact changed-payload retries fail closed");
+  assertIncludes(workspace, "Manual Contact", "Conversations UI exposes manual contact confirmation");
+  assertIncludes(workspace, "Choose rejection reason", "Approval UI requires a structured rejection reason");
+  assertIncludes(e2eLocal, "assertManualContactGuards", "Local E2E covers manual contact gates");
+  assertIncludes(e2eLocal, "assertUnverifiedLimitedRouteRevalidation", "Local E2E revokes legacy inferred manual-form routes");
+  assertIncludes(e2eLocal, "Approval rejection without reason", "Local E2E covers missing rejection reason");
+  assertIncludes(workflow, "PROOF_PERMISSION_REQUIRED", "Customer proof requires active permission");
+  assertIncludes(workflow, "PROOF_PERMISSION_SCOPE_NOT_ALLOWED", "Customer proof is bound to granted item-level scopes");
+  assertIncludes(types, "proofScopes?: SignalDeskProofPermissionScope[]", "Content assets retain their exact proof scopes");
+  assertIncludes(workflow, "reply_incident_pause", "Complaint and rights replies create a circuit-breaker audit");
+  assertIncludes(webhookServer, "transaction.create(eventRef", "Webhook idempotency reservation is atomic with side effects");
+  assertIncludes(webhookServer, "verifyWebhookDuplicate", "Concurrent exact webhook retries resolve as duplicates");
+  assertIncludes(webhookServer, "`webhook_${provider}_${hashValue(event.externalId)", "Webhook IDs are provider-scoped and path-safe");
+  assertIncludes(webhookServer, "SIGNALDESK_WEBHOOK_MAX_TARGET_ID_CHARS", "Webhook target IDs are bounded before internal writes");
+  assertIncludes(e2eLocal, "Batched WhatsApp webhook did not process every event", "Local E2E covers multi-event provider batches");
+  assertIncludes(e2eLocal, "WhatsApp delivery status was stored as an inbound human reply", "Local E2E keeps provider delivery status out of the inbox");
+  assertIncludes(e2eLocal, "Email status callbacks sharing one message ID collided", "Local E2E separates distinct email status callbacks that reuse a provider message ID");
+  assertIncludes(e2eLocal, "Unresolved DNC webhook did not create identity suppression", "Local E2E covers suppression before target resolution");
+  assertIncludes(e2eLocal, "Webhook identity and supplied target conflict", "Local E2E rejects target-identity disagreement");
+  assertIncludes(e2eLocal, "Webhook event ID cannot bind changed facts", "Local E2E rejects changed facts under the same provider event ID");
+  assertIncludes(e2eLocal, "Out-of-order webhook regressed the current conversation state", "Local E2E preserves current state while retaining late evidence");
+  assertIncludes(e2eLocal, "Exact signed outcome retry was rejected after route revocation", "Local E2E preserves exact outcome retry semantics after revocation");
+  assertIncludes(e2eLocal, "New signed outcome after route revocation", "Local E2E rejects new outcomes after route revocation");
+  assertIncludes(e2eLocal, "Signed outcome did not write its direct attribution touch", "Local E2E covers direct route attribution persistence");
+  assertIncludes(workflow, "recommendedCta", "Research Agent workflow writes recommended CTA");
+  assertIncludes(workflow, "recommendedMessageAngle", "Research Agent workflow writes recommended message angle");
+  assertIncludes(workflow, "evidenceSummary", "Research Agent workflow writes evidence summary");
   assertIncludes(workspace, "Research Agent Table", "Research Agent Table UI");
-  assertIncludes(workspace, "Today&apos;s Lead Batch", "Dashboard lead batch UI");
+  assertIncludes(workspace, "Today&apos;s Decisions", "Dashboard exposes a bounded founder decision queue");
+  assertIncludes(workspace, ".slice(0, 5)", "Dashboard limits new founder decisions to five");
+  assertIncludes(workspace, "opportunity.allowedRouteReason", "Dashboard explains the policy-allowed route");
+  assertIncludes(workspace, "proofPermissionEvidenceRef", "Content UI records proof permission evidence");
+  assertIncludes(workspace, "resolvedPublicProofScopes", "Content UI binds customer proof to granted public scopes");
+  assertIncludes(workspace, "globalPauseDisabled", "Mobile can activate but cannot clear the emergency global pause");
+  assertIncludes(workspace, "scopedPauseDisabled", "Mobile can activate but cannot clear scoped emergency pauses");
+  assertIncludes(workspace, "activationOutcomeIncomplete", "Activation UI blocks incomplete two-surface outcomes");
   assertIncludes(workspace, "Market Search", "Dashboard market search UI");
   assertIncludes(workspace, "Find Leads", "Dashboard find-leads action");
   assertIncludes(workspace, "MARKET_SEARCH_PRESETS", "Market search prompt presets");
@@ -618,16 +900,24 @@ function verifyConnectorProviderAndInvestmentControls() {
   assertIncludes(workspace, "Public business research", "Manual research defaults to the evidence-only public-business policy");
   assertIncludes(workspace, "Candidate discovery and evidence review only", "Evidence-only source policy copy blocks contact use");
   assertIncludes(workspace, "Approve Zero-Spend Trust Test", "First trust-partner test defaults to zero external spend");
+  assertIncludes(actions, 'if (action === "create-source-policy") return "signaldesk.configure";', "Source-policy activation stays founder-controlled");
+  assertIncludes(actions, 'if (action === "upsert-budget-policy") return "signaldesk.configure";', "Budget mutation stays founder-controlled");
+  assertIncludes(actions, 'if (action === "upsert-commercial-offer") return "signaldesk.configure";', "Commercial pricing mutation stays founder-controlled");
+  assertIncludes(actions, 'if (action === "review-trust-partner-deal") return "signaldesk.configure";', "Partner-spend approval stays founder-controlled");
   assertIncludes(workspace, "setResearchMaxResults(25)", "Approved Bengaluru market search presets use the 25-row trial batch");
   assertIncludes(workspace, 'useState("Find cafes, dessert shops, and QSRs in Indiranagar and Koramangala Bengaluru with weak current-menu presence")', "Market search default prompt");
-  assertIncludes(workspace, ".filter((row) => row.fitDecision !== \"fail\")", "Lead batch excludes failed research rows");
-  assertIncludes(workspace, "suppressionStatus === \"clear\"", "Fallback lead batch excludes suppressed targets");
-  assertIncludes(workspace, "LeadPlanBlock", "Lead batch has structured evidence/contact/share blocks");
-  assertIncludes(workspace, "LeadActionControls", "Lead batch has one recommended next action control");
-  assertIncludes(workspace, "leadCard", "Lead batch card layout");
-  assertIncludes(workspace, "contactPlanForLead", "Lead batch contact path helper");
-  assertIncludes(workspace, "sharePlanForLead", "Lead batch share message helper");
-  assertIncludes(workspace, ".slice(0, 30)", "Lead batch is capped at 30 rows");
+  assertIncludes(workflow, 'else if (routeRow?.fitDecision === "fail") state = "rejected";', "Derived activation opportunities reject failed research rows");
+  assertIncludes(workspace, 'opportunity.state !== "rejected"', "Today decision inventory excludes rejected activation opportunities");
+  assertIncludes(workflow, 'if (target.suppressionStatus !== "clear") state = "suppressed";', "Derived activation opportunities preserve suppressed state");
+  assertIncludes(workspace, 'opportunity.state === "actionable" || opportunity.state === "verified"', "Today decisions expose controls only for actionable or verified opportunities");
+  assertIncludes(workspace, ': "hold";', "Suppressed and other non-actionable Today decisions stay on hold");
+  assertIncludes(workspace, "LeadPlanBlock", "Today decisions have structured evidence/route/activation blocks");
+  assertIncludes(workspace, 'title="Evidence"', "Today decisions show evidence state");
+  assertIncludes(workspace, 'title="Allowed Route"', "Today decisions show the governed route");
+  assertIncludes(workspace, 'title="Activation"', "Today decisions show activation state");
+  assertIncludes(workspace, "LeadActionControls", "Today decisions have one governed next action control");
+  assertIncludes(workspace, "leadCard", "Today decision card layout");
+  assertIncludes(workspace, "const decisions = inventory.slice(0, 5);", "Today decision queue is capped at five rows");
   assertIncludes(workspace, "setResearchMaxResults", "Market search max-results control");
   assertIncludes(actions, "max(30).default(10)", "Research/source provider action max is 30 rows");
   assertIncludes(sourceProviders, "Math.min(Math.max(value, 1), 30)", "Source providers clamp to 30 rows");
@@ -839,14 +1129,24 @@ function verifyDocsTruth() {
   const revenueOperatingLayer = read("__docs__/menulist-signaldesk/signaldesk-revenue-operating-layer/README.md");
   const revenueSpec = read("__docs__/menulist-signaldesk/signaldesk-revenue-operating-layer/signaldesk-revenue-operating-layer_spec.md");
   const revenueFirebase = read("__docs__/menulist-signaldesk/signaldesk-revenue-operating-layer/signaldesk-revenue-operating-layer_firebase.md");
+  const architectureReadiness = read("__docs__/menulist-signaldesk/menulist-signaldesk_architecture-readiness.md");
+  const productionReadinessAudit = read("__docs__/audits/menulist-production-readiness-audit.md");
+  const changelog = read("__docs__/changelog.md");
 
   assertIncludes(readme, "private growth control room", "SignalDesk README internal boundary");
   assertIncludes(readme, "observe, monitor, and approve", "SignalDesk README solo-owner posture");
+  assertIncludes(readme, "SignalDesk AI assist uses only `MENULIST_SIGNALDESK_GEMINI_AI_KEY*`", "SignalDesk README AI credential boundary");
   assertIncludes(readme, "| Product code | `SD` via `PRODUCT_IDS.SIGNALDESK` |", "SignalDesk README current product code");
   assertNotIncludes(readme, "Future product code", "SignalDesk README product code drift");
   assertIncludes(impl, "observe -> monitor -> approve -> pause or redirect", "SignalDesk implementation posture");
   assertIncludes(impl, '| Product code | `PRODUCT_IDS.SIGNALDESK = "SD"` is implemented.', "SignalDesk implementation current product code");
+  assertIncludes(impl, "SignalDesk-only `MENULIST_SIGNALDESK_GEMINI_AI_KEY*` pool", "SignalDesk implementation scoped AI key pool");
   assertIncludes(firebase, "Dedicated SignalDesk Firebase projects", "SignalDesk Firebase dedicated project posture");
+  assertIncludes(firebase, "no MenuList/Answerlattice AI-key fallback", "SignalDesk Firebase AI credential separation");
+  assertIncludes(validation, "SignalDesk AI Credential Isolation - July 11, 2026", "SignalDesk validation AI credential checkpoint");
+  assertIncludes(architectureReadiness, "SignalDesk AI provider calls must not fall back to MenuList `GEMINI_AI_KEY*`", "SignalDesk architecture AI credential boundary");
+  assertIncludes(productionReadinessAudit, "SignalDesk AI credential-isolation checkpoint", "Production audit SignalDesk AI credential checkpoint");
+  assertIncludes(changelog, "SignalDesk AI Credential Isolation", "Changelog SignalDesk AI credential checkpoint");
   assertIncludes(validation, "No paid campaign automation was implemented.", "SignalDesk paid campaign skip");
   assertIncludes(validation, "No Firebase deployment completed.", "SignalDesk blocked deployment boundary");
   assertIncludes(validation, "Local emulator data-flow smoke now runs through `scripts/verification/smoke-signaldesk-workflow.js`", "SignalDesk local workflow smoke status");

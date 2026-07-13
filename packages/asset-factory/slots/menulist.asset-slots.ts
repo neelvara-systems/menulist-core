@@ -73,6 +73,278 @@ const menuListLaunchFrameSlots: AssetSlot[] = [
   },
 }));
 
+type MenuListPublicMediaSlotConfig = {
+  id: string;
+  page: string;
+  route: string;
+  placement: string;
+  intent: string;
+  destination: string;
+  component?: string;
+  format: 'webp' | 'jpg' | 'svg';
+  ratio: '16:9' | '4:3' | '1:1' | '9:16';
+  maxKb: number;
+  sources: string[];
+  mobileNotes: string;
+  required?: boolean;
+  blocking?: boolean;
+  extraRejectionRules?: string[];
+};
+
+const menuListPublicMediaSlotConfigs: MenuListPublicMediaSlotConfig[] = [
+  {
+    id: 'menulist.industry.salons-spas.demo-placeholder',
+    page: 'Salons and spas industry page',
+    route: '/industries/salons-spas',
+    placement: 'bounded service-list demo proof',
+    intent: 'Show the shape of a fictional salon service-list page while routed demo screenshots remain pending.',
+    destination: 'public/images/website/demo-placeholders/glow-blade-service-list-placeholder.svg',
+    component: 'src/content/websiteIndustries.ts',
+    format: 'svg',
+    ratio: '16:9',
+    maxKb: 10,
+    sources: [
+      '__docs__/menulist-marketing-distribution/menulist-marketing-distribution_demo-placeholder-assets.md',
+      'src/content/websiteIndustries.ts',
+    ],
+    mobileNotes: 'Keep the demo label and fictional-data boundary readable on narrow industry pages.',
+    extraRejectionRules: [
+      'Temporary placeholder only; do not reuse as customer proof, Product Hunt proof, paid media, or final campaign creative.',
+    ],
+  },
+  {
+    id: 'menulist.marketing.launch-video.poster-placeholder',
+    page: 'MenuList marketing distribution planning',
+    route: '/',
+    placement: 'unmounted walkthrough-video poster placeholder',
+    intent: 'Retain a governed vertical planning placeholder until an approved walkthrough poster or thumbnail replaces it.',
+    destination: 'public/images/website/demo-placeholders/launch-video-poster-placeholder.svg',
+    format: 'svg',
+    ratio: '9:16',
+    maxKb: 10,
+    sources: [
+      '__docs__/menulist-marketing-distribution/menulist-marketing-distribution_demo-placeholder-assets.md',
+    ],
+    mobileNotes: 'Keep the planning-only label readable in a vertical preview.',
+    required: false,
+    blocking: false,
+    extraRejectionRules: [
+      'Planning placeholder only; do not mount, publish, distribute, or present it as an approved launch-video poster.',
+    ],
+  },
+  {
+    id: 'menulist.industry.service-list-businesses.proof-placeholder',
+    page: 'Service-list businesses industry page',
+    route: '/industries/service-list-businesses',
+    placement: 'bounded multi-category demo proof',
+    intent: 'Show the shape of fictional service-list categories while routed demo screenshots remain pending.',
+    destination: 'public/images/website/demo-placeholders/service-list-proof-grid-placeholder.svg',
+    component: 'src/content/websiteIndustries.ts',
+    format: 'svg',
+    ratio: '16:9',
+    maxKb: 10,
+    sources: [
+      '__docs__/menulist-marketing-distribution/menulist-marketing-distribution_demo-placeholder-assets.md',
+      'src/content/websiteIndustries.ts',
+    ],
+    mobileNotes: 'Preserve the sample-business boundary and category hierarchy on mobile.',
+    extraRejectionRules: [
+      'Temporary placeholder only; do not reuse as customer proof, Product Hunt proof, paid media, or final campaign creative.',
+    ],
+  },
+  {
+    id: 'menulist.industry.local-service-businesses.demo-placeholder',
+    page: 'Local service businesses industry page',
+    route: '/industries/local-service-businesses',
+    placement: 'bounded rate-card demo proof',
+    intent: 'Show the shape of a fictional local-service rate card while routed demo screenshots remain pending.',
+    destination: 'public/images/website/demo-placeholders/spark-detailing-rate-card-placeholder.svg',
+    component: 'src/content/websiteIndustries.ts',
+    format: 'svg',
+    ratio: '16:9',
+    maxKb: 10,
+    sources: [
+      '__docs__/menulist-marketing-distribution/menulist-marketing-distribution_demo-placeholder-assets.md',
+      'src/content/websiteIndustries.ts',
+    ],
+    mobileNotes: 'Keep the sample-business label and package hierarchy readable on mobile.',
+    extraRejectionRules: [
+      'Temporary placeholder only; do not reuse as customer proof, Product Hunt proof, paid media, or final campaign creative.',
+    ],
+  },
+  {
+    id: 'menulist.feature.customer-feedback-loop.public-form',
+    page: 'Customer Feedback Loop feature page',
+    route: '/features/customer-feedback-loop',
+    placement: 'public feedback form proof',
+    intent: 'Show the public feedback report form as a bounded customer workflow.',
+    destination: 'public/images/website/features/customer-feedback-loop/public-feedback-form.webp',
+    component: 'src/components/website/features/FeatureScreenshotProofGallery.tsx',
+    format: 'webp',
+    ratio: '1:1',
+    maxKb: 40,
+    sources: [
+      '__docs__/main-website/main-website_image-assets.md',
+      'src/components/website/features/FeatureScreenshotProofGallery.tsx',
+    ],
+    mobileNotes: 'Keep form labels and the public-report context readable on mobile.',
+  },
+  {
+    id: 'menulist.feature.menu-import.source-link',
+    page: 'Menu Import feature page',
+    route: '/features/menu-import',
+    placement: 'owner source-link import proof',
+    intent: 'Show the cropped owner source-link input used to prepare a menu import.',
+    destination: 'public/images/website/features/menu-import/source-menu-link.webp',
+    component: 'src/components/website/features/FeatureScreenshotProofGallery.tsx',
+    format: 'webp',
+    ratio: '9:16',
+    maxKb: 30,
+    sources: [
+      '__docs__/main-website/main-website_image-assets.md',
+      'src/components/website/features/FeatureScreenshotProofGallery.tsx',
+    ],
+    mobileNotes: 'Preserve input labels and source-link context at the native portrait proportion.',
+  },
+  {
+    id: 'menulist.feature.public-discovery.presence-checklist',
+    page: 'Public Discovery feature page',
+    route: '/features/public-discovery',
+    placement: 'public placement and source checklist proof',
+    intent: 'Show the bounded placement/source checklist without implying automatic third-party distribution.',
+    destination: 'public/images/website/features/public-discovery/presence-checklist.webp',
+    component: 'src/components/website/features/FeatureScreenshotProofGallery.tsx',
+    format: 'webp',
+    ratio: '16:9',
+    maxKb: 40,
+    sources: [
+      '__docs__/main-website/main-website_image-assets.md',
+      'src/components/website/features/FeatureScreenshotProofGallery.tsx',
+    ],
+    mobileNotes: 'Checklist labels must remain readable without suggesting automatic external sync.',
+  },
+  {
+    id: 'menulist.feature.qr-menu-links.share-kit',
+    page: 'QR Menu Links feature page',
+    route: '/features/qr-menu-links',
+    placement: 'owner share and QR kit proof',
+    intent: 'Show the bounded owner share, QR, and presence controls used to distribute the approved link.',
+    destination: 'public/images/website/features/qr-menu-links/share-kit.webp',
+    component: 'src/components/website/features/FeatureScreenshotProofGallery.tsx',
+    format: 'webp',
+    ratio: '4:3',
+    maxKb: 50,
+    sources: [
+      '__docs__/main-website/main-website_image-assets.md',
+      'src/components/website/features/FeatureScreenshotProofGallery.tsx',
+      'src/components/mobile/screens/MobileShareScreen.tsx',
+    ],
+    mobileNotes: 'Keep QR and share controls readable while preserving the owner-placement boundary.',
+  },
+  {
+    id: 'menulist.feature.print-ready-kit.dashboard',
+    page: 'Print-ready Kit feature page',
+    route: '/features/print-ready-kit',
+    placement: 'print assets dashboard proof',
+    intent: 'Show the cropped print-assets template list with account-header details removed.',
+    destination: 'public/images/website/print-ready-kit/print-assets-dashboard.jpg',
+    component: 'src/components/website/features/PrintReadyKitProofGallery.tsx',
+    format: 'jpg',
+    ratio: '4:3',
+    maxKb: 220,
+    sources: [
+      '__docs__/main-website/main-website_image-assets.md',
+      'src/components/website/features/PrintReadyKitProofGallery.tsx',
+      'src/components/templates/main-app/printableAssetTemplates/PrintableAssetTemplatesRoute.tsx',
+    ],
+    mobileNotes: 'The template list must remain inspectable without exposing account or tenant details.',
+  },
+  {
+    id: 'menulist.feature.print-ready-kit.editor',
+    page: 'Print-ready Kit feature page',
+    route: '/features/print-ready-kit',
+    placement: 'print asset editor proof',
+    intent: 'Show the dedicated print asset editor as an approved cropped product screenshot.',
+    destination: 'public/images/website/print-ready-kit/print-assets-editor.jpg',
+    component: 'src/components/website/features/PrintReadyKitProofGallery.tsx',
+    format: 'jpg',
+    ratio: '16:9',
+    maxKb: 200,
+    sources: [
+      '__docs__/main-website/main-website_image-assets.md',
+      'src/components/website/features/PrintReadyKitProofGallery.tsx',
+      'src/components/templates/main-app/printableAssetTemplates/PrintableAssetTemplatesRoute.tsx',
+    ],
+    mobileNotes: 'The editor canvas and main controls must remain recognizable on a narrow feature page.',
+  },
+  {
+    id: 'menulist.home.owner-proof.ai-menu-manager',
+    page: 'MenuList homepage and AI Menu Manager page',
+    route: '/ai-menu-manager',
+    placement: 'owner approval product proof',
+    intent: 'Show a fictional message-to-prepared-card workflow with owner approval kept explicit.',
+    destination: 'public/images/website/product-proof/ai-menu-manager-approval-card.webp',
+    component: 'src/components/website/home/OwnerProofSection.tsx',
+    format: 'webp',
+    ratio: '4:3',
+    maxKb: 100,
+    sources: [
+      '__docs__/main-website/main-website_image-assets.md',
+      '__docs__/main-website/asset-production/stage-08-product-proof/stage-08-product-proof-demo-assets.md',
+      'scripts/website-assets/generate-product-proof-assets.mjs',
+      'src/components/website/home/OwnerProofSection.tsx',
+      'src/components/website/ai-menu-manager/AiMenuManagerPage.tsx',
+    ],
+    mobileNotes: 'Keep owner approval visibly separate from the prepared suggestion on mobile.',
+  },
+  {
+    id: 'menulist.home.owner-proof.business-health',
+    page: 'MenuList homepage and Business Health feature page',
+    route: '/features/business-health',
+    placement: 'stable business-health product proof',
+    intent: 'Show a fictional stable check with a clear no-action-needed state and no invented performance metrics.',
+    destination: 'public/images/website/product-proof/business-health-stable-check.webp',
+    component: 'src/components/website/home/OwnerProofSection.tsx',
+    format: 'webp',
+    ratio: '4:3',
+    maxKb: 110,
+    sources: [
+      '__docs__/main-website/main-website_image-assets.md',
+      '__docs__/main-website/asset-production/stage-08-product-proof/stage-08-product-proof-demo-assets.md',
+      'scripts/website-assets/generate-product-proof-assets.mjs',
+      'src/components/website/home/OwnerProofSection.tsx',
+      'src/components/website/features/BusinessHealthFeaturePage.tsx',
+    ],
+    mobileNotes: 'Keep the stable state readable without implying guaranteed correctness or continuous monitoring.',
+  },
+];
+
+const menuListPublicMediaSlots: AssetSlot[] = menuListPublicMediaSlotConfigs.map((slot) => ({
+  id: slot.id,
+  brand: 'menulist',
+  productBoundary: 'internal-product-architecture',
+  page: slot.page,
+  route: slot.route,
+  placement: slot.placement,
+  type: 'static-image',
+  required: slot.required ?? true,
+  blocking: slot.blocking ?? true,
+  intent: slot.intent,
+  narrativeRules: menuListAssetRules,
+  rejectionRules: [...menuListRejectionRules, ...(slot.extraRejectionRules ?? [])],
+  outputs: [{ format: slot.format, role: 'primary', ratio: slot.ratio, maxKb: slot.maxKb }],
+  destination: slot.destination,
+  component: slot.component,
+  approval: 'automatic',
+  autonomyLevel: 2,
+  sources: slot.sources,
+  mobile: {
+    required: true,
+    maxKb: slot.maxKb,
+    notes: slot.mobileNotes,
+  },
+}));
+
 export const menuListAssetSlots: AssetSlot[] = [
   {
     id: 'menulist.home.hero.official-source',
@@ -140,9 +412,9 @@ export const menuListAssetSlots: AssetSlot[] = [
     id: 'menulist.home.customer-browse.mobile-menu',
     brand: 'menulist',
     productBoundary: 'internal-product-architecture',
-    page: 'MenuList homepage',
-    route: '/#customer-demo',
-    placement: 'customer browsing section',
+    page: 'MenuList homepage and QR Menu Links feature page',
+    route: '/features/qr-menu-links',
+    placement: 'customer browsing section and QR Menu Links public-menu proof',
     type: 'static-image',
     required: true,
     blocking: true,
@@ -157,6 +429,7 @@ export const menuListAssetSlots: AssetSlot[] = [
     sources: [
       '__docs__/main-website/main-website_image-assets.md',
       'src/components/website/home/CustomerBrowseSection.tsx',
+      'src/components/website/features/FeatureScreenshotProofGallery.tsx',
       'src/app/client/[[...slug]]/page.tsx',
     ],
     mobile: {
@@ -409,5 +682,6 @@ export const menuListAssetSlots: AssetSlot[] = [
       notes: 'Motion must have a static poster and reduced-motion fallback.',
     },
   },
+  ...menuListPublicMediaSlots,
   ...menuListLaunchFrameSlots,
 ];

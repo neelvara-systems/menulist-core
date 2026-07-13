@@ -4,7 +4,7 @@ import Confetti from '@atoms/Confetti';
 import { AIEnhancementPack, Currency } from '@data/common';
 import { aiEnhancementPacksList } from '@data/PlatformPlansList';
 import { getBoundedPaymentStringContext, logPaymentFailure } from '@hook/paymentDiagnostics';
-import usePaymentHandler from '@hook/usePaymentHandler';
+import usePaymentHandler, { isPaymentCheckoutDismissedError } from '@hook/usePaymentHandler';
 import { useToast } from '@shadcnhooks/use-toast';
 import { FirestoreSubscriptionDoc } from '@type/razorpay';
 import { useTranslations } from 'next-intl';
@@ -49,9 +49,9 @@ const CreditPacksCtaSection: React.FC<CreditPacksCtaSectionProps> = ({ currency,
                 toast({ variant: 'default', title: 'Credits added', description: 'Content generation credits are ready to use.' });
                 refetchActiveSubscription?.();
             })
-                .catch((error: any) => {
+                .catch((error: unknown) => {
                     setIsLoading(false);
-                    if (error === "UserClosed") {
+                    if (isPaymentCheckoutDismissedError(error)) {
                         return;
                     }
                     toast({ variant: 'destructive', title: 'Error', description: 'An error occurred during the final setup. Please contact support.' });

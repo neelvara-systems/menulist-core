@@ -15,6 +15,7 @@ import { admin } from "@lib/firebase/firebaseAdmin";
 import { requireAnyStorePermission, requireAnyStorePermissionForStoreData } from "@lib/permissions/server";
 import { buildTestPayload } from "@lib/posSync/payloadFormatter";
 import { normalizePosSyncNumericDocumentId } from "@lib/posSync/posSyncDocumentId";
+import { isPosSyncPinnedRequestTimeout, postPosSyncWebhook } from "@lib/posSync/pinnedWebhookRequest";
 import { validatePosSyncWebhookNetworkTarget } from "@lib/posSync/serverWebhookTarget";
 import { generateDeliveryId, signPayload } from "@lib/posSync/signature";
 import { validatePosSyncWebhookUrl } from "@lib/posSync/webhookUrl";
@@ -54,10 +55,6 @@ function buildPosSyncSecurityContext(
     };
 }
 
-function isAbortError(error: unknown): boolean {
-    return error instanceof Error && error.name === 'AbortError';
-}
-
 export const POST = withAuth(async (request, session) => {
     if (!FEATURE_FLAGS.ENABLE_POS_SYNC) {
         return NextResponse.json({ error: "Feature disabled" }, { status: 403 });
@@ -70,8 +67,7 @@ export const POST = withAuth(async (request, session) => {
         invalidJsonMessage: "Invalid input",
     });
     if (bodyResult.ok === false) return bodyResult.response;
-    const body = bodyResult.data as any;
-    const validation = validateAPIInput(schema, body);
+    const validation = validateAPIInput(schema, bodyResult.data);
     if (!validation.success) {
         return NextResponse.json({ error: "Invalid input" }, { status: 400 });
     }
@@ -83,12 +79,13 @@ export const POST = withAuth(async (request, session) => {
         return NextResponse.json({ error: "Invalid input" }, { status: 400 });
     }
     const storeDocumentId = storeScope.documentId;
+    const tenantDocumentId = tenantScope.documentId;
 
     if (!verifyTenantAccess(session, tenantId, storeId, request)) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const storeRateLimitHash = hashPublicRateLimitValue(storeDocumentId);
+    const storeRateLimitHash = hashPublicRateLimitValue(`${tenantDocumentId}:${storeDocumentId}`);
     const rlResult = await checkRateLimit({ key: `pos-test:${storeRateLimitHash}`, limit: 10, window: 60 });
     if (!rlResult.allowed) {
         return NextResponse.json({ error: "Too many requests" }, { status: 429 });
@@ -119,12 +116,39 @@ export const POST = withAuth(async (request, session) => {
             return NextResponse.json({ error: "Invalid request" }, { status: 400 });
         }
 
-        const markConnectionIssue = async () => {
-            await storeRef.update({
-                'posSync.status': 'connection_issue',
-                'posSync.lastStatus': 'failed',
-                'posSync.lastError': POS_SYNC_CONNECTION_ISSUE_MESSAGE,
-                'posSync.consecutiveFailures': POS_SYNC_CONNECTION_ISSUE_FAILURE_THRESHOLD,
+        const updateConnectionStatusIfCurrent = async (success: boolean) => {
+            await db.runTransaction(async (transaction) => {
+                const freshDoc = await transaction.get(storeRef);
+                if (!freshDoc.exists) return;
+                const freshStore = freshDoc.data();
+                const freshPermissionError = requireAnyStorePermissionForStoreData(
+                    request,
+                    session,
+                    freshStore,
+                    [PERMISSIONS.MANAGE_INTEGRATIONS],
+                    "POS sync",
+                    storeId,
+                    tenantId,
+                );
+                const currentPosSync = freshStore?.posSync;
+                if (
+                    freshPermissionError
+                    || !currentPosSync?.enabled
+                    || String(currentPosSync.webhookUrl || '') !== String(posSync.webhookUrl)
+                    || String(currentPosSync.webhookSecret || '') !== String(posSync.webhookSecret)
+                ) return;
+
+                transaction.update(storeRef, success ? {
+                    'posSync.status': 'healthy',
+                    'posSync.lastStatus': 'success',
+                    'posSync.lastError': '',
+                    'posSync.consecutiveFailures': 0,
+                } : {
+                    'posSync.status': 'connection_issue',
+                    'posSync.lastStatus': 'failed',
+                    'posSync.lastError': POS_SYNC_CONNECTION_ISSUE_MESSAGE,
+                    'posSync.consecutiveFailures': POS_SYNC_CONNECTION_ISSUE_FAILURE_THRESHOLD,
+                });
             });
         };
 
@@ -134,7 +158,7 @@ export const POST = withAuth(async (request, session) => {
                 ...buildPosSyncSecurityContext(storeId, tenantId),
                 ...getBoundedSecurityStringContext('validationError', webhookValidation.error),
             });
-            await markConnectionIssue();
+            await updateConnectionStatusIfCurrent(false);
             return NextResponse.json({
                 success: false,
                 statusCode: null,
@@ -144,14 +168,14 @@ export const POST = withAuth(async (request, session) => {
         }
 
         const networkValidation = await validatePosSyncWebhookNetworkTarget(webhookValidation.normalizedUrl);
-        if (!networkValidation.valid) {
+        if (!networkValidation.valid || !networkValidation.approvedAddresses?.length) {
             logSecurityDiagnostic(POS_SYNC_BLOCKED_WEBHOOK_TARGET, {
                 ...buildPosSyncSecurityContext(storeId, tenantId),
                 addressCount: networkValidation.addressCount,
                 ...getBoundedSecurityStringContext('networkError', networkValidation.error),
                 ...getBoundedSecurityStringContext('networkErrorName', networkValidation.errorName),
             });
-            await markConnectionIssue();
+            await updateConnectionStatusIfCurrent(false);
             return NextResponse.json({
                 success: false,
                 statusCode: null,
@@ -160,21 +184,46 @@ export const POST = withAuth(async (request, session) => {
             });
         }
 
-        const testPayload = buildTestPayload(storeId, tenantId, store?.currencyCode || store?.currency || 'INR');
+        const freshStoreDoc = await storeRef.get();
+        if (!freshStoreDoc.exists) {
+            return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+        }
+        const freshStore = freshStoreDoc.data();
+        const freshPermissionError = requireAnyStorePermissionForStoreData(
+            request,
+            session,
+            freshStore,
+            [PERMISSIONS.MANAGE_INTEGRATIONS],
+            "POS sync",
+            storeId,
+            tenantId,
+        );
+        if (freshPermissionError) return freshPermissionError;
+        const freshPosSync = freshStore?.posSync;
+        const freshWebhookValidation = validatePosSyncWebhookUrl(String(freshPosSync?.webhookUrl || ''));
+        if (
+            !freshPosSync?.enabled
+            || !freshPosSync?.webhookSecret
+            || freshPosSync.webhookSecret !== posSync.webhookSecret
+            || !freshWebhookValidation.valid
+            || freshWebhookValidation.normalizedUrl !== webhookValidation.normalizedUrl
+        ) {
+            return NextResponse.json({ error: "Connection changed" }, { status: 409 });
+        }
+
+        const testPayload = buildTestPayload(storeId, tenantId, freshStore?.currencyCode || freshStore?.currency || 'INR');
         const rawBody = JSON.stringify(testPayload);
         const timestamp = Math.floor(Date.now() / 1000);
         const deliveryId = generateDeliveryId();
-        const signature = signPayload(rawBody, posSync.webhookSecret, timestamp);
+        const signature = signPayload(rawBody, freshPosSync.webhookSecret, timestamp);
 
         const startTime = Date.now();
 
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), WEBHOOK_TIMEOUT_MS);
-
         try {
-            const response = await fetch(webhookValidation.normalizedUrl, {
-                method: 'POST',
-                redirect: 'manual',
+            const response = await postPosSyncWebhook({
+                approvedAddresses: networkValidation.approvedAddresses,
+                normalizedUrl: webhookValidation.normalizedUrl,
+                timeoutMs: WEBHOOK_TIMEOUT_MS,
                 headers: {
                     'Content-Type': 'application/json',
                     'X-MenuList-Signature': signature,
@@ -184,19 +233,12 @@ export const POST = withAuth(async (request, session) => {
                     'X-MenuList-Delivery-Id': deliveryId,
                 },
                 body: rawBody,
-                signal: controller.signal,
             });
 
-            clearTimeout(timeoutId);
             const responseTime = Date.now() - startTime;
 
             if (response.ok) {
-                await storeRef.update({
-                    'posSync.status': 'healthy',
-                    'posSync.lastStatus': 'success',
-                    'posSync.lastError': '',
-                    'posSync.consecutiveFailures': 0,
-                });
+                await updateConnectionStatusIfCurrent(true);
 
                 logSecurityDiagnostic(POS_SYNC_TEST_SUCCESS, {
                     ...buildPosSyncSecurityContext(storeId, tenantId),
@@ -205,35 +247,34 @@ export const POST = withAuth(async (request, session) => {
 
                 return NextResponse.json({
                     success: true,
-                    statusCode: response.status,
+                    statusCode: response.statusCode,
                     responseTime,
                 });
             }
 
             logSecurityDiagnostic(POS_SYNC_TEST_HTTP_FAILED, {
                 ...buildPosSyncSecurityContext(storeId, tenantId),
-                responseStatusCode: response.status,
+                responseStatusCode: response.statusCode,
                 responseTime,
             });
-            await markConnectionIssue();
+            await updateConnectionStatusIfCurrent(false);
             return NextResponse.json({
                 success: false,
-                statusCode: response.status,
+                statusCode: response.statusCode,
                 responseTime,
                 error: POS_SYNC_CONNECTION_ISSUE_MESSAGE,
             });
         } catch (fetchError: unknown) {
-            clearTimeout(timeoutId);
             const responseTime = Date.now() - startTime;
 
-            const isTimeout = isAbortError(fetchError);
+            const isTimeout = isPosSyncPinnedRequestTimeout(fetchError);
             const failureCode = isTimeout ? POS_SYNC_TEST_TIMEOUT : POS_SYNC_TEST_CONNECTION_FAILED;
             logSecurityFailure(failureCode, fetchError, {
                 ...buildPosSyncSecurityContext(storeId, tenantId),
                 responseTime,
                 timedOut: isTimeout,
             });
-            await markConnectionIssue();
+            await updateConnectionStatusIfCurrent(false);
             return NextResponse.json({
                 success: false,
                 statusCode: null,

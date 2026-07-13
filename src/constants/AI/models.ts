@@ -13,6 +13,8 @@
  * const { model, config } = AI_MODELS.IMAGE_PROCESSING;
  */
 
+import { ANSWERLATTICE_EMBEDDING_CONFIGS } from '@data/shared/answerlatticeEmbedding';
+
 // ═══════════════════════════════════════════════════════════════
 // GOOGLE GEMINI MODELS
 // ═══════════════════════════════════════════════════════════════
@@ -28,10 +30,11 @@ export const GEMINI_MODELS = {
     // Image Generation Models
     IMAGE_GEN: 'gemini-2.5-flash-image',
     IMAGE_FRONTIER_STABLE: 'gemini-3.1-flash-image',
+    IMAGE_FRONTIER_FAST_STABLE: 'gemini-3.1-flash-lite-image',
 
     // Embedding Model
-    TEXT_EMBEDDING: 'gemini-embedding-001',
-    MULTIMODAL_EMBEDDING: 'gemini-embedding-2',
+    TEXT_EMBEDDING: ANSWERLATTICE_EMBEDDING_CONFIGS.v1.model,
+    MULTIMODAL_EMBEDDING: ANSWERLATTICE_EMBEDDING_CONFIGS.v2.model,
 } as const;
 
 // ═══════════════════════════════════════════════════════════════
@@ -182,13 +185,12 @@ export const AI_MODELS = {
     /**
      * 📊 Text Embeddings
      *
-     * Model: gemini-embedding-001
-     * Why: Existing Answerlattice/help-center vector indexes use this text-only
-     *      embedding space. Migrating to Gemini Embedding 2 requires a full
-     *      re-embedding plan, not a string-only change.
+     * Model: gemini-embedding-2
+     * Why: Answerlattice's version-locked embedding registry selects the model,
+     *      cache version, dimensions, and Firestore vector field together.
      */
     EMBEDDINGS: {
-        model: GEMINI_MODELS.TEXT_EMBEDDING,
+        model: GEMINI_MODELS.MULTIMODAL_EMBEDDING,
         config: {},
         description: 'Vector embeddings for semantic search',
     },

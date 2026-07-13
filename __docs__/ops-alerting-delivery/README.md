@@ -1,9 +1,10 @@
 # Ops Alerting Delivery
 
-**Status:** ✅ IMPLEMENTED — Feature flag OFF by default  
-**Feature Flag:** `ENABLE_OPS_ALERTS: false`  
-**Priority:** 🔴 P0 — Build before launch  
+**Status:** ✅ IMPLEMENTED — Provider configuration/live smoke still required
+**Feature Flag:** `ENABLE_OPS_ALERTS: true` in current app source
+**Priority:** 🔴 P0 — Verify configured delivery before launch
 **Created:** February 20, 2026  
+**Last Updated:** July 13, 2026
 **Source:** ChatGPT launch infra review → Cascade critical review
 
 ---
@@ -14,7 +15,11 @@
 | ------------------------------------------------------------------------------------ | ------------ | ----------------------------------------- |
 | [ops-alerting-delivery_impl.md](./ops-alerting-delivery_impl.md)                     | Developers   | Technical blueprint, Telegram integration |
 | [ops-alerting-delivery_firebase.md](./ops-alerting-delivery_firebase.md)             | Cost Control | Firebase cost estimates                   |
-| [ops-alerting-delivery_mobile-support.md](./ops-alerting-delivery_mobile-support.md) | Mobile       | Admission test (BACKEND ONLY)             |
+| [ops-alerting-delivery_mobile-support.md](./ops-alerting-delivery_mobile-support.md) | Mobile       | Alert delivery plus current platform-mobile control boundary |
+
+July 13 ops-boundary audit: SAFE_MODE, deploy-mute, and platform-notification APIs now re-prove current persisted platform authority after fail-closed per-operator limits. Platform alert monitor rows/counts come from one bounded recent window, and repeated SAFE_MODE state requests do not create duplicate config/alert writes.
+
+The clean-room replay follow-up also makes acknowledgement no-write when already acknowledged and requires stable action IDs for manual handoff/manual alert creation. An identical manual-alert request resolves to the deterministic existing `systemAlerts` document and does not repeat external delivery.
 
 ---
 
@@ -37,29 +42,31 @@ Existing alert framework (functions/src/monitoring/alerts.ts)
 
 | Component             | Status     | Location                             |
 | --------------------- | ---------- | ------------------------------------ |
-| Alert rules (5 types) | ✅ BUILT   | `functions/src/monitoring/alerts.ts` |
-| Alert cooldown logic  | ✅ BUILT   | `checkCooldown()` in alerts.ts       |
-| Alert creation        | ✅ BUILT   | `createAlert()` in alerts.ts         |
-| Alert acknowledgment  | ✅ BUILT   | `acknowledgeAlert()` in alerts.ts    |
-| **Alert delivery**    | ❌ MISSING | `// TODO: Send notification`         |
+| Alert rules | ✅ BUILT | `functions/src/monitoring/alerts.ts` |
+| Alert cooldown logic | ✅ BUILT | `checkCooldown()` in alerts.ts |
+| Alert creation | ✅ BUILT | App and Functions alert helpers |
+| Alert acknowledgment | ✅ BUILT | Platform notification ops route/helper |
+| Alert delivery | ✅ BUILT / configuration-gated | Telegram plus configured platform email/WhatsApp delivery helpers |
 
-## What We're Building
+## Current Runtime
 
-1. Telegram Bot API integration (simple HTTP POST)
-2. Deploy mute window (suppress alerts during deploys)
-3. Wire `createAlert()` to call `sendTelegramAlert()`
+1. Telegram Bot API delivery is wired through validated fixed endpoints.
+2. Deploy mute uses `ops_config/system.alertsMutedUntil`.
+3. Classified platform alerts can use dashboard, Telegram, email, and WhatsApp channels when their flags/secrets are configured.
 
 ## Key Files
 
 | File                                        | Purpose                                   |
 | ------------------------------------------- | ----------------------------------------- |
-| `functions/src/monitoring/telegramAlert.ts` | NEW — Telegram delivery utility           |
-| `functions/src/monitoring/alerts.ts`        | MODIFY — Wire delivery into createAlert() |
+| `functions/src/monitoring/telegramAlert.ts` | Telegram delivery utility |
+| `functions/src/monitoring/alerts.ts` | Functions alert creation and delivery |
+| `src/lib/ops/alerts.ts` | Next.js alert creation and delivery |
+| `src/app/api/ops/platform-notifications/route.ts` | Current-authorized bounded monitor/recovery API |
 
 ## Feature Flag
 
 ```typescript
-ENABLE_OPS_ALERTS: false; // in src/config/features.ts
+ENABLE_OPS_ALERTS: true; // current app source; delivery still requires provider configuration
 ```
 
 ## Dependencies
@@ -74,4 +81,5 @@ ENABLE_OPS_ALERTS: false; // in src/config/features.ts
 
 | Version | Date              | Changes                                   |
 | ------- | ----------------- | ----------------------------------------- |
+| 1.1     | July 13, 2026     | Reconciled implemented delivery state and documented current authorization, bounded monitor counts, and idempotent SAFE_MODE interaction |
 | 1.0     | February 20, 2026 | Initial documentation from ChatGPT review |

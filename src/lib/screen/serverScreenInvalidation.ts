@@ -34,35 +34,35 @@ export async function touchDigitalScreenContentVersionForStoreServer(
     if (!FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED || !normalizedStoreId) return;
 
     try {
-        const now = admin.firestore.Timestamp.now();
         const screenRef = firestoreAdmin
             .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
             .doc(`campaigns_${normalizedStoreId}`);
-        const screenSnap = await screenRef.get();
-        const screen = screenSnap.exists ? screenSnap.data()?.screen : null;
-
-        if (!screen?.screenToken) return;
-
-        const nextContentVersion = Number(screen.contentVersion || 0) + 1;
         const publicScreenRef = firestoreAdmin
             .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
             .doc(`screen_${normalizedStoreId}`);
-        const batch = firestoreAdmin.batch();
 
-        batch.update(screenRef, {
-            "screen.contentVersion": admin.firestore.FieldValue.increment(1),
-            "screen.lastContentChangeAt": now,
+        await firestoreAdmin.runTransaction(async (transaction) => {
+            const screenSnap = await transaction.get(screenRef);
+            const screen = screenSnap.exists ? screenSnap.data()?.screen : null;
+
+            if (!screen?.screenToken) return;
+
+            const now = admin.firestore.Timestamp.now();
+            const nextContentVersion = Number(screen.contentVersion || 0) + 1;
+
+            transaction.update(screenRef, {
+                "screen.contentVersion": nextContentVersion,
+                "screen.lastContentChangeAt": now,
+            });
+            transaction.set(publicScreenRef, {
+                contentVersion: nextContentVersion,
+                enabled: screen.enabled === true,
+                lastContentChangeAt: now,
+                screenToken: screen.screenToken,
+                storeId: normalizedStoreId,
+                updatedAt: now,
+            }, { merge: false });
         });
-        batch.set(publicScreenRef, {
-            contentVersion: nextContentVersion,
-            enabled: screen.enabled === true,
-            lastContentChangeAt: now,
-            screenToken: screen.screenToken,
-            storeId: normalizedStoreId,
-            updatedAt: now,
-        }, { merge: true });
-
-        await batch.commit();
     } catch (error) {
         logServerScreenTouchFailure(error, normalizedStoreId, context);
     }

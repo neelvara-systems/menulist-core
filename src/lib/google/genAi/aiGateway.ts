@@ -10,6 +10,7 @@
  * - models.embedContent()
  * - models.generateImages()
  * - files.upload()
+ * - files.delete()
  *
  * Behavior:
  * - On 429 (rate limit): rotate to next key, retry immediately
@@ -210,6 +211,8 @@ export class AIGateway {
         return {
             upload: (config: any) =>
                 this.executeWithRetry('fileUpload', config),
+            delete: (config: any) =>
+                this.executeWithRetry('fileDelete', config),
         };
     }
 
@@ -246,6 +249,8 @@ export class AIGateway {
 
                 if (method === 'fileUpload') {
                     result = await client.files.upload(config);
+                } else if (method === 'fileDelete') {
+                    result = await client.files.delete(config);
                 } else {
                     result = await (client.models as any)[method](config);
                 }

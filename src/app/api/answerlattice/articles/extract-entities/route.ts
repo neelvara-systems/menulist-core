@@ -9,11 +9,14 @@ import { PRODUCT_IDS } from '@constant/product';
 import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
 import { recordAnswerlatticeAiOperation } from '@lib/answerlattice/aiAccounting';
 import { extractEntitiesFromArticles, extractPlainTextFromTipTap } from '@lib/answerlattice/entityExtraction';
-import { normalizeAnswerlatticeKbArticleId } from '@lib/answerlattice/kbArticleIdBoundary';
+import { upsertAnswerlatticeExtractedEntityCandidate } from '@lib/answerlattice/ontologyServer';
+import {
+    ANSWERLATTICE_KB_ARTICLE_ID_MAX_LENGTH,
+    normalizeAnswerlatticeKbArticleId,
+} from '@lib/answerlattice/kbArticleIdBoundary';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
 import { normalizeAnswerlatticeScopeDocumentId, resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
-import { admin } from '@lib/firebase/firebaseAdmin';
 import { logger } from '@lib/monitoring/logger';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
@@ -21,6 +24,7 @@ import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/
 import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { getSafeZodValidationDetails } from '@lib/security/inputValidation';
 import { callGeminiChatWithMetadata } from '@lib/vectorEmbeddings';
+import { FieldValue } from 'firebase-admin/firestore';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { withAuth } from '../../../../../middleware/auth';
@@ -28,9 +32,10 @@ import { withAuth } from '../../../../../middleware/auth';
 const ArticleSchema = z.object({
     categoryTitle: z.string().trim().max(180).optional().nullable(),
     content: z.any(),
-    id: z.string().trim().max(160).refine((value) => normalizeAnswerlatticeKbArticleId(value) === value),
+    id: z.string().trim().max(ANSWERLATTICE_KB_ARTICLE_ID_MAX_LENGTH)
+        .refine((value) => normalizeAnswerlatticeKbArticleId(value) === value),
     title: z.string().trim().min(1).max(240),
-});
+}).strict();
 const ARTICLE_ENTITY_EXTRACTION_MAX_BODY_BYTES = 256 * 1024;
 
 export const POST = withAuth(async (request: NextRequest, session) => {
@@ -198,13 +203,14 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             },
             existingEntities,
             async (candidate) => {
-                await answerlatticeFirestoreAdmin.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITY_CANDIDATES).add({
-                    ...candidate,
-                    createdBy: session.user?.email || session.user?.name || String(userId),
-                    createdOn: admin.firestore.FieldValue.serverTimestamp(),
-                    modifiedBy: session.user?.email || session.user?.name || String(userId),
-                    modifiedOn: admin.firestore.FieldValue.serverTimestamp(),
-                    pId: PRODUCT_IDS.ANSWERLATTICE,
+                await upsertAnswerlatticeExtractedEntityCandidate({
+                    scope: { tId: tenantId, sId: storeId },
+                    actorLabel: String(session.user?.email || session.user?.name || userId),
+                    candidate: {
+                        ...candidate,
+                        pId: PRODUCT_IDS.ANSWERLATTICE,
+                    },
+                    sourceArticleId: article.id,
                 });
             },
         );
@@ -213,7 +219,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         if (matchedEntityIds.length > 0) {
             await articleRef.set({
                 entityIds: matchedEntityIds,
-                modifiedOn: admin.firestore.FieldValue.serverTimestamp(),
+                modifiedOn: FieldValue.serverTimestamp(),
             }, { merge: true });
         }
 

@@ -44,6 +44,7 @@ export const CAMPAIGNCUE_CHANNEL_STUDIO_COPY: Partial<Record<CampaignCueChannelC
 export const CAMPAIGNCUE_SOURCE_TYPE_LABELS: Record<string, string> = {
     booking_link: "Booking link",
     event: "Event",
+    inspiration_pattern: "Example pattern",
     manual_note: "Manual note",
     menu_link: "Menu link",
     offer: "Offer",

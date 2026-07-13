@@ -24,7 +24,7 @@ const JobPreviewCard: React.FC<JobPreviewCardProps> = ({ job, onCardClick }) => 
                 <Tag color={config.color} style={{ border: 'none', background: 'none', fontSize: 24, padding: 0 }}>
                     {StatusIcon ? <StatusIcon /> : null}
                 </Tag>
-                <JobActionMenu jobId={id} onCardClick={onCardClick} />
+                <JobActionMenu jobId={id} status={status} onCardClick={onCardClick} />
             </Flex>
             <Flex vertical justify='end' style={{ height: '100%', marginTop: 16 }}>
                 <Typography.Title level={5} style={{ marginTop: 'auto' }}>

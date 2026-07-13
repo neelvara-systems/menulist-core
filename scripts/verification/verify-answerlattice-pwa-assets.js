@@ -153,8 +153,9 @@ function verifyWebsiteDiagramVectors() {
   const componentsRoot = path.join(ROOT, 'src/app/sites/answerlattice/components');
   const scrollRevealStyles = read('src/app/sites/answerlattice/scroll-reveal.css');
   const rasterPattern = /(<img\b|from ['"]next\/image['"]|\.png\b|\.jpe?g\b|\.webp\b|\/answerlattice-logo\.svg)/;
-  const allowedRasterMetadataFiles = new Set([
+  const allowedRasterOrMetadataFiles = new Set([
     path.join(componentsRoot, 'AnswerlatticeAssetImage.tsx'),
+    path.join(componentsRoot, 'AnswerlatticeMotionAsset.tsx'),
     path.join(componentsRoot, 'StructuredData.tsx'),
   ]);
   const filesToCheck = [];
@@ -173,7 +174,7 @@ function verifyWebsiteDiagramVectors() {
   collectTsxFiles(componentsRoot);
 
   for (const fullPath of filesToCheck) {
-    if (allowedRasterMetadataFiles.has(fullPath)) {
+    if (allowedRasterOrMetadataFiles.has(fullPath)) {
       continue;
     }
 
@@ -192,6 +193,20 @@ function verifyWebsiteDiagramVectors() {
   assertNotIncludes(scrollRevealStyles, 'translate3d(0, 0, 0)', 'Answerlattice reveal settled-state vector rasterization guard');
   assertIncludes(scrollRevealStyles, 'transform: none;', 'Answerlattice reveal visible state avoids persistent transform on SVG diagrams');
   assertIncludes(scrollRevealStyles, 'will-change: auto;', 'Answerlattice reveal visible state releases composited SVG layer');
+}
+
+function verifyWebsiteMotionAssetFallbacks() {
+  const motionAsset = read('src/app/sites/answerlattice/components/AnswerlatticeMotionAsset.tsx');
+  assertIncludes(motionAsset, '<video', 'Answerlattice motion asset video element');
+  assertIncludes(motionAsset, 'muted', 'Answerlattice motion asset muted autoplay contract');
+  assertIncludes(motionAsset, 'playsInline', 'Answerlattice motion asset in-page mobile playback');
+  assertIncludes(motionAsset, 'poster={asset.poster}', 'Answerlattice motion asset video poster fallback');
+  assertIncludes(motionAsset, 'type="video/webm"', 'Answerlattice motion asset WebM source');
+  assertIncludes(motionAsset, 'type="video/mp4"', 'Answerlattice motion asset MP4 fallback source');
+  assertIncludes(motionAsset, '<img', 'Answerlattice motion asset static poster fallback');
+  assertIncludes(motionAsset, 'src={asset.poster}', 'Answerlattice motion asset poster source');
+  assertIncludes(motionAsset, 'role="img"', 'Answerlattice motion asset accessible figure role');
+  assertIncludes(motionAsset, 'aria-label={asset.alt}', 'Answerlattice motion asset accessible label');
 }
 
 function verifySplashFiles() {
@@ -253,6 +268,7 @@ function main() {
   verifyLoaderBranding();
   verifyTransparentLogoAssets();
   verifyWebsiteDiagramVectors();
+  verifyWebsiteMotionAssetFallbacks();
   verifySplashFiles();
   console.log('Answerlattice PWA assets verified');
 }

@@ -2,7 +2,7 @@ import { AICapacityError } from "@services/ai/capacityError";
 import { InheritanceState } from "@type/multiOutlet.types";
 import { removeObjRef } from "@util/utils";
 import getTranslations from "../generateTranslations";
-import { ExtractedDataCategory, ExtractedDataItem, languageActionType, LanguageType, Project, ProjectFileType } from '../types';
+import { ExtractedDataCategory, ExtractedDataItem, LanguageActionType, LanguageType, Project, ProjectFileType } from '../types';
 import {
     getBoundedTranslationStringContext,
     getTranslationLanguageLogContext,
@@ -33,7 +33,7 @@ const getTranslationLogContext = (
     file: ProjectFileType,
     targetLanguage: LanguageType,
     sourceLanguage: LanguageType,
-    action: keyof typeof languageActionType,
+    action: LanguageActionType,
     extra: TranslationLogContext = {},
 ): TranslationLogContext => ({
     ...getTranslationScopeLogContext(projectData.projectId, file.uid),
@@ -317,7 +317,7 @@ export const translateFile = async (
     file: ProjectFileType,
     targetLanguage: LanguageType,
     sourceLanguage: LanguageType,
-    action: keyof typeof languageActionType,
+    action: LanguageActionType,
     governance?: TranslationGovernanceOptions
 ) => {
     const prevData = removeObjRef(projectData)
@@ -442,7 +442,7 @@ export const translateCategory = async (
     file: ProjectFileType,
     targetLanguage: LanguageType,
     sourceLanguage: LanguageType,
-    action: keyof typeof languageActionType,
+    action: LanguageActionType,
     category: ExtractedDataCategory
 ) => {
     const sourceName = category.name?.[sourceLanguage.code]?.trim();
@@ -522,7 +522,7 @@ const extractItemTranslatableStringsJSON = (item: ExtractedDataItem, sourceLang:
     return translationMap;
 }
 
-export const translateItem = async (projectData: Project, file: ProjectFileType, targetLanguage: LanguageType, sourceLanguage: LanguageType, action: keyof typeof languageActionType, item: ExtractedDataItem) => {
+export const translateItem = async (projectData: Project, file: ProjectFileType, targetLanguage: LanguageType, sourceLanguage: LanguageType, action: LanguageActionType, item: ExtractedDataItem) => {
     const prevData = removeObjRef(projectData)
 
     if (file.extractedData?.data) {

@@ -1,5 +1,9 @@
 # Menu Link Import Spec
 
+**Boundary Reviewed:** July 10, 2026
+
+> **Launch boundary:** Not current launch certification or deploy approval. This document records source-gated Menu Link Import evidence only. Both current intake paths require a signed-in owner before source acquisition or extraction: the owner app uses `/api/menu-link-imports`, while the public `/create-menu` page submits through the authenticated `/api/public/create-menu` route. Current release approval still requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md), `npm run verify:production-readiness-local`, `npm run verify:menu-extraction-pipeline`, `npm run verify:functions-deploy-preflight`, authenticated desktop/mobile owner-flow QA, signed-in `/create-menu` browser QA, direct and rendered source-acquisition smoke, Gemini extraction provider smoke where fallback is used, applicable target Firebase/Vercel deploy evidence, and production-host smoke.
+
 ## Problem
 
 Owners often already have a menu, service list, product catalog, rate card, or similar offering source on a website, direct PDF/image link, or QR destination. Existing MenuList intake accepts files, but asking owners to download and re-upload a public source adds friction.
@@ -14,7 +18,7 @@ This is aligned with MenuList because it moves scattered public menu sources int
 
 The feature is now available in two entry points:
 
-- Public `/create-menu` starter funnel before sign-in, guarded by permission confirmation, public IP rate limits, SAFE_MODE, and temporary draft TTL.
+- Public `/create-menu` setup page, which may be viewed before sign-in but redirects on submit and performs link acquisition/extraction only after authentication; the owner-bound route uses permission confirmation, a hashed-user rate limit, SAFE_MODE, and a temporary draft TTL.
 - Authenticated owner app upload flow for existing projects, guarded by tenant access, owner/store rate limits, and the same permission confirmation.
 
 ## Research Basis
@@ -29,7 +33,7 @@ Product implication: MenuList should handle owner-provided public menu pages, ho
 
 ### In Scope
 
-- Public visitor or authenticated owner pastes a public URL.
+- A visitor may open and fill the public `/create-menu` form, but a signed-in owner is required before either entry point submits a public URL for acquisition.
 - Owner confirms the source is their business menu or they have permission to import it.
 - Public HTML, text, JSON, direct PDF, and direct JPEG/PNG/WebP sources.
 - Shallow same-origin discovery when the pasted URL is a homepage and the page has likely menu/catalog/offering links.
@@ -92,8 +96,8 @@ Product implication: MenuList should handle owner-provided public menu pages, ho
 | MLINK-07 | Approved review writes use existing project/cache path | Implemented |
 | MLINK-08 | Desktop and mobile upload flows keep existing file upload unchanged | Implemented |
 | MLINK-09 | Desktop blocks link import while local selected files are waiting to be uploaded, and blocks image upload while a link job is active | Implemented |
-| MLINK-10 | Public `/create-menu` accepts permission-confirmed menu links before sign-in | Implemented |
-| MLINK-11 | Public link import creates a temporary draft preview and does not publish before authenticated claim | Implemented |
+| MLINK-10 | Public `/create-menu` exposes permission-confirmed link input but requires sign-in before the protected create-draft request and source acquisition | Implemented |
+| MLINK-11 | Signed-in `/create-menu` link import creates an owner-bound temporary draft preview and does not publish before authenticated claim | Implemented |
 
 ## Owner-Facing Copy
 
@@ -115,7 +119,7 @@ Avoid:
 
 The route stores source artifacts under tenant/store/project/job-scoped Storage paths and writes metadata to `menuLinkImportArtifacts`. The artifact URL passed to extraction is a Firebase download-token URL for the private artifact. The importer does not write `projects` until review is approved.
 
-For public `/create-menu`, the route stores source artifacts under `publicMenuDrafts/{draftId}/` and writes metadata into the temporary `publicMenuDrafts` document. The draft has a 24-hour TTL, is rate-limited by IP through `PUBLIC_MENU_ENTRY`, and is only converted into a tenant/store/project after authenticated claim.
+For signed-in `/create-menu`, the route stores source artifacts under `publicMenuDrafts/{draftId}/` and writes metadata into the owner-bound temporary `publicMenuDrafts` document. The draft has a 24-hour TTL, is rate-limited by HMAC-hashed user identity through `PUBLIC_MENU_ENTRY_AUTH`, and is only converted into a tenant/store/project after authenticated claim.
 
 ## Success Criteria
 
@@ -125,4 +129,4 @@ For public `/create-menu`, the route stores source artifacts under `publicMenuDr
 - Discarding a link import leaves no project menu mutation.
 - Approving a link import creates the source file and menu data in the project.
 - Unsafe URLs are blocked before outbound fetch.
-- Public link import creates only a review preview before sign-in and cannot publish without authenticated claim.
+- The public page may be viewed before sign-in, but link acquisition and preview creation start only after sign-in; the owner-bound draft still cannot publish without authenticated claim.

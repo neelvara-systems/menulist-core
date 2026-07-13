@@ -3,10 +3,9 @@
 import { FEATURE_FLAGS } from "@config/features";
 import { ECOMSAI_PLATFORM_STORE_ID } from "@constant/user";
 import { getScreenState } from "@database/campaigns";
-import { getPlatformSummary } from "@database/platformSummary";
 import { addStore, assertStoreUpdateSucceeded, updateStore } from "@database/stores";
 import { deleteOBPPhotos } from "@database/stores/uploadOBPPhoto";
-import { assertTenantUpdateSucceeded, assertTenantsStoresListUpdateSucceeded, updateTenant, updateTenantsStoreslist } from "@database/tenants";
+import { assertTenantUpdateSucceeded, updateTenant } from "@database/tenants";
 import { useAppDispatch } from "@hook/useAppDispatch";
 import { _debounce } from "@hook/useDebounce";
 import { getResolvedAnalyticsPreferences } from "@lib/analytics/preferences";
@@ -1224,15 +1223,6 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                                 tenantDetails.tenantId,
                                 'desktop_business_settings_tenant_update_rejected',
                             );
-                        } else {
-                            const storesListResult = await updateTenantsStoreslist({
-                                tenantId: tenantDetails.tenantId,
-                                storesList: savedstoresList,
-                            });
-                            assertTenantsStoresListUpdateSucceeded(
-                                storesListResult,
-                                'desktop_business_settings_tenant_stores_list_update_rejected',
-                            );
                         }
                         setStoreDetails({
                             ...storeDetails,
@@ -1260,9 +1250,6 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                 );
             }
         } else {
-            let newId = 0;
-            const summary = await getPlatformSummary();
-            newId = summary.stores?.count + 1;
             const normalizedTenantPhone = normalizePhoneNumberForStorage({
                 countryCode: tenantDetails.countryCode,
                 dialCode: tenantDetails.dialCode,
@@ -1271,7 +1258,6 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
             });
             changesToUpload = {
                 ...changesToUpload,
-                storeId: newId,
                 tenantId: tenantDetails.tenantId,
                 storeKey: changesToUpload.name?.toLowerCase().replaceAll(" ", "_"),
                 email: tenantDetails.email,
@@ -1283,26 +1269,16 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
             };
 
             const savedDetails = await addStore(changesToUpload);
+            const savedStoreId = savedDetails.storeId;
             assertStoreUpdateSucceeded(
                 savedDetails,
-                changesToUpload.storeId,
+                savedStoreId,
                 'desktop_business_settings_store_create_rejected',
             );
+            changesToUpload.storeId = savedStoreId;
             await deleteQueuedOBPPhotos(obpPhotoDeleteQueue);
             obpPhotoDeleteQueueRef.current = obpPhotoDeleteQueueRef.current.filter(
                 (photoUrl) => !obpPhotoDeleteQueue.includes(photoUrl),
-            );
-            const tenantData = {
-                tenantId: tenantDetails.tenantId,
-                storesList: [
-                    ...tenantDetails.storesList,
-                    { storeId: changesToUpload.storeId, name: changesToUpload.name, tenantName: tenantDetails.name },
-                ],
-            };
-            const storesListResult = await updateTenantsStoreslist(tenantData);
-            assertTenantsStoresListUpdateSucceeded(
-                storesListResult,
-                'desktop_business_settings_tenant_stores_list_update_rejected',
             );
             setStoreDetails({ ...changesToUpload, ...savedDetails });
         }

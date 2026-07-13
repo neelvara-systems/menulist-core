@@ -21,6 +21,7 @@
 
 import { DB_COLLECTIONS } from '@constant/database';
 import { LOG_FILES } from '@constant/logging';
+import { ANSWERLATTICE_EMBEDDING_VECTOR_FIELD } from '@constant/answerlattice/ai';
 import { addAiSearchHistoryServer, findCachedSearchByCacheKeyServer } from '@database/aiSearchHistory/server';
 import { getCachedEmbedding, saveCachedEmbedding } from '@database/queryEmbeddings';
 import { answerlatticeFirestoreAdmin as firestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
@@ -34,6 +35,11 @@ import {
 import type { GeminiUsageMetadata } from '@lib/vectorEmbeddings';
 import { extractPlainTextFromEditorContent } from '@lib/vectorEmbeddings/articleEmbeddings';
 import { getAnswerlatticeTimestampMillis, isCachedSearchResultFresh } from '@lib/answerlattice/cacheFreshness';
+import { normalizeAnswerlatticeProductSurfaceScopeId } from '@lib/answerlattice/productSurfaceContent';
+import {
+    parseAnswerlatticeRetrievalRelease,
+    parseAnswerlatticeRetrievalSearchIndex,
+} from '@lib/answerlattice/retrievalContracts';
 import { ANSWERLATTICE_CACHE_SOURCES, AnswerlatticeCacheSourceVersions } from '@lib/answerlattice/cacheVersionManifest';
 import { getAnswerlatticeCacheVersionServer } from '@lib/answerlattice/cacheVersionServer';
 import {
@@ -47,6 +53,7 @@ import { readResponseUint8ArrayWithLimit } from '@lib/security/boundedResponseBo
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { hashString } from '@util/hash';
 import { writeLogEntry } from 'logs/utils';
+import { z } from 'zod';
 
 import type { CoreSearchInput, CoreSearchResult, SearchPerfMetrics } from './types';
 
@@ -58,7 +65,7 @@ const SIMILARITY_THRESHOLD = 0.6;
 const SIMILARITY_THRESHOLD_LOW = 0.4;
 const VECTOR_SEARCH_LIMIT = 12;
 const RAG_CONTEXT_LIMIT = 6;
-const SEARCH_CACHE_VERSION = 'rag-v3';
+const SEARCH_CACHE_VERSION = 'rag-v4';
 const ANSWERLATTICE_LOOKUP_CACHE_TTL_MS = 30_000;
 const MAX_ANSWERLATTICE_LOOKUP_CACHE_ENTRIES = 300;
 
@@ -107,6 +114,26 @@ const writeSearchPerfLogEntry = async (entry: Parameters<typeof writeLogEntry>[0
     }
 };
 
+const saveAiSearchHistorySafely = async (
+    data: Parameters<typeof addAiSearchHistoryServer>[0],
+    context: { mountContext: CoreSearchInput['mountContext']; tId: number; sId: number },
+) => {
+    try {
+        return await addAiSearchHistoryServer(data);
+    } catch (error) {
+        logRuntimeFailure('answerlattice_search_history_write_failed', error, {
+            ...getBoundedRuntimeStringContext('mountContext', context.mountContext),
+            ...getBoundedRuntimeStringContext('storeId', context.sId),
+            ...getBoundedRuntimeStringContext('tenantId', context.tId),
+            answerSource: data.answerSource || null,
+            canonical: data.canonical === true,
+            hasImage: Boolean(data.imageUrl || data.generatedQueryFromImage),
+            referenceCount: Array.isArray(data.references) ? data.references.length : 0,
+        });
+        return null;
+    }
+};
+
 type SearchCoreFailureError = Error & {
     code?: string;
     status?: number;
@@ -130,6 +157,7 @@ type KnowledgeBaseCacheState = {
     version: string;
     hasPublishedArticles: boolean;
     sourceVersion?: number;
+    canonicalSourceVersion?: number;
 };
 
 type TimedCacheEntry<T> = {
@@ -139,6 +167,13 @@ type TimedCacheEntry<T> = {
 
 const entitySearchIndexCache = new Map<string, TimedCacheEntry<any[]>>();
 const latestReleaseCache = new Map<string, TimedCacheEntry<any | null>>();
+const publishedKbStateCache = new Map<string, TimedCacheEntry<{ hasPublishedArticles: boolean; latestModified: number }>>();
+
+const SearchAnswerSchema = z.object({
+    craftedAnswer: z.string().trim().min(1).max(12_000),
+    references: z.array(z.string().trim().min(1).max(180)).max(8).default([]),
+    suggestedQuestions: z.array(z.string().trim().min(1).max(240)).max(3).default([]),
+}).strict();
 
 const normalizeStorageBucket = (value?: string | null): string | null => {
     const trimmed = String(value || '').trim();
@@ -205,7 +240,7 @@ const isTrustedAnswerlatticeSearchImageUrl = (url: URL, tId: number, sId: number
     const objectPath = getFirebaseStorageObjectPath(url);
     if (!objectPath) return false;
 
-    return objectPath.startsWith(`chatSessions/chatimages/${Number(tId)}/${Number(sId)}/`);
+    return objectPath.startsWith(`chatSessions/chatimages/${tId}/${sId}/`);
 };
 
 const isLikelyBase64 = (value: string): boolean => /^[A-Za-z0-9+/]+={0,2}$/.test(value);
@@ -255,65 +290,115 @@ const rememberTimedCache = <T>(cache: Map<string, TimedCacheEntry<T>>, key: stri
     cache.set(key, { value, expiresAt: Date.now() + ANSWERLATTICE_LOOKUP_CACHE_TTL_MS });
 };
 
+const getPublishedKnowledgeBaseState = async (
+    tId: number,
+    sId: number,
+    cacheVersionToken: string,
+): Promise<{ hasPublishedArticles: boolean; latestModified: number }> => {
+    const cacheKey = `${tId}:${sId}:${cacheVersionToken}`;
+    const cached = readTimedCache(publishedKbStateCache, cacheKey);
+    if (cached !== undefined) return cached;
+
+    const snapshot = await firestoreAdmin.collection(DB_COLLECTIONS.KB_ARTICLES)
+        .where('pId', '==', 'AL')
+        .where('tId', '==', tId)
+        .where('sId', '==', sId)
+        .where('status', '==', 'published')
+        .where('active', '==', true)
+        .orderBy('modifiedOn', 'desc')
+        .limit(1)
+        .select('modifiedOn')
+        .get();
+    const value = {
+        hasPublishedArticles: !snapshot.empty,
+        latestModified: snapshot.empty ? 0 : getAnswerlatticeTimestampMillis(snapshot.docs[0].data()?.modifiedOn),
+    };
+    rememberTimedCache(publishedKbStateCache, cacheKey, value);
+    return value;
+};
+
 const getKnowledgeBaseCacheState = async (tId: number, sId: number): Promise<KnowledgeBaseCacheState> => {
+    let canonicalSourceVersion: number | undefined;
     try {
-        const manifestVersion = await getAnswerlatticeCacheVersionServer(ANSWERLATTICE_CACHE_SOURCES.KB, tId, sId);
+        const [manifestVersion, canonicalVersion] = await Promise.all([
+            getAnswerlatticeCacheVersionServer(ANSWERLATTICE_CACHE_SOURCES.KB, tId, sId).catch(() => undefined),
+            getAnswerlatticeCacheVersionServer(ANSWERLATTICE_CACHE_SOURCES.CANONICAL, tId, sId).catch((error) => {
+                logRuntimeFailure('answerlattice_canonical_cache_version_load_failed', error, {
+                    ...getBoundedRuntimeStringContext('storeId', sId),
+                    ...getBoundedRuntimeStringContext('tenantId', tId),
+                });
+                return undefined;
+            }),
+        ]);
+        canonicalSourceVersion = canonicalVersion;
+        const canonicalVersionToken = canonicalSourceVersion || 0;
         if (manifestVersion) {
+            const publishedState = await getPublishedKnowledgeBaseState(tId, sId, `kbv${manifestVersion}`);
             return {
-                version: `${SEARCH_CACHE_VERSION}:kbv${manifestVersion}`,
-                hasPublishedArticles: true,
+                version: `${SEARCH_CACHE_VERSION}:kbv${manifestVersion}:cv${canonicalVersionToken}`,
+                hasPublishedArticles: publishedState.hasPublishedArticles,
                 sourceVersion: manifestVersion,
+                canonicalSourceVersion,
             };
         }
 
-        const snapshot = await firestoreAdmin.collection(DB_COLLECTIONS.KB_ARTICLES)
-            .where('status', '==', 'published')
-            .where('tId', '==', tId)
-            .where('sId', '==', sId)
-            .orderBy('modifiedOn', 'desc')
-            .limit(1)
-            .get();
-
-        if (snapshot.empty) {
-            return { version: `${SEARCH_CACHE_VERSION}:empty`, hasPublishedArticles: false };
+        const publishedState = await getPublishedKnowledgeBaseState(tId, sId, 'legacy');
+        if (!publishedState.hasPublishedArticles) {
+            return {
+                version: `${SEARCH_CACHE_VERSION}:empty:cv${canonicalVersionToken}`,
+                hasPublishedArticles: false,
+                canonicalSourceVersion,
+            };
         }
 
-        const latestModified = getAnswerlatticeTimestampMillis(snapshot.docs[0].data()?.modifiedOn);
         return {
-            version: `${SEARCH_CACHE_VERSION}:${latestModified || 'unknown'}`,
+            version: `${SEARCH_CACHE_VERSION}:${publishedState.latestModified || 'unknown'}:cv${canonicalVersionToken}`,
             hasPublishedArticles: true,
-            sourceVersion: latestModified || undefined,
+            sourceVersion: publishedState.latestModified || undefined,
+            canonicalSourceVersion,
         };
     } catch {
-        // Cache invalidation should improve correctness, not block retrieval if the index is unavailable.
-        return { version: SEARCH_CACHE_VERSION, hasPublishedArticles: true };
+        // Do not spend on RAG when knowledge availability cannot be verified.
+        return {
+            version: `${SEARCH_CACHE_VERSION}:cv${canonicalSourceVersion || 0}`,
+            hasPublishedArticles: false,
+            canonicalSourceVersion,
+        };
     }
 };
 
 const getAnswerlatticeEntitySearchIndexServer = async (tId: number, sId: number): Promise<any[]> => {
-    const cacheKey = `${Number(tId)}:${Number(sId)}`;
+    const cacheKey = `${tId}:${sId}`;
     const cached = readTimedCache(entitySearchIndexCache, cacheKey);
     if (cached) return cached;
 
     const snapshot = await firestoreAdmin
         .collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITY_SEARCH_INDEX)
+        .where('pId', '==', 'AL')
         .where('tId', '==', tId)
         .where('sId', '==', sId)
-        .limit(500)
+        .limit(501)
         .get();
 
-    const searchIndex = snapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id }));
+    if (snapshot.size > 500) {
+        throw new Error('Answerlattice entity search index exceeds the supported retrieval boundary.');
+    }
+    const searchIndex = snapshot.docs.map((doc) => parseAnswerlatticeRetrievalSearchIndex(
+        { ...doc.data(), id: doc.id },
+        { tId, sId },
+    ));
     rememberTimedCache(entitySearchIndexCache, cacheKey, searchIndex);
     return searchIndex;
 };
 
 const getAnswerlatticeLatestReleaseServer = async (tId: number, sId: number): Promise<any | null> => {
-    const cacheKey = `${Number(tId)}:${Number(sId)}`;
+    const cacheKey = `${tId}:${sId}`;
     const cached = readTimedCache(latestReleaseCache, cacheKey);
     if (cached !== undefined) return cached;
 
     const snapshot = await firestoreAdmin
         .collection(DB_COLLECTIONS.ANSWERLATTICE_RELEASES)
+        .where('pId', '==', 'AL')
         .where('tId', '==', tId)
         .where('sId', '==', sId)
         .where('status', '==', 'active')
@@ -326,7 +411,7 @@ const getAnswerlatticeLatestReleaseServer = async (tId: number, sId: number): Pr
         return null;
     }
     const doc = snapshot.docs[0];
-    const release = { ...doc.data(), id: doc.id };
+    const release = parseAnswerlatticeRetrievalRelease({ ...doc.data(), id: doc.id }, { tId, sId });
     rememberTimedCache(latestReleaseCache, cacheKey, release);
     return release;
 };
@@ -339,6 +424,25 @@ const isKnowledgeBaseRefusal = (answer: string): boolean => {
         normalized.includes('not documented') ||
         normalized.includes('no relevant articles');
 };
+
+const buildPublicKnowledgeBaseReference = (
+    documentId: string,
+    data: Record<string, unknown>,
+    similarityScore: number,
+) => ({
+    id: documentId,
+    title: cleanSearchContextText(data.title, 240) || 'Help article',
+    url: cleanSearchContextText(data.url, 500) || '',
+    categoryId: cleanSearchContextText(data.categoryId, 180) || '',
+    sectionId: cleanSearchContextText(data.sectionId, 180) || '',
+    categoryTitle: cleanSearchContextText(data.categoryTitle, 180) || '',
+    sectionTitle: cleanSearchContextText(data.sectionTitle, 180) || '',
+    content: data.content,
+    tags: Array.isArray(data.tags)
+        ? data.tags.filter((tag): tag is string => typeof tag === 'string').slice(0, 20)
+        : [],
+    similarityScore,
+});
 
 const EMPTY_RESULT: CoreSearchResult = {
     craftedAnswer: `I couldn't find any relevant articles in our knowledge base for that specific question.
@@ -363,6 +467,7 @@ const buildProductContextCacheToken = (productContext: CoreSearchInput['productC
         feature: productContext.feature || '',
         page: productContext.page || '',
         plan: productContext.plan || '',
+        state: productContext.state || '',
         surfaceEntityIds: Array.isArray((productContext as any).surfaceEntityIds)
             ? (productContext as any).surfaceEntityIds.map(String).sort()
             : [],
@@ -378,6 +483,14 @@ const cleanSearchContextText = (value: unknown, maxLength = 140): string | undef
     if (!text) return undefined;
     return text.length > maxLength ? text.slice(0, maxLength) : text;
 };
+
+const getSearchTextLogContext = (query: unknown, effectiveQuery?: unknown) => ({
+    queryLength: String(query || '').length,
+    ...(effectiveQuery === undefined ? {} : {
+        effectiveQueryLength: String(effectiveQuery || '').length,
+        imageChangedQuery: String(effectiveQuery || '') !== String(query || ''),
+    }),
+});
 
 const buildSearchHistoryContextFields = (productContext: CoreSearchInput['productContext']) => {
     if (!productContext) return {};
@@ -405,6 +518,12 @@ const buildSearchHistoryRequestFields = (requestMetadata: CoreSearchInput['reque
     const requestOrigin = cleanSearchContextText(requestMetadata.requestOrigin, 180);
     const requestPath = cleanSearchContextText(requestMetadata.requestPath, 180);
     const userAgentFamily = cleanSearchContextText(requestMetadata.userAgentFamily, 40);
+    const evidenceLinks = Array.isArray(requestMetadata.evidenceLinks)
+        ? requestMetadata.evidenceLinks.slice(0, 3).map(link => ({
+            url: cleanSearchContextText(link?.url, 1000),
+            label: cleanSearchContextText(link?.label, 80),
+        })).filter(link => Boolean(link.url))
+        : [];
 
     return {
         ...(visitorId ? { visitorId } : {}),
@@ -414,6 +533,8 @@ const buildSearchHistoryRequestFields = (requestMetadata: CoreSearchInput['reque
         ...(requestOrigin ? { requestOrigin } : {}),
         ...(requestPath ? { requestPath } : {}),
         ...(userAgentFamily ? { userAgentFamily } : {}),
+        ...(requestMetadata.visitorVerified === true ? { visitorVerified: true } : {}),
+        ...(evidenceLinks.length > 0 ? { debugEvidenceLinks: evidenceLinks } : {}),
     };
 };
 
@@ -452,8 +573,8 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
     const {
         query: searchQuery,
         mountContext,
-        tId,
-        sId,
+        tId: rawTId,
+        sId: rawSId,
         uId,
         mode,
         conversationHistory,
@@ -461,7 +582,11 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
         imageBuffer: inlineImageBuffer,
         productContext,
         requestMetadata,
+        executionContext = 'production',
+        retrievalPreload,
+        beforeAiProviderCall,
     } = input;
+    const isAnswerTestExecution = executionContext === 'answer_test';
 
     const addAiProviderTokenUsage = (usage?: GeminiUsageMetadata | null) => {
         if (!usage) return;
@@ -495,17 +620,25 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
             aiProviderUsed: aiProviderOperations.size > 0,
         };
     };
+    let aiProviderGatePromise: Promise<void> | null = null;
+    const ensureAiProviderAllowed = async () => {
+        if (!beforeAiProviderCall) return;
+        if (!aiProviderGatePromise) aiProviderGatePromise = beforeAiProviderCall();
+        await aiProviderGatePromise;
+    };
     const hasConversationHistory = Array.isArray(conversationHistory) && conversationHistory.length > 0;
 
-    if (!Number.isFinite(Number(tId)) || !Number.isFinite(Number(sId)) || Number(tId) <= 0 || Number(sId) <= 0) {
+    const tId = normalizeAnswerlatticeProductSurfaceScopeId(rawTId);
+    const sId = normalizeAnswerlatticeProductSurfaceScopeId(rawSId);
+    if (!tId || !sId) {
         try {
-            await writeLogEntry({
+            await writeSearchPerfLogEntry({
                 logFileName: LOG_FILE,
                 logType: 'ERROR_INVALID_TENANT_CONTEXT',
                 data: {
                     mountContext,
-                    hasTenantId: tId !== undefined && tId !== null,
-                    hasStoreId: sId !== undefined && sId !== null,
+                    hasTenantId: rawTId !== undefined && rawTId !== null,
+                    hasStoreId: rawSId !== undefined && rawSId !== null,
                 },
             });
         } catch {
@@ -530,8 +663,16 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
                     craftedAnswer: 'System is temporarily under maintenance. Please try again shortly.',
                 };
             }
-        } catch {
-            // Fail-open: don't block operations if check fails
+        } catch (error) {
+            logRuntimeFailure('answerlattice_safe_mode_check_failed_closed', error, {
+                ...getBoundedRuntimeStringContext('mountContext', mountContext),
+                ...getBoundedRuntimeStringContext('storeId', sId),
+                ...getBoundedRuntimeStringContext('tenantId', tId),
+            });
+            return {
+                ...EMPTY_RESULT,
+                craftedAnswer: 'System is temporarily under maintenance. Please try again shortly.',
+            };
         }
     }
 
@@ -563,7 +704,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
             } else if (imageUrl) {
                 // Security validation
                 const url = new URL(imageUrl);
-                if (!isTrustedAnswerlatticeSearchImageUrl(url, Number(tId), Number(sId))) {
+                if (!isTrustedAnswerlatticeSearchImageUrl(url, tId, sId)) {
                     throw new Error('Untrusted or invalid image URL');
                 }
 
@@ -608,6 +749,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
             imageProcessed = true;
 
             // Generate search query from image
+            await ensureAiProviderAllowed();
             const imageQueryResult = await generateSearchQueryFromImageWithMetadata(
                 searchQuery,
                 imageBufferForAi.imageBase64,
@@ -619,12 +761,12 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
 
         } catch (imageError: any) {
             // Graceful degradation: fallback to text-only search
-            await writeLogEntry({
+            await writeSearchPerfLogEntry({
                 logFileName: LOG_FILE,
                 logType: 'WARNING_IMAGE_PROCESSING_FALLBACK',
                 data: {
                     ...getSearchCoreFailureLogData('image_processing_fallback', imageError),
-                    query: searchQuery,
+                    ...getSearchTextLogContext(searchQuery),
                     mountContext,
                 }
             });
@@ -647,8 +789,8 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
         try {
             const { resolveRelatedContentForSearch } = await import('@lib/answerlattice/productSurfaceContentServer');
             const resolved = await resolveRelatedContentForSearch({
-                tId: Number(tId),
-                sId: Number(sId),
+                tId,
+                sId,
                 context: productContext,
                 target: mountContext === 'widget' ? 'helpWidget' : 'helpCenter',
             });
@@ -670,9 +812,13 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
     // ===== STAGE 2.5: INSTANT CACHE (Upstash Redis) =====
     // Only for canonical answers — deterministic, versioned, perfect cache objects.
     // Feature-flagged: ENABLE_ANSWERLATTICE_INSTANT_CACHE
-    let instantCacheSearchIndex: any[] | undefined;
-    let instantCacheLatestRelease: any | null | undefined;
-    if (FEATURE_FLAGS.ENABLE_ANSWERLATTICE_INSTANT_CACHE && FEATURE_FLAGS.ENABLE_ANSWERLATTICE_CANONICAL_ANSWERS) {
+    let instantCacheSearchIndex: any[] | undefined = retrievalPreload?.searchIndex;
+    let instantCacheLatestRelease: any | null | undefined = retrievalPreload?.latestRelease;
+    if (
+        !isAnswerTestExecution
+        && FEATURE_FLAGS.ENABLE_ANSWERLATTICE_INSTANT_CACHE
+        && FEATURE_FLAGS.ENABLE_ANSWERLATTICE_CANONICAL_ANSWERS
+    ) {
         try {
             const { instantCacheLookup } = await import('@lib/answerlattice/instantCache');
             const { answerlatticeTokenize } = await import('@lib/answerlattice/tokenizer');
@@ -709,9 +855,10 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
 
                     const effectivePlan = effectiveProductContext?.plan;
                     const effectiveRole = effectiveProductContext?.userRole;
+                    const effectiveState = effectiveProductContext?.state;
 
                     const cached = await instantCacheLookup(
-                        tId, sId, topEntityId, version, effectivePlan, effectiveRole
+                        tId, sId, topEntityId, version, effectivePlan, effectiveRole, effectiveState
                     );
 
                     if (cached) {
@@ -726,7 +873,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
                         const instantCacheMode = hasConversationHistory ? 'assistant' : 'qna';
                         const instantCacheKey = `${tId}:${sId}:${SEARCH_CACHE_VERSION}:${instantCacheKeyBase}::CTX::${instantCacheContextToken}::MODE::${instantCacheMode}`;
 
-                        const savedHistory = await addAiSearchHistoryServer({
+                        const savedHistory = await saveAiSearchHistorySafely({
                             query: searchQuery,
                             cacheKey: instantCacheKey,
                             tId,
@@ -743,14 +890,14 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
                             sourceVersions: cached.sourceVersions,
                             ...buildSearchHistoryContextFields(effectiveProductContext),
                             ...buildSearchHistoryRequestFields(requestMetadata),
-                        });
+                        }, { mountContext, tId, sId });
 
-                        await writeLogEntry({
+                        await writeSearchPerfLogEntry({
                             logFileName: PERF_LOG,
                             userId: uId,
                             logType: 'INSTANT_CACHE_HIT',
                             data: {
-                                query: searchQuery,
+                                ...getSearchTextLogContext(searchQuery),
                                 totalMs: perfMetrics.total,
                                 entityId: topEntityId,
                                 answerId: cached.canonicalAnswerId,
@@ -774,11 +921,11 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
                     }
 
                     // Log cache miss for monitoring
-                    await writeLogEntry({
+                    await writeSearchPerfLogEntry({
                         logFileName: PERF_LOG,
                         userId: uId,
                         logType: 'INSTANT_CACHE_MISS',
-                        data: { query: searchQuery, entityId: topEntityId, mountContext }
+                        data: { ...getSearchTextLogContext(searchQuery), entityId: topEntityId, mountContext }
                     });
                 }
             }
@@ -815,10 +962,17 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
             confidence?: CoreSearchResult['confidence'];
         } = {},
     ): Promise<CoreSearchResult> => {
+        if (isAnswerTestExecution) {
+            return withAiProviderUsage({
+                ...result,
+                searchHistoryId: undefined,
+            });
+        }
+
         const matchedEntityIds = Array.isArray(historyContext.matchedEntityIds)
             ? historyContext.matchedEntityIds.filter((id): id is string => typeof id === 'string' && Boolean(id)).slice(0, 20)
             : undefined;
-        const savedHistory = await addAiSearchHistoryServer({
+        const savedHistory = await saveAiSearchHistorySafely({
             query: searchQuery,
             cacheKey: cacheLookupKey,
             tId,
@@ -826,7 +980,6 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
             uId,
             mountContext,
             generatedQueryFromImage,
-            imageUrl: imageUrl || undefined,
             craftedAnswer: result.craftedAnswer,
             references: result.references || [],
             canonical: Boolean(result.canonical),
@@ -836,12 +989,17 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
             matchedEntityIds,
             fallbackReason: historyContext.fallbackReason,
             confidence: result.confidence || historyContext.confidence,
-            sourceVersions: kbCacheState.sourceVersion
-                ? { [ANSWERLATTICE_CACHE_SOURCES.KB]: kbCacheState.sourceVersion }
-                : undefined,
+            sourceVersions: {
+                ...(kbCacheState.sourceVersion
+                    ? { [ANSWERLATTICE_CACHE_SOURCES.KB]: kbCacheState.sourceVersion }
+                    : {}),
+                ...(kbCacheState.canonicalSourceVersion
+                    ? { [ANSWERLATTICE_CACHE_SOURCES.CANONICAL]: kbCacheState.canonicalSourceVersion }
+                    : {}),
+            },
             ...buildSearchHistoryContextFields(effectiveProductContext),
             ...buildSearchHistoryRequestFields(requestMetadata),
-        });
+        }, { mountContext, tId, sId });
 
         return withAiProviderUsage({
             ...result,
@@ -854,11 +1012,20 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
     // or context-crossed answers cannot bypass canonical retrieval.
     // Widget skips shared search-history cache because feedback needs a per-answer record.
     let cachedResult: any = null;
-    if (mountContext === 'help_center' && uId && !hasConversationHistory) {
-        cachedResult = await findCachedSearchByCacheKeyServer(
-            cacheLookupKey,
-            { tId, sId, uId } as any
-        );
+    if (!isAnswerTestExecution && mountContext === 'help_center' && uId && !hasConversationHistory) {
+        try {
+            cachedResult = await findCachedSearchByCacheKeyServer(
+                cacheLookupKey,
+                { tId, sId, uId } as any,
+            );
+        } catch (error) {
+            logRuntimeFailure('answerlattice_search_history_cache_lookup_failed', error, {
+                ...getBoundedRuntimeStringContext('mountContext', mountContext),
+                ...getBoundedRuntimeStringContext('storeId', sId),
+                ...getBoundedRuntimeStringContext('tenantId', tId),
+            });
+            cachedResult = null;
+        }
     }
     perfMetrics.cacheLookup = Date.now() - cacheStart;
 
@@ -867,14 +1034,17 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
         if (kbCacheState.sourceVersion) {
             currentSourceVersions[ANSWERLATTICE_CACHE_SOURCES.KB] = kbCacheState.sourceVersion;
         }
+        if (kbCacheState.canonicalSourceVersion) {
+            currentSourceVersions[ANSWERLATTICE_CACHE_SOURCES.CANONICAL] = kbCacheState.canonicalSourceVersion;
+        }
         const cacheFresh = await isCachedSearchResultFresh(cachedResult, tId, sId, currentSourceVersions);
         if (!cacheFresh) {
-            await writeLogEntry({
+            await writeSearchPerfLogEntry({
                 logFileName: PERF_LOG,
                 userId: uId,
                 logType: 'CACHE_STALE_BYPASS',
                 data: {
-                    query: searchQuery,
+                    ...getSearchTextLogContext(searchQuery),
                     cacheLookupMs: perfMetrics.cacheLookup,
                     mountContext,
                     canonical: !!cachedResult.canonical,
@@ -889,12 +1059,12 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
     if (cachedResult) {
         perfMetrics.total = Date.now() - perfStart;
 
-        await writeLogEntry({
+        await writeSearchPerfLogEntry({
             logFileName: PERF_LOG,
             userId: uId,
             logType: 'CACHE_HIT',
             data: {
-                query: searchQuery,
+                ...getSearchTextLogContext(searchQuery),
                 totalMs: perfMetrics.total,
                 cacheLookupMs: perfMetrics.cacheLookup,
                 mountContext,
@@ -927,7 +1097,11 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
         validatedContext = undefined;
     }
 
-    const { attemptCanonicalRetrieval } = await import('@lib/answerlattice/canonicalRetrieval');
+    const {
+        attemptCanonicalRetrieval,
+        CANONICAL_GOVERNED_FALLBACK_MESSAGES,
+        isCanonicalGovernedFallbackReason,
+    } = await import('@lib/answerlattice/canonicalRetrieval');
     const canonicalStart = Date.now();
     const canonicalResult = await attemptCanonicalRetrieval(searchQuery, {
         tId,
@@ -935,54 +1109,47 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
         context: validatedContext,
         preloadedSearchIndex: instantCacheSearchIndex,
         preloadedLatestRelease: instantCacheLatestRelease,
+        activeAnswerCache: retrievalPreload?.activeAnswerCache,
     });
     perfMetrics.canonicalRetrieval = Date.now() - canonicalStart;
 
     if (canonicalResult.found && canonicalResult.canonical && canonicalResult.answer) {
         const answer = canonicalResult.answer;
-        const canonicalCacheVersion = await getAnswerlatticeCacheVersionServer(
-            ANSWERLATTICE_CACHE_SOURCES.CANONICAL,
-            tId,
-            sId,
-        ).catch((error) => {
-            logRuntimeFailure('answerlattice_canonical_cache_version_load_failed', error, {
-                ...getBoundedRuntimeStringContext('storeId', sId),
-                ...getBoundedRuntimeStringContext('tenantId', tId),
-            });
-            return undefined;
-        });
+        const canonicalCacheVersion = kbCacheState.canonicalSourceVersion;
         const canonicalSourceVersions = canonicalCacheVersion
             ? { [ANSWERLATTICE_CACHE_SOURCES.CANONICAL]: canonicalCacheVersion }
             : undefined;
 
         // Save to search history for analytics
-        const savedHistory = await addAiSearchHistoryServer({
-            query: searchQuery,
-            cacheKey: cacheLookupKey,
-            tId,
-            sId,
-            uId,
-            mountContext,
-            craftedAnswer: answer.content.structuredSummary,
-            references: [],
-            canonical: true,
-            answerSource: 'canonical',
-            canonicalAnswerId: answer.id,
-            matchedEntityIds: canonicalResult.matchedEntityIds,
-            confidence: canonicalResult.confidence,
-            sourceVersions: canonicalSourceVersions,
-            ...buildSearchHistoryContextFields(effectiveProductContext),
-            ...buildSearchHistoryRequestFields(requestMetadata),
-        });
+        const savedHistory = isAnswerTestExecution
+            ? null
+            : await saveAiSearchHistorySafely({
+                query: searchQuery,
+                cacheKey: cacheLookupKey,
+                tId,
+                sId,
+                uId,
+                mountContext,
+                craftedAnswer: answer.content.structuredSummary,
+                references: [],
+                canonical: true,
+                answerSource: 'canonical',
+                canonicalAnswerId: answer.id,
+                matchedEntityIds: canonicalResult.matchedEntityIds,
+                confidence: canonicalResult.confidence,
+                sourceVersions: canonicalSourceVersions,
+                ...buildSearchHistoryContextFields(effectiveProductContext),
+                ...buildSearchHistoryRequestFields(requestMetadata),
+            }, { mountContext, tId, sId });
 
         perfMetrics.total = Date.now() - perfStart;
 
-        await writeLogEntry({
+        await writeSearchPerfLogEntry({
             logFileName: PERF_LOG,
             userId: uId,
             logType: 'CANONICAL_HIT',
             data: {
-                query: searchQuery,
+                ...getSearchTextLogContext(searchQuery),
                 totalMs: perfMetrics.total,
                 canonicalRetrievalMs: perfMetrics.canonicalRetrieval,
                 answerId: answer.id,
@@ -1015,12 +1182,12 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
 
         // Knowledge Graph: log expansion details for monitoring
         if (canonicalResult.graphExpansion) {
-            await writeLogEntry({
+            await writeSearchPerfLogEntry({
                 logFileName: PERF_LOG,
                 userId: uId,
                 logType: 'GRAPH_EXPANSION_HIT',
                 data: {
-                    query: searchQuery,
+                    ...getSearchTextLogContext(searchQuery),
                     originalEntities: canonicalResult.graphExpansion.originalEntities,
                     expandedEntities: canonicalResult.graphExpansion.expandedEntities,
                     expansionCount: canonicalResult.graphExpansion.expandedEntities.length - canonicalResult.graphExpansion.originalEntities.length,
@@ -1032,7 +1199,11 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
         }
 
         // Write to instant cache for next time (fire-and-forget)
-        if (FEATURE_FLAGS.ENABLE_ANSWERLATTICE_INSTANT_CACHE && canonicalResult.matchedEntityIds.length > 0) {
+        if (
+            !isAnswerTestExecution
+            && FEATURE_FLAGS.ENABLE_ANSWERLATTICE_INSTANT_CACHE
+            && canonicalResult.matchedEntityIds.length > 0
+        ) {
             try {
                 const { instantCacheWrite } = await import('@lib/answerlattice/instantCache');
                 void instantCacheWrite(
@@ -1042,6 +1213,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
                     canonicalResult.matchedEntityIds,
                     effectiveProductContext?.plan,
                     effectiveProductContext?.userRole,
+                    effectiveProductContext?.state,
                     canonicalSourceVersions,
                 ).catch((error) => {
                     logRuntimeFailure('answerlattice_instant_cache_write_invocation_failed', error, {
@@ -1068,12 +1240,12 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
 
     // Log canonical miss for mutation proposal tracking
     if (!canonicalResult.found && canonicalResult.fallbackReason) {
-        await writeLogEntry({
+        await writeSearchPerfLogEntry({
             logFileName: PERF_LOG,
             userId: uId,
             logType: 'CANONICAL_MISS',
             data: {
-                query: searchQuery,
+                ...getSearchTextLogContext(searchQuery),
                 reason: canonicalResult.fallbackReason,
                 matchedEntities: canonicalResult.matchedEntityIds,
                 canonicalRetrievalMs: perfMetrics.canonicalRetrieval,
@@ -1089,6 +1261,80 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
     };
     const saveWithCanonicalMissContext = (result: CoreSearchResult) =>
         withSavedSearchHistory(result, canonicalMissHistoryContext);
+
+    if (isCanonicalGovernedFallbackReason(canonicalResult.fallbackReason)) {
+        const fallbackReason = canonicalResult.fallbackReason;
+        const governanceReviewRequired = fallbackReason === 'canonical_answer_review_required';
+        const safeFallback: CoreSearchResult = {
+            craftedAnswer: CANONICAL_GOVERNED_FALLBACK_MESSAGES[fallbackReason],
+            references: [],
+            suggestedQuestions: [],
+            canonical: false,
+            answerSource: 'empty',
+            confidence: 'low',
+            drifted: governanceReviewRequired,
+            imageProcessed,
+        };
+
+        perfMetrics.total = Date.now() - perfStart;
+        await writeSearchPerfLogEntry({
+            logFileName: PERF_LOG,
+            userId: uId,
+            logType: 'CANONICAL_GOVERNED_FALLBACK',
+            data: {
+                reason: fallbackReason,
+                matchedEntities: canonicalResult.matchedEntityIds,
+                canonicalRetrievalMs: perfMetrics.canonicalRetrieval,
+                totalMs: perfMetrics.total,
+                mountContext,
+            },
+        });
+
+        if (isAnswerTestExecution) return withAiProviderUsage(safeFallback);
+
+        const canonicalSourceVersion = await getAnswerlatticeCacheVersionServer(
+            ANSWERLATTICE_CACHE_SOURCES.CANONICAL,
+            tId,
+            sId,
+        ).catch((error) => {
+            logRuntimeFailure('answerlattice_governance_fallback_cache_version_load_failed', error, {
+                ...getBoundedRuntimeStringContext('storeId', sId),
+                ...getBoundedRuntimeStringContext('tenantId', tId),
+            });
+            return undefined;
+        });
+        const sourceVersions: AnswerlatticeCacheSourceVersions = {};
+        if (kbCacheState.sourceVersion) {
+            sourceVersions[ANSWERLATTICE_CACHE_SOURCES.KB] = kbCacheState.sourceVersion;
+        }
+        if (canonicalSourceVersion) {
+            sourceVersions[ANSWERLATTICE_CACHE_SOURCES.CANONICAL] = canonicalSourceVersion;
+        }
+        const savedHistory = await saveAiSearchHistorySafely({
+            query: searchQuery,
+            cacheKey: `${cacheLookupKey}::${fallbackReason.toUpperCase()}`,
+            tId,
+            sId,
+            uId,
+            mountContext,
+            generatedQueryFromImage,
+            craftedAnswer: safeFallback.craftedAnswer,
+            references: [],
+            canonical: false,
+            answerSource: 'empty',
+            matchedEntityIds: canonicalResult.matchedEntityIds,
+            fallbackReason,
+            confidence: safeFallback.confidence,
+            sourceVersions,
+            ...buildSearchHistoryContextFields(effectiveProductContext),
+            ...buildSearchHistoryRequestFields(requestMetadata),
+        }, { mountContext, tId, sId });
+
+        return withAiProviderUsage({
+            ...safeFallback,
+            searchHistoryId: savedHistory?.id,
+        });
+    }
 
     // ===== STAGE 5: OWNER FAQ / CUSTOM ANSWER RETRIEVAL =====
     // Published FAQs are owner-approved short answers. They run after canonical
@@ -1109,13 +1355,12 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
 
         if (faqResult.found && faqResult.faq) {
             perfMetrics.total = Date.now() - perfStart;
-            await writeLogEntry({
+            await writeSearchPerfLogEntry({
                 logFileName: PERF_LOG,
                 userId: uId,
                 logType: 'FAQ_ANSWER_HIT',
                 data: {
-                    query: searchQuery,
-                    effectiveQuery: queryForEmbedding,
+                    ...getSearchTextLogContext(searchQuery, queryForEmbedding),
                     faqId: faqResult.faq.id,
                     score: faqResult.score || 0,
                     confidence: faqResult.confidence,
@@ -1146,8 +1391,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
             userId: uId,
             logType: 'FAQ_RETRIEVAL_ERROR',
             data: {
-                query: searchQuery,
-                effectiveQuery: queryForEmbedding,
+                ...getSearchTextLogContext(searchQuery, queryForEmbedding),
                 ...getSearchCoreFailureLogData('faq_retrieval_error', error),
                 mountContext,
             },
@@ -1173,12 +1417,12 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
 
     if (!kbCacheState.hasPublishedArticles) {
         perfMetrics.total = Date.now() - perfStart;
-        await writeLogEntry({
+        await writeSearchPerfLogEntry({
             logFileName: PERF_LOG,
             userId: uId,
             logType: 'KB_EMPTY_SKIP_RAG',
             data: {
-                query: searchQuery,
+                ...getSearchTextLogContext(searchQuery),
                 totalMs: perfMetrics.total,
                 mountContext,
             }
@@ -1189,14 +1433,32 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
 
     // ===== STAGE 5: RAG FALLBACK (Vector Search) =====
     const embeddingStart = Date.now();
-    let queryVector = await getCachedEmbedding(effectiveCacheKey);
+    let queryVector = null;
+    try {
+        queryVector = await getCachedEmbedding(effectiveCacheKey, { tId, sId });
+    } catch (error) {
+        logRuntimeFailure('answerlattice_query_embedding_cache_read_failed', error, {
+            ...getBoundedRuntimeStringContext('mountContext', mountContext),
+            ...getBoundedRuntimeStringContext('storeId', sId),
+            ...getBoundedRuntimeStringContext('tenantId', tId),
+        });
+    }
 
     if (!queryVector) {
+        await ensureAiProviderAllowed();
         const embeddingResult = await callGeminiEmbeddingWithMetadata(queryForEmbedding, { taskType: 'RETRIEVAL_QUERY' });
         queryVector = embeddingResult.vector;
         aiProviderOperations.add('embedding_generation');
         addAiProviderTokenUsage(embeddingResult.usageMetadata);
-        await saveCachedEmbedding(effectiveCacheKey, queryForEmbedding, queryVector);
+        try {
+            await saveCachedEmbedding(effectiveCacheKey, queryForEmbedding, queryVector, { tId, sId });
+        } catch (error) {
+            logRuntimeFailure('answerlattice_query_embedding_cache_write_failed', error, {
+                ...getBoundedRuntimeStringContext('mountContext', mountContext),
+                ...getBoundedRuntimeStringContext('storeId', sId),
+                ...getBoundedRuntimeStringContext('tenantId', tId),
+            });
+        }
     }
 
     perfMetrics.embeddingGeneration = Date.now() - embeddingStart;
@@ -1206,7 +1468,9 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
 
     // Multi-tenant KB filtering is mandatory for every Answerlattice mount.
     const articleQuery = articlesRef
+        .where('pId', '==', 'AL')
         .where('status', '==', 'published')
+        .where('active', '==', true)
         .where('tId', '==', tId)
         .where('sId', '==', sId);
 
@@ -1214,7 +1478,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
     try {
         snapshot = await articleQuery
             .findNearest({
-                vectorField: 'embedding',
+                vectorField: ANSWERLATTICE_EMBEDDING_VECTOR_FIELD,
                 queryVector: queryVector,
                 limit: VECTOR_SEARCH_LIMIT,
                 distanceMeasure: 'COSINE',
@@ -1223,12 +1487,12 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
     } catch (vectorError: any) {
         perfMetrics.vectorSearch = Date.now() - vectorSearchStart;
         perfMetrics.total = Date.now() - perfStart;
-        await writeLogEntry({
+        await writeSearchPerfLogEntry({
             logFileName: PERF_LOG,
             userId: uId,
             logType: 'VECTOR_SEARCH_ERROR',
             data: {
-                query: searchQuery,
+                ...getSearchTextLogContext(searchQuery),
                 ...getSearchCoreFailureLogData('vector_search_error', vectorError),
                 vectorSearchMs: perfMetrics.vectorSearch,
                 totalMs: perfMetrics.total,
@@ -1246,15 +1510,11 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
     }
 
     const documentsFound = snapshot.docs.map(doc => {
-        const data = { ...doc.data() };
-        const document: any = {
-            ...data,
-            id: doc.id,
-            similarityScore: 1 - doc.get('distance')
-        };
-        delete document.embedding;
-        delete document.distance;
-        return document;
+        const distance = Number(doc.get('distance'));
+        const similarityScore = Number.isFinite(distance)
+            ? Math.max(0, Math.min(1, 1 - distance))
+            : 0;
+        return buildPublicKnowledgeBaseReference(doc.id, doc.data(), similarityScore);
     });
 
     let documentsMatched = documentsFound.filter(doc => doc.similarityScore > SIMILARITY_THRESHOLD);
@@ -1269,12 +1529,12 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
 
     if (!documentsMatched.length) {
         perfMetrics.total = Date.now() - perfStart;
-        await writeLogEntry({
+        await writeSearchPerfLogEntry({
             logFileName: PERF_LOG,
             userId: uId,
             logType: 'VECTOR_LOW_CONFIDENCE_MISS',
             data: {
-                query: searchQuery,
+                ...getSearchTextLogContext(searchQuery),
                 topScore: documentsFound[0]?.similarityScore || 0,
                 threshold: SIMILARITY_THRESHOLD_LOW,
                 totalMs: perfMetrics.total,
@@ -1289,8 +1549,8 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
 
     const payloadToGemini = documentsForPrompt.map((d: any) => ({
         docId: d.id,
-        category: d.category,
-        section: d.section,
+        category: d.categoryTitle,
+        section: d.sectionTitle,
         title: d.title,
         content: extractPlainTextFromEditorContent(d.content),
     }));
@@ -1321,6 +1581,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
     // ===== STAGE 7: FINAL ANSWER GENERATION =====
     const answerStart = Date.now();
 
+    await ensureAiProviderAllowed();
     const geminiAnswerResult = await callGeminiChatWithMetadata(
         searchQuery,
         payloadToGemini,
@@ -1338,12 +1599,12 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
         try {
             generatedData = JSON.parse(geminiAnswer);
         } catch (parseError: any) {
-            await writeLogEntry({
+            await writeSearchPerfLogEntry({
                 logFileName: PERF_LOG,
                 userId: uId,
                 logType: 'ANSWER_JSON_PARSE_FAILED',
                 data: {
-                    query: searchQuery,
+                    ...getSearchTextLogContext(searchQuery),
                     ...getSearchCoreFailureLogData('answer_json_parse_failed', parseError),
                     responsePresent: Boolean(geminiAnswer),
                     responseLength: String(geminiAnswer || '').length,
@@ -1353,26 +1614,30 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
             return saveWithCanonicalMissContext({ ...EMPTY_RESULT, escalation: await buildEmptyEscalation(), imageProcessed });
         }
 
-        const craftedAnswer = typeof generatedData.craftedAnswer === 'string'
-            ? generatedData.craftedAnswer.trim()
-            : '';
-        const generatedReferenceIds = Array.isArray(generatedData.references)
-            ? generatedData.references.filter((refDocId: unknown): refDocId is string => typeof refDocId === 'string')
-            : [];
-        const suggestedQuestions = Array.isArray(generatedData.suggestedQuestions)
-            ? generatedData.suggestedQuestions
-                .filter((question: unknown): question is string => typeof question === 'string')
-                .map(question => question.trim())
-                .filter(Boolean)
-                .slice(0, 3)
-            : [];
+        const parsedAnswer = SearchAnswerSchema.safeParse(generatedData);
+        if (!parsedAnswer.success) {
+            await writeSearchPerfLogEntry({
+                logFileName: PERF_LOG,
+                userId: uId,
+                logType: 'ANSWER_SCHEMA_INVALID',
+                data: {
+                    answerPresent: Boolean(geminiAnswer),
+                    responseLength: String(geminiAnswer || '').length,
+                    mountContext,
+                },
+            });
+            return saveWithCanonicalMissContext({ ...EMPTY_RESULT, escalation: await buildEmptyEscalation(), imageProcessed });
+        }
+        const craftedAnswer = parsedAnswer.data.craftedAnswer;
+        const generatedReferenceIds = Array.from(new Set(parsedAnswer.data.references));
+        const suggestedQuestions = parsedAnswer.data.suggestedQuestions;
 
         if (!craftedAnswer) {
-            await writeLogEntry({
+            await writeSearchPerfLogEntry({
                 logFileName: PERF_LOG,
                 userId: uId,
                 logType: 'ANSWER_EMPTY',
-                data: { query: searchQuery, mountContext }
+                data: { ...getSearchTextLogContext(searchQuery), mountContext }
             });
             return saveWithCanonicalMissContext({ ...EMPTY_RESULT, escalation: await buildEmptyEscalation(), imageProcessed });
         }
@@ -1389,12 +1654,12 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
         }
 
         if (!resolvedReferences.length && !isKnowledgeBaseRefusal(craftedAnswer)) {
-            await writeLogEntry({
+            await writeSearchPerfLogEntry({
                 logFileName: PERF_LOG,
                 userId: uId,
                 logType: 'ANSWER_WITHOUT_VALID_REFERENCES_BLOCKED',
                 data: {
-                    query: searchQuery,
+                    ...getSearchTextLogContext(searchQuery),
                     referenceIds: generatedReferenceIds.slice(0, 10),
                     promptDocumentCount: documentsForPrompt.length,
                     mountContext,
@@ -1404,37 +1669,38 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
         }
 
         // Save search history
-        const savedHistory = await addAiSearchHistoryServer({
-            query: searchQuery,
-            cacheKey: cacheLookupKey,
-            tId,
-            sId,
-            uId,
-            mountContext,
-            generatedQueryFromImage,
-            imageUrl: imageUrl || undefined,
-            craftedAnswer,
-            references: resolvedReferences,
-            answerSource: 'rag',
-            matchedEntityIds: canonicalMissHistoryContext.matchedEntityIds,
-            fallbackReason: canonicalMissHistoryContext.fallbackReason,
-            confidence: canonicalMissHistoryContext.confidence,
-            sourceVersions: kbCacheState.sourceVersion
-                ? { [ANSWERLATTICE_CACHE_SOURCES.KB]: kbCacheState.sourceVersion }
-                : undefined,
-            ...buildSearchHistoryContextFields(effectiveProductContext),
-            ...buildSearchHistoryRequestFields(requestMetadata),
-        });
+        const savedHistory = isAnswerTestExecution
+            ? null
+            : await saveAiSearchHistorySafely({
+                query: searchQuery,
+                cacheKey: cacheLookupKey,
+                tId,
+                sId,
+                uId,
+                mountContext,
+                generatedQueryFromImage,
+                craftedAnswer,
+                references: resolvedReferences,
+                answerSource: 'rag',
+                matchedEntityIds: canonicalMissHistoryContext.matchedEntityIds,
+                fallbackReason: canonicalMissHistoryContext.fallbackReason,
+                confidence: canonicalMissHistoryContext.confidence,
+                sourceVersions: kbCacheState.sourceVersion
+                    ? { [ANSWERLATTICE_CACHE_SOURCES.KB]: kbCacheState.sourceVersion }
+                    : undefined,
+                ...buildSearchHistoryContextFields(effectiveProductContext),
+                ...buildSearchHistoryRequestFields(requestMetadata),
+            }, { mountContext, tId, sId });
 
         perfMetrics.total = Date.now() - perfStart;
 
         // Log performance metrics
-        await writeLogEntry({
+        await writeSearchPerfLogEntry({
             logFileName: PERF_LOG,
             userId: uId,
             logType: 'SEARCH_COMPLETE',
             data: {
-                query: searchQuery,
+                ...getSearchTextLogContext(searchQuery),
                 cached: false,
                 hasImage: imageProcessed,
                 assistantMode: mode === 'assistant',

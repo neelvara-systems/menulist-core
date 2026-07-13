@@ -5,7 +5,7 @@
 **Internal Slug:** `owner-business-assistant`
 **Product:** MenuList
 **Status:** Implemented as a read-only Business Health and grounded answer surface
-**Last Updated:** July 4, 2026
+**Last Updated:** July 13, 2026
 
 ## Current Decision
 
@@ -73,6 +73,8 @@ Implemented:
 1. Feature flags in `src/config/features.ts` and Cloud Functions flags in `functions/src/constants/features.ts`.
 2. Shared constants, schemas, types, context-packet builder, deterministic answer resolver, refusals, and domain capability matrix.
 3. Scheduler-built current health, daily snapshots, optional analytics index, and multi-location summary docs.
+   Current, same-day snapshot, and analytics-index payloads are authoritative full replacements after Firestore sanitization so removed optional facts cannot survive from an older run. The multi-location document remains a per-store merge so one store refresh cannot erase sibling stores.
+   Firestore reads are parsed through one shared runtime schema with exact tenant/store identity before context-packet composition. Storage-only TTL/kind fields and unknown legacy fields are projected out, while malformed documents fail to the not-ready/analytics-unavailable fallback. Redis packet reads validate the complete packet plus cache-key tenant/store/project identity before reuse.
 4. Protected APIs under `/api/owner-business-assistant/*` for read-only current health, analytics, answer, thread, feedback, and locations behavior. Thread IDs must match the browser-generated `oba_` runtime ID shape before thread writes or reads. Browser read-model hooks parse current, analytics, locations, and thread responses through a shared 256KB bounded reader before caching or rendering. Feedback writes keep the existing `DATA_WRITE` limiter and reject JSON bodies above 8KB before validation, selected-store scope checks, permission checks, or Firestore writes.
 5. Desktop dashboard card, analytics strip, full route, suggested questions, answer follow-ups, source/freshness disclosure, and priority checks.
 6. MobileShell More sub-screen, `/business-health` route mapping, and mobile Business Health screen.

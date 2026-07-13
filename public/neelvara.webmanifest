@@ -1,7 +1,7 @@
 {
   "name": "Neelvara Systems",
   "short_name": "Neelvara",
-  "description": "Operating entity for MenuList, Answerlattice, and CampaignCue.",
+  "description": "Company reference for MenuList and Answerlattice.",
   "start_url": "/",
   "scope": "/",
   "display": "browser",

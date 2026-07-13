@@ -3,7 +3,7 @@ import { addTicket, assertSupportTicketCreateSucceeded } from '@database/tickets
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
-import { SUPPORT_TICKET_CATEGORY, SUPPORT_TICKET_CATEGORY_LIST, SUPPORT_TICKET_PRIORITY_LIST, SUPPORT_TICKET_STATUS, SupportTicketType } from '@type/supportTicket';
+import { SUPPORT_TICKET_CATEGORY, SUPPORT_TICKET_CATEGORY_LIST, SUPPORT_TICKET_PRIORITY, SUPPORT_TICKET_PRIORITY_LIST, SUPPORT_TICKET_STATUS, SupportTicketType } from '@type/supportTicket';
 import { getBase64 } from '@util/utils';
 import type { UploadProps } from 'antd';
 import { Button, Card, Flex, Form, Grid, Input, message, Modal, Select, Typography } from 'antd';
@@ -14,6 +14,14 @@ import React, { useContext, useMemo, useRef, useState } from 'react';
 import { getBoundedSupportTicketStringContext, logSupportTicketFailure } from './supportTicketDiagnostics';
 
 const { Text, Title, Paragraph } = Typography;
+const MAX_TICKET_ATTACHMENT_BYTES = 10 * 1024 * 1024;
+const ALLOWED_TICKET_ATTACHMENT_TYPES = new Set([
+    'image/jpeg', 'image/png', 'image/webp', 'image/gif',
+    'application/pdf', 'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/json', 'application/xml',
+    'text/plain', 'text/markdown', 'text/csv', 'text/html', 'text/xml',
+]);
 
 interface AddTicketModalProps {
     visible?: boolean;
@@ -34,9 +42,20 @@ const AddSupportTicket: React.FC<AddTicketModalProps> = ({ visible = false, onCl
     const isNarrow = screens.md !== true;
 
     const onPasteFiles = (pastedFiles: PastedFile[]) => {
+        const supportedFiles = pastedFiles.filter((file) => {
+            if (file.size > MAX_TICKET_ATTACHMENT_BYTES) {
+                message.error(`${file.name || 'File'} is larger than 10 MB.`);
+                return false;
+            }
+            if (!ALLOWED_TICKET_ATTACHMENT_TYPES.has(file.type)) {
+                message.error(`${file.name || 'File'} is not a supported image or document.`);
+                return false;
+            }
+            return true;
+        });
         setAttachments((prevAttachments) => {
             const existingFiles = new Set(prevAttachments.map(f => `${f.name}|${f.size}`));
-            const uniqueNewFiles = pastedFiles.filter(file => !existingFiles.has(`${file.name}|${file.size}`));
+            const uniqueNewFiles = supportedFiles.filter(file => !existingFiles.has(`${file.name}|${file.size}`));
 
             if (prevAttachments.length + uniqueNewFiles.length > 4) {
                 message.error('File Limit Exceeded, You can only upload a maximum of 4 files.');
@@ -79,7 +98,7 @@ const AddSupportTicket: React.FC<AddTicketModalProps> = ({ visible = false, onCl
                             name: session.user.name,
                             email: session.user.email
                         },
-                        remark: values.message || `Ticket created by admin.`,
+                        remark: String(values.message || 'Ticket created by admin.').slice(0, 2000),
                     },
                 ],
                 clientDetails: {
@@ -123,12 +142,21 @@ const AddSupportTicket: React.FC<AddTicketModalProps> = ({ visible = false, onCl
             const { fileList } = info;
             const uniqueFilesMap = new Map();
             fileList.forEach(file => {
+                if (Number(file.size || 0) > MAX_TICKET_ATTACHMENT_BYTES) {
+                    message.error(`${file.name || 'File'} is larger than 10 MB.`);
+                    return;
+                }
+                if (!ALLOWED_TICKET_ATTACHMENT_TYPES.has(String(file.type || ''))) {
+                    message.error(`${file.name || 'File'} is not a supported image or document.`);
+                    return;
+                }
                 uniqueFilesMap.set(`${file.name}|${file.size}`, file);
             });
             const uniqueFiles = Array.from(uniqueFilesMap.values());
             setAttachments(uniqueFiles);
         },
         listType: "picture",
+        accept: Array.from(ALLOWED_TICKET_ATTACHMENT_TYPES).join(','),
         // previewFile: (file) => {
         //     if (file instanceof File) {
         //         return getBase64(file as RcFile);
@@ -155,16 +183,16 @@ const AddSupportTicket: React.FC<AddTicketModalProps> = ({ visible = false, onCl
                         <Form.Item name="category" style={{ flex: 1, width: isNarrow ? '100%' : undefined }} label="What is this about?" initialValue={SUPPORT_TICKET_CATEGORY.TECHNICAL_ISSUE} rules={[{ required: true, message: 'Please select a category!' }]}>
                             <Select placeholder="Select a category" options={SUPPORT_TICKET_CATEGORY_LIST} />
                         </Form.Item>
-                        <Form.Item name="priority" style={{ flex: 1, width: isNarrow ? '100%' : undefined }} label="How urgent is this?" initialValue="NORMAL" rules={[{ required: true, message: 'Please select a priority!' }]}>
+                        <Form.Item name="priority" style={{ flex: 1, width: isNarrow ? '100%' : undefined }} label="How urgent is this?" initialValue={SUPPORT_TICKET_PRIORITY.NORMAL} rules={[{ required: true, message: 'Please select a priority!' }]}>
                             <Select placeholder="Select a priority" options={SUPPORT_TICKET_PRIORITY_LIST} />
                         </Form.Item>
                     </Flex>
 
-                    <Form.Item name="subject" label="What’s happening?" rules={[{ required: true, message: 'Please enter a subject!' }]}>
+                    <Form.Item name="subject" label="What’s happening?" rules={[{ required: true, message: 'Please enter a subject!' }, { max: 300, message: 'Keep the subject under 300 characters.' }]}>
                         <Input placeholder="e.g., “Menu not showing on my website” or “Payment failed on checkout”" />
                     </Form.Item>
 
-                    <Form.Item name="message" label="Tell us more:" rules={[{ required: true, message: 'Please provide details about your issue!' }]}>
+                    <Form.Item name="message" label="Tell us more:" rules={[{ required: true, message: 'Please provide details about your issue!' }, { max: 4000, message: 'Keep the details under 4,000 characters.' }]}>
                         <Input.TextArea rows={6} placeholder="Tell us what happened, when it started, and what you tried so far." />
                     </Form.Item>
 

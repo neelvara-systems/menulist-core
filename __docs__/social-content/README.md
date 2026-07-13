@@ -39,6 +39,14 @@ Blocked or thrown WhatsApp opens log `today_campaign_whatsapp_open_failed` with 
 
 `npm run verify:public-business-truth` enforces the safe WhatsApp open and bounded diagnostic contract.
 
+## July 10, 2026 Campaign Action Integrity Addendum
+
+Prepared Today complete/skip actions use a Firestore transaction across the campaign document, `platformSummary/campaigns_{sId}`, and the deterministic `campaignExports/{tId}/{sId}/complete_{campaignId}` completion marker. The transaction verifies the persisted tenant, store, campaign, project, type, and allowed surface before any write. A duplicate completion returns the existing matching marker without incrementing stats or writing a second export; a duplicate skip returns the persisted skip/suppression result without incrementing counters again. Partial campaign/export/summary commits are no longer possible in the current path.
+
+Campaign document and export `tId`/`sId` fields are numeric, matching the repository tenant contract and active session. Firestore path rules continue comparing the path IDs through string normalization for compatibility. Existing resolved records without the deterministic completion marker fail closed instead of creating a guessed duplicate export.
+
+Each first completion performs three atomic writes; each first skip performs two atomic writes. Idempotent retries normally perform zero writes, except a retry may perform one summary-healing write if a resolved campaign still appears in Today. `npm run verify:public-business-truth` covers the transaction, deterministic marker, identity checks, idempotent branches, suppression cleanup, and pure summary transitions.
+
 ## June 29, 2026 Addendum
 
 The paused Weekly Growth Pack copy path now follows the same bounded diagnostic contract as Today campaign actions when an owner copy action fully fails.

@@ -12,6 +12,7 @@ export const dynamic = 'force-dynamic';
 
 import { DB_COLLECTIONS } from "@constant/database";
 import { getAuthSessionLogContext, getBoundedAuthStringContext, logAuthFailure } from "@lib/auth/authDiagnostics";
+import { getCurrentUser } from "@lib/auth/currentPlatformUser";
 import { admin, authAdmin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
 import { logger } from "@lib/monitoring/logger";
@@ -32,6 +33,7 @@ const ChangePasswordSchema = z.object({
 });
 const CHANGE_PASSWORD_MAX_BODY_BYTES = 2 * 1024;
 const CHANGE_PASSWORD_USER_DOCUMENT_ID_MAX_LENGTH = 160;
+const CHANGE_PASSWORD_VERIFICATION_TIMEOUT_MS = 8_000;
 const FIREBASE_AUTH_SIGN_IN_WITH_PASSWORD_URL = "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword";
 
 const normalizeFirebaseAuthApiKey = (value?: string) => {
@@ -89,15 +91,22 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     const rl = await checkRateLimit({
       key: `auth-pwd:${userRateLimitHash}`,
       ...getRateLimitForFeature("AUTH_SENSITIVE"),
+      failClosedOnProviderError: true,
     });
     if (!rl.allowed) {
+      const providerUnavailable = rl.reason === "provider_unavailable";
       logger.security("Rate Limit Exceeded", {
         ...getBoundedSecurityRouteContext(session, request),
         endpoint: request.nextUrl.pathname,
         feature: "AUTH_SENSITIVE",
+        providerUnavailable,
       }, "medium");
 
-      return NextResponse.json({ error: "Too many attempts. Please wait before trying again." }, { status: 429 });
+      return NextResponse.json({
+        error: providerUnavailable
+          ? "Password change is temporarily unavailable. Please try again."
+          : "Too many attempts. Please wait before trying again.",
+      }, { status: providerUnavailable ? 503 : 429 });
     }
 
     const bodyResult = await readBoundedJsonBody(request, CHANGE_PASSWORD_MAX_BODY_BYTES, {
@@ -118,6 +127,22 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
     const { currentPassword, newPassword } = validation.data;
 
+    const currentUser = await getCurrentUser(session);
+    if (!currentUser || currentUser.documentId !== userId) {
+      logAuthFailure(
+        "change_password_current_user_not_authorized",
+        undefined,
+        getChangePasswordLogContext(request, session),
+      );
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    }
+    const currentEmail = typeof currentUser.userData.email === "string"
+      ? currentUser.userData.email.toLowerCase().trim()
+      : "";
+    if (!currentEmail || currentEmail !== email) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    }
+
     // Find the Firebase Auth user for this email
     let firebaseUser;
     try {
@@ -126,6 +151,29 @@ export const POST = withAuth(async (request: NextRequest, session) => {
       return NextResponse.json({
         error: "Unable to verify current credentials.",
       }, { status: 400 });
+    }
+
+    const storedFirebaseUid = currentUser.userData.firebaseUid;
+    const hasMalformedStoredFirebaseUid = storedFirebaseUid !== undefined
+      && storedFirebaseUid !== null
+      && (
+        typeof storedFirebaseUid !== "string"
+        || storedFirebaseUid.trim() !== storedFirebaseUid
+        || storedFirebaseUid.length === 0
+      );
+    const firebaseEmail = String(firebaseUser.email || "").toLowerCase().trim();
+    if (
+      firebaseUser.disabled
+      || firebaseEmail !== currentEmail
+      || hasMalformedStoredFirebaseUid
+      || (typeof storedFirebaseUid === "string" && storedFirebaseUid !== firebaseUser.uid)
+    ) {
+      logAuthFailure(
+        "change_password_firebase_identity_mismatch",
+        undefined,
+        getChangePasswordLogContext(request, session),
+      );
+      return NextResponse.json({ error: "Unable to verify current credentials." }, { status: 403 });
     }
 
     // Check if user has a password provider (not just Google)
@@ -152,6 +200,11 @@ export const POST = withAuth(async (request: NextRequest, session) => {
       return NextResponse.json({ error: "Could not verify current password" }, { status: 500 });
     }
 
+    const verificationController = new AbortController();
+    const verificationTimeout = setTimeout(
+      () => verificationController.abort(),
+      CHANGE_PASSWORD_VERIFICATION_TIMEOUT_MS,
+    );
     try {
       // Admin SDK does not expose password verification; use Firebase Auth REST API.
       const verifyRes = await fetch(buildFirebasePasswordVerificationEndpoint(firebaseApiKey), {
@@ -163,6 +216,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
           returnSecureToken: false,
         }),
         redirect: "manual",
+        signal: verificationController.signal,
       });
 
       if (!verifyRes.ok) {
@@ -176,6 +230,8 @@ export const POST = withAuth(async (request: NextRequest, session) => {
       );
 
       return NextResponse.json({ error: "Could not verify current password" }, { status: 500 });
+    } finally {
+      clearTimeout(verificationTimeout);
     }
 
     // Update the password via Admin SDK
@@ -185,11 +241,19 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
     // Update modifiedOn in Firestore
     const now = admin.firestore.Timestamp.now();
-    const userRef = firestoreAdmin.collection(DB_COLLECTIONS.USERS).doc(userId);
-    await userRef.update({
-      modifiedOn: now,
-      passwordChangedAt: now,
-    });
+    const userRef = firestoreAdmin.collection(DB_COLLECTIONS.USERS).doc(currentUser.documentId);
+    try {
+      await userRef.update({
+        modifiedOn: now,
+        passwordChangedAt: now,
+      });
+    } catch (metadataError) {
+      logAuthFailure(
+        "change_password_metadata_sync_failed",
+        metadataError,
+        getChangePasswordLogContext(request, session),
+      );
+    }
 
     logger.info("[change-password] Password changed", getChangePasswordLogContext(request, session));
 

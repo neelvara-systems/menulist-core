@@ -16,7 +16,7 @@
  */
 
 import Link from 'next/link';
-import type { CSSProperties, MouseEvent } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type MouseEvent } from 'react';
 import { appendPublicLanguageParam, normalizePublicLanguageCode } from '@lib/localization/publicRenderLanguage';
 import { getBusinessLogoAltText } from '@lib/media/altText';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
@@ -98,6 +98,10 @@ export default function MenuBreadcrumb({
     theme,
 }: MenuBreadcrumbProps) {
     const showOutletNode = Boolean(outletName && outletSlug);
+    const normalizedLogoUrl = typeof logoUrl === 'string' ? logoUrl.trim() : '';
+    const [failedLogoUrl, setFailedLogoUrl] = useState<string | null>(null);
+    const logoImageRef = useRef<HTMLImageElement | null>(null);
+    const showLogoImage = Boolean(normalizedLogoUrl && failedLogoUrl !== normalizedLogoUrl);
     const resolvedOutletHref = outletHref || (outletSlug ? `/${outletSlug}` : undefined);
     const hasProject = Boolean(projectName);
     const linkStyle: CSSProperties = {
@@ -134,18 +138,25 @@ export default function MenuBreadcrumb({
         }
     };
 
+    useEffect(() => {
+        const image = logoImageRef.current;
+        if (normalizedLogoUrl && image?.complete && image.naturalWidth === 0) {
+            setFailedLogoUrl(normalizedLogoUrl);
+        }
+    }, [normalizedLogoUrl]);
+
     if (variant === 'identity') {
         const logoBoxStyle: CSSProperties = {
             width: 44,
             height: 44,
-            borderRadius: logoUrl ? 0 : 12,
+            borderRadius: showLogoImage ? 0 : 12,
             flex: '0 0 auto',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            overflow: logoUrl ? 'visible' : 'hidden',
-            border: logoUrl ? '0' : `1px solid ${theme?.borderColor || 'rgba(0, 0, 0, 0.1)'}`,
-            background: logoUrl ? 'transparent' : theme?.background || 'transparent',
+            overflow: showLogoImage ? 'visible' : 'hidden',
+            border: showLogoImage ? '0' : `1px solid ${theme?.borderColor || 'rgba(0, 0, 0, 0.1)'}`,
+            background: showLogoImage ? 'transparent' : theme?.background || 'transparent',
             color: theme?.headingColor || 'inherit',
             fontSize: 18,
             fontWeight: 700,
@@ -176,12 +187,14 @@ export default function MenuBreadcrumb({
                     }}
                 >
                     <Link href={homeHref} onClick={(event) => preserveCurrentLanguage(event, homeHref)} style={{ ...baseLinkStyle, ...logoBoxStyle }} prefetch={false} aria-label={`${businessName} home`}>
-                        {logoUrl ? (
+                        {showLogoImage ? (
                             <img
-                                src={logoUrl}
+                                ref={logoImageRef}
+                                src={normalizedLogoUrl}
                                 alt={getBusinessLogoAltText(businessName)}
                                 width={44}
                                 height={44}
+                                onError={() => setFailedLogoUrl(normalizedLogoUrl)}
                                 style={{
                                     width: '100%',
                                     height: '100%',

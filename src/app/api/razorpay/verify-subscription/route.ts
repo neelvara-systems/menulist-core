@@ -1,20 +1,20 @@
 export const dynamic = 'force-dynamic';
-import { canManageBillingMutation } from "@lib/billing/billingAccess";
+import { canManageAnswerlatticeBillingMutation, canManageBillingMutation } from "@lib/billing/billingAccess";
 import { getPlanDetailsFromConstants, getSubscriptionEndDate } from "@lib/billing/billingUtils";
 import {
+    applyProductSubscriptionPayment,
     getProductSubscriptionById,
     safeSyncProductSubscriptionEntitlementFromSubscription,
-    updateProductSubscription,
     resolveBillingScopeFromSession,
 } from "@lib/billing/productBillingServer";
+import { getProviderCycleBillingPeriodKey } from '@lib/billing/billingPeriod';
 import {
     getBoundedRazorpaySecurityContext,
     getBoundedRazorpayStringContext,
     getRazorpayFailureLogData,
     logRazorpayNonBlockingFailure,
 } from "@lib/billing/razorpayDiagnostics";
-import { isAnswerlatticeBillingProduct, normalizeBillingProductId } from "@lib/billing/productBillingPlans";
-import { validateTransition } from "@lib/billing/subscriptionStateMachine";
+import { isAnswerlatticeBillingProduct, normalizeBillingProductId, resolveProviderBillingProductId } from "@lib/billing/productBillingPlans";
 import { logger } from "@lib/monitoring/logger";
 import { checkRateLimit } from "@lib/rateLimit";
 import { getRateLimitForFeature } from "@lib/rateLimit/configs";
@@ -163,6 +163,14 @@ export const POST = withAuth(async (request, session) => {
             );
         }
 
+        const requestedProductId = normalizeBillingProductId(validation.data.productId);
+        if (isAnswerlatticeBillingProduct(requestedProductId) && !(await canManageAnswerlatticeBillingMutation(session, request))) {
+            return NextResponse.json(
+                { error: 'Forbidden - Access denied' },
+                { status: 403 }
+            );
+        }
+
         // 3. --- SERVER-SIDE VERIFICATION ---
         // This is the crucial security step. We do not trust the client.
         // We ask Razorpay's servers directly about the status of this payment.
@@ -189,7 +197,20 @@ export const POST = withAuth(async (request, session) => {
             },
         });
 
-        const productId = normalizeBillingProductId(validation.data.productId || providerSubscription?.notes?.productId);
+        const productId = resolveProviderBillingProductId(
+            validation.data.productId,
+            providerSubscription?.notes?.productId ?? providerSubscription?.notes?.pId,
+        );
+        if (!productId) {
+            logger.security('Subscription Verification Product Mismatch', {
+                ...getBoundedRazorpaySecurityContext(session, request),
+                endpoint: '/api/razorpay/verify-subscription',
+                error: 'Provider subscription product does not match request product',
+                ...getBoundedRazorpayStringContext('requestProductId', validation.data.productId),
+                ...getBoundedRazorpayStringContext('providerProductId', providerSubscription?.notes?.productId ?? providerSubscription?.notes?.pId),
+            }, 'critical');
+            return NextResponse.json({ error: 'Forbidden - payment mismatch' }, { status: 403 });
+        }
         const scope = resolveBillingScopeFromSession(session, productId);
         if (!scope) {
             return NextResponse.json({ error: "Missing tenant/store data" }, { status: 400 });
@@ -288,28 +309,6 @@ export const POST = withAuth(async (request, session) => {
             );
         }
 
-        // If the subscription is already active (e.g., the webhook beat this call), we don't need to do anything.
-        if (internalSub.status === 'active') {
-            await safeSyncProductSubscriptionEntitlementFromSubscription(productId, internalSub as FirestoreSubscriptionDoc, 'api:verify-subscription:already-active');
-            if (!isAnswerlatticeBillingProduct(productId)) {
-                await safelyRecordOwnerReferralPaymentAndRepair({
-                    paidScope: { tenantId: Number(internalSub.tenantId), storeId: Number(internalSub.storeId) },
-                    evidence: {
-                        paidAt: new Date(Number(payment.created_at || Math.floor(Date.now() / 1000)) * 1000),
-                        paymentEvidenceId: String(payment.id || razorpay_payment_id),
-                        source: 'api:verify-subscription:already-active',
-                        subscriptionId: razorpay_subscription_id,
-                    },
-                });
-            }
-            logger.info('Subscription already active', {
-                ...getBoundedRazorpayStringContext('subscriptionId', razorpay_subscription_id),
-                ...getBoundedRazorpayStringContext('productId', productId),
-                ...getBoundedRazorpayStringContext('userId', userId),
-            });
-            return NextResponse.json({ success: true, status: 'active' });
-        }
-
         // 4. --- OPTIMISTIC UPDATE ---
         // The payment is verified. We can now confidently update our own database immediately.
         logger.info('Payment verified successfully', {
@@ -334,8 +333,13 @@ export const POST = withAuth(async (request, session) => {
         const creditsForPlan = planDetails[priceKey]?.monthlyCredits || 0;
         const paymentAmount = Number(payment.amount || 0);
 
-        if (!validateTransition(internalSub.status, 'active', 'api:verify-subscription')) {
-            return NextResponse.json({ error: "Subscription cannot be activated in its current state." }, { status: 409 });
+        const billingPeriod = getProviderCycleBillingPeriodKey(providerSubscription.current_start);
+        if (billingPeriod === null) {
+            logger.error('Invalid provider billing cycle', undefined, {
+                ...getBoundedRazorpayStringContext('subscriptionId', razorpay_subscription_id),
+                ...getBoundedRazorpayStringContext('userId', userId),
+            });
+            return NextResponse.json({ success: false, error: 'Could not verify the billing cycle.' }, { status: 502 });
         }
         const updatePayload: Partial<FirestoreSubscriptionDoc> = {
             productId,
@@ -352,17 +356,6 @@ export const POST = withAuth(async (request, session) => {
 
             // Set up the credit system
             monthlyCreditsAllowance: creditsForPlan,
-            monthlyCredits: creditsForPlan,
-            topUpCredits: internalSub.topUpCredits || 0, // Preserve existing top-up credits if any
-            creditsLastResetMonth: (() => {
-                const s = new Date(providerSubscription.current_start * 1000);
-                const n = new Date();
-                let y = n.getFullYear(), m = n.getMonth() + 1;
-                const dim = new Date(y, n.getMonth() + 1, 0).getDate();
-                const anchor = Math.min(s.getDate(), dim);
-                if (n.getDate() < anchor) { m -= 1; if (m === 0) { m = 12; y -= 1; } }
-                return y * 100 + m;
-            })(),
 
             // Set billing cycle dates from the definitive source (Razorpay API)
             cycleStartDate: Timestamp.fromMillis(providerSubscription.current_start * 1000),
@@ -382,19 +375,6 @@ export const POST = withAuth(async (request, session) => {
                 upiId: payment.vpa,
                 upiTransactionId: payment?.acquirer_data?.upi_transaction_id,
             },
-            statuses: [
-                ...internalSub.statuses,
-                {
-                    status: "verified",
-                    timestamp: Timestamp.now(),
-                    amount: Number.isFinite(paymentAmount) ? paymentAmount : 0,
-                    currency: payment.currency,
-                    remark: "Subscription verified",
-                },
-            ],
-
-            // Add this payment to the history
-            billingHistory: [razorpay_payment_id],
         };
 
         await writeLogEntry({
@@ -409,17 +389,32 @@ export const POST = withAuth(async (request, session) => {
                 totalPaymentsNeededCount: updatePayload.totalPaymentsNeededCount,
             },
         });
-        await updateProductSubscription(productId, razorpay_subscription_id, updatePayload);
+        const paymentApplication = await applyProductSubscriptionPayment(productId, {
+            billingPeriod,
+            paymentHistoryId: razorpay_payment_id,
+            statusEntry: {
+                status: 'verified',
+                timestamp: Timestamp.now(),
+                amount: Number.isFinite(paymentAmount) ? paymentAmount : 0,
+                currency: payment.currency,
+                remark: 'Subscription verified',
+            },
+            subscriptionId: razorpay_subscription_id,
+            update: updatePayload,
+        });
+        if (!paymentApplication) {
+            return NextResponse.json({ success: false, error: 'Internal subscription record not found.' }, { status: 404 });
+        }
+        if (!paymentApplication.applied && !paymentApplication.duplicate) {
+            return NextResponse.json({ error: 'Subscription cannot be activated in its current state.' }, { status: 409 });
+        }
+        const activatedSubscription = paymentApplication.subscription;
         if (!isAnswerlatticeBillingProduct(productId)) {
             await markResellerTransactionsActiveForSubscription(razorpay_subscription_id, 'api:verify-subscription');
         }
         await safeSyncProductSubscriptionEntitlementFromSubscription(
             productId,
-            {
-                ...internalSub,
-                ...updatePayload,
-                id: razorpay_subscription_id,
-            } as FirestoreSubscriptionDoc,
+            activatedSubscription,
             'api:verify-subscription',
         );
         if (!isAnswerlatticeBillingProduct(productId)) {
@@ -448,15 +443,9 @@ export const POST = withAuth(async (request, session) => {
             subscriptionId: razorpay_subscription_id,
             tenantId: internalSub.tenantId,
         });
-        const activatedSubscription = {
-            ...internalSub,
-            ...updatePayload,
-            id: razorpay_subscription_id,
-            status: 'active',
-        } as FirestoreSubscriptionDoc;
         const replacementSubscriptionId = (internalSub as any).founderMonitorReplacementForSubscriptionId;
         const replacementMrrPaise = Number((internalSub as any).founderMonitorReplacementMrrPaise || 0);
-        if (replacementSubscriptionId && replacementMrrPaise > 0) {
+        if (paymentApplication.applied && replacementSubscriptionId && replacementMrrPaise > 0) {
             await recordFounderSubscriptionMrrChange({
                 eventKey: `${replacementSubscriptionId}:${razorpay_subscription_id}`,
                 previousMrrPaise: replacementMrrPaise,
@@ -465,7 +454,7 @@ export const POST = withAuth(async (request, session) => {
                 subscription: activatedSubscription,
                 occurredAt: providerSubscription.current_start ? providerSubscription.current_start * 1000 : Date.now(),
             });
-        } else {
+        } else if (paymentApplication.applied) {
             await recordFounderSubscriptionNewMrr({
                 productId,
                 source: 'api:verify-subscription',

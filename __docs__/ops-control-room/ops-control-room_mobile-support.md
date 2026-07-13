@@ -1,7 +1,7 @@
 # Ops Control Room — Mobile Support Assessment
 
 **Created:** February 20, 2026
-**Last Updated:** June 30, 2026
+**Last Updated:** July 13, 2026
 
 ---
 
@@ -16,11 +16,15 @@
 
 **Original Result:** DESKTOP PRIMARY — 2 of 4 gates failed for a full dashboard workflow.
 
+The current mobile platform screen exposes the same emergency SAFE_MODE and alert-mute calls as desktop through shared response guards. Those APIs apply fail-closed per-operator limits and exact current persisted platform-user verification; a stale mobile session cannot keep emergency-control authority after downgrade, disablement, blocking, deletion, identity mismatch, or revocation. Repeating the current SAFE_MODE state is a no-write success.
+
 The Ops Control Room remains a desktop-first platform admin tool. Urgent system awareness is still delivered through alerts, and deeper investigation happens at a desk.
 
 ## Current Mobile Contract
 
 Mobile support now exists only as a platform-only emergency surface for the same operator, not as an owner workflow. The mobile screen inherits the same `platformRole === 'PLATFORM'` gate, shared ops DAL reads, SAFE_MODE confirmation, alert-mute action, and force-republish confirmation pattern.
+
+The force-republish confirmation explicitly covers all active menu projects for the selected store. Its response is accepted only with a bounded 1-100 `projectCount`, representative project ID, success flag, and verification state, and the toast reports the confirmed project count.
 
 June 30, 2026 hardening keeps the mobile mutation calls aligned with desktop:
 

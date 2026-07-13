@@ -6,72 +6,22 @@
 
 ---
 
-## Quick Summary
+## Publication Boundary
 
-MenuList monitors your Google reviews and alerts you when a review needs your attention. It suggests a professional reply — you approve it and it posts directly to Google.
+**Status: NOT AN ACTIVE CUSTOMER HELP ARTICLE.** The repository does not currently provide Google-review ingestion, a Reputation card, a review inbox, a reply composer, Google reply posting, a dismiss action, or a mobile reputation screen. The relevant feature flags are disabled and the existing passive/suggestion components are not mounted.
 
----
+Do not give customers the former setup or how-to instructions. They referenced routes, settings, controls, synchronization cadence, and provider behavior that do not exist in the current runtime.
 
-## Getting Started
+## Current Support Answer
 
-### Prerequisites
-- A MenuList account with Google Business Profile connected
-- Google Business Profile API access enabled (MenuList will guide you through setup)
+If a customer asks about Google review management, state only that MenuList does not currently offer an active review-management workflow. Do not suggest that connecting Google will import reviews or that MenuList can publish a reply.
 
-### Connecting Google Reviews
-1. Go to Business Settings → Google Business Profile
-2. Tap "Connect" and sign in with your Google account
-3. Select your business location
-4. Reviews will start appearing in your MenuList dashboard
+The separate Guest Feedback feature may be documented only through its own maintained help surface; it must not be described as Google review ingestion or reply management.
+
+## Future Help-Article Gate
+
+Create customer instructions only after the feature is implemented, mounted, permission-tested, provider-smoked, deployed, and production-host verified. Instructions must be captured from the actual desktop and mobile runtime rather than copied from this historical concept.
 
 ---
 
-## How-To Guides
-
-### How to See Your Reviews
-1. Open your MenuList dashboard
-2. Look for the "Reputation" card — it shows "Stable" or "Needs Attention"
-3. Tap it to open your review inbox
-
-### How to Reply to a Review
-1. Open a review that needs attention
-2. Read the suggested reply from MenuList
-3. Choose: **Use as-is**, **Edit**, or **Write your own**
-4. Tap "Post Reply"
-5. Your reply appears on Google within minutes
-
-### What If I Don't Want to Reply?
-You can dismiss a review notification. But replying to reviews shows customers you care — 89% of consumers are more likely to visit businesses that respond to reviews.
-
----
-
-## Troubleshooting / FAQ
-
-**Q: I connected Google but don't see reviews**  
-A: Reviews sync once per day. If it's been more than 24 hours, check your Google Business Profile connection in Settings.
-
-**Q: The suggested reply doesn't fit**  
-A: Edit it to match your tone. The suggestion is a starting point, not a requirement.
-
-**Q: Can I delete a bad review?**  
-A: MenuList cannot delete reviews. If a review violates Google's policies, you can flag it for removal through Google.
-
----
-
-## Tips & Best Practices
-
-- **Reply within a week** — 73% of customers only trust recent reviews
-- **Keep replies short** — 2-3 sentences is ideal
-- **Stay calm** — Never argue publicly. Offer to resolve privately.
-- **Be consistent** — Use MenuList's suggestions to maintain a professional tone
-
----
-
-## Need More Help?
-
-- WhatsApp support: [support number]
-- Email: support@menulist.ai
-
----
-
-**Last Updated:** February 19, 2026
+**Last Updated:** July 11, 2026

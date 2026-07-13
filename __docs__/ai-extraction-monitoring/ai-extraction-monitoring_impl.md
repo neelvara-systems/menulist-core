@@ -1,11 +1,13 @@
 # AI Extraction Internal Monitoring Dashboard — Implementation
 
 **Feature:** Internal monitoring dashboard for the menu extraction pipeline
-**Status:** ✅ IMPLEMENTED — Feature flag OFF (`ENABLE_EXTRACTION_MONITORING_DASHBOARD`); controlled internal testing ready, not launch certification
+**Status:** Enabled internal platform surface — not current launch or deploy certification
 **Feature Flag:** `ENABLE_EXTRACTION_MONITORING_DASHBOARD`
-**Last Updated:** July 5, 2026
+**Last Updated:** July 10, 2026
 
-**Launch boundary:** This internal dashboard is source-verified for the reviewed implementation, but enabling it in a release still requires target feature-flag review, platform-role access verification, current extraction data, and the External Certification Runbook evidence that applies to the release. A green source gate does not certify live Firebase deploys, provider behavior, browser/device QA, or production-host behavior.
+> **Launch boundary:** Not current launch certification or deploy approval. This document records source-gated AI Extraction Monitoring evidence only. Current source sets `ENABLE_EXTRACTION_MONITORING_DASHBOARD=true` and exposes platform-only desktop routes at `/ops/extraction` and `/platform/extraction-monitor` plus `MobileExtractionMonitorScreen` inside `MobileShell`. Cross-tenant job reads and `MENULIST_AI_OPERATIONS` reads are Firestore-rule-gated to platform admins; ordinary authenticated users retain own-job reads only. Current release approval still requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:ai-accounting`, `npm run verify:menu-extraction-pipeline`, `npm run verify:agent-readiness`, `npm run verify:mobile-shell-route-map`, `npm run verify:auth-security-failure-matrix`, authenticated platform desktop/mobile browser QA, bounded read/cost and desktop retry smoke, current extraction/provider smoke, applicable target Firebase rules/index/Functions and Vercel deploy evidence, and production-host smoke.
+
+**Current surface boundary:** Desktop exposes health, quality, cost, recent jobs, Job Inspector, raw-data copy, and eligible failed-job retry. Mobile exposes manual-refresh health, cost, quality, and recent-job summaries only. The current snapshot does not read `platformSummary/extractionLearning` and no Ops Alerts panel is mounted.
 
 ---
 
@@ -158,7 +160,6 @@ Stat cards + simple indicators:
 
 - Average Quality Score (last 50 jobs)
 - Confidence Distribution (high/medium/low counts from last 50 jobs)
-- Anomaly Count (jobs flagged with items > 300 or categories > 50)
 - Low Quality Rate (jobs with score < 40, percentage)
 
 ### 7. Scheduler-Based Alerts
@@ -347,29 +348,9 @@ This reuses existing job creation infrastructure — no new server-side code nee
 
 ---
 
-## Alerts Integration
+## Alert Boundary
 
-Reuse existing Telegram alert infrastructure:
-
-```typescript
-// In nightly scheduler or periodic check (every 15 min)
-// Piggybacked on existing menuJobCleanup scheduler
-
-const recentJobs = await getExtractionHealthMetrics();
-
-if (recentJobs.failureRate > 5) {
-  await sendTelegramAlert(
-    `🔴 Extraction failure rate: ${recentJobs.failureRate}% ` +
-      `(${recentJobs.failedJobs24h}/${recentJobs.totalJobs24h} in last 24h)`,
-  );
-}
-
-if (recentJobs.avgQualityScore < 55 && recentJobs.totalJobs24h > 10) {
-  await sendTelegramAlert(
-    `🟡 Extraction quality degraded: avg ${recentJobs.avgQualityScore}/100 (last 24h)`,
-  );
-}
-```
+The monitor UI does not implement an Ops Alerts panel. Existing extraction alerts are created by `functions/src/schedulers/menuJobCleanup.ts` through the shared platform alert pipeline; they are not read by `getExtractionDashboardSnapshot()`.
 
 ---
 
@@ -377,7 +358,7 @@ if (recentJobs.avgQualityScore < 55 && recentJobs.totalJobs24h > 10) {
 
 ```typescript
 // src/config/features.ts
-ENABLE_EXTRACTION_MONITORING_DASHBOARD: false,
+ENABLE_EXTRACTION_MONITORING_DASHBOARD: true,
 ```
 
 ---
@@ -433,7 +414,7 @@ Note: Some of these indexes may already exist. Verify before adding duplicates.
 | Types           | TypeScript interfaces                    | `src/lib/ops/extractionTypes.ts`         | ✅     |
 | Feature flag    | `ENABLE_EXTRACTION_MONITORING_DASHBOARD` | `src/config/features.ts`                 | ✅     |
 | Retry mechanism | Reuse existing job creation (max 3)      | DAL `retryExtractionJob()` + UI button   | ✅     |
-| Telegram alerts | Reuse existing infrastructure            | Nightly scheduler                        | 📝 P2  |
+| Shared extraction alerts | Existing scheduler/platform alert pipeline | `functions/src/schedulers/menuJobCleanup.ts` | ✅ Outside monitor UI |
 | Access control  | Platform role check                      | extractionMonitor/index.tsx              | ✅     |
 
 ---
@@ -450,4 +431,4 @@ Note: Some of these indexes may already exist. Verify before adding duplicates.
 
 ---
 
-_Document Status: ✅ IMPLEMENTED — Feature flag OFF; source-verified for controlled internal testing, with launch certification gated by the External Certification Runbook and current production-readiness audit._
+_Document Status: Enabled internal platform surface; not current launch or deploy certification._

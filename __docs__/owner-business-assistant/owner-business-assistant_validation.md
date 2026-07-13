@@ -2,7 +2,7 @@
 
 **Owner-Facing Name:** Business Health
 **Status:** Read-only validation after action-support removal
-**Last Updated:** July 4, 2026
+**Last Updated:** July 13, 2026
 
 ## Validation Decision
 
@@ -64,6 +64,10 @@ Business Health must not duplicate that action registry.
 ## Firebase Cost Confirmation
 
 Action workflow collections are removed from the active model. The remaining Business Health writes are bounded to existing summary, thread, feedback, and answer-event behavior controlled by Business Health flags. Thread writes and reads now require browser-generated `oba_` runtime thread IDs before `ownerBusinessAssistantThreads` document access, and whitespace-mutated thread IDs fail before document reads/writes. The feedback route now uses shared bounded JSON admission before selected-store scope checks, permission checks, or the feedback write, and whitespace-mutated answer IDs fail before feedback or answer-event document writes.
+
+The scheduler regression now proves that current-health, same-day snapshot, and analytics-index writes are replacements, while the multi-location store map remains merged. This prevents stale optional analytics, teaser, project-summary, and legacy fields from surviving a later authoritative rebuild without increasing the write count.
+
+The same focused verifier now feeds storage-only and unknown fields, malformed arrays, wrong tenant identity, and mismatched Redis packet identity into the shared runtime boundary. Valid documents are projected to the exact health/analytics contract; invalid Firestore documents fall back before response composition, and invalid cache packets become misses. This prevents Firestore TTL metadata or legacy fields from crossing the server/client response boundary.
 
 No Business Health path should write:
 

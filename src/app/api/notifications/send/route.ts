@@ -5,18 +5,30 @@ export const dynamic = 'force-dynamic';
  *
  * Called fire-and-forget from client-side DAL functions (tickets, etc.).
  * Uses firebase-admin for logging (server-side only).
- * Protected by session auth — only authenticated users can trigger.
+ * Protected by current Answerlattice support permission. Recipient and
+ * template data are derived from the exact persisted ticket.
  *
  * @see src/lib/notifications/index.ts — Core notification sender
  */
 
-import { PRODUCT_IDS } from '@constant/product';
+import { ANSWERLATTICE_PERMISSION_KEYS } from '@constant/answerlattice/permissions';
+import { DB_COLLECTIONS } from '@constant/database';
+import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
+import {
+    normalizeAnswerlatticeSupportTicketId,
+    parseAnswerlatticeSupportTicketDocument,
+} from '@lib/answerlattice/supportTicketLifecycle';
+import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { sendNotification } from '@lib/notifications';
 import {
     getBoundedNotificationStringContext,
     getNotificationPayloadLogContext,
     logNotificationFailure,
 } from '@lib/notifications/notificationDiagnostics';
+import {
+    CLIENT_TICKET_NOTIFICATION_EVENTS,
+    projectTicketNotification,
+} from '@lib/notifications/ticketNotificationBoundary';
 import { checkRateLimit } from '@lib/rateLimit';
 import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { NextRequest, NextResponse } from 'next/server';
@@ -26,21 +38,11 @@ import { hashPublicRateLimitValue } from '../../../../middleware/publicApi';
 
 const NOTIFICATION_SEND_MAX_BODY_BYTES = 16 * 1024;
 
-const ALLOWED_CLIENT_NOTIFICATION_EVENTS = [
-    'TICKET_CREATED',
-    'TICKET_REPLY',
-    'TICKET_STATUS_CHANGED',
-] as const;
-
 const NotificationRequestSchema = z.object({
-    eventType: z.enum(ALLOWED_CLIENT_NOTIFICATION_EVENTS),
-    recipientEmail: z.string().trim().email().max(254),
-    recipientName: z.string().trim().max(120).optional(),
-    referenceId: z.string().trim().min(1).max(160),
-    productId: z.string().trim().max(8).optional().default(PRODUCT_IDS.ANSWERLATTICE),
-    skipDedup: z.boolean().optional(),
-    metadata: z.record(z.any()).optional().default({}),
-});
+    eventType: z.enum(CLIENT_TICKET_NOTIFICATION_EVENTS),
+    ticketId: z.string().trim().min(1).max(180),
+    messageId: z.string().trim().min(1).max(180).optional(),
+}).strict();
 
 export const POST = withAuth(async (request: NextRequest, session) => {
     let failureContext: Record<string, boolean | number | string | null | undefined> = {
@@ -59,9 +61,15 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             key: `notification-send:${userRateLimitHash}`,
             limit: 120,
             window: 60 * 60,
+            failClosedOnProviderError: true,
         });
         if (!rateLimitResult.allowed) {
-            return NextResponse.json({ error: 'Too many notification attempts. Try again later.' }, { status: 429 });
+            const providerUnavailable = rateLimitResult.reason === 'provider_unavailable';
+            return NextResponse.json({
+                error: providerUnavailable
+                    ? 'Notification delivery is temporarily unavailable.'
+                    : 'Too many notification attempts. Try again later.',
+            }, { status: providerUnavailable ? 503 : 429 });
         }
 
         const bodyResult = await readBoundedJsonBody(request, NOTIFICATION_SEND_MAX_BODY_BYTES, {
@@ -73,31 +81,50 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         if (!parsed.success) {
             return NextResponse.json({ error: 'Invalid notification request' }, { status: 400 });
         }
+        const ticketId = normalizeAnswerlatticeSupportTicketId(parsed.data.ticketId);
+        if (!ticketId) {
+            return NextResponse.json({ error: 'Invalid notification request' }, { status: 400 });
+        }
 
-        const { eventType, recipientEmail, recipientName, referenceId, metadata, productId, skipDedup } = parsed.data;
+        const permission = await requireAnswerlatticePermission(
+            request,
+            session,
+            ANSWERLATTICE_PERMISSION_KEYS.MANAGE_SUPPORT,
+        );
+        if (permission.response || !permission.access) return permission.response;
+
+        const ticketSnapshot = await answerlatticeFirestoreAdmin
+            .collection(DB_COLLECTIONS.SUPPORT_TICKETS)
+            .doc(ticketId)
+            .get();
+        const ticket = ticketSnapshot.exists
+            ? parseAnswerlatticeSupportTicketDocument({
+                id: ticketSnapshot.id,
+                value: ticketSnapshot.data(),
+                scope: {
+                    tId: permission.access.scope.tenantId,
+                    sId: permission.access.scope.storeId,
+                },
+            })
+            : null;
+        if (!ticket || ticket.deleted === true) {
+            return NextResponse.json({ error: 'Notification target not found' }, { status: 404 });
+        }
+
+        const projection = projectTicketNotification({
+            eventType: parsed.data.eventType,
+            messageId: parsed.data.messageId,
+            ticket,
+        });
+        if (!projection.ok) {
+            return NextResponse.json({ error: 'Notification target is not available' }, { status: 409 });
+        }
         failureContext = {
             ...failureContext,
-            ...getNotificationPayloadLogContext(parsed.data),
+            ...getNotificationPayloadLogContext(projection.payload),
         };
 
-        if (productId !== PRODUCT_IDS.ANSWERLATTICE) {
-            return NextResponse.json({ error: 'Unsupported notification product' }, { status: 400 });
-        }
-
-        const metadataSize = Buffer.byteLength(JSON.stringify(metadata), 'utf8');
-        if (metadataSize > 8 * 1024) {
-            return NextResponse.json({ error: 'Notification metadata is too large' }, { status: 400 });
-        }
-
-        const sent = await sendNotification({
-            eventType,
-            recipientEmail,
-            recipientName,
-            referenceId,
-            metadata: metadata || {},
-            productId,
-            skipDedup,
-        });
+        const sent = await sendNotification(projection.payload);
 
         return NextResponse.json({ sent });
     } catch (err: any) {

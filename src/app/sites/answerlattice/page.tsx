@@ -59,6 +59,7 @@ function getBasePath(): string {
 
 const HERO_CHIPS = [
     'Approved answers first',
+    'Pre-release answer checks',
     'Fallback when missing',
     'Owner review loop',
     'In-app widget',
@@ -173,10 +174,10 @@ const SUITE_CAPABILITIES = [
     },
     {
         title: 'Approve the official answer',
-        description: 'Drafts, feedback, and repeated misses stay reviewable before publishing.',
+        description: 'Drafts, feedback, repeated misses, and pre-release answer checks stay reviewable before publishing.',
         href: '/product/knowledge-governance',
         icon: LuShieldCheck,
-        items: ['Approved answers', 'Coverage', 'Owner control'],
+        items: ['Approved answers', 'Answer tests', 'Owner control'],
     },
 ];
 

@@ -1,8 +1,8 @@
 # Project Management
 
 **Sub-feature of:** Projects / Menu Builder
-**Status:** Production implementation exists; audited June 11, 2026
-**Last Updated:** June 11, 2026
+**Status:** Production implementation exists; audited July 13, 2026
+**Last Updated:** July 13, 2026
 
 Project Management owns the menu/catalog project lifecycle for a store: create, list, edit metadata, save menu data, publish, duplicate, soft delete, restore, active/inactive state, default-project selection, and special-menu metadata.
 
@@ -20,6 +20,8 @@ Runtime behavior is source-of-truth. The active model is not the older `projects
 | File | Purpose |
 | --- | --- |
 | `src/database/projects/index.ts` | Project DAL and public cache invalidation hooks. |
+| `src/lib/menu/projectSlugOwnership.ts` | Current/redirect slug ownership and deterministic collision resolution. |
+| `src/lib/menu/projectDocumentScope.ts` | Runtime project ID, tenant, and store identity validation for scoped and legacy reads. |
 | `src/components/templates/main-app/projects/index.tsx` | Desktop project management and menu builder shell. |
 | `src/components/mobile/providers/MobileProjectsProvider.tsx` | Mobile project state provider. |
 | `src/components/mobile/components/MobileProjectSelectorSheet.tsx` | Mobile project metadata, duplicate, deactivate, and delete actions. |
@@ -30,16 +32,17 @@ Runtime behavior is source-of-truth. The active model is not the older `projects
 
 | Function | Runtime contract |
 | --- | --- |
-| `addProject()` | Creates a full project doc, writes summary entry, applies a stable slug, treats unknown deleted-slug reservation state as reserved, supports atomic default handoff, and invalidates public cache through `syncProjectToSummary()`. |
+| `addProject()` | Creates the project and summary atomically, reserves a unique stable slug, and supports an idempotent deterministic default-menu recovery that never rewrites an existing menu document. |
 | `getProjectsList()` / `getProjectsListWithoutLoader()` | Reads summary and auto-creates a default project if none exist. Use only for editor/onboarding flows where default creation is intentional. |
 | `getExistingProjectsListWithoutLoader()` | Reads summary without writes. Use for dashboard, output, print, share, analytics, and other read-only surfaces. |
-| `getProjectData()` | Reads full project doc for editing/rendering. |
-| `updateProjectMetadata()` | Updates summary fields, refuses rename/backfill slugs when recently deleted slug reservation state cannot be confirmed, supports atomic default handoff, and revalidates public cache. |
+| `getProjectData()` | Reads the scoped full project, validates path and embedded identity, then uses the read-only legacy fallback only when it matches the same tenant/store/project scope. |
+| `updateProjectMetadata()` | Transactionally merges summary fields, rejects missing/cross-store identities and unnormalized, active, redirect, reserved, or recently deleted slug conflicts, supports atomic default handoff, and revalidates public cache. |
 | `updateProject()` / `updateProjectWithoutLoader()` | Saves full project data, runs optional correctness hooks, and revalidates public cache. |
 | `publishProject()` | Saves publish data, increments menu version, creates optional snapshots/events, and revalidates public cache. |
-| `deleteProject()` | Soft-deletes full project doc, removes summary entry, stores a `deletedSummary` tombstone, promotes a fallback default when needed, and revalidates public cache. |
-| `restoreProject()` | Restores lifecycle flags and rebuilds summary from `deletedSummary` when available. |
-| `duplicateProject()` | Clones full project data and writes a new summary entry with a new slug, suffixing the slug when deleted-slug reservation state cannot be confirmed. |
+| `deleteProject()` | Transactionally soft-deletes the scoped project, stores a `deletedSummary` tombstone, removes the summary entry, promotes a current fallback default when needed, and revalidates both affected project contexts. |
+| `restoreProject()` | Transactionally restores lifecycle flags and rebuilds summary from `deletedSummary` without creating a second default. |
+| `duplicateProject()` | Transactionally clones a current regular project and its summary, strips special-menu/deletion metadata, and allocates a unique slug. |
+| `setProjectActive()` | Transactionally changes project and summary active state after exact scope/existence and linked-outlet policy validation. |
 
 ## Related Documents
 

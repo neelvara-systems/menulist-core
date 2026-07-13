@@ -13,6 +13,7 @@ import {
 } from '@lib/answerlattice/knowledgeIntakeApi';
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/middleware/auth';
+import { applyAnswerlatticeDashboardReadRateLimit } from '../../../readRateLimit';
 
 export const GET = withAuth(async (request: NextRequest, session, params: { jobId: string }) => {
     const jobId = normalizeAnswerlatticeKnowledgeIntakeJobId(params.jobId);
@@ -20,6 +21,8 @@ export const GET = withAuth(async (request: NextRequest, session, params: { jobI
         return NextResponse.json({ error: 'Invalid knowledge intake job.' }, { status: 400 });
     }
 
+    const rateLimitResponse = await applyAnswerlatticeDashboardReadRateLimit(request, session, 'knowledge-intake-job');
+    if (rateLimitResponse) return rateLimitResponse;
     const access = await requireAnswerlatticeKnowledgeIntakeContext(request, session);
     if (access.response) return access.response;
 

@@ -1,3 +1,4 @@
+import { normalizeMenuChangeLogScope } from "@database/menuChangeLog/menuChangeLogBoundary";
 import { logMOLEvent } from "@lib/pricing/molLogger";
 
 interface PosSyncSecretRotationAuditParams {
@@ -15,10 +16,8 @@ export function logPosSyncSecretRotationAudit({
     storeId,
     tenantId,
 }: PosSyncSecretRotationAuditParams): void {
-    const tId = Number(tenantId);
-    const sId = Number(storeId);
-
-    if (!Number.isFinite(tId) || !Number.isFinite(sId)) return;
+    const scope = normalizeMenuChangeLogScope({ tId: tenantId, sId: storeId });
+    if (!scope) return;
 
     void logMOLEvent({
         type: "POS_SYNC_SECRET_REGENERATED",
@@ -32,7 +31,7 @@ export function logPosSyncSecretRotationAudit({
             rotatedByEmail: actorEmail || null,
         },
         version: Date.now(),
-        tId,
-        sId,
+        tId: scope.tId,
+        sId: scope.sId,
     });
 }

@@ -19,16 +19,22 @@
 import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
+import { sanitizeForFirestore } from '@lib/firestore/sanitizeForFirestore';
 import {
     getAnswerlatticeScopeLogContext,
     logAnswerlatticeDiagnostic,
     logAnswerlatticeFailure,
 } from '@lib/answerlattice/diagnostics';
 import { normalizeAnswerlatticeEntityId } from '@lib/answerlattice/governanceIdBoundary';
+import {
+    buildAnswerlatticeSignalDocumentId,
+    normalizeExactAnswerlatticeSignalScopeId,
+} from '@lib/answerlattice/signalIdentity';
 import { createRuntimeId } from '@lib/runtime/randomId';
 import { AnswerlatticeSignalType } from '@type/answerlattice';
 import { TicketMessage } from '@type/supportTicket';
 import { Timestamp } from 'firebase/firestore';
+import { getAnswerlatticeRetentionExpiryMillis } from '@data/shared/answerlatticeRetention';
 
 interface EmitSignalParams {
     type: AnswerlatticeSignalType;
@@ -98,19 +104,6 @@ const sanitizeSignalMetadata = (metadata: unknown): Record<string, any> => {
         .filter(([key]) => Boolean(key)));
 };
 
-const sanitizeForFirestore = (value: any): any => {
-    if (value === undefined) return null;
-    if (value === null) return null;
-    if (value instanceof Date) return value;
-    if (Array.isArray(value)) return value.map(sanitizeForFirestore);
-    if (typeof value === 'object') {
-        return Object.fromEntries(
-            Object.entries(value).map(([key, nestedValue]) => [key, sanitizeForFirestore(nestedValue)])
-        );
-    }
-    return value;
-};
-
 const emitServerSignalEvent = async (params: EmitSignalParams & { tId: number; sId: number }) => {
     const { answerlatticeFirestoreAdmin } = await import('@lib/firebase/answerlatticeFirebaseAdmin');
     if (!answerlatticeFirestoreAdmin || typeof answerlatticeFirestoreAdmin.collection !== 'function') {
@@ -129,6 +122,7 @@ const emitServerSignalEvent = async (params: EmitSignalParams & { tId: number; s
         entityId: normalizeSignalEntityId(params.entityId),
         type: params.type,
         timestamp: now,
+        expiresAt: new Date(getAnswerlatticeRetentionExpiryMillis('signalEvents', now.getTime())),
         metadata: sanitizeSignalMetadata(params.metadata),
         createdOn: now,
         modifiedOn: now,
@@ -142,7 +136,12 @@ const emitServerSignalEvent = async (params: EmitSignalParams & { tId: number; s
 
     const collectionRef = answerlatticeFirestoreAdmin.collection(DB_COLLECTIONS.ANSWERLATTICE_SIGNAL_EVENTS);
     if (persistentDedupKey) {
-        const docId = `sig_${hashSignalDocumentId(`${params.tId}:${params.sId}:${persistentDedupKey}`)}`;
+        const docId = buildAnswerlatticeSignalDocumentId({
+            tId: params.tId,
+            sId: params.sId,
+            deduplicationKey: persistentDedupKey,
+        });
+        if (!docId) throw new Error('answerlattice_signal_identity_invalid');
         try {
             await collectionRef.doc(docId).create(payload);
         } catch (error) {
@@ -184,18 +183,6 @@ function getPersistentDeduplicationKey(params: EmitSignalParams): string | null 
     const metadata = params.metadata || {};
     const explicitKey = cleanSignalText(metadata.requestId || metadata.externalId || metadata.idempotencyKey, 180);
     return explicitKey ? `${params.type}:external:${explicitKey}` : null;
-}
-
-function hashSignalDocumentId(value: string): string {
-    let hashA = 0x811c9dc5;
-    let hashB = 0x01000193;
-    for (let index = 0; index < value.length; index += 1) {
-        const code = value.charCodeAt(index);
-        hashA ^= code;
-        hashA = Math.imul(hashA, 0x01000193);
-        hashB = Math.imul(hashB ^ code, 0x85ebca6b);
-    }
-    return `${(hashA >>> 0).toString(36)}${(hashB >>> 0).toString(36)}`;
 }
 
 const isAlreadyExistsError = (error: any): boolean => (
@@ -284,13 +271,13 @@ export const emitSuggestionSignal = async (params: {
     });
 };
 
-export const emitAnswerlatticeSignal = async (params: EmitSignalParams): Promise<void> => {
-    if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_SIGNAL_MUTATION) return;
+export const emitAnswerlatticeSignal = async (params: EmitSignalParams): Promise<boolean> => {
+    if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_SIGNAL_MUTATION) return false;
 
     const normalizedEntityId = normalizeSignalEntityId(params.entityId);
-    const tId = Number(params.tId);
-    const sId = Number(params.sId);
-    if (!Number.isFinite(tId) || !Number.isFinite(sId) || tId <= 0 || sId <= 0) {
+    const tId = normalizeExactAnswerlatticeSignalScopeId(params.tId);
+    const sId = normalizeExactAnswerlatticeSignalScopeId(params.sId);
+    if (tId === null || sId === null) {
         logAnswerlatticeDiagnostic('answerlattice_signal_invalid_scope_skipped', {
             ...getAnswerlatticeScopeLogContext({
                 entityId: normalizedEntityId,
@@ -299,13 +286,13 @@ export const emitAnswerlatticeSignal = async (params: EmitSignalParams): Promise
                 tId: params.tId,
             }),
         });
-        return;
+        return false;
     }
 
     // Deduplication check
     const dedupKey = getDeduplicationKey(params);
     if (dedupKey) {
-        if (emittedSignals.has(dedupKey)) return; // Already emitted
+        if (emittedSignals.has(dedupKey)) return true; // Already emitted
         emittedSignals.add(dedupKey);
         // Cap set size to prevent memory leak in long-lived sessions
         if (emittedSignals.size > 1000) emittedSignals.clear();
@@ -314,11 +301,12 @@ export const emitAnswerlatticeSignal = async (params: EmitSignalParams): Promise
     try {
         if (typeof window === 'undefined') {
             await emitServerSignalEvent({ ...params, tId, sId });
-            return;
+            return true;
         }
 
         const { addSignalEvent } = await import('@database/answerlattice/signalEvents');
 
+        const persistentDedupKey = getPersistentDeduplicationKey(params);
         await addSignalEvent({
             tId,
             sId,
@@ -326,8 +314,14 @@ export const emitAnswerlatticeSignal = async (params: EmitSignalParams): Promise
             type: params.type,
             timestamp: Timestamp.now(),
             metadata: sanitizeSignalMetadata(params.metadata),
+            ...(persistentDedupKey ? {
+                requestId: persistentDedupKey,
+                dedupKey: persistentDedupKey,
+            } : {}),
         });
+        return true;
     } catch (error) {
+        if (dedupKey) emittedSignals.delete(dedupKey);
         // Fire-and-forget: log but never throw
         logAnswerlatticeFailure('answerlattice_signal_emit_failed', error, {
             ...getAnswerlatticeScopeLogContext({
@@ -341,5 +335,6 @@ export const emitAnswerlatticeSignal = async (params: EmitSignalParams): Promise
                 ? Object.keys(params.metadata).length
                 : 0,
         });
+        return false;
     }
 };

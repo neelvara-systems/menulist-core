@@ -53,7 +53,7 @@ The Knowledge Base is a **client-side DAL feature** with no dedicated API routes
 | `CategoryCardPreview.tsx` | — | Category preview card for pane list |
 | `SectionCardPreview.tsx` | — | Section preview card for pane list |
 
-`ArticleModal.tsx` keeps FAQ suggestion refresh and article embedding failures on fixed owner-safe copy. It does not show raw `/api/answerlattice/faqs/generate-from-article` or `/api/helpCenter/article-embedding` response text, provider text, or browser exception messages when those support actions fail. It sends both support-action POSTs with no-store cache, same-origin credentials, and manual redirect handling, then parses both route responses through a 64 KB bounded response reader and requires the expected FAQ suggestion or embedding acknowledgement shape before updating local FAQ options, linked FAQ IDs, or embedding success copy. Article update/delete FAQ maintenance remains fire-and-forget, but failures now log `answerlattice_article_faq_review_marker_failed` or `answerlattice_article_faq_archive_failed` with bounded tenant/store/article metadata only. The FAQ DAL also logs `answerlattice_faq_article_review_scope_resolve_failed` or `answerlattice_faq_article_archive_scope_resolve_failed` if a legacy maintenance caller omits article scope and session fallback cannot resolve tenant/store.
+`ArticleModal.tsx` keeps FAQ suggestion refresh and article embedding failures on fixed owner-safe copy. It does not show raw `/api/answerlattice/faqs/generate-from-article` or `/api/helpCenter/article-embedding` response text, provider text, or browser exception messages when those support actions fail. It sends both support-action POSTs with no-store cache, same-origin credentials, and manual redirect handling, then parses both route responses through a 64 KB bounded response reader and requires the expected FAQ suggestion or embedding acknowledgement shape before updating local FAQ options, linked FAQ IDs, or embedding success copy. Article update/delete now owns linked FAQ review/archive state in the same exact-scope transaction, so success cannot precede the required public-truth transition.
 
 Article create/update/delete and bulk publish/archive UI paths must require `assertKnowledgeBaseArticleWriteSucceeded()`, `assertKnowledgeBaseArticleDeleteSucceeded()`, or `assertKnowledgeBaseArticleBulkStatusUpdateSucceeded()` before local article, category, selection, or ingestion-job state advances. Category, section, article-parent, and category-delete navigation writes must require `assertKnowledgeBaseCategoryWriteSucceeded()` or `assertKnowledgeBaseCategoriesMutationSucceeded()` before local category/section/navigation state advances. Rejected acknowledgements use `platform_kb_article_create_rejected`, `platform_kb_article_update_rejected`, `platform_kb_article_delete_rejected`, `platform_kb_section_article_delete_rejected`, `platform_kb_category_article_delete_rejected`, `platform_kb_bulk_article_status_update_rejected`, `platform_kb_category_create_rejected`, `platform_kb_category_update_rejected`, `platform_kb_section_create_rejected`, `platform_kb_section_update_rejected`, `platform_kb_article_parent_update_rejected`, `platform_kb_article_parent_delete_rejected`, `platform_kb_section_delete_category_update_rejected`, `platform_kb_category_delete_rejected`, `kb_generation_review_article_update_rejected`, or `kb_generation_reconciliation_article_delete_rejected`.
 
@@ -72,9 +72,8 @@ Answerlattice KB owner content scope boundary (July 6, 2026): category document 
 | `getArticles()` | Scoped list | 0 | Deprecated compatibility helper; non-platform callers are filtered by tenant/store, platform admins can read the global list |
 | `addArticle(data)` | 0 | 1 | Uses `requestBodyComposer` |
 | `updateArticle(data)` | 0 | 1 | Merge update, returns acknowledged article |
-| `deleteArticle(id)` | 0 | 1 | Hard delete, returns `{ success: true, id }` |
-| `bulkUpdateArticleStatus(ids, status)` | 0 | N | Batch publish/archive, returns `{ success: true, ids, updatedCount, status }` |
-| `deleteMultipleArticles(ids)` | 0 | N | Batch delete via `writeBatch` |
+| `deleteArticle(id)` | 2+N | 1+N | Exact stored-scope transaction archives linked FAQs and hard-deletes article, then returns `{ success: true, id }` |
+| `bulkUpdateArticleStatus(ids, status)` | 2N | N | Transactional one-workspace publish/archive for at most 100 exact IDs; returns `{ success: true, ids, updatedCount, status }` |
 | `getArticlesByCategoryId(categoryId)` | N | 0 | Query by categoryId |
 | `getArticlesBySectionId(sectionId)` | N | 0 | Query by sectionId |
 | `getArticlesByIds(ids)` | N | 0 | `__name__ in ids` query |
@@ -167,10 +166,13 @@ Delete Category:
 Article saved/published
   → POST /api/helpCenter/article-embedding
   → Extract plain text from TipTap JSON
-  → Build embedding input: "Category: {cat}\nSection: {sec}\nTitle: {title}\nContent: {text}"
-  → callGeminiEmbedding() → text-embedding-004 → 768-dim vector
-  → firestoreAdmin.collection(KB_ARTICLES).doc(articleId).update({ embedding: vector })
+  → Normalize category + section + title + content and compute a source hash
+  → callGeminiEmbeddingWithMetadata(..., purpose=document) → gemini-embedding-2 → 768-dim vector
+  → Persist the active vector to embeddingV2 with model/cache/source metadata
+  → Preserve or best-effort dual-write the legacy embedding vector during rollback coverage
 ```
+
+The model, vector field, dimensions, request format, and cache version are selected together by `src/data/shared/answerlatticeEmbedding.ts`, mirrored byte-for-byte into both Functions packages. Search reads `embeddingV2`; query-cache keys include the v2 cache version, so v1 query vectors cannot be reused against the v2 index. The existing Answerlattice master scheduler owns the bounded, resumable `embedding_v2_migration` task; no standalone scheduled function is added.
 
 ---
 
@@ -271,7 +273,7 @@ Article saved/published
 | `addArticle` | ArticleModal | ✅ |
 | `updateArticle` | ArticleModal | ✅ |
 | `deleteArticle` | PlatformKnowledgeBase (cascade delete) | ✅ |
-| `deleteMultipleArticles` | Not directly used from UI | ⚠️ Available |
+| `deleteMultipleArticles` | No caller | Removed because its session-derived scope and unverified IDs could not safely own a multi-workspace mutation |
 | `getArticlesByCategoryId` | PlatformKnowledgeBase (cascade delete) | ✅ |
 | `getArticlesBySectionId` | PlatformKnowledgeBase (cascade delete) | ✅ |
 | `getArticlesByIds` | Not directly used from UI | ⚠️ Available |

@@ -37,7 +37,7 @@ export async function logMultiOutletEvent(
     }
 
     try {
-        logMenuChangeForScope(
+        void logMenuChangeForScope(
             {
                 projectId: event.projectId,
                 changeType: "MENU_REVISION_SUMMARY",

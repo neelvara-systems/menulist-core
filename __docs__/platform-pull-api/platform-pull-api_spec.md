@@ -1,9 +1,9 @@
 # Platform Pull API — Specification
 
-**Status:** ✅ IMPLEMENTED (v1.4 — target document-ID boundary hardened Jul 6, 2026)
+**Status:** ✅ IMPLEMENTED (v1.5 — authentication and response identity hardened Jul 13, 2026)
 **Date:** February 22, 2026  
 **Audience:** CEO, PM, Clients
-**Last Source Gate Update:** July 6, 2026
+**Last Source Gate Update:** July 13, 2026
 
 ---
 
@@ -11,7 +11,7 @@
 
 Current source/docs parity is guarded by `npm run verify:platform-pull-api-boundary`.
 
-The gate checks the Business Settings Integrations tab key controls, the authenticated key-management route, pull-route key validation, private response headers, target eligibility, target document-ID and MenuList numeric-ID admission, menu summary selection, active temporary-status behavior in the business response, bounded diagnostics, and this spec.
+The gate checks the Business Settings Integrations tab key controls, the authenticated transactional key-management route, strict key shape and duplicate rejection, fail-closed pre-auth/per-key limits, private success/error/secret response headers, stable ETag identity, target eligibility, target document-ID and MenuList numeric-ID admission, menu summary selection, active temporary-status behavior in the business response, bounded diagnostics, and this spec.
 
 ---
 
@@ -86,6 +86,15 @@ Returns full menu data in the same format as POS Webhook Sync payload: categorie
 | FR-16 | Pull endpoints revalidate key and store/tenant eligibility on every request; no process-local validation cache | P0       | ✅     |
 | FR-17 | Business Settings Integrations tab can generate, regenerate, copy, and revoke the store's public API key | P0       | ✅     |
 | FR-18 | Pull endpoints normalize credential store IDs, require exact positive numeric MenuList tenant/store IDs before response construction, and normalize menu project IDs before project document refs | P0       | ✅     |
+| FR-19 | Conditional ETags exclude request-time metadata while remaining sensitive to public-truth changes | P0       | ✅     |
+| FR-20 | Pull endpoints fail closed through a hashed-IP pre-auth ceiling and a hashed-key 60/minute ceiling | P0       | ✅     |
+| FR-21 | Duplicate credential matches, including collisions across current-hash and legacy-raw representations, fail closed rather than selecting an arbitrary store | P0       | ✅     |
+| FR-22 | Pull errors and one-time key responses use private no-store cache behavior | P0       | ✅     |
+| FR-23 | Linked outlet menu pulls resolve same-tenant master truth plus outlet overrides/local items and fail closed when the master reference is invalid or unavailable | P0       | ✅     |
+| FR-24 | Limiter exhaustion returns 429 while fail-closed limiter-provider outages return retryable 503; both include `Retry-After` | P0       | ✅     |
+| FR-25 | Key mutation and pull reads accept legacy missing product/ID aliases but reject explicit non-MenuList products, conflicting tenant aliases, and store aliases that disagree with authoritative document paths | P0       | ✅     |
+| FR-26 | Business output allowlists known boolean attributes and emits only validated active temporary-status fields, never creator metadata or arbitrary persisted keys | P0       | ✅     |
+| FR-27 | New credentials declare MenuList/public-read purpose; legacy metadata-free keys remain compatible while explicit other-product, other-purpose, or non-read scopes fail closed | P0       | ✅     |
 
 ---
 
@@ -132,6 +141,7 @@ Two APIs (business + menu) is the industry standard pattern:
 | 403  | `FEATURE_DISABLED`    | `ENABLE_PUBLIC_API` is OFF                          |
 | 404  | `NO_MENU`             | Store has no published menu                         |
 | 429  | `RATE_LIMIT_EXCEEDED` | >60 req/min per key. Includes `Retry-After` header. |
+| 503  | `SERVICE_UNAVAILABLE` | Rate-limit provider unavailable while fail-closed admission is active. Includes `Retry-After`. |
 | 500  | `INTERNAL_ERROR`      | Unexpected server error                             |
 
 ---

@@ -8,6 +8,8 @@
  * - Vercel production uses production domains and production Firebase projects
  */
 
+import { normalizeRequestAuthority } from '@lib/routing/hostAuthority';
+
 export type DeploymentStage = 'local' | 'preview' | 'production';
 export type DeploymentProductId = 'menulist' | 'neelvara' | 'answerlattice' | 'campaigncue' | 'mycodex' | 'signaldesk';
 
@@ -200,8 +202,8 @@ export function getKnownProductDomains(productId: DeploymentProductId): string[]
 }
 
 export function resolveKnownProductIdByHostname(hostname: string | null | undefined): DeploymentProductId | null {
-    if (!hostname) return null;
-    const normalizedHost = hostname.split(':')[0].toLowerCase();
+    const normalizedHost = normalizeRequestAuthority(hostname)?.hostname;
+    if (!normalizedHost) return null;
 
     for (const productId of ['menulist', 'neelvara', 'answerlattice', 'campaigncue', 'mycodex', 'signaldesk'] as DeploymentProductId[]) {
         if (getKnownProductDomains(productId).includes(normalizedHost)) {
@@ -224,7 +226,7 @@ export function isActiveProductDomain(
     hostname: string | null | undefined,
     stage: DeploymentStage = getDeploymentStage(),
 ): boolean {
-    if (!hostname) return false;
-    const normalizedHost = hostname.split(':')[0].toLowerCase();
+    const normalizedHost = normalizeRequestAuthority(hostname)?.hostname;
+    if (!normalizedHost) return false;
     return getActiveProductDomains(productId, stage).includes(normalizedHost);
 }

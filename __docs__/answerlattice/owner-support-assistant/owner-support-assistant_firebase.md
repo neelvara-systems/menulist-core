@@ -1,6 +1,6 @@
 # Owner Support Assistant - Firebase Cost and Operations
 
-> **Status:** DOCS FROZEN
+> **Status:** LIVE READ-ONLY COST CONTRACT - deferred write/summary design retained below
 > **Created:** 2026-06-07
 > **Priority:** Firebase cost is the first design constraint.
 
@@ -24,19 +24,19 @@ The frozen storage decision:
 - no transcript/session/message collection
 - no background AI loop
 
-The only new durable assistant-owned record is a compact document inside the existing `platformSummary` collection:
+The live runtime creates no durable assistant-owned record. The deferred target architecture permits a compact document inside the existing `platformSummary` collection:
 
 ```text
 platformSummary/ownerSupportAssistantSummary_{tId}_{sId}
 ```
 
-Dashboard analytics uses a second compact document inside the same existing collection:
+Deferred dashboard analytics permits a second compact document inside the same existing collection:
 
 ```text
 platformSummary/ownerSupportAnalyticsSummary_{tId}_{sId}
 ```
 
-These are read models, not transcript or event stores.
+Neither deferred document is written or read by the current runtime. If implemented later, they remain read models, not transcript or event stores.
 
 ---
 
@@ -78,6 +78,8 @@ Rejected collections:
 ---
 
 ## Page Load Cost
+
+The live page reads exactly `coverage`, `trustMetrics`, `supportBoardSummary`, `frictionSnapshot`, and `knowledgeIntakeSummary`: five reads on a cold packet and zero reads on a tenant/store cache hit within 60 seconds. Daily Founder Brief is computed from that already-loaded packet, so it adds no read, write, listener, scheduler, provider call, or support-credit debit. The broader target budget below is deferred.
 
 Initial route load uses `GET /api/answerlattice/support-assistant/brief`.
 

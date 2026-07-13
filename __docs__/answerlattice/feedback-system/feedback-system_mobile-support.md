@@ -1,7 +1,7 @@
 # Feedback System — Mobile Support Assessment
 
-> **Version:** 1.4.0
-> **Last Updated:** 2026-05-31
+> **Version:** 1.7.0
+> **Last Updated:** 2026-07-11
 > **Audience:** Mobile team, Product
 
 ---
@@ -19,7 +19,13 @@
 
 Feedback collection is an infrequent, deliberate task that benefits from desktop screen space. The shared responsive form is acceptable because users can now submit the selected category directly without completing unrelated categories.
 
+The shared form and DAL use the same 1,000-character text cap and canonical issue/request lists. Feature-usage submission requires at least one selected area or a comment on every viewport; this is validation parity, not a separate mobile business rule.
+
 Content feedback (likes/dislikes) on articles and changelog is already simple enough to work on mobile without dedicated components (single tap on icon).
+
+Reaction buttons and the dislike modal share an in-flight lock/loading state, so repeated taps cannot create duplicate counter/audit mutations before the first acknowledgement returns.
+
+Mobile browser acknowledgement is partitioned by Answerlattice tenant, store and user and resets on a workspace/content switch; another workspace cannot inherit the previous like/dislike state.
 
 ---
 

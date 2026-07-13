@@ -1,426 +1,631 @@
-import { FieldValue, Timestamp } from "firebase-admin/firestore";
-import { getFunctions } from "firebase-admin/functions";
-import * as functions from 'firebase-functions';
-import { HttpsError } from "firebase-functions/v2/https";
-import { firestoreAdmin } from "../firebaseAdmin";
-import { ARTICLE_RECONCILIATION_STATUS, ARTICLE_STATUS, ANSWERLATTICE_FAQS_COLLECTION, EmbedArticleType, INGESTION_JOB_COLLECTION, INGESTION_JOB_STATUS, IngestionJob, IngestionJobArticleToReview, IngestionJobCategoriesMap, KB_ARTICLES_COLLECTION, KB_CATEGORIES_COLLECTION, KnowledgeBaseArticleType, KnowledgeBaseCategoriesType } from "../types";
+import { randomUUID } from 'crypto';
+import { FieldValue, Timestamp } from 'firebase-admin/firestore';
+import * as logger from 'firebase-functions/logger';
+import { HttpsError } from 'firebase-functions/v2/https';
+import {
+    ANSWERLATTICE_EMBEDDING_CACHE_VERSION,
+    ANSWERLATTICE_EMBEDDING_OUTPUT_DIMENSIONALITY,
+    ANSWERLATTICE_EMBEDDING_VECTOR_FIELD,
+} from '../constants/ai';
+import { firestoreAdmin } from '../firebaseAdmin';
+import {
+    ARTICLE_RECONCILIATION_STATUS,
+    ARTICLE_STATUS,
+    ANSWERLATTICE_FAQS_COLLECTION,
+    INGESTION_JOB_COLLECTION,
+    INGESTION_JOB_STATUS,
+    IngestionJob,
+    IngestionJobCategory,
+    IngestionJobCategoriesMap,
+    KB_ARTICLES_COLLECTION,
+    KB_CATEGORIES_COLLECTION,
+} from '../types';
+import { getAnswerlatticeEmbeddingInput } from './embeddingSourceBoundary';
+import { getReusableEmbeddingVectorDimensions } from './embeddingVectorBoundary';
 
-const getKnowledgeBaseCategoriesDocId = (tId?: unknown, sId?: unknown) => {
-    const tenantId = Number(tId);
-    const storeId = Number(sId);
-    if (Number.isFinite(tenantId) && Number.isFinite(storeId) && tenantId > 0 && storeId > 0) {
-        return `categories_${tenantId}_${storeId}`;
-    }
-    return 'categories';
-};
-
+const PRODUCT_ID = 'AL';
+const MAX_PUBLISH_ARTICLES = 60;
+const MAX_PUBLISH_CATEGORIES = 20;
+const MAX_PUBLISH_SECTIONS = 60;
+const MAX_REPLACEMENT_ARTICLES = 20;
+const MAX_NAVIGATION_BYTES = 850 * 1024;
+const MAX_FINAL_CATEGORIES_INPUT_BYTES = 512 * 1024;
 const PUBLISH_APPROVED_JOB_FAILED_CODE = 'ANSWERLATTICE_PUBLISH_APPROVED_JOB_FAILED';
 const PUBLISH_APPROVED_JOB_STATUS_UPDATE_FAILED_CODE = 'ANSWERLATTICE_PUBLISH_APPROVED_JOB_STATUS_UPDATE_FAILED';
 const PUBLISH_APPROVED_JOB_NOT_FOUND_CODE = 'ANSWERLATTICE_PUBLISH_APPROVED_JOB_NOT_FOUND';
 const PUBLISH_APPROVED_JOB_FAILED_MESSAGE = 'Publishing failed';
 
+type ArticlePlacement = {
+    id: string;
+    title: string;
+    categoryId: string;
+    categoryTitle: string;
+    sectionId: string;
+    sectionTitle: string;
+    reEmbedding: boolean;
+};
+
+type NormalizedFinalCategories = {
+    categories: IngestionJobCategoriesMap;
+    placements: Map<string, ArticlePlacement>;
+};
+
+function normalizeDocumentId(value: unknown): string | null {
+    if (typeof value !== 'string') return null;
+    const id = value.trim();
+    if (id !== value || !id || id.length > 180 || id === '.' || id === '..' || id.includes('/') || /^__.*__$/.test(id)) return null;
+    return id;
+}
+
+function normalizeGeneratedArticleId(value: unknown): string | null {
+    const id = normalizeDocumentId(value);
+    return id && /^[a-zA-Z0-9_-]+$/.test(id) ? id : null;
+}
+
+function normalizeRouteSegment(value: unknown): string | null {
+    const id = normalizeDocumentId(value);
+    return id && /^[a-zA-Z0-9_-]+$/.test(id) ? id : null;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function boundedIndex(value: unknown, fallback: number): number {
+    return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 && value <= 10_000
+        ? value
+        : fallback;
+}
+
+function normalizeScopeId(value: unknown): number | null {
+    if (typeof value !== 'string' && typeof value !== 'number') return null;
+    const raw = String(value);
+    if (!/^[1-9]\d*$/.test(raw)) return null;
+    const id = Number(raw);
+    return Number.isSafeInteger(id) && id > 0 && String(id) === raw ? id : null;
+}
+
 function boundedDiagnosticValue(value: unknown): string | number | null {
     if (typeof value === 'number' && Number.isFinite(value)) return value;
-    if (typeof value === 'string') {
-        const trimmed = value.trim();
-        return trimmed ? trimmed.slice(0, 80) : null;
-    }
+    if (typeof value === 'string') return value.slice(0, 120);
     return null;
 }
 
-function getPublishApprovedJobErrorContext(error: unknown): Record<string, string | number | null> {
-    const sourceError = error as { code?: unknown; status?: unknown; statusCode?: unknown };
+function getPublishApprovedJobErrorContext(jobId: string, error: unknown) {
+    const sourceError = error as { code?: unknown; status?: unknown };
+    const sourceErrorCode = boundedDiagnosticValue(sourceError?.code);
+    const sourceStatusCode = boundedDiagnosticValue(sourceError?.status);
     return {
+        jobIdLength: jobId.length,
         sourceErrorName: error instanceof Error ? (error.name || 'Error').slice(0, 80) : typeof error,
-        sourceErrorCode: boundedDiagnosticValue(sourceError?.code),
-        sourceErrorStatus: boundedDiagnosticValue(sourceError?.status || sourceError?.statusCode),
+        ...(sourceErrorCode ? { sourceErrorCode } : {}),
+        ...(sourceStatusCode ? { sourceStatusCode } : {}),
     };
 }
 
-function getPublishApprovedJobFailureCode(error: unknown): string | number {
-    if (error instanceof HttpsError) {
-        return boundedDiagnosticValue(error.details) || PUBLISH_APPROVED_JOB_FAILED_CODE;
-    }
+function getPublishApprovedJobFailureCode(error: unknown): string {
+    if (error instanceof HttpsError && error.code === 'not-found') return PUBLISH_APPROVED_JOB_NOT_FOUND_CODE;
     return PUBLISH_APPROVED_JOB_FAILED_CODE;
 }
 
-const normalizeFaqText = (value: unknown, maxLength: number): string => {
-    if (typeof value !== "string") return "";
-    return value
-        .replace(/[\u0000-\u001f\u007f]/g, " ")
-        .replace(/\s+/g, " ")
+function cleanText(value: unknown, maxLength: number): string {
+    return (typeof value === 'string' ? value : '')
+        .replace(/[\u0000-\u001f\u007f]/g, ' ')
+        .replace(/\s+/g, ' ')
         .trim()
         .slice(0, maxLength);
-};
+}
 
-const normalizeFaqList = (value: unknown, maxItems: number, maxLength: number): string[] => {
-    const raw = typeof value === "string"
-        ? value.split(/[\n,]/)
-        : Array.isArray(value) ? value : [];
+function cleanStringList(value: unknown, maxItems: number, maxLength: number): string[] {
+    const input = Array.isArray(value) ? value : [];
+    return Array.from(new Set(input.map(item => cleanText(item, maxLength)).filter(Boolean))).slice(0, maxItems);
+}
 
-    return Array.from(new Set(
-        raw
-            .map(item => normalizeFaqText(item, maxLength).toLowerCase().replace(/[^a-z0-9_\-\s/]/g, "").replace(/\s+/g, "_"))
-            .filter(Boolean)
-    )).slice(0, maxItems);
-};
+function normalizeGeneratedFaqs(value: unknown) {
+    if (!Array.isArray(value)) return [];
+    return value.map((item, index) => {
+        if (!item || typeof item !== 'object' || Array.isArray(item)) return null;
+        const record = item as Record<string, unknown>;
+        const question = cleanText(record.question, 240);
+        const answer = cleanText(record.answer, 2_000);
+        if (!question || !answer) return null;
+        return {
+            question,
+            answer,
+            tags: cleanStringList(record.tags, 20, 64),
+            contextKeys: cleanStringList(record.contextKeys, 20, 80),
+            entityIds: cleanStringList(record.entityIds, 25, 160),
+            sortOrder: typeof record.sortOrder === 'number' && Number.isSafeInteger(record.sortOrder)
+                ? record.sortOrder
+                : index,
+        };
+    }).filter((item): item is NonNullable<typeof item> => Boolean(item)).slice(0, 5);
+}
 
-const normalizeFaqIdList = (value: unknown, maxItems: number, maxLength: number): string[] => {
-    const raw = typeof value === "string"
-        ? value.split(/[\n,]/)
-        : Array.isArray(value) ? value : [];
+function buildFaqId(articleId: string, index: number): string {
+    return `${articleId}_faq_${index + 1}`.replace(/[^a-zA-Z0-9_\-]/g, '_').slice(0, 180);
+}
 
-    return Array.from(new Set(
-        raw
-            .map(item => normalizeFaqText(item, maxLength).replace(/[^a-zA-Z0-9_\-:.]/g, ""))
-            .filter(Boolean)
-    )).slice(0, maxItems);
-};
-
-const buildGeneratedFaqDocId = (articleId: string, index: number) =>
-    `${articleId}_faq_${index + 1}`.replace(/[^a-zA-Z0-9_\-]/g, "_").slice(0, 180);
-
-const normalizeGeneratedFaqs = (value: unknown) => {
-    const raw = Array.isArray(value) ? value : [];
-    return raw
-        .map((item, index) => {
-            if (!item || typeof item !== "object") return null;
-            const record = item as Record<string, unknown>;
-            const question = normalizeFaqText(record.question, 240);
-            const answer = normalizeFaqText(record.answer, 2000);
-            if (!question || !answer) return null;
-            return {
-                id: normalizeFaqText(record.id, 180),
-                question,
-                answer,
-                tags: normalizeFaqList(record.tags, 20, 64),
-                contextKeys: normalizeFaqList(record.contextKeys, 20, 80),
-                entityIds: normalizeFaqIdList(record.entityIds, 25, 160),
-                sortOrder: Number.isFinite(Number(record.sortOrder)) ? Number(record.sortOrder) : index,
-            };
-        })
-        .filter(Boolean)
-        .slice(0, 5);
-};
-
-type PublishedFaqDraft = {
-    id: string;
-    data: Record<string, unknown>;
-};
-
-const buildPublishedFaqDraftsForArticle = (
-    article: KnowledgeBaseArticleType | null,
+function buildFaqDrafts(
+    article: Record<string, unknown>,
+    articleTitle: string,
     articleId: string,
-    job: IngestionJob,
-    tenantId: number,
-    storeId: number,
-): PublishedFaqDraft[] => {
-    const generatedFaqs = normalizeGeneratedFaqs(article?.generatedFaqs);
-    return generatedFaqs.map((faq: any, index) => {
-        const id = faq.id || buildGeneratedFaqDocId(articleId, index);
+    job: Pick<IngestionJob, 'id' | 'uId'>,
+    scope: { tId: number; sId: number },
+) {
+    return normalizeGeneratedFaqs(article.generatedFaqs).map((faq, index) => {
+        const id = buildFaqId(articleId, index);
         return {
             id,
             data: {
                 id,
-                pId: 'AL',
-                tId: tenantId,
-                sId: storeId,
+                pId: PRODUCT_ID,
+                ...scope,
                 uId: job.uId,
                 question: faq.question,
                 answer: faq.answer,
-                status: "published",
-                source: "import",
+                status: 'published',
+                source: 'import',
                 active: true,
                 articleId,
-                articleTitle: article?.title || "",
+                articleTitle,
                 tags: faq.tags,
                 contextKeys: faq.contextKeys,
-                entityIds: faq.entityIds?.length ? faq.entityIds : (article as any)?.entityIds || [],
-                sortOrder: faq.sortOrder ?? index,
+                entityIds: faq.entityIds.length ? faq.entityIds : cleanStringList(article.entityIds, 25, 160),
+                sortOrder: faq.sortOrder,
                 jobId: job.id,
                 generatedFromArticleId: articleId,
                 publishedOn: Timestamp.now(),
                 lastReviewedOn: Timestamp.now(),
                 reviewRequestedOn: null,
+                createdOn: article.createdOn instanceof Timestamp ? article.createdOn : Timestamp.now(),
                 modifiedOn: Timestamp.now(),
             },
         };
     });
-};
+}
 
-export const publishApprovedJobLogic = async (jobId: string, finalCategories: IngestionJobCategoriesMap) => {
+function normalizeFinalCategories(input: unknown): NormalizedFinalCategories {
+    let byteSize = Number.POSITIVE_INFINITY;
+    try {
+        byteSize = Buffer.byteLength(JSON.stringify(input), 'utf8');
+    } catch {
+        throw new HttpsError('invalid-argument', 'Final knowledge-base structure is invalid.');
+    }
+    if (byteSize > MAX_FINAL_CATEGORIES_INPUT_BYTES || !input || typeof input !== 'object' || Array.isArray(input)) {
+        throw new HttpsError('invalid-argument', 'Final knowledge-base structure is invalid.');
+    }
 
-    const logger = functions.logger;
-    logger.info('[publishApprovedJobLogic] Orchestrator starting publish process', {
-        jobIdLength: jobId.length,
-        categoryCount: Object.keys(finalCategories || {}).length,
-    });
+    const categories: IngestionJobCategoriesMap = Object.create(null);
+    const placements = new Map<string, ArticlePlacement>();
+    let sectionCount = 0;
+    const categoryEntries = Object.entries(input as Record<string, unknown>);
+    if (categoryEntries.length === 0 || categoryEntries.length > MAX_PUBLISH_CATEGORIES) {
+        throw new HttpsError('invalid-argument', 'Final knowledge-base structure has an invalid category count.');
+    }
 
-    const articlesToReEmbed: EmbedArticleType[] = Object.values(finalCategories).reduce<EmbedArticleType[]>((acc, category) => {
-        // Handle category-level articles
-        if (category?.articles?.length) {
-            acc.push(
-                ...category.articles
-                    .filter((article) => article?.reEmbedding && article.id)
-                    .map((article) => ({
-                        id: article.id!,
-                        categoryTitle: category.title ?? "Untitled Category",
-                    }))
-            );
+    const normalizeArticle = (
+        value: unknown,
+        categoryId: string,
+        categoryTitle: string,
+        sectionId: string,
+        sectionTitle: string,
+        index: number,
+    ) => {
+        if (!value || typeof value !== 'object' || Array.isArray(value)) {
+            throw new HttpsError('invalid-argument', 'Final knowledge-base article is invalid.');
         }
+        const record = value as Record<string, unknown>;
+        const id = normalizeGeneratedArticleId(record.id);
+        const title = cleanText(record.title, 240);
+        if (!id || !title || placements.has(id)) {
+            throw new HttpsError('invalid-argument', 'Final knowledge-base article identity is invalid.');
+        }
+        if (placements.size >= MAX_PUBLISH_ARTICLES) {
+            throw new HttpsError('invalid-argument', 'Final knowledge-base structure has too many articles.');
+        }
+        placements.set(id, {
+            id,
+            title,
+            categoryId,
+            categoryTitle,
+            sectionId,
+            sectionTitle,
+            reEmbedding: record.reEmbedding === true,
+        });
+        return {
+            id,
+            title,
+            active: true,
+            index: boundedIndex(record.index, index),
+            url: sectionId
+                ? `/${categoryId}/${sectionId}/${id}`
+                : `/${categoryId}/${id}`,
+            ...(record.reEmbedding === true ? { reEmbedding: true } : {}),
+        };
+    };
 
-        // Handle section-level articles
-        if (category?.sections?.length) {
-            category.sections.forEach((section) => {
-                if (section?.articles?.length) {
-                    acc.push(
-                        ...section.articles
-                            .filter((article) => article?.reEmbedding && article.id)
-                            .map((article) => ({
-                                id: article.id!,
-                                categoryTitle: category.title ?? "Untitled Category",
-                                sectionTitle: section.title ?? undefined,
-                            }))
-                    );
+    categoryEntries.forEach(([rawCategoryId, value], categoryIndex) => {
+        if (!value || typeof value !== 'object' || Array.isArray(value)) {
+            throw new HttpsError('invalid-argument', 'Final knowledge-base category is invalid.');
+        }
+        const record = value as Record<string, unknown>;
+        const categoryId = normalizeRouteSegment(rawCategoryId);
+        const title = cleanText(record.title, 160);
+        const storedCategoryId = record.id === undefined ? categoryId : normalizeRouteSegment(record.id);
+        if (!categoryId || storedCategoryId !== categoryId || !title) {
+            throw new HttpsError('invalid-argument', 'Final knowledge-base category identity is invalid.');
+        }
+        const directArticles = Array.isArray(record.articles) ? record.articles : [];
+        const rawSections = Array.isArray(record.sections) ? record.sections : [];
+        if (directArticles.length > 0 && rawSections.length > 0) {
+            throw new HttpsError('invalid-argument', 'A category cannot contain direct articles and sections together.');
+        }
+        const category: IngestionJobCategory = {
+            id: categoryId,
+            title,
+            description: cleanText(record.description, 500),
+            icon: cleanText(record.icon, 80) || 'book',
+            url: `/${categoryId}`,
+            active: true,
+            index: boundedIndex(record.index, categoryIndex),
+        };
+        if (directArticles.length > 0) {
+            category.articles = directArticles.map((article, articleIndex) => normalizeArticle(
+                article,
+                categoryId,
+                title,
+                '',
+                '',
+                articleIndex,
+            ));
+        } else {
+            category.sections = rawSections.map((sectionValue, sectionIndex) => {
+                sectionCount += 1;
+                if (sectionCount > MAX_PUBLISH_SECTIONS || !sectionValue || typeof sectionValue !== 'object' || Array.isArray(sectionValue)) {
+                    throw new HttpsError('invalid-argument', 'Final knowledge-base section is invalid.');
+                }
+                const sectionRecord = sectionValue as Record<string, unknown>;
+                const sectionId = normalizeRouteSegment(sectionRecord.id);
+                const sectionTitle = cleanText(sectionRecord.title, 160);
+                if (!sectionId || !sectionTitle) throw new HttpsError('invalid-argument', 'Final knowledge-base section identity is invalid.');
+                const articles = Array.isArray(sectionRecord.articles) ? sectionRecord.articles : [];
+                return {
+                    id: sectionId,
+                    title: sectionTitle,
+                    description: cleanText(sectionRecord.description, 500),
+                    active: true,
+                    index: boundedIndex(sectionRecord.index, sectionIndex),
+                    url: `/${categoryId}/${sectionId}`,
+                    articles: articles.map((article, articleIndex) => normalizeArticle(
+                        article,
+                        categoryId,
+                        title,
+                        sectionId,
+                        sectionTitle,
+                        articleIndex,
+                    )),
+                };
+            });
+        }
+        categories[categoryId] = category;
+    });
+    if (placements.size === 0) throw new HttpsError('invalid-argument', 'Publish at least one knowledge-base article.');
+    return { categories, placements };
+}
+
+function removeArticleIdsFromNavigation(categories: Record<string, unknown>, ids: Set<string>) {
+    for (const category of Object.values(categories)) {
+        if (!isRecord(category)) continue;
+        if (Array.isArray(category.articles)) {
+            category.articles = category.articles.filter(article => (
+                !isRecord(article) || !ids.has(String(article.id || ''))
+            ));
+        }
+        if (Array.isArray(category.sections)) {
+            category.sections.forEach(section => {
+                if (isRecord(section) && Array.isArray(section.articles)) {
+                    section.articles = section.articles.filter(article => (
+                        !isRecord(article) || !ids.has(String(article.id || ''))
+                    ));
                 }
             });
         }
+    }
+}
 
-        return acc;
-    }, []);
+function normalizeJobArticleIds(value: unknown): string[] | null {
+    if (!Array.isArray(value) || value.length === 0 || value.length > MAX_PUBLISH_ARTICLES) return null;
+    const ids = value.map(normalizeGeneratedArticleId);
+    if (ids.some(id => id === null)) return null;
+    const uniqueIds = Array.from(new Set(ids as string[]));
+    return uniqueIds.length === value.length ? uniqueIds : null;
+}
 
-    logger.info(`[publishApprovedJobLogic] Found ${articlesToReEmbed.length} articles to re-embed.`);
+function normalizeArticlesToReview(value: unknown, jobArticleIds: Set<string>): Array<{
+    similarArticleIds: string[];
+    status: string;
+}> | null {
+    if (value === undefined || value === null) return [];
+    if (!Array.isArray(value) || value.length > MAX_PUBLISH_ARTICLES) return null;
+    const validStatuses = new Set<string>(Object.values(ARTICLE_RECONCILIATION_STATUS));
+    const seenIds = new Set<string>();
+    const normalized = [];
+    for (const item of value) {
+        if (!isRecord(item)) return null;
+        const id = normalizeGeneratedArticleId(item.id);
+        if (!id || !jobArticleIds.has(id) || seenIds.has(id) || !validStatuses.has(String(item.status))) return null;
+        seenIds.add(id);
+        if (!Array.isArray(item.similarArticles) || item.similarArticles.length > 3) return null;
+        const similarArticleIds = item.similarArticles.map(article => (
+            isRecord(article) ? normalizeDocumentId(article.id) : null
+        ));
+        if (similarArticleIds.some(articleId => articleId === null)) return null;
+        const uniqueSimilarArticleIds = Array.from(new Set(similarArticleIds as string[]));
+        if (uniqueSimilarArticleIds.length !== similarArticleIds.length) return null;
+        normalized.push({ status: String(item.status), similarArticleIds: uniqueSimilarArticleIds });
+    }
+    return normalized;
+}
 
-    // const articlesToReEmbed: EmbedArticleType[] = [];
-    // Object.values(finalCategories).forEach((category: IngestionJobCategory) => {
-    //   if (category?.sections?.length) {
-    //     category.sections.forEach((section: IngestionJobSection) => {
-    //       section.articles?.forEach((article: IngestionJobArticle) => {
-    //         if (article?.reEmbedding && article.id) {
-    //           articlesToReEmbed.push({
-    //             id: article.id,
-    //             categoryTitle: category.title ?? "Untitled Category",
-    //             sectionTitle: section.title ?? "",
-    //           });
-    //         }
-    //       });
-    //     });
-    //   }
+function getCategoriesDocId(tId: number, sId: number) {
+    return `categories_${tId}_${sId}`;
+}
 
-    //   if (category?.articles?.length) {
-    //     category.articles.forEach((article: IngestionJobArticle) => {
-    //       if (article?.reEmbedding && article.id) {
-    //         articlesToReEmbed.push({
-    //           id: article.id,
-    //           categoryTitle: category.title ?? "Untitled Category",
-    //           sectionTitle: "",
-    //         });
-    //       }
-    //     });
-    //   }
-    // });
+function getOwnedGeneratedFaqIds(articleId: string, value: unknown): string[] {
+    if (!Array.isArray(value)) return [];
+    const prefix = `${articleId}_faq_`;
+    return Array.from(new Set(value
+        .map(normalizeDocumentId)
+        .filter((id): id is string => id !== null && id.startsWith(prefix))))
+        .slice(0, 5);
+}
 
+function deleteStaleGeneratedFaqs(
+    transaction: FirebaseFirestore.Transaction,
+    articleId: string,
+    previousFaqIds: unknown,
+    nextFaqIds: string[],
+) {
+    const nextIds = new Set(nextFaqIds);
+    for (const faqId of getOwnedGeneratedFaqIds(articleId, previousFaqIds)) {
+        if (!nextIds.has(faqId)) {
+            transaction.delete(firestoreAdmin.collection(ANSWERLATTICE_FAQS_COLLECTION).doc(faqId));
+        }
+    }
+}
+
+export async function publishApprovedJobLogic(jobIdInput: string, finalCategoriesInput: IngestionJobCategoriesMap) {
+    const jobId = normalizeDocumentId(jobIdInput);
+    if (!jobId) throw new HttpsError('invalid-argument', 'Job ID is invalid.');
+    const normalized = normalizeFinalCategories(finalCategoriesInput);
     const jobRef = firestoreAdmin.collection(INGESTION_JOB_COLLECTION).doc(jobId);
+    let alreadyStarted = false;
 
     try {
         await firestoreAdmin.runTransaction(async (transaction) => {
-            // 2. Pre-flight Check (Idempotency)
-            const jobDoc = await transaction.get(jobRef);
-            if (!jobDoc.exists) throw new HttpsError('not-found', 'Job not found.', PUBLISH_APPROVED_JOB_NOT_FOUND_CODE);
-            const job = jobDoc.data() as IngestionJob;
-
-            logger.info('[publishApprovedJobLogic] Pre-flight check', {
-                jobIdLength: jobId.length,
-                jobStatus: String(job.status || ''),
-                articleCount: Array.isArray(job.articleIds) ? job.articleIds.length : 0,
-                categoryCount: Object.keys(finalCategories || {}).length,
-            });
-            if (job.status !== INGESTION_JOB_STATUS.NEEDS_REVIEW) {
-                logger.warn(`[publishApprovedJobLogic] Publish aborted. Job status is '${job.status}'.`);
+            const jobSnap = await transaction.get(jobRef);
+            if (!jobSnap.exists) throw new HttpsError('not-found', 'Job not found.');
+            const job = { ...jobSnap.data(), id: jobSnap.id } as IngestionJob;
+            if (job.status === INGESTION_JOB_STATUS.PUBLISHING || job.status === INGESTION_JOB_STATUS.PUBLISHED) {
+                alreadyStarted = true;
                 return;
             }
-
-            const categoriesDocId = getKnowledgeBaseCategoriesDocId(job.tId, job.sId);
-            const categoriesDocRef = firestoreAdmin.collection(KB_CATEGORIES_COLLECTION).doc(categoriesDocId);
-            const tenantId = Number(job.tId);
-            const storeId = Number(job.sId);
-            const allArticleIds = job.articleIds || [];
-            const articleDocs = new Map<string, KnowledgeBaseArticleType | null>();
-
-            // 3. Update Master Navigation Document
-            const categoriesMetaDoc = await transaction.get(categoriesDocRef);
-            const currentCategoriesData: KnowledgeBaseCategoriesType = categoriesMetaDoc.exists ? categoriesMetaDoc.data() as KnowledgeBaseCategoriesType : { categories: {} };
-            logger.info('[publishApprovedJobLogic] Loaded existing categories state', {
-                jobIdLength: jobId.length,
-                categoriesDocIdLength: categoriesDocId.length,
-                existingCategoryCount: Object.keys(currentCategoriesData.categories || {}).length,
-            });
-
-            for (const articleId of allArticleIds) {
-                const articleRef = firestoreAdmin.collection(KB_ARTICLES_COLLECTION).doc(articleId);
-                const articleDoc = await transaction.get(articleRef);
-                articleDocs.set(articleId, articleDoc.exists ? articleDoc.data() as KnowledgeBaseArticleType : null);
+            if (job.status !== INGESTION_JOB_STATUS.NEEDS_REVIEW) {
+                throw new HttpsError('failed-precondition', 'This knowledge-base job is not ready to publish.');
+            }
+            if (job.deletionRun) {
+                throw new HttpsError('failed-precondition', 'This knowledge-base job is being deleted.');
+            }
+            if (job.pId !== PRODUCT_ID) {
+                throw new HttpsError('failed-precondition', 'This knowledge-base job is not available.');
+            }
+            const tId = normalizeScopeId(job.tId);
+            const sId = normalizeScopeId(job.sId);
+            if (!tId || !sId) throw new HttpsError('failed-precondition', 'This knowledge-base job is not available.');
+            const jobArticleIds = normalizeJobArticleIds(job.articleIds);
+            if (!jobArticleIds) {
+                throw new HttpsError('failed-precondition', 'This knowledge-base job has an invalid article set.');
+            }
+            const jobArticleIdSet = new Set(jobArticleIds);
+            for (const articleId of normalized.placements.keys()) {
+                if (!jobArticleIds.includes(articleId)) {
+                    throw new HttpsError('failed-precondition', 'Final knowledge-base structure contains an article outside this job.');
+                }
+            }
+            const articlesToReview = normalizeArticlesToReview(job.articlesToReview, jobArticleIdSet);
+            if (!articlesToReview) {
+                throw new HttpsError('failed-precondition', 'This knowledge-base job has invalid reconciliation state.');
+            }
+            if (articlesToReview.some(item => item.status === ARTICLE_RECONCILIATION_STATUS.UNRESOLVED)) {
+                throw new HttpsError('failed-precondition', 'Resolve duplicate article reviews before publishing.');
             }
 
-            // Merge the final, human-approved navigation blueprint from the client
-            for (const catId in finalCategories) {
-                const category = JSON.parse(JSON.stringify(finalCategories[catId]));
-                category.active = true;
-
-                // Remove content from direct articles in the category
-                if (category.articles) {
-                    category.articles.forEach((article: any) => {
-                        article.active = true;
-                        delete article.content;
-                        delete article.generatedFaqs;
-                        delete article.faqIds;
-                    });
-                }
-
-                // Remove content from articles within sections
-                if (category.sections) {
-                    category.sections.forEach((section: any) => {
-                        section.active = true;
-                        if (section.articles) {
-                            section.articles.forEach((article: any) => {
-                                article.active = true;
-                                delete article.content;
-                                delete article.generatedFaqs;
-                                delete article.faqIds;
-                            });
-                        }
-                    });
-                }
-
-                currentCategoriesData.categories[catId] = category;
+            const categoriesRef = firestoreAdmin.collection(KB_CATEGORIES_COLLECTION).doc(getCategoriesDocId(tId, sId));
+            const categorySnap = await transaction.get(categoriesRef);
+            const articleDocs = new Map<string, FirebaseFirestore.DocumentSnapshot>();
+            for (const articleId of jobArticleIds) {
+                const articleSnap = await transaction.get(firestoreAdmin.collection(KB_ARTICLES_COLLECTION).doc(articleId));
+                articleDocs.set(articleId, articleSnap);
             }
 
-            //*** started process of deleting articles after reconcillation of action == replace
+            const allReplacementIds = Array.from(new Set(articlesToReview
+                .filter(item => item.status === ARTICLE_RECONCILIATION_STATUS.REPLACE)
+                .flatMap(item => item.similarArticleIds)
+                .filter(id => !jobArticleIdSet.has(id))));
+            if (allReplacementIds.length > MAX_REPLACEMENT_ARTICLES) {
+                throw new HttpsError('resource-exhausted', 'Too many replacement articles were selected.');
+            }
+            const replacementIds = allReplacementIds;
+            const replacementDocs = new Map<string, FirebaseFirestore.DocumentSnapshot>();
+            for (const articleId of replacementIds) {
+                replacementDocs.set(articleId, await transaction.get(firestoreAdmin.collection(KB_ARTICLES_COLLECTION).doc(articleId)));
+            }
 
-            const articlesToReconcile: IngestionJobArticleToReview[] = job.articlesToReview?.filter(article => article.status === ARTICLE_RECONCILIATION_STATUS.REPLACE) || [];
-
-            articlesToReconcile.forEach(newArticle => {
-
-                //1. delete articles which are to be deleted
-                const articlesToDelete: any[] = newArticle.similarArticles?.map(article => article.id).filter(Boolean) || [];
-                if (articlesToDelete.length > 0) {
-                    for (const articleId of articlesToDelete) {
-                        const articleRef = firestoreAdmin.collection(KB_ARTICLES_COLLECTION).doc(articleId);
-                        transaction.delete(articleRef);
-                    }
+            for (const [articleId, articleSnap] of articleDocs) {
+                if (!articleSnap.exists) throw new HttpsError('failed-precondition', 'A generated article is missing.');
+                const article = articleSnap.data() || {};
+                if (
+                    article.pId !== PRODUCT_ID
+                    || normalizeScopeId(article.tId) !== tId
+                    || normalizeScopeId(article.sId) !== sId
+                    || String(article.jobId || '') !== jobId
+                    || normalizeDocumentId(article.id ?? articleId) !== articleId
+                ) {
+                    throw new HttpsError('failed-precondition', 'A generated article has invalid workspace ownership.');
                 }
-
-                const articleToReplace = newArticle.similarArticles?.[0];
-                if (!articleToReplace) return;
-                const newArticleMeta = { id: articleToReplace.id, title: articleToReplace.title, active: true, index: 0, url: "" };
-                // 2. Replace the article in the categories map and remove other similar articles
-                // 3. Remove all other similar articles from the entire map 
-                for (const categoryId in currentCategoriesData.categories) {
-                    const category = currentCategoriesData.categories[categoryId];
-                    if (category.articles) {
-                        const articleIndex = category.articles.findIndex(art => art.id === articleToReplace.id);
-                        if (articleIndex > -1) {
-                            category.articles[articleIndex] = newArticleMeta;
-                        }
-                        category.articles = category.articles.filter(article => !articlesToDelete.includes(article.id));
-                    }
-                    if (category.sections) {
-                        category.sections.forEach(section => {
-                            if (section.articles) {
-                                const articleIndex = section.articles.findIndex(art => art.id === articleToReplace.id);
-                                if (articleIndex > -1) {
-                                    section.articles[articleIndex] = newArticleMeta;
-                                }
-                                section.articles = section.articles.filter(article => !articlesToDelete.includes(article.id));
-                            }
-                        });
-                    }
+            }
+            for (const [articleId, articleSnap] of replacementDocs) {
+                if (!articleSnap.exists) continue;
+                const article = articleSnap.data() || {};
+                if (
+                    article.pId !== PRODUCT_ID
+                    || normalizeScopeId(article.tId) !== tId
+                    || normalizeScopeId(article.sId) !== sId
+                    || normalizeDocumentId(article.id ?? articleId) !== articleId
+                ) {
+                    throw new HttpsError('failed-precondition', 'A replacement article has invalid workspace ownership.');
                 }
-            })
-            //*** ended process of deleting articles after reconcillation of action == replace
+            }
 
-
-            transaction.set(categoriesDocRef, currentCategoriesData);
-            logger.info(`[publishApprovedJobLogic] Merged navigation blueprint into kb_categories/${categoriesDocId}.`);
-
-            // 4. Update articles that DO NOT need re-embedding
-            const articlesToPublishNow = articlesToReEmbed.length > 0 ? allArticleIds.filter(id => !articlesToReEmbed.find(article => article.id === id)) : allArticleIds;
-
-            for (const articleId of allArticleIds) {
-                const articleRef = firestoreAdmin.collection(KB_ARTICLES_COLLECTION).doc(articleId);
-                const faqDrafts = buildPublishedFaqDraftsForArticle(articleDocs.get(articleId) || null, articleId, job, tenantId, storeId);
-                const faqIds = faqDrafts.map(faq => faq.id);
-                const updatePayload: FirebaseFirestore.UpdateData<FirebaseFirestore.DocumentData> = {
-                    active: true,
-                    lastReviewedOn: Timestamp.now(),
-                    generatedFaqs: FieldValue.delete(),
+            const storedCategories = categorySnap.data()?.categories;
+            if (categorySnap.exists && storedCategories !== undefined && !isRecord(storedCategories)) {
+                throw new HttpsError('failed-precondition', 'Stored knowledge-base navigation is invalid.');
+            }
+            const existingCategories: Record<string, unknown> = isRecord(storedCategories)
+                ? structuredClone(storedCategories)
+                : {};
+            const removedIds = new Set([
+                ...jobArticleIds.filter(id => !normalized.placements.has(id)),
+                ...replacementIds,
+            ]);
+            removeArticleIdsFromNavigation(existingCategories, removedIds);
+            for (const [categoryId, category] of Object.entries(normalized.categories)) {
+                existingCategories[categoryId] = {
+                    ...category,
+                    pId: PRODUCT_ID,
+                    tId,
+                    sId,
+                    modifiedOn: Timestamp.now(),
                 };
-                if (articlesToPublishNow.includes(articleId)) {
-                    updatePayload.status = ARTICLE_STATUS.PUBLISHED;
-                }
-                if (faqIds.length > 0) {
-                    updatePayload.faqIds = faqIds;
-                }
-                transaction.update(articleRef, updatePayload);
-
-                for (const faqDraft of faqDrafts) {
-                    const faqRef = firestoreAdmin.collection(ANSWERLATTICE_FAQS_COLLECTION).doc(faqDraft.id);
-                    transaction.set(faqRef, faqDraft.data, { merge: true });
-                }
+            }
+            if (Buffer.byteLength(JSON.stringify(existingCategories), 'utf8') > MAX_NAVIGATION_BYTES) {
+                throw new HttpsError('resource-exhausted', 'Knowledge-base navigation is too large to publish safely.');
             }
 
-            // 5. Update articles that DO need re-embedding
-            // for (const articleId of articlesToReEmbed) {
-            //   const articleRef = db.collection(KB_ARTICLES_COLLECTION).doc(articleId);
-            //   transaction.update(articleRef, { status: 'embedding' });
-            // }
-
-            // 6. Finalize Job Status for this phase
-            transaction.update(jobRef, {
-                status: INGESTION_JOB_STATUS.PUBLISHING,
-                modifiedOn: Timestamp.now(),
-                articlesToEmbedCount: articlesToReEmbed.length,
-                categories: finalCategories,
-                articlesEmbeddedCount: 0,
-            });
-        });
-
-        // 7. Enqueue the slow work AFTER the transaction is successful
-        if (articlesToReEmbed.length > 0) {
-            const queue = getFunctions().taskQueue("embedArticleWorker");
-            for (const article of articlesToReEmbed) {
-                await queue.enqueue({ articleData: article, jobId });
-            }
-            logger.info(`[publishApprovedJobLogic] Enqueued ${articlesToReEmbed.length} articles for re-embedding.`);
-        }
-
-        logger.info(`[publishApprovedJobLogic] Orchestration successful. Job is now publishing.`);
-        return { success: true, message: 'Publishing process initiated.' };
-
-    } catch (error: any) {
-        logger.error('[publishApprovedJobLogic] Critical error during publish orchestration', {
-            jobIdLength: jobId.length,
-            failureCode: getPublishApprovedJobFailureCode(error),
-            ...getPublishApprovedJobErrorContext(error),
-        });
-        if (error instanceof HttpsError) {
-            throw error;
-        }
-        try {
-            const jobSnapshot = await jobRef.get();
-            if (jobSnapshot.exists) {
-                await jobRef.update({
-                    status: INGESTION_JOB_STATUS.FAILED,
-                    errorMessage: PUBLISH_APPROVED_JOB_FAILED_MESSAGE
+            const embeddingPendingArticleIds: string[] = [];
+            for (const articleId of jobArticleIds) {
+                const articleRef = firestoreAdmin.collection(KB_ARTICLES_COLLECTION).doc(articleId);
+                const article = articleDocs.get(articleId)?.data() || {};
+                const placement = normalized.placements.get(articleId);
+                if (!placement) {
+                    deleteStaleGeneratedFaqs(transaction, articleId, article.faqIds, []);
+                    transaction.delete(articleRef);
+                    continue;
+                }
+                const embeddingInput = getAnswerlatticeEmbeddingInput({
+                    categoryTitle: article.categoryTitle,
+                    sectionTitle: article.sectionTitle,
+                    title: article.title,
+                    content: article.content,
                 });
+                if (!embeddingInput) {
+                    throw new HttpsError('failed-precondition', 'A generated article has invalid content for embedding.');
+                }
+                const needsEmbedding = placement.reEmbedding
+                    || article.embeddingStatus !== 'embedded'
+                    || article.embeddingCacheVersion !== ANSWERLATTICE_EMBEDDING_CACHE_VERSION
+                    || article.embeddingSourceHash !== embeddingInput.sourceHash
+                    || getReusableEmbeddingVectorDimensions(article[ANSWERLATTICE_EMBEDDING_VECTOR_FIELD]) !== ANSWERLATTICE_EMBEDDING_OUTPUT_DIMENSIONALITY
+                    || article.categoryTitle !== placement.categoryTitle
+                    || (article.sectionTitle || '') !== placement.sectionTitle
+                    || article.title !== placement.title;
+                if (needsEmbedding) embeddingPendingArticleIds.push(articleId);
+                const faqDrafts = buildFaqDrafts(article, placement.title, articleId, job, { tId, sId });
+                const nextFaqIds = faqDrafts.map(item => item.id);
+                deleteStaleGeneratedFaqs(transaction, articleId, article.faqIds, nextFaqIds);
+                transaction.set(articleRef, {
+                    pId: PRODUCT_ID,
+                    tId,
+                    sId,
+                    categoryId: placement.categoryId,
+                    categoryTitle: placement.categoryTitle,
+                    sectionId: placement.sectionId,
+                    sectionTitle: placement.sectionTitle,
+                    title: placement.title,
+                    active: !needsEmbedding,
+                    status: needsEmbedding ? ARTICLE_STATUS.NEEDS_REVIEW : ARTICLE_STATUS.PUBLISHED,
+                    ...(needsEmbedding ? { embeddingStatus: 'pending' } : { lastReviewedOn: Timestamp.now() }),
+                    generatedFaqs: FieldValue.delete(),
+                    reconciliation: FieldValue.delete(),
+                    faqIds: nextFaqIds,
+                    modifiedOn: Timestamp.now(),
+                }, { merge: true });
+                for (const faqDraft of faqDrafts) {
+                    transaction.set(
+                        firestoreAdmin.collection(ANSWERLATTICE_FAQS_COLLECTION).doc(faqDraft.id),
+                        faqDraft.data,
+                        { merge: true },
+                    );
+                }
             }
-        } catch (statusError) {
-            logger.error('[publishApprovedJobLogic] Failed to persist failure status', {
-                jobIdLength: jobId.length,
+            for (const [articleId, articleSnap] of replacementDocs) {
+                if (articleSnap.exists) {
+                    deleteStaleGeneratedFaqs(transaction, articleId, articleSnap.data()?.faqIds, []);
+                    transaction.delete(firestoreAdmin.collection(KB_ARTICLES_COLLECTION).doc(articleId));
+                }
+            }
+            transaction.set(categoriesRef, {
+                pId: PRODUCT_ID,
+                tId,
+                sId,
+                categories: existingCategories,
+                modifiedOn: Timestamp.now(),
+            }, { merge: true });
+
+            const embeddingRunId = `publish_${randomUUID()}`;
+            transaction.set(jobRef, {
+                pId: PRODUCT_ID,
+                status: INGESTION_JOB_STATUS.PUBLISHING,
+                categories: normalized.categories,
+                articleIds: Array.from(normalized.placements.keys()),
+                embeddingPendingArticleIds,
+                embeddingCompletedArticleIds: [],
+                embeddingFailedArticleIds: [],
+                embeddingEnqueueStatus: 'pending',
+                embeddingRunId,
+                articlesToEmbedCount: embeddingPendingArticleIds.length,
+                articlesEmbeddedCount: 0,
+                errorMessage: null,
+                failureStage: null,
+                modifiedOn: Timestamp.now(),
+            }, { merge: true });
+        });
+
+        return {
+            success: true,
+            alreadyStarted,
+            status: alreadyStarted ? 'already_started' : 'publishing',
+        };
+    } catch (error) {
+        logger.error('[Answerlattice KB] Publish orchestration failed', {
+            failureCode: getPublishApprovedJobFailureCode(error),
+            ...getPublishApprovedJobErrorContext(jobId, error),
+        });
+        if (error instanceof HttpsError) throw error;
+        await jobRef.set({
+            status: INGESTION_JOB_STATUS.FAILED,
+            errorMessage: PUBLISH_APPROVED_JOB_FAILED_MESSAGE,
+            failureStage: 'publishing_orchestration',
+            modifiedOn: Timestamp.now(),
+        }, { merge: true }).catch((statusError) => {
+            logger.error('[Answerlattice KB] Publish failure status update failed', {
                 failureCode: PUBLISH_APPROVED_JOB_STATUS_UPDATE_FAILED_CODE,
-                ...getPublishApprovedJobErrorContext(statusError),
+                ...getPublishApprovedJobErrorContext(jobId, statusError),
             });
-        }
-        throw new HttpsError('internal', 'Could not publish approved job.', PUBLISH_APPROVED_JOB_FAILED_CODE);
+        });
+        throw new HttpsError('internal', 'Could not publish approved job.', {
+            code: PUBLISH_APPROVED_JOB_FAILED_CODE,
+        });
     }
-};
+}

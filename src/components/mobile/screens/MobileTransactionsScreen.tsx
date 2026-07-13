@@ -110,6 +110,7 @@ export default function MobileTransactionsScreen({ onBack }: MobileTransactionsS
     const [transactions, setTransactions] = useState<TransactionItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [hasMore, setHasMore] = useState(true);
+    const [manualFilterContinuation, setManualFilterContinuation] = useState(false);
     const [actionFilter, setActionFilter] = useState<string | null>(null);
     const [dateRange, setDateRange] = useState<[dayjs.Dayjs | null, dayjs.Dayjs | null] | null>(null);
     const [draftActionFilter, setDraftActionFilter] = useState<string | null>(null);
@@ -131,6 +132,7 @@ export default function MobileTransactionsScreen({ onBack }: MobileTransactionsS
                 pageRef.current = 1;
                 setTransactions([]);
                 setHasMore(true);
+                setManualFilterContinuation(false);
             }
 
             const response = await getPaginatedAiOperations({
@@ -143,11 +145,23 @@ export default function MobileTransactionsScreen({ onBack }: MobileTransactionsS
 
             lastVisibleRef.current = response.lastVisibleDoc;
             if (response.data.length === 0) {
+                if (
+                    response.requiresManualContinuation
+                    && response.hasMore
+                    && response.lastVisibleDoc
+                ) {
+                    pageRef.current += 1;
+                    setHasMore(false);
+                    setManualFilterContinuation(true);
+                    return;
+                }
                 setHasMore(false);
+                setManualFilterContinuation(false);
                 return;
             }
 
             setHasMore(response.hasMore);
+            setManualFilterContinuation(false);
             setTransactions((previous) => (reset || pageRef.current === 1 ? response.data : [...previous, ...response.data]));
             pageRef.current += 1;
         } catch {
@@ -419,6 +433,21 @@ export default function MobileTransactionsScreen({ onBack }: MobileTransactionsS
                         <Flex align="center" gap={12} vertical>
                             <LuReceipt color={token.colorTextTertiary} size={36} />
                             <Title level={5} style={{ margin: 0 }}>{t('noEnhancementActivityYet')}</Title>
+                            {manualFilterContinuation ? (
+                                <Button
+                                    color="primary"
+                                    fill="solid"
+                                    loading={loading}
+                                    onClick={() => {
+                                        setLoading(true);
+                                        setManualFilterContinuation(false);
+                                        void fetchPage(false);
+                                    }}
+                                    style={{ minHeight: 44 }}
+                                >
+                                    {t('next')}
+                                </Button>
+                            ) : null}
                         </Flex>
                     </Card>
                 ) : (
@@ -466,6 +495,22 @@ export default function MobileTransactionsScreen({ onBack }: MobileTransactionsS
                                 ))}
                             </List>
                         </Card>
+                        {manualFilterContinuation ? (
+                            <Button
+                                block
+                                color="primary"
+                                fill="outline"
+                                loading={loading}
+                                onClick={() => {
+                                    setLoading(true);
+                                    setManualFilterContinuation(false);
+                                    void fetchPage(false);
+                                }}
+                                style={{ minHeight: 44 }}
+                            >
+                                {t('next')}
+                            </Button>
+                        ) : null}
                         <InfiniteScroll hasMore={hasMore} loadMore={async () => { await fetchPage(false); }} />
                     </>
                 )}

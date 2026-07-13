@@ -1,7 +1,7 @@
 # Owner Notifications
 
 **Status:** Implemented for MenuList lifecycle owner notifications, Answerlattice owner test notification, and internal ops tracking
-**Date:** 2026-06-02
+**Date:** 2026-07-13
 **Products:** MenuList primary, Answerlattice reusable architecture
 **Owner:** Platform / product engineering
 
@@ -20,6 +20,8 @@ Implemented on June 2, 2026:
 - Answerlattice `ANSWERLATTICE_NOTIFICATION_TEST` now routes through the owner notification core while ticket/customer emails remain on the existing generic notification service.
 - MenuList billing, credit, publish success/failure, suspension warning, renewal reminder, subscription cancellation/pause/resume/upgrade, credits exhausted, and menu stale owner triggers are wired.
 - Internal platform dashboard added at `/ops/owner-notifications` with bounded tracking, detail inspection, retry, prefilled Email/WhatsApp Web recovery, manual system send support, and manual handoff recording.
+- July 13 platform-ops hardening requires current persisted platform authority after a fail-closed limiter, derives rows/counts from one product-scoped recent window, reports exact scope reads, filters delivery detail by product, and commits manual-handoff audit writes atomically.
+- The independent clean-room follow-up rejects non-claimable retries, preserves malformed persisted enum fields as explicit `invalid` operational state, orders delivery detail newest-first through the declared composite index, and requires stable manual-action IDs so response retries do not duplicate sends or handoff rows.
 - Firebase Functions deployed to `menulist-qa`: `verifyMenuPublish`, `computeDecisionBlocksScores`, `triggerDecisionBlocksScoring`, `triggerStoreNightlyScheduler`.
 
 ## Scope
@@ -74,9 +76,9 @@ The internal platform dashboard is a recovery surface for the platform team only
 | [owner-notifications_website.md](./owner-notifications_website.md) | Public content guidance if this appears on product pages |
 | [owner-notifications_helpdoc.md](./owner-notifications_helpdoc.md) | Owner help documentation draft |
 
-## Implementation Gate
+## Maintenance Gates
 
-Implementation should not start until these docs are reviewed for:
+Any owner-notification change must recheck:
 
 - Trigger categories and channel policy
 - Required WhatsApp consent and template rules
@@ -84,6 +86,13 @@ Implementation should not start until these docs are reviewed for:
 - Notification log schema and Firebase cost envelope
 - Date, time, timezone, and currency formatting contract
 
+## Version History
+
+| Version | Date | Changes |
+| --- | --- | --- |
+| 1.1 | July 13, 2026 | Hardened the internal recovery surface with current persisted platform authorization, bounded recent counts, product-filtered detail, exact cost reporting, and atomic manual handoff |
+| 1.0 | June 2, 2026 | Implemented the shared owner-notification architecture and platform recovery monitor |
+
 ## Changelog
 
-This documentation package is tracked in [../changelog.md](../changelog.md).
+This documentation package is tracked in [../changelog.md](../changelog.md). The July 13 ops-route audit changed internal recovery authorization/cost semantics only; owner delivery triggers, templates, channels, preferences, and public behavior are unchanged.

@@ -8,6 +8,12 @@ export const dynamic = 'force-dynamic';
 import { getDefaultTimeSlotPresets } from "@config/defaultTimeSlotPresets";
 import { FEATURE_FLAGS } from "@config/features";
 import { FALLBACK_BUSINESS_TYPE, resolveStoreBusinessCategory } from "@data/shared/businessTypes";
+import {
+    findNextAvailablePlatformEntityId,
+    LEGACY_PLATFORM_COUNTER_DOCUMENT_ID,
+    PLATFORM_COUNTER_DOCUMENT_ID,
+    resolvePlatformCounterFloor,
+} from "@data/shared/platformCounterBoundary";
 import { DB_COLLECTIONS } from "@constant/database";
 import { PERMISSIONS } from "@constant/permissions";
 import { isReservedOutletSlug } from "@constant/reservedSlugs";
@@ -22,7 +28,10 @@ import {
 import { invalidateOwnerBusinessAssistantPacketCache } from "@lib/ownerBusinessAssistant/server/contextPacketCache";
 import { getBoundedMultiOutletStringContext, logMultiOutletFailure } from "@lib/multiOutlet/diagnostics";
 import { getOutletSessionScope } from "@lib/multiOutlet/outletSessionScope";
-import { buildUserStoreAccessUpdate } from "@lib/multiOutlet/serverStoreAccess";
+import {
+    buildUserStoreAccessUpdate,
+    normalizeUserStoreAccessDocumentId,
+} from "@lib/multiOutlet/serverStoreAccess";
 import { requireAnyStorePermissionForStoreData } from "@lib/permissions/server";
 import { checkRateLimit } from "@lib/rateLimit";
 import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
@@ -30,6 +39,13 @@ import { validateAPIInput } from "@lib/security/inputValidation";
 import { touchDigitalScreenContentVersionForStoreServer } from "@lib/screen/serverScreenInvalidation";
 import { parseSummaryProjects } from "@lib/firestore/parseSummaryProjects";
 import { buildSummaryProjectPayload } from "@lib/firestore/summaryProjectsWriter";
+import {
+    isOutletSlugUnavailableError,
+    isValidOutletSlugClaimCandidate,
+    readOutletSlugReservationInTransaction,
+    type OutletSlugReservation,
+    writeCurrentOutletSlugClaim,
+} from "@lib/routing/outletSlugClaim";
 import { DEFAULT_OUTLET_POLICY } from "@type/multiOutlet.types";
 import { slugify } from "@lib/utils/slugify";
 import { revalidateTag } from "next/cache";
@@ -98,50 +114,25 @@ const resolveSummaryNameForSlug = (value: unknown, fallback: string): string => 
 };
 
 const normalizeOutletSlugBase = (outletName: string): string => {
-    const base = slugify(outletName) || `outlet-${Date.now().toString(36)}`;
-    return isReservedOutletSlug(base) ? `${base}-outlet` : base;
+    const rawBase = slugify(outletName).slice(0, 60).replace(/-+$/g, '') || 'outlet';
+    const base = isReservedOutletSlug(rawBase) ? `${rawBase.slice(0, 53).replace(/-+$/g, '')}-outlet` : rawBase;
+    return isValidOutletSlugClaimCandidate(base) ? base : 'outlet';
 };
 
-const outletSlugExists = async (
-    db: FirebaseFirestore.Firestore,
-    tenantId: number,
-    outletSlug: string,
-): Promise<boolean> => {
-    const [directSnap, historySnap] = await Promise.all([
-        db.collection(DB_COLLECTIONS.STORES)
-            .where("tenantId", "==", tenantId)
-            .where("outletSlug", "==", outletSlug)
-            .where("active", "==", true)
-            .limit(1)
-            .get(),
-        db.collection(DB_COLLECTIONS.STORES)
-            .where("tenantId", "==", tenantId)
-            .where("previousOutletSlugs", "array-contains", outletSlug)
-            .limit(1)
-            .get(),
-    ]);
-    return !directSnap.empty || !historySnap.empty;
-};
-
-const buildUniqueOutletSlug = async (
-    db: FirebaseFirestore.Firestore,
-    tenantId: number,
+const buildOutletSlugCandidates = (
     outletName: string,
-): Promise<string> => {
+    storeId: number,
+): string[] => {
     const base = normalizeOutletSlugBase(outletName);
-    let candidate = base;
-    let suffix = 2;
-
-    while (await outletSlugExists(db, tenantId, candidate)) {
-        candidate = `${base}-${suffix}`;
-        suffix += 1;
-        if (suffix > 100) {
-            candidate = `${base}-${Date.now().toString(36)}`;
-            if (!(await outletSlugExists(db, tenantId, candidate))) return candidate;
-        }
-    }
-
-    return candidate;
+    const withSuffix = (suffix: string) => `${base.slice(0, 60 - suffix.length).replace(/-+$/g, '')}${suffix}`;
+    return Array.from(new Set([
+        base,
+        ...Array.from({ length: 9 }, (_, index) => withSuffix(`-${index + 2}`)),
+        withSuffix(`-${storeId}`),
+        `outlet-${storeId}`,
+    ])).filter((candidate) => (
+        isValidOutletSlugClaimCandidate(candidate) && !isReservedOutletSlug(candidate)
+    ));
 };
 
 export const POST = withAuth(async (request, session) => {
@@ -182,6 +173,10 @@ export const POST = withAuth(async (request, session) => {
         const v = validateAPIInput(schema, body);
         if (!v.success) return NextResponse.json({ error: "Invalid input" }, { status: 400 });
         const { outletName } = v.data;
+        const sessionUserDocumentId = normalizeUserStoreAccessDocumentId(session.uId || session.user?.id);
+        if (!sessionUserDocumentId) {
+            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        }
 
         const masterStoreRef = db.doc(`${DB_COLLECTIONS.STORES}/${storeDocumentId}`);
         const storeSnap = await masterStoreRef.get();
@@ -324,31 +319,68 @@ export const POST = withAuth(async (request, session) => {
         const masterProjectsSummary = masterProjectsSummarySnap.exists
             ? parseSummaryProjects(masterProjectsSummarySnap.data())
             : {};
-        const outletSlug = await buildUniqueOutletSlug(db, tenantId as number, outletName);
-
-        // Read current tenant data for storesList
-        const tenantData = (await tenantRef.get()).data();
-
         // ═══ PATH 2: INTERNAL CREATION (atomic transaction) ═══
-        const summaryRef = db.doc(`${DB_COLLECTIONS.PLATFORM_SUMMARY}/summary`);
+        const summaryRef = db.doc(`${DB_COLLECTIONS.PLATFORM_SUMMARY}/${PLATFORM_COUNTER_DOCUMENT_ID}`);
+        const legacySummaryRef = db.doc(
+            `${DB_COLLECTIONS.PLATFORM_SUMMARY}/${LEGACY_PLATFORM_COUNTER_DOCUMENT_ID}`,
+        );
+        const storesSummaryRef = db.doc(`${DB_COLLECTIONS.PLATFORM_SUMMARY}/storesSummary`);
         const result = await db.runTransaction(async (tx) => {
-            const summary = await tx.get(summaryRef);
-            const userRef = session.uId ? db.doc(`${DB_COLLECTIONS.USERS}/${session.uId}`) : null;
-            const userSnap = userRef ? await tx.get(userRef) : null;
-            const newStoreId = (summary.data()?.stores?.count || 0) + 1;
+            const userRef = db.collection(DB_COLLECTIONS.USERS).doc(sessionUserDocumentId);
+            const [summary, legacySummary, storesSummary, userSnap, freshTenantSnap] = await Promise.all([
+                tx.get(summaryRef),
+                tx.get(legacySummaryRef),
+                tx.get(storesSummaryRef),
+                tx.get(userRef),
+                tx.get(tenantRef),
+            ]);
+            if (!freshTenantSnap.exists) throw new Error('outlet_create_tenant_missing');
+            const freshTenantData = freshTenantSnap.data() || {};
+            const storeCounterFloor = resolvePlatformCounterFloor(
+                summary.data(),
+                legacySummary.data(),
+                storesSummary.data(),
+                'store',
+            );
+            const newStoreId = await findNextAvailablePlatformEntityId(
+                storeCounterFloor,
+                async (candidateId) => (
+                    await tx.get(db.doc(`${DB_COLLECTIONS.STORES}/${candidateId}`))
+                ).exists,
+            );
+            const newStoreRef = db.doc(`${DB_COLLECTIONS.STORES}/${newStoreId}`);
+            let outletSlug = '';
+            let outletSlugReservation: OutletSlugReservation | null = null;
+            for (const candidate of buildOutletSlugCandidates(outletName, newStoreId)) {
+                try {
+                    outletSlugReservation = await readOutletSlugReservationInTransaction({
+                        db,
+                        outletSlug: candidate,
+                        storeId: String(newStoreId),
+                        tenantId: tenantDocumentId,
+                        transaction: tx,
+                    });
+                    outletSlug = candidate;
+                    break;
+                } catch (error) {
+                    if (isOutletSlugUnavailableError(error)) continue;
+                    throw error;
+                }
+            }
+            if (!outletSlug || !outletSlugReservation) throw new Error('outlet_slug_allocation_exhausted');
             const storeKey = outletName.toLowerCase().replaceAll(" ", "_");
             const businessType = masterStore.businessType || FALLBACK_BUSINESS_TYPE;
             const businessCategory = resolveStoreBusinessCategory(businessType, masterStore.businessCategory);
             const defaultPresets = getDefaultTimeSlotPresets(businessType, tenantId as number, newStoreId, businessCategory);
             const roles = createDefaultRoles(newStoreId, session.user?.email || 'system');
-            const tenantName = tenantData?.name || masterStore.tenantName || '';
+            const tenantName = freshTenantData.name || masterStore.tenantName || '';
 
             // Create outlet store doc
             // Copy brand identity from master store so outlets render correctly
             // without needing a tenant-level fetch. Location-specific fields
             // (name, addressLine, workingHours) are set by outlet owner later.
             // @see __docs__/official-business-page/official-business-page_impl.md §2
-            tx.set(db.doc(`${DB_COLLECTIONS.STORES}/${newStoreId}`), {
+            tx.set(newStoreRef, {
                 name: outletName,
                 tenantName,
                 businessType,
@@ -374,6 +406,7 @@ export const POST = withAuth(async (request, session) => {
                 createdOn: now,
                 modifiedOn: now,
             });
+            writeCurrentOutletSlugClaim(tx, outletSlugReservation, now);
 
             // Sync to storesSummary
             const storesSummaryPayload: Record<string, any> = {
@@ -405,7 +438,7 @@ export const POST = withAuth(async (request, session) => {
                     modifiedOn: now,
                 };
             }
-            tx.set(db.doc(`${DB_COLLECTIONS.PLATFORM_SUMMARY}/storesSummary`), storesSummaryPayload, { merge: true });
+            tx.set(storesSummaryRef, storesSummaryPayload, { merge: true });
 
             if (masterPromoted) {
                 tx.set(masterStoreRef, {
@@ -416,7 +449,7 @@ export const POST = withAuth(async (request, session) => {
             }
 
             // Update tenant storesList
-            const currentStoresList = tenantData?.storesList || [];
+            const currentStoresList = Array.isArray(freshTenantData.storesList) ? freshTenantData.storesList : [];
             const normalizedStoresList = currentStoresList.map((store: any) => (
                 shouldMarkCurrentStoreAsMasterInTenant && Number(store?.storeId) === Number(storeId)
                     ? { ...store, isMaster: true }
@@ -438,12 +471,15 @@ export const POST = withAuth(async (request, session) => {
             const userAccessUpdate = userSnap
                 ? buildUserStoreAccessUpdate(userSnap.data(), newStoreId, outletName, getOwnerRoleId(newStoreId))
                 : null;
-            if (userRef && userAccessUpdate) {
+            if (userAccessUpdate) {
                 tx.set(userRef, userAccessUpdate, { merge: true });
             }
 
             // Update platform summary counts
-            tx.update(summaryRef, { 'stores.count': newStoreId });
+            tx.set(summaryRef, {
+                stores: { count: newStoreId },
+                modifiedOn: now,
+            }, { merge: true });
 
             // Replicate master projects to outlet (data already fetched outside tx)
             for (let pi = 0; pi < masterProjectsSnap.docs.length; pi++) {

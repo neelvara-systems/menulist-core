@@ -146,7 +146,7 @@ See: `__docs__/digital-screens/digital-screens_impl.md` for full details.
 | Backend                  | 5 collections: campaigns, campaign_steps, social_assets, exports, menu_activity_daily | Part 3       |
 | Attribution              | Tag menu links with campaignId, but never expose to owner                             | Part 3       |
 | History                  | Read-only activity log, no metrics                                                    | Part 3       |
-| Firebase Cost            | 1 query for Today screen, 1 write per action                                          | Part 3       |
+| Firebase Cost            | 1 read for Today; complete uses 3 atomic writes and skip uses 2 atomic writes, with idempotent retry guards | Part 3       |
 
 ### Our Frozen Strategy Doc Has (ChatGPT Missed)
 
@@ -230,7 +230,7 @@ export const SIDEBAR_DASHBOARD_LAYOUT: NavItemType[] = [
 | ---------------------------------------- | -------------------------------- | --------------------------- |
 | `campaigns/{tId}/{sId}/{campaignId}`     | Full campaign data               | On-demand (editor, history) |
 | `platformSummary/campaigns_{sId}`        | Today's active campaigns summary | 1 read for Today screen     |
-| `campaignExports/{tId}/{sId}/{exportId}` | Export events (ground truth)     | Batch writes only           |
+| `campaignExports/{tId}/{sId}/complete_{campaignId}` | Deterministic completion marker and export ground truth | Same transaction as campaign + summary |
 
 **Firebase Cost Savings:**
 
@@ -479,8 +479,8 @@ interface CampaignDocument {
   // Identity
   id: string;
   projectId: string;
-  tId: string;
-  sId: string;
+  tId: number;
+  sId: number;
 
   // Type
   kind: "active" | "passive";
@@ -585,8 +585,8 @@ interface CampaignExportDocument {
   id: string;
   campaignId: string;
   projectId: string;
-  tId: string;
-  sId: string;
+  tId: number;
+  sId: number;
 
   surface: ExecutionSurface;
   method: "whatsapp_share" | "download" | "copy_text";
@@ -597,6 +597,12 @@ interface CampaignExportDocument {
   exportedAt: Timestamp;
 }
 ```
+
+### Atomic complete and skip contract
+
+`completeCampaign()` reads the scoped campaign, Today summary, and deterministic completion marker before writing. It rejects mismatched persisted tenant/store/project/type/surface data. The campaign status, export marker, and Today summary/stats then commit in one Firestore transaction. A matching completed campaign/marker is acknowledged without another export or counter increment; a completed legacy record with no marker fails closed for manual reconciliation.
+
+`skipCampaign()` reads the campaign and summary in one transaction, validates tenant/store/type identity, and atomically updates campaign status/suppression plus Today summary/stats. Retrying an already skipped/suppressed campaign returns the persisted result without incrementing `skipCount`, `totalSkipped`, or `typeSkipCounts`. Non-suppressed writes explicitly delete any stale `suppressedUntil` field.
 
 ---
 

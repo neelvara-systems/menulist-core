@@ -30,11 +30,19 @@ It contains:
 - creative/editable source references
 - channel copy blocks
 - delivery cards
+- five-check pack readiness for facts, trust, freshness, approval, and manual handoff
 - trust report
+- source freshness and recheck actions
+- current commercial-safety findings
+- normalized language policy and protected-fact review note
+- owner-managed presence passport
+- staff execution steps and result prompt
+- one-variable learning suggestion
 - reuse notes
 - mini-page and QR brief
 - Campaign Proof Deck brief
 - calendar/reminder note
+- Campaign Rhythm next action with due/scheduled counts and safe-reuse candidate
 - language handoff note
 - result memory prompt
 - next actions
@@ -46,10 +54,26 @@ It contains:
 2. CampaignCue shows a recommended campaign and missing inputs.
 3. Owner answers required missing inputs before creating a full pack.
 4. Owner creates or opens the latest pack.
-5. Pack review shows trust status and delivery cards.
+5. Pack review shows readiness, trust status, approval state, and delivery cards.
 6. Owner downloads the campaign pack ZIP only when server trust gates allow public use.
 7. Owner copies or uses fields manually in WhatsApp, Google Business Profile, Instagram/Facebook, print, staff handoff, email/SMS, or ad/agency handoff.
-8. Owner records what happened.
+8. Owner records what happened; a useful result may nominate that recipe for a new current-truth pack.
+
+## Readiness Contract
+
+`CampaignCuePackReadiness` is a deterministic completeness and safety receipt, scored as five bounded checks worth 20 points each:
+
+1. Required facts.
+2. Trust checks.
+3. Current business truth.
+4. Required approval.
+5. Manual handoff readiness.
+
+The score does not predict engagement, reach, sales, bookings, ranking, or best posting time. Public-use actions still rely on server trust, freshness, and approval gates; a score never bypasses them.
+
+## Safe Reuse Contract
+
+When result memory shows that a completed campaign was useful, Campaign Rhythm may nominate its recipe. Reuse creates a new campaign from the current Decision Engine candidates and current source snapshot. It records only `reusedFromCampaignId` and `reuseMode: "rebuild_from_current_truth"` as provenance. It does not copy old output text/files, trust state, source hash, approval state, action counts, result receipt, or export history.
 
 ## Channel Output Contract
 
@@ -82,6 +106,8 @@ It contains:
 - No model-owned campaign decision.
 - No automatic translation claim in the active export/download runtime.
 - No invented price, date, phone, location, claim, or offer.
+- No engagement, reach, ROI, or best-time prediction in the readiness score.
+- No automatic repeat or stale-output cloning when a past campaign was useful.
 
 ## Owner Copy Rules
 
@@ -93,6 +119,9 @@ Use:
 - "Needs review"
 - "Blocked"
 - "Mini-page and QR brief"
+- "Pack readiness"
+- "Campaign rhythm"
+- "Reuse safely"
 
 Avoid:
 
@@ -101,3 +130,4 @@ Avoid:
 - "Provider mutation"
 - "Autopilot"
 - "Direct publish"
+- "Predicted engagement score"

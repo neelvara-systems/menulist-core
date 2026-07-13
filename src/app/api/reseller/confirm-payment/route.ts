@@ -1,6 +1,8 @@
 export const dynamic = 'force-dynamic';
 import { FEATURE_FLAGS } from "@config/features";
-import { getSubscriptionById, updateSubscription } from "@database/subscriptions/server";
+import { getResellerProfile } from "@database/reseller/server";
+import { confirmManualSubscriptionPayment } from "@database/subscriptions/server";
+import { getCurrentPlatformUser } from "@lib/auth/currentPlatformUser";
 import { getBoundedResellerApiStringContext, logResellerApiFailure } from "@lib/billing/resellerApiDiagnostics";
 import { safeSyncStorePlanEntitlementFromSubscription } from "@lib/billing/subscriptionEntitlementSync";
 import { logger } from "@lib/monitoring/logger";
@@ -11,12 +13,36 @@ import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
 import { getBoundedSecurityRouteContext } from "@lib/security/securityDiagnostics";
 import { validateAPIInput } from "@lib/security/inputValidation";
 import { ResellerConfirmPaymentSchema } from "@lib/validation/resellerSchemas";
-import { Timestamp } from "firebase/firestore";
 import { NextResponse } from "next/server";
 import { withAuth } from "../../../../middleware/auth";
 import { hashPublicRateLimitValue } from "../../../../middleware/publicApi";
 
 const RESELLER_ACTION_MAX_BODY_BYTES = 16 * 1024;
+
+const hasCurrentResellerProfile = (params: {
+    profile: Awaited<ReturnType<typeof getResellerProfile>>;
+    resellerId: string;
+    sessionEmail: unknown;
+    sessionProfileId: unknown;
+}): boolean => {
+    const email = typeof params.sessionEmail === 'string'
+        ? params.sessionEmail.toLowerCase().trim()
+        : '';
+    const sessionProfileId = typeof params.sessionProfileId === 'string'
+        ? params.sessionProfileId.trim()
+        : '';
+    if (
+        !params.profile
+        || params.profile.active !== true
+        || !email
+        || typeof params.profile.email !== 'string'
+        || params.profile.email.toLowerCase().trim() !== email
+    ) {
+        return false;
+    }
+    if (sessionProfileId && sessionProfileId !== params.profile.id) return false;
+    return params.profile.id === params.resellerId || params.profile.authUserId === params.resellerId;
+};
 
 /**
  * POST /api/reseller/confirm-payment — Offline payment confirmation
@@ -52,7 +78,7 @@ export const POST = withAuth(async (request, session) => {
             invalidJsonMessage: 'Invalid input',
         });
         if (bodyResult.ok === false) return bodyResult.response;
-        const body = bodyResult.data as any;
+        const body = bodyResult.data;
         const validation = validateAPIInput(ResellerConfirmPaymentSchema, body);
         if (!validation.success) {
             const errorMsg = 'error' in validation ? validation.error : 'Invalid input';
@@ -61,54 +87,62 @@ export const POST = withAuth(async (request, session) => {
 
         const { subscriptionId } = validation.data;
 
-        // Verify subscription exists and belongs to this reseller
-        const subscription = await getSubscriptionById(subscriptionId);
-        if (!subscription) {
-            return NextResponse.json({ error: "Subscription not found." }, { status: 404 });
+        if (isPlatformUser) {
+            if (!await getCurrentPlatformUser(session)) {
+                return NextResponse.json({ error: "Access denied." }, { status: 403 });
+            }
+        } else {
+            const resellerProfile = await getResellerProfile(resellerId, session.user.email);
+            if (!hasCurrentResellerProfile({
+                profile: resellerProfile,
+                resellerId,
+                sessionEmail: session.user.email,
+                sessionProfileId: session.user.resellerProfileId,
+            })) {
+                return NextResponse.json({ error: "Reseller profile not found or inactive." }, { status: 403 });
+            }
         }
 
-        if (subscription.resellerId !== resellerId && !isPlatformUser) {
+        const confirmation = await confirmManualSubscriptionPayment({
+            actorId: resellerId,
+            isPlatformUser,
+            subscriptionId,
+        });
+        if (confirmation.kind === 'not_found') {
+            return NextResponse.json({ error: "Subscription not found." }, { status: 404 });
+        }
+        if (confirmation.kind === 'forbidden') {
             logger.security('Reseller Confirm Payment - Unauthorized Access', {
                 ...getBoundedSecurityRouteContext(session, request),
                 ...getBoundedResellerApiStringContext('resellerId', resellerId),
                 ...getBoundedResellerApiStringContext('subscriptionId', subscriptionId),
-                ...getBoundedResellerApiStringContext('actualResellerId', subscription.resellerId),
             }, 'high');
             return NextResponse.json({ error: "Access denied." }, { status: 403 });
         }
-
-        if (subscription.billingMode !== 'manual') {
+        if (confirmation.kind === 'wrong_mode') {
             return NextResponse.json({ error: "This subscription uses online payment. No manual confirmation needed." }, { status: 400 });
         }
-
-        if (subscription.status === 'active' && subscription.manualPaymentConfirmed) {
-            return NextResponse.json({ error: "Payment already confirmed." }, { status: 400 });
+        if (confirmation.kind === 'invalid_state') {
+            return NextResponse.json({ error: "Only a pending manual subscription can be confirmed." }, { status: 409 });
+        }
+        if (confirmation.kind === 'malformed') {
+            return NextResponse.json({ error: "This subscription cannot be confirmed. Contact support." }, { status: 409 });
         }
 
-        // Update subscription to active
-        await updateSubscription(subscriptionId, {
-            status: 'active',
-            manualPaymentConfirmed: true,
-            manualPaymentConfirmedAt: Timestamp.now(),
-            statuses: [
-                ...subscription.statuses,
-                {
-                    status: 'active',
-                    timestamp: Timestamp.now(),
-                    amount: subscription.amount,
-                    currency: subscription.currency,
-                    remark: 'Offline payment confirmed by reseller',
-                },
-            ],
-        });
         await safeSyncStorePlanEntitlementFromSubscription(
-            { ...subscription, id: subscriptionId, status: 'active' },
+            {
+                id: subscriptionId,
+                planId: confirmation.planId,
+                status: 'active',
+                storeId: confirmation.storeId,
+                tenantId: confirmation.tenantId,
+            },
             'api:reseller-confirm-payment',
         );
         await safelyRecordOwnerReferralPaymentAndRepair({
             paidScope: {
-                tenantId: Number(subscription.tenantId),
-                storeId: Number(subscription.storeId),
+                tenantId: confirmation.tenantId,
+                storeId: confirmation.storeId,
             },
             evidence: {
                 paidAt: new Date(),
@@ -120,6 +154,7 @@ export const POST = withAuth(async (request, session) => {
 
         return NextResponse.json({
             success: true,
+            alreadyConfirmed: confirmation.alreadyConfirmed,
             subscriptionId,
             status: 'active',
         });

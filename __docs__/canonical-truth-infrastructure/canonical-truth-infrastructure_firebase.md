@@ -54,6 +54,8 @@
 
 **Estimate:** 1000 stores × 5 publishes/month = 5,000 writes/month = **$0.009/month**
 
+**Security and shape contract:** Client reads require both tenant membership and assigned-store access. Creates additionally require owner/manager write authority, exact numeric `tId`/`sId` payload values matching the document path, an existing project in that path, count-consistent bounded item/category arrays, valid timestamps/retention, and the canonical snapshot mode. Updates and deletes remain denied. The publish writer captures one operation scope and sanitizes optional nested values before the append-only write, so an active-store switch or an `undefined` item field cannot redirect or reject the snapshot.
+
 ### 4. MCE _mce Metadata
 
 | Operation | Trigger | Writes | Cost/1000 |

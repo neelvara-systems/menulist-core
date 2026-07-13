@@ -27,6 +27,8 @@
 - Session endpoint rejects missing secret, invalid key, and disabled flag.
 - Session endpoint returns a short-lived token for valid scoped `al_*` keys.
 - JSON-RPC endpoint lists tools.
+- `tools/list` filters out tools outside the signed session's exact capabilities.
+- A `context:read`-only session cannot write a missing-context signal, and a `signals:write`-only session cannot read a private bundle.
 - Read tools return context from private bundles.
 - `report_missing_context` writes one aggregated bucket update even when no ready bundle exists.
 - Expired or tampered session tokens are rejected.

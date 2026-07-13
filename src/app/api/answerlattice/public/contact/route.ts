@@ -42,7 +42,7 @@ const ContactRequestSchema = z.object({
     sourcePath: z.string().trim().max(240).optional().nullable(),
     website: z.string().optional().nullable(),
     captchaToken: z.string().max(2048).optional(),
-});
+}).strict();
 
 const getAnswerlatticeDb = () => {
     const db = answerlatticeFirestoreAdmin as any;

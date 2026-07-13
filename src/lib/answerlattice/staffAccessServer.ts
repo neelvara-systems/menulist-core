@@ -6,15 +6,19 @@ import {
     AnswerlatticeRoleDefinition,
     DEFAULT_ANSWERLATTICE_ROLE_IDS,
     DEFAULT_ANSWERLATTICE_ROLE_METADATA,
+    isDefaultAnswerlatticeRoleId,
     normalizeAnswerlatticeRolePermissions,
 } from '@constant/answerlattice/permissions';
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
 import { STAFF_EMAIL_DOMAIN } from '@constant/urls';
-import { formatStaffLoginId, getDisplayEmail, isInternalAuthEmail, normalizeStaffLoginUsername } from '@lib/auth/loginIdentifiers';
-import { getAuthUserByEmail } from '@lib/auth/serverUserContext';
 import {
-    ensureAnswerlatticeRolesForStore,
+    ECOMSAI_PLATFORM_SUPPORT_USER_ROLE,
+    ECOMSAI_PLATFORM_USER_ROLE,
+} from '@constant/user';
+import { formatStaffLoginId, getDisplayEmail, isInternalAuthEmail, normalizeStaffLoginUsername } from '@lib/auth/loginIdentifiers';
+import { AuthUserIdentityConflictError, getAuthUserByEmail } from '@lib/auth/serverUserContext';
+import {
     findAnswerlatticeRole,
     getAnswerlatticeDb,
     normalizeAnswerlatticeRolesForStore,
@@ -24,6 +28,7 @@ import {
 import {
     getAnswerlatticeSecurityLogContext,
     getBoundedAnswerlatticeStringContext,
+    logAnswerlatticeDiagnostic,
     logAnswerlatticeFailure,
 } from '@lib/answerlattice/diagnostics';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
@@ -31,15 +36,45 @@ import {
     normalizeAnswerlatticeStaffUserId,
     requireAnswerlatticeStaffUserId,
 } from '@lib/answerlattice/staffUserIdBoundary';
+import {
+    AnswerlatticeStaffStoreMembership,
+    getAnswerlatticeStaffMembership,
+    isAnswerlatticeManagedStaffIdentityCollision,
+    isAnswerlatticeStaffSelfTarget,
+    isAnswerlatticeStaffAccountActive,
+    isAnswerlatticeStaffRemovalReplay,
+    readAnswerlatticeStaffAccessState,
+    resolveAnswerlatticeStaffAuthLookup,
+    shouldSendAnswerlatticeStaffSetupEmail,
+} from '@lib/answerlattice/staffAccessContracts';
+import { buildAnswerlatticeStaffClaimAccessProjection } from '@lib/answerlattice/staffClaimsContracts';
+import { syncAnswerlatticeStaffProductAccountBridge } from '@lib/answerlattice/staffAccessBridge';
+import {
+    buildAnswerlatticeRoleCreationFingerprint,
+    classifyAnswerlatticeRoleCreationReplay,
+    normalizeAnswerlatticeRoleInputPermissions,
+} from '@lib/answerlattice/staffRoleContracts';
+import {
+    AnswerlatticeStaffTransactionError,
+    createAnswerlatticeStaffMembershipTransaction,
+    getAnswerlatticeRoleAssignedUserIdsInTransaction,
+    isAnswerlatticeRoleAssignedInTransaction,
+    removeAnswerlatticeStaffMembershipTransaction,
+    updateAnswerlatticeStaffMembershipTransaction,
+} from '@lib/answerlattice/staffAccessTransactions';
+import {
+    isAnswerlatticeActiveStoreInScope,
+} from '@lib/answerlattice/sessionScope';
 import { answerlatticeAuthAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { admin, authAdmin, firestoreAdmin } from '@lib/firebase/firebaseAdmin';
+import { sanitizeForFirestore } from '@lib/firestore/sanitizeForFirestore';
 import { logger } from '@lib/monitoring/logger';
 import { normalizePhoneNumberForStorage } from '@lib/phone/phoneNumber';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
 import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { validateAPIInput } from '@lib/security/inputValidation';
-import { randomBytes } from 'crypto';
+import { createHash, randomBytes } from 'crypto';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -48,11 +83,12 @@ const STAFF_LOGIN_ID_PREFIX = '77';
 const STAFF_AUTH_MODE_EMAIL = 'email';
 const STAFF_AUTH_MODE_OWNER_PASSCODE = 'owner_passcode';
 const STAFF_STORE_USER_QUERY_LIMIT = 500;
+const ANSWERLATTICE_CUSTOM_ROLE_LIMIT = 25;
 const ANSWERLATTICE_STAFF_MUTATION_MAX_BODY_BYTES = 16 * 1024;
 const FIREBASE_AUTH_SEND_OOB_CODE_URL = 'https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode';
 const ANSWERLATTICE_STAFF_PASSWORD_RESET_PROVIDER_TIMEOUT_MS = 10_000;
 const ANSWERLATTICE_STAFF_POLICY_ERROR_CODES = {
-    LAST_OWNER: 'LAST_OWNER',
+    MULTI_WORKSPACE_AUTH_CHANGE: 'MULTI_WORKSPACE_AUTH_CHANGE',
     SELF_UPDATE_BLOCKED: 'SELF_UPDATE_BLOCKED',
 } as const;
 
@@ -74,7 +110,7 @@ const getAnswerlatticeStaffPolicyErrorCode = (error: unknown): AnswerlatticeStaf
 
 const optionalTrimmedStringSchema = (max: number) => z.preprocess((value) => {
     if (value === undefined || value === null) return undefined;
-    return String(value);
+    return value;
 }, z.string().trim().max(max).optional());
 
 const optionalEmailSchema = z.string()
@@ -100,7 +136,8 @@ const CreateAnswerlatticeStaffSchema = z.object({
     countryCode: optionalTrimmedStringSchema(8),
     dialCode: optionalTrimmedStringSchema(8),
     phoneNumber: optionalTrimmedStringSchema(32),
-});
+    requestId: z.string().trim().uuid(),
+}).strict();
 
 const AnswerlatticeStaffUserIdSchema = z.string()
     .trim()
@@ -115,25 +152,26 @@ const UpdateAnswerlatticeStaffSchema = z.object({
     countryCode: optionalTrimmedStringSchema(8),
     dialCode: optionalTrimmedStringSchema(8),
     phoneNumber: optionalTrimmedStringSchema(32),
-});
+}).strict();
 
 const UserIdSchema = z.object({
     userId: AnswerlatticeStaffUserIdSchema,
-});
+}).strict();
 
 const SaveAnswerlatticeRoleSchema = z.object({
+    requestId: z.string().trim().uuid().optional(),
     role: z.object({
         active: z.boolean().optional(),
         description: z.string().trim().max(300).optional(),
         id: z.string().trim().min(1).max(120).optional(),
         name: z.string().trim().min(1).max(80),
         permissions: RolePermissionsSchema,
-    }),
-});
+    }).strict(),
+}).strict();
 
 const DeleteAnswerlatticeRoleSchema = z.object({
     roleId: z.string().trim().min(1).max(120),
-});
+}).strict();
 
 type CreateAnswerlatticeStaffInput = {
     countryCode?: string;
@@ -142,6 +180,7 @@ type CreateAnswerlatticeStaffInput = {
     name?: string;
     phoneNumber?: string;
     roleId?: string;
+    requestId: string;
 };
 
 type UpdateAnswerlatticeStaffInput = {
@@ -159,6 +198,7 @@ type UserIdInput = {
 };
 
 type SaveAnswerlatticeRoleInput = {
+    requestId?: string;
     role: {
         active?: boolean;
         description?: string;
@@ -168,19 +208,31 @@ type SaveAnswerlatticeRoleInput = {
     };
 };
 
+const buildDeterministicAnswerlatticeRoleId = (
+    tenantId: number,
+    storeId: number,
+    requestId: string,
+) => `custom-${storeId}-${createHash('sha256')
+    .update(`${PRODUCT_IDS.ANSWERLATTICE}:${tenantId}:${storeId}:role:${requestId}`)
+    .digest('hex')
+    .slice(0, 20)}`;
+
 type DeleteAnswerlatticeRoleInput = {
     roleId: string;
 };
 
 type DefaultAuthUserDoc = {
     id: string;
-    [key: string]: any;
+    [key: string]: unknown;
 };
 
-const isPositiveId = (value: unknown) => {
-    const numberValue = Number(value);
-    return Number.isSafeInteger(numberValue) && numberValue > 0;
-};
+const isUnknownRecord = (value: unknown): value is Record<string, unknown> => (
+    Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+);
+
+const getRecord = (value: unknown): Record<string, unknown> => (
+    isUnknownRecord(value) ? value : {}
+);
 
 const jsonError = (error: string, status: number, code?: string) => (
     NextResponse.json({ error, code }, { status })
@@ -213,23 +265,9 @@ const getDefaultAuthUserByEmail = async (email: string): Promise<DefaultAuthUser
     await getAuthUserByEmail(email) as DefaultAuthUserDoc | null
 );
 
-const sanitizeFirestoreValue = (value: any): any => {
-    if (value === undefined) return undefined;
-    if (value === null) return null;
-    if (Array.isArray(value)) {
-        return value.map((item) => sanitizeFirestoreValue(item)).filter((item) => item !== undefined);
-    }
-    if (value && typeof value === 'object' && !(value instanceof Date)) {
-        if (typeof value.toDate === 'function' && typeof value.toMillis === 'function') return value;
-        const result: Record<string, any> = {};
-        Object.entries(value).forEach(([key, nestedValue]) => {
-            const sanitized = sanitizeFirestoreValue(nestedValue);
-            if (sanitized !== undefined) result[key] = sanitized;
-        });
-        return result;
-    }
-    return value;
-};
+const sanitizeFirestoreValue = <T>(value: T) => sanitizeForFirestore(value, {
+    undefinedObjectValue: 'omit',
+});
 
 const getRequestIp = (request: NextRequest) => (
     request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
@@ -304,21 +342,60 @@ const buildManagedStaffEmail = (tenantId: number, loginId: string) => (
     `answerlattice-staff-${tenantId}-${loginId}@${STAFF_EMAIL_DOMAIN}`.toLowerCase()
 );
 
+const buildDeterministicAnswerlatticeStaffLoginId = (
+    tenantId: number,
+    storeId: number,
+    requestId: string,
+) => {
+    const digest = createHash('sha256')
+        .update(`${PRODUCT_IDS.ANSWERLATTICE}:${tenantId}:${storeId}:${requestId}`)
+        .digest('hex');
+    const digits = digest
+        .slice(0, 14)
+        .split('')
+        .map((value) => String(Number.parseInt(value, 16) % 10))
+        .join('');
+    return `${STAFF_LOGIN_ID_PREFIX}${digits}`;
+};
+
+const buildAnswerlatticeStaffCreationFingerprint = (
+    input: CreateAnswerlatticeStaffInput,
+    tenantId: number,
+    storeId: number,
+) => createHash('sha256').update(JSON.stringify({
+    countryCode: input.countryCode || '',
+    dialCode: input.dialCode || '',
+    email: input.email || '',
+    name: input.name || '',
+    phoneNumber: input.phoneNumber || '',
+    requestId: input.requestId,
+    roleId: input.roleId || DEFAULT_ANSWERLATTICE_ROLE_IDS.STAFF,
+    storeId,
+    tenantId,
+})).digest('hex');
+
 const isManagedStaffEmail = (email?: string) => (
     String(email || '').toLowerCase().trim().endsWith(`@${STAFF_EMAIL_DOMAIN}`)
 );
 
-const getStaffAuthMode = (data: any) => (
-    data?.staffAuthMode === STAFF_AUTH_MODE_OWNER_PASSCODE || isManagedStaffEmail(data?.email)
+const getStaffAuthMode = (value: unknown) => {
+    const data = getRecord(value);
+    return (
+    data.staffAuthMode === STAFF_AUTH_MODE_OWNER_PASSCODE || isManagedStaffEmail(
+        typeof data.email === 'string' ? data.email : '',
+    )
         ? STAFF_AUTH_MODE_OWNER_PASSCODE
         : STAFF_AUTH_MODE_EMAIL
-);
+    );
+};
 
-const getStaffDisplayEmail = (data: any) => (
-    getStaffAuthMode(data) === STAFF_AUTH_MODE_OWNER_PASSCODE || isInternalAuthEmail(data?.email)
+const getStaffDisplayEmail = (value: unknown) => {
+    const data = getRecord(value);
+    const email = typeof data.email === 'string' ? data.email : '';
+    return getStaffAuthMode(data) === STAFF_AUTH_MODE_OWNER_PASSCODE || isInternalAuthEmail(email)
         ? ''
-        : getDisplayEmail(data?.email)
-);
+        : getDisplayEmail(email);
+};
 
 const generateUniqueAnswerlatticeStaffLoginId = async () => {
     for (let attempt = 0; attempt < 10; attempt += 1) {
@@ -407,56 +484,64 @@ const sendFirebasePasswordResetEmail = async (email: string) => {
     return { ok: false, error: 'PASSWORD_RESET_EMAIL_FAILED' };
 };
 
-const serializeTimestamp = (value: any) => {
+const serializeTimestamp = (value: unknown) => {
     if (!value) return undefined;
     if (typeof value === 'string' || typeof value === 'number') return value;
-    if (typeof value.toDate === 'function') return value.toDate().toISOString();
-    if (typeof value.toMillis === 'function') return value.toMillis();
+    if (typeof value !== 'object') return undefined;
+    const timestamp = value as { toDate?: () => Date; toMillis?: () => number };
+    if (typeof timestamp.toDate === 'function') return timestamp.toDate().toISOString();
+    if (typeof timestamp.toMillis === 'function') return timestamp.toMillis();
     return undefined;
 };
 
-const sanitizeAnswerlatticeStaffUser = (id: string, data: any, roles: AnswerlatticeRoleDefinition[]) => {
-    const stores = Array.isArray(data?.stores)
-        ? data.stores
-            .filter((store: any) => isPositiveId(store?.storeId))
-            .map((store: any) => ({
-                storeId: Number(store.storeId),
-                name: String(store.name || ''),
-                role: String(store.role || ''),
-            }))
-        : [];
-    const roleId = stores.find((store: any) => Number(store.storeId) === Number(data?.storeId || data?.sId))?.role
-        || data?.role
-        || DEFAULT_ANSWERLATTICE_ROLE_IDS.STAFF;
+const sanitizeAnswerlatticeStaffUser = (
+    id: string,
+    data: unknown,
+    roles: AnswerlatticeRoleDefinition[],
+    workspaceStoreId: number,
+) => {
+    if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
+    const record = data as Record<string, unknown>;
+    const accessState = readAnswerlatticeStaffAccessState(record);
+    if (!accessState) return null;
+    const currentMembership = getAnswerlatticeStaffMembership(accessState, workspaceStoreId);
+    if (!currentMembership) return null;
+    const stores = accessState.memberships;
+    const roleId = currentMembership.role;
     const role = findAnswerlatticeRole(roles, roleId);
 
     return {
         id,
-        active: data?.active !== false,
-        authDisabled: data?.authDisabled === true,
-        countryCode: data?.countryCode || '',
-        createdVia: data?.createdVia || '',
-        deleted: data?.deleted === true,
-        dialCode: data?.dialCode || '',
-        displayEmail: getStaffDisplayEmail(data),
-        email: data?.email || '',
-        isVerified: data?.isVerified === true,
-        loginUsername: data?.loginUsername || '',
-        name: data?.name || '',
-        phoneNumber: data?.phoneNumber || '',
-        phoneUsername: data?.phoneUsername || '',
-        profileImage: data?.profileImage || data?.image || '',
+        accessRevision: accessState.accessRevision,
+        active: isAnswerlatticeStaffAccountActive(record, accessState),
+        authDisabled: record.authDisabled === true,
+        countryCode: typeof record.countryCode === 'string' ? record.countryCode : '',
+        createdVia: typeof record.createdVia === 'string' ? record.createdVia : '',
+        deleted: record.deleted === true,
+        dialCode: typeof record.dialCode === 'string' ? record.dialCode : '',
+        displayEmail: getStaffDisplayEmail(record),
+        email: typeof record.email === 'string' ? record.email : '',
+        isVerified: record.isVerified === true,
+        loginUsername: typeof record.loginUsername === 'string' ? record.loginUsername : '',
+        name: typeof record.name === 'string' ? record.name : '',
+        phoneNumber: typeof record.phoneNumber === 'string' ? record.phoneNumber : '',
+        phoneUsername: typeof record.phoneUsername === 'string' ? record.phoneUsername : '',
+        profileImage: typeof record.profileImage === 'string'
+            ? record.profileImage
+            : typeof record.image === 'string' ? record.image : '',
         roleId,
         roleName: role?.name || roleId,
-        sessionRevokedAt: serializeTimestamp(data?.sessionRevokedAt),
-        staffAuthMode: getStaffAuthMode(data),
-        staffLoginId: resolveStaffLoginDisplayId(data?.staffLoginId || data?.loginUsername),
-        storeId: Number(data?.storeId || data?.sId) || stores[0]?.storeId,
-        storeIds: Array.isArray(data?.storeIds)
-            ? data.storeIds.filter(isPositiveId).map(Number)
-            : stores.map((store) => store.storeId),
+        sessionRevokedAt: serializeTimestamp(record.sessionRevokedAt),
+        staffAuthMode: getStaffAuthMode(record),
+        staffLoginId: resolveStaffLoginDisplayId(
+            typeof record.staffLoginId === 'string'
+                ? record.staffLoginId
+                : typeof record.loginUsername === 'string' ? record.loginUsername : '',
+        ),
+        storeId: workspaceStoreId,
+        storeIds: stores.map((store) => store.storeId),
         stores,
-        tenantId: Number(data?.tenantId || data?.tId),
+        tenantId: accessState.tenantId,
     };
 };
 
@@ -467,9 +552,10 @@ const getAnswerlatticeUserByEmail = async (email: string) => {
 
     const snapshot = await db.collection(DB_COLLECTIONS.USERS)
         .where('email', '==', normalizedEmail)
-        .limit(1)
+        .limit(2)
         .get();
     if (snapshot.empty) return null;
+    if (snapshot.size !== 1) throw new AnswerlatticeStaffTransactionError('FORBIDDEN');
 
     const doc = snapshot.docs[0];
     return { id: doc.id, ref: doc.ref, data: doc.data() };
@@ -485,108 +571,29 @@ const getAnswerlatticeUserById = async (userId: string) => {
 };
 
 const syncDefaultAuthProductAccount = async (params: {
+    accessRevision: number;
     active?: boolean;
     email: string;
+    fallbackStoreId: number;
     firebaseUid?: string;
     loginUsername?: string;
+    memberships: AnswerlatticeStaffStoreMembership[];
     name: string;
-    roleId: string;
-    session: any;
+    primaryMembership: AnswerlatticeStaffStoreMembership | null;
     staffAuthMode: string;
-    storeId: number;
-    storeName: string;
     tenantId: number;
     userId: string;
 }) => {
-    const now = admin.firestore.Timestamp.now();
     const existingDefaultUser = await getDefaultAuthUserByEmail(params.email);
     const userId = requireAnswerlatticeStaffUserId(params.userId);
     const defaultUserId = requireAnswerlatticeStaffUserId(existingDefaultUser?.id || userId);
-    const shouldSetRootAnswerlatticeScope = !existingDefaultUser?.tenantId || !existingDefaultUser?.storeId || existingDefaultUser?.pId === PRODUCT_IDS.ANSWERLATTICE;
-    const productAccount = sanitizeFirestoreValue({
+    await syncAnswerlatticeStaffProductAccountBridge({
+        ...params,
         active: params.active !== false,
-        tenantId: params.tenantId,
-        storeId: params.storeId,
-        role: params.roleId,
-        platformRole: existingDefaultUser?.platformRole || 'USER',
-        storeIds: [params.storeId],
-        updatedAt: now,
+        db: firestoreAdmin,
+        defaultUserId,
+        userId,
     });
-    const loginUsername = resolveStaffLoginUsername(params.loginUsername || existingDefaultUser?.loginUsername || existingDefaultUser?.staffLoginId);
-    const staffLoginId = resolveStaffLoginDisplayId(params.loginUsername || existingDefaultUser?.staffLoginId || existingDefaultUser?.loginUsername);
-    const defaultUserUpdate = sanitizeFirestoreValue({
-        email: params.email,
-        name: params.name,
-        active: existingDefaultUser?.active === false ? false : true,
-        authDisabled: existingDefaultUser?.authDisabled === true ? true : false,
-        isVerified: true,
-        firebaseUid: params.firebaseUid || existingDefaultUser?.firebaseUid,
-        loginUsername,
-        staffAuthMode: params.staffAuthMode,
-        staffLoginId,
-        productAccounts: {
-            [PRODUCT_IDS.ANSWERLATTICE]: productAccount,
-        },
-        modifiedOn: now,
-        ...(shouldSetRootAnswerlatticeScope ? {
-            pId: PRODUCT_IDS.ANSWERLATTICE,
-            productId: PRODUCT_IDS.ANSWERLATTICE,
-            tenantId: params.tenantId,
-            storeId: params.storeId,
-            tId: params.tenantId,
-            sId: params.storeId,
-            uId: userId,
-            role: params.roleId,
-            stores: [{
-                storeId: params.storeId,
-                name: params.storeName,
-                role: params.roleId,
-            }],
-            storeIds: [params.storeId],
-            platformRole: existingDefaultUser?.platformRole || 'USER',
-        } : {}),
-    });
-
-    await firestoreAdmin.collection(DB_COLLECTIONS.USERS).doc(defaultUserId).set(defaultUserUpdate, { merge: true });
-};
-
-const updateDefaultAuthProductAccountStatus = async (params: {
-    active: boolean;
-    email?: string;
-    roleId?: string;
-    storeId?: number;
-    storeIds?: number[];
-    userId: string;
-}) => {
-    const existingDefaultUser = params.email ? await getDefaultAuthUserByEmail(params.email) : null;
-    const userId = requireAnswerlatticeStaffUserId(params.userId);
-    const defaultUserId = requireAnswerlatticeStaffUserId(existingDefaultUser?.id || userId);
-    const userRef = firestoreAdmin.collection(DB_COLLECTIONS.USERS).doc(defaultUserId);
-    const userSnap = await userRef.get();
-    if (!userSnap.exists) return;
-    const userData = userSnap.data() || {};
-    const productAccounts = userData.productAccounts || {};
-    const account = productAccounts[PRODUCT_IDS.ANSWERLATTICE] || {};
-    await userRef.set(sanitizeFirestoreValue({
-        productAccounts: {
-            [PRODUCT_IDS.ANSWERLATTICE]: {
-                ...account,
-                active: params.active,
-                ...(params.roleId ? { role: params.roleId } : {}),
-                ...(params.storeId ? { storeId: params.storeId } : {}),
-                ...(params.storeIds ? { storeIds: params.storeIds } : {}),
-                updatedAt: admin.firestore.Timestamp.now(),
-            },
-        },
-        modifiedOn: admin.firestore.Timestamp.now(),
-        ...((userData.pId === PRODUCT_IDS.ANSWERLATTICE || userData.productId === PRODUCT_IDS.ANSWERLATTICE) ? {
-            active: params.active,
-            authDisabled: params.active ? false : true,
-            ...(params.roleId ? { role: params.roleId } : {}),
-            ...(params.storeId ? { storeId: params.storeId, sId: params.storeId } : {}),
-            ...(params.storeIds ? { storeIds: params.storeIds } : {}),
-        } : {}),
-    }), { merge: true });
 };
 
 const createOrGetDefaultFirebaseUser = async (params: {
@@ -595,49 +602,76 @@ const createOrGetDefaultFirebaseUser = async (params: {
     password: string;
 }) => {
     try {
-        return await authAdmin.createUser({
+        const user = await authAdmin.createUser({
             displayName: params.displayName,
             email: params.email,
             emailVerified: false,
             password: params.password,
         });
-    } catch (error: any) {
-        if (error?.code !== 'auth/email-already-exists') throw error;
-        return authAdmin.getUserByEmail(params.email);
+        return { created: true, user };
+    } catch (error: unknown) {
+        if (getErrorCode(error) !== 'auth/email-already-exists') throw error;
+        return { created: false, user: await authAdmin.getUserByEmail(params.email) };
     }
 };
 
-const ensureAnswerlatticeAuthUserDisabledState = async (email: string, disabled: boolean) => {
+const cleanupUnadoptedDefaultFirebaseUser = async (params: {
+    db: FirebaseFirestore.Firestore;
+    firebaseUid: string;
+    tenantId: number;
+    userId: string;
+}) => {
     try {
-        const answerlatticeUser = await answerlatticeAuthAdmin.getUserByEmail(email);
-        if (answerlatticeUser.disabled !== disabled) {
-            await answerlatticeAuthAdmin.updateUser(answerlatticeUser.uid, { disabled });
-        }
-    } catch (error: any) {
-        if (error?.code !== 'auth/user-not-found') throw error;
+        const userId = requireAnswerlatticeStaffUserId(params.userId);
+        const userSnapshot = await params.db.collection(DB_COLLECTIONS.USERS).doc(userId).get();
+        if (userSnapshot.data()?.firebaseUid === params.firebaseUid) return;
+        await authAdmin.deleteUser(params.firebaseUid);
+    } catch (error) {
+        logAnswerlatticeFailure('answerlattice_staff_auth_compensation_failed', error, {
+            ...getBoundedAnswerlatticeStringContext('tenantId', params.tenantId),
+            ...getBoundedAnswerlatticeStringContext('userId', params.userId),
+        });
     }
 };
 
-const revokeDefaultFirebaseRefreshTokens = async (data: any, fallbackEmail: string, context: Record<string, unknown>) => {
-    const email = String(fallbackEmail || data?.email || '').toLowerCase().trim();
-    if (!data?.firebaseUid && !email) return null;
+const getErrorCode = (error: unknown): string => (
+    error && typeof error === 'object' && 'code' in error ? String(error.code || '') : ''
+);
+
+const revokeDefaultFirebaseRefreshTokens = async (
+    data: Record<string, unknown>,
+    fallbackEmail: string,
+    context: Record<string, unknown>,
+) => {
+    const lookup = resolveAnswerlatticeStaffAuthLookup({
+        dataEmail: data.email,
+        fallbackEmail,
+        firebaseUid: data.firebaseUid,
+    });
+    if (!lookup) return null;
     try {
-        const firebaseUser = data?.firebaseUid
-            ? await authAdmin.getUser(String(data.firebaseUid))
-            : await authAdmin.getUserByEmail(email);
+        const firebaseUser = lookup.type === 'email'
+            ? await authAdmin.getUserByEmail(lookup.email)
+            : await authAdmin.getUser(lookup.uid);
         await authAdmin.revokeRefreshTokens(firebaseUser.uid);
         return firebaseUser;
-    } catch (error: any) {
-        if (error?.code !== 'auth/user-not-found') throw error;
-        logger.warn('[Answerlattice Staff] Default Firebase Auth user missing during session revoke', {
-            ...context,
-            email,
+    } catch (error: unknown) {
+        if (getErrorCode(error) !== 'auth/user-not-found') throw error;
+        logAnswerlatticeDiagnostic('answerlattice_staff_default_auth_user_missing_on_revoke', {
+            ...getAnswerlatticeSecurityDetailsContext(context),
+            ...getBoundedAnswerlatticeStringContext(
+                lookup.type === 'email' ? 'email' : 'firebaseUid',
+                lookup.type === 'email' ? lookup.email : lookup.uid,
+            ),
         });
         return null;
     }
 };
 
-const isPlatformRole = (value: unknown) => String(value || '').toUpperCase() === 'PLATFORM';
+const isPlatformRole = (value: unknown) => {
+    const role = String(value || '').toUpperCase();
+    return role === ECOMSAI_PLATFORM_USER_ROLE || role === ECOMSAI_PLATFORM_SUPPORT_USER_ROLE;
+};
 
 const buildAnswerlatticePermissionClaims = (
     roles: AnswerlatticeRoleDefinition[],
@@ -656,41 +690,204 @@ const buildAnswerlatticePermissionClaims = (
 };
 
 const syncAnswerlatticeAuthClaimsForStaffUser = async (params: {
-    active: boolean;
-    email: string;
-    platformRole?: string;
-    roleId: string;
-    roles: AnswerlatticeRoleDefinition[];
-    storeId: number;
-    storeIds: number[];
-    tenantId: number;
+    fallbackStoreId: number;
+    forceClaimsRefresh?: boolean;
+    forceRevoke?: boolean;
     userId: string;
 }) => {
-    const email = String(params.email || '').toLowerCase().trim();
-    if (!email) return;
+    const db = getAnswerlatticeDb();
+    if (!db) throw new Error('ANSWERLATTICE_STAFF_CLAIM_SYNC_FIREBASE_UNAVAILABLE');
+    const normalizedUserId = requireAnswerlatticeStaffUserId(params.userId);
 
-    try {
-        const answerlatticeUser = await answerlatticeAuthAdmin.getUserByEmail(email);
-        const platformRole = params.platformRole || 'USER';
-        const adminClaim = isPlatformRole(platformRole) || params.roleId === DEFAULT_ANSWERLATTICE_ROLE_IDS.OWNER;
-        await answerlatticeAuthAdmin.setCustomUserClaims(answerlatticeUser.uid, {
-            pId: PRODUCT_IDS.ANSWERLATTICE,
-            role: params.roleId,
-            platformRole,
-            tenantId: String(params.tenantId),
-            storeId: String(params.storeId),
-            uId: params.userId,
-            admin: adminClaim,
-            storeIds: params.storeIds.map((storeId) => String(storeId)),
-            ...buildAnswerlatticePermissionClaims(params.roles, params.roleId, platformRole),
-        });
-        if (answerlatticeUser.disabled !== !params.active) {
-            await answerlatticeAuthAdmin.updateUser(answerlatticeUser.uid, { disabled: !params.active });
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+        const target = await getAnswerlatticeUserById(normalizedUserId);
+        if (!target) throw new Error('ANSWERLATTICE_STAFF_CLAIM_SYNC_USER_MISSING');
+        const data = getRecord(target.data);
+        const state = readAnswerlatticeStaffAccessState(data);
+        if (!state) throw new Error('ANSWERLATTICE_STAFF_CLAIM_SYNC_STATE_INVALID');
+        const email = typeof data.email === 'string' ? data.email.toLowerCase().trim() : '';
+        if (!email) throw new Error('ANSWERLATTICE_STAFF_CLAIM_SYNC_EMAIL_MISSING');
+        const primaryMembership = state.primaryMembership;
+        const storeId = primaryMembership?.storeId || params.fallbackStoreId;
+        const roleId = primaryMembership?.role || DEFAULT_ANSWERLATTICE_ROLE_IDS.STAFF;
+        const platformRole = typeof data.platformRole === 'string' ? data.platformRole : 'USER';
+        const active = data.active !== false && data.deleted !== true && data.authDisabled !== true && state.memberships.length > 0;
+        try {
+            const answerlatticeUser = await answerlatticeAuthAdmin.getUserByEmail(email);
+            const expectedStoreIds = state.memberships.map((membership) => String(membership.storeId));
+            const expectedClaimRoleId = active ? roleId : 'inactive';
+            const expectedClaimStoreIds = active ? expectedStoreIds : [];
+            const currentStoreIds = Array.isArray(answerlatticeUser.customClaims?.storeIds)
+                ? answerlatticeUser.customClaims.storeIds.map((value: unknown) => String(value))
+                : [];
+            const claimsNeedUpdate = params.forceClaimsRefresh === true
+                || answerlatticeUser.customClaims?.accessRevision !== state.accessRevision
+                || answerlatticeUser.customClaims?.pId !== PRODUCT_IDS.ANSWERLATTICE
+                || String(answerlatticeUser.customClaims?.tenantId || '') !== String(state.tenantId)
+                || String(answerlatticeUser.customClaims?.storeId || '') !== String(storeId)
+                || String(answerlatticeUser.customClaims?.role || '') !== expectedClaimRoleId
+                || String(answerlatticeUser.customClaims?.platformRole || '') !== platformRole
+                || String(answerlatticeUser.customClaims?.uId || '') !== normalizedUserId
+                || JSON.stringify(currentStoreIds) !== JSON.stringify(expectedClaimStoreIds);
+            const disabledNeedsUpdate = answerlatticeUser.disabled === active;
+            if (claimsNeedUpdate) {
+                const storeSnapshot = await db.collection(DB_COLLECTIONS.STORES).doc(String(storeId)).get();
+                const storeData = storeSnapshot.data();
+                const storeIsActive = storeSnapshot.exists && isAnswerlatticeActiveStoreInScope(
+                    storeData,
+                    { storeId, tenantId: state.tenantId },
+                    storeSnapshot.id,
+                );
+                const roles = storeIsActive
+                    ? normalizeAnswerlatticeRolesForStore(
+                        storeData?.answerlatticeRoles,
+                        state.tenantId,
+                        storeId,
+                        'system',
+                    ).roles
+                    : [];
+                const claimAccess = buildAnswerlatticeStaffClaimAccessProjection({
+                    accountActive: active,
+                    roleId,
+                    storeIds: expectedStoreIds,
+                    storeIsActive,
+                });
+                const claimRoleId = claimAccess.roleId;
+                const adminClaim = active && (
+                    isPlatformRole(platformRole)
+                    || (storeIsActive && roleId === DEFAULT_ANSWERLATTICE_ROLE_IDS.OWNER)
+                );
+                await answerlatticeAuthAdmin.setCustomUserClaims(answerlatticeUser.uid, {
+                    accessRevision: state.accessRevision,
+                    admin: adminClaim,
+                    pId: PRODUCT_IDS.ANSWERLATTICE,
+                    platformRole,
+                    role: claimRoleId,
+                    storeId: String(storeId),
+                    storeIds: claimAccess.storeIds,
+                    tenantId: String(state.tenantId),
+                    uId: normalizedUserId,
+                    ...buildAnswerlatticePermissionClaims(
+                        roles,
+                        claimRoleId,
+                        active ? platformRole : undefined,
+                    ),
+                });
+            }
+            if (disabledNeedsUpdate) {
+                await answerlatticeAuthAdmin.updateUser(answerlatticeUser.uid, { disabled: !active });
+            }
+            if (claimsNeedUpdate || disabledNeedsUpdate || params.forceRevoke) {
+                await answerlatticeAuthAdmin.revokeRefreshTokens(answerlatticeUser.uid);
+            }
+        } catch (error: unknown) {
+            if (getErrorCode(error) !== 'auth/user-not-found') throw error;
+            return;
         }
-        await answerlatticeAuthAdmin.revokeRefreshTokens(answerlatticeUser.uid);
-    } catch (error: any) {
-        if (error?.code !== 'auth/user-not-found') throw error;
+
+        const refreshed = await getAnswerlatticeUserById(normalizedUserId);
+        const refreshedState = readAnswerlatticeStaffAccessState(refreshed?.data);
+        if (!refreshedState) throw new Error('ANSWERLATTICE_STAFF_CLAIM_SYNC_STATE_INVALID');
+        if (refreshedState.accessRevision === state.accessRevision) return;
     }
+
+    throw new Error('ANSWERLATTICE_STAFF_CLAIM_SYNC_REVISION_CONFLICT');
+};
+
+const syncAnswerlatticeAuthClaimsForRoleMembers = async (params: {
+    fallbackStoreId: number;
+    userIds: string[];
+}) => {
+    const concurrency = 5;
+    for (let index = 0; index < params.userIds.length; index += concurrency) {
+        await Promise.all(params.userIds.slice(index, index + concurrency).map((userId) => (
+            syncAnswerlatticeAuthClaimsForStaffUser({
+                fallbackStoreId: params.fallbackStoreId,
+                forceClaimsRefresh: true,
+                forceRevoke: true,
+                userId,
+            })
+        )));
+    }
+};
+
+const repairAnswerlatticeStaffAccessProjections = async (params: {
+    data: Record<string, unknown>;
+    fallbackStoreId: number;
+    forceClaimsRevoke?: boolean;
+    operation: string;
+    revokeDefault?: boolean;
+    syncBridge?: boolean;
+    syncClaims?: boolean;
+    userId: string;
+}): Promise<boolean> => {
+    const state = readAnswerlatticeStaffAccessState(params.data);
+    if (!state) {
+        logAnswerlatticeFailure('answerlattice_staff_projection_state_invalid', undefined, {
+            ...getBoundedAnswerlatticeStringContext('operation', params.operation),
+            ...getBoundedAnswerlatticeStringContext('userId', params.userId),
+        });
+        return false;
+    }
+
+    const tasks: Array<{ name: string; run: () => Promise<unknown> }> = [];
+    if (params.syncBridge) {
+        tasks.push({
+            name: 'default_product_account_bridge',
+            run: () => syncDefaultAuthProductAccount({
+                accessRevision: state.accessRevision,
+                active: isAnswerlatticeStaffAccountActive(params.data, state),
+                email: typeof params.data.email === 'string' ? params.data.email : '',
+                fallbackStoreId: params.fallbackStoreId,
+                firebaseUid: typeof params.data.firebaseUid === 'string' ? params.data.firebaseUid : undefined,
+                loginUsername: typeof params.data.loginUsername === 'string' ? params.data.loginUsername : undefined,
+                memberships: state.memberships,
+                name: typeof params.data.name === 'string' ? params.data.name : '',
+                primaryMembership: state.primaryMembership,
+                staffAuthMode: getStaffAuthMode(params.data),
+                tenantId: state.tenantId,
+                userId: params.userId,
+            }),
+        });
+    }
+    if (params.syncClaims) {
+        tasks.push({
+            name: 'answerlattice_auth_claims',
+            run: () => syncAnswerlatticeAuthClaimsForStaffUser({
+                fallbackStoreId: params.fallbackStoreId,
+                forceRevoke: params.forceClaimsRevoke,
+                userId: params.userId,
+            }),
+        });
+    }
+    if (params.revokeDefault) {
+        tasks.push({
+            name: 'default_auth_revoke',
+            run: () => revokeDefaultFirebaseRefreshTokens(
+                params.data,
+                typeof params.data.email === 'string' ? params.data.email : '',
+                {
+                    action: params.operation,
+                    storeId: params.fallbackStoreId,
+                    tenantId: state.tenantId,
+                    userId: params.userId,
+                },
+            ),
+        });
+    }
+
+    const results = await Promise.allSettled(tasks.map(({ run }) => run()));
+    let complete = true;
+    results.forEach((result, index) => {
+        if (result.status === 'fulfilled') return;
+        complete = false;
+        logAnswerlatticeFailure('answerlattice_staff_projection_repair_failed', result.reason, {
+            ...getBoundedAnswerlatticeStringContext('operation', params.operation),
+            ...getBoundedAnswerlatticeStringContext('projection', tasks[index]?.name || 'unknown'),
+            ...getBoundedAnswerlatticeStringContext('userId', params.userId),
+        });
+    });
+    return complete;
 };
 
 const validateRoleForAssignment = (
@@ -702,56 +899,32 @@ const validateRoleForAssignment = (
     return role;
 };
 
-const ensureAnotherActiveOwner = async (
-    tenantId: number,
-    storeId: number,
-    targetUserId: string,
-) => {
-    const db = getAnswerlatticeDb();
-    if (!db) throw new Error('ANSWERLATTICE_FIREBASE_NOT_CONFIGURED');
-
-    const snapshot = await db.collection(DB_COLLECTIONS.USERS)
-        .where('storeIds', 'array-contains', storeId)
-        .limit(STAFF_STORE_USER_QUERY_LIMIT)
-        .get();
-    const hasOtherOwner = snapshot.docs.some((doc) => {
-        if (doc.id === targetUserId) return false;
-        const data = doc.data();
-        if (Number(data?.tenantId || data?.tId) !== tenantId) return false;
-        if (data?.active === false || data?.deleted === true) return false;
-        return (Array.isArray(data?.stores) ? data.stores : []).some((store: any) => (
-            Number(store?.storeId) === storeId && store?.role === DEFAULT_ANSWERLATTICE_ROLE_IDS.OWNER
-        ));
-    });
-
-    if (!hasOtherOwner) throw new AnswerlatticeStaffPolicyError(ANSWERLATTICE_STAFF_POLICY_ERROR_CODES.LAST_OWNER);
-};
-
-const ensureNotSelfDestructive = (session: any, targetUserId: string) => {
-    if (targetUserId && (session?.uId === targetUserId || session?.user?.id === targetUserId)) {
+const ensureNotSelfDestructive = (session: any, targetUserId: string, targetEmail?: unknown) => {
+    if (isAnswerlatticeStaffSelfTarget({
+        sessionEmail: session?.user?.email,
+        sessionUserId: session?.uId || session?.user?.id,
+        targetEmail,
+        targetUserId,
+    })) {
         throw new AnswerlatticeStaffPolicyError(ANSWERLATTICE_STAFF_POLICY_ERROR_CODES.SELF_UPDATE_BLOCKED);
     }
 };
 
-const roleIsAssignedToActiveUser = async (tenantId: number, storeId: number, roleId: string) => {
-    const db = getAnswerlatticeDb();
-    if (!db) return false;
-    const snapshot = await db.collection(DB_COLLECTIONS.USERS)
-        .where('storeIds', 'array-contains', storeId)
-        .limit(STAFF_STORE_USER_QUERY_LIMIT)
-        .get();
-
-    const roleAssigned = snapshot.docs.some((doc) => {
-        const data = doc.data();
-        if (Number(data?.tenantId || data?.tId) !== tenantId) return false;
-        if (data?.active === false || data?.deleted === true) return false;
-        return (Array.isArray(data?.stores) ? data.stores : []).some((store: any) => (
-            Number(store?.storeId) === storeId && store?.role === roleId
-        ));
-    });
-
-    return roleAssigned || snapshot.size >= STAFF_STORE_USER_QUERY_LIMIT;
+const ensureWorkspaceLocalAuthMutation = (
+    accessState: ReturnType<typeof readAnswerlatticeStaffAccessState>,
+    isPlatformAdmin: boolean,
+) => {
+    if (accessState && accessState.memberships.length > 1 && !isPlatformAdmin) {
+        throw new AnswerlatticeStaffPolicyError(
+            ANSWERLATTICE_STAFF_POLICY_ERROR_CODES.MULTI_WORKSPACE_AUTH_CHANGE,
+        );
+    }
 };
+
+const canManageAnswerlatticeOwner = (access: {
+    currentRoleId: string;
+    isPlatformAdmin: boolean;
+}) => access.isPlatformAdmin || access.currentRoleId === DEFAULT_ANSWERLATTICE_ROLE_IDS.OWNER;
 
 const verifyStaffFeature = () => FEATURE_FLAGS.ENABLE_ANSWERLATTICE_STAFF_ACCESS;
 
@@ -768,11 +941,20 @@ export const listAnswerlatticeStaffUsers = async (request: NextRequest, session:
     if (!db) return jsonError('Answerlattice Firebase is not configured', 503, 'ANSWERLATTICE_FIREBASE_NOT_CONFIGURED');
 
     const snapshot = await db.collection(DB_COLLECTIONS.USERS)
+        .where('tenantId', '==', access.scope.tenantId)
         .where('storeIds', 'array-contains', access.scope.storeId)
-        .limit(STAFF_STORE_USER_QUERY_LIMIT)
+        .limit(STAFF_STORE_USER_QUERY_LIMIT + 1)
         .get();
+    if (snapshot.size > STAFF_STORE_USER_QUERY_LIMIT) {
+        return jsonError(
+            'This workspace has too many team members to load safely.',
+            409,
+            'STAFF_LIST_LIMIT_EXCEEDED',
+        );
+    }
     const users = snapshot.docs
-        .map((doc) => sanitizeAnswerlatticeStaffUser(doc.id, doc.data(), access.roles))
+        .map((doc) => sanitizeAnswerlatticeStaffUser(doc.id, doc.data(), access.roles, access.scope.storeId))
+        .filter((user): user is NonNullable<typeof user> => Boolean(user))
         .filter((user) => user.tenantId === access.scope.tenantId)
         .filter((user) => user.deleted !== true)
         .filter((user) => user.storeIds.includes(access.scope.storeId))
@@ -814,7 +996,16 @@ export const createAnswerlatticeStaffUser = async (request: NextRequest, session
     }
 
     const input = validation.data as CreateAnswerlatticeStaffInput;
+    if (input.email && isInternalAuthEmail(input.email)) {
+        return jsonError('Use a business email address or leave email blank for a staff ID.', 400, 'RESERVED_EMAIL');
+    }
     const requestedRoleId = input.roleId || DEFAULT_ANSWERLATTICE_ROLE_IDS.STAFF;
+    if (
+        requestedRoleId === DEFAULT_ANSWERLATTICE_ROLE_IDS.OWNER
+        && !canManageAnswerlatticeOwner(access)
+    ) {
+        return jsonError('Only an Owner can grant Owner access.', 403, 'OWNER_ACCESS_FORBIDDEN');
+    }
     if (requestedRoleId !== DEFAULT_ANSWERLATTICE_ROLE_IDS.STAFF && !access.permissions[ANSWERLATTICE_PERMISSION_KEYS.ASSIGN_ROLES]) {
         return jsonError('You do not have permission to assign roles.', 403, 'ROLE_ASSIGNMENT_FORBIDDEN');
     }
@@ -829,12 +1020,56 @@ export const createAnswerlatticeStaffUser = async (request: NextRequest, session
     if (!db) return jsonError('Answerlattice Firebase is not configured', 503, 'ANSWERLATTICE_FIREBASE_NOT_CONFIGURED');
 
     const hasEmail = Boolean(input.email);
-    const staffLoginUsername = await generateUniqueAnswerlatticeStaffLoginId();
+    const staffLoginUsername = hasEmail
+        ? ''
+        : buildDeterministicAnswerlatticeStaffLoginId(
+            access.scope.tenantId,
+            access.scope.storeId,
+            input.requestId,
+        );
     const staffLoginId = resolveStaffLoginDisplayId(staffLoginUsername);
     const loginEmail = hasEmail ? String(input.email) : buildManagedStaffEmail(access.scope.tenantId, staffLoginUsername);
-    const existingAnswerlatticeUser = await getAnswerlatticeUserByEmail(loginEmail);
-    if (existingAnswerlatticeUser && Number(existingAnswerlatticeUser.data.tenantId) !== access.scope.tenantId) {
+    let existingAnswerlatticeUser;
+    try {
+        existingAnswerlatticeUser = await getAnswerlatticeUserByEmail(loginEmail);
+    } catch (error: unknown) {
+        if (error instanceof AnswerlatticeStaffTransactionError) {
+            logSecurity('Authorization Failed - Answerlattice Staff Identity Conflict', session, request, {
+                email: loginEmail,
+            }, 'critical');
+            return jsonError('This login identity cannot be assigned.', 409, 'IDENTITY_CONFLICT');
+        }
+        throw error;
+    }
+    const existingAccessState = existingAnswerlatticeUser
+        ? readAnswerlatticeStaffAccessState(existingAnswerlatticeUser.data)
+        : null;
+    if (existingAnswerlatticeUser && existingAccessState?.tenantId !== access.scope.tenantId) {
         return jsonError('This email is registered with another Answerlattice workspace.', 409, 'EMAIL_OTHER_TENANT');
+    }
+    const creationFingerprint = buildAnswerlatticeStaffCreationFingerprint(
+        input,
+        access.scope.tenantId,
+        access.scope.storeId,
+    );
+    if (isAnswerlatticeManagedStaffIdentityCollision({
+        existingRequestId: existingAnswerlatticeUser?.data?.creationRequestId,
+        existingUser: Boolean(existingAnswerlatticeUser),
+        hasEmail,
+        requestId: input.requestId,
+    })) {
+        logSecurity('Authorization Failed - Answerlattice Managed Staff Identity Collision', session, request, {
+            userId: existingAnswerlatticeUser.id,
+        }, 'critical');
+        return jsonError('This login identity cannot be assigned.', 409, 'IDENTITY_CONFLICT');
+    }
+    if (
+        !hasEmail
+        && existingAnswerlatticeUser?.data?.creationRequestId === input.requestId
+        && existingAnswerlatticeUser.data.creationRequestFingerprint
+        && existingAnswerlatticeUser.data.creationRequestFingerprint !== creationFingerprint
+    ) {
+        return jsonError('This team member request has already been used.', 409, 'IDEMPOTENCY_CONFLICT');
     }
 
     const normalizedPhone = normalizePhoneNumberForStorage({
@@ -845,26 +1080,40 @@ export const createAnswerlatticeStaffUser = async (request: NextRequest, session
     const displayName = input.name || normalizedPhone.phoneNumber || (hasEmail ? String(input.email).split('@')[0] : `Support ${staffLoginId.slice(-4)}`);
     const tempPasscode = hasEmail ? '' : generateStaffPasscode();
     const tempPassword = tempPasscode || randomBytes(24).toString('base64url');
-    const defaultFirebaseUser = await createOrGetDefaultFirebaseUser({
+    let existingDefaultUser;
+    try {
+        existingDefaultUser = await getDefaultAuthUserByEmail(loginEmail);
+    } catch (error: unknown) {
+        if (error instanceof AuthUserIdentityConflictError) {
+            logSecurity('Authorization Failed - Default Auth Staff Identity Conflict', session, request, {
+                email: loginEmail,
+            }, 'critical');
+            return jsonError('This login identity cannot be assigned.', 409, 'IDENTITY_CONFLICT');
+        }
+        throw error;
+    }
+    const defaultFirebaseResult = await createOrGetDefaultFirebaseUser({
         displayName,
         email: loginEmail,
         password: tempPassword,
     });
-    const existingDefaultUser = await getDefaultAuthUserByEmail(loginEmail);
+    const defaultFirebaseUser = defaultFirebaseResult.user;
     const userId = requireAnswerlatticeStaffUserId(existingAnswerlatticeUser?.id || existingDefaultUser?.id || defaultFirebaseUser.uid);
     const now = admin.firestore.Timestamp.now();
     const phoneUsername = normalizedPhone.phoneUsername;
-    const stores = [{
+    const membership: AnswerlatticeStaffStoreMembership = {
         storeId: access.scope.storeId,
         name: access.storeName,
         role: requestedRoleId,
-    }];
+    };
     const staffAuthMode = hasEmail ? STAFF_AUTH_MODE_EMAIL : STAFF_AUTH_MODE_OWNER_PASSCODE;
 
-    const userDoc = sanitizeFirestoreValue({
+    const baseUserData = sanitizeFirestoreValue({
         active: true,
         authDisabled: false,
         countryCode: input.phoneNumber ? normalizedPhone.countryCode : input.countryCode,
+        creationRequestFingerprint: existingAnswerlatticeUser?.data?.creationRequestFingerprint || creationFingerprint,
+        creationRequestId: existingAnswerlatticeUser?.data?.creationRequestId || input.requestId,
         createdBy: session?.user?.email,
         createdOn: existingAnswerlatticeUser?.data?.createdOn || now,
         createdVia: hasEmail ? 'answerlattice-staff-invite' : 'answerlattice-owner-passcode',
@@ -883,47 +1132,77 @@ export const createAnswerlatticeStaffUser = async (request: NextRequest, session
         phoneUsername: phoneUsername || undefined,
         platformRole: 'USER',
         productId: PRODUCT_IDS.ANSWERLATTICE,
-        role: requestedRoleId,
-        sId: access.scope.storeId,
         staffAuthMode,
         staffLoginId: resolveStaffLoginDisplayId(existingAnswerlatticeUser?.data?.staffLoginId || existingAnswerlatticeUser?.data?.loginUsername || staffLoginUsername),
-        storeId: access.scope.storeId,
-        storeIds: [access.scope.storeId],
-        stores,
-        tId: access.scope.tenantId,
-        tenantId: access.scope.tenantId,
         uId: userId,
     });
 
-    await db.collection(DB_COLLECTIONS.USERS).doc(userId).set(userDoc, { merge: true });
-    await syncDefaultAuthProductAccount({
-        active: true,
-        email: loginEmail,
-        firebaseUid: defaultFirebaseUser.uid,
-        loginUsername: userDoc.loginUsername,
-        name: displayName,
-        roleId: requestedRoleId,
-        session,
-        staffAuthMode,
-        storeId: access.scope.storeId,
-        storeName: access.storeName,
-        tenantId: access.scope.tenantId,
+    let creationResult;
+    try {
+        creationResult = await createAnswerlatticeStaffMembershipTransaction({
+            baseData: baseUserData,
+            db,
+            fingerprint: creationFingerprint,
+            membership,
+            requestId: input.requestId,
+            tenantId: access.scope.tenantId,
+            userId,
+        });
+    } catch (error: unknown) {
+        if (defaultFirebaseResult.created) {
+            await cleanupUnadoptedDefaultFirebaseUser({
+                db,
+                firebaseUid: defaultFirebaseUser.uid,
+                tenantId: access.scope.tenantId,
+                userId,
+            });
+        }
+        if (error instanceof AnswerlatticeStaffTransactionError) {
+            if (error.code === 'IDEMPOTENCY_CONFLICT') {
+                return jsonError('This team member request has already been used.', 409, error.code);
+            }
+            if (error.code === 'ALREADY_ASSIGNED') {
+                return jsonError('This team member already has access to this workspace.', 409, error.code);
+            }
+            if (error.code === 'INACTIVE_ACCOUNT_WITH_MEMBERSHIPS') {
+                return jsonError(
+                    'This account is inactive in another workspace. Reactivate it there before adding another workspace.',
+                    409,
+                    error.code,
+                );
+            }
+            if (error.code === 'ROLE_NOT_FOUND') return jsonError('Invalid role', 400, error.code);
+            if (error.code === 'STORE_NOT_FOUND') return jsonError('Workspace not found', 404, error.code);
+            if (error.code === 'FORBIDDEN') return jsonError('Forbidden', 403, error.code);
+        }
+        throw error;
+    }
+    const userDoc = creationResult.nextData;
+    const isCompletedReplay = creationResult.replay;
+    if (!hasEmail && !isCompletedReplay) {
+        await authAdmin.updateUser(defaultFirebaseUser.uid, {
+            disabled: false,
+            password: tempPasscode,
+        });
+    }
+    const projectionsComplete = await repairAnswerlatticeStaffAccessProjections({
+        data: getRecord(userDoc),
+        fallbackStoreId: access.scope.storeId,
+        operation: 'answerlattice-staff-create',
+        syncBridge: true,
+        syncClaims: true,
         userId,
     });
-    await syncAnswerlatticeAuthClaimsForStaffUser({
-        active: true,
-        email: loginEmail,
-        platformRole: userDoc.platformRole,
-        roleId: requestedRoleId,
-        roles: access.roles,
-        storeId: access.scope.storeId,
-        storeIds: userDoc.storeIds,
-        tenantId: access.scope.tenantId,
-        userId,
-    });
+    if (!projectionsComplete) {
+        return jsonError(
+            'Team member was added, but access refresh did not finish. Try the same add-member action again.',
+            503,
+            'STAFF_ACCESS_SYNC_FAILED',
+        );
+    }
 
     let passwordResetEmail: { ok: boolean; error?: string } = { ok: false };
-    if (hasEmail) {
+    if (shouldSendAnswerlatticeStaffSetupEmail({ hasEmail, replay: isCompletedReplay })) {
         passwordResetEmail = await sendFirebasePasswordResetEmail(loginEmail);
         if (passwordResetEmail.ok) {
             await db.collection(DB_COLLECTIONS.USERS).doc(userId).set({
@@ -934,24 +1213,28 @@ export const createAnswerlatticeStaffUser = async (request: NextRequest, session
         }
     }
 
-    logger.info('[Answerlattice Staff] Staff user created', {
-        authMode: staffAuthMode,
-        tenantId: access.scope.tenantId,
-        storeId: access.scope.storeId,
-        userId,
+    logAnswerlatticeDiagnostic('answerlattice_staff_user_created', {
+        ...getBoundedAnswerlatticeStringContext('authMode', staffAuthMode),
+        ...getBoundedAnswerlatticeStringContext('tenantId', access.scope.tenantId),
+        ...getBoundedAnswerlatticeStringContext('storeId', access.scope.storeId),
+        ...getBoundedAnswerlatticeStringContext('userId', userId),
     });
 
     return NextResponse.json({
         success: true,
-        message: hasEmail
+        message: isCompletedReplay
+            ? 'Team member was already added. Reset their login details if the original passcode was not received.'
+            : hasEmail
             ? 'Team member added. They can set their password from the email.'
             : 'Team member added. Share the staff ID and temporary passcode.',
-        passwordResetEmailError: hasEmail && !passwordResetEmail.ok ? 'password_reset_email_failed' : undefined,
-        passwordResetEmailSent: hasEmail ? passwordResetEmail.ok : false,
+        passwordResetEmailError: hasEmail && !isCompletedReplay && !passwordResetEmail.ok
+            ? 'password_reset_email_failed'
+            : undefined,
+        passwordResetEmailSent: hasEmail && !isCompletedReplay ? passwordResetEmail.ok : false,
         staffAuthMode,
         staffLoginId: userDoc.staffLoginId,
-        temporaryPasscode: tempPasscode || undefined,
-        user: sanitizeAnswerlatticeStaffUser(userId, userDoc, access.roles),
+        temporaryPasscode: !isCompletedReplay && tempPasscode ? tempPasscode : undefined,
+        user: sanitizeAnswerlatticeStaffUser(userId, userDoc, access.roles, access.scope.storeId),
         userId,
     });
 };
@@ -980,8 +1263,9 @@ export const updateAnswerlatticeStaffUser = async (request: NextRequest, session
     const input = validation.data as UpdateAnswerlatticeStaffInput;
     const target = await getAnswerlatticeUserById(input.userId);
     if (!target) return jsonError('Team member not found', 404, 'USER_NOT_FOUND');
-    const existingData = target.data || {};
-    if (Number(existingData.tenantId || existingData.tId) !== access.scope.tenantId) {
+    const existingData = getRecord(target.data);
+    const existingAccessState = readAnswerlatticeStaffAccessState(existingData);
+    if (!existingAccessState || existingAccessState.tenantId !== access.scope.tenantId) {
         logSecurity('Authorization Failed - Answerlattice Staff Tenant Mismatch', session, request, {
             requestedTenantId: access.scope.tenantId,
             targetTenantId: existingData.tenantId || existingData.tId,
@@ -990,11 +1274,19 @@ export const updateAnswerlatticeStaffUser = async (request: NextRequest, session
         return jsonError('Forbidden', 403, 'FORBIDDEN');
     }
 
-    const currentStores = Array.isArray(existingData.stores) ? existingData.stores : [];
-    const currentStore = currentStores.find((store: any) => Number(store.storeId) === access.scope.storeId);
-    if (!currentStore) return jsonError('Team member is not assigned to this workspace', 404, 'STORE_MAPPING_NOT_FOUND');
+    const currentStore = getAnswerlatticeStaffMembership(existingAccessState, access.scope.storeId);
+    if (!currentStore || existingData.deleted === true) {
+        return jsonError('Team member is not assigned to this workspace', 404, 'STORE_MAPPING_NOT_FOUND');
+    }
 
-    const nextRoleId = input.roleId || currentStore.role || existingData.role || DEFAULT_ANSWERLATTICE_ROLE_IDS.STAFF;
+    const nextRoleId = input.roleId || currentStore.role || DEFAULT_ANSWERLATTICE_ROLE_IDS.STAFF;
+    if (
+        (currentStore.role === DEFAULT_ANSWERLATTICE_ROLE_IDS.OWNER
+            || nextRoleId === DEFAULT_ANSWERLATTICE_ROLE_IDS.OWNER)
+        && !canManageAnswerlatticeOwner(access)
+    ) {
+        return jsonError('Only an Owner can change Owner access.', 403, 'OWNER_ACCESS_FORBIDDEN');
+    }
     const roleChanged = nextRoleId !== currentStore.role;
     if (roleChanged && !access.permissions[ANSWERLATTICE_PERMISSION_KEYS.ASSIGN_ROLES]) {
         return jsonError('You do not have permission to change roles.', 403, 'ROLE_ASSIGNMENT_FORBIDDEN');
@@ -1007,36 +1299,24 @@ export const updateAnswerlatticeStaffUser = async (request: NextRequest, session
 
     try {
         if (input.active === false || roleChanged) {
-            ensureNotSelfDestructive(session, input.userId);
+            ensureNotSelfDestructive(session, input.userId, existingData.email);
         }
-        if ((input.active === false || roleChanged) && currentStore.role === DEFAULT_ANSWERLATTICE_ROLE_IDS.OWNER && nextRoleId !== DEFAULT_ANSWERLATTICE_ROLE_IDS.OWNER) {
-            await ensureAnotherActiveOwner(access.scope.tenantId, access.scope.storeId, input.userId);
-        }
-    } catch (error: any) {
+    } catch (error: unknown) {
         const policyErrorCode = getAnswerlatticeStaffPolicyErrorCode(error);
         if (policyErrorCode === ANSWERLATTICE_STAFF_POLICY_ERROR_CODES.SELF_UPDATE_BLOCKED) return jsonError('You cannot remove or deactivate your own access.', 409, 'SELF_UPDATE_BLOCKED');
-        if (policyErrorCode === ANSWERLATTICE_STAFF_POLICY_ERROR_CODES.LAST_OWNER) return jsonError('Add another Owner before removing this access.', 409, 'LAST_OWNER');
         throw error;
     }
 
     const now = admin.firestore.Timestamp.now();
-    const nextStores = currentStores.map((store: any) => (
-        Number(store.storeId) === access.scope.storeId
-            ? { ...store, name: access.storeName, role: nextRoleId }
-            : store
-    ));
-    const active = input.active;
     const shouldNormalizePhone = input.phoneNumber !== undefined || input.dialCode !== undefined || input.countryCode !== undefined;
     const normalizedPhone = shouldNormalizePhone
         ? normalizePhoneNumberForStorage({
-            countryCode: input.countryCode ?? existingData.countryCode,
-            dialCode: input.dialCode ?? existingData.dialCode,
-            phoneNumber: input.phoneNumber ?? existingData.phoneNumber,
+            countryCode: input.countryCode ?? (typeof existingData.countryCode === 'string' ? existingData.countryCode : undefined),
+            dialCode: input.dialCode ?? (typeof existingData.dialCode === 'string' ? existingData.dialCode : undefined),
+            phoneNumber: input.phoneNumber ?? (typeof existingData.phoneNumber === 'string' ? existingData.phoneNumber : undefined),
         })
         : null;
-    const updateData = sanitizeFirestoreValue({
-        active,
-        authDisabled: active === undefined ? undefined : active === false,
+    const profileUpdate = sanitizeFirestoreValue({
         countryCode: normalizedPhone ? normalizedPhone.countryCode : input.countryCode,
         dialCode: normalizedPhone ? normalizedPhone.dialCode : input.dialCode,
         modifiedBy: session?.user?.email,
@@ -1045,57 +1325,65 @@ export const updateAnswerlatticeStaffUser = async (request: NextRequest, session
         phone: normalizedPhone ? normalizedPhone.phone : undefined,
         phoneNumber: normalizedPhone ? normalizedPhone.phoneNumber : input.phoneNumber,
         phoneUsername: normalizedPhone ? normalizedPhone.phoneUsername : undefined,
-        role: nextRoleId,
-        stores: nextStores,
-        sessionRevokedAt: active === false ? now : undefined,
-        sessionRevokedBy: active === false ? session?.uId || session?.user?.id : undefined,
-        sessionRevokedByEmail: active === false ? session?.user?.email : undefined,
-        sessionRevokedReason: active === false ? 'answerlattice_staff_deactivated' : undefined,
+        sessionRevokedAt: input.active === false ? now : undefined,
+        sessionRevokedBy: input.active === false ? session?.uId || session?.user?.id : undefined,
+        sessionRevokedByEmail: input.active === false ? session?.user?.email : undefined,
+        sessionRevokedReason: input.active === false ? 'answerlattice_staff_deactivated' : undefined,
     });
 
-    await target.ref.update(updateData);
-    if (active !== undefined) {
-        if (active === false) {
-            await revokeDefaultFirebaseRefreshTokens(existingData, existingData.email, {
-                action: 'answerlattice-staff-deactivate',
-                tenantId: access.scope.tenantId,
-                storeId: access.scope.storeId,
-                userId: input.userId,
-            });
-        }
-        await updateDefaultAuthProductAccountStatus({
-            active,
-            email: existingData.email,
+    let mutationResult;
+    try {
+        mutationResult = await updateAnswerlatticeStaffMembershipTransaction({
+            active: input.active,
+            allowMultiWorkspaceActiveChange: access.isPlatformAdmin,
+            db: getAnswerlatticeDb()!,
+            profileUpdate,
             roleId: nextRoleId,
-            userId: input.userId,
-        });
-        await ensureAnswerlatticeAuthUserDisabledState(String(existingData.email || ''), active === false);
-    } else if (roleChanged) {
-        await updateDefaultAuthProductAccountStatus({
-            active: existingData.active !== false,
-            email: existingData.email,
-            roleId: nextRoleId,
-            userId: input.userId,
-        });
-    }
-    if (active !== undefined || roleChanged) {
-        await syncAnswerlatticeAuthClaimsForStaffUser({
-            active: active ?? existingData.active !== false,
-            email: existingData.email,
-            platformRole: existingData.platformRole,
-            roleId: nextRoleId,
-            roles: access.roles,
             storeId: access.scope.storeId,
-            storeIds: nextStores.map((store: any) => Number(store.storeId)).filter(isPositiveId),
+            storeName: access.storeName,
             tenantId: access.scope.tenantId,
             userId: input.userId,
         });
+    } catch (error: unknown) {
+        if (error instanceof AnswerlatticeStaffTransactionError) {
+            if (error.code === 'LAST_OWNER') return jsonError('Add another Owner before removing this access.', 409, error.code);
+            if (error.code === 'MULTI_WORKSPACE_ACTIVE_CHANGE') {
+                return jsonError('Remove this member from the current workspace instead of changing their account status.', 409, error.code);
+            }
+            if (error.code === 'ROLE_NOT_FOUND') return jsonError('Invalid role', 400, error.code);
+            if (error.code === 'STORE_MAPPING_NOT_FOUND' || error.code === 'USER_NOT_FOUND') {
+                return jsonError('Team member is not assigned to this workspace', 404, 'STORE_MAPPING_NOT_FOUND');
+            }
+            if (error.code === 'FORBIDDEN') return jsonError('Forbidden', 403, error.code);
+        }
+        throw error;
+    }
+    const nextData = getRecord(mutationResult.nextData);
+    const active = isAnswerlatticeStaffAccountActive(nextData);
+    const shouldSyncAccess = mutationResult.accessChanged
+        || input.active !== undefined
+        || input.roleId !== undefined;
+    const shouldSyncBridge = shouldSyncAccess || input.name !== undefined;
+    const projectionsComplete = await repairAnswerlatticeStaffAccessProjections({
+        data: nextData,
+        fallbackStoreId: access.scope.storeId,
+        operation: 'answerlattice-staff-update',
+        revokeDefault: shouldSyncAccess && !active,
+        syncBridge: shouldSyncBridge,
+        syncClaims: shouldSyncAccess,
+        userId: input.userId,
+    });
+    if (!projectionsComplete) {
+        return jsonError(
+            'Team member changes were saved, but access refresh did not finish. Try the same change again.',
+            503,
+            'STAFF_ACCESS_SYNC_FAILED',
+        );
     }
 
-    const updated = await target.ref.get();
     return NextResponse.json({
         success: true,
-        user: sanitizeAnswerlatticeStaffUser(input.userId, updated.data(), access.roles),
+        user: sanitizeAnswerlatticeStaffUser(input.userId, nextData, access.roles, access.scope.storeId),
         userId: input.userId,
     });
 };
@@ -1118,80 +1406,114 @@ export const removeAnswerlatticeStaffUser = async (request: NextRequest, session
     }
 
     const input = validation.data as UserIdInput;
+    const target = await getAnswerlatticeUserById(input.userId);
+    if (!target) return jsonError('Team member not found', 404, 'USER_NOT_FOUND');
+    const existingData = getRecord(target.data);
+    const existingAccessState = readAnswerlatticeStaffAccessState(existingData);
+    if (!existingAccessState || existingAccessState.tenantId !== access.scope.tenantId) {
+        logSecurity('Authorization Failed - Answerlattice Staff Remove Tenant Mismatch', session, request, {
+            requestedTenantId: access.scope.tenantId,
+            targetTenantId: existingData.tenantId || existingData.tId,
+            userId: input.userId,
+        }, 'critical');
+        return jsonError('Forbidden', 403, 'FORBIDDEN');
+    }
+    const currentStore = getAnswerlatticeStaffMembership(existingAccessState, access.scope.storeId);
+    if (!currentStore || existingData.deleted === true) {
+        if (isAnswerlatticeStaffRemovalReplay({
+            state: existingAccessState,
+            storeId: access.scope.storeId,
+            value: existingData,
+        })) {
+            const replayRepairComplete = await repairAnswerlatticeStaffAccessProjections({
+                data: existingData,
+                fallbackStoreId: access.scope.storeId,
+                forceClaimsRevoke: true,
+                operation: 'answerlattice-staff-remove-replay',
+                revokeDefault: existingAccessState.memberships.length === 0,
+                syncBridge: true,
+                syncClaims: true,
+                userId: input.userId,
+            });
+            if (!replayRepairComplete) {
+                return jsonError(
+                    'Workspace access was removed, but access refresh did not finish. Try removing this member again.',
+                    503,
+                    'STAFF_ACCESS_SYNC_FAILED',
+                );
+            }
+            return NextResponse.json({ removed: true, replay: true, success: true, userId: input.userId });
+        }
+        return jsonError('Team member is not assigned to this workspace', 404, 'STORE_MAPPING_NOT_FOUND');
+    }
     try {
-        ensureNotSelfDestructive(session, input.userId);
+        ensureNotSelfDestructive(session, input.userId, existingData.email);
     } catch {
         return jsonError('You cannot remove your own access.', 409, 'SELF_UPDATE_BLOCKED');
     }
-
-    const target = await getAnswerlatticeUserById(input.userId);
-    if (!target) return jsonError('Team member not found', 404, 'USER_NOT_FOUND');
-    const existingData = target.data || {};
-    const currentStores = Array.isArray(existingData.stores) ? existingData.stores : [];
-    const currentStore = currentStores.find((store: any) => Number(store.storeId) === access.scope.storeId);
-    if (!currentStore) return jsonError('Team member is not assigned to this workspace', 404, 'STORE_MAPPING_NOT_FOUND');
-    if (currentStore.role === DEFAULT_ANSWERLATTICE_ROLE_IDS.OWNER) {
-        try {
-            await ensureAnotherActiveOwner(access.scope.tenantId, access.scope.storeId, input.userId);
-        } catch (error: any) {
-            const policyErrorCode = getAnswerlatticeStaffPolicyErrorCode(error);
-            if (policyErrorCode === ANSWERLATTICE_STAFF_POLICY_ERROR_CODES.LAST_OWNER) return jsonError('Add another Owner before removing this access.', 409, 'LAST_OWNER');
-            throw error;
-        }
+    if (
+        currentStore.role === DEFAULT_ANSWERLATTICE_ROLE_IDS.OWNER
+        && !canManageAnswerlatticeOwner(access)
+    ) {
+        return jsonError('Only an Owner can remove Owner access.', 403, 'OWNER_ACCESS_FORBIDDEN');
     }
 
     const now = admin.firestore.Timestamp.now();
-    const nextStores = currentStores.filter((store: any) => Number(store.storeId) !== access.scope.storeId);
-    const shouldDeactivate = nextStores.length === 0;
-    await target.ref.update(sanitizeFirestoreValue({
-        active: shouldDeactivate ? false : existingData.active,
-        authDisabled: shouldDeactivate ? true : existingData.authDisabled,
-        deleted: shouldDeactivate ? true : existingData.deleted === true ? false : existingData.deleted,
-        deletedAt: shouldDeactivate ? now : existingData.deletedAt ?? null,
-        modifiedBy: session?.user?.email,
-        modifiedOn: now,
-        storeId: shouldDeactivate ? access.scope.storeId : Number(nextStores[0]?.storeId || existingData.storeId),
-        storeIds: nextStores.map((store: any) => Number(store.storeId)),
-        stores: nextStores,
-        sessionRevokedAt: shouldDeactivate ? now : undefined,
-        sessionRevokedBy: shouldDeactivate ? session?.uId || session?.user?.id : undefined,
-        sessionRevokedByEmail: shouldDeactivate ? session?.user?.email : undefined,
-        sessionRevokedReason: shouldDeactivate ? 'answerlattice_staff_removed' : undefined,
-    }));
-    const nextPrimaryStore = nextStores[0] || null;
-    await updateDefaultAuthProductAccountStatus({
-        active: !shouldDeactivate,
-        email: existingData.email,
-        roleId: nextPrimaryStore?.role,
-        storeId: nextPrimaryStore ? Number(nextPrimaryStore.storeId) : undefined,
-        storeIds: nextStores.map((store: any) => Number(store.storeId)).filter(isPositiveId),
-        userId: input.userId,
-    });
-    await syncAnswerlatticeAuthClaimsForStaffUser({
-        active: !shouldDeactivate,
-        email: existingData.email,
-        platformRole: existingData.platformRole,
-        roleId: nextPrimaryStore?.role || currentStore.role || existingData.role || DEFAULT_ANSWERLATTICE_ROLE_IDS.STAFF,
-        roles: access.roles,
-        storeId: nextPrimaryStore ? Number(nextPrimaryStore.storeId) : access.scope.storeId,
-        storeIds: nextStores.map((store: any) => Number(store.storeId)).filter(isPositiveId),
-        tenantId: access.scope.tenantId,
-        userId: input.userId,
-    });
-    if (shouldDeactivate) {
-        await revokeDefaultFirebaseRefreshTokens(existingData, existingData.email, {
-            action: 'answerlattice-staff-remove-last-workspace',
-            tenantId: access.scope.tenantId,
+    let mutationResult;
+    try {
+        mutationResult = await removeAnswerlatticeStaffMembershipTransaction({
+            deactivationUpdate: sanitizeFirestoreValue({
+                deletedAt: now,
+                sessionRevokedAt: now,
+                sessionRevokedBy: session?.uId || session?.user?.id,
+                sessionRevokedByEmail: session?.user?.email,
+                sessionRevokedReason: 'answerlattice_staff_removed',
+            }),
+            db: getAnswerlatticeDb()!,
+            lifecycleUpdate: sanitizeFirestoreValue({
+                modifiedBy: session?.user?.email,
+                modifiedOn: now,
+                workspaceAccessRemovedAt: now,
+                workspaceAccessRemovedBy: session?.uId || session?.user?.id,
+                workspaceAccessRemovedStoreId: access.scope.storeId,
+            }),
             storeId: access.scope.storeId,
+            tenantId: access.scope.tenantId,
             userId: input.userId,
         });
-        await ensureAnswerlatticeAuthUserDisabledState(String(existingData.email || ''), true);
+    } catch (error: unknown) {
+        if (error instanceof AnswerlatticeStaffTransactionError) {
+            if (error.code === 'LAST_OWNER') return jsonError('Add another Owner before removing this access.', 409, error.code);
+            if (error.code === 'STORE_MAPPING_NOT_FOUND' || error.code === 'USER_NOT_FOUND') {
+                return jsonError('Team member is not assigned to this workspace', 404, 'STORE_MAPPING_NOT_FOUND');
+            }
+            if (error.code === 'FORBIDDEN') return jsonError('Forbidden', 403, error.code);
+        }
+        throw error;
+    }
+    const nextData = getRecord(mutationResult.nextData);
+    const shouldDeactivate = mutationResult.memberships.length === 0;
+    const projectionsComplete = await repairAnswerlatticeStaffAccessProjections({
+        data: nextData,
+        fallbackStoreId: access.scope.storeId,
+        forceClaimsRevoke: true,
+        operation: 'answerlattice-staff-remove',
+        revokeDefault: shouldDeactivate,
+        syncBridge: true,
+        syncClaims: true,
+        userId: input.userId,
+    });
+    if (!projectionsComplete) {
+        return jsonError(
+            'Workspace access was removed, but access refresh did not finish. Try removing this member again.',
+            503,
+            'STAFF_ACCESS_SYNC_FAILED',
+        );
     }
 
-    const updated = await target.ref.get();
     return NextResponse.json({
+        removed: true,
         success: true,
-        user: sanitizeAnswerlatticeStaffUser(input.userId, updated.data(), access.roles),
         userId: input.userId,
     });
 };
@@ -1220,8 +1542,9 @@ export const requestAnswerlatticeStaffPasswordReset = async (request: NextReques
     const input = validation.data as UserIdInput;
     const target = await getAnswerlatticeUserById(input.userId);
     if (!target) return jsonError('Team member not found', 404, 'USER_NOT_FOUND');
-    const existingData = target.data || {};
-    if (Number(existingData.tenantId || existingData.tId) !== access.scope.tenantId) {
+    const existingData = getRecord(target.data);
+    const existingAccessState = readAnswerlatticeStaffAccessState(existingData);
+    if (!existingAccessState || existingAccessState.tenantId !== access.scope.tenantId) {
         logSecurity('Authorization Failed - Answerlattice Staff Password Reset Tenant Mismatch', session, request, {
             requestedTenantId: access.scope.tenantId,
             targetTenantId: existingData.tenantId || existingData.tId,
@@ -1229,46 +1552,49 @@ export const requestAnswerlatticeStaffPasswordReset = async (request: NextReques
         }, 'critical');
         return jsonError('Forbidden', 403, 'FORBIDDEN');
     }
-    const currentStores = Array.isArray(existingData.stores) ? existingData.stores : [];
-    const currentStore = currentStores.find((store: any) => Number(store.storeId) === access.scope.storeId);
+    const currentStore = getAnswerlatticeStaffMembership(existingAccessState, access.scope.storeId);
     if (!currentStore || existingData.deleted === true) {
         return jsonError('Team member is not assigned to this workspace', 404, 'STORE_MAPPING_NOT_FOUND');
     }
-    if (existingData.active === false || existingData.deleted === true) {
+    if (
+        currentStore.role === DEFAULT_ANSWERLATTICE_ROLE_IDS.OWNER
+        && !canManageAnswerlatticeOwner(access)
+    ) {
+        return jsonError('Only an Owner can reset another Owner login.', 403, 'OWNER_ACCESS_FORBIDDEN');
+    }
+    if (!isAnswerlatticeStaffAccountActive(existingData, existingAccessState)) {
         return jsonError('Activate this team member before creating new login details.', 409, 'STAFF_INACTIVE');
+    }
+    try {
+        ensureWorkspaceLocalAuthMutation(existingAccessState, access.isPlatformAdmin);
+    } catch (error: unknown) {
+        if (getAnswerlatticeStaffPolicyErrorCode(error) === ANSWERLATTICE_STAFF_POLICY_ERROR_CODES.MULTI_WORKSPACE_AUTH_CHANGE) {
+            return jsonError(
+                'Login details are shared across workspaces. Ask a platform administrator to reset this account.',
+                409,
+                'MULTI_WORKSPACE_AUTH_CHANGE',
+            );
+        }
+        throw error;
     }
 
     const email = String(existingData.email || '').toLowerCase().trim();
     if (!email) return jsonError('Team member does not have a login account.', 400, 'LOGIN_MISSING');
     const now = admin.firestore.Timestamp.now();
-    const roleId = currentStore?.role || existingData.role || DEFAULT_ANSWERLATTICE_ROLE_IDS.STAFF;
-    const storeIds = (Array.isArray(existingData.storeIds) ? existingData.storeIds : currentStores.map((store: any) => store.storeId))
-        .map(Number)
-        .filter(isPositiveId);
-
-    const existingLoginUsername = resolveStaffLoginUsername(existingData.loginUsername || existingData.staffLoginId);
+    const existingLoginUsername = resolveStaffLoginUsername(
+        typeof existingData.loginUsername === 'string'
+            ? existingData.loginUsername
+            : typeof existingData.staffLoginId === 'string' ? existingData.staffLoginId : '',
+    );
     const loginUsername = existingLoginUsername || await generateUniqueAnswerlatticeStaffLoginId();
     const loginId = resolveStaffLoginDisplayId(loginUsername);
     const temporaryPasscode = generateStaffPasscode();
-    const firebaseUser = existingData.firebaseUid
-        ? await authAdmin.getUser(String(existingData.firebaseUid))
-        : await authAdmin.getUserByEmail(email);
+    const firebaseUser = await authAdmin.getUserByEmail(email);
     await authAdmin.updateUser(firebaseUser.uid, {
         disabled: false,
         password: temporaryPasscode,
     });
     await authAdmin.revokeRefreshTokens(firebaseUser.uid);
-    await syncAnswerlatticeAuthClaimsForStaffUser({
-        active: true,
-        email,
-        platformRole: existingData.platformRole,
-        roleId,
-        roles: access.roles,
-        storeId: access.scope.storeId,
-        storeIds: storeIds.length ? storeIds : [access.scope.storeId],
-        tenantId: access.scope.tenantId,
-        userId: input.userId,
-    });
     await target.ref.update(sanitizeFirestoreValue({
         authDisabled: false,
         authTokensRevokedAt: now,
@@ -1286,6 +1612,25 @@ export const requestAnswerlatticeStaffPasswordReset = async (request: NextReques
         staffLoginId: loginId,
     }));
     const updated = await target.ref.get();
+    const updatedData = getRecord(updated.data());
+    const updatedAccessState = readAnswerlatticeStaffAccessState(updatedData);
+    if (!updatedAccessState) return jsonError('Team member access data is invalid.', 409, 'STAFF_ACCESS_INVALID');
+    const projectionsComplete = await repairAnswerlatticeStaffAccessProjections({
+        data: updatedData,
+        fallbackStoreId: access.scope.storeId,
+        forceClaimsRevoke: true,
+        operation: 'answerlattice-staff-password-reset',
+        syncBridge: true,
+        syncClaims: true,
+        userId: input.userId,
+    });
+    if (!projectionsComplete) {
+        return jsonError(
+            'Login details were changed, but access refresh did not finish. Run Login reset again.',
+            503,
+            'STAFF_ACCESS_SYNC_FAILED',
+        );
+    }
 
     return NextResponse.json({
         success: true,
@@ -1293,7 +1638,7 @@ export const requestAnswerlatticeStaffPasswordReset = async (request: NextReques
         staffAuthMode: getStaffAuthMode(existingData),
         staffLoginId: loginId,
         temporaryPasscode,
-        user: sanitizeAnswerlatticeStaffUser(input.userId, updated.data(), access.roles),
+        user: sanitizeAnswerlatticeStaffUser(input.userId, updatedData, access.roles, access.scope.storeId),
         userId: input.userId,
     });
 };
@@ -1320,16 +1665,11 @@ export const forceSignOutAnswerlatticeStaffUser = async (request: NextRequest, s
     }
 
     const input = validation.data as UserIdInput;
-    try {
-        ensureNotSelfDestructive(session, input.userId);
-    } catch {
-        return jsonError('You cannot sign yourself out from here.', 409, 'SELF_UPDATE_BLOCKED');
-    }
-
     const target = await getAnswerlatticeUserById(input.userId);
     if (!target) return jsonError('Team member not found', 404, 'USER_NOT_FOUND');
-    const existingData = target.data || {};
-    if (Number(existingData.tenantId || existingData.tId) !== access.scope.tenantId) {
+    const existingData = getRecord(target.data);
+    const existingAccessState = readAnswerlatticeStaffAccessState(existingData);
+    if (!existingAccessState || existingAccessState.tenantId !== access.scope.tenantId) {
         logSecurity('Authorization Failed - Answerlattice Staff Force Signout Tenant Mismatch', session, request, {
             requestedTenantId: access.scope.tenantId,
             targetTenantId: existingData.tenantId || existingData.tId,
@@ -1338,39 +1678,55 @@ export const forceSignOutAnswerlatticeStaffUser = async (request: NextRequest, s
         return jsonError('Forbidden', 403, 'FORBIDDEN');
     }
 
-    const currentStores = Array.isArray(existingData.stores) ? existingData.stores : [];
-    const currentStore = currentStores.find((store: any) => Number(store.storeId) === access.scope.storeId);
+    const currentStore = getAnswerlatticeStaffMembership(existingAccessState, access.scope.storeId);
     if (!currentStore || existingData.deleted === true) {
         return jsonError('Team member is not assigned to this workspace', 404, 'STORE_MAPPING_NOT_FOUND');
     }
-    if (existingData.active === false) {
+    try {
+        ensureNotSelfDestructive(session, input.userId, existingData.email);
+    } catch {
+        return jsonError('You cannot sign yourself out from here.', 409, 'SELF_UPDATE_BLOCKED');
+    }
+    if (
+        currentStore.role === DEFAULT_ANSWERLATTICE_ROLE_IDS.OWNER
+        && !canManageAnswerlatticeOwner(access)
+    ) {
+        return jsonError('Only an Owner can sign out another Owner.', 403, 'OWNER_ACCESS_FORBIDDEN');
+    }
+    if (!isAnswerlatticeStaffAccountActive(existingData, existingAccessState)) {
         return jsonError('This team member is already deactivated.', 409, 'STAFF_INACTIVE');
     }
+    try {
+        ensureWorkspaceLocalAuthMutation(existingAccessState, access.isPlatformAdmin);
+    } catch (error: unknown) {
+        if (getAnswerlatticeStaffPolicyErrorCode(error) === ANSWERLATTICE_STAFF_POLICY_ERROR_CODES.MULTI_WORKSPACE_AUTH_CHANGE) {
+            return jsonError(
+                'Sign-out affects every workspace for this account. Ask a platform administrator to continue.',
+                409,
+                'MULTI_WORKSPACE_AUTH_CHANGE',
+            );
+        }
+        throw error;
+    }
 
-    const email = String(existingData.email || '').toLowerCase().trim();
-    const roleId = currentStore.role || existingData.role || DEFAULT_ANSWERLATTICE_ROLE_IDS.STAFF;
-    const storeIds = (Array.isArray(existingData.storeIds) ? existingData.storeIds : currentStores.map((store: any) => store.storeId))
-        .map(Number)
-        .filter(isPositiveId);
     const now = admin.firestore.Timestamp.now();
 
-    await revokeDefaultFirebaseRefreshTokens(existingData, email, {
-        action: 'answerlattice-staff-force-signout',
-        tenantId: access.scope.tenantId,
-        storeId: access.scope.storeId,
+    const projectionsComplete = await repairAnswerlatticeStaffAccessProjections({
+        data: existingData,
+        fallbackStoreId: access.scope.storeId,
+        forceClaimsRevoke: true,
+        operation: 'answerlattice-staff-force-signout',
+        revokeDefault: true,
+        syncClaims: true,
         userId: input.userId,
     });
-    await syncAnswerlatticeAuthClaimsForStaffUser({
-        active: true,
-        email,
-        platformRole: existingData.platformRole,
-        roleId,
-        roles: access.roles,
-        storeId: access.scope.storeId,
-        storeIds: storeIds.length ? storeIds : [access.scope.storeId],
-        tenantId: access.scope.tenantId,
-        userId: input.userId,
-    });
+    if (!projectionsComplete) {
+        return jsonError(
+            'Sign-out did not finish for every login session. Try again.',
+            503,
+            'STAFF_ACCESS_SYNC_FAILED',
+        );
+    }
     await target.ref.update(sanitizeFirestoreValue({
         authTokensRevokedAt: now,
         modifiedBy: session?.user?.email,
@@ -1381,17 +1737,17 @@ export const forceSignOutAnswerlatticeStaffUser = async (request: NextRequest, s
         sessionRevokedReason: 'owner_force_signout',
     }));
 
-    logger.info('[Answerlattice Staff] Owner forced team member session signout', {
-        tenantId: access.scope.tenantId,
-        storeId: access.scope.storeId,
-        userId: input.userId,
+    logAnswerlatticeDiagnostic('answerlattice_staff_owner_forced_signout', {
+        ...getBoundedAnswerlatticeStringContext('tenantId', access.scope.tenantId),
+        ...getBoundedAnswerlatticeStringContext('storeId', access.scope.storeId),
+        ...getBoundedAnswerlatticeStringContext('userId', input.userId),
     });
 
     const updated = await target.ref.get();
     return NextResponse.json({
         success: true,
         message: 'Team member signed out.',
-        user: sanitizeAnswerlatticeStaffUser(input.userId, updated.data(), access.roles),
+        user: sanitizeAnswerlatticeStaffUser(input.userId, updated.data(), access.roles, access.scope.storeId),
         userId: input.userId,
     });
 };
@@ -1420,49 +1776,139 @@ export const saveAnswerlatticeRoleDefinition = async (request: NextRequest, sess
     const input = validation.data as SaveAnswerlatticeRoleInput;
     const db = getAnswerlatticeDb();
     if (!db) return jsonError('Answerlattice Firebase is not configured', 503, 'ANSWERLATTICE_FIREBASE_NOT_CONFIGURED');
+    if (!input.role.id && !input.requestId) {
+        return jsonError('Invalid input', 400, 'INVALID_INPUT');
+    }
     const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(String(access.scope.storeId));
-    const storeSnap = await storeRef.get();
-    if (!storeSnap.exists) return jsonError('Workspace not found', 404, 'STORE_NOT_FOUND');
-    const storeData = storeSnap.data() || {};
-    const existingRoles = await ensureAnswerlatticeRolesForStore(storeRef, storeData, session?.user?.email);
-    const existingIndex = input.role.id ? existingRoles.findIndex((role) => role.id === input.role.id) : -1;
-    const existingRole = existingIndex >= 0 ? existingRoles[existingIndex] : null;
-    const roleId = input.role.id || `custom-${access.scope.storeId}-${Date.now()}`;
-    if (roleId === DEFAULT_ANSWERLATTICE_ROLE_IDS.OWNER) {
-        return jsonError('Owner role is locked', 409, 'OWNER_ROLE_LOCKED');
+    const roleId = input.role.id || buildDeterministicAnswerlatticeRoleId(
+        access.scope.tenantId,
+        access.scope.storeId,
+        input.requestId!,
+    );
+    const creationFingerprint = input.role.id
+        ? undefined
+        : buildAnswerlatticeRoleCreationFingerprint({
+            ...input.role,
+            requestId: input.requestId!,
+        }, access.scope.tenantId, access.scope.storeId);
+    if (input.role.id && isDefaultAnswerlatticeRoleId(roleId)) {
+        return jsonError('Default roles are locked', 409, 'DEFAULT_ROLE_LOCKED');
     }
-    if (input.role.active === false && await roleIsAssignedToActiveUser(access.scope.tenantId, access.scope.storeId, roleId)) {
-        return jsonError('This role is assigned to active team members. Reassign them before turning it off.', 409, 'ROLE_IN_USE');
+    const result = await db.runTransaction(async (transaction) => {
+        const storeSnap = await transaction.get(storeRef);
+        if (!storeSnap.exists) return { error: 'STORE_NOT_FOUND' as const };
+        const storeData = storeSnap.data() || {};
+        if (!isAnswerlatticeActiveStoreInScope(storeData, access.scope, storeSnap.id)) {
+            return { error: 'STORE_SCOPE_MISMATCH' as const };
+        }
+
+        const existingRoles = normalizeAnswerlatticeRolesForStore(
+            storeData.answerlatticeRoles,
+            access.scope.tenantId,
+            access.scope.storeId,
+            session?.user?.email,
+        ).roles;
+        const existingIndex = existingRoles.findIndex((role) => role.id === roleId);
+        const existingRole = existingIndex >= 0 ? existingRoles[existingIndex] : null;
+        if (input.role.id && !existingRole) return { error: 'ROLE_NOT_FOUND' as const };
+        if (!input.role.id) {
+            const replayState = classifyAnswerlatticeRoleCreationReplay(
+                existingRole,
+                input.requestId!,
+                creationFingerprint!,
+            );
+            if (replayState === 'conflict') {
+                return { error: 'IDEMPOTENCY_CONFLICT' as const };
+            }
+            if (replayState === 'replay') return {
+                assignedUserIds: [] as string[],
+                nextRole: existingRole!,
+                replay: true,
+                roles: existingRoles,
+            };
+        }
+        const roleAssignment = existingRole
+            ? await getAnswerlatticeRoleAssignedUserIdsInTransaction({
+                db,
+                roleId,
+                storeId: access.scope.storeId,
+                tenantId: access.scope.tenantId,
+                transaction,
+            })
+            : { complete: true, userIds: [] };
+        if (!roleAssignment.complete) {
+            return { error: 'ROLE_MEMBER_SCAN_LIMIT' as const };
+        }
+        if (input.role.active === false && roleAssignment.userIds.length > 0) {
+            return { error: 'ROLE_IN_USE' as const };
+        }
+        const defaultRoleIds = new Set<string>(Object.values(DEFAULT_ANSWERLATTICE_ROLE_IDS));
+        const customRoleCount = existingRoles.filter((role) => !defaultRoleIds.has(role.id)).length;
+        if (!existingRole && customRoleCount >= ANSWERLATTICE_CUSTOM_ROLE_LIMIT) {
+            return { error: 'ROLE_LIMIT_REACHED' as const };
+        }
+        const normalizedName = input.role.name.toLowerCase();
+        if (existingRoles.some((role) => role.id !== roleId && role.name.trim().toLowerCase() === normalizedName)) {
+            return { error: 'ROLE_NAME_EXISTS' as const };
+        }
+
+        const now = new Date().toISOString();
+        const nextRole: AnswerlatticeRoleDefinition = {
+            active: input.role.active ?? existingRole?.active ?? true,
+            createdBy: existingRole?.createdBy || session?.user?.email || 'system',
+            createdOn: existingRole?.createdOn || now,
+            creationRequestFingerprint: existingRole?.creationRequestFingerprint || creationFingerprint,
+            creationRequestId: existingRole?.creationRequestId || input.requestId,
+            description: input.role.description ?? existingRole?.description ?? '',
+            id: roleId,
+            modifiedBy: session?.user?.email || 'system',
+            modifiedOn: now,
+            name: input.role.name,
+            permissions: normalizeAnswerlatticeRoleInputPermissions(input.role.permissions),
+            pId: PRODUCT_IDS.ANSWERLATTICE,
+            tId: access.scope.tenantId,
+            sId: access.scope.storeId,
+        };
+        const roles = [...existingRoles];
+        if (existingIndex >= 0) roles[existingIndex] = nextRole;
+        else roles.push(nextRole);
+        const persistedRoles = roles.filter((role) => !isDefaultAnswerlatticeRoleId(role.id));
+        transaction.set(storeRef, sanitizeFirestoreValue({
+            answerlatticeRoles: persistedRoles,
+            modifiedBy: session?.user?.email,
+            modifiedOn: admin.firestore.Timestamp.now(),
+        }), { merge: true });
+        return { assignedUserIds: roleAssignment.userIds, nextRole, replay: false, roles };
+    });
+    if ('error' in result) {
+        if (result.error === 'STORE_NOT_FOUND') return jsonError('Workspace not found', 404, result.error);
+        if (result.error === 'ROLE_NOT_FOUND') return jsonError('Role not found', 404, result.error);
+        if (result.error === 'IDEMPOTENCY_CONFLICT') return jsonError('This role request has already been used.', 409, result.error);
+        if (result.error === 'ROLE_IN_USE') return jsonError('This role is assigned to team members. Reassign them before turning it off.', 409, result.error);
+        if (result.error === 'ROLE_MEMBER_SCAN_LIMIT') return jsonError('This workspace has too many team members for a safe role change.', 409, result.error);
+        if (result.error === 'ROLE_LIMIT_REACHED') return jsonError('Role limit reached', 409, result.error);
+        if (result.error === 'ROLE_NAME_EXISTS') return jsonError('A role with this name already exists', 409, result.error);
+        return jsonError('Forbidden', 403, 'FORBIDDEN');
     }
 
-    const now = new Date().toISOString();
-    const nextRole: AnswerlatticeRoleDefinition = {
-        active: input.role.active ?? existingRole?.active ?? true,
-        createdBy: existingRole?.createdBy || session?.user?.email || 'system',
-        createdOn: existingRole?.createdOn || now,
-        description: input.role.description || '',
-        id: roleId,
-        modifiedBy: session?.user?.email || 'system',
-        modifiedOn: now,
-        name: input.role.name,
-        permissions: normalizeAnswerlatticeRolePermissions(input.role.permissions as Record<AnswerlatticePermissionKey, boolean>),
-        pId: PRODUCT_IDS.ANSWERLATTICE,
-        tId: access.scope.tenantId,
-        sId: access.scope.storeId,
-    };
-    const roles = [...existingRoles];
-    if (existingIndex >= 0) roles[existingIndex] = nextRole;
-    else roles.push(nextRole);
-
-    await storeRef.update(sanitizeFirestoreValue({
-        answerlatticeRoles: roles,
-        modifiedBy: session?.user?.email,
-        modifiedOn: admin.firestore.Timestamp.now(),
-    }));
+    try {
+        await syncAnswerlatticeAuthClaimsForRoleMembers({
+            fallbackStoreId: access.scope.storeId,
+            userIds: result.assignedUserIds,
+        });
+    } catch (error) {
+        logAnswerlatticeFailure('answerlattice_role_member_claim_sync_failed', error, {
+            assignedUserCount: result.assignedUserIds.length,
+            ...getBoundedAnswerlatticeStringContext('roleId', roleId),
+            ...getBoundedAnswerlatticeStringContext('storeId', access.scope.storeId),
+            ...getBoundedAnswerlatticeStringContext('tenantId', access.scope.tenantId),
+        });
+        return jsonError('Role was saved, but team access refresh did not finish. Save the role again.', 503, 'ROLE_CLAIM_SYNC_FAILED');
+    }
 
     return NextResponse.json({
-        role: nextRole,
-        roles,
+        role: result.nextRole,
+        roles: result.roles,
         success: true,
     });
 };
@@ -1485,39 +1931,64 @@ export const deleteAnswerlatticeRoleDefinition = async (request: NextRequest, se
     }
 
     const { roleId } = validation.data as DeleteAnswerlatticeRoleInput;
-    if (roleId === DEFAULT_ANSWERLATTICE_ROLE_IDS.OWNER) {
-        return jsonError('Owner role is locked', 409, 'OWNER_ROLE_LOCKED');
+    if (isDefaultAnswerlatticeRoleId(roleId)) {
+        return jsonError('Default roles are locked', 409, 'DEFAULT_ROLE_LOCKED');
     }
-    if (await roleIsAssignedToActiveUser(access.scope.tenantId, access.scope.storeId, roleId)) {
-        return jsonError('This role is assigned to active team members. Reassign them before turning it off.', 409, 'ROLE_IN_USE');
-    }
-
     const db = getAnswerlatticeDb();
     if (!db) return jsonError('Answerlattice Firebase is not configured', 503, 'ANSWERLATTICE_FIREBASE_NOT_CONFIGURED');
     const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(String(access.scope.storeId));
-    const storeSnap = await storeRef.get();
-    if (!storeSnap.exists) return jsonError('Workspace not found', 404, 'STORE_NOT_FOUND');
-    const storeData = storeSnap.data() || {};
-    const current = normalizeAnswerlatticeRolesForStore(storeData.answerlatticeRoles, access.scope.tenantId, access.scope.storeId, session?.user?.email);
-    const roles = current.roles.map((role) => (
-        role.id === roleId
-            ? {
-                ...role,
-                active: false,
-                modifiedBy: session?.user?.email || 'system',
-                modifiedOn: new Date().toISOString(),
-            }
-            : role
-    ));
-
-    await storeRef.update(sanitizeFirestoreValue({
-        answerlatticeRoles: roles,
-        modifiedBy: session?.user?.email,
-        modifiedOn: admin.firestore.Timestamp.now(),
-    }));
+    const result = await db.runTransaction(async (transaction) => {
+        const storeSnap = await transaction.get(storeRef);
+        if (!storeSnap.exists) return { error: 'STORE_NOT_FOUND' as const };
+        const storeData = storeSnap.data() || {};
+        if (!isAnswerlatticeActiveStoreInScope(storeData, access.scope, storeSnap.id)) {
+            return { error: 'STORE_SCOPE_MISMATCH' as const };
+        }
+        const current = normalizeAnswerlatticeRolesForStore(
+            storeData.answerlatticeRoles,
+            access.scope.tenantId,
+            access.scope.storeId,
+            session?.user?.email,
+        );
+        if (!current.roles.some((role) => role.id === roleId)) {
+            return { error: 'ROLE_NOT_FOUND' as const };
+        }
+        if (await isAnswerlatticeRoleAssignedInTransaction({
+            db,
+            roleId,
+            storeId: access.scope.storeId,
+            tenantId: access.scope.tenantId,
+            transaction,
+        })) {
+            return { error: 'ROLE_IN_USE' as const };
+        }
+        const roles = current.roles.map((role) => (
+            role.id === roleId
+                ? {
+                    ...role,
+                    active: false,
+                    modifiedBy: session?.user?.email || 'system',
+                    modifiedOn: new Date().toISOString(),
+                }
+                : role
+        ));
+        const persistedRoles = roles.filter((role) => !isDefaultAnswerlatticeRoleId(role.id));
+        transaction.update(storeRef, sanitizeFirestoreValue({
+            answerlatticeRoles: persistedRoles,
+            modifiedBy: session?.user?.email,
+            modifiedOn: admin.firestore.Timestamp.now(),
+        }));
+        return { roles };
+    });
+    if ('error' in result) {
+        if (result.error === 'STORE_NOT_FOUND') return jsonError('Workspace not found', 404, result.error);
+        if (result.error === 'ROLE_NOT_FOUND') return jsonError('Role not found', 404, result.error);
+        if (result.error === 'ROLE_IN_USE') return jsonError('This role is assigned to team members. Reassign them before turning it off.', 409, result.error);
+        return jsonError('Forbidden', 403, 'FORBIDDEN');
+    }
 
     return NextResponse.json({
-        roles,
+        roles: result.roles,
         success: true,
     });
 };

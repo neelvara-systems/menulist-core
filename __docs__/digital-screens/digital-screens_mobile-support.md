@@ -38,6 +38,7 @@
 
 - Uses same `getScreenState`, `initializeScreenState`, `updateScreenSettings`, pinned-slide DAL functions, and `assertDigitalScreenMutationSucceeded()` acknowledgement guard as desktop before local state or success copy changes
 - Uses same `uploadScreenSlide`, `updatePinnedSlideCaption`, and `removePinnedSlide` DAL functions; `uploadScreenSlide()` now rejects outer `apiCallComposer()` fallback values with `assertDigitalScreenSlideUploadSucceeded()` before desktop or mobile upload success copy can show
+- Canonical screen state and the public listener mirror commit atomically through the shared DAL; concurrent three-slide limits and failed-upload variant cleanup are identical on desktop and mobile
 - Same `buildScreenUrl` utility
 - Same `FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED` gate
 - Shows the same owner trust signal from `screenLastSeenAt`

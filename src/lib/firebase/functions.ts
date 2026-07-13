@@ -2,6 +2,7 @@
 
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { secureError } from '@lib/security/secureLogger';
+import type { IngestionJobCategoriesMap } from '@type/knowledgeBase';
 import { firebaseApp } from './firebaseClient';
 
 // MenuList Cloud Functions (menulist-qa locally/preview; menulist in production)
@@ -101,11 +102,23 @@ export const regenerateEmbedding = async (articleId: string) => {
     }
 };
 
-export type PublishApprovedJobPayload = { jobId: string; finalCategories: any; }
+export type PublishApprovedJobPayload = {
+    jobId: string;
+    finalCategories: IngestionJobCategoriesMap;
+};
 
-export const publishApprovedJob = async (payload: PublishApprovedJobPayload) => {
+export type PublishApprovedJobResult = {
+    success: true;
+    alreadyStarted: boolean;
+    status: 'already_started' | 'publishing';
+};
+
+export const publishApprovedJob = async (payload: PublishApprovedJobPayload): Promise<PublishApprovedJobResult> => {
     const { answerlatticeFunctions } = await import('./answerlatticeFirebaseClient');
-    const publishApprovedJobFn = httpsCallable(answerlatticeFunctions, 'publishApprovedJobFn');
+    const publishApprovedJobFn = httpsCallable<PublishApprovedJobPayload, PublishApprovedJobResult>(
+        answerlatticeFunctions,
+        'publishApprovedJobFn',
+    );
     try {
         const result = await publishApprovedJobFn(payload);
         return result.data;
@@ -145,15 +158,13 @@ export const verifyMenuPublish = async (payload: {
 };
 
 export const triggerStartGeneration = async (jobId: string, jobData: any) => {
-    const functions = getFunctions();
-    // Make sure your client is connected to the emulator!
-    const trigger = httpsCallable(functions, 'dev_triggerStartGeneration');
+    const { answerlatticeFunctions } = await import('./answerlatticeFirebaseClient');
+    const trigger = httpsCallable(answerlatticeFunctions, 'dev_triggerStartGeneration');
     await trigger({ jobId, jobData });
 };
 
 export const triggerFinalizePublish = async (jobId: string, jobData: any) => {
-    const functions = getFunctions();
-    // Make sure your client is connected to the emulator!
-    const trigger = httpsCallable(functions, 'dev_triggerFinalizePublish');
+    const { answerlatticeFunctions } = await import('./answerlatticeFirebaseClient');
+    const trigger = httpsCallable(answerlatticeFunctions, 'dev_triggerFinalizePublish');
     await trigger({ jobId, jobData });
 };

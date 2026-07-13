@@ -20,17 +20,24 @@
 | Pack export includes decision evidence | Done | Decision confidence/status/score, why-this, and trust preflight sections in `buildCampaignPackExport()` |
 | Pack export avoids stale desk mismatch | Done | Ready-pack-specific fields are included only when `dailyDesk.readyPack.campaignId` matches the exported campaign |
 | Wider local-business recipes | Done | Restaurant, salon, retail, local service, fitness, clinic, and generic local recipes in `src/constants/campaigncue/dailyDesk.ts` |
-| Deeper SMB moment recipes | Done | Slow lunch, weekend slots, new arrival, old-poster reuse, and local visibility refresh recipes in `src/constants/campaigncue/dailyDesk.ts` |
+| Deeper SMB moment recipes | Done | Slow lunch, weekend slots, new arrival, honest review request, return-customer reminder, old-poster reuse, and local visibility refresh recipes in `src/constants/campaigncue/dailyDesk.ts` |
+| Owner operating loop | Done | Owner Pulse, commercial policy, freshness receipt, presence, language, staff task, and one-variable learning contracts in `src/lib/campaigncue/operatingLoop.ts` |
+| Campaign Rhythm | Done | `buildCampaignCueCampaignRhythm()` prioritizes approval, time-sensitive due reminder, result, future schedule, freshness-valid ready pack, safe reuse, or next recommendation from bounded in-memory data. |
+| Five-check pack readiness | Done | `buildCampaignCuePackReadiness()` covers facts, trust, freshness, approval, and manual handoff with no prediction semantics. |
+| Safe current-truth reuse | Done | `reuseCampaignId` validation and server creation rebuild current output/trust/freshness with compact provenance only. |
+| Approval resolution | Done | Request/approve/reject use one transaction, one deterministic approval document, an atomic requested-state recheck, role gate, and agency public-use gate. |
+| Explicit manual reminder time | Done | Calendar requires `datetime-local`; elapsed reminders derive as due without a status write. |
 | First-class pack review | Done | `CampaignCueCampaignPackReview` in `src/types/campaigncue.ts` and `packReview` in `src/lib/campaigncue/dailyDesk.ts` |
 | Compact campaign pack metadata | Done | `CampaignCueCampaign.pack` is set in `createCampaignCueCampaignServer()` |
 | Structured manual delivery cards | Done | `CampaignCueManualDeliveryCard`, `handoffFields`, `ManualDeliveryCard`, and browser-local copy handling |
 | Local visibility cue surface | Done | `localVisibilityCues`, `cue_local_visibility_refresh`, and the `Visibility` operations tab |
 | Manual delivery tasks | Done | `manualDeliveryTasks` in `CampaignCueDailyDesk`, owner UI, and pack export |
 | Asset reuse tasks | Done | `assetReuseTasks` in `CampaignCueDailyDesk` and owner UI |
-| One-tap result memory | Done | `resultOptions` in recipe, ready-pack summary, Daily Desk UI, Results tab, and pack export |
-| Structured result memory | Done | `resultSignalId` validation and `CampaignCueCampaign.resultMemory` update path |
+| One-tap result memory | Done | `resultOptions` in recipe, campaign-specific result targeting, selected-signal gate, cleared result drafts, ready-pack summary, Daily Desk UI, Results tab, and pack export |
+| Structured result receipt | Done | `resultSignalId`, bounded metrics, use time, channel, tested variable, `owner_reported` confidence, and `not_used` handling in the existing campaign action path |
+| Source/contact safety | Done | Expired source inputs are excluded; audience notes reject obvious contact payloads; saved destinations allow only HTTP(S) |
 | Outcome-first editor AI Tools | Done | "Check if ready to share" and "Add missing business details" in CampaignCue editor AI Tools |
-| Verifier updated | Done | `scripts/verification/verify-campaigncue-runtime.js` |
+| Verifier updated | Done | `scripts/verification/verify-campaigncue-runtime.js`, `scripts/verification/verify-campaigncue-operating-loop.ts` |
 
 ## Security Result
 
@@ -38,17 +45,17 @@ No new public route, API route, auth bypass, tenant-supplied owner id, provider 
 
 ## Firebase Cost Result
 
-No new collection, listener, Storage path, Cloud Function, provider call, or model decision path was added. The overview read count remains `8`; Daily Campaign Desk and Campaign Decision Engine are computed from the same overview data. Campaign creation uses the existing bounded server-authoritative context and stores compact `campaign.pack.decision` evidence. Manual delivery cards, local visibility cues, asset-reuse prompts, and result options are derived from constants plus the already-loaded campaigns/assets/analytics/source-fact data. Result learning uses compact campaign fields instead of scanning raw events.
+No new collection, listener, Storage path, Cloud Function, provider call, or model decision path was added. The overview read count remains `8`; Daily Campaign Desk, Campaign Decision Engine, Campaign Rhythm, pack readiness, due status, and safe-reuse nomination are computed from the same overview data. Safe reuse uses the existing campaign-create path, approval reuses one deterministic document per campaign, and result learning uses compact campaign fields instead of scanning raw events.
 
 ## UX Result
 
-The owner home screen now focuses on one explainable primary action, why-this/why-now evidence, confidence, missing details, trust preflight, ready pack controls, manual delivery, reusable assets, channel/print/photo uses, and quick result memory instead of a generic dashboard or blank design tool.
+The owner home screen now focuses on one explainable primary action, Campaign Rhythm, why-this/why-now evidence, recommendation fit, missing details, pack readiness, trust preflight, approval, explicit manual reminders, safe current-truth reuse, channel/print/photo uses, and quick result memory instead of a generic dashboard or blank design tool.
 
 ## Validation Run
 
-- `node scripts/verification/verify-campaigncue-runtime.js` passed with 749 checks after the end-to-end CampaignCue review and Firebase cost hardening.
+- `npm run verify:campaigncue` passed with 1,670 runtime checks, the pack-template registry gate, 273 PWA asset checks, and 108 Campaign Operating Loop checks.
 - `npx tsc --noEmit --incremental false --pretty false` passed.
 - `npm run lint` passed with no ESLint warnings or errors.
 - `git diff --check` passed.
-- Browser smoke on `http://127.0.0.1:3114/__campaigncue/app` passed for desktop and mobile `390x844` private sign-in state with no console errors and no horizontal overflow. The authenticated Daily desk screen could not be browser-tested in this environment because the local CampaignCue Firebase/project/auth setup is not available.
+- Current public-site browser smoke passed at `1280x720` and `390x844` with no horizontal overflow or console warning/error; the new safe-reuse FAQ is present. The protected route reached the shared auth handoff earlier, but the external lander returned `403` in this local environment; authenticated Daily Desk interaction remains external evidence.
 - `npm run build` was not run because production builds are opt-in for this repo.

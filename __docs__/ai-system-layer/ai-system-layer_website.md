@@ -2,8 +2,10 @@
 
 **Feature:** Centralized AI Infrastructure for MenuList  
 **Status:** Source-backed internal website reference; not current publication or launch certification
-**Last Updated:** March 12, 2026  
+**Last Updated:** July 10, 2026
 **Audience:** Public (if applicable)
+
+> **Launch boundary:** Not current launch certification or deploy approval. This document records source-gated AI System Layer evidence only. Current MenuList approval still requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:ai-accounting`, `npm run verify:functions-deploy-preflight`, `npm run verify:menu-extraction-pipeline`, scoped Firebase deploy evidence for affected MenuList Functions, target Vercel deploy evidence for affected app routes, provider smoke with target-specific key/model/quota configuration, SAFE_MODE/rate-limit/accounting/provider-health smoke, authenticated browser/device QA for affected owner/platform surfaces, and production-host smoke. Answerlattice retains separate doctrine, credentials, Firebase target, billing/cost evidence, deploy approval, and release certification; this document cannot authorize an Answerlattice deploy or release.
 
 ---
 
@@ -41,7 +43,7 @@ _Note: No mention of "AI" or "Gemini" — this is MenuList's Language Governance
 
 ### For the Reliability Section (if applicable)
 
-> Your menu data is processed through a reliable pipeline with automatic error recovery. If something goes wrong, the system retries automatically.
+> Supported processing paths use shared retries and fixed failure handling. If processing cannot complete, MenuList keeps the current approved menu unchanged and shows the available retry path.
 
 ---
 
@@ -59,7 +61,7 @@ All customer-facing text follows `__docs__/constitution/02-language-governance.m
 |-----------|-------------|
 | "AI-powered extraction" | "Automatic menu reading" |
 | "Smart processing" | "Menu processing" |
-| "Intelligent system" | "Reliable system" |
+| "Intelligent system" | "Managed processing" |
 | "Gemini AI" | Never mention externally |
 
 ---

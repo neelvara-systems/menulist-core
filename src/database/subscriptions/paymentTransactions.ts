@@ -1,41 +1,30 @@
 import { DB_COLLECTIONS } from "@constant/database";
-import { requestBodyComposer } from "@lib/apiHelper";
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
+import { normalizeBillingSubscriptionScopeDocumentId } from "@lib/billing/subscriptionDocumentIdBoundary";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
-import { addDoc, collection, getDocs, limit, orderBy, query, where } from "firebase/firestore";
+import { collection, getDocs, limit, orderBy, query, where } from "firebase/firestore";
 
 const COLLECTION = DB_COLLECTIONS.PAYMENT_TRANSACTIONS;
 
 // Helper function to get subscription collection reference
 export const getCollectionRef = () => collection(firebaseClient, COLLECTION);
 
-/**
- * Creates the initial subscription document in Firestore with a 'pending' status.
- * @param data - The details for the new subscription.
- * @returns The ID of the newly created Firestore document.
- */
-export const createPaymentTransaction = async (data: any): Promise<string> => {
-    return await apiCallComposer(
-        async () => {
-            const processedData = await requestBodyComposer(data);
-            const docRef = await addDoc(getCollectionRef(), processedData);
-            return docRef.id;
-        },
-        "createPaymentTransaction"
-    );
-};
+export type BillingHistoryLedgerRow = Record<string, unknown> & { id: string };
 
+export const getBillingHistoryForStore = async (tenantId: unknown, storeId: unknown): Promise<BillingHistoryLedgerRow[]> => {
+    const tenantScope = normalizeBillingSubscriptionScopeDocumentId(tenantId);
+    const storeScope = normalizeBillingSubscriptionScopeDocumentId(storeId);
+    if (!tenantScope || !storeScope) return [];
 
-export const getBillingHistoryForStore = async (tenantId: number, storeId: number): Promise<any[]> => {
     return await apiCallComposer(
         async () => {
 
-            // Your requestBodyComposer adds tId and sId to the top level of the transaction document.
-            // We can query on these for efficient, multi-tenant filtering.
+            // Server-owned ledger writers persist exact numeric tenant/store scope.
+            // Firestore rules independently require the signed-in user to own both scopes.
             const q = query(
                 getCollectionRef(),
-                where("tenantId", "==", Number(tenantId)),
-                where("storeId", "==", Number(storeId)),
+                where("tenantId", "==", tenantScope.numericId),
+                where("storeId", "==", storeScope.numericId),
                 // Successful payments plus zero-cash referral credit rewards.
                 where("event", "in", ["subscription.charged", "order.paid", "owner_referral.reward_issued"]),
                 orderBy("created_at", "desc"), // Show the most recent payments first
@@ -43,13 +32,13 @@ export const getBillingHistoryForStore = async (tenantId: number, storeId: numbe
             );
 
             const querySnapshot = await getDocs(q);
-            const transactions: any[] = [];
+            const transactions: BillingHistoryLedgerRow[] = [];
             querySnapshot.forEach((doc) => {
                 transactions.push({ id: doc.id, ...doc.data() });
             });
 
             return transactions;
         },
-        `getBillingHistoryForStore: ${storeId}`
+        `getBillingHistoryForStore: ${storeScope.documentId}`
     );
 };

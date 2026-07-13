@@ -46,7 +46,7 @@ Tenant + store creation logic is duplicated across **5 active files** (~80 lines
 These exact operations appear in every active file:
 
 1. Read `platformSummary` doc with transaction lock
-2. Compute `newTenantId = tenants.count + 1`, `newStoreId = stores.count + 1`
+2. Reconcile canonical/legacy/store-summary counter floors, probe candidate tenant/store documents, and allocate both IDs inside the transaction
 3. Compute `storeName`, `tenantKey`, `storeKey`, `businessCategory`
 4. Generate `defaultRoles` via `createDefaultRoles()`
 5. Optionally generate subdomain (slugify + uniqueness + reserved check)
@@ -79,6 +79,10 @@ Two exports:
 July 5 user-ID boundary: shared onboarding helpers use `src/lib/onboarding/onboardingUserId.ts` before composing `users/{userId}` refs. `updateUserWithTenantStore()` normalizes the supplied user ID before the user update ref, provider-failure compensation normalizes `params.userId` before cleanup reads/writes, and reseller onboarding normalizes Firebase Auth-generated UIDs before creating a new owner user doc. Malformed, whitespace-mutated, path-shaped, reserved, empty, or oversized user IDs fail before user document path composition.
 
 July 6 compensation scope boundary: provider-failure compensation normalizes `params.tenantId` and `params.storeId` as exact positive numeric Firestore document IDs before `tenants/{tenantId}`, `stores/{storeId}`, or `platformSummary/storesSummary.stores.{storeId}` compensation writes. Malformed, whitespace-mutated, path-shaped, reserved, zero, negative, unsafe, leading-zero, or nonnumeric tenant/store scope fails before compensation document path composition. Valid generated onboarding tenant/store IDs keep the same rollback writes.
+
+July 13 website current-user lock: `assertCurrentUserAvailableForOnboardingInTransaction()` must run before `createTenantStoreInTransaction()` for authenticated website onboarding. It reads the exact current user inside the allocation transaction, applies current identity/lifecycle/revocation admission, and requires empty tenant/store scalar and collection mappings. This makes stale-session and concurrent duplicate onboarding fail before allocation. Other onboarding sources retain their source-specific identity/claim contract and must not call this website-specific admission blindly.
+
+July 13 provider/local convergence: website onboarding attaches a UUID attempt marker to Razorpay creation, recovers ambiguous create results only through exact attempt/plan/user/tenant/store agreement, cancels a successfully created provider subscription if the initial local subscription write fails, and then invokes the existing local compensation/cache path. The browser receives only the subscription ID, not provider notes or the raw entity.
 
 ### How Callers Use It
 

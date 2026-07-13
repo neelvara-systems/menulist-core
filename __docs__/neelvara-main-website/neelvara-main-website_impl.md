@@ -23,7 +23,7 @@ It is not a database-backed product. Do not add Neelvara to `PRODUCT_IDS`, billi
 | Preview | `https://neelvara.menulist.online` | `/sites/neelvara` |
 | Production | `https://neelvara.com` and `https://www.neelvara.com` | `/sites/neelvara` |
 
-Middleware uses the existing generic product-site rewrite flow. No Neelvara-specific middleware branch is required.
+Middleware uses the shared product-site rewrite flow plus one narrow Neelvara path helper. Bare `/`, `/home`, `/__neelvara`, `/__neelvara/home`, `/nv`, and `/nv/home` all target `/sites/neelvara`; other public paths append to that internal base. This prevents the catch-all route from destabilizing the homepage after a missing-route request.
 
 ---
 
@@ -36,13 +36,11 @@ Middleware uses the existing generic product-site rewrite flow. No Neelvara-spec
 | `src/constants/neelvara/website.ts` | Canonical URL, public pages, contact emails, relationship line |
 | `src/constants/neelvara/index.ts` | Neelvara constant exports |
 | `src/app/sites/neelvara/layout.tsx` | Metadata, viewport, icon configuration |
-| `src/app/sites/neelvara/content.tsx` | Shared content, shell, header/footer, cards, structured data |
-| `src/app/sites/neelvara/BentoReferenceSection.tsx` | Client-side Company/Products/Contact reference tabs for the homepage bento panel |
-| `src/app/sites/neelvara/ProductLogo.tsx` | Shared Neelvara product-logo renderer with compact Answerlattice mark for small product tiles |
-| `src/app/sites/neelvara/ScrollRevealController.tsx` | Local viewport-entry reveal controller with reduced-motion fallback |
-| `src/app/sites/neelvara/SpotlightCard.tsx` | Client-side cursor spotlight primitive for glass cards |
+| `src/app/sites/neelvara/content.tsx` | Shared shell, factual reference panels, page data, content rows, contact directory, metadata, and structured data |
+| `src/app/sites/neelvara/ProductLogo.tsx` | Shared Neelvara product-logo renderer that reuses the canonical Answerlattice header/footer mark with placement-safe SVG IDs |
+| `src/app/sites/neelvara/ScrollRevealController.tsx` | Route-aware IntersectionObserver reveal controller with reduced-motion fallback |
 | `src/app/sites/neelvara/page.tsx` | Home page |
-| `src/app/sites/neelvara/home/page.tsx` | Internal local-prefix homepage alias for bare `/__neelvara` dev routing |
+| `src/app/sites/neelvara/home/page.tsx` | Legacy internal homepage compatibility module; public middleware rewrites `/home` directly to `/sites/neelvara` |
 | `src/app/sites/neelvara/products/page.tsx` | Products page |
 | `src/app/sites/neelvara/about/page.tsx` | About page |
 | `src/app/sites/neelvara/contact/page.tsx` | Contact page |
@@ -55,13 +53,15 @@ Middleware uses the existing generic product-site rewrite flow. No Neelvara-spec
 | `src/app/sites/neelvara/sitemap.xml/route.ts` | Product-domain sitemap response |
 | `src/app/sites/neelvara/.well-known/security.txt/route.ts` | Static security-contact discovery response |
 | `src/app/sites/neelvara/styles.css` | Scoped current-color Neelvara Prism tokens, fixed mesh/grain background, glass primitives, prism panels, and responsive layout |
-| `public/neelvara-logo.svg` | True-vector Neelvara source logo using the supplied three-path geometry with a frosted parent-brand glass palette for site chrome, footer identity, 404, and structured data |
-| `public/neelvara-logo.png` | Transparent PNG render generated from the refined true-vector SVG for compatibility surfaces |
-| `public/neelvara-favicon.svg` | Square true-vector SVG favicon wrapper using the same paths, gradients, and colors as the refined source mark |
-| `public/neelvara-favicon-16.png`, `public/neelvara-favicon-32.png` | PNG favicon fallbacks centered from the refined mark on transparent square canvases |
+| `public/neelvara-logo.svg` | True-vector Neelvara source logo using the supplied three-path geometry, the frosted parent-brand glass palette, and a balanced `68 0 487 320` source canvas for site chrome, footer identity, 404, and structured data |
+| `public/neelvara-logo.png` | Transparent compatibility render generated from the balanced true-vector SVG while retaining its established `578x328` PNG dimensions |
+| `public/neelvara-favicon.svg` | Square true-vector SVG favicon using the exact source paths, gradients, colors, positions, and angles with small-size-only opacity and outline strengthening |
+| `public/neelvara-favicon-16.png`, `public/neelvara-favicon-32.png` | Contrast-tuned PNG favicon fallbacks centered on transparent square canvases |
 | `public/neelvara-apple-touch-icon.png` | Apple touch icon derivative from the refined mark |
 | `public/neelvara-icon-96.png`, `public/neelvara-icon-128.png`, `public/neelvara-icon-180.png`, `public/neelvara-icon-192.png`, `public/neelvara-icon-512.png`, `public/neelvara-icon.png` | Transparent app/manifest icon canvases using the refined mark without a visible frame |
 | `public/neelvara-og-image.png` | Open Graph image using the refined glass-prism mark |
+| `scripts/website-assets/generate-neelvara-logo-assets.js` | Reproducible generator for the favicon SVG, PNG logo, favicon fallbacks, touch/manifest icons, and Open Graph derivative |
+| `scripts/verification/verify-neelvara-logo-assets.js` | Geometry, palette, transparency, dimensions, optical-centering, small-size contrast, manifest, metadata, 404, and structured-data reference verifier |
 
 ---
 
@@ -102,17 +102,18 @@ The visual implementation now follows the current-color Neelvara Prism glass par
 - dark navy wordmark/text treatment; wordmark text is not gradient-rendered
 - self-hosted Akshar font as the primary typeface across all Neelvara website text, with Inter retained only as the fallback font
 - fixed restrained mesh and SVG grain layer behind every section
-- shared glass primitive for header, hero mock, bento cells, spotlight cards, comparison tables, product cards, contact cards, policy panels, and CTA bands
+- shared glass primitive for header, factual reference summaries, comparison tables, product cards, contact cards, policy rows, and CTA bands
 - shared page Prism panels on Products, Contact, About, Legal, Privacy, Terms, and not-found routes
-- homepage Prism rhythm includes hero, marquee band, entity ledger, bento/reference modules, spotlight cards, quote, comparison table, product lineup, contact routing, CTA, and footer
-- navy product band used as the controlled 20% deep-brand surface
+- homepage Prism rhythm includes a split hero, factual company reference summary, entity ledger, operating principles, relationship statement, product lineup, comparison table, contact routing, CTA, and footer
+- full-width light product band with an unframed section header and two individual product cards; card accents reuse each product logo's approved colors
+- Products uses exact two-track grids for the two-product lineup: compact product-map nodes above two equal detail cards, with no empty third track or repeated map summary copy
 - Akshar-only typography across display headings, body copy, buttons, labels, legal pages, product cards, and inline 404 output; `Inter` remains the first fallback in the font stack
 - floating pill navigation with local-prefix-aware links for `/__neelvara` and `/nv`; primary header nav shows Products, About, and Contact only
-- home page anatomy: floating nav, hero, company-routing studio mock, marquee band, entity ledger, problem-first bento grid, spotlight cards, pull quote, comparison table, product lineup, contact routing cards, CTA, footer
-- About, Legal, Privacy, and Terms inherit the same mesh/glass shell, page hero, spotlight cards, glass text panels, policy dates where applicable, and page-specific final CTAs
+- home page anatomy: floating nav, split hero, company reference summary, entity ledger, operating principles, relationship statement, product lineup, comparison table, contact routing cards, CTA, footer
+- About, Legal, Privacy, and Terms inherit the same mesh/glass shell, split page hero, factual reference panel, horizontal content rows, policy dates where applicable, and page-specific final CTAs
 - Products and Contact use custom page flows with the same Prism hero/panel treatment for product relationship explanation and inquiry routing
-- the large hero studio mock remains on desktop/tablet; small phones hide it so the entity ledger appears in the first mobile viewport
-- scroll reveal remains local to Neelvara sections, one-time on viewport entry, aligned with the Answerlattice/CampaignCue pending/visible model, route-aware on client navigation, and disabled for reduced-motion users
+- the hero uses one factual company-reference panel and then flows into the compact entity ledger without a decorative dashboard mock
+- scroll reveal remains local to Neelvara sections, one-time on viewport entry through IntersectionObserver, route-aware on client navigation, and disabled for reduced-motion users
 - no pricing table, testimonials, customer logos, lead form, product checkout, analytics, API route, Firebase runtime, or owner app behavior was added
 - SaaS pricing/customer sections were translated into entity-safe equivalents: problem-first company sections, product lineup, and business/legal/privacy contact routing
 - homepage proof avoids numeric product-count and page-count signals; products are listed as operated products lower on the page
@@ -163,12 +164,14 @@ Security headers remain handled by the shared Next middleware and Vercel deploym
 Current validation:
 
 ```bash
+npm run generate:neelvara-assets
+npm run verify:neelvara-logo-assets
 npx tsc --noEmit --incremental false --pretty false
 npm run lint -- --dir src/app/sites/neelvara
 node scripts/verification/verify-agent-readiness.js --env-targets-only
 ```
 
-Result: scoped Neelvara lint, full TypeScript, route smoke, agent-readiness target check, browser visual checks, and whitespace checks pass.
+Result: canonical path integrity, balanced logo canvases, all derived identity assets, scoped Neelvara lint, full TypeScript, route smoke, agent-readiness target check, browser visual checks, and whitespace checks pass.
 
 Additional browser/routing evidence is tracked in [`neelvara-main-website_validation.md`](./neelvara-main-website_validation.md).
 

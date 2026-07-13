@@ -1,8 +1,19 @@
 # Menu Link Import Implementation
 
+**Boundary Reviewed:** July 10, 2026
+
+> **Launch boundary:** Not current launch certification or deploy approval. This document records source-gated Menu Link Import evidence only. Both current intake paths require a signed-in owner before source acquisition or extraction: the owner app uses `/api/menu-link-imports`, while the public `/create-menu` page submits through the authenticated `/api/public/create-menu` route. Current release approval still requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md), `npm run verify:production-readiness-local`, `npm run verify:menu-extraction-pipeline`, `npm run verify:functions-deploy-preflight`, authenticated desktop/mobile owner-flow QA, signed-in `/create-menu` browser QA, direct and rendered source-acquisition smoke, Gemini extraction provider smoke where fallback is used, applicable target Firebase/Vercel deploy evidence, and production-host smoke.
+
 ## Implementation Summary
 
 Menu Link Import reuses the existing extraction infrastructure instead of adding a separate crawler or AI path.
+
+There are two authenticated intake adapters over the same acquisition/extraction boundary:
+
+- Owner desktop/mobile calls protected `POST /api/menu-link-imports`, writes `menuLinkImportArtifacts`, and targets an existing project review job.
+- The publicly reachable `/create-menu` page redirects unauthenticated submitters to sign-in, then calls the `withAuth`-protected `POST /api/public/create-menu`, writes an owner-bound `publicMenuDrafts` record plus one shared extraction job, and requires authenticated claim before project/store publication.
+
+Neither adapter performs anonymous source acquisition or extraction.
 
 1. UI calls `POST /api/menu-link-imports`.
 2. The API validates auth, tenant/store access, feature flag, HMAC-hashed owner/tenant/store rate-limit key material, an 8KB bounded JSON body, permission confirmation, and URL safety.

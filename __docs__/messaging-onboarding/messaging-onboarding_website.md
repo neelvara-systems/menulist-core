@@ -4,17 +4,21 @@
 **Audience:** Potential customers visiting menulist.ai
 **Tone:** Outcome-focused, benefit-driven, calm confidence. NO hype.
 **Language:** Follows `__docs__/constitution/02-language-governance.md`
-**Last Updated:** June 22, 2026
+**Status:** Source-gated website reference — public provider intake is not open
+**Last Updated:** July 10, 2026
+
+> **Launch boundary:** Not current launch certification or deploy approval. Current source registers WhatsApp only, while checked-in Functions environments keep provider processing disabled. `/whatsapp` is informational and routes its actions to the signed-in `/create-menu` photo or public-link intake. The page must not expose a test number or active `wa.me` onboarding action before provider activation is certified.
 
 ---
 
 ## Hero Section
 
-- **Headline:** Send your current list on WhatsApp. Get one official customer link.
-- **Subheadline:** Send a menu, service list, rate card, package list, catalog, photo, PDF, screenshot, or message. MenuList prepares the owner-approved public page, link, and QR from the list the business already sends customers.
-- **Primary CTA Text:** Send list on WhatsApp
-- **CTA Link:** WhatsApp deep link → `https://wa.me/15556571424?text=...` for the supplied test onboarding number `+1 555 657 1424`.
-- **Production Readiness Note:** Replace the test number with the final public WhatsApp onboarding account before production campaign launch, and confirm response ownership, operating hours, consent copy, and tracking.
+- **Headline:** WhatsApp onboarding is being prepared. Start with one official customer link.
+- **Subheadline:** For now, upload a photo or use a public menu link. MenuList prepares the owner-reviewed public page, link, and QR from the list the business already shares.
+- **Availability:** WhatsApp intake is not open yet. Start now with a photo or public menu link.
+- **Primary CTA Text:** Start with a photo or link
+- **CTA Link:** `/create-menu`
+- **Production Readiness Note:** Keep the public action on `/create-menu` until the final owned WhatsApp account, response ownership, operating hours, consent copy, tracking, target enablement, deploy evidence, and provider smoke are approved.
 - **Campaign Page:** `/whatsapp`
 
 ---
@@ -134,4 +138,4 @@ Send the current list on WhatsApp. MenuList extracts and structures it, prepares
 
 ---
 
-_Document Status: Implementation-Complete (v3.3 — Website copy reflects the implemented WhatsApp-first messaging-onboarding flow, broad SMB list inputs, `/whatsapp` campaign page, and test-number click-to-WhatsApp CTA. Production number, response owner, operating hours, consent copy, and tracking remain launch gates. Language governance verified. Last updated: June 22, 2026.)_
+_Document Status: Source-gated website reference (v3.4 — `/whatsapp` is informational and its actions fail closed to `/create-menu`; active provider intake remains gated. Language governance verified. Last updated: July 10, 2026.)_

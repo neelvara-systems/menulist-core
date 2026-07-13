@@ -49,6 +49,8 @@ Mobile must not allow:
 - editing suppression records;
 - launching campaigns;
 - approving AI autonomy;
+- recording or changing AI shadow-review decisions;
+- starting or retrying AI Volume Mode;
 - changing budgets except emergency pause;
 - creating MenuList routes;
 - mutating MenuList outcomes.
@@ -85,6 +87,8 @@ No mobile reads:
 - Stale-data warning when summaries are old.
 - Clear active/inactive state for every pause.
 
+The primary mobile-observe map is limited to Today, Conversations, Activations, and system health/Controls. Opportunities may be inspected through the read-only case drawer. Advanced configuration routes remain server-blocked on mobile even when opened directly.
+
 ## Acceptance Criteria
 
 - Admin can pause all outbound from mobile within 5 seconds after login.
@@ -92,4 +96,15 @@ No mobile reads:
 - Mobile cannot configure providers.
 - Mobile cannot edit source/channel policies.
 - Mobile cannot approve WhatsApp or email governance.
+- Mobile cannot record AI accept/edit/reject/hold evidence or founder-attention minutes.
+- Mobile cannot start, retry, or change AI volume batches.
 - Mobile shows only summary data.
+- Mobile cannot create route tokens, record outcomes, create proof permissions, or schedule proof content.
+
+## Manual Contact And Rejection Controls
+
+- The Conversations manual-contact form is disabled by the shared `mobileReadOnly` action state.
+- Approval rejection controls are disabled with the rest of Approval Queue mutations.
+- Forced `record-manual-contact` requests are classified as `configure` and return `MOBILE_READ_ONLY_ACTION_BLOCKED` server-side.
+- Mobile cannot turn a prepared export into a completed contact or store a rejection decision.
+- Emergency pause remains the only admitted mobile mutation and does not bypass these restrictions.

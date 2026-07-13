@@ -29,7 +29,7 @@ const TenantSummarySyncSchema = z.object({
     sId: AnswerlatticeScopeIdSchema,
     hasEntities: z.boolean().optional().default(true),
     source: z.enum(['entity_created', 'candidate_promoted']).optional().default('entity_created'),
-});
+}).strict();
 const TENANT_SUMMARY_SYNC_MAX_BODY_BYTES = 2 * 1024;
 
 const getSessionScope = (session: any) => {
@@ -88,6 +88,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             tId: parsed.data.tId,
             sId: parsed.data.sId,
             source: parsed.data.source,
+            active: true,
             hasEntities: parsed.data.hasEntities,
         });
 

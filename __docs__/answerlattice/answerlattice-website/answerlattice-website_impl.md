@@ -1,7 +1,7 @@
 # AnswerLattice Website — Implementation
 
-> **Version:** 1.2.95
-> **Last Updated:** 2026-06-29
+> **Version:** 1.3.2
+> **Last Updated:** 2026-07-13
 > **Audience:** Developers
 
 ---
@@ -104,7 +104,7 @@ src/app/sites/answerlattice/
 ├── page-aware-support-widget/page.tsx      # SEO page for page-aware widget search intent
 ├── hosted-help-center-for-saas/page.tsx    # SEO page for hosted help-center search intent
 ├── support-widget-for-solo-founders/page.tsx # SEO page for solo-founder support intent
-├── demo/page.tsx                  # Static interactive demo page
+├── demo/page.tsx                  # Interactive governance proof page
 ├── demo/AnswerlatticePublicDemo.tsx    # No sign-in required page-aware support demo
 ├── install/page.tsx               # Agent install overview generated from AnswerLattice Widget Contract v1
 ├── install/InstallContractPage.tsx # Shared install/contract/framework page renderer
@@ -132,6 +132,7 @@ src/app/sites/answerlattice/
 ├── comparisons/answerlattice-vs-knowledge-bases/page.tsx # Knowledge-base category comparison
 ├── updates/page.tsx               # Public website update log
 ├── security/page.tsx              # Security and trust page
+├── trust/page.tsx                 # Provider, retention, and claim-status facts
 ├── faq/page.tsx                   # FAQ page with FAQPage JSON-LD
 ├── about/page.tsx                 # About page
 ├── contact/page.tsx               # Contact page
@@ -207,7 +208,11 @@ src/content/answerlatticePublic/
 
 Related AnswerLattice route constants live in `src/constants/answerlattice/routes.ts`. `src/constants/answerlattice/navigations.ts` re-exports those constants for existing dashboard imports while keeping icon-heavy sidebar metadata out of lightweight public client islands such as `/get-started`.
 
-Public contact submissions use `src/app/api/answerlattice/public/contact/route.ts`. The route is Node-only, rate-limited as `ANSWERLATTICE_CONTACT_FORM`, caps JSON bodies at 8KB before Zod validation, ignores honeypot submissions, verifies `captchaToken` when `TURNSTILE_SECRET_KEY` is configured, hashes requester IPs, and writes accepted submissions to `DB_COLLECTIONS.ANSWERLATTICE_CONTACT_ENQUIRIES` in AnswerLattice Firebase. The client form renders Cloudflare Turnstile from `NEXT_PUBLIC_TURNSTILE_SITE_KEY`; both env keys must be configured together. Public contact browser submissions use same-origin credentials, no-store cache, manual redirect handling, and an 8KB bounded JSON response parser before accepting `{ accepted: true }`. `/get-started` onboarding uses the same browser request boundary with a 16KB bounded response parser and onboarding-result shape validation before success state. Public contact, `/get-started` onboarding, and the hosted widget use fixed failure copy in the browser and must not display API response text, provider text, or local exception messages.
+Public contact submissions use `src/app/api/answerlattice/public/contact/route.ts`. The route is Node-only, rate-limited as `ANSWERLATTICE_CONTACT_FORM`, caps JSON bodies at 8KB before Zod validation, ignores honeypot submissions, verifies `captchaToken` when `TURNSTILE_SECRET_KEY` is configured, hashes requester IPs, and writes accepted submissions to `DB_COLLECTIONS.ANSWERLATTICE_CONTACT_ENQUIRIES` in AnswerLattice Firebase. The client form renders Cloudflare Turnstile from `NEXT_PUBLIC_TURNSTILE_SITE_KEY`; both env keys must be configured together. Public contact browser submissions use same-origin credentials, no-store cache, manual redirect handling, and an 8KB bounded JSON response parser before accepting `{ accepted: true }`. `/get-started` uses a 16KB bounded response parser, plan/currency billing validation, and resumable provisioning states before success. Public contact, `/get-started` onboarding, and the hosted widget use fixed failure copy in the browser and must not display API response text, provider text, or local exception messages.
+
+Pricing renders INR and USD amounts from `src/data/answerlattice/plans.ts` and sends the selected plan in the Get Started URL. `get-started/page.tsx` admits only the three current plan IDs and INR/USD currency values before passing defaults into `OnboardingForm.tsx`. The form submits the selected monthly plan and currency to the existing paid onboarding route and confirms the server-returned billing amount/currency.
+
+`demo/AnswerlatticePublicDemo.tsx` is a deterministic client-only state machine with six governance stages. It does not read Firebase or call an AI provider. Its outer grid, stage navigation, and content pane use explicit `min-w-0` boundaries so the desktop two-column layout collapses without min-content overflow on a 390px viewport. Stage and reset actions keep 44px minimum targets. `trust/page.tsx` is a server-rendered factual page sourced from current runtime/provider/retention contracts; it explicitly separates operational facts from certifications, DPA/subprocessor terms, residency commitments, and deletion claims. The page states that QA uses a separate project while the production target remains deployment/certification pending; it does not imply two currently certified live environments.
 
 ## Self-Sellable Positioning Pass
 
@@ -404,6 +409,7 @@ export default function AnswerlatticeLink({ href, basePath = '', children, ...pr
 - `updates/page.tsx` — Public website update log
 - `pricing/page.tsx` — Pricing page
 - `security/page.tsx` — Security page
+- `trust/page.tsx` — Trust and Data Handling page
 - `faq/page.tsx` — FAQ page
 - `about/page.tsx` — About page
 - `contact/page.tsx` — Contact page
@@ -423,7 +429,7 @@ export default function AnswerlatticeLink({ href, basePath = '', children, ...pr
 - `components/AnswerlatticeScrollReveal.tsx` — Lightweight IntersectionObserver client island for viewport reveal motion across public website pages
 
 ### Native Interaction
-- `Header.tsx` — Desktop Product and Resources dropdowns stay CSS-driven, while Demo and Install are direct top-level links for high-intent evaluation. Full desktop navigation starts at the `xl` breakpoint so tablet and narrow laptop widths use the drawer instead of a cramped desktop header. The Product dropdown is left-aligned from the Product nav group, stays inside the viewport, and uses compact title-only rows with icons instead of descriptive body copy so the menu remains a fast chooser. The Resources dropdown mirrors that compact treatment with a Resources overview row, a Resource guides section, small icon tiles, and title-only rows for high-priority public resource articles. Mobile navigation is a small client drawer that opens from the right, locks body scroll, closes on backdrop/Escape/link click, groups Product Areas, Product Features, and Other into separate cards, includes route icons for every drawer item, and includes safe-area bottom padding. The drawer uses separate mounted and visible states so it paints off-screen before opening and stays mounted long enough to animate closed.
+- `Header.tsx` — Desktop Product and Resources dropdowns stay CSS-driven, while Demo and Install are direct top-level links for high-intent evaluation. Full desktop navigation starts at the `xl` breakpoint so tablet and narrow laptop widths use the drawer instead of a cramped desktop header. The Product dropdown is left-aligned from the Product nav group, stays inside the viewport, and uses compact title-only rows with icons instead of descriptive body copy so the menu remains a fast chooser. The Resources dropdown mirrors that compact treatment with a Resources overview row, a Resource guides section, small icon tiles, and title-only rows for high-priority public resource articles. Both dropdowns include a hover bridge, viewport-height scroll containment, and Escape-to-blur behavior for keyboard users. Mobile navigation opens from the right, locks body scroll, closes on backdrop/Escape/link click, groups Product Areas, Product Features, and Other into separate cards, includes route icons for every drawer item, and includes safe-area bottom padding. On phone widths the drawer uses the full viewport width so the underlying page is not exposed as a broken side strip; on larger mobile/tablet widths it keeps the right-side drawer presentation. The drawer uses separate mounted and visible states so it paints off-screen before opening and stays mounted long enough to animate closed, with internal scroll containment and high overlay stacking for cookie/summary/floating-control compatibility.
 
 ---
 
@@ -488,6 +494,9 @@ Conversion analytics is client-side only:
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-07-11 | 1.3.1 | Closed the 390px governance-demo min-content overflow, normalized public action touch targets, and bounded the Trust page environment claim to current QA/deployment evidence. |
+| 2026-07-13 | 1.3.2 | Hardened the public Product and Resources dropdowns with hover-bridge, Escape close, and viewport scroll containment; upgraded the mobile drawer to full-width phone behavior with internal scroll containment, safe-area CTA padding, and high overlay stacking |
+| 2026-07-11 | 1.3.0 | Implemented the six-stage governance demo, plan/currency-accurate INR/USD setup path, factual Trust and Data Handling page, privacy disclosure sync, and public route registry/navigation updates |
 | 2026-06-29 | 1.2.95 | Added the compact homepage Support Suite category-switch strip that compares AnswerLattice by official answer source while keeping full comparison tables on `/comparisons` and preserving static public-site behavior |
 | 2026-06-27 | 1.2.94 | Replaced fixed-position Prism-glass card hover glows with a fine-pointer spotlight controller so card highlights follow the mouse while preserving existing AnswerLattice theme tokens, layouts, and product claims |
 | 2026-06-26 | 1.2.93 | Converted the homepage Product Overview feature grid into a priority bento and merged AI-built SaaS fit plus positioning-boundary sections into one founder-fit/category-boundary section without removing product routes, features, or public claims |

@@ -7,9 +7,11 @@
 
 ## Cost Summary
 
-**Monthly Additional Cost (100 stores): ~₹2**
+**Current runtime cost: zero.**
 
-Shares ALL reads with Trust Health Signal (Pillar 4). Only adds 1 additional field to same store document write.
+The shared computation is not exported or scheduled and the loyalty flag is `false`. The historical table below is a planning estimate only. If activated, loyalty must share the one bounded analytics scan and store update with trust/risk rather than create its own reads or write.
+
+## Historical Planning Estimate (Not Current Evidence)
 
 | Component | Cost |
 |-----------|------|
@@ -20,4 +22,4 @@ Shares ALL reads with Trust Health Signal (Pillar 4). Only adds 1 additional fie
 
 ---
 
-**Last Updated:** February 19, 2026
+**Last Updated:** July 13, 2026

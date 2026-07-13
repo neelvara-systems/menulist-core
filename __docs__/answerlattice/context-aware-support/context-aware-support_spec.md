@@ -1,9 +1,9 @@
 # Context-Aware Support — Product Specification
 
-> **Status:** READY FOR IMPLEMENTATION
-> **Version:** 1.0.0
+> **Status:** IMPLEMENTED
+> **Version:** 1.1.0
 > **Created:** 2026-03-08
-> **Last Updated:** 2026-03-08
+> **Last Updated:** 2026-07-11
 > **Feature Flag:** `ENABLE_ANSWERLATTICE_CONTEXT_AWARE`
 > **Audience:** CEO, PM, Clients
 
@@ -11,13 +11,15 @@
 
 ## §1 — Problem Statement
 
-When a SaaS end-user asks Answerlattice "Why is this not working?", the system currently has no knowledge of **where** in the product the user is or **what** they are trying to do. It can only match against query text.
+Without the optional context contract, a question such as "Why is this not working?" carries no reliable signal about **where** in the product the user is or **what** they are trying to do. Query text alone can be ambiguous.
 
-This means:
+The implemented context contract addresses these failure modes:
 - Vague queries produce vague or wrong answers
 - Entity resolution is purely text-based, missing obvious context clues
-- Canonical answers that are highly relevant to the user's current page/workflow may be ranked lower than generic matches
+- Canonical answers that are highly relevant to the user's current page/workflow may otherwise be ranked lower than generic matches
 - More queries fall through to RAG fallback (expensive, less reliable)
+
+Plan, role, and product state are not relevance hints. If an answer is restricted by one of those dimensions, missing or disallowed context makes that answer ineligible and produces a fixed governed fallback before FAQ or RAG.
 
 **Core insight:** 80%+ of support questions are page-specific. If the system knows the user is on the Stripe integration page, "Why is this not working?" immediately narrows to Stripe integration troubleshooting.
 

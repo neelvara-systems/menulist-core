@@ -4,6 +4,7 @@ import { addIngestionJob, assertIngestionJobWriteSucceeded } from '@database/kb-
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
 import { uploadFile } from '@lib/firebase/storage';
+import { deleteFileByUrl } from '@database/storage/deleteFromStorage';
 import { answerlatticeStorage } from '@lib/firebase/answerlatticeFirebaseClient';
 import { STORAGE_CACHE_CONTROL } from '@lib/storage/cacheControl';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
@@ -18,6 +19,33 @@ const { Dragger } = Upload;
 const { Text } = Typography;
 const KNOWLEDGE_SOURCE_RETENTION_POLICY = 'delete_on_job_delete';
 const KNOWLEDGE_SOURCE_USE = 'knowledge_generation_only';
+const MAX_KNOWLEDGE_SOURCE_FILES = 8;
+const MAX_KNOWLEDGE_SOURCE_FILE_BYTES = 10 * 1024 * 1024;
+const MAX_KNOWLEDGE_SOURCE_TOTAL_BYTES = 40 * 1024 * 1024;
+const ALLOWED_KNOWLEDGE_SOURCE_MIME_TYPES = new Set([
+  'application/json',
+  'application/msword',
+  'application/pdf',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/xml',
+  'text/csv',
+  'text/html',
+  'text/markdown',
+  'text/plain',
+  'text/xml',
+]);
+const KNOWLEDGE_SOURCE_MIME_BY_EXTENSION: Record<string, string> = {
+  csv: 'text/csv',
+  doc: 'application/msword',
+  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  htm: 'text/html',
+  html: 'text/html',
+  json: 'application/json',
+  md: 'text/markdown',
+  pdf: 'application/pdf',
+  txt: 'text/plain',
+  xml: 'application/xml',
+};
 
 const IMPORT_STARTER_PACKS = [
   {
@@ -89,9 +117,13 @@ function sanitizeKnowledgeSourceFileName(fileName: string): string {
 }
 
 function getKnowledgeSourceUploadMetadata(file: File): UploadMetadata {
+  const extension = file.name.split('.').pop()?.toLowerCase();
+  const inferredContentType = extension
+    ? KNOWLEDGE_SOURCE_MIME_BY_EXTENSION[extension] || 'application/octet-stream'
+    : 'application/octet-stream';
   return {
     cacheControl: STORAGE_CACHE_CONTROL.immutablePrivate,
-    contentType: file.type || 'application/octet-stream',
+    contentType: file.type || inferredContentType,
     customMetadata: {
       retentionPolicy: KNOWLEDGE_SOURCE_RETENTION_POLICY,
       sourceMetadataPolicy: file.type.startsWith('image/')
@@ -151,9 +183,6 @@ const UploadModal: React.FC<UploadModalProps> = ({ open, onClose }) => {
       return;
     }
 
-    setIsUploading(true);
-    dispatch(startLoader('Uploading files...'));
-
     const textSourceFiles = [
       sourceUrls.trim()
         ? {
@@ -180,6 +209,31 @@ const UploadModal: React.FC<UploadModalProps> = ({ open, onClose }) => {
     ].filter(Boolean) as Array<{ uid: string; name: string; originFileObj: File }>;
 
     const uploadSources = [...fileList, ...textSourceFiles];
+    if (uploadSources.length > MAX_KNOWLEDGE_SOURCE_FILES) {
+      message.error(`Use up to ${MAX_KNOWLEDGE_SOURCE_FILES} source files per generation job.`);
+      return;
+    }
+    const sourceFiles = uploadSources.map(file => file.originFileObj).filter((file): file is File => file instanceof File);
+    const totalBytes = sourceFiles.reduce((sum, file) => sum + file.size, 0);
+    const unsupportedFile = sourceFiles.find((file) => {
+      const metadata = getKnowledgeSourceUploadMetadata(file);
+      const mimeType = String(metadata.contentType || '').toLowerCase();
+      return file.size <= 0
+        || file.size > MAX_KNOWLEDGE_SOURCE_FILE_BYTES
+        || !(
+          ALLOWED_KNOWLEDGE_SOURCE_MIME_TYPES.has(mimeType)
+          || mimeType.startsWith('image/')
+          || mimeType.startsWith('audio/')
+          || mimeType.startsWith('video/')
+        );
+    });
+    if (unsupportedFile || totalBytes > MAX_KNOWLEDGE_SOURCE_TOTAL_BYTES) {
+      message.error('Use supported source files up to 10 MB each and 40 MB total.');
+      return;
+    }
+
+    setIsUploading(true);
+    dispatch(startLoader('Uploading files...'));
     const uploadPromises = uploadSources.map((file) => {
       const storagePath = `ingestion_source_files/${tId}/${sId}/${uuidv4()}-${sanitizeKnowledgeSourceFileName(file.name)}`;
       return uploadFile(storagePath, file.originFileObj, (progress) => {
@@ -187,8 +241,16 @@ const UploadModal: React.FC<UploadModalProps> = ({ open, onClose }) => {
       }, answerlatticeStorage, getKnowledgeSourceUploadMetadata(file.originFileObj));
     });
 
+    let uploadedFiles: Awaited<ReturnType<typeof uploadFile>>[] = [];
+    let jobCreated = false;
     try {
-      const uploadedFiles = await Promise.all(uploadPromises);
+      const uploadResults = await Promise.allSettled(uploadPromises);
+      uploadedFiles = uploadResults
+        .filter((result): result is PromiseFulfilledResult<Awaited<ReturnType<typeof uploadFile>>> => result.status === 'fulfilled')
+        .map(result => result.value);
+      if (uploadResults.some(result => result.status === 'rejected')) {
+        throw new Error('knowledge_source_upload_failed');
+      }
       dispatch(stopLoader('Uploading files...'));
       dispatch(startLoader('Creating generation job...'));
 
@@ -204,9 +266,13 @@ const UploadModal: React.FC<UploadModalProps> = ({ open, onClose }) => {
         newJob.id,
         'kb_generation_upload_job_create_rejected',
       );
+      jobCreated = true;
       message.success('New generation job created successfully!');
       handleClose();
     } catch (error) {
+      if (!jobCreated && uploadedFiles.length > 0) {
+        await Promise.allSettled(uploadedFiles.map(file => deleteFileByUrl(file.downloadURL, answerlatticeStorage)));
+      }
       message.error('Failed to create generation job.');
     } finally {
       setIsUploading(false);
@@ -226,7 +292,15 @@ const UploadModal: React.FC<UploadModalProps> = ({ open, onClose }) => {
 
   const props: UploadProps = useMemo(() => ({
     multiple: true,
-    beforeUpload: () => false, // Prevent auto-upload
+    maxCount: MAX_KNOWLEDGE_SOURCE_FILES,
+    accept: '.csv,.doc,.docx,.html,.json,.md,.pdf,.txt,.xml,audio/*,image/*,video/*',
+    beforeUpload: (file) => {
+      if (file.size > MAX_KNOWLEDGE_SOURCE_FILE_BYTES) {
+        message.error('Each knowledge source file must be 10 MB or smaller.');
+        return Upload.LIST_IGNORE;
+      }
+      return false; // Prevent auto-upload
+    },
     onChange: handleFileChange,
     fileList: fileList,
     disabled: isUploading,

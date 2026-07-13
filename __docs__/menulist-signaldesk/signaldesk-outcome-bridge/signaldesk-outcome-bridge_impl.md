@@ -1,21 +1,17 @@
 # SignalDesk Outcome Bridge - Implementation Plan
 
-**Status:** Initial implementation blueprint
+**Status:** Implemented runtime contract; local emulator verified
 **Created:** June 23, 2026
+**Runtime reconciled:** July 13, 2026
 
-## Suggested Future Modules
+## Runtime Modules
 
 ```txt
-signaldesk/
-  outcomeBridge/
-    outcomeTypes.ts
-    routeTokenService.ts
-    outcomeEventIngest.ts
-    attributionEngine.ts
-    outcomeSummaries.ts
-    menuListBridgePolicy.ts
-    OutcomeTimeline.tsx
-    AttributionPanel.tsx
+src/app/api/signaldesk/outcomes/route.ts
+src/lib/signaldesk/outcomeBridgeServer.ts
+src/app/api/signaldesk/actions/route.ts
+src/lib/signaldesk/workflowServer.ts
+src/constants/signaldesk/integrations.ts
 ```
 
 ## Data Flow
@@ -25,15 +21,17 @@ approved action
   -> create scoped route token
   -> prospect uses MenuList-controlled route
   -> MenuList or operator emits outcome event
-  -> outcome bridge validates scope
-  -> append outcome event
-  -> update attribution touches
-  -> update outcome summaries
+  -> bounded route verifies timestamp plus raw-body HMAC
+  -> strict payload validation rejects unknown fields
+  -> outcome transaction checks exact replay first
+  -> transaction revalidates token scope, hash, target, active state, revocation, and expiry
+  -> append outcome event, update summary/target, create direct attribution touch, update route usage, audit, and cost summary atomically
+  -> optional activation-watch reconciliation runs after commit and reports pending on failure
 ```
 
 ## Route Token Contract
 
-Route tokens should be:
+Route tokens are:
 
 - opaque,
 - scoped to one target/action/channel,
@@ -41,6 +39,8 @@ Route tokens should be:
 - revocable,
 - non-sensitive,
 - safe to include in links.
+
+Only the one-time raw token is returned to the authorized caller. Firestore stores its SHA-256 hash, versioned scope `menulist-activation-outcomes-v1`, source action, target, channel, expiry, status, and revocation metadata. The configure-only `revoke-route-token` action is transactionally audited and idempotent.
 
 ## MenuList Boundary
 
@@ -59,22 +59,13 @@ SignalDesk cannot:
 - change billing,
 - write customer-facing public output.
 
-## Implementation Order
-
-1. Define route token and outcome event schemas.
-2. Implement token creation for approved actions.
-3. Implement manual outcome event recording.
-4. Add dedupe and idempotency rules.
-5. Add attribution touch calculations.
-6. Add outcome summary updater.
-7. Add bridge audit events.
-8. Integrate with demand signal capture only after event schema stabilizes.
-
 ## Failure Handling
 
 | Failure | Handling |
 | --- | --- |
-| Expired token used | Record rejected bridge audit event. |
-| Duplicate outcome event | Ignore duplicate and preserve first event. |
-| Unknown MenuList record | Hold event in review state. |
+| Invalid, expired, or revoked token used for a new event | Reject with bounded 401 response; do not write outcome state. |
+| Exact outcome retry | Return `duplicate`; preserve the first event and summary count. |
+| Same idempotency key with changed facts | Reject with 409 conflict. |
+| Unknown target | Reject before outcome writes. |
+| Firestore or rate-limit infrastructure unavailable | Return retryable 503 with `Retry-After`; do not acknowledge success. |
 | Suppressed target converts | Record outcome, but do not allow further outreach without admin review. |

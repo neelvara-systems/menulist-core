@@ -1,43 +1,41 @@
 # Owner Support Assistant - Website and Content Impact
 
-> **Status:** DOCS FROZEN
+> **Status:** READ-ONLY PUBLIC COPY ALIGNED
 > **Created:** 2026-06-07
-> **Public website status:** No runtime website copy change in docs-first planning.
+> **Public website status:** Product and Support Control pages describe only the shipped summary-only runtime.
 
 ---
 
 ## Website Decision
 
-Do not update the public Answerlattice website in this planning pass.
+Mention the Support Assistant as a secondary owner-control capability, not as the product headline or a standalone AI assistant category.
 
-Reason:
+The public site may say that it:
 
-- The feature is not implemented.
-- The route and API are not live.
-- Public claims must follow runtime truth.
-- This is an owner/staff dashboard feature, not a public widget feature.
-- Dashboard support analytics are owner/staff runtime evidence, not public buyer copy until implemented and verified.
-- Action support is an owner-confirmed internal workflow contract, not public proof until the preview/execute path is implemented and verified.
+- reads compact coverage, trust, Support Board, friction, and Knowledge Intake summaries
+- answers a fixed set of operational review questions
+- links the owner to the relevant governed screen
+- stores no transcript and performs no mutation
 
-This document records inactive website copy boundaries only.
+The public site must not claim detail reads, AI-generated advice, ticket replies/status changes, draft creation, card/note creation, answer tests, exports, or any other action execution through the assistant.
 
 ---
 
 ## Implementation-Dependent Placement
 
-If the feature ships and passes cost/mobile/governance verification, it can be mentioned lightly in:
+Current placement:
 
 - Answerlattice product page
-- Launch/setup workflow copy
-- Support Control feature list
+- Product founder-controls section
+- Support Control feature list and workflow
 - FAQ entry about owner review workflows
-- Helpdoc link for staff users
+- Updates page
 
-Do not create a standalone public landing page unless the feature becomes a major buyer-facing surface after runtime proof.
+Do not create a standalone public landing page unless the feature later becomes a major buyer-facing surface with independently verified capabilities.
 
 ---
 
-## Inactive Copy Draft
+## Approved Copy
 
 Short product line:
 
@@ -45,15 +43,13 @@ Short product line:
 
 Longer product paragraph:
 
-> Owner Support Assistant gives your team a private support review surface inside Answerlattice. It summarizes governed support signals, shows the evidence behind each recommendation, and routes changes through the existing review workflow.
-
-Use only after implementation.
+> Support Assistant gives your team a private, read-only support brief inside AnswerLattice. It summarizes compact governed support signals and links you to the existing review workflow without changing support data.
 
 ---
 
 ## SEO and Metadata
 
-No SEO metadata change now.
+No standalone SEO route or metadata is added.
 
 Implementation-dependent metadata should avoid bot/chat claims and keep the feature framed as owner review support.
 
@@ -69,18 +65,9 @@ Potential description:
 
 ## Help and Changelog Impact
 
-Planning pass:
-
-- Add changelog entry for docs/strategy only.
-- Do not add public helpdesk/customer help copy.
-- Do not add public route copy.
-
-Runtime implementation pass:
-
-- Add owner helpdoc entry.
-- Add release changelog entry.
-- Add action-support copy only after ticket/reply/status actions pass confirmation, audit, cost, and mobile verification.
-- Re-check public website only after runtime behavior is verified.
+- Keep owner help text synchronized with the fixed live intent set.
+- Keep the public changelog explicit that the runtime is read-only and summary-only.
+- Add action-support copy only if a future ticket/reply/status implementation passes confirmation, audit, cost, mobile, and production-host verification.
 
 ---
 

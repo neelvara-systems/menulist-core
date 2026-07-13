@@ -86,9 +86,9 @@ export type AnswerlatticeWidgetConfig = z.infer<typeof AnswerlatticeWidgetConfig
 export const DEFAULT_ANSWERLATTICE_WIDGET_CONFIG: AnswerlatticeWidgetConfig = AnswerlatticeWidgetConfigSchema.parse({});
 
 export const AnswerlatticeWidgetConfigSaveSchema = z.object({
-    config: PartialAnswerlatticeWidgetConfigSchema.default({}),
+    config: PartialAnswerlatticeWidgetConfigSchema.strict().default({}),
     allowedOrigins: z.array(z.string().trim().min(1).max(300)).max(25).default([]),
-});
+}).strict();
 
 export type AnswerlatticeWidgetConfigSaveInput = z.infer<typeof AnswerlatticeWidgetConfigSaveSchema>;
 

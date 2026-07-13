@@ -256,6 +256,12 @@ await createInitialSubscription(razorpaySubscription.id, {
 
 If Razorpay plan lookup or subscription creation fails after the tenant/store/user transaction succeeds, the route calls `compensateFailedTenantStoreOnboarding()`. That failure path marks the created tenant and store inactive, updates `platformSummary/storesSummary.stores.{storeId}.active` to `false`, clears the failed tenant/store mapping from the user document when it matches the just-created scope, and revalidates the public menu/OBP cache. The route then rethrows the provider error through the existing bounded payment error handler.
 
+July 13 authority/concurrency contract: the session-only empty-scope check is advisory. Before any tenant/store counter allocation, `assertCurrentUserAvailableForOnboardingInTransaction()` reads the exact `users/{userId}` document in the same transaction and applies current document/email, active, verified, lifecycle/block and session-revocation admission. It also requires both scalar tenant/store fields and the `stores`/`storeIds` collections to be empty. Firestore retries therefore make one concurrent request the winner; every loser re-reads the committed mapping and fails with a fixed conflict response.
+
+July 13 distributed payment contract: the route validates a purchasable positive-integer price and nonnegative integer credit allowance before local writes. Each Razorpay create carries a UUID `onboardingAttemptId` plus exact source/plan/user/tenant/store notes. If creation throws after an ambiguous provider result, the route searches a bounded recent plan window and accepts only an exact attempt match. If the provider succeeds but the initial Firestore subscription write fails, it attempts immediate provider cancellation, compensates the tenant/store/user/summary/referral state, revalidates the public cache, logs cancellation/compensation failures separately, and returns failure. Provider checkout URLs are allowlisted before private persistence, and the public response projects only `{subscription:{id},tenantId,storeId}` rather than the raw Razorpay entity.
+
+The focused regression bundle is `npm run verify:onboarding-subscription-boundary`; the Admin Firestore concurrency proof is `npm run test:onboarding-user-concurrency:emulator`. Neither command substitutes for live Razorpay sandbox, timeout, cancellation, webhook, deployed-session or browser/device evidence.
+
 ---
 
 ## 5. Payment Flow
@@ -647,6 +653,8 @@ MODE 2: Email + Password (no session required)
 **June 29 rate-limit key note:** `POST /api/auth/change-password` and `POST /api/auth/switch-store` hash authenticated user limiter key material before calling the shared rate-limit provider. Limits, windows, admission order, Firebase Auth verification, store-switch reads, and owner responses are unchanged except that raw user IDs are no longer stored in provider key names.
 
 **June 30 provider-boundary note:** `POST /api/auth/change-password` now builds the Firebase Auth `accounts:signInWithPassword` verification URL from a fixed host/path with `URLSearchParams`, rejects malformed local API keys before network I/O, and fetches with manual redirect handling. Password verification, password update, Firestore `passwordChangedAt`, rate limits, and owner-facing responses remain unchanged.
+
+**July 13 current-authority note:** change-password current-authority hardening now re-reads exact current user lifecycle, email, and revocation truth before Firebase work; binds enabled Firebase Auth identity and optional stored `firebaseUid`; fails the sensitive limiter closed with 503 provider-failure behavior; aborts password verification after eight seconds; and treats the post-Auth `passwordChangedAt` write as observable metadata so a metadata outage cannot produce a false retry after the password has already changed.
 
 **June 27 diagnostic note:** Firebase client bootstrap, App Check initialization, Firebase Auth sync hook failures, and session-provider auth bootstrap failures now use `src/lib/firebase/firebaseDiagnostics.ts`. Normal successful sync paths stay quiet; failures log normalized failure codes, error name/code/status, and bounded session/path metadata only.
 

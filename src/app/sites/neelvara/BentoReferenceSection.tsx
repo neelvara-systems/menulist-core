@@ -35,7 +35,7 @@ const PRIMARY_CARDS: PrimaryCard[] = [
         key: 'company',
         icon: LuFingerprint,
         eyebrow: 'Company',
-        title: 'Neelvara Systems is the operating company reference.',
+        title: 'Neelvara Systems is the company reference for the current product lineup.',
         body: 'This site identifies the company name, operated products, and official contact routes.',
         visual: 'prism',
     },
@@ -44,7 +44,7 @@ const PRIMARY_CARDS: PrimaryCard[] = [
         icon: LuGlobe2,
         eyebrow: 'Products',
         title: 'Each operated product has a clear public role.',
-        body: 'MenuList handles public business facts. Answerlattice governs approved answers. CampaignCue carries reusable business context.',
+        body: 'MenuList handles public business facts. Answerlattice governs approved answers and support knowledge.',
         visual: 'boundaries',
     },
     {

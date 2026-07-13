@@ -29,6 +29,35 @@ export const normalizeBillingProductId = (value: unknown): ProductId => {
     return PRODUCT_IDS.MENULIST;
 };
 
+const normalizeExplicitBillingProductId = (value: unknown): ProductId | null => {
+    const normalized = String(value || '').trim().toUpperCase();
+    if (normalized === PRODUCT_IDS.MENULIST) return PRODUCT_IDS.MENULIST;
+    if (normalized === PRODUCT_IDS.ANSWERLATTICE) return PRODUCT_IDS.ANSWERLATTICE;
+    if (normalized === PRODUCT_IDS.CAMPAIGNCUE) return PRODUCT_IDS.CAMPAIGNCUE;
+    return null;
+};
+
+/**
+ * Provider notes are the product authority after a Razorpay object exists.
+ * Missing notes are accepted only for legacy MenuList objects; a request may
+ * never redirect a provider object into another product's Firestore project.
+ */
+export const resolveProviderBillingProductId = (
+    requestProductId: unknown,
+    providerProductId: unknown,
+): ProductId | null => {
+    const requested = requestProductId == null || requestProductId === ''
+        ? PRODUCT_IDS.MENULIST
+        : normalizeExplicitBillingProductId(requestProductId);
+    if (!requested) return null;
+
+    if (providerProductId == null || providerProductId === '') {
+        return requested === PRODUCT_IDS.MENULIST ? PRODUCT_IDS.MENULIST : null;
+    }
+    const provider = normalizeExplicitBillingProductId(providerProductId);
+    return provider && provider === requested ? provider : null;
+};
+
 export const isAnswerlatticeBillingProduct = (productId: unknown): boolean => (
     normalizeBillingProductId(productId) === PRODUCT_IDS.ANSWERLATTICE
 );

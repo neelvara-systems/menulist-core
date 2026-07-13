@@ -1,7 +1,7 @@
 # Answerlattice — External Workflow Integrations — Mobile Support Assessment
 
-> **Version:** 1.1.0
-> **Last Updated:** 2026-05-24
+> **Version:** 1.2.0
+> **Last Updated:** 2026-07-13
 > **Audience:** Engineering
 
 ---
@@ -10,7 +10,7 @@
 
 | Gate | Question | Answer | Pass? |
 |------|----------|--------|:-----:|
-| **Frequency** | Daily/multiple times per day? | No — governance events are nightly batch + occasional real-time. Founders check integration settings rarely (setup once, forget). | ❌ |
+| **Frequency** | Daily/multiple times per day? | No — automated governance events come from the workspace nightly run, plus occasional owner test events. Founders check integration settings rarely (setup once, forget). | ❌ |
 | **Speed** | Completes in <5 seconds? | N/A — this is a backend system. No user-facing mobile interaction. | ❌ |
 | **Touch** | Works with thumb-only? | N/A — integration settings are a one-time configuration, not a daily task. | ❌ |
 | **Value** | Needed away from desk? | No — integration setup requires Slack webhook URLs and email recipient review. These are desk tasks. | ❌ |
@@ -52,5 +52,6 @@ If Answerlattice adds a mobile governance dashboard (viewing drift, approving pr
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-07-13 | 1.2.0 | Removed the unsupported real-time producer claim; mobile admission result remains 0/4. |
 | 2026-05-24 | 1.1.0 | Updated mobile assessment to match self-service Slack/email production scope. |
 | 2026-03-09 | 1.0.0 | Initial mobile assessment — 0/4 gates, no mobile UI needed |

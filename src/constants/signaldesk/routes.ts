@@ -4,6 +4,10 @@ export const SIGNALDESK_API_BASE_PATH = "/api/signaldesk";
 
 export const SIGNALDESK_ROUTES = {
     DASHBOARD: SIGNALDESK_BASE_PATH,
+    OPPORTUNITIES: `${SIGNALDESK_BASE_PATH}/opportunities`,
+    CONVERSATIONS: `${SIGNALDESK_BASE_PATH}/conversations`,
+    ACTIVATIONS: `${SIGNALDESK_BASE_PATH}/activations`,
+    CONTROLS: `${SIGNALDESK_BASE_PATH}/controls`,
     MISSION: `${SIGNALDESK_BASE_PATH}/mission`,
     REVENUE: `${SIGNALDESK_BASE_PATH}/revenue`,
     TARGETS: `${SIGNALDESK_BASE_PATH}/targets`,

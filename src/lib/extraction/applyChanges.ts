@@ -31,7 +31,7 @@ import { normalizeMenuExtractionJobId } from '@lib/menu-extraction/jobIdBoundary
 import { normalizeMenuExtractionProjectId } from '@lib/menu-extraction/projectIdBoundary';
 import { getBusinessAttributesWithMenuDefaults } from '@lib/obp/inferBusinessAttributesFromMenu';
 import { logMOLEvent } from '@lib/pricing/molLogger';
-import { doc, getDoc, Timestamp, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, Timestamp, updateDoc, writeBatch } from 'firebase/firestore';
 import type { ApplyPlan } from './comparisonEngine.types';
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -484,6 +484,16 @@ function idsMatch(left: unknown, right: unknown): boolean {
     return String(left ?? '').trim() === String(right ?? '').trim();
 }
 
+function buildCompletedReviewJobPayload() {
+    const completedAt = Timestamp.now();
+    return {
+        status: 'completed',
+        completedAt,
+        updatedAt: completedAt,
+        currentStep: 'Changes applied',
+    };
+}
+
 export function isAcknowledgedApplyChangesResult(
     result: ApplyChangesResult,
     expected: {
@@ -631,7 +641,7 @@ export async function applyExtractionChanges(
                     if (!files[fileIndex].extractedData.data.categories) {
                         files[fileIndex].extractedData.data.categories = [];
                     }
-                    files[fileIndex].extractedData.data.categories.push(cat.newCategory);
+                    upsertById(files[fileIndex].extractedData.data.categories, [cat.newCategory]);
                     stats.categoriesAdded++;
                 }
             }
@@ -654,7 +664,7 @@ export async function applyExtractionChanges(
                         item.newItem.category,
                         projectData.languages || [],
                     );
-                    files[fileIndex].extractedData.data.items.push(item.newItem);
+                    upsertById(files[fileIndex].extractedData.data.items, [item.newItem]);
                     stats.itemsAdded++;
                 }
             }
@@ -801,9 +811,13 @@ export async function applyExtractionChanges(
         // ═══════════════════════════════════════════════════════════
         if (linkedOutletProjectPayload) {
             await saveLinkedOutletProject(linkedOutletProjectPayload, jobId);
+            await updateDoc(jobRef, buildCompletedReviewJobPayload());
             await revalidatePublicClientCacheForProject(projectId, 'applyExtractionChanges');
         } else if (Object.keys(updatePayload).length > 0) {
-            await updateDoc(projectRef, sanitizeFirestoreValue(updatePayload));
+            const batch = writeBatch(firebaseClient);
+            batch.update(projectRef, sanitizeFirestoreValue(updatePayload));
+            batch.update(jobRef, buildCompletedReviewJobPayload());
+            await batch.commit();
             await revalidatePublicClientCacheForProject(projectId, 'applyExtractionChanges');
 
             try {
@@ -826,14 +840,6 @@ export async function applyExtractionChanges(
                 });
             }
         }
-
-        // Mark job as completed (separate doc, not project)
-        await updateDoc(jobRef, {
-            status: 'completed',
-            completedAt: Timestamp.now(),
-            updatedAt: Timestamp.now(),
-            currentStep: 'Changes applied',
-        });
 
         // ═══════════════════════════════════════════════════════════
         // STEP 3: MOL audit logging (fire-and-forget, non-blocking)

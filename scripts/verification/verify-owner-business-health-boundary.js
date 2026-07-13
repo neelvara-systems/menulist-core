@@ -570,6 +570,10 @@ requireOrder(
   'answer route admission order',
 );
 
+requireToken(apiGuards, 'normalizeStoreSwitchStoreId', 'Business Health selected-store exact shared store ID normalization');
+requireToken(apiGuards, 'if (hasRequestedStoreId && !selectedStoreId)', 'Business Health malformed supplied store ID rejection');
+requireToken(schemas, 'normalizeStoreSwitchStoreId(value) !== null', 'Business Health exact canonical store schema');
+
 if (failures.length > 0) {
   console.error('FAIL verify-owner-business-health-boundary');
   for (const failure of failures) {

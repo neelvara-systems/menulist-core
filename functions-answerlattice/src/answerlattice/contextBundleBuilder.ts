@@ -5,12 +5,18 @@ import { DB_COLLECTIONS } from '../constants/database';
 import { firestoreAdmin as db, storageAdmin } from '../firebaseAdmin';
 import {
     compiledSourceVersionsEqual,
+    areAnswerlatticeCompiledSourceVersionsValid,
     getAnswerlatticeBundleLockDocId,
     getAnswerlatticeBundleManifestDocId,
+    getNextAnswerlatticeBundleVersion,
+    hasExactAnswerlatticeReadyBundleVersions,
     getAnswerlatticeSourceVersionsDocId,
+    normalizeAnswerlatticeStoredBundleVersion,
     normalizeCompiledSourceVersions,
+    resolveAnswerlatticeExistingBundleVersion,
 } from './compiledContextVersions';
 import { normalizeAnswerlatticeResolvedFunctionEntityId } from './entityIdBoundary';
+import { parseExactAnswerlatticeScope } from './scopeBoundary';
 
 const SCHEMA_VERSION = 1;
 const BUNDLE_ROOT = 'answerlattice-context';
@@ -568,11 +574,11 @@ const buildObjects = (params: {
 };
 
 export const repairCompiledContextBundle = async (tId: number, sId: number): Promise<ContextBundleRepairResult> => {
-    const tenantId = Number(tId);
-    const storeId = Number(sId);
-    if (!Number.isFinite(tenantId) || tenantId <= 0 || !Number.isFinite(storeId) || storeId <= 0) {
+    const scope = parseExactAnswerlatticeScope(tId, sId);
+    if (!scope) {
         return { status: 'failed', rebuilt: false, bundleVersion: 0, bytesTotal: 0, routes: 0, error: 'invalid_scope' };
     }
+    const { tId: tenantId, sId: storeId } = scope;
 
     const manifestRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(getAnswerlatticeBundleManifestDocId(tenantId, storeId));
     const lockRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(getAnswerlatticeBundleLockDocId(tenantId, storeId));
@@ -580,15 +586,32 @@ export const repairCompiledContextBundle = async (tId: number, sId: number): Pro
         .doc(getAnswerlatticeSourceVersionsDocId(tenantId, storeId))
         .get();
     const manifestSnap = await manifestRef.get();
-    const sourceVersions = normalizeCompiledSourceVersions(sourceVersionsSnap.exists ? sourceVersionsSnap.data() as any : null);
+    const rawSourceVersions = sourceVersionsSnap.exists ? sourceVersionsSnap.data() : null;
+    if (rawSourceVersions && (
+        rawSourceVersions.pId !== 'AL'
+        || rawSourceVersions.tId !== tenantId
+        || rawSourceVersions.sId !== storeId
+        || !areAnswerlatticeCompiledSourceVersionsValid(rawSourceVersions)
+    )) {
+        return { status: 'failed', rebuilt: false, bundleVersion: 0, bytesTotal: 0, routes: 0, error: 'invalid_source_versions' };
+    }
+    const sourceVersions = normalizeCompiledSourceVersions(rawSourceVersions);
     const existingManifest = manifestSnap.exists ? manifestSnap.data() || null : null;
+    const existingBundleVersion = resolveAnswerlatticeExistingBundleVersion(existingManifest);
+    if (existingBundleVersion === null) {
+        return { status: 'failed', rebuilt: false, bundleVersion: 0, bytesTotal: 0, routes: 0, error: 'invalid_manifest_version' };
+    }
+    const existingActiveVersion = normalizeAnswerlatticeStoredBundleVersion(existingManifest?.activeVersion) ?? 0;
+    const existingLastReadyVersion = normalizeAnswerlatticeStoredBundleVersion(existingManifest?.lastReadyVersion) ?? 0;
 
-    if (existingManifest?.status === 'ready' && compiledSourceVersionsEqual(existingManifest.sourceVersions, sourceVersions)) {
+    if (existingManifest?.status === 'ready'
+        && hasExactAnswerlatticeReadyBundleVersions(existingManifest)
+        && compiledSourceVersionsEqual(existingManifest.sourceVersions, sourceVersions)) {
         return {
             status: 'skipped',
             rebuilt: false,
             skippedReason: 'already_current',
-            bundleVersion: Number(existingManifest.bundleVersion || existingManifest.activeVersion || 0),
+            bundleVersion: existingBundleVersion,
             bytesTotal: Number(existingManifest.stats?.bytesTotal || 0),
             routes: Number(existingManifest.stats?.routes || 0),
         };
@@ -601,14 +624,17 @@ export const repairCompiledContextBundle = async (tId: number, sId: number): Pro
             status: 'skipped',
             rebuilt: false,
             skippedReason: 'build_lock_active',
-            bundleVersion: Number(existingManifest?.bundleVersion || existingManifest?.activeVersion || 0),
+            bundleVersion: existingBundleVersion,
             bytesTotal: Number(existingManifest?.stats?.bytesTotal || 0),
             routes: Number(existingManifest?.stats?.routes || 0),
         };
     }
 
     const startedAt = Timestamp.now();
-    const bundleVersion = Number(existingManifest?.bundleVersion || existingManifest?.activeVersion || 0) + 1;
+    const bundleVersion = getNextAnswerlatticeBundleVersion(existingManifest);
+    if (bundleVersion === null) {
+        return { status: 'failed', rebuilt: false, bundleVersion: existingBundleVersion, bytesTotal: 0, routes: 0, error: 'invalid_manifest_version' };
+    }
     const publicBundleId = getPublicBundleId(existingManifest, tenantId, storeId);
     const lockId = `bundle_${tenantId}_${storeId}_${Date.now()}`;
 
@@ -658,7 +684,14 @@ export const repairCompiledContextBundle = async (tId: number, sId: number): Pro
         const sourceVersionsAtEndSnap = await db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
             .doc(getAnswerlatticeSourceVersionsDocId(tenantId, storeId))
             .get();
-        const sourceVersionsAtEnd = normalizeCompiledSourceVersions(sourceVersionsAtEndSnap.exists ? sourceVersionsAtEndSnap.data() as any : null);
+        const rawSourceVersionsAtEnd = sourceVersionsAtEndSnap.exists ? sourceVersionsAtEndSnap.data() : null;
+        if (rawSourceVersionsAtEnd && (
+            rawSourceVersionsAtEnd.pId !== 'AL'
+            || rawSourceVersionsAtEnd.tId !== tenantId
+            || rawSourceVersionsAtEnd.sId !== storeId
+            || !areAnswerlatticeCompiledSourceVersionsValid(rawSourceVersionsAtEnd)
+        )) throw new Error('invalid_source_versions');
+        const sourceVersionsAtEnd = normalizeCompiledSourceVersions(rawSourceVersionsAtEnd);
         const superseded = !compiledSourceVersionsEqual(sourceVersions, sourceVersionsAtEnd);
         const stats = {
             entities: source.entities.length,
@@ -680,8 +713,8 @@ export const repairCompiledContextBundle = async (tId: number, sId: number): Pro
             sId: storeId,
             publicBundleId,
             bundleVersion,
-            activeVersion: superseded ? Number(existingManifest?.activeVersion || 0) : bundleVersion,
-            lastReadyVersion: superseded ? Number(existingManifest?.lastReadyVersion || 0) : bundleVersion,
+            activeVersion: superseded ? existingActiveVersion : bundleVersion,
+            lastReadyVersion: superseded ? existingLastReadyVersion : bundleVersion,
             status: superseded ? 'superseded' : 'ready',
             generatedAt: Timestamp.fromDate(new Date(generatedAt)),
             lastBuildStartedAt: startedAt,
@@ -735,8 +768,8 @@ export const repairCompiledContextBundle = async (tId: number, sId: number): Pro
             lastBuildError: 'build_failed',
             lastBuildCompletedAt: FieldValue.serverTimestamp(),
             staleReason: 'build_failed',
-            activeVersion: Number(existingManifest?.activeVersion || 0),
-            lastReadyVersion: Number(existingManifest?.lastReadyVersion || 0),
+            activeVersion: existingActiveVersion,
+            lastReadyVersion: existingLastReadyVersion,
         }, { merge: true });
         await lockRef.set({
             status: 'failed',
@@ -747,7 +780,7 @@ export const repairCompiledContextBundle = async (tId: number, sId: number): Pro
         return {
             status: 'failed',
             rebuilt: false,
-            bundleVersion: Number(existingManifest?.bundleVersion || existingManifest?.activeVersion || 0),
+            bundleVersion: existingBundleVersion,
             bytesTotal: Number(existingManifest?.stats?.bytesTotal || 0),
             routes: Number(existingManifest?.stats?.routes || 0),
             error: ANSWERLATTICE_CONTEXT_BUNDLE_REPAIR_FAILED,

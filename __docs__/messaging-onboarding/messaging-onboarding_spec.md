@@ -1,9 +1,11 @@
 # Messaging Onboarding — Product Specification
 
 **Feature:** Messaging Onboarding — Zero-Friction SMB Acquisition Engine
-**Status:** Implementation-Complete — WhatsApp runtime exists; checked-in provider processing defaults off until real credentials and webhook registration are configured
-**Last Updated:** July 2, 2026
+**Status:** Source-implemented, provider-disabled — not a current launch or deploy certification
+**Last Updated:** July 10, 2026
 **Source:** ChatGPT Brainstorm (Feb 16, 2026) + Cascade Architecture Validation + Deep Codebase Cross-Check (Feb 17) + Review #5 Final Spec Walkthrough + Review #6 Blocks/Stress-Test Cross-Check + Runtime Code Audit (May 17, 2026)
+
+> **Launch boundary:** Not current launch certification or deploy approval. Current source registers WhatsApp only, while checked-in Functions environments keep provider processing disabled. `/whatsapp` is informational and routes its actions to the signed-in `/create-menu` photo or public-link intake. Production use still requires current audit/runbook/local aggregate evidence, a final owned provider account, real Meta secrets, webhook registration, explicit target enablement and scoped deploy evidence, provider smoke, browser/device QA, and production-host smoke.
 
 ---
 
@@ -319,15 +321,15 @@ This prevents junk sessions from casual messages and ensures every session has a
 
 | State                   | Description                                  | Next States                                                           |
 | ----------------------- | -------------------------------------------- | --------------------------------------------------------------------- |
-| `COLLECTING_INPUT`      | Accepting uploads, intake window active      | `VALIDATING_ASSETS`, `EXPIRED`                                        |
-| `VALIDATING_ASSETS`     | AI checking which files are valid menu pages | `PROCESSING_MENU`, `AWAITING_MORE_UPLOADS`, `FAILED`                  |
-| `AWAITING_MORE_UPLOADS` | Menu too partial, accepting more uploads     | `VALIDATING_ASSETS`, `EXPIRED`                                        |
-| `PROCESSING_MENU`       | Extraction pipeline running                  | `PREVIEW_READY`, `FAILED`                                             |
-| `PREVIEW_READY`         | Preview generated, link sent                 | `AWAITING_APPROVAL`, `EXPIRED`                                        |
-| `AWAITING_APPROVAL`     | Owner viewing preview                        | `PUBLISHING`, `COLLECTING_INPUT` (restart via full resend), `EXPIRED` |
+| `COLLECTING_INPUT`      | Accepting uploads, intake window active      | `VALIDATING_ASSETS`, `EXPIRED`, `COOLDOWN`                                        |
+| `VALIDATING_ASSETS`     | AI checking which files are valid menu pages | `PROCESSING_MENU`, `AWAITING_MORE_UPLOADS`, `FAILED`, `COOLDOWN`                  |
+| `AWAITING_MORE_UPLOADS` | Menu too partial, accepting more uploads     | `VALIDATING_ASSETS`, `EXPIRED`, `COOLDOWN`                                        |
+| `PROCESSING_MENU`       | Extraction pipeline running                  | `PREVIEW_READY`, `FAILED`, `COOLDOWN`                                             |
+| `PREVIEW_READY`         | Preview generated, link sent                 | `AWAITING_APPROVAL`, `COLLECTING_INPUT` (full resend), `EXPIRED`, `COOLDOWN`      |
+| `AWAITING_APPROVAL`     | Owner viewing preview                        | `PUBLISHING`, `COLLECTING_INPUT` (restart via full resend), `EXPIRED`, `COOLDOWN` |
 | `PUBLISHING`            | Atomic publish in progress                   | `LIVE`, `AWAITING_APPROVAL` (on failure after retry), `FAILED`        |
 | `LIVE`                  | Published successfully, tunnel closed        | Terminal                                                              |
-| `FAILED`                | Processing failed, asked for reupload        | `COLLECTING_INPUT`, `EXPIRED`                                         |
+| `FAILED`                | Processing failed, asked for reupload        | `COLLECTING_INPUT`, `EXPIRED`, `COOLDOWN`                                         |
 | `EXPIRED`               | Session timed out (24h inactivity)           | Terminal                                                              |
 | `COOLDOWN`              | Phone exceeded attempt limits                | Terminal (24h)                                                        |
 
@@ -345,6 +347,8 @@ These transitions MUST NEVER occur. If detected, log as a system error and do no
 | `PUBLISHING` → `COLLECTING_INPUT`                                           | Publish failure must not lose extraction data — recovery only to `AWAITING_APPROVAL` or terminal `FAILED` |
 
 Enforce strictly in the state machine transition function. Any transition not explicitly listed in the Session States table above is forbidden by default.
+
+The third invalid upload atomically moves the active session to `COOLDOWN` and writes the per-user cooldown timestamp. A valid re-upload from `FAILED` atomically appends the source, clears stale validation/extraction/preview output, clears the bound failed job, and reopens `COLLECTING_INPUT`; it is never split across two writes.
 
 ### State Transition Diagram
 
@@ -561,7 +565,7 @@ When owner clicks "Approve & Publish", system creates everything atomically:
 1. **Tenant** — New tenant with business name, detected businessType (actual type like "Restaurant", not "B2C"), email, and tenant subdomain
 2. **Store** — New store with: business info, default roles, time slot presets, businessCategory, detected businessType, phoneNumber (from WhatsApp), defaultLanguage (from extraction), country/currency (inferred from phone country code), `onboardingSource: 'MESSAGING_ONBOARDING'`, `starterActivationStatus: 'starter_active'`, `activationDeadline` (7 days from publish), and public subdomain
 3. **User account** — Created or linked (using WhatsApp phone as identifier)
-4. **platformSummary** — Tenant/store counters incremented
+4. **platformSummary** — Collision-checked tenant/store IDs allocated and canonical counters advanced
 5. **storesSummary** — Store synced for Cloud Function optimization
 6. **Project** — Menu project with extracted data from session
 7. **projectsSummary** — Default menu slug for public URL resolution
@@ -633,7 +637,7 @@ All messages follow Language Governance — no hype, no AI language, calm profes
 | Extraction produces 0 items (blank)          | Never show blank preview. Reply: "Send clearer menu photos." Return to COLLECTING_INPUT.                                                                                                                                |
 | Publish attempted with missing critical data | Block publish. Show inline validation: "Menu must have at least 1 category and 1 item with a price."                                                                                                                    |
 | Personal/sensitive document uploaded         | Asset Intelligence flags as non-menu. Auto-delete from storage after session expiry. Never stored permanently.                                                                                                          |
-| Duplicate webhook from provider              | Deduplicate by provider message ID in `messagingOnboardingInboundMessages` using atomic create by hash ID. Skip duplicate messages without touching the session doc again.                                                |
+| Duplicate or batched webhook from provider   | Traverse every entry/change/message and BulkWriter-create each SHA-256 provider-message ID before ACK. Retry creates only missing rows. Queue retries reuse the checkpointed reply instead of rerunning completed session logic. |
 
 ---
 

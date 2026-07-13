@@ -165,7 +165,7 @@ export default function MobileOpsControlRoomScreen({ onBack }: MobileOpsControlR
 
         void Dialog.confirm({
             confirmText: 'Republish',
-            content: `Force republish active project for ${selectedStore.name || `store ${selectedStore.sId}`}.`,
+            content: `Force republish all active menu projects for ${selectedStore.name || `store ${selectedStore.sId}`}.`,
             onConfirm: async () => {
                 setRepublishLoading(true);
                 try {
@@ -177,8 +177,9 @@ export default function MobileOpsControlRoomScreen({ onBack }: MobileOpsControlR
                         throw new Error('mobile_ops_force_republish_response_invalid');
                     }
                     const verification = result.data.verification;
+                    const projectCount = result.data.projectCount;
                     Toast.show({
-                        content: `Republish triggered, verification: ${verification}`,
+                        content: `Republish triggered for ${projectCount} menu project${projectCount === 1 ? '' : 's'}, verification: ${verification}`,
                         duration: 1800
                     });
                     await loadData();

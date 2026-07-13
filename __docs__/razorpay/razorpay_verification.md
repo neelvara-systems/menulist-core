@@ -44,7 +44,7 @@
 | 1 | `functions/src/billing/reconcileSubscriptions.ts` | **CREATED** | Reconciliation logic using Admin SDK + Razorpay SDK. Exports `reconcileSubscriptions()`. Inlines state machine (mirrors `subscriptionStateMachine.ts`), lazy Razorpay client init, `DB_COLLECTIONS.SUBSCRIPTIONS` for Firestore queries. |
 | 2 | `functions/package.json` | MODIFIED | Added `razorpay: ^2.9.6` dependency |
 | 3 | `functions/src/constants/features.ts` | MODIFIED | Added `ENABLE_SUBSCRIPTION_RECONCILIATION` feature flag with JSDoc |
-| 4 | `functions/src/decisionBlocksScoring.ts` | MODIFIED | (a) Import `reconcileSubscriptions`, (b) Added `secrets: ['RAZORPAY_KEY_ID', 'RAZORPAY_KEY_SECRET']` to scheduler config, (c) Added reconciliation call block after guest feedback retention |
+| 4 | `functions/src/schedulers/menulistMaintenanceScheduler.ts` | MODIFIED | Owns the leased `subscription_reconciliation` task and the Razorpay secrets needed only by that operational task |
 | 5 | `vercel.json` | MODIFIED | Removed Vercel cron for `/api/internal/reconcile-subscriptions` |
 | 6 | `src/app/api/internal/reconcile-subscriptions/route.ts` | REMOVED | Deprecated Vercel fallback route removed after Firebase scheduler migration |
 | 7 | `__docs__/razorpay/README.md` | MODIFIED | Updated reconciliation line in Key Architecture Facts, added `razorpay_firebase.md` to documents table, updated date |
@@ -60,7 +60,7 @@
 ### Why migrate from Vercel to Firebase Functions?
 
 1. **Timeout:** Vercel serverless functions have a 10s timeout (free) / 60s (pro). Firebase Functions v2 allows 540s (9 min). Reconciliation iterates over all active subscriptions sequentially — with 100+ stores, Vercel would time out.
-2. **No extra cron:** A nightly scheduler already runs at 2:30 AM UTC for Decision Blocks, Menu Intelligence, Authority Maturation, Menu Drift, and Guest Feedback Retention. Adding reconciliation as another non-blocking task eliminates a separate Vercel Cron dependency.
+2. **No extra cron:** The consolidated maintenance scheduler owns reconciliation as a 2:20 AM UTC leased task. Decision Blocks remains limited to store-EOD analytics/intelligence, and no separate Vercel Cron or standalone scheduled function is added.
 3. **Same infrastructure:** Firebase Functions use the service account — no CRON_SECRET needed. Razorpay keys are managed as Firebase secrets, same as other sensitive configs.
 
 ### Why inline the state machine instead of sharing?

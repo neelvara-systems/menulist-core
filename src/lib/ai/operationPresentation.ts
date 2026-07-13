@@ -98,6 +98,9 @@ export const formatAiOperationActionLabel = (
     if (action === AI_ACTIONS_TYPES.ANSWERLATTICE_FRICTION_INSIGHT) {
         return translate(translator, `actions.${action}`, "Friction insight");
     }
+    if (action === AI_ACTIONS_TYPES.ANSWERLATTICE_ANSWER_TEST) {
+        return translate(translator, `actions.${action}`, "Answer test");
+    }
 
     return translate(translator, `actions.${action}`, formatActionFallback(action));
 };

@@ -2,7 +2,10 @@
 
 **Status:** Research complete
 **Reviewed:** June 2, 2026
+**Boundary Reviewed:** July 10, 2026
 **Purpose:** Convert web research into product decisions for the routed Menu Card Export feature.
+
+> **Launch boundary:** Not current launch certification or deploy approval. This document records source-gated Menu Card Export evidence only. Market research and product-direction notes do not approve implementation or release. Current release approval still requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md), `npm run verify:production-readiness-local`, Digital Menu Output Constitution checks for print/menu outputs, `npm run verify:menu-card-export`, authenticated desktop/mobile browser QA, visual PDF and print-shop artifact review, provider smoke for the AI advisor where enabled, applicable target deploy evidence, and production-host smoke.
 
 ---
 

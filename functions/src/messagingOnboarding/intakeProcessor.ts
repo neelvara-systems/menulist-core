@@ -7,29 +7,38 @@
  * @see __docs__/messaging-onboarding/messaging-onboarding_impl.md §7 Phase 2
  */
 
-import { FieldValue, Timestamp } from "firebase-admin/firestore";
+import { Timestamp } from "firebase-admin/firestore";
 import * as functions from "firebase-functions";
 import { DB_COLLECTIONS } from "../constants/database";
 import { firestoreAdmin } from "../firebaseAdmin";
 import {
-  buildMenuExtractionRoutingFields,
-  buildMessagingOnboardingMenuExtractionDestination,
-  MENU_EXTRACTION_SOURCES,
-} from "../sharedData/menuExtractionJob";
-import {
   FALLBACK_BUSINESS_TYPE,
   resolveStoreBusinessCategory,
 } from "../sharedData/businessTypes";
-import { MENU_IMAGE_PROCESSING_JOBS_COLLECTION } from "../types";
 import {
   MessagingOnboardingSession,
   MessagingOnboardingState,
 } from "../types/messagingOnboarding.types";
 import { validateAssets } from "./assetIntelligence";
-import { FEATURE_FLAGS, MESSAGES, PROCESSING, RATE_LIMITS } from "./constants";
+import { FEATURE_FLAGS, MESSAGES } from "./constants";
+import {
+  claimMessagingIntakeSession,
+  commitMessagingAssetValidation,
+  enqueueMessagingExtractionJob,
+  failMessagingAssetValidation,
+} from "./extractionLifecycle";
+import type { MessagingLifecycleSession } from "./extractionLifecycle";
 import { logOnboardingEvent, maskUserId } from "./eventLogger";
 import { recordMessagingOnboardingHealth } from "./healthMonitor";
 import { drainPendingInboundMessages } from "./inboundQueue";
+import {
+  claimMessagingPendingMessage,
+  completeMessagingPendingMessage,
+  MessagingPendingMessageClaim,
+  MessagingPendingMessageKind,
+  MessagingPendingMessageSession,
+  releaseMessagingPendingMessage,
+} from "./messageDeliveryLease";
 import { getProviderAdapter } from "./providers/providerRegistry";
 import { transitionState } from "./sessionEngine";
 
@@ -37,7 +46,8 @@ const logger = functions.logger;
 const db = firestoreAdmin;
 const sessionsCol = DB_COLLECTIONS.MESSAGING_ONBOARDING_SESSIONS;
 const INTAKE_PROVIDER_MESSAGE_SEND_FAILED_CODE = "INTAKE_PROVIDER_MESSAGE_SEND_FAILED";
-const INTAKE_RATE_LIMIT_COUNTER_UPDATE_FAILED_CODE = "INTAKE_RATE_LIMIT_COUNTER_UPDATE_FAILED";
+const INTAKE_MESSAGE_LEASE_RELEASE_FAILED_CODE = "INTAKE_MESSAGE_LEASE_RELEASE_FAILED";
+const INTAKE_ASSET_VALIDATION_RETRY_FAILED_CODE = "INTAKE_ASSET_VALIDATION_RETRY_FAILED";
 
 function getIntakeProcessorErrorContext(error: unknown): {
   errorName: string;
@@ -68,7 +78,7 @@ function getIntakeProcessorIdLogContext(
 }
 
 function logProviderMessageSendFailed(
-  session: MessagingOnboardingSession,
+  session: Pick<MessagingOnboardingSession, "provider" | "sessionId">,
   messageTrigger: string,
   sessionState: MessagingOnboardingState,
   error: unknown,
@@ -83,16 +93,51 @@ function logProviderMessageSendFailed(
   });
 }
 
-function logProcessingRunCounterUpdateFailed(
-  session: MessagingOnboardingSession,
-  error: unknown,
+function logLifecycleSessionExpired(
+  session: MessagingLifecycleSession,
+  previousState: MessagingOnboardingState,
 ): void {
-  logger.warn("[IntakeProcessor] Processing run counter update failed", {
-    failureCode: INTAKE_RATE_LIMIT_COUNTER_UPDATE_FAILED_CODE,
+  logOnboardingEvent({
+    eventType: "SESSION_EXPIRED",
+    metadata: { previousState },
     provider: session.provider,
-    sessionState: "VALIDATING_ASSETS",
-    ...getIntakeProcessorIdLogContext("sessionId", session.sessionId),
-    ...getIntakeProcessorErrorContext(error),
+    sessionCreatedAt: session.createdAt,
+    sessionId: session.sessionId,
+    sessionState: "EXPIRED",
+    userIdMasked: maskUserId(session.providerUserId),
+  });
+}
+
+async function releasePendingMessageLease(
+  kind: MessagingPendingMessageKind,
+  claim: { leaseToken: string; session: MessagingPendingMessageSession },
+): Promise<void> {
+  try {
+    await releaseMessagingPendingMessage({
+      kind,
+      leaseToken: claim.leaseToken,
+      sessionId: claim.session.sessionId,
+    });
+  } catch (error) {
+    logger.warn("[IntakeProcessor] Pending message lease release failed", {
+      failureCode: INTAKE_MESSAGE_LEASE_RELEASE_FAILED_CODE,
+      kind,
+      ...getIntakeProcessorIdLogContext("sessionId", claim.session.sessionId),
+      ...getIntakeProcessorErrorContext(error),
+    });
+  }
+}
+
+function logDiscardedPendingMessage(
+  kind: MessagingPendingMessageKind,
+  sessionId: string,
+  claim: Extract<MessagingPendingMessageClaim, { status: "discarded" }>,
+): void {
+  logger.error("[IntakeProcessor] Invalid pending message discarded", {
+    failureCode: "INTAKE_PENDING_MESSAGE_INVALID",
+    kind,
+    reason: claim.reason,
+    ...getIntakeProcessorIdLogContext("sessionId", sessionId),
   });
 }
 
@@ -115,7 +160,7 @@ export async function intakeProcessorLogic(): Promise<{
   let errors = 0;
 
   try {
-    const inbound = await drainPendingInboundMessages(20);
+    const inbound = await drainPendingInboundMessages(2);
     inboundProcessed = inbound.processed;
     errors += inbound.failed;
     if (inbound.processed > 0 || inbound.retryScheduled > 0 || inbound.failed > 0) {
@@ -135,16 +180,17 @@ export async function intakeProcessorLogic(): Promise<{
     .where("state", "in", [
       "COLLECTING_INPUT",
       "AWAITING_MORE_UPLOADS",
-    ] as MessagingOnboardingState[])
+    ] satisfies MessagingOnboardingState[])
     .where("intakeExpiresAt", "<=", now)
-    .limit(10) // Process max 10 per run to avoid timeout
+    .limit(2) // Scan past one corrupt/raced row while still running at most one model session.
     .get();
 
   for (const doc of collectingSnapshot.docs) {
     try {
-      const session = doc.data() as MessagingOnboardingSession;
-      await processSession(session);
-      processed++;
+      if (await processSession(doc.id)) {
+        processed++;
+        break;
+      }
     } catch (err) {
       logger.error("[IntakeProcessor] Error processing session", {
         ...getIntakeProcessorIdLogContext("sessionId", doc.id),
@@ -177,13 +223,27 @@ async function sendPendingPreviewMessages(): Promise<void> {
       .collection(sessionsCol)
       .where("state", "==", "AWAITING_APPROVAL")
       .where("previewMessagePending", "==", true)
-      .limit(10)
+      .limit(1)
       .get();
 
     for (const doc of pendingSnapshot.docs) {
+      let deliveryClaim: MessagingPendingMessageClaim | null = null;
       try {
-        const session = doc.data() as MessagingOnboardingSession;
-        if (!session.previewUrl) continue;
+        deliveryClaim = await claimMessagingPendingMessage({
+          expectedState: "AWAITING_APPROVAL",
+          kind: "preview",
+          sessionId: doc.id,
+        });
+        if (!deliveryClaim) continue;
+        if (deliveryClaim.status === "discarded") {
+          logDiscardedPendingMessage("preview", doc.id, deliveryClaim);
+          continue;
+        }
+        const session = deliveryClaim.session;
+        if (!session.previewUrl) {
+          await releasePendingMessageLease("preview", deliveryClaim);
+          continue;
+        }
 
         const adapter = getProviderAdapter(session.provider);
         await adapter.sendLinkMessage(
@@ -193,9 +253,10 @@ async function sendPendingPreviewMessages(): Promise<void> {
           "View Preview",
         );
 
-        await db.collection(sessionsCol).doc(session.sessionId).update({
-          previewMessagePending: false,
-          updatedAt: Timestamp.now(),
+        await completeMessagingPendingMessage({
+          kind: "preview",
+          leaseToken: deliveryClaim.leaseToken,
+          sessionId: session.sessionId,
         });
 
         logOnboardingEvent({
@@ -212,6 +273,9 @@ async function sendPendingPreviewMessages(): Promise<void> {
           ...getIntakeProcessorIdLogContext("sessionId", session.sessionId),
         });
       } catch (err) {
+        if (deliveryClaim?.status === "claimed") {
+          await releasePendingMessageLease("preview", deliveryClaim);
+        }
         logger.error("[IntakeProcessor] Failed to send pending preview link", {
           ...getIntakeProcessorIdLogContext("sessionId", doc.id),
           ...getIntakeProcessorErrorContext(err),
@@ -237,13 +301,27 @@ async function sendPendingPublishConfirmations(): Promise<void> {
       .collection(sessionsCol)
       .where("state", "==", "LIVE")
       .where("confirmationPending", "==", true)
-      .limit(10)
+      .limit(1)
       .get();
 
     for (const doc of pendingSnapshot.docs) {
+      let deliveryClaim: MessagingPendingMessageClaim | null = null;
       try {
-        const session = doc.data() as MessagingOnboardingSession;
-        if (!session.publishedResult) continue;
+        deliveryClaim = await claimMessagingPendingMessage({
+          expectedState: "LIVE",
+          kind: "confirmation",
+          sessionId: doc.id,
+        });
+        if (!deliveryClaim) continue;
+        if (deliveryClaim.status === "discarded") {
+          logDiscardedPendingMessage("confirmation", doc.id, deliveryClaim);
+          continue;
+        }
+        const session = deliveryClaim.session;
+        if (!session.publishedResult) {
+          await releasePendingMessageLease("confirmation", deliveryClaim);
+          continue;
+        }
 
         const adapter = getProviderAdapter(session.provider);
         const { publicUrl, dashboardUrl } = session.publishedResult;
@@ -255,10 +333,10 @@ async function sendPendingPublishConfirmations(): Promise<void> {
           "View Menu",
         );
 
-        // Clear the pending flag
-        await db.collection(sessionsCol).doc(session.sessionId).update({
-          confirmationPending: false,
-          updatedAt: Timestamp.now(),
+        await completeMessagingPendingMessage({
+          kind: "confirmation",
+          leaseToken: deliveryClaim.leaseToken,
+          sessionId: session.sessionId,
         });
 
         logOnboardingEvent({
@@ -275,6 +353,9 @@ async function sendPendingPublishConfirmations(): Promise<void> {
           ...getIntakeProcessorIdLogContext("sessionId", session.sessionId),
         });
       } catch (err) {
+        if (deliveryClaim?.status === "claimed") {
+          await releasePendingMessageLease("confirmation", deliveryClaim);
+        }
         logger.error("[IntakeProcessor] Failed to send publish confirmation", {
           ...getIntakeProcessorIdLogContext("sessionId", doc.id),
           ...getIntakeProcessorErrorContext(err),
@@ -300,12 +381,23 @@ async function sendPendingFixMessages(): Promise<void> {
       .collection(sessionsCol)
       .where("state", "==", "COLLECTING_INPUT")
       .where("fixMessagePending", "==", true)
-      .limit(10)
+      .limit(1)
       .get();
 
     for (const doc of pendingSnapshot.docs) {
+      let deliveryClaim: MessagingPendingMessageClaim | null = null;
       try {
-        const session = doc.data() as MessagingOnboardingSession;
+        deliveryClaim = await claimMessagingPendingMessage({
+          expectedState: "COLLECTING_INPUT",
+          kind: "fix",
+          sessionId: doc.id,
+        });
+        if (!deliveryClaim) continue;
+        if (deliveryClaim.status === "discarded") {
+          logDiscardedPendingMessage("fix", doc.id, deliveryClaim);
+          continue;
+        }
+        const session = deliveryClaim.session;
         const adapter = getProviderAdapter(session.provider);
 
         await adapter.sendTextMessage(
@@ -313,10 +405,10 @@ async function sendPendingFixMessages(): Promise<void> {
           MESSAGES.FIX_REQUEST_ACKNOWLEDGED,
         );
 
-        // Clear the pending flag
-        await db.collection(sessionsCol).doc(session.sessionId).update({
-          fixMessagePending: false,
-          updatedAt: Timestamp.now(),
+        await completeMessagingPendingMessage({
+          kind: "fix",
+          leaseToken: deliveryClaim.leaseToken,
+          sessionId: session.sessionId,
         });
 
         logOnboardingEvent({
@@ -329,6 +421,9 @@ async function sendPendingFixMessages(): Promise<void> {
           sessionCreatedAt: session.createdAt,
         });
       } catch (err) {
+        if (deliveryClaim?.status === "claimed") {
+          await releasePendingMessageLease("fix", deliveryClaim);
+        }
         logger.error("[IntakeProcessor] Failed to send fix message", {
           ...getIntakeProcessorIdLogContext("sessionId", doc.id),
           ...getIntakeProcessorErrorContext(err),
@@ -346,46 +441,37 @@ async function sendPendingFixMessages(): Promise<void> {
  * Process a single session whose intake window has closed.
  */
 async function processSession(
-  session: MessagingOnboardingSession,
-): Promise<void> {
-  const sessionRef = db.collection(sessionsCol).doc(session.sessionId);
+  sessionId: string,
+): Promise<boolean> {
+  const claim = await claimMessagingIntakeSession(sessionId);
+  if (claim.status === "invalid") {
+    throw new Error("MESSAGING_INTAKE_SESSION_QUARANTINED");
+  }
+  if (claim.status === "skipped" || !claim.session) return false;
+
+  const session = claim.session;
   const userMasked = maskUserId(session.providerUserId);
 
-  logOnboardingEvent({
-    sessionId: session.sessionId,
-    provider: session.provider,
-    eventType: "INTAKE_WINDOW_CLOSED",
-    sessionState: session.state,
-    userIdMasked: userMasked,
-    metadata: { uploadCount: session.uploads.length },
-    sessionCreatedAt: session.createdAt,
-  });
-
-  // Check if we have any uploads
-  if (session.uploads.length === 0) {
-    // No uploads — expire session silently
-    await transitionState(
-      session.sessionId,
-      session.state,
-      "EXPIRED",
-      "No uploads received before intake window closed",
-      { _provider: session.provider, _userIdMasked: userMasked },
-    );
-    return;
+  if (claim.status === "expired") {
+    logOnboardingEvent({
+      sessionId: session.sessionId,
+      provider: session.provider,
+      eventType: "SESSION_EXPIRED",
+      sessionState: "EXPIRED",
+      userIdMasked: userMasked,
+      sessionCreatedAt: session.createdAt,
+    });
+    return true;
   }
 
-  // Check extraction cost cap — per-session (INV-3)
-  if (session.processingRuns >= PROCESSING.MAX_PROCESSING_RUNS_PER_SESSION) {
+  if (claim.status === "session_cap" || claim.status === "weekly_cap") {
     const adapter = getProviderAdapter(session.provider);
     try {
-      await adapter.sendTextMessage(
-        session.providerUserId,
-        MESSAGES.EXTRACTION_CAP_REACHED,
-      );
+      await adapter.sendTextMessage(session.providerUserId, MESSAGES.EXTRACTION_CAP_REACHED);
     } catch (err) {
       logProviderMessageSendFailed(
         session,
-        "session_processing_cap_reached",
+        claim.status,
         session.state,
         err,
       );
@@ -397,60 +483,24 @@ async function processSession(
       eventType: "EXTRACTION_FAILED",
       sessionState: session.state,
       userIdMasked: userMasked,
-      metadata: { reason: "extraction_cap_reached", runs: session.processingRuns },
+      metadata: {
+        reason: claim.status,
+        runs: session.processingRuns,
+      },
       sessionCreatedAt: session.createdAt,
     });
-    return;
+    return true;
   }
 
-  // Check extraction cost cap — per-week (spec §Abuse Prevention: "Max processing runs per week per phone: 5")
-  const crypto = await import("crypto");
-  const userHash = crypto
-    .createHash("sha256")
-    .update(`${session.provider}:${session.providerUserId}`)
-    .digest("hex");
-  const rateLimitDoc = await db
-    .collection(DB_COLLECTIONS.MESSAGING_ONBOARDING_RATE_LIMITS)
-    .doc(userHash)
-    .get();
-  if (rateLimitDoc.exists) {
-    const rateLimit = rateLimitDoc.data()!;
-    if ((rateLimit.processingRunsThisWeek || 0) >= RATE_LIMITS.MAX_PROCESSING_RUNS_PER_WEEK) {
-      const adapter = getProviderAdapter(session.provider);
-      try {
-        await adapter.sendTextMessage(
-          session.providerUserId,
-          MESSAGES.EXTRACTION_CAP_REACHED,
-        );
-      } catch (err) {
-        logProviderMessageSendFailed(
-          session,
-          "weekly_processing_cap_reached",
-          session.state,
-          err,
-        );
-      }
-      logOnboardingEvent({
-        sessionId: session.sessionId,
-        provider: session.provider,
-        eventType: "EXTRACTION_FAILED",
-        sessionState: session.state,
-        userIdMasked: userMasked,
-        metadata: { reason: "weekly_processing_cap_reached", runs: rateLimit.processingRunsThisWeek },
-        sessionCreatedAt: session.createdAt,
-      });
-      return;
-    }
-  }
-
-  // Transition to VALIDATING_ASSETS
-  await transitionState(
-    session.sessionId,
-    session.state,
-    "VALIDATING_ASSETS",
-    "Intake window closed, starting validation",
-    { _provider: session.provider, _userIdMasked: userMasked },
-  );
+  logOnboardingEvent({
+    sessionId: session.sessionId,
+    provider: session.provider,
+    eventType: "INTAKE_WINDOW_CLOSED",
+    sessionState: session.state,
+    userIdMasked: userMasked,
+    metadata: { uploadCount: session.uploads.length },
+    sessionCreatedAt: session.createdAt,
+  });
 
   // Run Asset Intelligence
   logOnboardingEvent({
@@ -465,7 +515,7 @@ async function processSession(
 
   let validationResult;
   try {
-    validationResult = await validateAssets(session.uploads);
+    validationResult = await validateAssets(session.sessionId, session.uploads);
   } catch (err) {
     logger.error("[IntakeProcessor] Asset validation failed", {
       ...getIntakeProcessorIdLogContext("sessionId", session.sessionId),
@@ -485,35 +535,41 @@ async function processSession(
       sessionCreatedAt: session.createdAt,
     });
 
-    // Retry once
-    try {
-      validationResult = await validateAssets(session.uploads);
-    } catch (retryErr) {
-      // Ask user for clearer photos
-      await transitionState(
-        session.sessionId,
-        "VALIDATING_ASSETS",
-        "FAILED",
-        "Asset validation failed after retry",
-        { _provider: session.provider, _userIdMasked: userMasked },
-      );
-
-      const adapter = getProviderAdapter(session.provider);
-      try {
-        await adapter.sendTextMessage(
-          session.providerUserId,
-          MESSAGES.ASK_CLEARER_PHOTOS,
-        );
-      } catch (sendErr) {
-        logProviderMessageSendFailed(
-          session,
-          "asset_validation_retry_failed",
-          "FAILED",
-          sendErr,
-        );
-      }
-      return;
+    // The AI gateway owns bounded transport retries. validateAssets retries only
+    // malformed semantic output against the same prepared model inputs.
+    const failureStatus = await failMessagingAssetValidation({
+      expectedUploads: session.uploads,
+      sessionId: session.sessionId,
+    });
+    if (failureStatus === "expired") {
+      logLifecycleSessionExpired(session, "VALIDATING_ASSETS");
+      return true;
     }
+    if (failureStatus !== "failed") {
+      logger.warn("[IntakeProcessor] Asset validation failure reopened intake", {
+        failureCode: INTAKE_ASSET_VALIDATION_RETRY_FAILED_CODE,
+        reason: "asset_validation_retry_failed",
+        failureStatus,
+        ...getIntakeProcessorIdLogContext("sessionId", session.sessionId),
+      });
+      return true;
+    }
+
+    const adapter = getProviderAdapter(session.provider);
+    try {
+      await adapter.sendTextMessage(
+        session.providerUserId,
+        MESSAGES.ASK_CLEARER_PHOTOS,
+      );
+    } catch (sendErr) {
+      logProviderMessageSendFailed(
+        session,
+        "asset_validation_failed",
+        "FAILED",
+        sendErr,
+      );
+    }
+    return true;
   }
 
   logOnboardingEvent({
@@ -535,11 +591,11 @@ async function processSession(
   // Map file indices to upload IDs
   const validUploadIds = validationResult.valid_menu_files
     .map((idx) => session.uploads[idx - 1]?.id)
-    .filter(Boolean) as string[];
+    .filter((id): id is string => typeof id === "string");
 
   const invalidUploadIds = validationResult.invalid_files
     .map((idx) => session.uploads[idx - 1]?.id)
-    .filter(Boolean) as string[];
+    .filter((id): id is string => typeof id === "string");
 
   // Store validation results
   const bizType = validationResult.detected_business_type || {};
@@ -559,27 +615,35 @@ async function processSession(
       ? "ai"
       : "fallback";
 
-  await sessionRef.update({
-    validMenuFiles: validUploadIds,
-    invalidFiles: invalidUploadIds,
-    menuCompleteness: validationResult.menu_completeness,
-    validationConfidence: validationResult.confidence,
-    extractedBusinessInfo: validationResult.extracted_business_info
-      ? {
-        businessName: validationResult.extracted_business_info.business_name,
-        phoneNumber: validationResult.extracted_business_info.phone_number,
-        address: validationResult.extracted_business_info.address,
-        logoPresent: validationResult.extracted_business_info.logo_present,
-        cuisineHint: validationResult.extracted_business_info.cuisine_hint,
-        confidence: validationResult.extracted_business_info.confidence,
-      }
-      : null,
-    detectedBusinessType,
-    detectedBusinessCategory,
-    typeConfidence: typeConfidence || "low",
-    typeSource,
-    updatedAt: Timestamp.now(),
+  const validationCommit = await commitMessagingAssetValidation({
+    data: {
+      detectedBusinessCategory,
+      detectedBusinessType,
+      extractedBusinessInfo: validationResult.extracted_business_info
+        ? {
+          businessName: validationResult.extracted_business_info.business_name,
+          phoneNumber: validationResult.extracted_business_info.phone_number,
+          address: validationResult.extracted_business_info.address,
+          logoPresent: validationResult.extracted_business_info.logo_present,
+          cuisineHint: validationResult.extracted_business_info.cuisine_hint,
+          confidence: validationResult.extracted_business_info.confidence,
+        }
+        : null,
+      invalidFiles: invalidUploadIds,
+      menuCompleteness: validationResult.menu_completeness,
+      typeConfidence: typeConfidence || "low",
+      typeSource,
+      validationConfidence: validationResult.confidence,
+      validMenuFiles: validUploadIds,
+    },
+    expectedUploads: session.uploads,
+    sessionId: session.sessionId,
   });
+  if (validationCommit === "expired") {
+    logLifecycleSessionExpired(session, "VALIDATING_ASSETS");
+    return true;
+  }
+  if (validationCommit !== "committed") return true;
 
   // Check: are there any valid menu files?
   if (validUploadIds.length === 0) {
@@ -607,7 +671,7 @@ async function processSession(
           err,
         );
       }
-      return;
+      return true;
     }
 
     // Some files but all invalid — ask for menu photos specifically
@@ -633,7 +697,7 @@ async function processSession(
         err,
       );
     }
-    return;
+    return true;
   }
 
   // Check: is menu complete enough?
@@ -660,6 +724,7 @@ async function processSession(
     businessType: detectedBusinessType,
     businessCategory: detectedBusinessCategory,
   });
+  return true;
 }
 
 /**
@@ -667,17 +732,50 @@ async function processSession(
  * @see __docs__/messaging-onboarding/messaging-onboarding_impl.md §8.1, §19.3
  */
 async function triggerExtraction(
-  session: MessagingOnboardingSession,
+  session: MessagingLifecycleSession,
   validUploadIds: string[],
   detected: { businessType: string; businessCategory: string },
 ): Promise<void> {
-  const sessionRef = db.collection(sessionsCol).doc(session.sessionId);
   const userMasked = maskUserId(session.providerUserId);
-
-  // Get valid upload objects
-  const validUploads = session.uploads.filter((u) =>
-    validUploadIds.includes(u.id),
+  const businessType = detected.businessType || session.detectedBusinessType || FALLBACK_BUSINESS_TYPE;
+  const businessCategory = resolveStoreBusinessCategory(
+    businessType,
+    detected.businessCategory || session.detectedBusinessCategory || undefined,
   );
+  const enqueueResult = await enqueueMessagingExtractionJob({
+    businessCategory,
+    businessType,
+    sessionId: session.sessionId,
+    validUploadIds,
+  });
+
+  if (enqueueResult.status === "expired") {
+    logLifecycleSessionExpired(session, "VALIDATING_ASSETS");
+    return;
+  }
+
+  if (enqueueResult.status === "session_cap" || enqueueResult.status === "weekly_cap") {
+    const capAdapter = getProviderAdapter(session.provider);
+    try {
+      await capAdapter.sendTextMessage(session.providerUserId, MESSAGES.EXTRACTION_CAP_REACHED);
+    } catch (err) {
+      logProviderMessageSendFailed(
+        session,
+        enqueueResult.status,
+        "AWAITING_MORE_UPLOADS",
+        err,
+      );
+    }
+    return;
+  }
+
+  if (enqueueResult.status !== "created") {
+    logger.warn("[IntakeProcessor] Extraction enqueue skipped after validation", {
+      ...getIntakeProcessorIdLogContext("sessionId", session.sessionId),
+      sessionState: session.state,
+    });
+    return;
+  }
 
   // Send progress message (INV-8: System Presence)
   const adapter = getProviderAdapter(session.provider);
@@ -699,72 +797,12 @@ async function triggerExtraction(
     sessionId: session.sessionId,
     provider: session.provider,
     eventType: "EXTRACTION_STARTED",
-    sessionState: "VALIDATING_ASSETS",
+    sessionState: "PROCESSING_MENU",
     userIdMasked: userMasked,
     metadata: {
-      validFileCount: validUploads.length,
-      processingRun: session.processingRuns + 1,
+      validFileCount: validUploadIds.length,
+      processingRun: enqueueResult.processingRun,
     },
     sessionCreatedAt: session.createdAt,
   });
-
-  // Create extraction job directly via Admin SDK (§19.3 — no NextAuth)
-  const jobData = {
-    projectId: `msg-onboarding-${session.sessionId}`,
-    files: validUploads.map((f) => ({
-      uid: f.id,
-      name: f.fileName || f.id,
-      size: f.fileSize,
-      type: f.mimeType,
-      url: f.storageUrl,
-    })),
-    targetLanguages: [{ code: "en", name: "English" }],
-    action: "IMAGE_PROCESSING",
-    businessType: detected.businessType || session.detectedBusinessType || FALLBACK_BUSINESS_TYPE,
-    businessCategory: resolveStoreBusinessCategory(
-      detected.businessType || session.detectedBusinessType || FALLBACK_BUSINESS_TYPE,
-      detected.businessCategory || session.detectedBusinessCategory || undefined,
-    ),
-    ...buildMenuExtractionRoutingFields(buildMessagingOnboardingMenuExtractionDestination(session.sessionId)),
-    source: MENU_EXTRACTION_SOURCES.MESSAGING_ONBOARDING,
-    skipProjectSave: true,
-    status: "pending",
-    progress: 0,
-    currentStep: "Queued",
-    createdAt: Timestamp.now(),
-    updatedAt: Timestamp.now(),
-  };
-
-  const jobRef = await db
-    .collection(MENU_IMAGE_PROCESSING_JOBS_COLLECTION)
-    .add(jobData);
-
-  // Update session
-  await sessionRef.update({
-    extractionJobId: jobRef.id,
-    processingRuns: session.processingRuns + 1,
-    updatedAt: Timestamp.now(),
-  });
-
-  // Increment weekly processing runs counter (spec §Abuse Prevention)
-  const extractionUserHash = require("crypto")
-    .createHash("sha256")
-    .update(`${session.provider}:${session.providerUserId}`)
-    .digest("hex");
-  await db
-    .collection(DB_COLLECTIONS.MESSAGING_ONBOARDING_RATE_LIMITS)
-    .doc(extractionUserHash)
-    .update({ processingRunsThisWeek: FieldValue.increment(1) })
-    .catch((err) => {
-      logProcessingRunCounterUpdateFailed(session, err);
-    });
-
-  // Transition to PROCESSING_MENU
-  await transitionState(
-    session.sessionId,
-    "VALIDATING_ASSETS",
-    "PROCESSING_MENU",
-    "Extraction job created",
-    { _provider: session.provider, _userIdMasked: userMasked },
-  );
 }

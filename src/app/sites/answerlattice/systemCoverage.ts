@@ -50,6 +50,10 @@ export const ANSWERLATTICE_SYSTEM_COVERAGE = [
                 detail: 'Owners can track selected support gaps, private notes, status history, assignee context, and answer-proposal handoff without mirroring every ticket by default.',
             },
             {
+                title: 'Known issues and owner brief',
+                detail: 'Owners can publish a contextual, expiring widget notice for a temporary issue and use a read-only summary assistant to find the governed review screen that needs attention.',
+            },
+            {
                 title: 'Changelog awareness',
                 detail: 'Release notes can be tied to surfaces, entities, tags, and support content that may need review.',
             },
@@ -83,6 +87,10 @@ export const ANSWERLATTICE_SYSTEM_COVERAGE = [
                 title: 'Trust and readiness metrics',
                 detail: 'Coverage, stale-answer pressure, failing entities, and escalation pressure are summarized for owners without raw log hunting.',
             },
+            {
+                title: 'Answer tests and release checks',
+                detail: 'Critical questions can be saved and checked against approved-answer behavior, with release-scoped runs and rollback proposals that never overwrite live answers automatically.',
+            },
         ],
     },
     {
@@ -108,6 +116,14 @@ export const ANSWERLATTICE_SYSTEM_COVERAGE = [
             {
                 title: 'Runtime verification',
                 detail: 'Widget config, allowed origins, blocked routes, context checks, compiled bundle status, and install status stay visible to the owner.',
+            },
+            {
+                title: 'Verified context and bounded evidence',
+                detail: 'Optional short-lived signed visitor claims and exact-host HTTPS evidence links improve support context without accepting workspace scope from the browser or recording user sessions.',
+            },
+            {
+                title: 'Support-truth portability',
+                detail: 'Authorized owners can request a complete bounded JSON export of approved support structure while tickets, conversations, secrets, and audit internals remain excluded.',
             },
             {
                 title: 'Separate Firebase mode',

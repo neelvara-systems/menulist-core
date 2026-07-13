@@ -1,7 +1,7 @@
 # Answerlattice — Self-Sellable Product Strategy and Task List
 
-> **Status:** Strategy Logged
-> **Last Updated:** 2026-06-06
+> **Status:** Active operating strategy
+> **Last Updated:** 2026-07-11
 > **Owner:** Answerlattice Product
 > **Audience:** Product, Engineering, Website, Sales
 > **Doctrine:** Must follow `doctrine/01-core-doctrine.md`, `02-non-goals-charter.md`, and `03-infrastructure-freeze-v1.md`
@@ -23,6 +23,25 @@ The durable category is:
 This keeps Answerlattice aligned with the locked doctrine: knowledge is the spine, canonical answers come before generation, and tickets/chat remain fallback signal sources rather than the product center.
 
 Website and campaign copy may refer to "vibe-coded" SaaS only as an SEO or campaign wedge. The core brand should use "AI-built SaaS", "AI-native SaaS founders", "solo founders", and "small SaaS teams" so the product stays credible for serious operators and does not sound like a prototype-only tool.
+
+## Aidbase Competitor Response - July 11, 2026
+
+Source review used Aidbase's current [homepage](https://www.aidbase.ai/), [pricing](https://www.aidbase.ai/pricing), [security page](https://www.aidbase.ai/security), [DPA](https://www.aidbase.ai/dpa), and [setup documentation](https://docs.aidbase.ai/). This is a point-in-time market review, not a permanent claim about the competitor.
+
+Aidbase currently presents a broad support suite: AI chatbot, ticket forms, unified email inbox, knowledge base, hosted pages, integrations, APIs and webhooks. Its current public monthly plans are $29, $39 and $199, each with a seven-day trial; its packaging emphasizes message volume, chatbot and ticket-form counts, team size, knowledge correction, branding removal and optional customer-provided model access.
+
+AnswerLattice should not match that feature grid. Aidbase is strongest as a low-friction all-in-one support tool. AnswerLattice's defensible category remains governed answer infrastructure.
+
+| Competitive decision | AnswerLattice response | Current source state |
+| --- | --- | --- |
+| Copy fast setup clarity | Carry the selected Starter, Growth or Studio plan into setup, show INR and USD, and make retries recover the same provisioning attempt. | Implemented; provider-backed browser certification remains a release gate. |
+| Copy visible proof | Show one deterministic governance event from conflicting sources to approval, release drift, refusal, correction and audit evidence. | Implemented at `/demo` without Firebase or AI calls. |
+| Copy buyer trust discipline | Publish the real provider map, implemented retention windows and current legal/certification gaps. | Implemented at `/trust`; no unsupported certification, DPA, residency or deletion claim. |
+| Reject helpdesk breadth | Do not build a unified inbox, agent routing, personas, chatbot-count competition or native ticketing as the product center. | Preserved by doctrine and non-goals. |
+| Reject model-access competition | Do not lead with bring-your-own-model or creativity controls. | Canonical truth and governed fallback remain the authority model. |
+| Enforce the differentiation | Canonical publication, proposal decisions, drift validation and entity merge must be server-authoritative; drifted truth must stop before FAQ or RAG. | Implemented with rules-emulator and runtime-contract coverage. |
+
+The maintained implementation and verification matrix is [Aidbase Competitor Response Validation](./aidbase-competitor-response_validation.md). Release boundary on July 11, 2026: local source gates and responsive browser smoke pass. The AnswerLattice QA Firestore-rules and scoped Functions uploads are still blocked by Firebase IAM HTTP 403, and the website/app changes are not Vercel-deployed because Vercel deployment requires explicit release authorization.
 
 ---
 
@@ -170,7 +189,7 @@ Avoid overclaiming:
 
 ## Pricing Direction
 
-The pricing should stay founder-friendly and INR-first.
+The pricing should stay founder-friendly, INR-anchored, and available in USD for international checkout.
 
 | Plan | Suggested price | Best fit | Product promise |
 | --- | ---: | --- | --- |
@@ -222,9 +241,8 @@ Build only when the work increases at least one of:
 ### B. Public Interactive Demo
 
 - [x] Build a public demo that works without account creation.
-- [x] Let visitors ask support questions against a sample SaaS product.
-- [x] Show the difference between canonical answer, fallback answer, and support gap.
-- [x] Show page-aware behavior by changing the demo surface, such as billing vs onboarding.
+- [x] Show a complete governed-answer event against seeded SaaS product evidence.
+- [x] Show conflict, pending proposal, approval, release drift, fixed safe fallback, corrected truth, affected surfaces, and audit evidence.
 - [x] Keep demo data static or cached to protect Firebase and AI cost.
 - [x] Add clear "Start with your product" CTA after the demo.
 
@@ -295,10 +313,10 @@ Build only when the work increases at least one of:
 ### J. Billing and Packaging
 
 - [x] Replace beta/free-first website framing with simple Starter, Growth, and Studio packaging when payments are ready.
-- [x] Keep INR pricing on public materials.
+- [x] Keep INR pricing primary while showing an explicit USD checkout equivalent.
 - [x] Keep usage limits understandable and predictable.
 - [x] Avoid per-resolution pricing as the default public model.
-- [x] Keep paid onboarding optional, not required for first value.
+- [x] Keep paid self-service setup explicit, resumable, and tied to the selected public plan.
 
 ### K. Cost and Production Readiness
 

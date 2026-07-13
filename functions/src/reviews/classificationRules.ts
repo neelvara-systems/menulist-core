@@ -14,6 +14,8 @@ export type ReviewClassification =
     | "negative_high_risk"
     | "volatile";
 
+export type ReviewRating = 1 | 2 | 3 | 4 | 5;
+
 export interface ClassificationRule {
     id: string;
     name: string;
@@ -78,8 +80,11 @@ export const CLASSIFICATION_RULES: ClassificationRule[] = [
     {
         id: "high_risk_staff",
         name: "Staff misconduct",
-        keywords: ["rude staff", "manager yelled", "staff cursed", "discriminat"],
-        patterns: [/\b(staff|manager|waiter|server)\s+(was\s+)?(rude|yelled|cursed)/i],
+        keywords: ["rude staff", "manager yelled", "staff cursed"],
+        patterns: [
+            /\b(staff|manager|waiter|server)\s+(was\s+)?(rude|yelled|cursed)/i,
+            /\bdiscriminat(?:e|ed|es|ing|ion|ory)\b/i,
+        ],
         resultState: "negative_high_risk",
         priority: 77,
     },
@@ -98,8 +103,8 @@ export const CLASSIFICATION_RULES: ClassificationRule[] = [
     {
         id: "info_question",
         name: "Questions/requests",
-        keywords: ["?", "do you", "can you", "please add", "would be nice"],
-        patterns: [/\?$/],
+        keywords: ["do you", "can you", "please add", "would be nice"],
+        patterns: [/\?/],
         resultState: "informational",
         priority: 20,
     },
@@ -115,13 +120,41 @@ export const CLASSIFICATION_RULES: ClassificationRule[] = [
     },
 ];
 
+const escapeRegularExpression = (value: string): string => (
+    value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+);
+
+const containsWholeKeyword = (comment: string, keyword: string): boolean => {
+    const escapedKeyword = escapeRegularExpression(keyword);
+    return new RegExp(`(^|[^a-z0-9])${escapedKeyword}($|[^a-z0-9])`, "i").test(comment);
+};
+
+const normalizeClassificationInput = (
+    rating: unknown,
+    comment: unknown,
+): { rating: ReviewRating; comment?: string } => {
+    if (!Number.isInteger(rating) || Number(rating) < 1 || Number(rating) > 5) {
+        throw new TypeError("Invalid review rating");
+    }
+    if (comment !== undefined && typeof comment !== "string") {
+        throw new TypeError("Invalid review comment");
+    }
+
+    return {
+        rating: rating as ReviewRating,
+        comment,
+    };
+};
+
 /**
  * Classify a review based on rules.
  */
 export function classifyReview(
-    rating: number,
-    comment: string | undefined,
+    rawRating: unknown,
+    rawComment: unknown,
 ): { classification: ReviewClassification; triggerKeywords: string[] } {
+    const { rating, comment } = normalizeClassificationInput(rawRating, rawComment);
+
     // Positive reviews (4-5 stars) without concerning content = benign
     if (rating >= 4 && !comment) {
         return { classification: "benign", triggerKeywords: [] };
@@ -133,11 +166,10 @@ export function classifyReview(
     for (const rule of sortedRules) {
         if (!comment) continue;
 
-        const lowerComment = comment.toLowerCase();
         const matchedKeywords: string[] = [];
 
         for (const keyword of rule.keywords) {
-            if (lowerComment.includes(keyword.toLowerCase())) {
+            if (containsWholeKeyword(comment, keyword)) {
                 matchedKeywords.push(keyword);
             }
         }
