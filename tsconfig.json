@@ -68,6 +68,7 @@
   ],
   "exclude": [
     "node_modules",
+    "scripts",
     "functions",
     "functions-answerlattice",
     "functions-signaldesk",
