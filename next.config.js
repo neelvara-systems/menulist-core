@@ -31,6 +31,32 @@ const nativeCanvasExternals = [
     '@napi-rs/canvas-linux-x64-gnu',
     '@napi-rs/canvas-linux-x64-musl',
 ];
+const myCodexDocsTraceIncludes = ['./__docs__/**/*.md'];
+const myCodexDocsTraceAssetExcludes = [
+    './__docs__/**/*.csv',
+    './__docs__/**/*.gif',
+    './__docs__/**/*.heic',
+    './__docs__/**/*.heif',
+    './__docs__/**/*.html',
+    './__docs__/**/*.ico',
+    './__docs__/**/*.jpeg',
+    './__docs__/**/*.jpg',
+    './__docs__/**/*.json',
+    './__docs__/**/*.mov',
+    './__docs__/**/*.mp3',
+    './__docs__/**/*.mp4',
+    './__docs__/**/*.pdf',
+    './__docs__/**/*.png',
+    './__docs__/**/*.svg',
+    './__docs__/**/*.tsv',
+    './__docs__/**/*.txt',
+    './__docs__/**/*.wav',
+    './__docs__/**/*.webm',
+    './__docs__/**/*.webp',
+    './__docs__/**/*.woff',
+    './__docs__/**/*.woff2',
+    './__docs__/**/*.zip',
+];
 
 // Disable memory-heavy webpack plugins on Vercel preview builds
 // Production deploys (VERCEL_ENV=production) get full PWA
@@ -348,10 +374,16 @@ const nextConfig = {
                 'node_modules/rollup/**',
                 'node_modules/terser/**',
             ],
+            '/sites/mycodex': myCodexDocsTraceAssetExcludes,
+            '/sites/mycodex/[[...slug]]': myCodexDocsTraceAssetExcludes,
+            '/sites/mycodex/api/document': myCodexDocsTraceAssetExcludes,
+            '/sites/mycodex/**/*': myCodexDocsTraceAssetExcludes,
         },
         outputFileTracingIncludes: {
-            '/sites/mycodex': ['./__docs__/**/*'],
-            '/sites/mycodex/**/*': ['./__docs__/**/*'],
+            '/sites/mycodex': myCodexDocsTraceIncludes,
+            '/sites/mycodex/[[...slug]]': myCodexDocsTraceIncludes,
+            '/sites/mycodex/api/document': myCodexDocsTraceIncludes,
+            '/sites/mycodex/**/*': myCodexDocsTraceIncludes,
         },
         // Optimize for memory usage in builds
         // optimizeCss: true, // Disabled — causes silent page drops on Vercel OOM builds
